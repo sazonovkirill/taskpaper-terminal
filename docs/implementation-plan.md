@@ -7,9 +7,7 @@ The order in which v1 is built. The app starts almost trivial and gains one feat
 
 ## Milestones and acceptance
 
-Development goes one milestone at a time (owner, 2026-10-04). Each milestone is one Todoist task labeled `milestone`, with its steps listed in the description; an agent works through the steps in order, committing each through the review gate and recording progress in the task's comments. When every step is on `main`, the task moves to Done and work stops: the owner runs the app, reviews it and gives feedback. Closing the task accepts the milestone. Each milestone task names the previous one as a dependency, so it is not runnable until that one is closed ([agent workflow](quality/agent-workflow.md#backlog-and-task-selection)). Feedback that changes later steps is recorded here before the next milestone starts.
-
-The parallel lanes below still apply within a milestone when the owner starts more than one agent on it; each agent then records which steps it took in the task's comments.
+Development goes one milestone at a time (owner, 2026-10-04). Each milestone is one Todoist task labeled `milestone`, with its steps listed in the description; agents work its steps, in parallel wherever the dependencies allow ([working in parallel](quality/agent-workflow.md#working-in-parallel)), committing each through the review gate and recording progress in the task's comments. When every step is on `main`, the owner runs the Codex [milestone review](quality/agent-workflow.md#milestone-review) on their Mac and its verified findings are fixed; then the task moves to Done and work stops: the owner runs the app, reviews it and gives feedback. Closing the task accepts the milestone. Each milestone task names the previous one as a dependency, so it is not runnable until that one is closed ([agent workflow](quality/agent-workflow.md#backlog-and-task-selection)). Feedback that changes later steps is recorded here before the next milestone starts.
 
 ## Rules for every step
 
@@ -127,6 +125,12 @@ Search with live filtering and its query language, bookmarked searches, then int
 
 ## What can run in parallel
 
-- **Start:** 1.1 alone. Once it is on `main`, three agents can work at once: 1.2 → 1.6 in order, 2.1 and 3.1.
-- **M2–M4:** one hub step at a time, each with one or two non-hub steps, for example 2.5 with 2.11 and 2.12, or 3.5 with 3.7, 3.9 and 6.1.
-- **M5–M8:** M6 and M7 are independent of each other once M4 is done, and 8.3 can start as soon as M5 is.
+Parallel work stays inside the current milestone; a step of a later milestone waits for the earlier milestone's acceptance even when its **After** steps are on `main`. Within each milestone:
+
+- **M1:** 1.1 first; then 1.2 and 1.3 together; then 1.4, 1.5 and 1.6 in order.
+- **M2:** 2.1 and 2.2 together; then 2.3; then 2.10, 2.11 and 2.12 together; then 2.4, 2.5 and 2.6 in order; then 2.7, 2.8 and 2.9 together.
+- **M3:** 3.1, 3.2 and 3.9 together; then 3.3, 3.4 and 3.10; then 3.5 and 3.7; then 3.6 and 3.8.
+- **M4:** 4.1 and 4.5 together; then 4.2 and 4.6; then 4.3, 4.4, 4.7 and 4.8; then 4.9.
+- **M5** and **M7:** in order.
+- **M6:** 6.1 and 6.5 together; then 6.2 and 6.3; then 6.4.
+- **M8:** 8.1, 8.3 and 8.4 together; then 8.2 and 8.5.

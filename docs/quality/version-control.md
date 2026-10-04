@@ -5,7 +5,7 @@
 
 ## Worktrees and branches
 
-This is a single-developer project with several agents working in parallel on the owner's Mac. Each agent works in its own Git worktree on its own short-lived branch, and never does implementation work in the primary checkout. Agent worktrees are ignored by Git.
+This is a single-developer project with several agents working in parallel, in cloud sessions and on the owner's Mac. Each agent works in its own Git worktree on its own short-lived branch, and never does implementation work in the primary checkout. Agent worktrees are ignored by Git.
 
 - **A worktree the tool created.** When the owner starts a session in a worktree that the Claude or Codex app created for it, such as `.claude/worktrees/<name>` on a `claude/<name>` branch, that worktree is yours: work there and keep the tool's branch name. If it is on a detached `HEAD`, create a branch named as below with `git switch -c <branch>`. If it does not start at the latest `origin/main`, rebase it there before changing anything.
 - **A worktree you create.** Otherwise create one under `.worktrees/`. Name branches `<type>/<short-slug>`, where `<type>` is one of `feat`, `fix`, `refactor`, `test`, `docs` or `chore`, for example `feat/fold-outline`. Before creating one, check that no local or remote branch has that name. Create the worktree from the latest `main`, with the branch name's `/` replaced by `-` as the directory:

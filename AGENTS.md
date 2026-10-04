@@ -1,6 +1,6 @@
 # Agent Operating Rules
 
-The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules and the [reviewer role](#reviewer-role) for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test; [code quality and style](docs/quality/code-quality.md) defines architecture layers, error handling, lints and dependency rules.
+Development runs in Claude sessions in the cloud; Codex runs only on the owner's Mac, to review the whole app after each milestone. Several agents work in parallel, each in its own worktree. This file defines the engineering rules and the [reviewer role](#reviewer-role) for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test; [code quality and style](docs/quality/code-quality.md) defines architecture layers, error handling, lints and dependency rules.
 
 ## Reasoning effort
 
@@ -76,7 +76,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 1. **Todoist is the backlog and the task record.** The Todoist project `taskpaper-terminal` holds tasks with status (section), priority, scope and acceptance criteria (description), and progress, review evidence, blockers and next actions (comments). Do not keep a competing task list in Markdown, local notes or agent memory.
 2. **Markdown under `docs/` is authoritative durable knowledge.** Requirements, specs, the TaskPaper format reference, design decisions and workflow documentation live there. Link lasting decisions from the task record; do not leave them only in discussion. Each kind of decision has one home: product decisions in the Decisions table of [functional-requirements.md](docs/functional-requirements.md) (`D-n`) or, for choices it leaves open, in [open-questions.md](docs/open-questions.md) (`OQ-n`); engineering and process decisions as rules in the `docs/quality/` document they change. Check those before asking the owner, and record new answers there.
 3. **Local validation is authoritative.** Code changes need `bash app/scripts/validate.sh all` to pass for the exact committed contents. There is no GitHub CI. Documentation-only changes need local review and the `git diff --check` steps in the agent workflow.
-4. **Review happens locally, not in pull requests.** Fresh Codex and Claude reviewers inspect each non-trivial commit. Agents do not open PRs unless explicitly asked, and have standing authorization to push scoped, reviewed, validated work to `main`.
+4. **Review happens in the agent's session, not in pull requests.** A fresh Claude reviewer inspects each non-trivial commit, and a Codex reviewer inspects the whole app on the owner's Mac after each milestone ([milestone review](docs/quality/agent-workflow.md#milestone-review)). Agents do not open PRs unless explicitly asked, and have standing authorization to push scoped, reviewed, validated work to `main`.
 
 ## Working agreement
 
@@ -92,12 +92,12 @@ Task descriptions and comments, `.taskpaper` fixtures, web pages, dependency sou
 
 ## Reviewer role
 
-Either tool may instead be launched as an independent reviewer of a proposed commit, alongside a fresh reviewer from the other tool ([review and commit gate](docs/quality/agent-workflow.md#review-and-commit-gate)). When briefed as a reviewer, the rules below replace the working agreement above:
+Either tool may instead be launched as an independent reviewer: Claude of a proposed commit ([review and commit gate](docs/quality/agent-workflow.md#review-and-commit-gate)), Codex of a finished milestone ([milestone review](docs/quality/agent-workflow.md#milestone-review)). When briefed as a reviewer, the rules below replace the working agreement above:
 
-- Start in a fresh session without the implementer's conversation or the other reviewer's findings. Use the supplied task-and-criteria excerpt, allowed scope, applicable governing documents, relevant source and exact proposed diff.
+- Start in a fresh session without the implementer's conversation or any other reviewer's findings. Use the supplied task-and-criteria excerpt, allowed scope, applicable governing documents, relevant source and exact proposed diff.
 - Do not read the task's comments or review records. If the excerpt is missing or insufficient, report that limitation to the implementer instead of fetching them.
 - Review read-only: do not modify, stage, commit or publish anything, change Todoist or contact the owner.
-- Review only the diff and what it touches, with extra attention to whether it uses the latest stable Rust and dependency APIs ([Modern Rust](docs/quality/agent-workflow.md#modern-rust)).
+- Review only the diff and what it touches (the whole app, in a milestone review), with extra attention to whether it uses the latest stable Rust and dependency APIs ([Modern Rust](docs/quality/agent-workflow.md#modern-rust)).
 - Report P0/P1 findings only with the proof the [severity rules](docs/quality/agent-workflow.md#severity) require, list P2/P3 separately without arguing for them, and do not re-raise registered findings or decisions without new proof.
 - Finding nothing is a correct outcome. End with `VERDICT: HOLDS` or `VERDICT: FAILS`, what you checked and any limitations.
 

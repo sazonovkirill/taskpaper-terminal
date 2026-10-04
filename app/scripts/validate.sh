@@ -84,18 +84,21 @@ doctor() {
   need git 'install Xcode Command Line Tools: xcode-select --install'
   need openssl 'brew install openssl'
   need claude 'install Claude Code: https://code.claude.com/docs/en/setup'
-  need codex 'install Codex CLI: https://developers.openai.com/codex/cli'
+  # Cloud sessions run without Codex, which reviews milestones on the owner's Mac, and get Todoist as a connector.
+  local cloud=0
+  [[ "${CLAUDE_CODE_REMOTE:-}" == true ]] && cloud=1
+  ((cloud)) || need codex 'install Codex CLI: https://developers.openai.com/codex/cli'
   need rustup 'install rustup: https://rustup.rs'
   need jq 'brew install jq'
   if [[ "$(git config core.hooksPath || true)" != .githooks ]]; then
     echo 'doctor: the pre-push validation hook is not installed; git config core.hooksPath .githooks' >&2
     missing=1
   fi
-  if command -v claude >/dev/null 2>&1 && ! claude mcp get todoist >/dev/null 2>&1; then
+  if ((!cloud)) && command -v claude >/dev/null 2>&1 && ! claude mcp get todoist >/dev/null 2>&1; then
     echo 'doctor: Claude Code has no todoist MCP server; claude mcp add --transport http --scope user todoist https://ai.todoist.net/mcp' >&2
     missing=1
   fi
-  if command -v codex >/dev/null 2>&1 && ! codex mcp get todoist >/dev/null 2>&1; then
+  if ((!cloud)) && command -v codex >/dev/null 2>&1 && ! codex mcp get todoist >/dev/null 2>&1; then
     echo 'doctor: Codex has no todoist MCP server; codex mcp add todoist --url https://ai.todoist.net/mcp' >&2
     missing=1
   fi

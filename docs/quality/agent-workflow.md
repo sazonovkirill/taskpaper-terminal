@@ -5,7 +5,7 @@
 
 ## Authority and boundaries
 
-The owner starts Claude or Codex agent sessions manually and tells each one which task to work on: either a specific Todoist task or "pick the next task from the Todoist backlog". Either tool may implement. The implementing agent chooses implementation details and atomic commit boundaries, obtains independent fresh Codex and Claude reviews for non-trivial changes, and commits and pushes scoped, validated work to `main` without further approval. Human review before publication is optional unless a task requires it. This authority covers the assigned task, not arbitrary changes outside its scope.
+The owner starts agent sessions and tells each one which task to work on: either a specific Todoist task or "pick the next task from the Todoist backlog". Development runs in Claude sessions in the cloud (owner, 2026-10-04); a session runs on the owner's Mac only for the Codex [milestone review](#milestone-review). The implementing agent chooses implementation details and atomic commit boundaries, obtains an independent fresh Claude review for non-trivial changes, and commits and pushes scoped, validated work to `main` without further approval. Human review before publication is optional unless a task requires it. This authority covers the assigned task, not arbitrary changes outside its scope.
 
 [AGENTS.md](../../AGENTS.md) and [version-control practices](version-control.md) remain governing constraints. Routine designs within accepted specs are delegated to the implementing agent. Record plans for changes spanning modules, adding public interfaces or introducing abstractions before implementation. Escalate unresolved product choices, changes to accepted specs or quality requirements, and scope expansions requiring owner judgment. An explicit task instruction takes precedence over this workflow.
 
@@ -33,6 +33,10 @@ Several agents work in parallel, each on a different task in its own worktree. A
 
 Keep the task record current in Todoist comments: plan, scope decisions, effort raises, review evidence, validation, blockers, delivery summary and commit links. Before pausing or ending a session, record the branch, absolute worktree path, changed paths and whether work remains uncommitted or unpushed. Do not maintain competing Markdown task lists or agent-memory project state.
 
+### Working in parallel
+
+The owner wants development to go as fast as possible (owner, 2026-10-04). Look for work that can proceed in parallel and do it in parallel: steps of the current milestone whose dependencies are on `main` ([implementation plan](../implementation-plan.md#what-can-run-in-parallel)), and independent parts of one step such as a pure core module and its UI. An agent working a milestone may start subagents, each in its own worktree and on its own branch, each taking one step through the full gate, and integrate their commits into `main` one at a time; or it may ask the owner to start more sessions on the same milestone. Record on the task which agent or subagent took which step. Keep at most one step that heavily changes shared hubs (`app::update`, `ui::keymap`, the main widgets) in flight at a time, and never start the next milestone early.
+
 ### Coordination between agents
 
 When Todoist comments are not enough, for example overlapping or dependent work between agents or a blocker another task must resolve, add a comment on every affected task linking the others, naming the conflict and the next action. Create follow-ups for out-of-scope work in the Inbox section for owner triage. Agents never move their own follow-ups to Ready.
@@ -52,13 +56,23 @@ Independent review is required for every non-trivial commit, code or documentati
 For every non-trivial commit, including later fixes:
 
 1. **Ground first.** Prepare one coherent increment and run the validation for its change type. For code changes that means `bash app/scripts/validate.sh all` and `bash app/scripts/validate.sh mutants`, with every missed mutant fixed or recorded as equivalent ([testing strategy](testing-strategy.md)). Every commit must leave the project valid. Deterministic checks, not reviewers, settle anything a tool can decide, such as formatting, lint, build and tests.
-2. **Freeze and brief.** Freeze the base revision and proposed contents, then give a fresh Codex reviewer and a fresh Claude reviewer the same brief (below). Reviews are read-only and independent: neither inherits the implementer's conversation or sees the other reviewer's findings before reporting.
-3. **Record.** After both reviewers report, record on the task each reviewer's model, effort and session identifier when available, the base revision, a reproducible identifier of the reviewed contents such as the proposed Git tree, and the findings.
-4. **Adjudicate against source.** Apply the severity rules below. The implementer fixes verified P0/P1 findings; reviewers only report. Resolve disputes by checking the code, tests or accepted requirements, never by vote or by asking a model which argument is right. To verify a disputed P0/P1, send it to a fresh reviewer from the other model family, told to refute it and to default to refuted when uncertain. Record each finding's disposition and reason on the task.
+2. **Freeze and brief.** Freeze the base revision and proposed contents, then give a fresh Claude reviewer the brief (below). The review is read-only and independent: the reviewer does not inherit the implementer's conversation.
+3. **Record.** After the reviewer reports, record on the task its model, effort and session identifier when available, the base revision, a reproducible identifier of the reviewed contents such as the proposed Git tree, and the findings.
+4. **Adjudicate against source.** Apply the severity rules below. The implementer fixes verified P0/P1 findings; reviewers only report. Resolve disputes by checking the code, tests or accepted requirements, never by vote or by asking a model which argument is right. To verify a disputed P0/P1, send it to another fresh Claude reviewer, told to refute it and to default to refuted when uncertain. Record each finding's disposition and reason on the task.
 5. **Re-review only the delta.** When contents change, rerun affected checks and brief fresh reviewers on the diff since the last round, the findings it fixes and the two registers, not the whole increment again.
-6. **Commit** when both reviewers' latest round holds no unrefuted P0/P1, required checks pass, and the staged contents match the reviewed snapshot. Reviewer unavailability or incomplete inspection blocks the commit; never substitute self-review.
+6. **Commit** when the reviewer's latest round holds no unrefuted P0/P1, required checks pass, and the staged contents match the reviewed snapshot. Reviewer unavailability or incomplete inspection blocks the commit; never substitute self-review.
 
-For a multi-commit feature, also review the aggregate change with fresh Codex and Claude sessions before declaring delivery. Any resulting fix goes through the same gate. Independent review supplements tests; it does not replace local validation.
+For a multi-commit feature, also review the aggregate change with a fresh Claude session before declaring delivery. Any resulting fix goes through the same gate. Independent review supplements tests; it does not replace local validation.
+
+### Milestone review
+
+Codex does not review individual commits. When every step of a milestone is on `main`, the implementing agent asks the owner for the milestone review and does not move the milestone task to Done yet. The owner runs it on their Mac: a fresh Codex reviewer inspects the whole app at the milestone's last commit, with the diff since the previous accepted milestone (or the first commit) as the focus, using the brief below with its first two sentences replaced by "Determine whether the app meets its requirements and governing documents. Review the whole app, focusing on this milestone's changes.":
+
+```sh
+REVIEWERS=codex bash app/scripts/review.sh <effort> <previous-milestone-commit> origin/main <brief-file>
+```
+
+Verified P0/P1 findings are fixed through the commit gate above, in the cloud, before the milestone task moves to Done for the owner's acceptance; P2/P3 findings are recorded on the task. The owner may skip the review for a milestone; record that on the task.
 
 ### Severity
 
@@ -71,7 +85,7 @@ The project wants modern code. Reviewers pay extra attention to whether the diff
 
 ### Taste and authority
 
-Reviewers from different model families have different preferences. Settle disagreements in this order: verified facts, tests and tool output; then the task's acceptance criteria and the governing documents; then the implementer's choice. A preference not written in the governing documents is P3 by definition, however strongly argued. Approve a change that meets its criteria and clearly improves the project even if it is not how the reviewer would write it. When the same preference keeps coming back across tasks, ask the owner once and record the decision in the governing documents, where it becomes a rule rather than a taste.
+Reviewers, and Claude and Codex in particular, have different preferences. Settle disagreements in this order: verified facts, tests and tool output; then the task's acceptance criteria and the governing documents; then the implementer's choice. A preference not written in the governing documents is P3 by definition, however strongly argued. Approve a change that meets its criteria and clearly improves the project even if it is not how the reviewer would write it. When the same preference keeps coming back across tasks, ask the owner once and record the decision in the governing documents, where it becomes a rule rather than a taste.
 
 ### Reviewer brief
 
@@ -110,7 +124,7 @@ After a stop, fix any verified P0/P1 findings and confirm only those fixes in on
 
 ### Launching reviewers
 
-`bash app/scripts/review.sh <effort> <base> <revision> <brief-file>` does all of this: it checks the revision out into a frozen worktree, appends the complete diff since the base to the brief, runs both reviewers in parallel at `<effort>` (the Claude reviewer at `max` for Codex's `ultra` or `persistent`), and prints their verdicts and the reviewed tree. The [`review-commit` skill](../../.agents/skills/review-commit/SKILL.md) walks through the gate around it.
+`bash app/scripts/review.sh <effort> <base> <revision> <brief-file>` does all of this: it checks the revision out into a frozen worktree, appends the complete diff since the base to the brief, runs the reviewers named by `REVIEWERS` (default `claude`; `codex` for the milestone review) at `<effort>` (Claude at `max` for Codex's `ultra` or `persistent`), and prints their verdicts and the reviewed tree. It works in cloud sessions, where the `claude` CLI is signed in. The [`review-commit` skill](../../.agents/skills/review-commit/SKILL.md) walks through the gate around it.
 
 The script launches reviewers from the frozen worktree with the prompt on standard input, at no less than your own current effort. Both commands keep reviewers away from Todoist, so they cannot read task comments. The Codex reviewer can still reach other configured MCP servers; its prompt forbids reading task records or other reviewers' output. The Claude reviewer cannot run Git, so the prompt contains the complete diff under review, including new files, and `--add-dir` lets it read the dependency and standard-library sources outside the worktree; the Codex sandbox can already read them. Substitute newer models when they replace these:
 
@@ -131,4 +145,4 @@ After delivering, the agent retires its worktree as [version-control practices](
 
 ## Prerequisites
 
-Agents need the Todoist MCP server (`https://ai.todoist.net/mcp`) registered under the name `todoist` and signed in for both Claude Code and Codex, the `codex` and `claude` CLIs for independent reviewers, `openssl`, `jq` for the Claude Code hook, the tracked Git hooks enabled once per clone with `git config core.hooksPath .githooks`, and a stable Rust toolchain with `rustfmt`, `clippy`, `llvm-tools` and `rust-src` (`rustup toolchain install` from the repository installs the pinned toolchain with them), and `cargo install --locked cargo-llvm-cov cargo-mutants cargo-deny`. Install Rust through rustup with its proxies first on `PATH`; a Homebrew `rust` ahead of them bypasses the toolchain pin. Start every session with `bash app/scripts/validate.sh doctor`, which checks everything above except whether you are signed in to Todoist and prints how to fix whatever is missing; stop and report to the owner if it fails. Keep credentials out of Git, task records and model prompts.
+Cloud sessions get Todoist from the project's connector and need the Rust tools below; the environment's setup script should install them, or the session installs them before starting. On the owner's Mac, agents need the Todoist MCP server (`https://ai.todoist.net/mcp`) registered under the name `todoist` and signed in for both Claude Code and Codex, and the `codex` CLI for the milestone review. Everywhere they need the `claude` CLI for independent reviewers, `openssl`, `jq` for the Claude Code hook, the tracked Git hooks enabled once per clone with `git config core.hooksPath .githooks`, and a stable Rust toolchain with `rustfmt`, `clippy`, `llvm-tools` and `rust-src` (`rustup toolchain install` from the repository installs the pinned toolchain with them), and `cargo install --locked cargo-llvm-cov cargo-mutants cargo-deny`. Install Rust through rustup with its proxies first on `PATH`; a Homebrew `rust` ahead of them bypasses the toolchain pin. Start every session with `bash app/scripts/validate.sh doctor`, which checks everything above except whether you are signed in to Todoist (and, in the cloud, skips Codex and the Todoist MCP check) and prints how to fix whatever is missing; stop and report to the owner if it fails. Keep credentials out of Git, task records and model prompts.
