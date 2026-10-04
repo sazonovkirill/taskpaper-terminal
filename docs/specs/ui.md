@@ -85,7 +85,7 @@ A popup anchored at the focused element (or at the pointer for right-click) list
 
 - Opened with `g,` in navigate mode or **Open Settings** in Go to Command; a centered overlay like the pickers, but up to 100×30.
 - Left column: groups (Appearance, Editing, Files). Right: that group's settings, one per row, with name, current value and a one-line description; values that differ from the default are marked.
-- Settings in v1: Appearance — theme (FR-UI-06), icons (§7), word wrap (FR-UI-05), animations (§9); Files — autosave delay ([file-io.md](file-io.md)). New settings are added to this window when they are added to the config file.
+- Settings in v1: Appearance — theme (FR-UI-06), icons (§7), word wrap (FR-UI-05), animations (§9); Files — autosave delay and backups: on/off, folder, number kept ([file-io.md](file-io.md#2-saving)). New settings are added to this window when they are added to the config file.
 - Keys: `j`/`k`/arrows move, `Tab` switches between groups and settings, `Enter` or `Space` toggles a boolean or opens a value picker or number prompt, `h`/`l` cycle choices, `r` resets the focused setting to its default, typing `/` filters settings by name, `Esc` closes.
 - Every change applies at once (theme and icons repaint the whole UI behind the overlay) and is written to `config.toml` immediately (FR-SET-04). A failed write shows an error in the window and the status line and keeps the value for the session.
 - A footer shows the config file's path, so people know where to edit by hand.

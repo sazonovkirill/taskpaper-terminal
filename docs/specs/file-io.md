@@ -1,6 +1,6 @@
 # Spec: File I/O, saving and external changes
 
-Covers FR-DOC-01, FR-DOC-02, FR-DOC-05, FR-DOC-06, FR-UI-04 (storage), F-FILE-01, 04–07, 09, N-REL-01 and N-UX-01.
+Covers FR-DOC-01, FR-DOC-02, FR-DOC-05, FR-DOC-06, FR-DOC-07, FR-UI-04 (storage), F-FILE-01, 04–07, 09, N-REL-01 and N-UX-01.
 
 ## 1. Opening
 
@@ -28,7 +28,16 @@ If the target is a symlink, write through to the resolved path so the link is pr
 
 Saving runs on a background thread with a snapshot of the serialized text; the UI never waits on disk (N-UX-01). The status line shows `●` while there are unsaved changes and an error badge if the last save failed. A failed save keeps retrying on the next change and on quit; quit with unsaved changes after a failed save asks before exiting.
 
-**Backups** (F-FILE-09): before the first save in a session, and again before any save more than 10 minutes after the last backup, copy the on-disk file to `$XDG_STATE_HOME/taskpaper-terminal/backups/<name>-<timestamp>.taskpaper`, keeping the last N (default 10) per file.
+**Daily backups** (FR-DOC-07, F-FILE-09, D-22):
+- **Where:** `$XDG_DATA_HOME/taskpaper-terminal/backups/`, or `~/.local/share/taskpaper-terminal/backups/` when it is unset, on macOS too. Backups are user data rather than disposable state, so they go under the data directory, not `$XDG_STATE_HOME`. The `backups.dir` setting overrides the folder (for example `~/.taskpaper-terminal/backups`); `~` is expanded.
+- **One folder per file:** `<file name>-<hash>/`, where `<hash>` is the 64-bit FNV-1a hash of the file's canonical path as 16 lowercase hex digits. Two `todo.taskpaper` files in different directories get different folders; the hash is written by hand, so it is stable across Rust releases (std's `DefaultHasher` is not). The folder also holds `source-path.txt` with the full path, so a person can tell which file it belongs to.
+- **When:** on opening the file, and before the first save of each new local day for a session left running past midnight. If the folder has no copy dated today, copy the file as it is on disk, before the app writes anything, to `<YYYY-MM-DD>.taskpaper` (local date) with the atomic-write routine above. So each day's copy is the file as it was before that day's first change by the app.
+- **Skipped:** when the file does not exist on disk or is empty (a new path, or the empty `/tmp` document of §1), and when the on-disk bytes equal the newest daily copy, so a file left unchanged for weeks does not use up its retention on duplicates.
+- **Retention:** keep the newest `backups.keep` daily copies per file (default 30), newest by the date in the name; after writing a daily copy, delete the oldest ones beyond that. Conflict copies (§3) are pruned the same way but counted separately, so conflicts never push out daily copies. Nothing is pruned while backups are disabled. Folders of files that no longer exist are left alone.
+- **Settings** (FR-SET-01): `backups.enabled` (default `true`), `backups.dir` (default unset, meaning the path above), `backups.keep` (default 30, minimum 1). Changing the folder takes effect on the next backup; existing copies are not moved.
+- **Failures** never block opening or saving: the status line shows a warning once per session with the reason, and the next day's check tries again.
+- **Save As** switches backups to the new path, which gets its own folder.
+- There is no restore command; a backup is a plain `.taskpaper` file that `tpt` opens directly.
 
 ## 3. External changes
 
@@ -36,7 +45,7 @@ Watch the file with the `notify` crate (debounced), plus a metadata check on foc
 
 When the on-disk content hash differs from the known disk state (OQ-16 default):
 - **No unsaved local changes:** reload silently, keep each pane's focus and zoom on the same blocks where they can be re-matched (same path of texts from root, else nearest surviving ancestor), and show "Reloaded (changed on disk)".
-- **Unsaved local changes:** pause autosave and prompt: *Keep mine* (overwrite disk), *Take theirs* (write the local version to the backups folder, then reload; undo history is cleared because item ids no longer apply), *Show diff* (open a read-only line diff pane).
+- **Unsaved local changes:** pause autosave and prompt: *Keep mine* (first write the on-disk version to the file's backup folder as a conflict copy, then overwrite disk), *Take theirs* (write the local version there as a conflict copy, then reload; undo history is cleared because item ids no longer apply), *Show diff* (open a read-only line diff pane). A conflict copy is named `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper` (local time), is written even when backups are disabled, and failing to write it cancels the choice and shows the error, so the discarded version is never lost.
 - **File deleted or moved:** keep the buffer, mark it "not on disk", and recreate the file on next save.
 
 Saves check the disk state immediately before renaming; if it changed since the last read, the save is aborted and the conflict prompt shown instead. This prevents overwriting edits made by TaskPaper 3, a sync tool or another editor.

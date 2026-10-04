@@ -62,7 +62,7 @@ Existing: `ratatui` 0.30, `crossterm` 0.29 (UI only). Proposed additions, each a
 | `notify` / `notify-debouncer-full` | File watching (UI effects). |
 | `arboard` | System clipboard (UI effects; OSC 52 fallback is hand-written). |
 | `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). |
-| `directories` | State paths per platform (UI). The config path follows XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`), not `~/Library` (FR-SET-01). |
+| `directories` | State paths per platform (UI). The config and backup paths follow XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`, `$XDG_DATA_HOME` or `~/.local/share`), not `~/Library` (FR-SET-01, FR-DOC-07). |
 | `tachyonfx` | Animation effects (UI); 0.25 builds on `ratatui-core` 0.1, the core of Ratatui 0.30. |
 | `tempfile` | Atomic writes (UI effects). |
 | `thiserror`, `anyhow` | Typed library errors / `main.rs` only (code-quality.md). |

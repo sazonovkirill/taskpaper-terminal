@@ -28,6 +28,7 @@ taskpaper-terminal is a keyboard-driven, Workflowy-style infinite outliner for t
 | FR-DOC-04 | `Archive:` projects get no special treatment; there is no archive command. They are ordinary projects. | Must |
 | FR-DOC-05 | Running without a path creates a new file in `/tmp` (D-15). | Must |
 | FR-DOC-06 | A Save As command writes the document to a chosen path and continues editing that file; this is how a `/tmp` document is kept. | Must |
+| FR-DOC-07 | Every file the app opens is backed up once a day, before the app first changes it that day, to a backups folder outside the file's own directory (`~/.local/share/taskpaper-terminal/backups/`, `$XDG_DATA_HOME` respected, also on macOS). Each file keeps its own dated copies, so files with the same name never collide; the newest 30 are kept. The folder, the number kept and whether backups run at all are settings (D-22). | Must |
 
 ## FR-BLK · Blocks
 
@@ -145,7 +146,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 |---|---|---|---|
 | FR-SET-01 | Settings are per user and stored in one TOML file, `~/.config/taskpaper-terminal/config.toml` (`$XDG_CONFIG_HOME` respected, also on macOS), that people can read and edit by hand. The app runs with defaults when the file is missing and creates it on the first change (D-20). | Must | Settings |
 | FR-SET-02 | A settings window, opened by a key and from the command palette, lists every setting grouped by topic with its current value and a one-line description. Changing a value applies it at once with a live preview, saves it immediately, and can be reset to the default (D-20). | Must | Settings |
-| FR-SET-03 | The settings window covers at least the theme (FR-UI-06), icons (FR-UI-10), word wrap (FR-UI-05) and autosave delay; key overrides stay in the file ([keybindings spec](specs/keybindings.md#5-configuration)). | Must | Settings |
+| FR-SET-03 | The settings window covers at least the theme (FR-UI-06), icons (FR-UI-10), word wrap (FR-UI-05), autosave delay and backups (FR-DOC-07); key overrides stay in the file ([keybindings spec](specs/keybindings.md#5-configuration)). | Must | Settings |
 | FR-SET-04 | Writing a setting from the app keeps the file's comments, order and unrelated keys. Unknown keys and invalid values are reported once and ignored, and the app still starts. | Must | — |
 
 ## Out of scope
@@ -187,3 +188,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-19 | The app ships 10-12 attractive terminal color themes built in (owner, 2026-10-04). The chosen twelve are permissively licensed and include light themes. |
 | D-20 | The app uses Nerd Font icons, with a setting to turn all icons off. It has a settings window; settings are per user under `~/.config` in a modern format (owner, 2026-10-04). The format is TOML, as already decided in OQ-18: it is the norm for Rust and terminal tools (Cargo, Helix, Alacritty, starship) and avoids YAML's indentation and implicit-typing pitfalls. |
 | D-21 | Animation is used only where it helps orientation or feedback and never slows the user down. The owner delegated where to animate (decided in [specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)). |
+| D-22 | The app makes daily backups of every file it opens (owner, 2026-10-04). They go to the XDG data directory, `~/.local/share/taskpaper-terminal/backups/`, next to the `~/.config` settings, rather than the owner's suggested `~/.taskpaper-terminal/backups/`, which a setting can still select. A copy is taken on the first open or save of each local day, before anything is written; one folder per file, named after the file plus a hash of its full path; copies are named by date; identical copies are skipped; the newest 30 are kept. Both choices of an external-change conflict first save the version they discard as a conflict copy. Details in [file-io.md](specs/file-io.md#2-saving). |

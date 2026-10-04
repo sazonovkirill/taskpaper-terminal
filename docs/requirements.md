@@ -26,7 +26,7 @@ Priorities use the same scale as the functional requirements: **Must** (v1), **S
 | F-FILE-06 | Detect external modification of the open file and reload or prompt without losing local edits (OQ-16). | Must |
 | F-FILE-07 | Refuse to open non-UTF-8 files with a clear error rather than corrupting them. | Must |
 | F-FILE-08 | Preserve the file's indent style, line endings, BOM and trailing newline (OQ-14). | Should |
-| F-FILE-09 | Keep rolling backups of previous versions. | Should |
+| F-FILE-09 | Back up every opened file once a day, before the first change written that day (FR-DOC-07). | Must |
 
 ## Non-functional requirements
 
