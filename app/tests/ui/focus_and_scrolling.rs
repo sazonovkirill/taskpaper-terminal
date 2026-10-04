@@ -175,7 +175,7 @@ fn paging_stops_at_the_last_row_without_scrolling_past_it() {
 
 #[test]
 fn the_status_line_shows_the_mode_and_the_path() {
-    let mut app = Harness::with_text("- a\n", 80, 3);
+    let mut app = Harness::with_text("- a\n", 200, 3);
     let path = app.path.clone().expect("a file was opened");
     assert_eq!(
         status_line(&mut app),
