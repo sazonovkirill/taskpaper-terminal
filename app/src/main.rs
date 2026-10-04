@@ -1,3 +1,5 @@
+//! Terminal outliner for TaskPaper files: sets up the terminal and runs the event loop.
+
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};

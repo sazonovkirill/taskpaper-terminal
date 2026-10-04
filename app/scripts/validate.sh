@@ -9,6 +9,7 @@ format() {
 static_checks() {
   cargo fmt --all --check
   cargo clippy --locked --all-targets --all-features -- -D warnings
+  cargo deny --locked check
   bash -n scripts/validate.sh
 }
 
@@ -71,13 +72,15 @@ doctor() {
       missing=1
     fi
     if ! toolchain="$(rustup show active-toolchain 2>/dev/null)"; then
-      echo 'doctor: no Rust toolchain installed; rustup default stable' >&2
+      echo 'doctor: the pinned Rust toolchain is not installed; rustup toolchain install' >&2
       missing=1
     elif [[ "$toolchain" =~ ^(nightly|beta) ]]; then
-      echo "doctor: active toolchain is $toolchain, not a stable release; rustup default stable" >&2
+      echo "doctor: active toolchain is $toolchain, not the stable release pinned in rust-toolchain.toml; rustup override unset" >&2
+      missing=1
+    elif ! installed="$(rustup component list --installed 2>/dev/null)"; then
+      echo 'doctor: the pinned Rust toolchain is not installed; rustup toolchain install' >&2
       missing=1
     else
-      installed="$(rustup component list --installed)"
       for component in rustfmt clippy llvm-tools; do
         if ! grep -q "^$component" <<<"$installed"; then
           echo "doctor: missing Rust component $component; rustup component add $component" >&2
@@ -86,7 +89,7 @@ doctor() {
       done
     fi
   fi
-  for tool in llvm-cov mutants; do
+  for tool in llvm-cov mutants deny; do
     if ! cargo "$tool" --version >/dev/null 2>&1; then
       echo "doctor: missing cargo-$tool; cargo install --locked cargo-$tool" >&2
       missing=1
