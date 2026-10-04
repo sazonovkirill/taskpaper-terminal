@@ -101,7 +101,8 @@ struct Workspace {
     folds: HashSet<ItemId>,      // collapsed blocks, shared by all panes (D-13)
     panes: Vec<Pane>,            // left to right (FR-UI-02)
     focused: usize,
-    sidebar: SidebarState,       // visible, focus, panel = Sidebar | Shortcuts (D-12)
+    sidebar: SidebarState,       // navigation sidebar on the left: visible, focus (FR-UI-01)
+    secondary: Option<Panel>,    // right sidebar: Shortcuts | Comments(block) (D-28)
 }
 
 struct Pane {

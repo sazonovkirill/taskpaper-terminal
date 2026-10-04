@@ -7,7 +7,13 @@ Product choices not settled by [functional-requirements.md](functional-requireme
 
 ## Open
 
-### OQ-28 · Does typing `# ` make a section? — open
+None.
+
+## Decided with the proposed defaults
+
+On 2026-10-04 the owner accepted the proposed default for every question below.
+
+### OQ-28 · Does typing `# ` make a section? — decided
 
 D-24 asks for shortcuts that turn typed prefixes into block types, and D-25 adds Markdown headings to notes. Workflowy's `# ` trigger makes a heading; this app has two header-like things, a Markdown heading inside a note and the section block (`@section`, FR-BLK-04), which groups its children under a Things 3 style rule.
 
@@ -15,9 +21,10 @@ D-24 asks for shortcuts that turn typed prefixes into block types, and D-25 adds
 - **B. Section shortcut:** `# ` at the start of a single-line note or task converts it to a section; Markdown headings remain available on later lines of multi-line notes.
 
 **Proposed default:** A. It is what Markdown means by `#`, keeps one meaning for `#` everywhere in a note, and leaves the file free of a tag the user did not ask for.
+**Decision (2026-10-04):** the owner chose A: `# ` makes a Markdown heading.
 **Affects:** [specs/editing.md](specs/editing.md#21-typed-shortcuts).
 
-### OQ-29 · Where do the bindings displaced by D-26 go? — open
+### OQ-29 · Where do the bindings displaced by D-26 go? — decided
 
 The owner's bindings (D-26) take keys that earlier drafts used: `c` (comments), `t` (the metadata prefix), `y` (the copy prefix), `p`/`P` (paste), `a` (edit at end), `{`/`}` (sibling motion), `>`/`<` (outdent/indent), `z` (fold prefix), `Z` (`ZZ` quit), `Ctrl+P` (Go to Command) and, in edit mode, `Ctrl+K` (insert link). D-26 also leaves open what "top" and "bottom" mean for `P`/`p`, `S`/`s`, `A`/`a`, and what `/` does before search exists.
 
@@ -32,11 +39,8 @@ The owner's bindings (D-26) take keys that earlier drafts used: `c` (comments), 
 - "The list" is the focused block's siblings. Upper case adds at its top (a section goes before the first section, after the tasks); lower case adds right below the focused block, as `o` does.
 - `/` opens Go to Symbol until search exists.
 
+**Decision (2026-10-04):** the owner accepted the proposed default, left the meaning of top and bottom to Claude (kept as proposed), and confirmed that files open fully expanded.
 **Affects:** [specs/keybindings.md](specs/keybindings.md#2-navigate-mode), [specs/editing.md](specs/editing.md#3-creating-blocks-fr-mode-04), [specs/special-nodes.md](specs/special-nodes.md), [specs/links.md](specs/links.md).
-
-## Decided with the proposed defaults
-
-On 2026-10-04 the owner accepted the proposed default for every question below.
 
 ### OQ-03 · What type does a new block get? — decided
 

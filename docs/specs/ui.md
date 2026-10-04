@@ -19,12 +19,12 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (FR-UI-01) on the left, 24–32 columns; replaced by the `?` panel while that is open (D-12).
+- **Sidebar** (FR-UI-01) on the left, 24–32 columns.
 - **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row) and, when zoomed, a title row. The focused pane's header is highlighted.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
-- **Comments panel** (FR-SPC-02) opens on the right of the focused pane ([special-nodes.md §2.2](special-nodes.md#22-display)).
+- **Secondary sidebar** on the right, 32–40 columns, shown only while it holds the `?` shortcuts panel (§4) or the comments panel (FR-SPC-02, [special-nodes.md §2.2](special-nodes.md#22-display)), one at a time; opening one replaces the other (D-28). It takes its width from the panes, which keep their minimum and scroll horizontally as in [navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13). Below 80 columns it is drawn over the right part of the focused pane.
 - **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, dates, Save As) are centered overlays at most 80×20.
-- Below 80 columns the sidebar hides; below 40×10 only the focused pane and the status line are drawn.
+- Below 80 columns the navigation sidebar hides; below 40×10 only the focused pane and the status line are drawn.
 
 ## 2. Blocks
 
@@ -63,7 +63,7 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 
 ## 4. Shortcuts panel (FR-KEY-04)
 
-`?` toggles a panel on the left, in the sidebar's place, listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
+`?` toggles a panel in the secondary sidebar on the right (§1, D-28), listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
 
 ## 5. Context menu (FR-KEY-06)
 

@@ -48,14 +48,14 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 - Width (UI layer): panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
 - The layout (number of panes, their zooms, histories, widths and show-completed settings) is restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A; fold state is not (D-26) ([file-io.md §5](file-io.md#5-view-state-persistence)).
 
-## 6. Sidebar (FR-UI-01, D-7, D-11, D-12)
+## 6. Sidebar (FR-UI-01, D-7, D-11, D-28)
 
 A panel on the left with three sections, top to bottom:
 1. **Bookmarks**: every block tagged `@bookmark`, in document order; later also bookmarked searches (FR-SRCH-03).
 2. **Today**: the built-in view (§7).
 3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper.
 
-`Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` shows or hides it; it hides automatically below 80 columns. The `?` shortcuts panel temporarily takes the sidebar's place (D-12).
+`Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` shows or hides it; it hides automatically below 80 columns. The `?` shortcuts panel and the comments panel open in a secondary sidebar on the right instead ([ui.md §1](ui.md#1-layout), D-28).
 
 ## 7. Today view (FR-TAG-04, D-7)
 

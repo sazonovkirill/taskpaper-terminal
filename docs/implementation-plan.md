@@ -74,7 +74,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 4.5 | **Show completed and word wrap.** `Ctrl+O`/`gc` per pane, `Alt+z`/`gw`. | FR-DONE-02, FR-UI-05 | 1.6 | Hide done tasks |
 | 4.6 | **Sidebar.** Bookmarks, the Today entry and the project tree; `Ctrl+B`, `Alt+0` and the sidebar keys; hidden below 80 columns. | FR-UI-01, navigation §6 | 3.4 | Jump to a bookmark |
 | 4.7 | **Today view.** A pane location listing today's blocks with their breadcrumbs, editable in place. | FR-TAG-04 (view), D-7, navigation §7 | 4.6, 3.2 | Open Today |
-| 4.8 | **Shortcuts panel.** `?` in the sidebar's place, per mode, from the registry. | FR-KEY-04, ui §4 | 4.1, 4.6 | Press `?` |
+| 4.8 | **Shortcuts panel.** `?` opens the secondary sidebar on the right with the bindings for the current mode, from the registry. | FR-KEY-04, ui §1 and §4, D-28 | 4.1 | Press `?` |
 | 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
 
 ## M5 · Panes
@@ -99,7 +99,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | # | Step | Covers | After | Try it |
 |---|---|---|---|---|
 | 7.1 | **Special-node placement.** Operations that insert at the end keep special nodes last; copy, move and delete carry them. Until this step, hand-written special nodes are preserved but may stop being the last child. | FR-SPC-01, special-nodes §1 | 3.6 | (tests with hand-made files) |
-| 7.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the `C` panel with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 7.1, 4.9, 6.5 | Comment on a task |
+| 7.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the `C` panel with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 7.1, 4.8, 4.9, 6.5 | Comment on a task |
 
 ## M8 · Polish and release readiness
 
