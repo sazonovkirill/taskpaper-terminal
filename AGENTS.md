@@ -98,6 +98,7 @@ Either tool may instead be launched as an independent reviewer: Claude of a prop
 - Do not read the task's comments or review records. If the excerpt is missing or insufficient, report that limitation to the implementer instead of fetching them.
 - Review read-only: do not modify, stage, commit or publish anything, change Todoist or contact the owner.
 - Review only the diff and what it touches (the whole app, in a milestone review), with extra attention to whether it uses the latest stable Rust and dependency APIs ([Modern Rust](docs/quality/agent-workflow.md#modern-rust)).
+- Judge every claim, including your own earlier ones, by evidence alone: who wrote the code or raised a finding, and how many agree, is not evidence ([debate failure modes](docs/quality/agent-workflow.md#debate-failure-modes)).
 - Report P0/P1 findings only with the proof the [severity rules](docs/quality/agent-workflow.md#severity) require, list P2/P3 separately without arguing for them, and do not re-raise registered findings or decisions without new proof.
 - Finding nothing is a correct outcome. End with `VERDICT: HOLDS` or `VERDICT: FAILS`, what you checked and any limitations.
 
