@@ -79,20 +79,28 @@ impl Tui {
         self.keymap.deadline()
     }
 
-    /// Draws the whole screen: the breadcrumb header, the outline scrolled to keep the focus
+    /// Draws the whole screen: the breadcrumb header over a rule, the outline scrolled to keep the focus
     /// visible, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
         let [pane, status] = frame.area().layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
-        let [header, outline] = pane.layout(&Layout::vertical([
+        let [header, separator, outline] = pane.layout(&Layout::vertical([
+            Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Fill(1),
         ]));
         frame.render_widget(
             widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(header.width)),
             header,
+        );
+        frame.render_widget(
+            Line::styled(
+                "─".repeat(usize::from(separator.width)),
+                widgets::rule_style(),
+            ),
+            separator,
         );
         let rows = self.state.rows();
         let focused = self.focused_index();

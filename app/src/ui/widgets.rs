@@ -83,8 +83,8 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
 }
 
 /// The screen lines of one block, `width` columns wide. Every block reserves a marker column so
-/// text lines up with the text of sibling tasks. A collapsed block shows `▸ n` after its text,
-/// except a project, whose marker shows it (ui.md §2).
+/// text lines up with the text of sibling tasks; only tasks and URLs fill it. A collapsed block
+/// with children shows `▸ n` after its text (ui.md §2).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     if row.title {
         return row
@@ -95,21 +95,21 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     }
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
-        BlockKind::Project if row.hidden_children > 0 => ("▸", Style::new().bold()),
-        BlockKind::Project => ("▾", Style::new().bold()),
+        BlockKind::Project => (" ", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("☑", Style::new().dim().crossed_out()),
         BlockKind::Task => ("☐", Style::new()),
-        BlockKind::Url => ("↗", Style::new().underlined().cyan()),
-        BlockKind::Section => (" ", Style::new().bold()),
-        BlockKind::Code => (" ", code_style()),
-        BlockKind::Note | BlockKind::Divider => (" ", Style::new()),
+        BlockKind::Url => ("↗", Style::new().dim().underlined().cyan()),
+        BlockKind::Section => (" ", Style::new().bold().fg(SECONDARY)),
+        BlockKind::Code => (" ", code_style().dim()),
+        BlockKind::Note => (" ", Style::new().dim()),
+        BlockKind::Divider => (" ", rule_style()),
     };
     let count_style = if row.kind == BlockKind::Code {
         code_style()
     } else {
         Style::new()
     };
-    let count = (row.hidden_children > 0 && row.kind != BlockKind::Project)
+    let count = (row.hidden_children > 0)
         .then(|| Span::styled(format!(" ▸ {}", row.hidden_children), count_style.dim()));
     let last = row.lines.len().saturating_sub(1);
     row.lines
@@ -122,8 +122,11 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
                 format!("{indent}  ")
             };
             let mut line = Line::from(vec![Span::raw(prefix)]);
-            if row.kind != BlockKind::Divider {
-                line.push_span(Span::styled(text.as_str(), style));
+            match row.kind {
+                BlockKind::Divider => {}
+                // TaskPaper marks a project with a trailing colon, which the display text drops.
+                BlockKind::Project => line.push_span(Span::styled(format!("{text}:"), style)),
+                _ => line.push_span(Span::styled(text.as_str(), style)),
             }
             if index == last
                 && let Some(count) = count.clone()
@@ -135,13 +138,9 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
             }
             match row.kind {
                 BlockKind::Divider => line.push_span(rule(&line, width)),
-                BlockKind::Section => {
-                    line.push_span(" ");
-                    line.push_span(rule(&line, width));
-                }
                 BlockKind::Code => {
                     let fill = width.saturating_sub(line.width());
-                    line.push_span(Span::styled(" ".repeat(fill), style));
+                    line.push_span(Span::styled(" ".repeat(fill), code_style()));
                 }
                 _ => {}
             }
@@ -150,9 +149,21 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         .collect()
 }
 
-/// A horizontal rule from the end of `line` to the right edge.
+/// A horizontal rule from the end of `line` to the right edge, very dim.
 fn rule(line: &Line, width: usize) -> Span<'static> {
-    Span::raw("─".repeat(width.saturating_sub(line.width())))
+    Span::styled("─".repeat(width.saturating_sub(line.width())), rule_style())
+}
+
+/// The theme's accent (Textual's `$primary`), for projects; themes arrive in step 6.2.
+const PRIMARY: Color = Color::LightBlue;
+
+/// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
+const SECONDARY: Color = Color::LightMagenta;
+
+/// Rule lines: dividers and the line under the header; themes arrive in step 6.2.
+#[must_use]
+pub fn rule_style() -> Style {
+    Style::new().fg(Color::DarkGray)
 }
 
 /// The background band of code blocks; themes arrive in step 6.2.
@@ -188,14 +199,16 @@ mod tests {
     }
 
     #[test]
-    fn draws_markers_indents_and_bold_projects() {
+    fn draws_markers_indents_projects_and_dim_notes() {
         let mut expected = Buffer::with_lines([
-            "▾ Home       ",
+            "  Home:      ",
             "  ☐ Milk     ",
             "      on sale",
             "  note       ",
         ]);
-        expected.set_style(Rect::new(2, 0, 4, 1), Style::new().bold());
+        expected.set_style(Rect::new(2, 0, 5, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(6, 2, 7, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 3, 4, 1), Style::new().dim());
         assert_eq!(
             render("Home:\n\t- Milk\n\t\ton sale\nnote", 13, 4),
             expected
@@ -205,9 +218,10 @@ mod tests {
     // FR-DONE-01
     #[test]
     fn done_tasks_are_checked_dimmed_and_struck_through() {
-        let mut expected = Buffer::with_lines(["☑ a ", "☐ b ", "▾ P ", "  n "]);
+        let mut expected = Buffer::with_lines(["☑ a ", "☐ b ", "  P:", "  n "]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().bold());
+        expected.set_style(Rect::new(2, 2, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().dim());
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
@@ -216,7 +230,7 @@ mod tests {
 
     // FR-NAV-02
     #[test]
-    fn collapsed_blocks_show_a_dim_count_after_their_text_and_projects_their_marker() {
+    fn collapsed_blocks_show_a_dim_count_after_their_text() {
         let text = "P:\n\t- t\nn\nm\n\t- x\nS @section\n\t- y\n---\n\t- z\nf() @code\n\t- w\n- v";
         let mut state = State::new(format::parse(text), None);
         state.update(Message::CollapseAll);
@@ -224,22 +238,26 @@ mod tests {
         let mut buf = Buffer::empty(Rect::new(0, 0, 14, 8));
         OutlineView::new(&rows).render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "▸ P           ",
+            "  P: ▸ 1      ",
             "  n           ",
             "  m ▸ 1       ",
-            "  S ▸ 1 ──────",
+            "  S ▸ 1       ",
             "   ▸ 1 ───────",
             "  f() ▸ 1     ",
             "☐ v           ",
             "              ",
         ]);
-        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
-        expected.set_style(Rect::new(3, 2, 4, 1), Style::new().dim());
-        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().bold());
-        expected.set_style(Rect::new(3, 3, 4, 1), Style::new().dim());
-        expected.set_style(Rect::new(2, 4, 4, 1), Style::new().dim());
+        let dim = Style::new().dim();
+        expected.set_style(Rect::new(2, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(4, 0, 4, 1), dim);
+        expected.set_style(Rect::new(2, 1, 1, 2), dim);
+        expected.set_style(Rect::new(3, 2, 4, 1), dim);
+        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().bold().fg(SECONDARY));
+        expected.set_style(Rect::new(3, 3, 4, 1), dim);
+        expected.set_style(Rect::new(2, 4, 4, 1), dim);
+        expected.set_style(Rect::new(7, 4, 7, 1), rule_style());
         expected.set_style(Rect::new(2, 5, 12, 1), code_style());
-        expected.set_style(Rect::new(5, 5, 4, 1), code_style().dim());
+        expected.set_style(Rect::new(2, 5, 7, 1), code_style().dim());
         assert_eq!(buf, expected);
     }
 

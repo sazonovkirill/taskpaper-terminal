@@ -7,20 +7,20 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ```
 ┌ Bookmarks ─────────┬ Home › Work ──────────────────────┬ Home › Ideas ─────────────────┐
 │ ★ Launch plan      │ Work                              │ Ideas                         │
-│ Today          3   │ ▾ Launch                          │ • Terminal outliner           │
+│ Today          3   │   Launch:                         │ • Terminal outliner           │
 │ Projects           │   ☐ Draft announcement  Fri 8 Oct │ • Plain-text sync             │
 │ ▾ Work             │   ☑ Book venue                    │                               │
 │   ▸ Launch         │   ☐ Budget review  ▸ 3            │                               │
 │ ▸ Ideas            │     Notes about the venue wrap    │                               │
 │                    │     under the text like this.     │                               │
-│                    │   ── Later ─────────────────────  │                               │
+│                    │   Later                           │                               │
 ├────────────────────┴───────────────────────────────────┴───────────────────────────────┤
 │ NAVIGATE · ~/notes.taskpaper · saved · ? shortcuts                                       │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Sidebar** (FR-UI-01) on the left, 24–32 columns.
-- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row) and, when zoomed, a title row. The focused pane's header is highlighted.
+- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, `Home` followed by the path to the zoom block) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row. The focused pane's header is highlighted.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
 - **Secondary sidebar** on the right, 32–40 columns, shown only while it holds the `?` shortcuts panel (§4) or the comments panel (FR-SPC-02, [special-nodes.md §2.2](special-nodes.md#22-display)), one at a time; opening one replaces the other (D-28). It takes its width from the panes, which keep their minimum and scroll horizontally as in [navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13). Below 80 columns it is drawn over the right part of the focused pane.
 - **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, dates, Save As) are centered overlays at most 80×20.
@@ -32,15 +32,16 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
-| Project | `▾` / `▸` (fold state) | bold heading |
+| Project | none | bold heading in the accent color (Textual's `$primary`), ending in `:` as in the file |
 | Task | `☐`, done `☑` | normal; done tasks dimmed and struck through (falls back to dim) |
-| Note | none; aligned with sibling text | normal, several lines |
-| Section | none | Things 3 style: bold label followed by a horizontal rule to the pane's edge; children indented below |
-| Code | none | monospace-styled background band, no inline formatting |
-| URL | `↗` | title styled as a link (underlined, accent color) |
-| Divider | none | a horizontal rule across the pane |
+| Note | none; aligned with sibling text | slightly dimmed, several lines |
+| Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
+| Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |
+| URL | `↗` | title styled as a link (underlined, accent color), slightly dimmed |
+| Divider | none | a horizontal rule across the pane in the rule-lines color, very dim |
 
-- Blocks with children that are collapsed show `▸ n` (hidden child count) after the text; projects use their marker instead.
+- Tasks (normal text) and projects stand out; every other block type is dimmed (D-29).
+- No fold marker is shown on expanded blocks, since any block can be folded. A block that has children and is collapsed shows `▸ n` (hidden child count) after its text, projects included (D-29).
 - **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
 - **Bare URLs** in text are underlined (D-10).

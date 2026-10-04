@@ -20,7 +20,7 @@ Work:
 ";
 
 fn app() -> Harness {
-    Harness::with_text(OUTLINE, 30, 12)
+    Harness::with_text(OUTLINE, 30, 13)
 }
 
 /// The rows on screen that are not blank.
@@ -43,15 +43,15 @@ fn a_file_opens_fully_expanded() {
     assert_eq!(
         shown(&mut app),
         [
-            "▾ Home",
+            "  Home:",
             "  ☐ Milk",
             "      organic",
             "  ☐ Eggs",
-            "▾ Work",
+            "  Work:",
             "  ☐ Report",
             "    ☐ Draft",
             "      ☐ Outline",
-            "  ▾ Ideas",
+            "    Ideas:",
             "☑ Loose",
         ]
     );
@@ -59,14 +59,17 @@ fn a_file_opens_fully_expanded() {
 
 // FR-NAV-02
 #[test]
-fn h_collapses_a_project_into_its_marker() {
+fn h_collapses_a_project() {
     let mut app = app();
     app.type_keys("h");
-    assert_eq!(shown(&mut app)[..3], ["▸ Home", "▾ Work", "  ☐ Report"]);
-    assert_focus(&mut app, "▸ Home");
+    assert_eq!(
+        shown(&mut app)[..3],
+        ["  Home: ▸ 2", "  Work:", "  ☐ Report"]
+    );
+    assert_focus(&mut app, "  Home: ▸ 2");
     app.press(KeyCode::Left, NONE);
-    assert_focus(&mut app, "▸ Home");
-    assert_eq!(shown(&mut app)[0], "▸ Home");
+    assert_focus(&mut app, "  Home: ▸ 2");
+    assert_eq!(shown(&mut app)[0], "  Home: ▸ 2");
 }
 
 // FR-NAV-02
@@ -75,7 +78,10 @@ fn a_collapsed_block_shows_how_many_children_it_hides() {
     let mut app = app();
     app.type_keys("j");
     app.press(KeyCode::Left, NONE);
-    assert_eq!(shown(&mut app)[..3], ["▾ Home", "  ☐ Milk ▸ 1", "  ☐ Eggs"]);
+    assert_eq!(
+        shown(&mut app)[..3],
+        ["  Home:", "  ☐ Milk ▸ 1", "  ☐ Eggs"]
+    );
 }
 
 // FR-NAV-01, FR-NAV-02
@@ -89,7 +95,7 @@ fn h_on_a_leaf_or_a_collapsed_block_goes_to_its_parent() {
     app.type_keys("h");
     assert_focus(&mut app, "  ☐ Milk ▸ 1");
     app.type_keys("h");
-    assert_focus(&mut app, "▾ Home");
+    assert_focus(&mut app, "  Home:");
 }
 
 // FR-NAV-01, FR-NAV-02
@@ -98,8 +104,8 @@ fn l_expands_then_goes_to_the_first_child() {
     let mut app = app();
     app.type_keys("h");
     app.type_keys("l");
-    assert_eq!(shown(&mut app)[..2], ["▾ Home", "  ☐ Milk"]);
-    assert_focus(&mut app, "▾ Home");
+    assert_eq!(shown(&mut app)[..2], ["  Home:", "  ☐ Milk"]);
+    assert_focus(&mut app, "  Home:");
     app.press(KeyCode::Right, NONE);
     assert_focus(&mut app, "  ☐ Milk");
     app.type_keys("jjl");
@@ -111,9 +117,9 @@ fn l_expands_then_goes_to_the_first_child() {
 fn quote_and_space_toggle_the_fold() {
     let mut app = app();
     app.type_keys("'");
-    assert_focus(&mut app, "▸ Home");
+    assert_focus(&mut app, "  Home: ▸ 2");
     app.type_keys(" ");
-    assert_focus(&mut app, "▾ Home");
+    assert_focus(&mut app, "  Home:");
     app.type_keys("jjj");
     app.type_keys("'");
     assert_focus(&mut app, "  ☐ Eggs");
@@ -126,14 +132,14 @@ fn double_quote_toggles_the_whole_subtree() {
     let mut app = app();
     app.type_keys("jjjj");
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["▸ Work", "☑ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["  Work: ▸ 2", "☑ Loose"]);
     app.type_keys("l");
     assert_eq!(
         shown(&mut app)[4..],
-        ["▾ Work", "  ☐ Report ▸ 1", "  ▾ Ideas", "☑ Loose"]
+        ["  Work:", "  ☐ Report ▸ 1", "    Ideas:", "☑ Loose"]
     );
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["▸ Work", "☑ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["  Work: ▸ 2", "☑ Loose"]);
     app.type_keys("\"");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -143,7 +149,7 @@ fn double_quote_toggles_the_whole_subtree() {
 fn underscore_and_plus_collapse_and_expand_everything() {
     let mut app = app();
     app.type_keys("_");
-    assert_eq!(shown(&mut app), ["▸ Home", "▸ Work", "☑ Loose"]);
+    assert_eq!(shown(&mut app), ["  Home: ▸ 2", "  Work: ▸ 2", "☑ Loose"]);
     app.type_keys("+");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -158,18 +164,18 @@ fn minus_and_equals_fold_one_level_at_a_time() {
     assert_eq!(
         shown(&mut app),
         [
-            "▾ Home",
+            "  Home:",
             "  ☐ Milk ▸ 1",
             "  ☐ Eggs",
-            "▾ Work",
+            "  Work:",
             "  ☐ Report ▸ 1",
-            "  ▾ Ideas",
+            "    Ideas:",
             "☑ Loose",
         ]
     );
     app.type_keys("-");
     app.type_keys("-");
-    assert_eq!(shown(&mut app), ["▸ Home", "▸ Work", "☑ Loose"]);
+    assert_eq!(shown(&mut app), ["  Home: ▸ 2", "  Work: ▸ 2", "☑ Loose"]);
     app.type_keys("=");
     assert_eq!(shown(&mut app)[4], "  ☐ Report ▸ 1");
     app.type_keys("=");
@@ -191,10 +197,10 @@ fn focus_hidden_by_a_fold_moves_to_the_next_visible_block() {
 // FR-NAV-01, navigation §2
 #[test]
 fn without_a_next_visible_block_focus_moves_to_the_previous_one() {
-    let mut app = Harness::with_text("A:\n\t- b\n\t\t- c\n", 30, 5);
+    let mut app = Harness::with_text("A:\n\t- b\n\t\t- c\n", 30, 6);
     app.type_keys("jj");
     app.type_keys("_");
-    assert_focus(&mut app, "▸ A");
+    assert_focus(&mut app, "  A: ▸ 1");
 }
 
 // FR-NAV-01
@@ -205,9 +211,9 @@ fn g_p_goes_to_the_parent() {
     app.type_keys("gp");
     assert_focus(&mut app, "    ☐ Draft");
     app.type_keys("gpgp");
-    assert_focus(&mut app, "▾ Work");
+    assert_focus(&mut app, "  Work:");
     app.type_keys("gp");
-    assert_focus(&mut app, "▾ Work");
+    assert_focus(&mut app, "  Work:");
 }
 
 // FR-NAV-01
@@ -216,10 +222,10 @@ fn g_l_goes_to_the_last_child() {
     let mut app = app();
     app.type_keys("jjjjh");
     app.type_keys("gl");
-    assert_focus(&mut app, "  ▾ Ideas");
+    assert_focus(&mut app, "    Ideas:");
     assert_eq!(shown(&mut app).len(), 10, "Work expanded again");
     app.type_keys("gl");
-    assert_focus(&mut app, "  ▾ Ideas");
+    assert_focus(&mut app, "    Ideas:");
 }
 
 // FR-NAV-01
@@ -227,16 +233,16 @@ fn g_l_goes_to_the_last_child() {
 fn ctrl_arrows_move_between_siblings() {
     let mut app = app();
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
-    assert_focus(&mut app, "▾ Work");
+    assert_focus(&mut app, "  Work:");
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "☑ Loose");
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "☑ Loose");
     app.press(KeyCode::Up, KeyModifiers::CONTROL);
     app.press(KeyCode::Up, KeyModifiers::CONTROL);
-    assert_focus(&mut app, "▾ Home");
+    assert_focus(&mut app, "  Home:");
     app.press(KeyCode::Up, KeyModifiers::CONTROL);
-    assert_focus(&mut app, "▾ Home");
+    assert_focus(&mut app, "  Home:");
     app.type_keys("j");
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "  ☐ Eggs");
@@ -247,10 +253,10 @@ fn ctrl_arrows_move_between_siblings() {
 // FR-SPC-01, special-nodes §1
 #[test]
 fn a_block_whose_only_children_are_special_nodes_is_a_leaf() {
-    let mut app = Harness::with_text("A:\n\t- a\n\t\tC @hidden @comments\n\t\t\tx\n", 30, 4);
+    let mut app = Harness::with_text("A:\n\t- a\n\t\tC @hidden @comments\n\t\t\tx\n", 30, 5);
     app.type_keys("j");
     app.type_keys("'");
     assert_focus(&mut app, "  ☐ a");
     app.type_keys("h");
-    assert_focus(&mut app, "▾ A");
+    assert_focus(&mut app, "  A:");
 }
