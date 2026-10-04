@@ -9,7 +9,7 @@ taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://
 - The `.taskpaper` file on disk is the source of truth; the app reads and writes plain TaskPaper text.
 - Every line is a node (project, task, or note) and indentation defines the tree.
 - Nodes can be expanded, collapsed, and zoomed into, so any branch can become the whole screen.
-- Tags (`@done`, `@due(2026-10-04)`, ...) are first-class: visible, editable, and searchable.
+- Tags (`@done`, `@due(2026-10-04)`, ...) are metadata: hidden from the text, set through commands, and searchable.
 
 ## TaskPaper format (summary)
 
@@ -18,6 +18,10 @@ taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://
 - **Note**: any other line.
 - **Tag**: `@name` or `@name(value)` anywhere in a line.
 - Hierarchy is expressed with tab indentation.
+
+## Requirements
+
+- [Functional requirements](functional-requirements.md)
 
 ## Next
 
