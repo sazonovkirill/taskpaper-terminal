@@ -87,6 +87,7 @@ A `t` prefix groups metadata commands so they are easy to discover in the `?` pa
 | Toggle bookmark | `tb` |
 | Convert block type | `ty` |
 | Details (all tags) | `ti` |
+| Comments panel (FR-SPC-02) | `c` |
 | Open URL | `gx` |
 
 ### View, panes and panels
@@ -130,6 +131,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `M`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.
+- **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03).
 - **Prompts** (dates, URL, Save As path): standard text keys, `Enter` accepts, `Esc` cancels.
 

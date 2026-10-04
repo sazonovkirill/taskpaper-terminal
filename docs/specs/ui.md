@@ -22,6 +22,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 - **Sidebar** (FR-UI-01) on the left, 24–32 columns; replaced by the `?` panel while that is open (D-12).
 - **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row) and, when zoomed, a title row. The focused pane's header is highlighted.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
+- **Comments panel** (FR-SPC-02) opens on the right of the focused pane ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, dates, Save As) are centered overlays at most 80×20.
 - Below 80 columns the sidebar hides; below 40×10 only the focused pane and the status line are drawn.
 
@@ -40,7 +41,7 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 | Divider | none | a horizontal rule across the pane |
 
 - Blocks with children that are collapsed show `▸ n` (hidden child count) after the text; projects use their marker instead.
-- **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only.
+- **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
 - **Bare URLs** in text are underlined (D-10).
 - **Focus and selection**: the focused block has a full-width highlight; selected blocks a dimmer one.

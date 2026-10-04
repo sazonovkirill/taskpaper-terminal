@@ -116,6 +116,13 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-DONE-01 | A command completes or uncompletes the selection by adding `@done(YYYY-MM-DD)` with today's date, or removing `@done` with any value (D-4). Any `@done`, with or without a value, marks a block completed (D-17). | Must | Complete |
 | FR-DONE-02 | A top-level command and key binding show or hide completed blocks, per pane (D-13). | Must | Show completed |
 
+## FR-SPC · Special nodes and comments
+
+| ID | Requirement | Priority | Workflowy |
+|---|---|---|---|
+| FR-SPC-01 | A line tagged `@hidden`, with its subtree, is a special node: a feature stores its data there, marked by a feature tag such as `@comments`. The app never shows it as a block, keeps it as the last child of the block that owns it, carries it along when that block is moved, copied or deleted, and preserves special nodes of unknown features unchanged ([spec](specs/special-nodes.md)) (D-23). | Must | — |
+| FR-SPC-02 | Any block except a divider can have comments, like Todoist. Each comment is stored in the block's `@hidden @comments` node with the local date and time it was added and may span several lines. A block with comments shows a count badge; a key opens a comments panel to read, add, edit and delete them (D-23). | Must | Comments |
+
 ## FR-SRCH · Search
 
 | ID | Requirement | Priority | Workflowy |
@@ -159,7 +166,7 @@ Owner decisions:
 - Several files in one instance ([FR-DOC-01](#fr-doc--document-and-file)).
 - Mirrors, sorting children, templates, heading/quote/numbered/paragraph block types, italic, underline, strikethrough and highlight, export and import, trash (D-14).
 
-Cloud and GUI-only Workflowy features have no meaning here: sharing, comments, mentions, sync, uploads, embeds, AI, email and calendar integrations.
+Cloud and GUI-only Workflowy features have no meaning here: sharing, mentions, sync, uploads, embeds, AI, email and calendar integrations.
 
 ## Decisions
 
@@ -189,3 +196,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-20 | The app uses Nerd Font icons, with a setting to turn all icons off. It has a settings window; settings are per user under `~/.config` in a modern format (owner, 2026-10-04). The format is TOML, as already decided in OQ-18: it is the norm for Rust and terminal tools (Cargo, Helix, Alacritty, starship) and avoids YAML's indentation and implicit-typing pitfalls. |
 | D-21 | Animation is used only where it helps orientation or feedback and never slows the user down. The owner delegated where to animate (decided in [specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)). |
 | D-22 | The app makes daily backups of every file it opens (owner, 2026-10-04). They go to the XDG data directory, `~/.local/share/taskpaper-terminal/backups/`, next to the `~/.config` settings, rather than the owner's suggested `~/.taskpaper-terminal/backups/`, which a setting can still select. A copy is taken on the first open or save of each local day, before anything is written; one folder per file, named after the file plus a hash of its full path; copies are named by date; identical copies are skipped; the newest 30 are kept. Both choices of an external-change conflict first save the version they discard as a conflict copy. Details in [file-io.md](specs/file-io.md#2-saving). |
+| D-23 | Some features are stored as special nodes: hidden child lines tagged `@hidden` plus a feature tag, which other TaskPaper apps see as plain lines (owner, 2026-10-04). Comments are the first: Todoist-style dated comments stored under a `COMMENTS @hidden @comments` child. The owner accepted every proposed default: a count badge and a side panel, `[YYYY-MM-DD HH:MM]` local 24-hour timestamps, multi-line comments as deeper-indented lines, bold, code and URLs in comments, `@hidden` as a general mechanism, nodes that travel with their block and stay its last child, hand-typed comment lines accepted, and comments as the only special node for now. Details in [special-nodes.md](specs/special-nodes.md). |

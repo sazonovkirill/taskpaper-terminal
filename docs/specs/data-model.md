@@ -40,6 +40,8 @@ struct Item {
 
 A block is what the user navigates, selects and edits (FR-BLK). Blocks are computed from the line tree and cached per document revision; they are never stored.
 
+**Special nodes** (FR-SPC-01): a line tagged `@hidden` and its whole subtree are skipped before grouping; they form no block and never join a note run, and their tags are not block metadata ([special-nodes.md](special-nodes.md)). A line whose child is a special node still has children, so it ends its run.
+
 **Grouping** (D-2, FR-BLK-03): a block is one line, except that a maximal run of consecutive sibling **plain note lines** forms one note block. A plain note line is a `note`-kind line that is not a divider and carries none of `@section`, `@url`. The run:
 - includes blank lines;
 - ends after a line that has children (that line's children are the block's children);
