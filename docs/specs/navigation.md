@@ -1,60 +1,63 @@
-# Spec: Display and navigation
+# Spec: Navigation, panes and sidebar
 
-Covers F-VIEW and F-NAV. Key bindings are in [keybindings.md](keybindings.md); layout and styling in [ui.md](ui.md).
+Covers FR-NAV, FR-DONE-02, FR-UI-01–04 and the navigation half of FR-KEY-05. Key bindings are in [keybindings.md](keybindings.md); drawing is in [ui.md](ui.md).
 
-## 1. Visible rows
+## 1. Visible rows of a pane
 
-Given the document and a [View](data-model.md#5-views), the visible rows are produced by a depth-first walk from the zoomed item's children:
+A pane's rows come from a depth-first walk over **blocks** ([data-model.md §3](data-model.md#3-blocks)) starting at the children of the pane's zoom block:
 
-1. **No filter:** show every item; don't descend into collapsed items.
-2. **Hide done** (F-VIEW-08): skip items tagged `@done` and their whole subtrees. Equivalent to TaskPaper's `not @done except @done//*`.
-3. **Filter active** ([search.md](search.md)): show each matching item plus all its ancestors up to the zoom root. Descendants are shown only if they match too. An ancestor shown only for context is drawn dimmed. Collapse state is ignored while filtering (matches are always revealed), but is kept for when the filter clears.
+1. Don't descend into collapsed blocks. Fold state is shared by all panes (D-13).
+2. If the pane hides completed blocks (FR-DONE-02), skip done blocks and their whole subtrees.
+3. When search exists (Later, FR-SRCH-01): show matching blocks plus their ancestors up to the zoom block, ancestors shown only for context dimmed; non-matching descendants hidden; fold state ignored while searching but kept.
 
-Each row carries: item id, display depth (relative to the zoom root), whether it has hidden children (collapsed or filtered out), and whether it is a context-only ancestor.
+Each row carries: block id, display depth (relative to the zoom block), whether it has hidden children, and, when wrapping is on, its wrapped line count. The row list is recomputed only when the document revision, the folds or the pane change.
 
-The row list is recomputed only when the document revision or the view changes, and is computed in O(visible + matched ancestors).
+## 2. Focus and motion (FR-NAV-01)
 
-## 2. Cursor
+- In navigate mode each pane has one **focused block**. Motions: next/previous visible block, parent, first/last child, next/previous sibling, first/last block, page up/down.
+- If the focused block disappears (collapsed ancestor, hidden as done, deleted, changed in another pane), focus moves to the next visible block, else the previous, else the parent.
+- The pane scrolls to keep the focused block visible, with a margin of 2 rows when space allows.
 
-- The cursor is on one item and, when editing text, at a grapheme offset in it. Up/Down move to the previous/next visible row and keep the preferred column.
-- If the cursor item becomes invisible (collapsed ancestor, filtered out, deleted), it moves to the nearest visible item: next sibling, else previous, else parent.
-- Soft-wrapped items take several screen rows; Up/Down move by screen row inside a wrapped item before moving to the adjacent item.
-
-## 3. Folding (F-NAV-02)
+## 3. Folding (FR-NAV-02)
 
 | Command | Effect |
 |---|---|
-| `expand` / `collapse` | One item, one level. Collapsing a leaf or an already collapsed item moves the cursor to its parent, so repeated presses walk up the tree. |
+| `collapse` | Collapse the focused block; if it is a leaf or already collapsed, move focus to its parent. |
+| `expand` | Expand the focused block; if already expanded, move to its first child. |
 | `toggle_fold` | Expand if collapsed, else collapse. |
-| `expand_all_under` / `collapse_all_under` | The cursor item's entire subtree. |
-| `expand_to_level N` | Whole view: items at display depth < N expanded, the rest collapsed. `0` collapses everything. |
+| `expand_subtree` / `collapse_subtree` | The focused block's entire subtree. |
+| `expand_all` / `collapse_all` | Every block under the pane's zoom block. |
 
-Fold state belongs to the view and is persisted per OQ-05.
+## 4. Zoom and history (FR-NAV-03, FR-NAV-04)
 
-## 4. Zoom (F-NAV-03, F-NAV-04)
-
-- `zoom_in`: the cursor item becomes the view root; its children are shown at depth 0 and the item's own text is shown as the page title above them (editable). Zooming into a leaf is allowed and shows an empty page with the cursor on the title.
-- `zoom_out`: zoom to the parent and put the cursor on the item you were zoomed into.
+- `zoom_in`: the focused block becomes the pane's root; its children are shown at depth 0 under a title row showing the block itself (editable like any block). Zooming into a leaf shows an empty page with focus on the title.
+- `zoom_out`: zoom to the parent block and focus the block you were zoomed into.
 - `go_home`: zoom to the document root.
-- Every zoom change pushes onto the view's history; `back` / `forward` walk it, skipping deleted items.
-- The breadcrumb bar lists ancestors of the zoom root, truncated from the left with `…` when too wide.
-- Filtering is scoped to the zoom root (F-SEARCH-04).
+- Every zoom change pushes onto the pane's history; `back` / `forward` walk it, skipping blocks that no longer exist.
+- The breadcrumb bar shows the zoom block's ancestors, truncated from the left with `…` when too wide. Each crumb is clickable (FR-KEY-05).
 
-## 5. Go to anything (F-NAV-06)
+## 5. Panes (FR-UI-02 – FR-UI-04, D-13)
 
-A fuzzy picker (`nucleo-matcher`) over:
-- every item's `content_text`, shown with its breadcrumb path; projects and saved searches rank first;
-- saved searches (`@search` items, [search.md §5](search.md#5-saved-searches)).
+- Panes are columns, left to right. Each has its own zoom, breadcrumbs, history, focus, selection, mode, scroll, show-completed setting and, later, search. Folds are shared. Edits in one pane appear in all panes immediately.
+- `open_in_new_pane`: open the focused block (or, from a picker or the sidebar, the chosen entry; or with Alt+click, the clicked block, link or crumb) zoomed in a new pane inserted right of the focused pane, and focus it. With no block context it duplicates the focused pane's location.
+- `focus_pane N` focuses the Nth pane; `focus_pane_left/right` moves between neighbors; `close_pane` closes the focused pane (the last pane cannot be closed).
+- Width: panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
+- The layout (number of panes, their zooms, histories, widths and show-completed settings) and the fold state are restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A ([file-io.md §5](file-io.md#5-view-state-persistence)).
 
-Choosing an item zooms to its parent and places the cursor on it (the "reveal" behavior); `Alt+Enter` zooms into the item itself. Choosing a saved search applies its filter.
+## 6. Sidebar (FR-UI-01, D-7, D-11, D-12)
 
-## 6. Structural motions (F-NAV-05)
+A panel on the left with three sections, top to bottom:
+1. **Bookmarks**: every block tagged `@bookmark`, in document order; later also bookmarked searches (FR-SRCH-03).
+2. **Today**: the built-in view (§7).
+3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper.
 
-`parent`, `first_child`, `last_child`, `prev_sibling`, `next_sibling`, `first_visible`, `last_visible`, `page_up`, `page_down`.
+`Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` shows or hides it; it hides automatically below 80 columns. The `?` shortcuts panel temporarily takes the sidebar's place (D-12).
 
-## 7. Sidebar (F-VIEW-10)
+## 7. Today view (FR-TAG-04, D-7)
 
-Optional left panel with three sections, as in TaskPaper:
-- **Projects**: all projects as a tree, nested by project ancestry (non-project items in between are skipped). Enter zooms.
-- **Searches**: saved searches. Enter applies the filter.
-- **Tags**: all tag names, each expandable to its distinct values (comma lists split). Enter filters `@name` or `@name contains[l] "value"`.
+A built-in list of every block that is not done (a spec choice; FR-TAG-04 doesn't say) and has `@today`, or `@due` or `@start` on or before today's local date. Choosing Today in the sidebar shows this list in the focused pane instead of an outline; it is a location in the pane's history like a zoom. Entries are flat, each with its breadcrumb path. Navigation, edit mode and block commands (done, dates, today, color) work on the entries directly; `Alt+l`/`gz` on an entry goes to it in the outline. The list is recomputed on every document change and at local midnight.
+
+## 8. Go to Symbol and Go to Command (FR-NAV-05, FR-NAV-06)
+
+- **Go to Symbol**: a fuzzy picker (`nucleo-matcher`) over every block's display text, each shown with its breadcrumb path. Bookmarks rank first, then projects and sections, then the rest. Choosing a block zooms the focused pane to its parent and focuses it; `Alt+Enter` opens it in a new pane.
+- **Go to Command**: a fuzzy picker over every command name with its current binding; `Enter` runs it. The theme picker opened from here previews themes live (FR-UI-06).

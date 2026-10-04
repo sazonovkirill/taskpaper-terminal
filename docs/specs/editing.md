@@ -1,84 +1,81 @@
 # Spec: Editing
 
-Covers F-EDIT and F-TAG. All edits are transactions over the [data model](data-model.md#3-edits) and are undoable.
+Covers FR-MODE, FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and FR-DONE. All edits are transactions over the [data model](data-model.md#4-edits) and are undoable (FR-OPS-08). Key bindings are in [keybindings.md](keybindings.md).
 
-## 1. Text editing
+## 1. Modes
 
-The cursor is always in an item's text (modeless, Workflowy-style; OQ-06). Line editing:
+Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 
-- Grapheme-aware motion (`unicode-segmentation`): left/right, word left/right, home/end of item, start/end of wrapped screen line.
-- Delete char/word backward and forward, kill to end of item.
-- Text selection within one item with Shift+motion; copy/cut/paste of selected text.
-- `Home` toggles between the start of the content (after `- `) and column 0, so the task marker can be reached but isn't in the way.
+- **Navigate mode** (default): keys move the focus between blocks, select blocks and run block commands.
+- **Edit mode**: one block's text is edited in place (FR-MODE-02). `Enter` or `i` on the focused block enters edit mode with the caret at the end (`i`: at the start); `Esc` returns to navigate mode with the same block focused.
+- Only the focused pane can be in edit mode; switching panes ends edit mode.
 
-## 2. Enter and Backspace
+## 2. Edit mode
 
-Following TaskPaper's list autoformat (reference §9), with the type of new items per OQ-03 default A:
+The block's editor opens where the block is drawn, keeping its indentation, marker, surrounding blocks and scroll position. It grows downward as lines are added or wrap, pushing later rows down.
 
-| Situation | Result |
+**What is edited** is the block's visible text:
+- without `- ` and the project `:` (the type is shown by the marker, not typed);
+- without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message;
+- with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01).
+
+Edits are applied to the document as the user types (one undo step per edit session) and written back as: type syntax + edited text + the block's tags appended after the text in their original order (OQ-24 default A). For a note block, each text line becomes one line item at the block's depth; added lines become new note lines and removed lines are deleted. Each line keeps its own tags by position; tags of removed lines move to the first line, so no tag is lost (FR-DOC-03).
+
+**Text keys** are standard (FR-MODE-03): arrows, `Home`/`End`, `Ctrl+←/→` and `Alt+B/F` by word, `Backspace`/`Delete`, `Ctrl+W`/`Alt+Backspace` delete word, `Shift`+motion selects, `Ctrl+A` selects all, `Ctrl+C`/`Ctrl+X`/`Ctrl+V` clipboard. Motion is by grapheme (`unicode-segmentation`).
+
+**Formatting** (FR-FMT-02): `Ctrl+B` wraps the selection (or the word at the caret) in `**`, or removes them; `` Alt+` `` does the same with backticks. Code blocks have no inline formatting (FR-BLK-05).
+
+**Enter, line breaks and leaving** (OQ-23 default A):
+
+| Key | Note block | Code block | Other blocks |
+|---|---|---|---|
+| `Enter` | End editing; create the next block in edit mode (§3) | Insert line break | End editing; create the next block |
+| `Shift+Enter` / `Alt+Enter` | Insert line break | Insert line break | — |
+| `Esc` | End editing | End editing | End editing |
+| `Tab` / `Shift+Tab` | Indent / outdent the block, stay in edit mode | same | same |
+| `Backspace` in an empty block | Delete the block, edit the previous visible block at its end | same | same |
+
+Ending edit mode applies the canonical-outline repairs for the block ([file-format.md §3.1](file-format.md#31-canonical-outlines)).
+
+## 3. Creating blocks (FR-MODE-04)
+
+| Command | Result |
 |---|---|
-| Cursor at end of item | New item: a task (`- `) after a task, an empty note after a note or a project. It becomes the first child if the current item has visible children, otherwise the next sibling (TaskPaper's indent rule, reference §9). |
-| Cursor in the middle | Split: text after the cursor moves to a new sibling below (prefixed `- ` if the current item is a task). Children stay with the first half. |
-| Cursor at start of a non-empty item | New empty sibling above; cursor stays on the current item. |
-| Item is just `- ` | Clear it to an empty note ("exit the list"). |
-| `Shift+Enter` | New child note at the top of the current item's children (the Workflowy "add note" gesture, OQ-01 A). |
-| Backspace at start of an empty item with no children | Delete the item; cursor to the end of the previous visible item. |
-| Backspace at start of a non-empty item | Outdent if the item is below the zoom root's top level (TaskPaper behavior); otherwise join its text onto the previous visible item if that item is a leaf. |
-| Delete at end of item | Join the next visible item's text if it is a leaf; otherwise nothing. |
+| `new_below` | New block after the focused block's subtree, as its next sibling. |
+| `new_above` | New block as the focused block's previous sibling. |
+| `new_child` | New block as the focused block's first child (expanding it). |
+| `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
-Typing the project colon or a leading `- ` changes the kind immediately, since kind is derived from text.
+The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. It opens in edit mode with empty text.
 
-## 3. Structure
+## 4. Structural operations (FR-OPS)
+
+All act on the selection, or on the focused block when nothing is selected. Each block moves with its subtree.
 
 | Command | Behavior |
 |---|---|
-| `indent` | Become the last child of the previous sibling (expanding it). No-op on the first sibling. |
-| `outdent` | Become the next sibling of the parent. Following siblings stay where they are, as in Workflowy (inferred). In TaskPaper's line model they would become its children instead. No-op at the zoom root's top level. |
-| `move_up` / `move_down` | Swap with the adjacent sibling. At the first/last position, move to the end/start of the previous/next sibling of the parent (crossing into the adjacent branch). Never leaves the zoom root. |
-| `move_to` | Fuzzy-pick a destination item (any item, not only projects); the selection becomes its last child (`move_to_top` setting: first child). |
-| `delete_item` | Remove items with their subtrees. |
+| `indent` / `outdent` (FR-OPS-02) | Indent: become the last child of the previous sibling block (expanding it); no-op on the first sibling. Outdent: become the next sibling of the parent; following siblings stay where they are (Workflowy, inferred); no-op at the pane's zoom root level. |
+| `move_up` / `move_down` (FR-OPS-03) | Swap with the adjacent sibling block. At the first/last position, move to the end/start of the previous/next sibling of the parent. Never leaves the pane's zoom root. |
+| `group` (FR-OPS-04) | Wrap the selection in a new parent note block and open it in edit mode. |
+| `move_to` (FR-OPS-05) | Fuzzy-pick a destination block (any block, same picker as Go to Symbol); the selection becomes its last children. |
+| `delete` (FR-OPS-06) | Remove the blocks with their subtrees; focus moves to the next visible block, else the previous. |
 | `duplicate` | Deep copy inserted after the original. |
-| `group` | Wrap the selection in a new parent note and start editing it. |
-| `sort_children asc/desc` | Stable sort of the cursor item's children by `content_text`, case-insensitive, with natural number ordering. |
-| `set_kind task/project/note` | Rewrite the syntax as in [data-model.md §3](data-model.md#3-edits). |
+| `copy` / `cut` / `paste_below` / `paste_above` | Copy puts TaskPaper text on the clipboard: the selected blocks' lines, tags included, tab-indented relative to the shallowest block, `\n` line endings. Paste parses the clipboard with the TaskPaper parser and inserts the blocks after (or before) the focused block at its depth, keeping relative structure. A single line of plain text pastes as one note block. |
+| `count` (FR-OPS-09) | Status message: number of blocks and words under the focused block (or the pane's zoom root). |
 
-All structural commands act on the selection when there is one.
+Clipboard backend: the system clipboard via `arboard` when a display server is reachable; otherwise OSC 52 for copy (works over SSH and tmux) and the terminal's bracketed paste for paste.
 
-Some commands create shapes that TaskPaper text cannot represent (an empty parent from `group`, an empty trailing item from Enter). They are allowed while the user is editing that item and repaired once the cursor leaves it, as specified in [file-format.md §3.1](file-format.md#31-canonical-outlines).
+## 5. Block commands
 
-## 4. Selection (F-EDIT-09)
+| Command | Behavior |
+|---|---|
+| `convert_type` (FR-BLK-08) | Picker: project, task, note, section, code, URL, divider. Rewrites each selected block's syntax: removes `- `/`:` and the type tags `@section`, `@code`, `@url`, then applies the new type's syntax (`- `, `:`, `@section`, `@code` on the first line, `@url(…)` prompting for the address). Converting a multi-line note block to a single-line type joins its lines with spaces; converting to a divider replaces the text with `---` after confirmation if the text was non-empty. |
+| `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
+| `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
+| `toggle_today` (FR-TAG-04) | Add or remove bare `@today`. |
+| `set_color` (FR-TAG-05) | Picker of the six colors and "none"; removes any existing color tag first (D-5). |
+| `toggle_bookmark` (D-11) | Add or remove `@bookmark`. |
+| `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
+| `details` (D-3) | Popup listing the block's tags, including unsupported ones, read-only. |
 
-- `Shift+Up/Down` with no text selection extends an item selection from the cursor item. The selection is always a contiguous run of siblings; extending past the first/last sibling widens it to the parent's run.
-- `select_all` selects the zoom root's children; pressing it again selects all text in the current item instead (or the reverse, if the cursor started in text).
-- `Esc` clears the selection.
-
-## 5. Clipboard (F-EDIT-10)
-
-- Copying items puts TaskPaper text on the clipboard: tab-indented relative to the shallowest selected item, `\n` line endings.
-- Pasting text with line breaks parses it with the TaskPaper parser (single-line pastes are inserted as text) and inserts the items after the cursor item at its depth, keeping relative structure.
-- Backend: system clipboard via `arboard` when a display server is reachable; otherwise OSC 52 for copy (works over SSH and tmux) and the terminal's bracketed paste for paste.
-
-## 6. Done and tags
-
-- `toggle_done`: if every target item already has `@done`, remove it; otherwise add `@done(YYYY-MM-DD)` (local date) or bare `@done` per `done_with_date` (OQ-04).
-- `tag_with`: prompt with autocomplete over tag names in the document; `name` or `name(value)`; applied to all targets.
-- `remove_tag`: pick from the target's tags. `remove_all_tags` keeps nothing.
-- `toggle_today`: add/remove bare `@today`.
-- `set_due` / `set_start`: prompt for a TaskPaper date expression (`tomorrow 9am`, `next friday`, `+3d`, `2026-10-31`), preview the resolved date live, store `YYYY-MM-DD` or `YYYY-MM-DD HH:mm` ([search.md §4](search.md#4-dates)).
-- `rename_tag` (F-TAG-06): rename a tag name in every item.
-
-## 7. Archive @done (F-EDIT-14)
-
-Matches TaskPaper exactly (reference §7):
-1. Find the first item whose full text equals `Archive:` (case-insensitive) at any depth; if none, append `Archive:` as the last top-level item.
-2. Collect `//@done except //@text = Archive://@done`, keeping only the topmost of nested done items.
-3. Optionally (both off by default, OQ-20) strip every tag except `@done` from each moved root item (not its descendants), and/or add `@project(Outer / Inner)` naming ancestor projects.
-4. Move them, in document order, to the top of the Archive's children. One undo step.
-
-## 8. Templates (F-EDIT-15)
-
-`insert_template` lists items tagged `@template`; the chosen item's subtree is deep-copied after the cursor with the `@template` tag removed from the copy's root.
-
-## 9. Count (F-EDIT-16)
-
-`count` shows in the status line the number of descendants and words under the cursor item (or the zoom root).
+All block commands apply to every selected block (FR-OPS-07). Tags are written with the rules in [file-format.md §5](file-format.md#5-tags).

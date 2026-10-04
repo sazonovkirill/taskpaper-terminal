@@ -1,6 +1,6 @@
 # Workflowy → TaskPaper feature mapping
 
-How each Workflowy capability ([workflowy.md](workflowy.md)) can be expressed on top of the TaskPaper format ([taskpaper.md](taskpaper.md)). This table drives the scope in [../requirements.md](../requirements.md). Rows marked **OQ** depend on an open product decision in [../open-questions.md](../open-questions.md).
+How each Workflowy capability ([workflowy.md](workflowy.md)) can be expressed on top of the TaskPaper format ([taskpaper.md](taskpaper.md)). This was the analysis behind the owner's scope decisions; the scope itself is set by [../functional-requirements.md](../functional-requirements.md), which overrides this table. `OQ-` references point to [../open-questions.md](../open-questions.md), where most are now listed as decided.
 
 Legend for **Fit**:
 - **Native**: TaskPaper already has the concept; no format extension needed.

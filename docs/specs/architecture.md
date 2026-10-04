@@ -21,16 +21,16 @@ Arrows point at dependencies. `model`, `format` and `query` have no dependency o
 
 | Module | Responsibility |
 |---|---|
-| `model` | Document arena, items, derived attributes, `Op`/`Transaction`, undo stack ([data-model.md](data-model.md)). |
+| `model` | Document arena of lines, derived attributes, the block layer, `Op`/`Transaction`, undo stack ([data-model.md](data-model.md)). |
 | `format` | Parse bytes → `Document`, serialize `Document` → bytes, tag scanning and editing helpers ([file-format.md](file-format.md)). |
-| `query` | Item-path lexer, parser, evaluator; date parser ([search.md](search.md)). |
-| `view` | Zoom, folds, filter, cursor, selection; visible-row computation ([navigation.md](navigation.md)). Produces and applies the cursor/selection restore tokens stored in transactions. |
-| `commands` | Named commands: take `&mut Document` + `&mut View` + args, produce a transaction and a message ([editing.md](editing.md)). |
-| `keymap` | Key event → command name resolution, presets, config overrides ([keybindings.md](keybindings.md)). |
-| `ui` | Ratatui widgets: outline, breadcrumbs, status, query bar, pickers, sidebar, help ([ui.md](ui.md)). |
-| `storage` | Atomic save, backups, file watching, recovery, view-state persistence ([file-io.md](file-io.md)). |
+| `query` | Date parser now; the search query parser and matcher later ([search.md](search.md)). |
+| `view` | Workspace, panes, shared folds, focus, selection, modes and edit-mode editor state, Today view, visible-row computation ([navigation.md](navigation.md)). Produces and applies the focus/selection restore tokens stored in transactions. |
+| `commands` | Named commands: take `&mut Document` + `&mut Workspace` + args, produce a transaction and a message ([editing.md](editing.md)). |
+| `keymap` | Key event → command resolution per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
+| `ui` | Ratatui widgets: panes, blocks and inline editor, breadcrumbs, sidebar, shortcuts panel, pickers, prompts, status line, themes ([ui.md](ui.md)). |
+| `storage` | Atomic save, Save As, backups, file watching, recovery, view-state persistence ([file-io.md](file-io.md)). |
 | `config` | Load and validate `config.toml`. |
-| `app` | Event loop; owns the `Document`, its `View`s and background workers. |
+| `app` | Event loop; owns the `Document`, the `Workspace` and background workers. |
 
 ## 2. Event loop
 
@@ -52,9 +52,8 @@ Existing: `ratatui` 0.30, `crossterm` 0.29. Proposed additions, each to be confi
 |---|---|
 | `slotmap` | Generational arena for items. |
 | `unicode-segmentation`, `unicode-width` | Grapheme cursor movement and display width. |
-| `regex` | `matches` relation. |
 | `jiff` | Dates, time zones, arithmetic. |
-| `nucleo-matcher` | Fuzzy matching for pickers. |
+| `nucleo-matcher` | Fuzzy matching for Go to Symbol, Go to Command and Move to. |
 | `notify` / `notify-debouncer-full` | File watching. |
 | `arboard` | System clipboard (OSC 52 fallback is hand-written). |
 | `serde`, `toml` | Config. |
@@ -63,12 +62,13 @@ Existing: `ratatui` 0.30, `crossterm` 0.29. Proposed additions, each to be confi
 | `thiserror`, `anyhow` | Library errors / top-level errors. |
 | Dev: `insta`, `proptest` | Snapshot and property tests. |
 
-The query and date parsers are hand-written for precise error spans and to track TaskPaper's grammar exactly.
+The date and query parsers are hand-written for precise error positions.
 
 ## 4. Testing
 
 [testing-strategy.md](../quality/testing-strategy.md) governs test kinds, layout, coverage and mutation testing. Per module, the specs add:
 
-- `format`, `model`, `query`: property tests for the round-trip and canonical-outline invariants ([file-format.md §7](file-format.md#7-tests)), and table tests over the TaskPaper guide's queries ([search.md §6](search.md#6-tests)).
-- `commands`, `view`: unit tests of the form "document + view + command → document + view".
+- `format`, `model`: property tests for the round-trip and canonical-outline invariants ([file-format.md §7](file-format.md#7-tests)) and for block grouping ([data-model.md §3](data-model.md#3-blocks)).
+- `query`: table tests for dates and, later, queries ([search.md §5](search.md#5-tests)).
+- `commands`, `view`: unit tests of the form "document + workspace + command → document + workspace".
 - Every binding in [keybindings.md](keybindings.md) and every interaction in these specs gets an integration (UI) test.

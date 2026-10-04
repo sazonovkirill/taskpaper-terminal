@@ -1,63 +1,68 @@
 # Spec: Screen layout and styling
 
-Covers F-VIEW-01–09, F-CMD-02–03 and N-PORT-02.
+Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04, FR-KEY-05, FR-UI-05–07 and N-PORT-02.
 
 ## 1. Layout
 
 ```
-┌ Home › Work › Client A ─────────────────────────────── ● notes.taskpaper ┐  breadcrumbs + file
-│ Client A                                                                  │  zoom title (editable)
-│ ▾ Launch:                                                                 │
-│     • Draft announcement @due(2026-10-08)                                 │
-│     ✓ Book venue @done(2026-10-01)                                        │
-│     ▸ Budget review                                             (3)       │
-│       Notes about the venue go here and wrap under the text when the      │
-│       line is longer than the terminal is wide.                           │
-│ ▾ Ideas:                                                                  │
-├───────────────────────────────────────────────────────────────────────────┤
-│ / @due <[d] next week and not @done                          4 matches    │  query bar (when open)
-│ filter: 4 matches · saved 12:04 · F1 help                                 │  status line
-└───────────────────────────────────────────────────────────────────────────┘
+┌ Bookmarks ─────────┬ Home › Work ──────────────────────┬ Home › Ideas ─────────────────┐
+│ ★ Launch plan      │ Work                              │ Ideas                         │
+│ Today          3   │ ▾ Launch                          │ • Terminal outliner           │
+│ Projects           │   ☐ Draft announcement  Fri 8 Oct │ • Plain-text sync             │
+│ ▾ Work             │   ☑ Book venue                    │                               │
+│   ▸ Launch         │   ☐ Budget review  ▸ 3            │                               │
+│ ▸ Ideas            │     Notes about the venue wrap    │                               │
+│                    │     under the text like this.     │                               │
+│                    │   ── Later ─────────────────────  │                               │
+├────────────────────┴───────────────────────────────────┴───────────────────────────────┤
+│ NAVIGATE · ~/notes.taskpaper · saved · ? shortcuts                                       │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Rows: breadcrumbs (1), zoom title (1, hidden at home), outline (rest), query bar (1, when open), status line (1).
-- Sidebar (F-VIEW-10) takes 24–32 columns on the left when toggled, hidden automatically below 80 columns.
-- Pickers (Go to anything, Move to, Tag with, command palette) are centered overlays at most 80×20.
-- Below 40×10 show only the outline and status line.
+- **Sidebar** (FR-UI-01) on the left, 24–32 columns; replaced by the `?` panel while that is open (D-12).
+- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row) and, when zoomed, a title row. The focused pane's header is highlighted.
+- **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
+- **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, dates, Save As) are centered overlays at most 80×20.
+- Below 80 columns the sidebar hides; below 40×10 only the focused pane and the status line are drawn.
 
-## 2. Rows
+## 2. Blocks
 
-Each outline row: `indent` (2 columns per level, configurable) + `marker` + space + text.
+Each row: indent (2 columns per level) + marker + space + text, then right-aligned chips.
 
-| Item | Marker | Text style |
+| Block (FR-BLK) | Marker | Text |
 |---|---|---|
-| Project, expanded / collapsed | `▾` / `▸` | bold; trailing `:` hidden by default |
-| Task | `•` (collapsed with children: `▸`) | normal; `- ` hidden |
-| Task done | `✓` | dim + strikethrough (falls back to dim when unsupported) |
-| Note | none, aligned with sibling text | italic-dim (configurable) |
-| Context-only ancestor (filter) | as above | dim |
-| Collapsed with hidden children | count `(n)` right-aligned, optional | dim |
+| Project | `▾` / `▸` (fold state) | bold heading |
+| Task | `☐`, done `☑` | normal; done tasks dimmed and struck through (falls back to dim) |
+| Note | none; aligned with sibling text | normal, several lines |
+| Section | none | Things 3 style: bold label followed by a horizontal rule to the pane's edge; children indented below |
+| Code | none | monospace-styled background band, no inline formatting |
+| URL | `↗` | title styled as a link (underlined, accent color) |
+| Divider | none | a horizontal rule across the pane |
 
-- Hidden syntax (`- `, `:`) is shown when the cursor is on that item so it can be edited; a setting shows it always.
-- Tags are colored; `@done` dim, `@due` overdue red, due today yellow, `@today` accent. Tag colors are configurable by name.
-- Long lines soft-wrap with continuation lines aligned to the text start. Widths use `unicode-width`; graphemes are never split.
-- ASCII fallback markers (`v`, `>`, `-`, `x`) when `ascii = true` or the locale is not UTF-8.
+- Blocks with children that are collapsed show `▸ n` (hidden child count) after the text; projects use their marker instead.
+- **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only.
+- **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
+- **Bare URLs** in text are underlined (D-10).
+- **Focus and selection**: the focused block has a full-width highlight; selected blocks a dimmer one.
+- **Edit mode**: the focused block's text becomes an inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02).
+- **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.
 
-## 3. Status line
+## 3. Themes (FR-UI-06, FR-UI-07)
 
-Left to right: mode (when the vim preset is active), dirty marker `●` / save error, filter summary and match count, transient message (errors, "Reloaded", "Copied 3 items"), hint `F1 help`.
+- Built-in themes: at least a light and a dark theme that use the terminal's 16 ANSI colors (so they follow the user's palette), plus truecolor themes used only when `COLORTERM` indicates support.
+- A theme defines colors for: text, dim text, accent, selection, focus, headers, rule lines, code, links, each of the six tag colors, chips, overdue, errors.
+- The theme picker in Go to Command previews each theme live as it is highlighted; `Enter` keeps it and saves it to the config (OQ-18), `Esc` restores the previous one.
+- `NO_COLOR` set: no colors, only bold, dim, italic, underline, strikethrough and reverse.
+- Unicode markers have ASCII fallbacks (`v`, `>`, `[ ]`, `[x]`, `-`) when the locale is not UTF-8.
 
-## 4. Theme
+## 4. Shortcuts panel (FR-KEY-04)
 
-- Default theme uses the terminal's 16 ANSI colors so it follows the user's terminal palette in light and dark mode.
-- Themes in config may use named, 256-color or `#rrggbb` colors; truecolor is used only when `COLORTERM` indicates support.
-- `NO_COLOR` set: no colors, only bold/dim/italic/strikethrough/reverse.
+`?` toggles a panel on the left, in the sidebar's place, listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
 
-## 5. Help and command palette
+## 5. Mouse (FR-KEY-05, D-16)
 
-- `F1` opens a scrollable overlay listing commands grouped as in [keybindings.md](keybindings.md), showing the active bindings (including user overrides) and whether the kitty protocol is active.
-- The command palette lists every command with its binding; fuzzy filtered; `Enter` runs it.
-
-## 6. Mouse (F-NAV-07, OQ-19)
-
-Click text to place the cursor; click a marker to toggle fold; Alt+click (or double-click) a marker to zoom; click a breadcrumb to zoom out; wheel scrolls the outline without moving the cursor. Disabled with `mouse = false`, which also lets the terminal do native selection.
+- Click a block: focus it (navigate mode); click inside the text of the block in edit mode: place the caret.
+- Click a fold marker: toggle fold. Click a crumb: zoom the pane there. Click a sidebar entry: go there. Click a pane header: focus that pane.
+- Alt+click a block, an internal link (once links exist, FR-OPS-10) or a crumb: open it in a new pane.
+- Wheel: scroll the pane under the pointer without moving focus.
+- No feature depends on the mouse; every action above has a key.
