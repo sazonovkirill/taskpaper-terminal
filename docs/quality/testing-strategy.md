@@ -13,6 +13,7 @@ These are the owner's requirements. Everything else in this document serves them
 4. **Tests verify the contract, not the implementation.** A test states what a unit promises to its callers through its public interface. Refactoring that keeps the contract must not require rewriting tests.
 5. **Integration (UI) tests cover every user interaction with the app, within reason.** Every key binding, command, mode and screen a user can reach has at least one test driving it through the app's input handling and checking what the user sees and what is saved.
 6. **Every test can run in parallel** with every other test.
+7. **UI tests render through Ratatui's `TestBackend`**, so agents can see what the app shows without a real terminal.
 
 ## Test levels and layout
 
@@ -50,7 +51,16 @@ Unit tests never construct a `Terminal`. Integration tests never call private fu
 - Check screens with `terminal.backend().assert_buffer_lines([...])`, `assert_buffer(&expected)` and `assert_cursor_position(...)`, or with an `insta` snapshot: `insta::assert_snapshot!(terminal.backend())` for text, and `insta::assert_debug_snapshot!(terminal.backend().buffer())` when colors or modifiers matter, because the text snapshot drops styles.
 - Use a fixed terminal size in every test. Test layout at a few sizes, including a very small terminal, with `TestBackend::resize`.
 - Fixture `.taskpaper` files live under `app/tests/fixtures/` and are copied into the test's temporary directory before use; tests never modify fixtures in place.
+- Every integration test draws through `TestBackend`; none uses `CrosstermBackend` or another real backend. Only the end-to-end smoke tests below run in a real (pseudo-)terminal.
 - End-to-end smoke tests are few: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_taskpaper-terminal")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
+
+## Seeing the app without a terminal
+
+Agents cannot look at a running terminal app, so they inspect it the way the integration tests do: drive it through `TestBackend` and read the rendered screen as text.
+
+- To check what a screen looks like, write or extend an integration test that reaches it, then print the backend: `TestBackend` implements `Display`, which renders each row of the buffer as a quoted line, so `println!("{}", terminal.backend())` with `cargo test --test ui <name> -- --nocapture` shows the screen. Turn what you saw into assertions or a snapshot before committing; leftover `println!` calls are debug output.
+- Read the committed `.snap` files under `app/tests/ui/snapshots/` to see what each screen looks like today, and read a failing `assert_buffer_lines` or snapshot diff as the visible difference between the expected and actual screen.
+- Verify a visible change through `TestBackend`, not by running the binary in a terminal or asking the owner for a screenshot. If a behavior cannot be seen through `TestBackend`, that is a gap in what the library exports for driving the app; fix the gap.
 
 ## Parallel execution
 
