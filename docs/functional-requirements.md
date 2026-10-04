@@ -135,6 +135,17 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-UI-06 | Built-in themes, switchable from the command palette with a live preview, like VS Code's theme picker. | Must | Themes |
 | FR-UI-07 | The UI is clean, modern and sleek everywhere, and responds instantly. | Must | — |
 | FR-UI-08 | Twelve themes are built into the app, available without any configuration file: Catppuccin Mocha, Catppuccin Latte, Tokyo Night, Dracula, Nord, Gruvbox Dark, Rosé Pine, Rosé Pine Dawn, Kanagawa Wave, Everforest Dark, One Dark and Solarized Light. Each colors every part of the UI, including the six color tags. Palettes, origins and licenses are in [Built-in themes](reference/themes.md) (D-19). | Must | Themes |
+| FR-UI-09 | Nerd Font icons mark block types, fold state, chips, sidebar entries and the status line, so the UI reads at a glance (D-20). | Must | — |
+| FR-UI-10 | One setting turns every icon off, for terminals without a Nerd Font. The UI then uses plain Unicode markers, or ASCII when the locale is not UTF-8, and nothing is lost or misaligned (D-20). | Must | — |
+
+## FR-SET · Settings
+
+| ID | Requirement | Priority | Workflowy |
+|---|---|---|---|
+| FR-SET-01 | Settings are per user and stored in one TOML file, `~/.config/taskpaper-terminal/config.toml` (`$XDG_CONFIG_HOME` respected, also on macOS), that people can read and edit by hand. The app runs with defaults when the file is missing and creates it on the first change (D-20). | Must | Settings |
+| FR-SET-02 | A settings window, opened by a key and from the command palette, lists every setting grouped by topic with its current value and a one-line description. Changing a value applies it at once with a live preview, saves it immediately, and can be reset to the default (D-20). | Must | Settings |
+| FR-SET-03 | The settings window covers at least the theme (FR-UI-06), icons (FR-UI-10), word wrap (FR-UI-05) and autosave delay; key overrides stay in the file ([keybindings spec](specs/keybindings.md#5-configuration)). | Must | Settings |
+| FR-SET-04 | Writing a setting from the app keeps the file's comments, order and unrelated keys. Unknown keys and invalid values are reported once and ignored, and the app still starts. | Must | — |
 
 ## Out of scope
 
@@ -173,3 +184,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-17 | An existing `@done` without a date counts as completed; only newly completed blocks get the date. |
 | D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. |
 | D-19 | The app ships 10-12 attractive terminal color themes built in (owner, 2026-10-04). The chosen twelve are permissively licensed and include light themes. |
+| D-20 | The app uses Nerd Font icons, with a setting to turn all icons off. It has a settings window; settings are per user under `~/.config` in a modern format (owner, 2026-10-04). The format is TOML, as already decided in OQ-18: it is the norm for Rust and terminal tools (Cargo, Helix, Alacritty, starship) and avoids YAML's indentation and implicit-typing pitfalls. |

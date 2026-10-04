@@ -66,7 +66,7 @@ FR-KEY-03 requires bindings that work on macOS, Linux and Windows terminals.
 FR-UI-05 and FR-UI-06 need settings (word wrap, theme) to persist.
 
 **Proposed default:** TOML at `$XDG_CONFIG_HOME/taskpaper-terminal/config.toml` (platform equivalent via the `directories` crate) holding theme, word wrap and key overrides; choices made in the app are written back to it.
-**Decision (2026-10-04):** the owner accepted the proposed default.
+**Decision (2026-10-04):** the owner accepted the proposed default, and later asked for the file under `~/.config` on every Unix, macOS included, with a settings window that edits it (FR-SET, D-20).
 
 ### OQ-21 · Binary name — decided
 

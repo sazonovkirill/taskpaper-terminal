@@ -29,7 +29,7 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
 | `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
 | `ui::effects` | UI | Executes the core's effects: atomic save, Save As, backups, recovery files, view-state files, file watching, clipboard, opening URLs ([file-io.md](file-io.md)). |
-| `ui::config` | UI | Loads and writes `config.toml` (OQ-18). |
+| `ui::config` | UI | Loads and writes `config.toml` (OQ-18, FR-SET), keeping comments and order with `toml_edit`. |
 
 Following the core rules in code-quality.md:
 - **Messages are intents** (`FocusNext`, `Indent`, `ZoomIn`, `SetDue(date)`, `InsertText(str)`), never key codes. Viewport-dependent intents carry the size (`PageDown { rows }`).
@@ -60,8 +60,8 @@ Existing: `ratatui` 0.30, `crossterm` 0.29 (UI only). Proposed additions, each a
 | `nucleo-matcher` | Fuzzy matching for pickers (App). |
 | `notify` / `notify-debouncer-full` | File watching (UI effects). |
 | `arboard` | System clipboard (UI effects; OSC 52 fallback is hand-written). |
-| `serde`, `toml`, `serde_json` | Config and view-state files (UI). |
-| `directories` | Config/state paths per platform (UI). |
+| `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). |
+| `directories` | State paths per platform (UI). The config path follows XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`), not `~/Library` (FR-SET-01). |
 | `tempfile` | Atomic writes (UI effects). |
 | `thiserror`, `anyhow` | Typed library errors / `main.rs` only (code-quality.md). |
 | Dev: `insta`, `proptest` | Snapshot and property tests. |
