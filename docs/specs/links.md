@@ -51,7 +51,7 @@ All four link to a stable identifier rather than to a title, so renames and move
 
 | Command | Default binding | Behavior |
 |---|---|---|
-| `insert_link` | Edit mode: `Ctrl+K`, or typing `[[` | Opens the Go to Symbol picker ([navigation.md §8](navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06)) and inserts `[[ID\|Title]]` for the chosen block at the caret, giving the target an ID if it has none. `Esc` cancels; after `[[`, the two brackets stay as typed text. |
+| `insert_link` | Edit mode: typing `[[` | Opens the Go to Symbol picker ([navigation.md §8](navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06)) and inserts `[[ID\|Title]]` for the chosen block at the caret, giving the target an ID if it has none. `Esc` cancels; after `[[`, the two brackets stay as typed text. |
 | `copy_link` | `gy` | Copies `[[ID\|Title]]` for the focused block to the clipboard, giving it an ID if it has none (Workflowy's "copy internal link"). |
 | `follow_link` | `gd` | Follows the link in the focused block, or picks one if the block has several. The focused pane zooms to the target's parent and focuses the target, as Go to Symbol does, and pushes the pane's history so `back` returns. Broken links report "Link target not found". |
 | `open_in_new_pane` | `Alt+click` on a link | Opens the target in a new pane ([navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13)). |

@@ -26,7 +26,7 @@ taskpaper-terminal is a keyboard-driven, Workflowy-style infinite outliner for t
 | FR-DOC-02 | The file on disk is the source of truth; every change is saved automatically (D-15). | Must |
 | FR-DOC-03 | Text the app does not interpret, including unsupported tags, is preserved on save. | Must |
 | FR-DOC-04 | `Archive:` projects get no special treatment; there is no archive command. They are ordinary projects. | Must |
-| FR-DOC-05 | Running without a path creates a new file in `/tmp` (D-15). | Must |
+| FR-DOC-05 | Running without a path creates a new file in `/tmp` (D-15), filled with demo data: a few toy projects that show every feature the app implements, so it can be tried without preparing a file (D-27). | Must |
 | FR-DOC-06 | A Save As command writes the document to a chosen path and continues editing that file; this is how a `/tmp` document is kept. | Must |
 | FR-DOC-07 | Every file the app opens is backed up once a day, before the app first changes it that day, to a backups folder outside the file's own directory (`~/.local/share/taskpaper-terminal/backups/`, `$XDG_DATA_HOME` respected, also on macOS). Each file keeps its own dated copies, so files with the same name never collide; the newest 30 are kept. The folder, the number kept and whether backups run at all are settings (D-22). | Must |
 
@@ -55,6 +55,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-TAG-03 | Dates are stored as `YYYY-MM-DD` and entered through a prompt that accepts natural language such as "tomorrow" or "fri" (D-6). They show as a compact chip; overdue `@due` is highlighted. | Must |
 | FR-TAG-04 | `@today` is toggled by a command and shown as a marker. A built-in Today view lists `@today` items and items due or started on or before today (D-7). | Must |
 | FR-TAG-05 | A color tag tints the block's text; a block has at most one color, and setting one replaces the other (D-5). | Must |
+| FR-TAG-06 | Keys set the start or due date to today or tomorrow, move either date a day back or forward, and cycle the color tag, without a prompt (D-26). | Must |
 
 ## FR-FMT · Inline formatting
 
@@ -72,7 +73,8 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-MODE-02 | Editing happens in place: the editor opens where the block is, keeping indentation, surrounding blocks and scroll position, as in Things 3. | Must |
 | FR-MODE-03 | Edit mode uses standard text-editing keys (arrows, Home/End, word motion, word delete, selection, clipboard), not vim normal mode (D-1). | Must |
 | FR-MODE-04 | Creating a block (new sibling below/above, new child) opens it directly in edit mode. | Must |
-| FR-MODE-05 | Typing a Markdown-style prefix followed by a space at the start of a single-line note or task turns it into another block type: `--- ` a divider, ```` ``` ```` a code block, `[] ` or `[ ] ` a task, `[x] ` a completed task. `- ` and a trailing `:` already make a task and a project, as in TaskPaper. The very next `Backspace` or `Ctrl+Z` reverts the conversion, and `u` reverts a divider ([editing.md §2.1](specs/editing.md#21-typed-shortcuts)) (D-24). | Must |
+| FR-MODE-05 | Typing a Markdown-style prefix followed by a space at the start of a single-line note or task turns it into another block type: `--- ` a divider, ```` ``` ```` a code block, `[] ` or `[ ] ` a task, `[x] ` a completed task. `- ` and a trailing `:` already make a task and a project, as in TaskPaper. The very next `Backspace` or `Ctrl+Z` reverts the conversion, and undo reverts a divider ([editing.md §2.1](specs/editing.md#21-typed-shortcuts)) (D-24). | Must |
+| FR-MODE-06 | Single keys create a project, section or task at the top of the current list or below the focused block, opened in edit mode (D-26). | Must |
 
 ## FR-KEY · Keyboard
 
@@ -90,7 +92,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | ID | Requirement | Priority | Workflowy |
 |---|---|---|---|
 | FR-NAV-01 | Move to previous/next visible block, parent, first/last child, previous/next sibling, top/bottom. | Must | Focus commands |
-| FR-NAV-02 | Expand, collapse and toggle a block; expand/collapse a whole subtree; expand/collapse all. | Must | Expand/collapse |
+| FR-NAV-02 | Expand, collapse and toggle a block; expand/collapse a whole subtree; expand/collapse all, or all by one level, like TaskPaper. Fold state is kept in memory only (D-26). | Must | Expand/collapse |
 | FR-NAV-03 | Zoom into a block so it becomes the pane's root; zoom out; go home. Breadcrumbs show the path. | Must | Zoom, breadcrumbs |
 | FR-NAV-04 | Back/forward through zoom history, per pane. | Must | Navigate back/forward |
 | FR-NAV-05 | Go to Symbol: a fuzzy finder over every block, with bookmarks, projects and sections ranked first, like VS Code's Go to Symbol and Workflowy's JumpTo. | Must | JumpTo |
@@ -201,3 +203,5 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-23 | Some features are stored as special nodes: hidden child lines tagged `@hidden` plus a feature tag, which other TaskPaper apps see as plain lines (owner, 2026-10-04). Comments are the first: Todoist-style dated comments stored under a `COMMENTS @hidden @comments` child. The owner accepted every proposed default: a count badge and a side panel, `[YYYY-MM-DD HH:MM]` local 24-hour timestamps, multi-line comments as deeper-indented lines, bold, code and URLs in comments, `@hidden` as a general mechanism, nodes that travel with their block and stay its last child, hand-typed comment lines accepted, and comments as the only special node for now. Details in [special-nodes.md](specs/special-nodes.md). |
 | D-24 | Typing `--- ` creates a divider and ```` ``` ```` plus a space a code block; similar shortcuts apply where they make input simpler (owner, 2026-10-04). The owner delegated the rest of the set. Chosen: Workflowy's `[] ` and `[ ] ` task triggers plus `[x] ` for a completed task, while `- ` and a trailing `:` keep TaskPaper's own meaning. Shortcuts fire only on a typed space, never on paste, and can be reverted at once. Whether `# ` makes a section is open (OQ-28); until decided it is a Markdown heading in a note. Details in [editing.md §2.1](specs/editing.md#21-typed-shortcuts). |
 | D-25 | Note blocks support Markdown headings, URLs, code spans and code blocks, rendered in navigate mode and shown raw while editing (owner, 2026-10-04). The owner delegated the details: headings stay note text, so the file stays plain TaskPaper and D-14's "no heading block type" holds; links are `[title](url)`, `<url>` and bare URLs; fenced code renders like a code block but stays part of the note, without syntax highlighting. Details in [editing.md §2.2](specs/editing.md#22-markdown-in-notes). |
+| D-26 | The owner's basic key bindings (2026-10-04): `P`/`p`, `S`/`s`, `A`/`a` add a project, section or task at the top of the list or below the current block; `O`/`o` insert above/below; `'` and `"` toggle a block's fold and its whole subtree's; expand and collapse by level exist, as in TaskPaper; fold state lives in memory and is not persisted; `c` cycles the color; `t`/`y` set the start date to today/tomorrow and `T`/`Y` the due date; `[`/`]` and `{`/`}` move the start and due date by a day; `/` searches; `.` and `Shift+.` zoom in and out; `\` opens the context menu; `Ctrl+'` goes home; `z`/`Shift+Z` undo and redo; `Ctrl+K` opens the command palette and `Ctrl+P` Go to Symbol. Where these displaced earlier bindings, see OQ-29; details in [keybindings.md](specs/keybindings.md#2-navigate-mode). |
+| D-27 | Running without a path fills the new `/tmp` file with demo data, a few toy projects sufficient to demonstrate every feature implemented, to make testing easy (owner, 2026-10-04). The demo grows with each feature ([implementation plan](implementation-plan.md#rules-for-every-step)); details in [file-io.md §1](specs/file-io.md#1-opening). |

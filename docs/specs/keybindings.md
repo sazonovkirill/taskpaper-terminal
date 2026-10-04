@@ -10,9 +10,12 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- Multi-key sequences (`gg`, `dd`, `za`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line.
+- `Ctrl+'` (go home) and `Ctrl+Shift+Z` are only reported under the kitty keyboard protocol; legacy terminals send a plain `'` or nothing. Their routes without it are `gh` and `Ctrl+Y`.
+- Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line.
 
 ## 2. Navigate mode
+
+The owner's bindings of 2026-10-04 (D-26) are the base of this section. Where they took a key that an earlier binding used, that binding moved as proposed in [OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go); the table notes each move.
 
 ### Moving (FR-NAV-01)
 
@@ -21,35 +24,43 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 | Next / previous visible block | `j` / `k`, `↓` / `↑` |
 | Collapse, or go to parent if already collapsed or a leaf | `h`, `←` |
 | Expand, or go to first child if already expanded | `l`, `→` |
-| Next / previous sibling | `}` / `{`, `Ctrl+↓` / `Ctrl+↑` |
+| Next / previous sibling | `Ctrl+↓` / `Ctrl+↑` (`}` / `{` now shift the due date) |
 | Parent | `gp` |
 | First / last block | `gg` / `G`, `Home` / `End` |
 | Page down / up | `Ctrl+D` / `Ctrl+U`, `PgDn` / `PgUp` |
 
 ### Folding (FR-NAV-02)
 
+Fold state lives in memory only and is not saved (D-26); a file opens fully expanded ([navigation.md §3](navigation.md#3-folding-fr-nav-02)).
+
 | Command | Keys |
 |---|---|
-| Toggle fold | `Space`, `za` |
-| Expand / collapse subtree | `zO` / `zC` |
-| Expand / collapse all | `zR` / `zM` |
+| Toggle fold | `'`, `Space` |
+| Toggle fold of the whole subtree | `"` |
+| Expand / collapse all blocks by one level | `=` / `-` |
+| Expand / collapse all | `+` / `_` |
 
 ### Zoom and history (FR-NAV-03, FR-NAV-04)
 
 | Command | Keys |
 |---|---|
-| Zoom into focused block | `Alt+l`, `Alt+→`, `Alt+.`, `gz` |
-| Zoom out | `Alt+h`, `Alt+←`, `Alt+,`, `gu` |
-| Go home | `gh` |
+| Zoom into focused block | `.`, `Alt+l`, `Alt+→`, `gz` |
+| Zoom out | `>` (`Shift+.`), `Alt+h`, `Alt+←`, `gu` |
+| Go home | `Ctrl+'` (kitty keyboard protocol only, §1), `gh` |
 | Back / forward | `H` / `L`, `Alt+Shift+←` / `Alt+Shift+→` |
 
 ### Editing and creating (FR-MODE)
 
 | Command | Keys |
 |---|---|
-| Edit focused block (caret at end / at start) | `Enter` or `a` / `i` |
+| Edit focused block (caret at end / at start) | `Enter` / `i` (`a` now adds a task) |
 | New block below / above | `o` / `O` |
 | New child | `Alt+o` |
+| New project at the top of the list / below the focused block | `P` / `p` |
+| New section at the top of the list, after its tasks / below the focused block | `S` / `s` |
+| New task at the top of the list / below the focused block | `A` / `a` |
+
+The six typed creation commands are in [editing.md §3](editing.md#3-creating-blocks-fr-mode-04).
 
 ### Selection (FR-OPS-01)
 
@@ -64,30 +75,35 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 
 | Command | Keys |
 |---|---|
-| Indent / outdent | `Tab` / `Shift+Tab`, `>` / `<` |
+| Indent / outdent | `Tab` / `Shift+Tab` (`>` now zooms out) |
 | Move up / down | `Alt+k` / `Alt+j`, `Alt+↑` / `Alt+↓` |
 | Group | `gG` |
-| Move to… | `m` |
+| Move to… | `gm` (was `m`) |
 | Delete | `dd`, `Delete` |
-| Duplicate | `yd` |
-| Copy / cut | `yy`, `Ctrl+C` / `Ctrl+X` |
-| Paste below / above | `p` / `P`, `Ctrl+V` |
-| Undo / redo | `u` / `Ctrl+R`, `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
+| Duplicate | `D` (was `yd`) |
+| Copy / cut | `Ctrl+C` / `Ctrl+X` (`y` now sets tomorrow) |
+| Paste below / above | `Ctrl+V` / `Alt+V` (`p`, `P` now add projects) |
+| Undo / redo | `z` / `Z`, `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ### Block metadata (FR-BLK-08, FR-TAG, FR-DONE-01)
 
-A `t` prefix groups metadata commands so they are easy to discover in the `?` panel.
+The `t` prefix of earlier drafts is gone because `t` now sets the start date. Commands that need a prompt or a picker use an `m` ("metadata") prefix instead.
 
 | Command | Keys |
 |---|---|
 | Toggle done | `x`, `Ctrl+Enter` |
-| Toggle today | `tt` |
-| Set start / due date | `ts` / `td` |
-| Set color | `tc` |
-| Toggle bookmark | `tb` |
-| Convert block type | `ty` |
-| Details (all tags) | `ti` |
-| Comments panel (FR-SPC-02) | `c` |
+| Start date today / tomorrow | `t` / `y` |
+| Due date today / tomorrow | `T` / `Y` |
+| Start date one day earlier / later | `[` / `]` |
+| Due date one day earlier / later | `{` / `}` |
+| Set start / due date with a prompt | `ms` / `md` |
+| Cycle color (none, red, orange, yellow, green, blue, violet) | `c` |
+| Pick a color | `mc` |
+| Toggle today | `mt` |
+| Toggle bookmark | `mb` |
+| Convert block type | `my` |
+| Details (all tags) | `mi` |
+| Comments panel (FR-SPC-02) | `C` (was `c`) |
 | Open URL | `gx` |
 
 ### View, panes and panels
@@ -98,21 +114,21 @@ A `t` prefix groups metadata commands so they are easy to discover in the `?` pa
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
 | Toggle sidebar / focus sidebar (FR-UI-01) | `Ctrl+B` / `Alt+0` |
 | Shortcuts panel (FR-KEY-04) | `?` |
-| Go to Symbol (FR-NAV-05) | `Ctrl+T`, `gs` |
-| Go to Command (FR-NAV-06) | `Ctrl+P`, `:` |
+| Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |
+| Go to Command (FR-NAV-06) | `Ctrl+K`, `:` (was `Ctrl+P`) |
 | Settings window (FR-SET-02) | `g,` |
-| Context menu for the focused element (FR-KEY-06) | `M`, `Shift+F10`, the Menu key |
+| Context menu for the focused element (FR-KEY-06) | `\`, `Shift+F10`, the Menu key (was `M`) |
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9` |
 | Focus pane left / right | `Ctrl+W h` / `Ctrl+W l` |
 | Close pane | `Ctrl+W c` |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
-| Search (Later, FR-SRCH-01) | `/` |
+| Search (Later, FR-SRCH-01); until search exists, Go to Symbol | `/` |
 | Follow link / copy link / show backlinks (Later, FR-OPS-10, [links.md](links.md)) | `gd` / `gy` / `gb` |
 | Count blocks and words | command palette |
 | Save As (FR-DOC-06) | command palette |
-| Quit | `Ctrl+Q`, `ZZ` |
+| Quit | `Ctrl+Q` (`ZZ` is gone, `Z` is redo) |
 
 ## 3. Edit mode
 
@@ -125,12 +141,12 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Line break in a note or code block | `Shift+Enter`, `Alt+Enter` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
-| Insert link (Later, FR-OPS-10) | `Ctrl+K`, typing `[[` |
+| Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
 | Undo / redo (text, within the session) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ## 4. Other contexts
 
-- **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `M`, `Shift+F10` and the Menu key open it in every navigate context.
+- **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.
 - **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).

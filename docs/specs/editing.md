@@ -53,7 +53,7 @@ Rules:
 - A shortcut fires only when the prefix is the start of the text of a **single-line note or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret and that the block has no children (FR-BLK-07); otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project, section, URL or code block or in a later line of a note, are ordinary text.
 - Shortcuts fire only on a typed space. Pasted text is never converted.
 - The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
-- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that `u` reverts in navigate mode.
+- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode.
 - A conversion is part of the edit session's undo step (§2) and follows the rules of `convert_type` (§5).
 - `- ` and a trailing `:` need no shortcut: TaskPaper already reads them as a task and a project, and the marker updates live (OQ-27). `# ` stays text and starts a Markdown heading in a note (§2.2, OQ-28).
 
@@ -84,6 +84,16 @@ Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 | `new_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
+**Typed creation** (D-26) adds a block of a chosen type in one key, opened in edit mode with empty text. "The list" is the focused block's siblings; in an empty pane it is the zoom block's children ([OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go) default).
+
+| Command | Result |
+|---|---|
+| `new_project_top` / `new_project_below` | A project as the first block of the list / as `new_below` would place it. |
+| `new_section_top` / `new_section_below` | A section placed before the first section of the list, so it comes after the tasks above it, or at the end of the list when it has none / as `new_below` would place it. |
+| `new_task_top` / `new_task_below` | A task as the first block of the list / as `new_below` would place it. |
+
+Typed creation never makes a note, so it never merges notes (OQ-26).
+
 The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (the note or code run before it, or the note run after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
@@ -110,8 +120,11 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `convert_type` (FR-BLK-08) | Picker: project, task, note, section, code, URL, divider. Rewrites each selected block's syntax: removes `- `/`:` and the type tags `@section`, `@code`, `@url`, then applies the new type's syntax (`- `, `:`, `@section`, `@code` on the first line, `@url(…)` prompting for the address). Converting a multi-line note block to a single-line type joins its lines with spaces; converting to a divider replaces the text with `---` after confirmation if the text was non-empty. |
 | `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
+| `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
+| `start_earlier` / `start_later` / `due_earlier` / `due_later` (D-26) | Move `@start` or `@due` one day back or forward. A block without that date gets yesterday or tomorrow, as if the missing date were today. |
 | `toggle_today` (FR-TAG-04) | Add or remove bare `@today`. |
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none"; removes any existing color tag first (D-5). |
+| `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
 | `toggle_bookmark` (D-11) | Add or remove `@bookmark`. |
 | `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
 | `details` (D-3) | Popup listing the block's tags, including unsupported ones, read-only. |

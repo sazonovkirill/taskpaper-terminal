@@ -22,7 +22,7 @@ Rules:
 - **Placement.** The app writes special nodes as the last children of their owner. Every operation that inserts a child "at the end" (new child, indent, move, paste, Move to) inserts it before the trailing special nodes, so they stay last. A special node another app placed elsewhere among the children is still recognized and left where it is.
 - **Edits keep the node under the last line.** When editing a note or code block adds lines after its last line, removes the line holding a special node, or joins the block's lines (type conversion, [editing.md §5](editing.md#5-block-commands)), the block's special nodes move, in order, to the end of the children of the block's new last line. They are never deleted with a line, the same way tags of removed lines move rather than vanish ([editing.md §2](editing.md#2-edit-mode)).
 - **Travels with its owner.** Special nodes are part of the owner's subtree, so move, indent, outdent, delete, cut, copy, paste and duplicate carry them along, and undo restores them. Copy writes them into the TaskPaper text, so pasting into another instance keeps them.
-- **Unknown features.** A special node whose feature tag the app does not know (or that has none) is preserved byte-for-byte (FR-DOC-03) and listed in the owner's details popup (`ti`, D-3) as hidden data with its tags and line count.
+- **Unknown features.** A special node whose feature tag the app does not know (or that has none) is preserved byte-for-byte (FR-DOC-03) and listed in the owner's details popup (`mi`, D-3) as hidden data with its tags and line count.
 - **Lossless.** Lines inside a special node are written from their original bytes until the feature that owns the node changes them ([file-format.md §6](file-format.md#6-serialization)).
 
 `@hidden` is reserved for this mechanism. The type converter (FR-BLK-08) and the other metadata commands never set or clear it.
@@ -50,7 +50,7 @@ Each child line of the node starts one comment:
 ### 2.2 Display
 
 - **Badge:** a block with comments shows a comment icon and the count as a chip (`󰅺 3`), after its date chips (FR-UI-09). Without icons it shows `✎3`, or `c3` when the locale is not UTF-8 (FR-UI-10).
-- **Comments panel:** `c` in navigate mode, the context menu (FR-KEY-06) and Go to Command open a panel on the right of the focused pane, Todoist style. Its header shows the block's display text. It lists the comments oldest first, each with its timestamp in a compact local form (`Today 12:09`, `Fri 12:09`, `4 Oct 2026 12:09`) above the text, wrapped to the panel width. An input at the bottom adds a comment.
+- **Comments panel:** `C` in navigate mode, the context menu (FR-KEY-06) and Go to Command open a panel on the right of the focused pane, Todoist style. Its header shows the block's display text. It lists the comments oldest first, each with its timestamp in a compact local form (`Today 12:09`, `Fri 12:09`, `4 Oct 2026 12:09`) above the text, wrapped to the panel width. An input at the bottom adds a comment.
 - **Formatting:** comment text renders `**bold**` and `` `code` `` (FR-FMT-01), and URLs are underlined. `gx` on a comment opens its URL, or offers a picker when it has several (D-10). Tags inside comments are shown as typed, since they mean nothing there.
 - Clicking the badge opens the panel (FR-KEY-05).
 
@@ -72,7 +72,7 @@ Adding, editing or deleting a comment is one undo step (FR-OPS-08), undoable fro
 
 ### 2.4 Selections
 
-With several blocks selected, `c` opens the panel for the focused block only; comments are per block.
+With several blocks selected, `C` opens the panel for the focused block only; comments are per block.
 
 ## 3. Later features
 

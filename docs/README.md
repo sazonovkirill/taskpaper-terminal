@@ -17,6 +17,7 @@ taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://
 |---|---|---|
 | [functional-requirements.md](functional-requirements.md) | Accepted | What the app does, as decided by the owner. Overrides every other document here. |
 | [requirements.md](requirements.md) | Accepted | Non-functional requirements (performance, reliability, portability) and file-handling requirements the functional requirements leave open. |
+| [implementation-plan.md](implementation-plan.md) | Draft | The order v1 is built in: milestones of small steps, each leaving a working app. |
 | [open-questions.md](open-questions.md) | Living | Undecided choices, each with a proposed default, plus the ones already decided. |
 | [specs/](specs/README.md) | Accepted | How each area works. |
 | [reference/](reference/README.md) | Reference | TaskPaper format and Workflowy features, sourced from official docs. |

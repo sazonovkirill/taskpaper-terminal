@@ -18,7 +18,7 @@ Priorities use the same scale as the functional requirements: **Must** (v1), **S
 
 | ID | Requirement | Priority |
 |---|---|---|
-| F-FILE-01 | Open the `.taskpaper` file given on the command line; create it if missing. Without a path, create a new file in `/tmp` (FR-DOC-05). | Must |
+| F-FILE-01 | Open the `.taskpaper` file given on the command line; create it if missing. Without a path, create a new file in `/tmp` filled with demo data (FR-DOC-05). | Must |
 | F-FILE-02 | Parse files exactly as TaskPaper 3 does: item types, tags, indentation, blank lines ([specs/file-format.md](specs/file-format.md)). | Must |
 | F-FILE-03 | Write files that TaskPaper 3 parses to the same outline. Round-tripping an unedited file produces identical bytes. | Must |
 | F-FILE-04 | Saves are atomic (temp file + rename); file permissions are preserved. | Must |

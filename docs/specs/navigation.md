@@ -26,7 +26,11 @@ Each row carries: block id, display depth (relative to the zoom block) and wheth
 | `expand` | Expand the focused block; if already expanded, move to its first child. |
 | `toggle_fold` | Expand if collapsed, else collapse. |
 | `expand_subtree` / `collapse_subtree` | The focused block's entire subtree. |
+| `toggle_subtree` | `collapse_subtree` if any block in the focused block's subtree, the block included, is expanded and has children; otherwise `expand_subtree`. |
 | `expand_all` / `collapse_all` | Every block under the pane's zoom block. |
+| `expand_level` / `collapse_level` | Every block under the pane's zoom block, one level at a time, like TaskPaper's Expand/Collapse All By Level (D-26): expand every collapsed block at the shallowest depth that has one; collapse every expanded block with children at the deepest depth that has one. |
+
+Fold state is kept in memory only and is shared by all panes (D-13); it is not saved, and a file opens with every block expanded (D-26).
 
 ## 4. Zoom and history (FR-NAV-03, FR-NAV-04)
 
@@ -42,7 +46,7 @@ Each row carries: block id, display depth (relative to the zoom block) and wheth
 - `open_in_new_pane`: open the focused block (or, from a picker or the sidebar, the chosen entry; or with Alt+click, the clicked block, link or crumb) zoomed in a new pane inserted right of the focused pane, and focus it. `open_location_in_new_pane` opens the focused pane's current location (its zoom block or Today) in a new pane.
 - `focus_pane N` focuses the Nth pane; `focus_pane_left/right` moves between neighbors; `close_pane` closes the focused pane (the last pane cannot be closed).
 - Width (UI layer): panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
-- The layout (number of panes, their zooms, histories, widths and show-completed settings) and the fold state are restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A ([file-io.md §5](file-io.md#5-view-state-persistence)).
+- The layout (number of panes, their zooms, histories, widths and show-completed settings) is restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A; fold state is not (D-26) ([file-io.md §5](file-io.md#5-view-state-persistence)).
 
 ## 6. Sidebar (FR-UI-01, D-7, D-11, D-12)
 

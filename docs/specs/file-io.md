@@ -5,7 +5,8 @@ Covers FR-DOC-01, FR-DOC-02, FR-DOC-05, FR-DOC-06, FR-DOC-07, FR-UI-04 (storage)
 ## 1. Opening
 
 - `tpt <path>`: open the file; if it does not exist, start an empty document and create the file on first save. Parent directories must exist.
-- `tpt` with no path: create a new empty file `/tmp/taskpaper-<YYYYMMDD-HHMMSS>.taskpaper` and open it (FR-DOC-05). The status line marks it as a temporary file until it is saved elsewhere with Save As.
+- `tpt` with no path: create a new file `/tmp/taskpaper-<YYYYMMDD-HHMMSS>.taskpaper` holding the demo document and open it (FR-DOC-05, D-27). The status line marks it as a temporary file until it is saved elsewhere with Save As.
+- **Demo document:** a TaskPaper file kept in the repository at `app/assets/demo.taskpaper` and compiled into the binary. It holds a few toy projects (for example a trip, a small software release and a reading list) that between them use every block type, tag and feature the app implements, each where a person would naturally use it, so trying a feature needs no setup. Dates in it are written relative to today when the file is created (a placeholder such as `@due({today+1})` is resolved to `YYYY-MM-DD`), so due, overdue and Today items stay meaningful. It must parse as a canonical outline ([file-format.md §3.1](file-format.md#31-canonical-outlines)); a test checks that and that every block type and supported tag implemented so far occurs in it.
 - Read errors, non-UTF-8 content and permission errors are shown on stderr before the TUI starts, and the app exits non-zero.
 - Read-only files open read-only; editing commands report "read-only" in the status line.
 
@@ -32,7 +33,7 @@ Saving runs on a background thread with a snapshot of the serialized text; the U
 - **Where:** `$XDG_DATA_HOME/taskpaper-terminal/backups/`, or `~/.local/share/taskpaper-terminal/backups/` when it is unset, on macOS too. Backups are user data rather than disposable state, so they go under the data directory, not `$XDG_STATE_HOME`. The `backups.dir` setting overrides the folder (for example `~/.taskpaper-terminal/backups`); `~` is expanded.
 - **One folder per file:** `<file name>-<hash>/`, where `<hash>` is the 64-bit FNV-1a hash of the file's canonical path as 16 lowercase hex digits. Two `todo.taskpaper` files in different directories get different folders; the hash is written by hand, so it is stable across Rust releases (std's `DefaultHasher` is not). The folder also holds `source-path.txt` with the full path, so a person can tell which file it belongs to.
 - **When:** on opening the file, and before the first save of each new local day for a session left running past midnight. If the folder has no copy dated today, copy the file as it is on disk, before the app writes anything, to `<YYYY-MM-DD>.taskpaper` (local date) with the atomic-write routine above. So each day's copy is the file as it was before that day's first change by the app.
-- **Skipped:** when the file does not exist on disk or is empty (a new path, or the empty `/tmp` document of §1), and when the on-disk bytes equal the newest daily copy, so a file left unchanged for weeks does not use up its retention on duplicates.
+- **Skipped:** when the file does not exist on disk or is empty (a new path), and for the `/tmp` document of §1 until it is saved elsewhere, and when the on-disk bytes equal the newest daily copy, so a file left unchanged for weeks does not use up its retention on duplicates.
 - **Retention:** keep the newest `backups.keep` daily copies per file (default 30), newest by the date in the name; after writing a daily copy, delete the oldest ones beyond that. Conflict copies (§3) are pruned the same way but counted separately, so conflicts never push out daily copies. Nothing is pruned while backups are disabled. Folders of files that no longer exist are left alone.
 - **Settings** (FR-SET-01): `backups.enabled` (default `true`), `backups.dir` (default unset, meaning the path above), `backups.keep` (default 30, minimum 1). Changing the folder takes effect on the next backup; existing copies are not moved.
 - **Failures** never block opening or saving: the status line shows a warning once per session with the reason, and the next day's check tries again.
@@ -57,10 +58,10 @@ Saves check the disk state immediately before renaming; if it changed since the 
 
 ## 5. View-state persistence
 
-Restores the pane layout (FR-UI-04) and fold state (OQ-05 default A).
+Restores the pane layout (FR-UI-04, OQ-05 default A). Fold state is not persisted (D-26).
 
 - File: `$XDG_STATE_HOME/taskpaper-terminal/views.json` (platform equivalent via `directories`), keyed by canonical file path.
-- Stored per file: the panes in order with their location, history, focused block, width and show-completed setting; the focused pane; collapsed blocks; sidebar visibility.
+- Stored per file: the panes in order with their location, history, focused block, width and show-completed setting; the focused pane; sidebar visibility.
 - Blocks are stored as **text paths**: the list of first-line `text` values from the top level down to the block, plus the index among equal-text siblings.
 - On load, each path is re-matched; anything that doesn't match is dropped silently. View state never blocks opening a file.
 - Written on quit and on save, with the same atomic-write routine.

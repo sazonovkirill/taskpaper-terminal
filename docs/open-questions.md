@@ -17,6 +17,23 @@ D-24 asks for shortcuts that turn typed prefixes into block types, and D-25 adds
 **Proposed default:** A. It is what Markdown means by `#`, keeps one meaning for `#` everywhere in a note, and leaves the file free of a tag the user did not ask for.
 **Affects:** [specs/editing.md](specs/editing.md#21-typed-shortcuts).
 
+### OQ-29 · Where do the bindings displaced by D-26 go? — open
+
+The owner's bindings (D-26) take keys that earlier drafts used: `c` (comments), `t` (the metadata prefix), `y` (the copy prefix), `p`/`P` (paste), `a` (edit at end), `{`/`}` (sibling motion), `>`/`<` (outdent/indent), `z` (fold prefix), `Z` (`ZZ` quit), `Ctrl+P` (Go to Command) and, in edit mode, `Ctrl+K` (insert link). D-26 also leaves open what "top" and "bottom" mean for `P`/`p`, `S`/`s`, `A`/`a`, and what `/` does before search exists.
+
+**Proposed default:**
+- Comments `C`; the metadata prefix becomes `m` (`mt` today, `ms`/`md` date prompts, `mc` color picker, `mb` bookmark, `my` convert, `mi` details), and Move to moves from `m` to `gm`.
+- Copy and cut are `Ctrl+C`/`Ctrl+X` only; duplicate is `D`; paste is `Ctrl+V` below and `Alt+V` above.
+- `Enter` edits with the caret at the end and `i` at the start.
+- Sibling motion keeps `Ctrl+↑`/`Ctrl+↓`; indent and outdent keep `Tab`/`Shift+Tab`.
+- Folding drops the `z` prefix: `'` and `Space` toggle, `"` toggles the subtree, `=`/`-` expand and collapse by level, `+`/`_` expand and collapse all. Quit is `Ctrl+Q` only; `u` and `Ctrl+R` are no longer undo and redo.
+- `Ctrl+P` is Go to Symbol (with `gs`), `Ctrl+K` Go to Command (with `:`), and inserting a link (Later) is typing `[[` only.
+- The context menu moves from `M` to `\`; `Ctrl+'` needs the kitty keyboard protocol, so `gh` stays as the route that always works.
+- "The list" is the focused block's siblings. Upper case adds at its top (a section goes before the first section, after the tasks); lower case adds right below the focused block, as `o` does.
+- `/` opens Go to Symbol until search exists.
+
+**Affects:** [specs/keybindings.md](specs/keybindings.md#2-navigate-mode), [specs/editing.md](specs/editing.md#3-creating-blocks-fr-mode-04), [specs/special-nodes.md](specs/special-nodes.md), [specs/links.md](specs/links.md).
+
 ## Decided with the proposed defaults
 
 On 2026-10-04 the owner accepted the proposed default for every question below.
@@ -42,7 +59,7 @@ FR-UI-04 restores the pane layout on launch, and D-13 makes fold state shared ac
 - **C. In-file tags** such as `@collapsed` (adds text the user didn't write).
 
 **Proposed default:** A, persisting panes (zoom, history, show-completed) and fold state.
-**Decision (2026-10-04):** the owner accepted the proposed default.
+**Decision (2026-10-04):** the owner accepted the proposed default. Later the same day the owner decided that fold state lives in memory only (D-26), so only the panes are persisted.
 **Affects:** [specs/file-io.md](specs/file-io.md), [specs/navigation.md](specs/navigation.md).
 
 ### OQ-14 · Write fidelity — decided

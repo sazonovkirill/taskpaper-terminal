@@ -1,0 +1,126 @@
+# Implementation plan
+
+- Status: Draft
+- Last updated: 2026-10-04
+
+The order in which v1 is built. The app starts almost trivial and gains one feature per step; after every step it starts, shows the file and does everything earlier steps added, with no half-finished feature reachable by the user. Each step is sized to be one Todoist task for one agent and lists what it covers, what it needs first and what the owner can try when it lands. What each feature does is in the [functional requirements](functional-requirements.md) and the [specs](specs/README.md); this file only orders the work.
+
+## Rules for every step
+
+- A step ships its core logic, its key bindings, its entries in the `?` panel, palette and context menu (once those exist), its tests and any doc updates together, through the [agent workflow](quality/agent-workflow.md).
+- A key does nothing until the step that implements its command lands. No step adds a key that only reports "not implemented".
+- A step that adds a user-visible feature also adds content to the demo document ([file-io.md §1](specs/file-io.md#1-opening)) that shows it, so the owner can try every step by running `tpt` without a path. The demo's test lists the block types and tags it must contain; a step adds to that list.
+- Dependencies are added in the step that first uses them ([architecture.md §3](specs/architecture.md#3-dependencies)).
+- **After** names the steps that must be on `main` first. Steps whose dependencies are all on `main` can run in parallel. Steps marked **hub** change `app::update`, `ui::keymap` and the main widgets heavily; run at most one hub step at a time and pair it with non-hub steps.
+- Splitting a step that turns out too large is the implementer's call; merging steps or reordering them is the owner's.
+
+## M1 · Read-only outline viewer
+
+The app opens a real file and shows it as an outline. Nothing is written to disk yet, so it is safe to point at real files.
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 1.1 | **Open and show a file.** `tpt <path>` reads it, refuses non-UTF-8 and unreadable files on stderr, parses indentation, hierarchy and item types, and draws one row per line with 2-column indents, bold projects and `☐` tasks. Without a path it shows the demo document from memory, still without date placeholders (the `/tmp` file arrives in 2.10, dates in 3.2). `Ctrl+Q` quits. Sets up the three layers, `update(state, message) -> effects` and the `TestBackend` test harness. | F-FILE-01 (read), F-FILE-02, F-FILE-07, FR-DOC-01, FR-DOC-03 (nothing dropped on read); file-format §1–4 without tags | — | `cargo run` shows the demo outline |
+| 1.2 | **Focus and scrolling. hub** A focused row; `j`/`k`, arrows, `gg`/`G`, `Home`/`End`, page up/down; scrolling keeps focus visible. Status line with mode and path. Multi-key sequences with timeout and the pending prefix shown. | FR-NAV-01 (part), keybindings §1 | 1.1 | Move through a long file |
+| 1.3 | **Tags hidden.** Tag grammar, derived tags and display text; tags vanish from rows; `@done` tasks show `☑`, dimmed and struck through. | FR-TAG-01 (display), FR-TAG-02, FR-DONE-01 (display), file-format §5 | 1.1 | Tagged lines look clean |
+| 1.4 | **Blocks.** The block layer: note runs as one multi-line block, special nodes skipped, divider, section, URL and code blocks drawn as in ui §2. Focus moves by block. | FR-BLK-01–07, FR-SPC-01 (skipping), data-model §3 | 1.2, 1.3 | Notes, sections and dividers look right |
+| 1.5 | **Folding. hub** In-memory shared folds; `h`/`l`, `'`, `Space`, `"`, `=`/`-`, `+`/`_`; fold markers and `▸ n`; focus repair when the focused block is hidden. Parent and sibling motion. | FR-NAV-01, FR-NAV-02, navigation §2–3 | 1.4 | Collapse a project |
+| 1.6 | **Zoom and breadcrumbs. hub** `.`, `>`, `Alt+l`/`Alt+h`, `gz`/`gu`, `gh` and `Ctrl+'` (which arrives only under the kitty protocol, enabled in 8.4), the title row, the breadcrumb header, back and forward with `H`/`L`. | FR-NAV-03, FR-NAV-04, navigation §4 | 1.5 | Zoom into a project and back |
+
+## M2 · Editing that saves
+
+From here the app changes files, so file safety comes first: the serializer, atomic saves and backups land before the first command that edits.
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 2.1 | **Serializer.** Byte-identical round trip of unedited files; preserved indent unit, line endings, BOM and trailing newline; golden corpus and property tests. No visible change. | F-FILE-03, F-FILE-08, N-REL-02, file-format §6–7 | 1.1 | (tests only) |
+| 2.2 | **Transactions and undo engine.** `Op` and `Transaction` with apply and invert in the Document layer, the undo history in the App layer, placement repair after structural ops. No visible change. | FR-OPS-08 (engine), data-model §4–5, file-format §3.1 rule 1 | 1.4 | (tests only) |
+| 2.3 | **Atomic autosave and backups.** Save effect on a worker thread; atomic write keeping permissions and symlinks; 1 s debounce driven by clock ticks; save on quit and on `SIGTERM`/`SIGHUP`; `●` and the error badge; daily backups with retention; read-only files open read-only. | FR-DOC-02, FR-DOC-07, F-FILE-04, F-FILE-05, F-FILE-09, N-UX-01, file-io §2 | 2.1 | A dated copy appears in `~/.local/share/taskpaper-terminal/backups/` |
+| 2.4 | **First edit: complete tasks. hub** `x` toggles `@done(date)` on the focused block, saved, and undone and redone with `z`/`Z`, `Ctrl+Z`/`Ctrl+Y`. Today's date comes from the injected clock. | FR-DONE-01, FR-OPS-08, N-UX-02 | 2.2, 2.3, 2.10 | Check off a task, see the file change, undo it |
+| 2.5 | **Edit mode for one-line blocks. hub** `Enter`/`i`, `Esc`, standard text keys by grapheme, tags kept and appended (OQ-24), the `@` refusal (OQ-25), live type change (OQ-27), one undo step per session, rules 2 and 4 repaired on leaving. | FR-MODE-01–03, editing §1–2 | 2.4 | Rename a task in place |
+| 2.6 | **Creating and deleting blocks. hub** `o`/`O`, `Alt+o`, `Enter` creating the next block, `Backspace` in an empty block, `dd`/`Delete`; new block types per OQ-03 and OQ-26; autosave waits on transient shapes. | FR-MODE-04, FR-OPS-06 (delete), editing §3–4 | 2.5 | Write a new list from scratch |
+| 2.7 | **Typed creation.** `P`/`p`, `S`/`s`, `A`/`a`. | FR-MODE-06, editing §3 | 2.6 | Add a section with `S` |
+| 2.8 | **Multi-line notes and code.** `Shift+Enter`/`Alt+Enter`, `Enter` in code, line splitting when editing ends (OQ-27), tags and special nodes moving to surviving lines. | FR-BLK-03, FR-BLK-05, OQ-23, special-nodes §1 (edits) | 2.6 | Write a three-line note |
+| 2.9 | **Indent, outdent and move.** `Tab`/`Shift+Tab` in both modes, `Alt+j`/`Alt+k`, crossing into the neighboring parent, merged notes reported. | FR-OPS-02, FR-OPS-03, OQ-26 | 2.6 | Reorder a list |
+| 2.10 | **Demo file in `/tmp`.** `tpt` without a path writes the demo document with resolved dates to a new temporary file and opens it, marked in the status line. Save As follows in 4.3. | FR-DOC-05, D-27, file-io §1 | 2.3 | Start `tpt` with no path |
+| 2.11 | **External changes.** File watching, silent reload, the conflict prompt with conflict copies, the disk check before every save, deleted files. | F-FILE-06, OQ-16, file-io §3 | 2.3 | Edit the file in another editor while the app is open |
+| 2.12 | **Crash recovery.** A panic hook restores the terminal and writes a recovery file, offered on the next start. | N-REL-01, file-io §4 | 2.3 | (tests) |
+
+**Milestone result:** a usable outliner with safe saving, backups and undo.
+
+## M3 · Metadata and formatting
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 3.1 | **Date parser.** `document::dates` with every form in search §4, relative to an injected date. No visible change. | search §4 | 1.1 | (tests only) |
+| 3.2 | **Quick dates. hub** `t`/`y`/`T`/`Y`, `[`/`]`/`{`/`}`, date chips, overdue `@due` highlighted, chips updated at midnight; the demo gains dates through resolved placeholders. | FR-TAG-03 (display), FR-TAG-06 | 2.4 | Make a task due tomorrow with `Y` |
+| 3.3 | **Date prompt.** `ms`/`md` open a prompt with a live preview; empty input clears the date. | FR-TAG-03 | 3.1, 3.2 | Type "next fri" |
+| 3.4 | **Today, colors and bookmarks.** `mt` and its marker chip; `c` cycling and the `mc` picker, text tint; `mb`. | FR-TAG-04 (tag), FR-TAG-05, FR-TAG-06, D-11 | 3.2 | Color a task red |
+| 3.5 | **Selection. hub** `J`/`K`, `Shift`+arrows, `v`, `Ctrl+A`, `Esc`; every command so far applies to the selection; `gG` groups it. | FR-OPS-01, FR-OPS-04, FR-OPS-07 | 2.9, 3.4 | Complete five tasks at once |
+| 3.6 | **Clipboard and duplicate.** `Ctrl+C`/`Ctrl+X`/`Ctrl+V`/`Alt+V` with hierarchy, `D`; `arboard` with the OSC 52 and bracketed-paste fallbacks; paste in edit mode with the `@` rule. | FR-OPS-06 | 3.5 | Copy a project into another file |
+| 3.7 | **Type converter and details.** The `my` picker for all seven types and the `mi` popup with unsupported tags and unknown special nodes. | FR-BLK-08, D-3 | 3.4 | Turn a note into a section |
+| 3.8 | **Typed shortcuts.** `--- `, ```` ``` ````, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 2.8, 3.7 | Type `--- ` |
+| 3.9 | **Inline formatting and URLs.** `**bold**` and `` `code` `` rendered, bare URLs underlined, URL blocks, `gx` opening the browser; `Ctrl+B` and `` Alt+` `` in edit mode (Should). | FR-FMT-01, FR-FMT-02, FR-BLK-06, D-10 | 2.5 | Bold text renders bold |
+| 3.10 | **Markdown in notes.** Headings, links and fenced code rendered in navigate mode. | FR-FMT-03, editing §2.2 | 2.8, 3.9 | A note with a `## heading` |
+
+## M4 · Finding things
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 4.1 | **Command registry. hub** Every command gets a name, a context and its bindings in one table that the keymap reads; the palette, the `?` panel and the context menu read it later. Refactor only, no visible change. | architecture §1, FR-KEY-06 (basis) | 2.6 | (no visible change) |
+| 4.2 | **Fuzzy picker and Go to Symbol.** One picker overlay on `nucleo-matcher`; `Ctrl+P`, `gs` and, until search exists, `/`; ranking as in navigation §8. | FR-NAV-05 | 4.1 | Jump to any block by name |
+| 4.3 | **Go to Command, Count and Save As.** `Ctrl+K` and `:` list every command with its binding; Count and Save As (with its path prompt) become reachable there. | FR-NAV-06, FR-OPS-09, FR-DOC-06 | 4.2, 2.10 | Save the `/tmp` file to your notes folder |
+| 4.4 | **Move to.** `gm` with the same picker. | FR-OPS-05 | 4.2, 3.5 | Move a task to another project |
+| 4.5 | **Show completed and word wrap.** `Ctrl+O`/`gc` per pane, `Alt+z`/`gw`. | FR-DONE-02, FR-UI-05 | 1.6 | Hide done tasks |
+| 4.6 | **Sidebar.** Bookmarks, the Today entry and the project tree; `Ctrl+B`, `Alt+0` and the sidebar keys; hidden below 80 columns. | FR-UI-01, navigation §6 | 3.4 | Jump to a bookmark |
+| 4.7 | **Today view.** A pane location listing today's blocks with their breadcrumbs, editable in place. | FR-TAG-04 (view), D-7, navigation §7 | 4.6, 3.2 | Open Today |
+| 4.8 | **Shortcuts panel.** `?` in the sidebar's place, per mode, from the registry. | FR-KEY-04, ui §4 | 4.1, 4.6 | Press `?` |
+| 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
+
+## M5 · Panes
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 5.1 | **Split panes. hub** Open in a new pane (`Ctrl+\`, `Ctrl+W v`, `Ctrl+W s`, `Alt+Enter` in pickers and the sidebar), focus by number and by neighbor, close, narrow and widen, horizontal scrolling; per-pane state, shared folds, edits visible in every pane. | FR-UI-02, FR-UI-03, navigation §5 | 4.6 | Two projects side by side |
+| 5.2 | **Layout restored.** `views.json` with text paths: panes, zooms, histories, widths, show-completed and sidebar visibility, but not folds. | FR-UI-04, file-io §5 | 5.1 | Quit and reopen; the panes come back |
+
+## M6 · Settings and appearance
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 6.1 | **Config file.** `config.toml` from the XDG path, defaults when missing, unknown keys and bad values reported once, `[keymap.*]` overrides. | FR-SET-01, FR-SET-04 (read), keybindings §5 | 4.1 | Rebind a key in the file |
+| 6.2 | **Themes.** The theme struct, the two ANSI themes and the twelve truecolor ones, `COLORTERM` detection, `NO_COLOR`; the theme picker with live preview, saved with `toml_edit`. | FR-UI-06, FR-UI-08, N-UX-03, ui §3 | 4.3, 6.1 | Switch to Nord |
+| 6.3 | **Icons.** The Nerd Font icon table with one fallback each, the `icons` setting, ASCII on non-UTF-8 locales. | FR-UI-09, FR-UI-10, ui §7 | 6.1 | Turn icons off |
+| 6.4 | **Settings window.** `g,` and the palette; groups, live preview, reset, immediate writes that keep comments. | FR-SET-02, FR-SET-03, FR-SET-04, ui §8 | 6.2, 6.3 | Change the autosave delay |
+| 6.5 | **Mouse.** Clicks, fold markers, crumbs, the sidebar, pane headers, Alt+click, right-click menus, the wheel. | FR-KEY-05, ui §6 | 4.9, 5.1 | Click around |
+
+## M7 · Comments
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 7.1 | **Special-node placement.** Operations that insert at the end keep special nodes last; copy, move and delete carry them. Until this step, hand-written special nodes are preserved but may stop being the last child. | FR-SPC-01, special-nodes §1 | 3.6 | (tests with hand-made files) |
+| 7.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the `C` panel with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 7.1, 4.9, 6.5 | Comment on a task |
+
+## M8 · Polish and release readiness
+
+| # | Step | Covers | After | Try it |
+|---|---|---|---|---|
+| 8.1 | **Core animations.** The tachyonfx effect manager, synchronized output, the landing flash, change highlight, refusal flash and spinner; the `animations` setting with the SSH default. | FR-UI-11, UI-ANIM-01–03 and 08, ui §9 | 6.4 | Press `G` and see where focus landed |
+| 8.2 | **Remaining animations** (Should). | UI-ANIM-04–07 and 09 | 8.1 | Complete a task |
+| 8.3 | **Performance.** A 100k-line fixture; open under 300 ms, keystrokes under 16 ms, idle CPU near zero; fix what fails. | N-PERF-01–03 | 5.2 | (benchmarks) |
+| 8.4 | **Terminal support.** Kitty keyboard protocol with fallbacks, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
+| 8.5 | **Keymap validation** (owner, by hand). Every binding in the terminals of N-PORT-01, with and without the kitty protocol and inside tmux; swallowed keys get new bindings. | keybindings §6 | 8.4 | — |
+
+Cross-cutting Musts (FR-KEY-01, FR-KEY-02, FR-UI-07, FR-DOC-04) are checked in every step's review rather than owned by one step.
+
+**v1 is complete** when M1–M8 are on `main` and `validate.sh trace` lists no untested Must requirement.
+
+## Later
+
+Search with live filtering and its query language, bookmarked searches, then internal links ([search.md](specs/search.md), [links.md](specs/links.md)). They are planned once v1 is accepted.
+
+## What can run in parallel
+
+- **Start:** 1.1 alone. Once it is on `main`, three agents can work at once: 1.2 → 1.6 in order, 2.1 and 3.1.
+- **M2–M4:** one hub step at a time, each with one or two non-hub steps, for example 2.5 with 2.11 and 2.12, or 3.5 with 3.7, 3.9 and 6.1.
+- **M5–M8:** M6 and M7 are independent of each other once M4 is done, and 8.3 can start as soon as M5 is.
