@@ -31,7 +31,7 @@ taskpaper-terminal is a keyboard-driven, Workflowy-style infinite outliner for t
 
 ## FR-BLK · Blocks
 
-Each block type, how it is stored and how it looks. Types are mutually exclusive per block. A divider, section or URL line is always its own block and ends a note run; a line carrying `@code` starts a new run.
+Each block type, how it is stored and how it looks. Types are mutually exclusive per block. A divider, section or URL line is always its own block and ends a note run; a line carrying `@code` starts a new run. Inside a code block, a `---`, `@section` or `@url` line stays code instead of ending the block (D-18).
 
 | ID | Type | Stored as | Shown as | Priority |
 |---|---|---|---|---|
@@ -111,7 +111,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 
 | ID | Requirement | Priority | Workflowy |
 |---|---|---|---|
-| FR-DONE-01 | A command completes or uncompletes the selection by adding `@done(YYYY-MM-DD)` with today's date, or removing `@done` with any value (D-4). | Must | Complete |
+| FR-DONE-01 | A command completes or uncompletes the selection by adding `@done(YYYY-MM-DD)` with today's date, or removing `@done` with any value (D-4). Any `@done`, with or without a value, marks a block completed (D-17). | Must | Complete |
 | FR-DONE-02 | A top-level command and key binding show or hide completed blocks, per pane (D-13). | Must | Show completed |
 
 ## FR-SRCH · Search
@@ -168,3 +168,5 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-14 | Zoom and breadcrumbs are the primary features. Undo/redo, duplicate, copy/paste with hierarchy and count are Must. Search comes later. Internal links are recorded for later. Sort and mirrors are dropped, as are the other unrequested Workflowy features. |
 | D-15 | Running without a path creates a file in `/tmp` that can later be saved elsewhere. |
 | D-16 | Mouse support is Must but secondary to the keyboard. |
+| D-17 | An existing `@done` without a date counts as completed; only newly completed blocks get the date. |
+| D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. |
