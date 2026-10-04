@@ -46,7 +46,7 @@ Ending edit mode applies the canonical-outline repairs for the block ([file-form
 | `new_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
-The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (a note run or a code run before or after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
+The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (the note or code run before it, or the note run after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
 
