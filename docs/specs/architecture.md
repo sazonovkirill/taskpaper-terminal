@@ -34,7 +34,7 @@ Document (core)        document::{model, blocks, format, dates, query}
 Following the core rules in code-quality.md:
 - **Messages are intents** (`FocusNext`, `Indent`, `ZoomIn`, `SetDue(date)`, `InsertText(str)`), never key codes. Viewport-dependent intents carry the size (`PageDown { rows }`).
 - **The core exposes what to show**: each pane's visible blocks (id, depth, type, display text with formatting spans, chips, fold state, selection, focus), the edit-mode text and caret, breadcrumbs, sidebar entries, picker results, mode and messages. Wrapping, display width, scroll offsets and pane widths are UI state.
-- **Effects are data**: `Save { path, text }`, `Backup { path }`, `WriteRecovery`, `CopyToClipboard(text)`, `OpenUrl(url)`, `PersistViewState(json)`, `Quit`. Results come back as messages (`Saved { hash }`, `SaveFailed(err)`, `FileChangedOnDisk(text)`).
+- **Effects are data**: `Save { path, text }`, `Backup { path }`, `WriteRecovery { text }`, `CopyToClipboard(text)`, `OpenUrl(url)`, `PersistViewState(state)`, `Quit`. The UI adds its own presentation state (pane widths, sidebar visibility) to `PersistViewState` before writing the file, and passes it back on launch. Results come back as messages (`Saved { hash }`, `SaveFailed(err)`, `FileChangedOnDisk(text)`).
 
 ## 2. Event loop
 

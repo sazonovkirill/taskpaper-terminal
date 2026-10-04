@@ -78,7 +78,7 @@ enum Op {
 }
 ```
 
-- A user command produces a `Transaction` (a `Vec<Op>` plus an opaque, view-defined restore token for the focus/selection before and after, so `model` does not depend on `view`). Undo applies the inverse ops in reverse order; redo re-applies (FR-OPS-08).
+- A user command produces a `Transaction` (a `Vec<Op>` plus an opaque, view-defined restore token for the focus/selection before and after, so `document::model` does not depend on `app::workspace`). Undo applies the inverse ops in reverse order; redo re-applies (FR-OPS-08).
 - Block-level operations (move, indent, delete, convert) expand to line ops over all lines of the block plus its subtree.
 - One edit-mode session on a block is one undo step ([editing.md §2](editing.md#2-edit-mode)). Text changes are applied to the document as the user types, so autosave and every other pane see them immediately (FR-UI-02).
 - Metadata helpers (`set_tag`, `remove_tag`, `set_type`, `toggle_done`) build `SetText` ops using the tag rules in [file-format.md §5](file-format.md#5-tags) and TaskPaper's type-change rules:
