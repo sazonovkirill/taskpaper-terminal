@@ -64,10 +64,12 @@ impl Widget for OutlineView<'_> {
 }
 
 /// The screen lines of one block, `width` columns wide. Every block reserves a marker column so
-/// text lines up with the text of sibling tasks.
+/// text lines up with the text of sibling tasks. A collapsed block shows `▸ n` after its text,
+/// except a project, whose marker shows it (ui.md §2).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
+        BlockKind::Project if row.hidden_children > 0 => ("▸", Style::new().bold()),
         BlockKind::Project => ("▾", Style::new().bold()),
         BlockKind::Task if row.done => ("☑", Style::new().dim().crossed_out()),
         BlockKind::Task => ("☐", Style::new()),
@@ -76,6 +78,14 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         BlockKind::Code => (" ", code_style()),
         BlockKind::Note | BlockKind::Divider => (" ", Style::new()),
     };
+    let count_style = if row.kind == BlockKind::Code {
+        code_style()
+    } else {
+        Style::new()
+    };
+    let count = (row.hidden_children > 0 && row.kind != BlockKind::Project)
+        .then(|| Span::styled(format!(" ▸ {}", row.hidden_children), count_style.dim()));
+    let last = row.lines.len().saturating_sub(1);
     row.lines
         .iter()
         .enumerate()
@@ -86,19 +96,28 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
                 format!("{indent}  ")
             };
             let mut line = Line::from(vec![Span::raw(prefix)]);
+            if row.kind != BlockKind::Divider {
+                line.push_span(Span::styled(text.as_str(), style));
+            }
+            if index == last
+                && let Some(count) = count.clone()
+            {
+                line.push_span(count);
+                if row.kind == BlockKind::Divider {
+                    line.push_span(" ");
+                }
+            }
             match row.kind {
                 BlockKind::Divider => line.push_span(rule(&line, width)),
                 BlockKind::Section => {
-                    line.push_span(Span::styled(text.as_str(), style));
                     line.push_span(" ");
                     line.push_span(rule(&line, width));
                 }
                 BlockKind::Code => {
-                    line.push_span(Span::styled(text.as_str(), style));
                     let fill = width.saturating_sub(line.width());
                     line.push_span(Span::styled(" ".repeat(fill), style));
                 }
-                _ => line.push_span(Span::styled(text.as_str(), style)),
+                _ => {}
             }
             line
         })
@@ -118,7 +137,10 @@ fn code_style() -> Style {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{app::State, document::format};
+    use crate::{
+        app::{Message, State},
+        document::format,
+    };
 
     #[track_caller]
     fn render(text: &str, width: u16, height: u16) -> Buffer {
@@ -164,6 +186,35 @@ mod tests {
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
         );
+    }
+
+    // FR-NAV-02
+    #[test]
+    fn collapsed_blocks_show_a_dim_count_after_their_text_and_projects_their_marker() {
+        let text = "P:\n\t- t\nn\nm\n\t- x\nS @section\n\t- y\n---\n\t- z\nf() @code\n\t- w\n- v";
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::CollapseAll);
+        let rows = state.rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 8));
+        OutlineView::new(&rows).render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines([
+            "▸ P           ",
+            "  n           ",
+            "  m ▸ 1       ",
+            "  S ▸ 1 ──────",
+            "   ▸ 1 ───────",
+            "  f() ▸ 1     ",
+            "☐ v           ",
+            "              ",
+        ]);
+        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
+        expected.set_style(Rect::new(3, 2, 4, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().bold());
+        expected.set_style(Rect::new(3, 3, 4, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 4, 4, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 5, 12, 1), code_style());
+        expected.set_style(Rect::new(5, 5, 4, 1), code_style().dim());
+        assert_eq!(buf, expected);
     }
 
     #[test]

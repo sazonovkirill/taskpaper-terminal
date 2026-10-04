@@ -93,9 +93,28 @@ pub fn children(document: &Document, parent: ItemId) -> Vec<Block> {
                 rest = after;
             }
         }
-        blocks.push(block((*first_id, first), &run, code));
+        blocks.push(run_block((*first_id, first), &run, code));
     }
     blocks
+}
+
+/// The block whose first line is `id`, or `None` when no block starts there.
+#[must_use]
+pub fn block(document: &Document, id: ItemId) -> Option<Block> {
+    let parent = document.get(id)?.parent()?;
+    children(document, parent)
+        .into_iter()
+        .find(|block| block.id == id)
+}
+
+/// The block whose children include the block `id`, or `None` at the top level.
+#[must_use]
+pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
+    let line = document.get(id)?.parent()?;
+    let above = document.get(line)?.parent()?;
+    children(document, above)
+        .into_iter()
+        .find(|block| block.last_line == line)
 }
 
 /// Whether `item` continues a run: any note line inside code, else a plain note line;
@@ -110,7 +129,7 @@ fn joins_run(item: &Item, code: bool) -> bool {
 }
 
 /// The block made of `run`, whose first line is `first`; its type is checked in data-model §3's order.
-fn block((id, first): (ItemId, &Item), run: &[(ItemId, &Item)], code: bool) -> Block {
+fn run_block((id, first): (ItemId, &Item), run: &[(ItemId, &Item)], code: bool) -> Block {
     let kind = if code {
         BlockKind::Code
     } else if is_divider(first) {
@@ -334,6 +353,25 @@ mod tests {
         let other = parse("a");
         let stale = children(&other, other.root())[0].id();
         assert_eq!(children(&document, stale), Vec::new());
+    }
+
+    #[test]
+    fn finds_a_block_and_its_parent_by_id() {
+        let document = parse("P:\n\ta\n\tb\n\t\t- t\n- u");
+        let top = children(&document, document.root());
+        let notes = &children(&document, top[0].last_line())[0];
+        let task = &children(&document, notes.last_line())[0];
+        assert_eq!(block(&document, notes.id()).as_ref(), Some(notes));
+        assert_eq!(
+            block(&document, notes.last_line()),
+            None,
+            "not a first line"
+        );
+        assert_eq!(parent(&document, task.id()).as_ref(), Some(notes));
+        assert_eq!(parent(&document, notes.id()).as_ref(), Some(&top[0]));
+        assert_eq!(parent(&document, top[1].id()), None);
+        assert_eq!(block(&document, document.root()), None);
+        assert_eq!(parent(&document, document.root()), None);
     }
 
     #[test]

@@ -6,16 +6,7 @@ use ratatui::{
     style::{Color, Modifier},
 };
 
-use crate::support::Harness;
-
-/// The text of row `y`, without trailing blanks.
-fn line(buffer: &Buffer, y: u16) -> String {
-    (buffer.area.left()..buffer.area.right())
-        .map(|x| buffer[(x, y)].symbol())
-        .collect::<String>()
-        .trim_end()
-        .to_owned()
-}
+use crate::support::{Harness, line};
 
 fn screen(app: &mut Harness) -> Buffer {
     app.render().buffer().clone()

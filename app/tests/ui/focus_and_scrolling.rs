@@ -4,13 +4,9 @@
 use std::{fmt::Write as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Modifier, Style},
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 
-use crate::support::Harness;
+use crate::support::{Harness, focused_rows, line, outline_rows};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -22,42 +18,9 @@ fn tasks(n: usize) -> String {
     })
 }
 
-/// The text of row `y`, without trailing blanks.
-fn line(buffer: &Buffer, y: u16) -> String {
-    let area = buffer.area;
-    (area.left()..area.right())
-        .map(|x| buffer[(x, y)].symbol())
-        .collect::<String>()
-        .trim_end()
-        .to_owned()
-}
-
-/// The text of every highlighted row on screen.
-fn focused_rows(app: &mut Harness) -> Vec<String> {
-    let buffer = app.render().buffer().clone();
-    let area = buffer.area;
-    (area.top()..area.bottom())
-        .filter(|&y| {
-            buffer[(area.left(), y)]
-                .modifier
-                .contains(Modifier::REVERSED)
-        })
-        .map(|y| line(&buffer, y))
-        .collect()
-}
-
 #[track_caller]
 fn assert_focus(app: &mut Harness, expected: &str) {
     assert_eq!(focused_rows(app), [expected]);
-}
-
-/// The text of the screen's rows above the status line.
-fn outline_rows(app: &mut Harness) -> Vec<String> {
-    let buffer = app.render().buffer().clone();
-    let area = buffer.area;
-    (area.top()..area.bottom() - 1)
-        .map(|y| line(&buffer, y))
-        .collect()
 }
 
 /// The status line as drawn, without trailing blanks.

@@ -6,7 +6,7 @@ use std::{
 };
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{Terminal, backend::TestBackend};
+use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, style::Modifier};
 use taskpaper_terminal::{
     app::State,
     ui::{Tui, effects::read_document},
@@ -96,4 +96,37 @@ impl Harness {
             .expect("drawing to a test backend");
         self.terminal.backend()
     }
+}
+
+/// The text of row `y`, without trailing blanks.
+pub fn line(buffer: &Buffer, y: u16) -> String {
+    let area = buffer.area;
+    (area.left()..area.right())
+        .map(|x| buffer[(x, y)].symbol())
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+/// The text of every highlighted row on screen.
+pub fn focused_rows(app: &mut Harness) -> Vec<String> {
+    let buffer = app.render().buffer().clone();
+    let area = buffer.area;
+    (area.top()..area.bottom())
+        .filter(|&y| {
+            buffer[(area.left(), y)]
+                .modifier
+                .contains(Modifier::REVERSED)
+        })
+        .map(|y| line(&buffer, y))
+        .collect()
+}
+
+/// The text of the screen's rows above the status line.
+pub fn outline_rows(app: &mut Harness) -> Vec<String> {
+    let buffer = app.render().buffer().clone();
+    let area = buffer.area;
+    (area.top()..area.bottom() - 1)
+        .map(|y| line(&buffer, y))
+        .collect()
 }

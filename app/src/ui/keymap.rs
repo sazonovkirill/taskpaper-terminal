@@ -19,10 +19,13 @@ type Key = (KeyModifiers, KeyCode);
 type Binding = (&'static [Key], fn(usize) -> Message);
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
-/// named key.
+/// named key and `key!(ctrl Down)` for a named key with `Ctrl`.
 macro_rules! key {
     (ctrl $c:literal) => {
         (KeyModifiers::CONTROL, KeyCode::Char($c))
+    };
+    (ctrl $code:ident) => {
+        (KeyModifiers::CONTROL, KeyCode::$code)
     };
     ($c:literal) => {
         (KeyModifiers::NONE, KeyCode::Char($c))
@@ -49,6 +52,20 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(PageDown)], |rows| Message::PageDown { rows }),
     (&[key!(ctrl 'u')], |rows| Message::PageUp { rows }),
     (&[key!(PageUp)], |rows| Message::PageUp { rows }),
+    (&[key!('h')], |_| Message::Collapse),
+    (&[key!(Left)], |_| Message::Collapse),
+    (&[key!('l')], |_| Message::Expand),
+    (&[key!(Right)], |_| Message::Expand),
+    (&[key!(ctrl Down)], |_| Message::FocusNextSibling),
+    (&[key!(ctrl Up)], |_| Message::FocusPreviousSibling),
+    (&[key!('g'), key!('p')], |_| Message::FocusParent),
+    (&[key!('\'')], |_| Message::ToggleFold),
+    (&[key!(' ')], |_| Message::ToggleFold),
+    (&[key!('"')], |_| Message::ToggleSubtree),
+    (&[key!('=')], |_| Message::ExpandLevel),
+    (&[key!('-')], |_| Message::CollapseLevel),
+    (&[key!('+')], |_| Message::ExpandAll),
+    (&[key!('_')], |_| Message::CollapseAll),
 ];
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,

@@ -1,18 +1,24 @@
 //! Application state and what it exposes for a frontend to show.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
-use crate::document::{BlockKind, Document, Item, ItemId, blocks, format};
+use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks, format};
 
 /// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
 const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 
-/// Everything the app knows: the open document, where it came from and the focused row.
+/// Everything the app knows: the open document, where it came from, the focused row and the
+/// collapsed blocks.
 #[derive(Debug, Clone)]
 pub struct State {
     document: Document,
     path: Option<PathBuf>,
     pub(super) focus: Option<ItemId>,
+    /// The ids of collapsed blocks, kept in memory only (D-26).
+    pub(super) folds: HashSet<ItemId>,
 }
 
 /// One visible block of the outline.
@@ -28,6 +34,8 @@ pub struct Row {
     pub lines: Vec<String>,
     /// Whether the block carries `@done`, with or without a value (D-17).
     pub done: bool,
+    /// How many child blocks its fold hides; 0 when it is expanded or has none.
+    pub hidden_children: usize,
 }
 
 impl State {
@@ -38,6 +46,7 @@ impl State {
             document,
             path,
             focus: None,
+            folds: HashSet::new(),
         };
         state.focus = state.rows().first().map(|row| row.id);
         state
@@ -68,18 +77,13 @@ impl State {
         self.focus
     }
 
-    /// Every block of the document in order, one row each; special nodes are never shown
-    /// (FR-SPC-01).
+    /// Every visible block of the document in order, one row each: collapsed blocks hide their
+    /// children and special nodes are never shown (FR-NAV-02, FR-SPC-01).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        let mut rows = Vec::new();
-        self.push_rows(self.document.root(), 0, &mut rows);
-        rows
-    }
-
-    fn push_rows(&self, parent: ItemId, depth: usize, rows: &mut Vec<Row>) {
-        for block in blocks::children(&self.document, parent) {
-            rows.push(Row {
+        self.blocks(true)
+            .into_iter()
+            .map(|(block, depth)| Row {
                 id: block.id(),
                 depth,
                 kind: block.kind(),
@@ -90,9 +94,37 @@ impl State {
                     .map(Item::display_text)
                     .collect(),
                 done: block.done(),
-            });
-            self.push_rows(block.last_line(), depth + 1, rows);
+                hidden_children: if self.folds.contains(&block.id()) {
+                    self.children(&block).len()
+                } else {
+                    0
+                },
+            })
+            .collect()
+    }
+
+    /// Every block of the document in order with its depth; with `folded`, only those not hidden
+    /// by a collapsed ancestor.
+    pub(super) fn blocks(&self, folded: bool) -> Vec<(Block, usize)> {
+        let mut out = Vec::new();
+        self.push_blocks(self.document.root(), 0, folded, &mut out);
+        out
+    }
+
+    fn push_blocks(&self, line: ItemId, depth: usize, folded: bool, out: &mut Vec<(Block, usize)>) {
+        for block in blocks::children(&self.document, line) {
+            let last_line = block.last_line();
+            let open = !(folded && self.folds.contains(&block.id()));
+            out.push((block, depth));
+            if open {
+                self.push_blocks(last_line, depth + 1, folded, out);
+            }
         }
+    }
+
+    /// The child blocks of `block`.
+    pub(super) fn children(&self, block: &Block) -> Vec<Block> {
+        blocks::children(&self.document, block.last_line())
     }
 }
 
