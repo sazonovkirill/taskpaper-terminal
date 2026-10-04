@@ -29,7 +29,7 @@ All logic lives in the library (`app/src/lib.rs` and its modules); `main.rs` onl
 - Dependencies point inward: UI depends on App, App on Document, never the reverse. Document and App never import `ratatui` or `crossterm`; a key event becomes an app-level message at the UI boundary.
 - The update function is pure: it takes the state and a message and returns the new state and effects. File I/O and the clock happen at the edge and are passed in, so every layer except terminal setup runs in tests without a terminal.
 - The view renders state and never changes it. Widgets hold no application state of their own beyond what Ratatui's `StatefulWidget` state needs.
-- Each layer is a module tree (`document/`, `app/`, `ui/`). Only what another layer or the integration tests need is `pub`; everything else is private or `pub(crate)`. Splitting into a Cargo workspace requires an owner decision.
+- Each layer is a module tree (`document/`, `app/`, `ui/`). Only what another layer or the integration tests need is `pub`; everything else is private or `pub(crate)`. The owner chose one crate: the separation between core and UI exists at the module level, and reviewers enforce it. Splitting into a Cargo workspace requires a new owner decision.
 - Round-tripping is a design constraint, not a feature: the document model keeps whatever it needs, such as unknown syntax, original whitespace and tag order, so that saving an unchanged file reproduces it byte for byte ([AGENTS.md](../../AGENTS.md#2-correct-not-just-green)).
 
 ### UI-independent core
