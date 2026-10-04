@@ -1,6 +1,6 @@
 # Agent Operating Rules
 
-The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication.
+The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test.
 
 ## Reasoning effort
 
@@ -63,7 +63,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 - [ ] Follows the patterns of surrounding code; no duplicated helpers
 - [ ] Builds on the existing design without speculative abstractions
 - [ ] Handles edge cases at the correct layer without defensive clutter
-- [ ] Behavior changes include tests that cover behavior rather than implementation details
+- [ ] Behavior changes include unit and integration tests as the [testing strategy](docs/quality/testing-strategy.md) requires, covering behavior rather than implementation details
 - [ ] `bash app/scripts/validate.sh all` passes on the committed contents; no tests weakened
 - [ ] Addresses the root cause rather than masking it
 - [ ] Contains nothing beyond the requested task
