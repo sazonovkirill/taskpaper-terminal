@@ -41,6 +41,7 @@ Passing tests is necessary, not sufficient. The goal is code a senior reviewer w
 For any change touching more than one module, adding a public interface or introducing a new abstraction:
 
 - First write a short plan covering which components change, where the new code lives and why, the proposed interfaces and rejected alternatives. Record the plan on the task and proceed autonomously when it stays within the task and accepted design. Ask the owner when a material product decision or change to accepted constraints cannot be resolved from existing instructions; pause only the dependent work.
+- Keep every core function (the data model and business logic) independent of the UI, so the same core could later run behind a web or desktop frontend ([code quality](docs/quality/code-quality.md#ui-independent-core)).
 - Respect existing module boundaries and dependency direction. If the task seems to require breaking them, flag it instead of doing so silently.
 - Prefer extending an existing abstraction to creating a parallel one.
 - Do not add abstractions for hypothetical futures: no trait with one implementation, configuration for things that do not vary, or generic framework for one use case. Duplicate twice before abstracting, following the rule of three.

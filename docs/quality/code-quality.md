@@ -14,6 +14,7 @@ These are the owner's requirements. Everything else in this document serves them
 5. **No unsafe code.** `unsafe_code` is forbidden crate-wide.
 6. **Brief doc comments on every public item,** enforced by `missing_docs`.
 7. **Reproducible tooling.** The Rust toolchain is pinned in `rust-toolchain.toml`, and `cargo-deny` checks licenses, advisories and duplicate dependencies as part of validation.
+8. **UI-independent core.** All core functions of the app, the data model and the business logic, are independent of the UI. The terminal UI is one frontend; it must be feasible to run the same core behind a different UI later, such as a web or desktop app, without changing the core.
 
 ## Architecture
 
@@ -30,6 +31,17 @@ All logic lives in the library (`app/src/lib.rs` and its modules); `main.rs` onl
 - The view renders state and never changes it. Widgets hold no application state of their own beyond what Ratatui's `StatefulWidget` state needs.
 - Each layer is a module tree (`document/`, `app/`, `ui/`). Only what another layer or the integration tests need is `pub`; everything else is private or `pub(crate)`. Splitting into a Cargo workspace requires an owner decision.
 - Round-tripping is a design constraint, not a feature: the document model keeps whatever it needs, such as unknown syntax, original whitespace and tag order, so that saving an unchanged file reproduces it byte for byte ([AGENTS.md](../../AGENTS.md#2-correct-not-just-green)).
+
+### UI-independent core
+
+Document and App together are the core. Every behavior of the app, including editing, navigation, folding, zooming, undo, search, filtering, loading and saving, lives in the core and works the same behind any frontend. The terminal UI only translates input into messages and renders what the core exposes.
+
+- **Messages are user intents, not input events.** The core accepts messages such as "move to next item", "indent", "zoom into this item" or "set the filter to `@due`", never key codes or mouse events. Key bindings and keymaps belong to the frontend, so a web or desktop UI can bind the same intents differently.
+- **The core exposes what to show, not how.** It provides read-only queries for everything a frontend renders: the visible items with their depth, kind, text, tags and fold state, the selection and cursor, the current mode, the zoom path and status or error messages. It knows nothing of cells, colors, styles, borders or Ratatui types.
+- **Layout and presentation belong to the frontend.** Text wrapping, Unicode display width, scrolling to keep the cursor visible, themes and widgets live in the UI. When a behavior depends on the viewport, such as page up and page down, the frontend passes the size it has as part of the message.
+- **Effects are data.** The core returns effects such as "save this text to this path" and never performs I/O, reads the clock or blocks. The frontend executes them and reports results back as messages, so the core can run in a single-threaded, async or WebAssembly host.
+- **No terminal assumptions.** The core has no global or static mutable state, no direct access to the environment, the terminal or the process, and no dependency that only works in a terminal.
+- **Test the core without the UI.** Unit tests cover every core behavior by sending messages to the core and checking its queries and effects, so the same contract holds for any future frontend. UI tests check the key bindings and what is drawn on top of it.
 
 ## Types and state
 
