@@ -16,7 +16,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
         "  ☑ Return books                        ",
         "  ▾ Paid                                ",
         "    mail me@example.com about Proj:@x   ",
-        "                                        ",
+        &app.status(40),
     ]);
     let done = Style::new().dim().crossed_out();
     expected.set_style(Rect::new(2, 0, 7, 1), Style::new().bold());
@@ -24,6 +24,8 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     expected.set_style(Rect::new(4, 3, 10, 1), done);
     expected.set_style(Rect::new(4, 4, 12, 1), done);
     expected.set_style(Rect::new(4, 5, 4, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 0, 40, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 7, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 

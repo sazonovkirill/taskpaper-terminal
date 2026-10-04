@@ -11,7 +11,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
 - `Ctrl+'` (go home) and `Ctrl+Shift+Z` are only reported under the kitty keyboard protocol; legacy terminals send a plain `'` or nothing. Their routes without it are `gh` and `Ctrl+Y`.
-- Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line.
+- Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else.
 
 ## 2. Navigate mode
 

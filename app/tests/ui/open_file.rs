@@ -17,10 +17,12 @@ fn shows_the_file_as_an_indented_outline() {
         "  ▾ Dairy                         ",
         "    ☐ Cheese                      ",
         "  Notes about the week.           ",
-        "                                  ",
+        &app.status(34),
     ]);
     expected.set_style(Rect::new(2, 0, 9, 1), Style::new().bold());
     expected.set_style(Rect::new(4, 4, 5, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 0, 34, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 7, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
@@ -32,9 +34,11 @@ fn shows_the_demo_outline_without_a_path() {
         "▾ Trip to Lisbon                        ",
         "  ☐ Book flights                        ",
         "  ☐ Reserve a hotel near Alfama         ",
-        "      Prefer a room with a view of the r",
+        "NAVIGATE · demo, in memory only         ",
     ]);
     expected.set_style(Rect::new(2, 0, 14, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 0, 40, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 3, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 

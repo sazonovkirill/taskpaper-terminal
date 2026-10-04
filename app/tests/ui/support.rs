@@ -1,6 +1,9 @@
 //! Starting the app on fixtures and driving it with keys.
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
@@ -10,10 +13,13 @@ use taskpaper_terminal::{
 };
 use tempfile::TempDir;
 
-/// A running app with its terminal and the temporary folder holding its file.
+/// A running app with its terminal, the temporary folder holding its file and a clock that only
+/// moves when the test says so.
 pub struct Harness {
     pub tui: Tui,
     pub terminal: Terminal<TestBackend>,
+    pub path: Option<PathBuf>,
+    now: Duration,
     _dir: Option<TempDir>,
 }
 
@@ -33,6 +39,15 @@ impl Harness {
         Self::start(State::new(document, Some(path)), Some(dir), width, height)
     }
 
+    /// Starts on `text` as a file in a temporary folder.
+    pub fn with_text(text: &str, width: u16, height: u16) -> Self {
+        let dir = tempfile::tempdir().expect("a temporary folder");
+        let path = dir.path().join("outline.taskpaper");
+        std::fs::write(&path, text).expect("the temporary folder is writable");
+        let document = read_document(&path).expect("the file opens");
+        Self::start(State::new(document, Some(path)), Some(dir), width, height)
+    }
+
     /// Starts without a path, on the demo outline.
     pub fn demo(width: u16, height: u16) -> Self {
         Self::start(State::demo(), None, width, height)
@@ -40,8 +55,10 @@ impl Harness {
 
     fn start(state: State, dir: Option<TempDir>, width: u16, height: u16) -> Self {
         Self {
+            path: state.path().map(Path::to_owned),
             tui: Tui::new(state),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
+            now: Duration::ZERO,
             _dir: dir,
         }
     }
@@ -49,7 +66,27 @@ impl Harness {
     /// Presses `code` with `modifiers`.
     pub fn press(&mut self, code: KeyCode, modifiers: KeyModifiers) {
         self.tui
-            .handle_event(&Event::Key(KeyEvent::new(code, modifiers)));
+            .handle_event(&Event::Key(KeyEvent::new(code, modifiers)), self.now);
+    }
+
+    /// Presses each character of `keys` without modifiers.
+    pub fn type_keys(&mut self, keys: &str) {
+        for c in keys.chars() {
+            self.press(KeyCode::Char(c), KeyModifiers::NONE);
+        }
+    }
+
+    /// Lets `duration` pass without input.
+    pub fn wait(&mut self, duration: Duration) {
+        self.now += duration;
+        self.tui.tick(self.now);
+    }
+
+    /// The status line for the opened file: the mode and the file's path.
+    pub fn status(&self, width: u16) -> String {
+        let path = self.path.as_ref().expect("a file was opened");
+        let status = format!("NAVIGATE · {}", path.display());
+        format!("{status:width$.width$}", width = usize::from(width))
     }
 
     /// Draws a frame and returns the backend to check.

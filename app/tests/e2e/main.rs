@@ -1,7 +1,10 @@
 //! End-to-end smoke tests of the real binary. Failures to open happen before the terminal is set
 //! up, so those tests run it without a pseudo-terminal; the others run it in one with termlens.
 
-use std::process::{Command, Output};
+use std::{
+    fmt::Write as _,
+    process::{Command, Output},
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -97,5 +100,40 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
         std::fs::read_to_string(&path)?,
         "Errands:\n\t- Post office\n"
     );
+    Ok(())
+}
+
+#[test]
+fn a_pending_key_prefix_times_out_without_further_input() -> termlens::Result<()> {
+    let mut terminal = termlens::bin!("tpt")?;
+    let status = |screen: &termlens::Screen| screen.row_text(screen.rows() - 1);
+    terminal.wait_until(|screen| status(screen).contains("NAVIGATE"))?;
+    terminal.send(termlens::Key::Char('g'))?;
+    terminal.wait_until(|screen| status(screen).trim_end().ends_with(" g"))?;
+    terminal.wait_until(|screen| status(screen).trim_end().ends_with("only"))?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    Ok(())
+}
+
+#[test]
+fn a_completed_key_sequence_acts_at_once() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("long.taskpaper");
+    let text = (1..=100).fold(String::new(), |mut text, i| {
+        writeln!(text, "- Task {i:03}").expect("writing to a String cannot fail");
+        text
+    });
+    std::fs::write(&path, text)?;
+    let mut terminal = termlens::bin!("tpt", arg(&path))?;
+    terminal.wait_until(|screen| screen.contains("Task 001"))?;
+    terminal.send(termlens::Key::Char('G'))?;
+    terminal.wait_until(|screen| screen.contains("Task 100") && !screen.contains("Task 001"))?;
+    terminal.send(termlens::Key::Char('g'))?;
+    terminal.send(termlens::Key::Char('g'))?;
+    // Were the second `g` only read after the sequence timed out, it would start a new one.
+    terminal.wait_until(|screen| screen.contains("Task 001"))?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
     Ok(())
 }

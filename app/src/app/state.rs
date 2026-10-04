@@ -7,11 +7,12 @@ use crate::document::{Document, ItemId, ItemKind, format};
 /// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
 const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 
-/// Everything the app knows: the open document and where it came from.
+/// Everything the app knows: the open document, where it came from and the focused row.
 #[derive(Debug, Clone)]
 pub struct State {
     document: Document,
     path: Option<PathBuf>,
+    pub(super) focus: Option<ItemId>,
 }
 
 /// One visible row of the outline.
@@ -33,7 +34,13 @@ impl State {
     /// State for a document opened from `path`, or held only in memory when `path` is `None`.
     #[must_use]
     pub fn new(document: Document, path: Option<PathBuf>) -> Self {
-        Self { document, path }
+        let mut state = Self {
+            document,
+            path,
+            focus: None,
+        };
+        state.focus = state.rows().first().map(|row| row.id);
+        state
     }
 
     /// State showing the demo outline, held only in memory.
@@ -52,6 +59,13 @@ impl State {
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
+    }
+
+    /// The focused row's item: the first row when opened, `None` only when there are no rows
+    /// (FR-NAV-01).
+    #[must_use]
+    pub fn focus(&self) -> Option<ItemId> {
+        self.focus
     }
 
     /// Every line of the document in order, one row each.
@@ -140,6 +154,14 @@ mod tests {
     #[test]
     fn empty_document_has_no_rows() {
         assert_eq!(State::new(Document::default(), None).rows(), Vec::new());
+    }
+
+    #[test]
+    fn focuses_the_first_row_or_nothing_when_empty() {
+        let state = State::new(format::parse("A:\n\t- b"), None);
+        assert_eq!(state.focus(), state.rows().first().map(|row| row.id));
+        assert!(state.focus().is_some());
+        assert_eq!(State::new(Document::default(), None).focus(), None);
     }
 
     #[test]

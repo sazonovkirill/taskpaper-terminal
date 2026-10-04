@@ -1,6 +1,6 @@
 //! `tpt [path]`: opens a `.taskpaper` file, or the demo outline without a path, in the terminal.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Instant};
 
 use anyhow::{Context, bail};
 use crossterm::event;
@@ -23,10 +23,20 @@ fn main() -> anyhow::Result<()> {
     result
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the event loop is the edge that reads the clock and passes time to the frontend"
+)]
 fn run(terminal: &mut ratatui::DefaultTerminal, tui: &mut ui::Tui) -> anyhow::Result<()> {
+    let start = Instant::now();
     while !tui.should_quit() {
         terminal.draw(|frame| tui.draw(frame))?;
-        tui.handle_event(&event::read()?);
+        match tui.deadline() {
+            Some(deadline) if !event::poll(deadline.saturating_sub(start.elapsed()))? => {
+                tui.tick(start.elapsed());
+            }
+            _ => tui.handle_event(&event::read()?, start.elapsed()),
+        }
     }
     Ok(())
 }
