@@ -15,7 +15,7 @@ Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 The block's editor opens where the block is drawn, keeping its indentation, marker, surrounding blocks and scroll position. It grows downward as lines are added or wrap, pushing later rows down.
 
 **What is edited** is the block's visible text:
-- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a note ending in `:` becomes a project, text starting with `- ` becomes a task), the block takes that type and the marker updates live (OQ-27 default A);
+- without `- ` and the project `:` (the type is shown by the marker). Each line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a note line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), that line takes the new type. A single-line block's marker updates live; in a multi-line block such a line splits the block when editing ends (OQ-27 default A);
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message;
 - with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01).
 
@@ -46,11 +46,11 @@ Ending edit mode applies the canonical-outline repairs for the block ([file-form
 | `new_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
-The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2: a new note whose previous or next sibling line is a plain note line would merge into that note block, so in that position the new block is a task instead (OQ-26). It opens in edit mode with empty text.
+The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2: a new note would merge into an adjacent note block when its next sibling line is a plain note line, or its previous sibling line is a plain note line without children; in that position the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
 
-All act on the selection, or on the focused block when nothing is selected. Each block moves with its subtree.
+All act on the selection, or on the focused block when nothing is selected. Each block moves with its subtree. Operations work on lines and blocks are re-derived afterwards, so any result that puts two note runs next to each other as siblings merges them into one block, with the status message "Notes merged" (OQ-26 default A); this applies to every row below and to `convert_type`.
 
 | Command | Behavior |
 |---|---|
