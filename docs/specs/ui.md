@@ -44,6 +44,10 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 - **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
 - **Bare URLs** in text are underlined (D-10).
+- **Markdown in notes** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-notes)), navigate mode only; edit mode shows the raw text:
+  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold. Heading rows keep the note's indentation and get no rule, so they never look like a section.
+  - Links show their title (or URL) in the link style (underlined, accent color) and hide `[`, `](url)`, `<` and `>`.
+  - Fenced code is drawn like a code block: a background band in the code style, fence lines hidden, the language name, if any, as a dim label at the band's right edge.
 - **Focus and selection**: the focused block has a full-width highlight; selected blocks a dimmer one.
 - **Edit mode**: the focused block's text becomes an inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02).
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.

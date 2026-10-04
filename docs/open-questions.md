@@ -5,6 +5,18 @@
 
 Product choices not settled by [functional-requirements.md](functional-requirements.md). Each lists the options, the **proposed default** the specs currently assume, and what it affects. When the owner decides one, record the answer under **Decision**, update the affected specs, and keep the entry for history.
 
+## Open
+
+### OQ-28 · Does typing `# ` make a section? — open
+
+D-24 asks for shortcuts that turn typed prefixes into block types, and D-25 adds Markdown headings to notes. Workflowy's `# ` trigger makes a heading; this app has two header-like things, a Markdown heading inside a note and the section block (`@section`, FR-BLK-04), which groups its children under a Things 3 style rule.
+
+- **A. Markdown heading:** `# ` stays text, so the note renders as a heading (FR-FMT-03). Sections are made with the type converter (FR-BLK-08). No tag is added.
+- **B. Section shortcut:** `# ` at the start of a single-line note or task converts it to a section; Markdown headings remain available on later lines of multi-line notes.
+
+**Proposed default:** A. It is what Markdown means by `#`, keeps one meaning for `#` everywhere in a note, and leaves the file free of a tag the user did not ask for.
+**Affects:** [specs/editing.md](specs/editing.md#21-typed-shortcuts).
+
 ## Decided with the proposed defaults
 
 On 2026-10-04 the owner accepted the proposed default for every question below.
@@ -154,7 +166,7 @@ The type is hidden while editing, but TaskPaper derives it from the text: a note
 | OQ-10 | Trash | Won't (D-14). |
 | OQ-11 | Starred pages | Bookmarks via a hidden `@bookmark` tag (D-11). |
 | OQ-12 | Mirrors and internal links | Mirrors Won't; internal links Later (D-14). |
-| OQ-13 | Inline formatting | `**bold**` and `` `code` `` (FR-FMT-01). |
+| OQ-13 | Inline formatting | `**bold**` and `` `code` `` (FR-FMT-01); notes add headings, links and fenced code (FR-FMT-03, D-25). |
 | OQ-15 | Save model | Autosave (D-15, FR-DOC-02). |
 | OQ-19 | Mouse support | Must, secondary to the keyboard (D-16). |
 | OQ-20 | Archive @done | No archive command (FR-DOC-04). |

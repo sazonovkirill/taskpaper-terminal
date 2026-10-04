@@ -44,7 +44,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-BLK-06 | URL | `Title @url(https://…)` (D-10) | Title styled as a link; a command opens it in the system browser. | Must |
 | FR-BLK-07 | Divider | Note line `---` | Horizontal rule across the pane; selectable and movable like any block, no children. | Must |
 
-**FR-BLK-08 (Must):** a command converts the selected blocks between project, task, note, section, code, URL and divider. Because tags are never typed ([FR-TAG-01](#fr-tag--tags-as-metadata)), this is how the tag-based types are created.
+**FR-BLK-08 (Must):** a command converts the selected blocks between project, task, note, section, code, URL and divider. Because tags are never typed ([FR-TAG-01](#fr-tag--tags-as-metadata)), this and the typed shortcuts of [FR-MODE-05](#fr-mode--block-editing) are how the tag-based types are created.
 
 ## FR-TAG · Tags as metadata
 
@@ -62,6 +62,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 |---|---|---|
 | FR-FMT-01 | Task and note text supports Markdown `**bold**` and `` `code` ``. Markers are hidden in navigate mode and visible in edit mode. | Must |
 | FR-FMT-02 | Commands toggle bold and inline code on the selected text in edit mode. | Should |
+| FR-FMT-03 | Note blocks also support Markdown headings (`# ` to `###### `), links (`[title](url)` and `<url>`) and fenced code blocks (lines between ```` ``` ```` fences). Navigate mode renders them with the markers hidden; edit mode shows the raw Markdown ([editing.md §2.2](specs/editing.md#22-markdown-in-notes)) (D-25). | Must |
 
 ## FR-MODE · Block editing
 
@@ -71,6 +72,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-MODE-02 | Editing happens in place: the editor opens where the block is, keeping indentation, surrounding blocks and scroll position, as in Things 3. | Must |
 | FR-MODE-03 | Edit mode uses standard text-editing keys (arrows, Home/End, word motion, word delete, selection, clipboard), not vim normal mode (D-1). | Must |
 | FR-MODE-04 | Creating a block (new sibling below/above, new child) opens it directly in edit mode. | Must |
+| FR-MODE-05 | Typing a Markdown-style prefix followed by a space at the start of a single-line note or task turns it into another block type: `--- ` a divider, ```` ``` ```` a code block, `[] ` or `[ ] ` a task, `[x] ` a completed task. `- ` and a trailing `:` already make a task and a project, as in TaskPaper. The very next `Backspace` or `Ctrl+Z` reverts the conversion, and `u` reverts a divider ([editing.md §2.1](specs/editing.md#21-typed-shortcuts)) (D-24). | Must |
 
 ## FR-KEY · Keyboard
 
@@ -164,7 +166,7 @@ Owner decisions:
 - Tables, boards and other non-list layouts.
 - `Archive:` handling, for now ([FR-DOC-04](#fr-doc--document-and-file)).
 - Several files in one instance ([FR-DOC-01](#fr-doc--document-and-file)).
-- Mirrors, sorting children, templates, heading/quote/numbered/paragraph block types, italic, underline, strikethrough and highlight, export and import, trash (D-14).
+- Mirrors, sorting children, templates, heading/quote/numbered/paragraph block types, italic, underline, strikethrough and highlight, export and import, trash (D-14). Headings exist only as Markdown inside note text (D-25), not as a block type.
 
 Cloud and GUI-only Workflowy features have no meaning here: sharing, mentions, sync, uploads, embeds, AI, email and calendar integrations.
 
@@ -197,3 +199,5 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-21 | Animation is used only where it helps orientation or feedback and never slows the user down. The owner delegated where to animate (decided in [specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)). |
 | D-22 | The app makes daily backups of every file it opens (owner, 2026-10-04). They go to the XDG data directory, `~/.local/share/taskpaper-terminal/backups/`, next to the `~/.config` settings, rather than the owner's suggested `~/.taskpaper-terminal/backups/`, which a setting can still select. A copy is taken on the first open or save of each local day, before anything is written; one folder per file, named after the file plus a hash of its full path; copies are named by date; identical copies are skipped; the newest 30 are kept. Both choices of an external-change conflict first save the version they discard as a conflict copy. Details in [file-io.md](specs/file-io.md#2-saving). |
 | D-23 | Some features are stored as special nodes: hidden child lines tagged `@hidden` plus a feature tag, which other TaskPaper apps see as plain lines (owner, 2026-10-04). Comments are the first: Todoist-style dated comments stored under a `COMMENTS @hidden @comments` child. The owner accepted every proposed default: a count badge and a side panel, `[YYYY-MM-DD HH:MM]` local 24-hour timestamps, multi-line comments as deeper-indented lines, bold, code and URLs in comments, `@hidden` as a general mechanism, nodes that travel with their block and stay its last child, hand-typed comment lines accepted, and comments as the only special node for now. Details in [special-nodes.md](specs/special-nodes.md). |
+| D-24 | Typing `--- ` creates a divider and ```` ``` ```` plus a space a code block; similar shortcuts apply where they make input simpler (owner, 2026-10-04). The owner delegated the rest of the set. Chosen: Workflowy's `[] ` and `[ ] ` task triggers plus `[x] ` for a completed task, while `- ` and a trailing `:` keep TaskPaper's own meaning. Shortcuts fire only on a typed space, never on paste, and can be reverted at once. Whether `# ` makes a section is open (OQ-28); until decided it is a Markdown heading in a note. Details in [editing.md §2.1](specs/editing.md#21-typed-shortcuts). |
+| D-25 | Note blocks support Markdown headings, URLs, code spans and code blocks, rendered in navigate mode and shown raw while editing (owner, 2026-10-04). The owner delegated the details: headings stay note text, so the file stays plain TaskPaper and D-14's "no heading block type" holds; links are `[title](url)`, `<url>` and bare URLs; fenced code renders like a code block but stays part of the note, without syntax highlighting. Details in [editing.md §2.2](specs/editing.md#22-markdown-in-notes). |

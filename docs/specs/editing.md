@@ -1,6 +1,6 @@
 # Spec: Editing
 
-Covers FR-MODE, FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and FR-DONE. All edits are transactions over the [data model](data-model.md#4-edits) and are undoable (FR-OPS-08). Key bindings are in [keybindings.md](keybindings.md).
+Covers FR-MODE (typed shortcuts included), FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and FR-DONE. All edits are transactions over the [data model](data-model.md#4-edits) and are undoable (FR-OPS-08). Key bindings are in [keybindings.md](keybindings.md).
 
 ## 1. Modes
 
@@ -17,7 +17,7 @@ The block's editor opens where the block is drawn, keeping its indentation, mark
 **What is edited** is the block's visible text:
 - without `- ` and the project `:` (the type is shown by the marker). Each line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a note line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), that line takes the new type. A single-line block's marker updates live; in a multi-line block such a line splits the block when editing ends (OQ-27 default A);
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message;
-- with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01).
+- with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01), and in note blocks the raw Markdown of §2.2: `#` heading markers, link syntax and fence lines (FR-FMT-03).
 
 Edits are applied to the document as the user types (one undo step per edit session) and written back as: type syntax + edited text + the block's tags appended after the text in their original order (OQ-24 default A). For a note block, each text line becomes one line item at the block's depth; added lines become new note lines and removed lines are deleted. Each line keeps its own tags by position; tags of removed lines move to the first line, so no tag is lost (FR-DOC-03).
 
@@ -29,13 +29,51 @@ Edits are applied to the document as the user types (one undo step per edit sess
 
 | Key | Note block | Code block | Other blocks |
 |---|---|---|---|
-| `Enter` | End editing; create the next block in edit mode (§3) | Insert line break | End editing; create the next block |
+| `Enter` | End editing; create the next block in edit mode (§3). On an opening fence line or inside an open fence (§2.2): insert line break | Insert line break | End editing; create the next block |
 | `Shift+Enter` / `Alt+Enter` | Insert line break | Insert line break | — |
 | `Esc` | End editing | End editing | End editing |
 | `Tab` / `Shift+Tab` | Indent / outdent the block, stay in edit mode | same | same |
 | `Backspace` in an empty block | Delete the block, edit the previous visible block at its end | same | same |
 
 Ending edit mode applies the canonical-outline repairs for the block ([file-format.md §3.1](file-format.md#31-canonical-outlines)).
+
+### 2.1 Typed shortcuts
+
+Typing one of these prefixes followed by a space converts the block (FR-MODE-05, D-24), like Workflowy's Markdown triggers ([reference §16](../reference/workflowy.md#16-node-types-listbullet-types)):
+
+| Typed, then space | Result |
+|---|---|
+| `---` | Divider. The block becomes a divider and a new block opens below it in edit mode, so typing continues: a task if the block was a task, otherwise a note, then adjusted as in §3 (OQ-26). |
+| ```` ``` ```` | Code block: `@code` is added to the first line and editing continues in the code block, with any text after the caret kept as its first line. |
+| `[]` or `[ ]` | Task: the prefix becomes `- `. |
+| `[x]` or `[X]` | Completed task: the prefix becomes `- ` and `@done(YYYY-MM-DD)` with today's date is added (FR-DONE-01). |
+
+Rules:
+
+- A shortcut fires only when the prefix is the start of the text of a **single-line note or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret and that the block has no children (FR-BLK-07); otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project, section, URL or code block or in a later line of a note, are ordinary text.
+- Shortcuts fire only on a typed space. Pasted text is never converted.
+- The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
+- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that `u` reverts in navigate mode.
+- A conversion is part of the edit session's undo step (§2) and follows the rules of `convert_type` (§5).
+- `- ` and a trailing `:` need no shortcut: TaskPaper already reads them as a task and a project, and the marker updates live (OQ-27). `# ` stays text and starts a Markdown heading in a note (§2.2, OQ-28).
+
+### 2.2 Markdown in notes
+
+Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It is derived from the note's text for display only; the text is stored unchanged, so the file stays plain TaskPaper.
+
+| Syntax | Meaning |
+|---|---|
+| `#` to `######`, a space, then text, at the start of a line | Heading of level 1 to 6. A line ending in `:` is a project, not a heading (OQ-27). |
+| `[title](url)` | Link showing `title`. |
+| `<url>` and bare `http(s)://` URLs | Link showing the URL (bare URLs as in D-10). |
+| `` `code` `` | Code span (FR-FMT-01). |
+| A line starting with ```` ``` ````, optionally followed by a language name, up to the next line that is exactly ```` ``` ```` | Fenced code. The lines between the fences are code: no inline formatting, headings or links. An unclosed fence runs to the end of the block. |
+
+- In navigate mode the markers are hidden and the result is rendered ([ui.md §2](ui.md#2-blocks)). In edit mode the raw text is shown and edited (FR-MODE-02).
+- Anything else, including italic, lists, quotes and tables, is ordinary text (D-14).
+- `open_url` (§5) opens the link of a note: the one under the caret in edit mode, the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)).
+- Fenced code is still note text. TaskPaper reads a fenced line that starts with `- ` or ends with `:` as a task or project, which splits the note as in OQ-27, and the `@` rule of §2 applies inside fences. Code with such lines belongs in a code block (FR-BLK-05).
+- Markdown in task, project and section text stays limited to FR-FMT-01 and bare URLs.
 
 ## 3. Creating blocks (FR-MODE-04)
 
