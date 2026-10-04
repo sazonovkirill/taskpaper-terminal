@@ -4,7 +4,7 @@ The owner starts Claude or Codex agent sessions manually on their Mac; either to
 
 ## Reasoning effort
 
-Agents choose their own reasoning effort for the work in front of them. An agent that notices it is not making significant progress, for example repeated failed attempts, a problem that resists diagnosis or reviews that keep finding real defects, raises its effort one level at a time without asking, up to the tool's highest level ("ultra"). Record each raise and its reason on the task. Reviewers run at no less than the implementer's current effort.
+Agents choose their own reasoning effort for the work in front of them. An agent that notices it is not making significant progress, for example repeated failed attempts, a problem that resists diagnosis or reviews that keep finding real defects, raises its effort one level at a time without asking, up to the tool's highest level. Claude Code and Codex share the levels `low`, `medium`, `high`, `xhigh` and `max`; Codex also has `ultra` and `persistent` below `max`. Record each raise and its reason on the task. Reviewers run at no less than the implementer's current effort, at the same level name, and the Claude reviewer of a Codex implementer at `ultra` or `persistent` runs at `max`.
 
 ## Engineering guidelines
 
@@ -101,3 +101,5 @@ Either tool may instead be launched as an independent reviewer of a proposed com
 - `app/`: the Rust crate, its source, tests and `scripts/`.
 - `docs/`: requirements, specs, references and workflow documentation (`docs/quality/`); no task tracking.
 - `.worktrees/` and `.claude/worktrees/`: agent worktrees, ignored by Git.
+- `.agents/skills/`: procedures both tools load on demand (`claim-task`, `review-commit`, `deliver-task`); `.claude/skills` links to it. The documents under `docs/quality/` stay authoritative; a skill only sequences their steps.
+- `.claude/` and `.githooks/`: Claude Code settings and hooks, and the Git hooks `core.hooksPath` points to.

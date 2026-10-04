@@ -11,6 +11,7 @@ static_checks() {
   cargo clippy --locked --all-targets --all-features -- -D warnings
   cargo deny --locked check
   bash -n scripts/validate.sh
+  bash -n scripts/review.sh
   layers
   pending_snapshots
 }
@@ -113,7 +114,7 @@ doctor() {
       echo 'doctor: the pinned Rust toolchain is not installed; rustup toolchain install' >&2
       missing=1
     else
-      for component in rustfmt clippy llvm-tools; do
+      for component in rustfmt clippy llvm-tools rust-src; do
         if ! grep -q "^$component" <<<"$installed"; then
           echo "doctor: missing Rust component $component; rustup component add $component" >&2
           missing=1
