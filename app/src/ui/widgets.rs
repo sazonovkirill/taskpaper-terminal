@@ -2,7 +2,7 @@
 
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::Widget,
@@ -10,8 +10,9 @@ use ratatui::{
 
 use crate::{app::Row, document::BlockKind};
 
-/// The outline: one row per block, 2 columns of indent per level, then a marker and the text; a
-/// block with several lines takes several screen lines.
+/// The outline: a gutter that marks the focused block, then one row per block, 2 columns of
+/// indent per level, a marker and the text; a block with several lines takes several screen
+/// lines.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
@@ -36,7 +37,7 @@ impl<'a> OutlineView<'a> {
         Self { offset, ..self }
     }
 
-    /// Highlights every line of row `index` across the full width (ui.md §2).
+    /// Marks every line of row `index` in the gutter (ui.md §2).
     #[must_use]
     pub fn focused(self, index: Option<usize>) -> Self {
         Self {
@@ -48,20 +49,32 @@ impl<'a> OutlineView<'a> {
 
 impl Widget for OutlineView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let width = usize::from(area.width);
+        let [gutter, text] = area.layout(&Layout::horizontal([
+            Constraint::Length(GUTTER_WIDTH),
+            Constraint::Fill(1),
+        ]));
+        let width = usize::from(text.width);
         let lines = self.rows.iter().enumerate().flat_map(|(index, row)| {
             row_lines(row, width)
                 .into_iter()
                 .map(move |line| (index, line))
         });
-        for ((index, line), line_area) in lines.skip(self.offset).zip(area.rows()) {
+        for ((index, line), (gutter_area, line_area)) in
+            lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
+        {
             line.render(line_area, buf);
             if Some(index) == self.focused {
-                buf.set_style(line_area, Style::new().reversed());
+                Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
             }
         }
     }
 }
+
+/// Columns left of the outline for the focus marker.
+const GUTTER_WIDTH: u16 = 2;
+
+/// Marks each line of the focused block in the gutter (D-30).
+const FOCUS_MARKER: &str = "▎";
 
 /// The breadcrumb header for a view zoomed into the last of `crumbs`: `Home`, then each crumb,
 /// dropping crumbs from the left behind `…` until it fits in `width` columns or only the last
@@ -179,12 +192,23 @@ mod tests {
         document::format,
     };
 
+    /// Draws `rows` with nothing focused and returns the `width` × `height` columns right of
+    /// the gutter.
+    fn draw(rows: &[Row], width: u16, height: u16) -> Buffer {
+        let mut buf = Buffer::empty(Rect::new(0, 0, width + GUTTER_WIDTH, height));
+        OutlineView::new(rows).render(buf.area, &mut buf);
+        let mut text = Buffer::empty(Rect::new(0, 0, width, height));
+        for y in 0..height {
+            for x in 0..width {
+                text[(x, y)] = buf[(x + GUTTER_WIDTH, y)].clone();
+            }
+        }
+        text
+    }
+
     #[track_caller]
     fn render(text: &str, width: u16, height: u16) -> Buffer {
-        let rows = State::new(format::parse(text), None).rows();
-        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        OutlineView::new(&rows).render(buf.area, &mut buf);
-        buf
+        draw(&State::new(format::parse(text), None).rows(), width, height)
     }
 
     #[track_caller]
@@ -234,9 +258,7 @@ mod tests {
         let text = "P:\n\t- t\nn\nm\n\t- x\nS @section\n\t- y\n---\n\t- z\nf() @code\n\t- w\n- v";
         let mut state = State::new(format::parse(text), None);
         state.update(Message::CollapseAll);
-        let rows = state.rows();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 8));
-        OutlineView::new(&rows).render(buf.area, &mut buf);
+        let buf = draw(&state.rows(), 14, 8);
         let mut expected = Buffer::with_lines([
             "  P: ▸ 1      ",
             "  n           ",
@@ -280,9 +302,7 @@ mod tests {
         let mut state = State::new(format::parse("P:\n\tn\n\tm\n\t\t- t"), None);
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
-        let rows = state.rows();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 5, 3));
-        OutlineView::new(&rows).render(buf.area, &mut buf);
+        let buf = draw(&state.rows(), 5, 3);
         let mut expected = Buffer::with_lines(["n    ", "m    ", "☐ t  "]);
         expected.set_style(Rect::new(0, 0, 5, 2), Style::new().bold());
         assert_eq!(buf, expected);
@@ -294,28 +314,43 @@ mod tests {
         assert_eq!(render("- abcdef\n- d\n- e", 5, 2), expected);
     }
 
+    // D-30
     #[test]
-    fn highlights_the_focused_row_across_the_full_width() {
-        let mut expected = Buffer::with_lines(["☐ a  ", "☐ b  ", "☐ c  "]);
-        expected.set_style(Rect::new(0, 1, 5, 1), Style::new().reversed());
+    fn marks_the_focused_row_in_the_gutter_without_highlighting_it() {
+        let mut expected = Buffer::with_lines(["  ☐ a", "▎ ☐ b", "  ☐ c"]);
+        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
 
+    // D-30
     #[test]
-    fn starts_at_the_offset_and_highlights_relative_to_it() {
-        let area = Rect::new(2, 1, 4, 2);
-        let mut expected = Buffer::with_lines(["☐ c ", "☐ d "]);
+    fn marks_every_line_of_a_multi_line_focused_block() {
+        let rows = State::new(format::parse("- a\nn\nm"), None).rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 6, 3));
+        OutlineView::new(&rows)
+            .focused(Some(1))
+            .render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["  ☐ a ", "▎   n ", "▎   m "]);
+        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(PRIMARY));
+        expected.set_style(Rect::new(4, 1, 1, 2), Style::new().dim());
+        assert_eq!(buf, expected);
+    }
+
+    #[test]
+    fn starts_at_the_offset_and_marks_relative_to_it() {
+        let area = Rect::new(2, 1, 6, 2);
+        let mut expected = Buffer::with_lines(["  ☐ c ", "▎ ☐ d "]);
         expected.area = area;
-        expected.set_style(Rect::new(2, 2, 4, 1), Style::new().reversed());
+        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(2, Some(3), area), expected);
     }
 
     #[test]
-    fn focus_outside_the_view_is_not_highlighted() {
-        let expected = Buffer::with_lines(["☐ b ", "☐ c "]);
-        assert_eq!(render_scrolled(1, Some(0), Rect::new(0, 0, 4, 2)), expected);
-        assert_eq!(render_scrolled(1, Some(3), Rect::new(0, 0, 4, 2)), expected);
-        assert_eq!(render_scrolled(1, None, Rect::new(0, 0, 4, 2)), expected);
+    fn focus_outside_the_view_is_not_marked() {
+        let expected = Buffer::with_lines(["  ☐ b ", "  ☐ c "]);
+        assert_eq!(render_scrolled(1, Some(0), Rect::new(0, 0, 6, 2)), expected);
+        assert_eq!(render_scrolled(1, Some(3), Rect::new(0, 0, 6, 2)), expected);
+        assert_eq!(render_scrolled(1, None, Rect::new(0, 0, 6, 2)), expected);
     }
 
     #[test]

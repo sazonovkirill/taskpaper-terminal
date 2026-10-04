@@ -6,7 +6,7 @@ use std::{
 };
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, style::Modifier};
+use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
 use taskpaper_terminal::{
     app::State,
     ui::{Tui, effects::read_document},
@@ -108,26 +108,40 @@ pub fn line(buffer: &Buffer, y: u16) -> String {
         .to_owned()
 }
 
-/// The text of every highlighted row on screen.
+/// The columns left of the outline that hold the focus marker.
+const GUTTER: u16 = 2;
+
+/// The text of outline row `y` after the gutter, without trailing blanks.
+pub fn outline_line(buffer: &Buffer, y: u16) -> String {
+    let area = buffer.area;
+    (area.left() + GUTTER..area.right())
+        .map(|x| buffer[(x, y)].symbol())
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+/// Whether row `y` carries the focus marker in the gutter.
+pub fn is_focused(buffer: &Buffer, y: u16) -> bool {
+    buffer[(buffer.area.left(), y)].symbol() == "▎"
+}
+
+/// The text of every row marked as focused, after the gutter.
 pub fn focused_rows(app: &mut Harness) -> Vec<String> {
     let buffer = app.render().buffer().clone();
     let area = buffer.area;
     (area.top()..area.bottom())
-        .filter(|&y| {
-            buffer[(area.left(), y)]
-                .modifier
-                .contains(Modifier::REVERSED)
-        })
-        .map(|y| line(&buffer, y))
+        .filter(|&y| is_focused(&buffer, y))
+        .map(|y| outline_line(&buffer, y))
         .collect()
 }
 
 /// The text of the screen's rows between the breadcrumb header with its rule and the status
-/// line.
+/// line, after the gutter.
 pub fn outline_rows(app: &mut Harness) -> Vec<String> {
     let buffer = app.render().buffer().clone();
     let area = buffer.area;
     (area.top() + 2..area.bottom() - 1)
-        .map(|y| line(&buffer, y))
+        .map(|y| outline_line(&buffer, y))
         .collect()
 }

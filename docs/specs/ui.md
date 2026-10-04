@@ -49,7 +49,7 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
   - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold. Heading rows keep the note's indentation and get no rule, so they never look like a section.
   - Links show their title (or URL) in the link style (underlined, accent color) and hide `[`, `](url)`, `<` and `>`.
   - Fenced code is drawn like a code block: a background band in the code style, fence lines hidden, the language name, if any, as a dim label at the band's right edge.
-- **Focus and selection**: the focused block has a full-width highlight; selected blocks a dimmer one.
+- **Focus and selection**: the focused block is marked by a `▎` in the accent color in a 2-column gutter left of the outline, on each of its lines; its text is not highlighted (D-30). Selected blocks get a dimmer marker.
 - **Edit mode**: the focused block's text becomes an inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02).
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.
 

@@ -8,27 +8,27 @@ use crate::support::Harness;
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
 fn shows_the_file_as_an_indented_outline() {
-    let mut app = Harness::open("groceries.taskpaper", 34, 10);
+    let mut app = Harness::open("groceries.taskpaper", 36, 10);
     let mut expected = Buffer::with_lines([
-        "Home                              ",
-        "──────────────────────────────────",
-        "  Groceries:                      ",
-        "  ☐ Milk                          ",
-        "  ☐ Bread                         ",
-        "      Wholegrain if they have it. ",
-        "    Dairy:                        ",
-        "    ☐ Cheese                      ",
-        "  Notes about the week.           ",
-        &app.status(34),
+        "Home                                ",
+        "────────────────────────────────────",
+        "▎   Groceries:                      ",
+        "    ☐ Milk                          ",
+        "    ☐ Bread                         ",
+        "        Wholegrain if they have it. ",
+        "      Dairy:                        ",
+        "      ☐ Cheese                      ",
+        "    Notes about the week.           ",
+        &app.status(36),
     ]);
     let project = Style::new().bold().light_blue();
-    expected.set_style(Rect::new(0, 0, 34, 1), Style::new().bold());
-    expected.set_style(Rect::new(0, 1, 34, 1), Style::new().dark_gray());
-    expected.set_style(Rect::new(2, 2, 10, 1), project);
-    expected.set_style(Rect::new(6, 5, 27, 1), Style::new().dim());
-    expected.set_style(Rect::new(4, 6, 6, 1), project);
-    expected.set_style(Rect::new(2, 8, 21, 1), Style::new().dim());
-    expected.set_style(Rect::new(0, 2, 34, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 0, 36, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 1, 36, 1), Style::new().dark_gray());
+    expected.set_style(Rect::new(4, 2, 10, 1), project);
+    expected.set_style(Rect::new(8, 5, 27, 1), Style::new().dim());
+    expected.set_style(Rect::new(6, 6, 6, 1), project);
+    expected.set_style(Rect::new(4, 8, 21, 1), Style::new().dim());
+    expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
@@ -40,15 +40,15 @@ fn shows_the_demo_outline_without_a_path() {
     let mut expected = Buffer::with_lines([
         "Home                                    ",
         "────────────────────────────────────────",
-        "  Trip to Lisbon:                       ",
-        "  ☐ Book flights                        ",
-        "  ☐ Reserve a hotel near Alfama         ",
+        "▎   Trip to Lisbon:                     ",
+        "    ☐ Book flights                      ",
+        "    ☐ Reserve a hotel near Alfama       ",
         "NAVIGATE · demo, in memory only         ",
     ]);
     expected.set_style(Rect::new(0, 0, 40, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
-    expected.set_style(Rect::new(2, 2, 15, 1), Style::new().bold().light_blue());
-    expected.set_style(Rect::new(0, 2, 40, 1), Style::new().reversed());
+    expected.set_style(Rect::new(4, 2, 15, 1), Style::new().bold().light_blue());
+    expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 5, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }

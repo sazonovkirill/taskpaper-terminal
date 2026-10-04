@@ -60,7 +60,7 @@ fn zooming_in_shows_the_block_as_a_title_over_its_children() {
     assert_eq!(header(&mut app), "Home › Shop");
     assert_eq!(shown(&mut app), ["Shop", "☐ Milk", "    organic", "☐ Eggs"]);
     assert_focus(&mut app, "☐ Milk");
-    let title = app.render().buffer()[(0, 2)].clone();
+    let title = app.render().buffer()[(2, 2)].clone();
     assert!(title.modifier.contains(Modifier::BOLD), "the title is bold");
 }
 

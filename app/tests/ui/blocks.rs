@@ -6,16 +6,16 @@ use ratatui::{
     style::{Color, Modifier},
 };
 
-use crate::support::{Harness, line};
+use crate::support::{Harness, is_focused, outline_line};
 
 fn screen(app: &mut Harness) -> Buffer {
     app.render().buffer().clone()
 }
 
-/// The rows with the focus highlight.
+/// The rows with the focus marker.
 fn focused_rows(buffer: &Buffer) -> Vec<u16> {
     (buffer.area.top()..buffer.area.bottom())
-        .filter(|&y| buffer[(0, y)].modifier.contains(Modifier::REVERSED))
+        .filter(|&y| is_focused(buffer, y))
         .collect()
 }
 
@@ -24,8 +24,8 @@ fn focused_rows(buffer: &Buffer) -> Vec<u16> {
 fn draws_every_block_type_and_hides_special_nodes() {
     let mut app = Harness::open("blocks.taskpaper", 40, 14);
     let buffer = screen(&mut app);
-    let rule = |from: usize| "─".repeat(40 - from);
-    let rows: Vec<String> = (2..13).map(|y| line(&buffer, y)).collect();
+    let rule = |from: usize| "─".repeat(38 - from);
+    let rows: Vec<String> = (2..13).map(|y| outline_line(&buffer, y)).collect();
     assert_eq!(
         rows,
         [
@@ -42,7 +42,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
             "  ☐ Clean up".to_owned(),
         ]
     );
-    let section = &buffer[(4, 6)];
+    let section = &buffer[(6, 6)];
     assert!(
         section.modifier.contains(Modifier::BOLD),
         "section label is bold"
@@ -52,7 +52,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
         Color::LightMagenta,
         "sections use the secondary color"
     );
-    let project = &buffer[(2, 2)];
+    let project = &buffer[(4, 2)];
     assert!(
         project.modifier.contains(Modifier::BOLD),
         "projects are bold"
@@ -63,21 +63,21 @@ fn draws_every_block_type_and_hides_special_nodes() {
         "projects use the primary color"
     );
     assert!(
-        buffer[(4, 3)].modifier.contains(Modifier::DIM),
+        buffer[(6, 3)].modifier.contains(Modifier::DIM),
         "notes are dimmed"
     );
-    assert_eq!(buffer[(4, 9)].fg, Color::DarkGray, "dividers are very dim");
-    let link = &buffer[(4, 8)];
+    assert_eq!(buffer[(6, 9)].fg, Color::DarkGray, "dividers are very dim");
+    let link = &buffer[(6, 8)];
     assert!(
         link.modifier.contains(Modifier::UNDERLINED),
         "URL title is underlined"
     );
     assert_eq!(link.fg, Color::Cyan);
-    for (x, y) in [(4, 10), (39, 10), (4, 11), (39, 11)] {
+    for (x, y) in [(6, 10), (39, 10), (6, 11), (39, 11)] {
         assert_eq!(buffer[(x, y)].bg, Color::DarkGray, "code band at {x},{y}");
     }
     assert_eq!(
-        buffer[(3, 10)].bg,
+        buffer[(5, 10)].bg,
         Color::Reset,
         "the band starts at the text"
     );
@@ -110,7 +110,7 @@ fn scrolling_keeps_a_whole_multi_line_block_in_view() {
     let mut app = Harness::with_text("- a\n- b\nline 1\nline 2\nline 3\n- c\n- d\n- e", 20, 7);
     app.type_keys("jj");
     let buffer = screen(&mut app);
-    let rows: Vec<String> = (2..6).map(|y| line(&buffer, y)).collect();
+    let rows: Vec<String> = (2..6).map(|y| outline_line(&buffer, y)).collect();
     assert_eq!(rows, ["☐ b", "  line 1", "  line 2", "  line 3"]);
     assert_eq!(focused_rows(&buffer), [3, 4, 5]);
 }
@@ -121,7 +121,7 @@ fn a_multi_line_block_that_fits_with_its_margins_does_not_scroll() {
     let mut app = Harness::with_text("- a\n- b\n- c\nl1\nl2\nl3\n- d\n- e\n- f\n- g\n- h", 20, 13);
     app.type_keys("jjj");
     let buffer = screen(&mut app);
-    assert_eq!(line(&buffer, 2), "☐ a");
+    assert_eq!(outline_line(&buffer, 2), "☐ a");
     assert_eq!(focused_rows(&buffer), [5, 6, 7]);
 }
 
@@ -129,10 +129,10 @@ fn a_multi_line_block_that_fits_with_its_margins_does_not_scroll() {
 fn a_block_taller_than_the_view_shows_its_start() {
     let mut app = Harness::with_text("- a\nl1\nl2\nl3\nl4\nl5\n- b", 20, 6);
     app.type_keys("jj");
-    assert_eq!(line(&screen(&mut app), 4), "☐ b");
+    assert_eq!(outline_line(&screen(&mut app), 4), "☐ b");
     app.type_keys("k");
     let buffer = screen(&mut app);
-    let rows: Vec<String> = (2..5).map(|y| line(&buffer, y)).collect();
+    let rows: Vec<String> = (2..5).map(|y| outline_line(&buffer, y)).collect();
     assert_eq!(rows, ["☐ a", "  l1", "  l2"]);
     assert_eq!(focused_rows(&buffer), [3, 4]);
 }
