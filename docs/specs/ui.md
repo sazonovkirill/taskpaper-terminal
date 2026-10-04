@@ -1,6 +1,6 @@
 # Spec: Screen layout and styling
 
-Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–10, FR-SET-02–03 and N-PORT-02.
+Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11, FR-SET-02–03 and N-PORT-02.
 
 ## 1. Layout
 
@@ -85,7 +85,48 @@ A popup anchored at the focused element (or at the pointer for right-click) list
 
 - Opened with `g,` in navigate mode or **Open Settings** in Go to Command; a centered overlay like the pickers, but up to 100×30.
 - Left column: groups (Appearance, Editing, Files). Right: that group's settings, one per row, with name, current value and a one-line description; values that differ from the default are marked.
-- Settings in v1: Appearance — theme (FR-UI-06), icons (§7), word wrap (FR-UI-05); Files — autosave delay ([file-io.md](file-io.md)). New settings are added to this window when they are added to the config file.
+- Settings in v1: Appearance — theme (FR-UI-06), icons (§7), word wrap (FR-UI-05), animations (§9); Files — autosave delay ([file-io.md](file-io.md)). New settings are added to this window when they are added to the config file.
 - Keys: `j`/`k`/arrows move, `Tab` switches between groups and settings, `Enter` or `Space` toggles a boolean or opens a value picker or number prompt, `h`/`l` cycle choices, `r` resets the focused setting to its default, typing `/` filters settings by name, `Esc` closes.
 - Every change applies at once (theme and icons repaint the whole UI behind the overlay) and is written to `config.toml` immediately (FR-SET-04). A failed write shows an error in the window and the status line and keeps the value for the session.
 - A footer shows the config file's path, so people know where to edit by hand.
+
+## 9. Animation (FR-UI-11)
+
+Animation exists to show where focus landed, what a command changed and that an action was refused. It never makes the user wait. Research and sources: [reference/tui-animation.md](../reference/tui-animation.md).
+
+### 9.1 Rules
+
+- **Never in the way.** Every input is applied at once: state, layout, focus, scroll position and what the next key acts on change in the frame the input arrives (N-PERF-02). Effects are drawn over that final frame. Nothing waits for an effect to finish, and no input is queued, delayed or dropped because of one.
+- **Cut short.** An input that changes a pane ends the effects running in it, drawn at their final frame. A new effect replaces a running one of the same kind on the same target.
+- **Short and small.** 100–250 ms with an ease-out curve, except the status-message fade and the spinner. An effect covers only the cells it is about (a row, a pane body, the status line); only the theme crossfade covers the screen.
+- **Frames only while needed.** While an effect runs, the UI redraws at up to 60 fps; with none running it requests no timer ticks (N-PERF-03). Processing effects fits in the N-PERF-02 frame budget.
+- **Synchronized output.** Every frame, animated or not, is wrapped in synchronized output (DEC mode 2026, crossterm `BeginSynchronizedUpdate`/`EndSynchronizedUpdate`) so the terminal never shows half a frame. Terminals that do not support it ignore it.
+- **Color depth.** Fades interpolate only between RGB colors. When the colors involved are ANSI or 256-color indexes, a flash shows its target style for its duration and then reverts in one step, and a fade is skipped. With `NO_COLOR`, flashes and fades are skipped; the status line still reports refusals.
+- **Not animated:** single-step focus motion, scrolling of any kind (paging is not smooth-scrolled, since that would show offsets that are not final), typing and caret movement, entering and leaving edit mode, opening and closing pickers, the command palette, the context menu, the `?` panel and the sidebar, collapsing, closing or resizing panes, startup and quit. These must feel instant, and they are the most frequent actions.
+
+### 9.2 Where the app animates
+
+| ID | When | Effect | Duration | Reduced | Priority |
+|---|---|---|---|---|---|
+| UI-ANIM-01 | Focus **jumps**: any focus change other than a one-block motion, such as `gg`/`G`, page up/down, Go to Symbol, a sidebar entry, Move to, back/forward, zoom in/out, focusing another pane, or undo/redo moving focus. | Landing flash: the focused row's highlight starts in the accent color and eases to the normal focus highlight. | 250 ms | One-step flash | Must |
+| UI-ANIM-02 | A command changes blocks other than just the focused one: paste, duplicate, Move to, an operation on a multi-block selection, undo, redo, or a reload after an external change (F-FILE-06). | Change highlight: every visible changed row is tinted in the accent color, fading out. | 250 ms | One-step flash | Must |
+| UI-ANIM-03 | The core reports an intent as refused, such as typing `@` at the start of a word ([editing.md](editing.md)). Commands the specs define as no-ops are not refusals. | Error flash on the focused row, alongside the intent's status message when it has one. | 150 ms | One-step flash | Must |
+| UI-ANIM-04 | A task is completed or uncompleted. | The new style (checkbox, dim, strikethrough) applies at once; the text color eases from the old style to the new. When completed blocks are hidden, the block disappears at once with no exit effect. | 200 ms | None | Should |
+| UI-ANIM-05 | A pane's root changes (zoom in/out, go home, back/forward) or a pane opens. | The pane body fades in from the background, from the top row down; the new last crumb gets a landing flash. | 120 ms | None | Should |
+| UI-ANIM-06 | A block is expanded. | The newly shown rows fade in. | 120 ms | None | Should |
+| UI-ANIM-07 | A transient status message reaches the end of its display time. | It fades out instead of vanishing; the UI keeps a copy of the message to draw while it fades. | 300 ms | Vanishes | Should |
+| UI-ANIM-08 | The user waits longer than 300 ms on an operation, such as opening a large file, reloading or Save As. | A spinner in the status line until it finishes. | While waiting | Static `…` | Must |
+| UI-ANIM-09 | The previewed theme changes, in the theme picker (FR-UI-06) or the settings window (§8). | Crossfade from the old theme to the previewed one when both are truecolor themes; otherwise instant. | 150 ms | None | Should |
+
+### 9.3 Setting
+
+- `animations = "full" | "reduced" | "off"` in `config.toml` (FR-SET-01). It is listed in the settings window's Appearance group (§8), and Go to Command has commands to switch it; both write it back to the config. There is no key binding.
+- **Full** runs everything in §9.2. The settings window shows the default that applies to the current session. **Reduced** keeps only the informational flashes as one-step flashes (UI-ANIM-01–03) and a static spinner; no fades or crossfades. **Off** draws no effects and a static spinner.
+- Default: `full`, or `reduced` when the config does not set it and the session runs over SSH (`SSH_CONNECTION` or `SSH_TTY` is set), because every animation frame crosses the network.
+
+### 9.4 Implementation
+
+- `ui::animation` owns a tachyonfx `EffectManager` and applies effects to the buffer after the widgets render ([architecture.md](architecture.md)). Effects are keyed by kind and target so a new one replaces the old.
+- The core has no animation state, timing or durations (code-quality.md, UI-independent core). The UI derives triggers by comparing the view state before and after each update (focus, pane roots, fold state, theme), plus two facts the core reports: the blocks the last change touched, and that the last intent was refused.
+- Effects advance by the elapsed time the event loop measures between frames, and tachyonfx output depends only on that time, so tests drive animations with a fixed clock.
+- Tests: UI tests render through `TestBackend` at chosen elapsed times. They check that each effect's final frame equals the frame drawn with animations off, that input during an effect takes effect in the same frame, that no ticks are requested when nothing runs, and each fallback in §9.1. Tests not about animation use `off`.

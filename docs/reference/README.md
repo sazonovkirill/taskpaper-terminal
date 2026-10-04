@@ -8,5 +8,6 @@ Research snapshots of the systems taskpaper-terminal is compatible with or model
 | [workflowy.md](workflowy.md) | Workflowy's current features, search operators and full keyboard shortcuts, each tagged as portable to a terminal or GUI/cloud only. Source: [workflowy.com/help](https://workflowy.com/help/). |
 | [feature-mapping.md](feature-mapping.md) | How each Workflowy feature maps onto the TaskPaper format. |
 | [themes.md](themes.md) | The twelve built-in color themes (FR-UI-08): origin, license and palette hex values mapped to UI roles. Sources: each theme's own repository. |
+| [tui-animation.md](tui-animation.md) | What terminal UIs can animate, tachyonfx, synchronized output, how other TUIs use animation, and the costs. Sources linked in the file. |
 
 Markers used: **(inferred)** = our reasoning, not stated by the source; **(unverified)** = could not be confirmed in an official source.

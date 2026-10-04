@@ -137,6 +137,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-UI-08 | Twelve themes are built into the app, available without any configuration file: Catppuccin Mocha, Catppuccin Latte, Tokyo Night, Dracula, Nord, Gruvbox Dark, Rosé Pine, Rosé Pine Dawn, Kanagawa Wave, Everforest Dark, One Dark and Solarized Light. Each colors every part of the UI, including the six color tags. Palettes, origins and licenses are in [Built-in themes](reference/themes.md) (D-19). | Must | Themes |
 | FR-UI-09 | Nerd Font icons mark block types, fold state, chips, sidebar entries and the status line, so the UI reads at a glance (D-20). | Must | — |
 | FR-UI-10 | One setting turns every icon off, for terminals without a Nerd Font. The UI then uses plain Unicode markers, or ASCII when the locale is not UTF-8, and nothing is lost or misaligned (D-20). | Must | — |
+| FR-UI-11 | Short animations show where focus landed, what a command changed and when an action was refused. They never delay input or layout, and a setting reduces or turns them off ([specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)) (D-21). | Must | — |
 
 ## FR-SET · Settings
 
@@ -185,3 +186,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. |
 | D-19 | The app ships 10-12 attractive terminal color themes built in (owner, 2026-10-04). The chosen twelve are permissively licensed and include light themes. |
 | D-20 | The app uses Nerd Font icons, with a setting to turn all icons off. It has a settings window; settings are per user under `~/.config` in a modern format (owner, 2026-10-04). The format is TOML, as already decided in OQ-18: it is the norm for Rust and terminal tools (Cargo, Helix, Alacritty, starship) and avoids YAML's indentation and implicit-typing pitfalls. |
+| D-21 | Animation is used only where it helps orientation or feedback and never slows the user down. The owner delegated where to animate (decided in [specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)). |

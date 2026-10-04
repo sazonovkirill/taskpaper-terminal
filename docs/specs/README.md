@@ -15,4 +15,4 @@
 | [editing.md](editing.md) | Navigate and edit modes, creating blocks, structural operations, clipboard, block type, done, dates, colors, bookmarks. |
 | [search.md](search.md) | Date parsing (v1); search syntax and bookmarked searches (Later). |
 | [keybindings.md](keybindings.md) | Terminal key constraints, navigate and edit mode bindings, configuration. |
-| [ui.md](ui.md) | Layout, block rendering, hidden tags, themes, shortcuts panel, mouse. |
+| [ui.md](ui.md) | Layout, block rendering, hidden tags, themes, shortcuts panel, context menu, mouse, animation. |

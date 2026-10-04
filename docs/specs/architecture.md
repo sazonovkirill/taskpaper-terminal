@@ -7,7 +7,7 @@ How the crate in `app/` is organized. Detailed behavior is in the other specs.
 [code-quality.md](../quality/code-quality.md) (Accepted) fixes three layers in one crate, with dependencies pointing inward only, and a UI-independent core (Document + App). The modules below map onto those layers.
 
 ```
-UI (frontend)          ui::{keymap, widgets, layout, theme, effects, config}
+UI (frontend)          ui::{keymap, widgets, layout, theme, animation, effects, config}
    │                            │
    ▼                            ▼
 App (core)             app::{state, update, workspace, commands, pickers, today}
@@ -28,12 +28,13 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `app::update` | App | `update(state, message) -> effects`; the undo/redo history of transactions (code-quality.md assigns undo to App); autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
 | `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
 | `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
+| `ui::animation` | UI | Animation effects drawn over rendered frames, their triggers and the animation setting ([ui.md §9](ui.md#9-animation-fr-ui-11)). |
 | `ui::effects` | UI | Executes the core's effects: atomic save, Save As, backups, recovery files, view-state files, file watching, clipboard, opening URLs ([file-io.md](file-io.md)). |
 | `ui::config` | UI | Loads and writes `config.toml` (OQ-18, FR-SET), keeping comments and order with `toml_edit`. |
 
 Following the core rules in code-quality.md:
 - **Messages are intents** (`FocusNext`, `Indent`, `ZoomIn`, `SetDue(date)`, `InsertText(str)`), never key codes. Viewport-dependent intents carry the size (`PageDown { rows }`).
-- **The core exposes what to show**: each pane's visible blocks (id, depth, type, display text with formatting spans, chips, fold state, selection, focus), the edit-mode text and caret, breadcrumbs, sidebar entries, picker results, mode and messages. Wrapping, display width, scroll offsets and pane widths are UI state.
+- **The core exposes what to show**: each pane's visible blocks (id, depth, type, display text with formatting spans, chips, fold state, selection, focus), the edit-mode text and caret, breadcrumbs, sidebar entries, picker results, mode and messages, plus the blocks the last change touched and whether the last intent was refused. Wrapping, display width, scroll offsets and pane widths are UI state.
 - **Effects are data**: `Save { path, text }`, `Backup { path }`, `WriteRecovery { text }`, `CopyToClipboard(text)`, `OpenUrl(url)`, `PersistViewState(state)`, `Quit`. The UI adds its own presentation state (pane widths) to `PersistViewState` before writing the file, and passes it back on launch. Results come back as messages (`Saved { hash }`, `SaveFailed(err)`, `FileChangedOnDisk(text)`).
 
 ## 2. Event loop
@@ -43,7 +44,7 @@ Following the core rules in code-quality.md:
 1. Receives events from one channel: terminal input, file-watcher notifications, effect results from worker threads, and clock ticks.
 2. Maps them to app messages in `ui::keymap` (input) or directly (results, ticks with the current time).
 3. Calls `update`, then executes the returned effects in `ui::effects` (disk I/O on a worker thread, N-UX-01).
-4. Redraws only when state changed (N-PERF-03).
+4. Redraws only when state changed or an animation effect is running; the UI requests frame ticks only while one runs ([ui.md §9](ui.md#9-animation-fr-ui-11), N-PERF-03).
 
 Because the clock and I/O arrive as messages, every timing rule in these specs (autosave delay, debounces, midnight) is testable without sleeping.
 
@@ -62,6 +63,7 @@ Existing: `ratatui` 0.30, `crossterm` 0.29 (UI only). Proposed additions, each a
 | `arboard` | System clipboard (UI effects; OSC 52 fallback is hand-written). |
 | `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). |
 | `directories` | State paths per platform (UI). The config path follows XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`), not `~/Library` (FR-SET-01). |
+| `tachyonfx` | Animation effects (UI); 0.25 builds on `ratatui-core` 0.1, the core of Ratatui 0.30. |
 | `tempfile` | Atomic writes (UI effects). |
 | `thiserror`, `anyhow` | Typed library errors / `main.rs` only (code-quality.md). |
 | Dev: `insta`, `proptest` | Snapshot and property tests. |
