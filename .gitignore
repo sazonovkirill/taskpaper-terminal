@@ -3,3 +3,4 @@
 .vscode/
 .worktrees/
 .claude/worktrees/
+*.profraw

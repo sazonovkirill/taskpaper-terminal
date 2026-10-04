@@ -52,7 +52,7 @@ Unit tests never construct a `Terminal`. Integration tests never call private fu
 - Use a fixed terminal size in every test. Test layout at a few sizes, including a very small terminal, with `TestBackend::resize`.
 - Fixture `.taskpaper` files live under `app/tests/fixtures/` and are copied into the test's temporary directory before use; tests never modify fixtures in place.
 - Every integration test draws through `TestBackend`; none uses `CrosstermBackend` or another real backend. Only the end-to-end smoke tests below run in a real (pseudo-)terminal.
-- End-to-end smoke tests are few: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_taskpaper-terminal")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
+- End-to-end smoke tests are few: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_tpt")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
 
 ## Seeing the app without a terminal
 

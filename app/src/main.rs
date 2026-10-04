@@ -1,38 +1,32 @@
-//! Terminal outliner for TaskPaper files: sets up the terminal and runs the event loop.
+//! `tpt [path]`: opens a `.taskpaper` file, or the demo outline without a path, in the terminal.
 
-use std::io;
+use std::path::PathBuf;
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
-use ratatui::{
-    DefaultTerminal, Frame,
-    layout::Alignment,
-    style::Stylize,
-    widgets::{Block, Paragraph},
-};
+use anyhow::{Context, bail};
+use crossterm::event;
+use taskpaper_terminal::{app::State, ui};
 
-fn main() -> io::Result<()> {
-    let mut terminal = ratatui::init();
-    let result = run(&mut terminal);
+fn main() -> anyhow::Result<()> {
+    let mut args = std::env::args_os().skip(1);
+    let path = args.next().map(PathBuf::from);
+    if args.next().is_some() {
+        bail!("usage: tpt [path]");
+    }
+    let state = match path {
+        Some(path) => State::new(ui::effects::read_document(&path)?, Some(path)),
+        None => State::demo(),
+    };
+    let mut tui = ui::Tui::new(state);
+    let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
+    let result = run(&mut terminal, &mut tui);
     ratatui::restore();
     result
 }
 
-fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
-    loop {
-        terminal.draw(draw)?;
-        if let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-            && matches!(key.code, KeyCode::Char('q') | KeyCode::Esc)
-        {
-            return Ok(());
-        }
+fn run(terminal: &mut ratatui::DefaultTerminal, tui: &mut ui::Tui) -> anyhow::Result<()> {
+    while !tui.should_quit() {
+        terminal.draw(|frame| tui.draw(frame))?;
+        tui.handle_event(&event::read()?);
     }
-}
-
-fn draw(frame: &mut Frame) {
-    let block = Block::bordered().title(" taskpaper-terminal ".bold());
-    let text = Paragraph::new("Hello! Press q to quit.")
-        .alignment(Alignment::Center)
-        .block(block);
-    frame.render_widget(text, frame.area());
+    Ok(())
 }
