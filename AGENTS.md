@@ -83,6 +83,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 - Read the relevant task, docs and earlier records before changing code. Keep changes within the task's scope; record proposed scope or acceptance-criteria changes on the task before implementing them.
 - Work only in your own worktree, either the one the tool started your session in or one you create under `.worktrees/` ([version-control practices](docs/quality/version-control.md#worktrees-and-branches)). Never work in the primary checkout (a Claude Code hook in `.claude/settings.json` blocks file edits there), and never touch another agent's worktree or branch.
 - Keep `docs/` current when a change alters agreed behavior or design.
+- Keep commit messages short: a title saying what the commit achieves, and at most a sentence or two of body, never how it was done ([version-control practices](docs/quality/version-control.md#commit-messages)).
 - Ask the owner in the agent session for unresolved decisions. Silence is not approval.
 
 ## Untrusted content

@@ -20,9 +20,11 @@ This is a single-developer project with several agents working in parallel on th
 
 ## Commit messages
 
-- Write the title as a plain imperative sentence describing the outcome, for example `Fold and unfold items with Tab`. No type prefixes.
-- Add a body only when the title does not give enough context. Keep the whole message to four or five short sentences at most.
-- Explain what the commit achieves and include essential rationale or constraints only when they help a future reader. Do not narrate the implementation or list changed files.
+These are the owner's requirements: messages are short and concise, and say clearly what the commit achieves, not how.
+
+- Write the title as a short, plain imperative sentence describing the outcome, for example `Fold and unfold items with Tab`. No type prefixes.
+- Add a body only when the title does not say enough, and keep it to one or two short sentences about what the commit achieves or a constraint a future reader needs.
+- Do not explain how the change was made: no implementation narrative, no long rationale and no list of changed files.
 - Prefer small, atomic commits. Each commit is one coherent outcome, independently understandable, and leaves the project valid.
 
 ## Publication
