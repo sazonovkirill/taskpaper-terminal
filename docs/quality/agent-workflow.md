@@ -125,7 +125,7 @@ Standing authorization covers pushing to `main`. Follow [version-control practic
 
 After acceptance checks, required independent review, durable documentation, recorded validation and verified publication, move the Todoist task to Done and leave it open. Record the delivery summary, commit links and limitations on the task and release the claim. Agents never close Todoist tasks; the owner closing a delivered task is acceptance. If the owner requests rework, claim the task again and continue on its existing record.
 
-After delivering, the agent retires its worktree and stops unless the owner asked it to continue with further tasks.
+After delivering, the agent retires its worktree as [version-control practices](version-control.md#cleanup-and-clean-state) describe and stops unless the owner asked it to continue with further tasks.
 
 ## Prerequisites
 

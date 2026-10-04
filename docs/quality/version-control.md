@@ -5,10 +5,10 @@
 
 ## Worktrees and branches
 
-This is a single-developer project with several agents working in parallel on the owner's Mac. Each agent works in its own Git worktree under `.worktrees/` in the primary checkout (ignored by Git) on its own short-lived branch, and never does implementation work in the primary checkout.
+This is a single-developer project with several agents working in parallel on the owner's Mac. Each agent works in its own Git worktree on its own short-lived branch, and never does implementation work in the primary checkout. Agent worktrees are ignored by Git.
 
-- Name branches `<type>/<short-slug>`, where `<type>` is one of `feat`, `fix`, `refactor`, `test`, `docs` or `chore`, for example `feat/fold-outline`. Before creating one, check that no local or remote branch has that name.
-- Create the worktree from the latest `main`, with the branch name's `/` replaced by `-` as the directory:
+- **A worktree the tool created.** When the owner starts a session in a worktree that the Claude or Codex app created for it, such as `.claude/worktrees/<name>` on a `claude/<name>` branch, that worktree is yours: work there and keep the tool's branch name. If it is on a detached `HEAD`, create a branch named as below with `git switch -c <branch>`. If it does not start at the latest `origin/main`, rebase it there before changing anything.
+- **A worktree you create.** Otherwise create one under `.worktrees/`. Name branches `<type>/<short-slug>`, where `<type>` is one of `feat`, `fix`, `refactor`, `test`, `docs` or `chore`, for example `feat/fold-outline`. Before creating one, check that no local or remote branch has that name. Create the worktree from the latest `main`, with the branch name's `/` replaced by `-` as the directory:
 
   ```sh
   git fetch origin main
@@ -45,6 +45,6 @@ To pause unfinished work across sessions, push the branch to `origin` under the 
 
 ## Cleanup and clean state
 
-- After your commits are on `origin/main`, remove your worktree with `git worktree remove .worktrees/<dir>` (or the tool that created it), delete the local branch with `git branch -d`, and delete the remote branch if you pushed one.
+- After your commits are on `origin/main`, remove a worktree you created with `git worktree remove .worktrees/<dir>`, delete its local branch with `git branch -d`, and delete the remote branch if you pushed one. A worktree the tool created is still the session's working directory: leave it and its branch for the tool or the owner to remove when the session is archived, delete the remote branch if you pushed one, and say so in the release comment.
 - Archive abandoned work recoverably, with a tag, before deleting its branch.
-- The idle clean state has only `main` locally and on the remote, no worktrees under `.worktrees/`, no uncommitted changes, and matching local and remote `main`.
+- The idle clean state has only `main` locally and on the remote, no agent worktrees under `.worktrees/` or `.claude/worktrees/`, no uncommitted changes, and matching local and remote `main`.

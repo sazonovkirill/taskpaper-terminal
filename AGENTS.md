@@ -81,7 +81,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 ## Working agreement
 
 - Read the relevant task, docs and earlier records before changing code. Keep changes within the task's scope; record proposed scope or acceptance-criteria changes on the task before implementing them.
-- Work only in your own worktree under `.worktrees/`, never in the primary checkout, and never touch another agent's worktree or branch.
+- Work only in your own worktree, either the one the tool started your session in or one you create under `.worktrees/` ([version-control practices](docs/quality/version-control.md#worktrees-and-branches)). Never work in the primary checkout, and never touch another agent's worktree or branch.
 - Keep `docs/` current when a change alters agreed behavior or design.
 - Ask the owner in the agent session for unresolved decisions. Silence is not approval.
 
@@ -100,4 +100,4 @@ Either tool may instead be launched as an independent reviewer of a proposed com
 
 - `app/`: the Rust crate, its source, tests and `scripts/`.
 - `docs/`: requirements, specs, references and workflow documentation (`docs/quality/`); no task tracking.
-- `.worktrees/`: agent worktrees, ignored by Git.
+- `.worktrees/` and `.claude/worktrees/`: agent worktrees, ignored by Git.
