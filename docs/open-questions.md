@@ -5,9 +5,11 @@
 
 Product choices not settled by [functional-requirements.md](functional-requirements.md). Each lists the options, the **proposed default** the specs currently assume, and what it affects. When the owner decides one, record the answer under **Decision**, update the affected specs, and keep the entry for history.
 
-## Open
+## Decided with the proposed defaults
 
-### OQ-03 · What type does a new block get? — open
+On 2026-10-04 the owner accepted the proposed default for every question below.
+
+### OQ-03 · What type does a new block get? — decided
 
 FR-MODE-04 says new blocks open in edit mode but not what type they are.
 
@@ -16,9 +18,10 @@ FR-MODE-04 says new blocks open in edit mode but not what type they are.
 - **C. Always a task.**
 
 **Proposed default:** A (TaskPaper's own Return behavior, reference §9).
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md).
 
-### OQ-05 · Where are pane layout and fold state stored? — open
+### OQ-05 · Where are pane layout and fold state stored? — decided
 
 FR-UI-04 restores the pane layout on launch, and D-13 makes fold state shared across panes, but neither says where that state lives. Items have no stable IDs in the file.
 
@@ -27,9 +30,10 @@ FR-UI-04 restores the pane layout on launch, and D-13 makes fold state shared ac
 - **C. In-file tags** such as `@collapsed` (adds text the user didn't write).
 
 **Proposed default:** A, persisting panes (zoom, history, show-completed) and fold state.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/file-io.md](specs/file-io.md), [specs/navigation.md](specs/navigation.md).
 
-### OQ-14 · Write fidelity — open
+### OQ-14 · Write fidelity — decided
 
 TaskPaper 3 rewrites files with tabs, `\n` and UTF-8 regardless of the original.
 
@@ -37,34 +41,39 @@ TaskPaper 3 rewrites files with tabs, `\n` and UTF-8 regardless of the original.
 - **B. Preserve detected style**: indent unit (tabs or N spaces), line endings, BOM and trailing newline. Unchanged lines stay byte-identical.
 
 **Proposed default:** B. It keeps the app safe on files also edited elsewhere and keeps diffs clean.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/file-format.md](specs/file-format.md).
 
-### OQ-16 · External changes while open — open
+### OQ-16 · External changes while open — decided
 
 - **A. Reload automatically if there are no unsaved local changes; otherwise prompt** (keep mine / take theirs / show diff).
 - **B. Always prompt.**
 - **C. Three-way merge** by line.
 
 **Proposed default:** A.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/file-io.md](specs/file-io.md).
 
-### OQ-17 · Supported platforms — open
+### OQ-17 · Supported platforms — decided
 
 FR-KEY-03 requires bindings that work on macOS, Linux and Windows terminals.
 
 **Proposed default:** macOS and Linux are fully supported; Windows Terminal is supported for input and rendering, with file watching and clipboard best effort.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 
-### OQ-18 · Config file — open
+### OQ-18 · Config file — decided
 
 FR-UI-05 and FR-UI-06 need settings (word wrap, theme) to persist.
 
 **Proposed default:** TOML at `$XDG_CONFIG_HOME/taskpaper-terminal/config.toml` (platform equivalent via the `directories` crate) holding theme, word wrap and key overrides; choices made in the app are written back to it.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 
-### OQ-21 · Binary name — open
+### OQ-21 · Binary name — decided
 
 **Proposed default:** crate `taskpaper-terminal`, binary `tpt`.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 
-### OQ-22 · Outline shapes TaskPaper text cannot represent — open
+### OQ-22 · Outline shapes TaskPaper text cannot represent — decided
 
 TaskPaper re-attaches blank lines by indentation ([reference/taskpaper.md §2.4](reference/taskpaper.md#24-blank--whitespace-only-lines)) and treats leading whitespace as indentation. So some shapes an outliner can produce do not survive a save and reload: a block whose last line is empty and that has children, an empty line that is the last line of the file below top level, text that starts with whitespace (which also means code blocks cannot keep leading indentation on their lines), and an over-indented line moved where its indentation makes it a child of the line above.
 
@@ -72,8 +81,9 @@ TaskPaper re-attaches blank lines by indentation ([reference/taskpaper.md §2.4]
 - **B. Allow them and accept the change on reload**, with a warning.
 
 **Proposed default:** A, as specified in [specs/file-format.md §3.1](specs/file-format.md#31-canonical-outlines).
+**Decision (2026-10-04):** the owner accepted the proposed default.
 
-### OQ-23 · Line breaks inside a note block — open
+### OQ-23 · Line breaks inside a note block — decided
 
 D-2 makes consecutive note lines one block, and FR-BLK-05 says Enter inserts a newline in code blocks. For other blocks Enter is not specified.
 
@@ -81,9 +91,10 @@ D-2 makes consecutive note lines one block, and FR-BLK-05 says Enter inserts a n
 - **B.** In note and code blocks `Enter` inserts a line break; only `Esc` ends editing.
 
 **Proposed default:** A.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md), [specs/keybindings.md](specs/keybindings.md).
 
-### OQ-24 · Where tags go when a block's text is edited — open
+### OQ-24 · Where tags go when a block's text is edited — decided
 
 Tags are hidden while editing (FR-TAG-01). Tags in the middle of a line have no visible position to keep.
 
@@ -91,9 +102,10 @@ Tags are hidden while editing (FR-TAG-01). Tags in the middle of a line have no 
 - **B.** Track each tag's character offset and reinsert it at the nearest word boundary.
 
 **Proposed default:** A. Content is preserved (FR-DOC-03); only the position of mid-line tags changes.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md).
 
-### OQ-25 · Typing a word that looks like a tag — open
+### OQ-25 · Typing a word that looks like a tag — decided
 
 Tags are never typed (FR-TAG-01), but TaskPaper has no way to escape `@`: a typed `@word` at a word start is a tag when the file is read back.
 
@@ -102,9 +114,10 @@ Tags are never typed (FR-TAG-01), but TaskPaper has no way to escape `@`: a type
 - **C. Substitute a look-alike** such as the fullwidth `＠` (U+FF20), which TaskPaper does not treat as a tag.
 
 **Proposed default:** A.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md).
 
-### OQ-26 · Adjacent note blocks — open
+### OQ-26 · Adjacent note blocks — decided
 
 D-2 makes consecutive sibling note lines one block, and TaskPaper text has no way to mark a boundary between two of them. So two note blocks can never be adjacent siblings: creating a note next to a note, deleting the block that separated two notes, or converting a block between notes into a note merges them.
 
@@ -113,9 +126,10 @@ D-2 makes consecutive sibling note lines one block, and TaskPaper text has no wa
 - **C. Revisit D-2** so that blank lines separate note blocks.
 
 **Proposed default:** A.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md), [specs/data-model.md](specs/data-model.md).
 
-### OQ-27 · Typed text that looks like task or project syntax — open
+### OQ-27 · Typed text that looks like task or project syntax — decided
 
 The type is hidden while editing, but TaskPaper derives it from the text: a note ending in `:` is a project, a line starting with `- ` is a task. There is no escape.
 
@@ -123,9 +137,10 @@ The type is hidden while editing, but TaskPaper derives it from the text: a note
 - **B. Refuse the edit** (a trailing `:` on a note, a leading `- ` on a non-task) with a hint pointing to the type converter.
 
 **Proposed default:** A. It matches TaskPaper and loses nothing; B would forbid ordinary text like `Questions:` in a note.
+**Decision (2026-10-04):** the owner accepted the proposed default.
 **Affects:** [specs/editing.md](specs/editing.md).
 
-## Decided
+## Decided by the functional requirements
 
 | # | Question | Decision |
 |---|---|---|
