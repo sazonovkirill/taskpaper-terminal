@@ -1,28 +1,25 @@
 # Docs
 
-Requirements and specs for taskpaper-terminal live here.
+Requirements, specifications and reference material for taskpaper-terminal.
 
 ## Vision
 
-taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://www.taskpaper.com) files that behaves like an infinite outliner in the spirit of Workflowy:
+taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://www.taskpaper.com) files that behaves like an infinite outliner in the spirit of [Workflowy](https://workflowy.com):
 
 - The `.taskpaper` file on disk is the source of truth; the app reads and writes plain TaskPaper text.
 - Every line is a node (project, task, or note) and indentation defines the tree.
 - Nodes can be expanded, collapsed, and zoomed into, so any branch can become the whole screen.
 - Tags (`@done`, `@due(2026-10-04)`, ...) are metadata: hidden from the text, set through commands, and searchable.
 
-## TaskPaper format (summary)
+## Contents
 
-- **Project**: a line ending with `:` (tags may follow).
-- **Task**: a line starting with `- `.
-- **Note**: any other line.
-- **Tag**: `@name` or `@name(value)` anywhere in a line.
-- Hierarchy is expressed with tab indentation.
+| Document | Status | What it holds |
+|---|---|---|
+| [functional-requirements.md](functional-requirements.md) | Accepted | What the app does, as decided by the owner. Overrides every other document here. |
+| [requirements.md](requirements.md) | Draft | Non-functional requirements (performance, reliability, portability) and file-handling requirements the functional requirements leave open. |
+| [open-questions.md](open-questions.md) | Living | Undecided choices, each with a proposed default, plus the ones already decided. |
+| [specs/](specs/README.md) | Draft | How each area works. |
+| [reference/](reference/README.md) | Reference | TaskPaper format and Workflowy features, sourced from official docs. |
+| [quality/](quality/README.md) | Accepted | How agents work on this project. |
 
-## Requirements
-
-- [Functional requirements](functional-requirements.md)
-
-## Next
-
-Specs to be written here: data model, keybindings, editing behaviour, search and filtering, file I/O.
+Draft documents become Accepted once the owner has reviewed them. Where a draft disagrees with an accepted document, the accepted document wins and the draft is a bug.
