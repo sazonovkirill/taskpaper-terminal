@@ -1,7 +1,7 @@
 //! The update function: messages are user intents, effects are what the frontend must do.
 
 use super::State;
-use crate::document::{Block, Item, blocks};
+use crate::document::{Block, Item, ItemId, blocks};
 
 /// A user intent, independent of how a frontend receives it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,10 +44,20 @@ pub enum Message {
     ExpandLevel,
     /// Collapse every visible expanded block at the deepest depth that has one.
     CollapseLevel,
-    /// Expand every block.
+    /// Expand every block under the zoom.
     ExpandAll,
-    /// Collapse every block.
+    /// Collapse every block under the zoom.
     CollapseAll,
+    /// Show the focused block as the root.
+    ZoomIn,
+    /// Show the zoom block's parent as the root, focusing the block zoomed out of.
+    ZoomOut,
+    /// Show the whole document.
+    GoHome,
+    /// Return to the previous zoom in the history.
+    Back,
+    /// Go to the next zoom in the history.
+    Forward,
 }
 
 /// Work the frontend performs for the core.
@@ -79,25 +89,87 @@ impl State {
             Message::ToggleSubtree => self.toggle_subtree(),
             Message::ExpandLevel => self.expand_level(),
             Message::CollapseLevel => self.collapse_level(),
-            Message::ExpandAll => self.folds.clear(),
+            Message::ExpandAll => {
+                for (block, _) in self.blocks(false) {
+                    self.folds.remove(&block.id());
+                }
+            }
             Message::CollapseAll => {
                 let all = self.blocks(false).into_iter().map(|(block, _)| block);
                 self.fold(all);
             }
+            Message::ZoomIn => {
+                if let Some(block) = self.focused_block() {
+                    self.go_to(Some(block.id()));
+                }
+            }
+            Message::ZoomOut => {
+                if let Some(zoom) = self.zoom {
+                    self.go_to(blocks::parent(self.document(), zoom).map(|block| block.id()));
+                }
+            }
+            Message::GoHome => self.go_to(None),
+            Message::Back => self.walk_history(self.history_at.checked_sub(1)),
+            Message::Forward => self.walk_history(self.history_at.checked_add(1)),
         }
         self.repair_focus();
         Vec::new()
     }
 
-    /// The focused block.
+    /// The focused block and whether it is the title row.
+    fn focused(&self) -> Option<(Block, bool)> {
+        let id = self.focus?;
+        Some((blocks::block(self.document(), id)?, Some(id) == self.zoom))
+    }
+
+    /// The focused block unless it is the title, which stands for the view's root: it does not
+    /// fold, zoom in or move to its parent or siblings.
     fn focused_block(&self) -> Option<Block> {
-        blocks::block(self.document(), self.focus?)
+        self.focused()
+            .and_then(|(block, title)| (!title).then_some(block))
+    }
+
+    /// Zooms to `zoom`, a new entry in the history that drops any forward entries.
+    fn go_to(&mut self, zoom: Option<ItemId>) {
+        if zoom == self.zoom {
+            return;
+        }
+        self.history.truncate(self.history_at + 1);
+        self.history.push(zoom);
+        self.history_at = self.history.len() - 1;
+        self.show(zoom);
+    }
+
+    /// Shows the history entry at `at`, if there is one.
+    fn walk_history(&mut self, at: Option<usize>) {
+        if let Some(at) = at
+            && let Some(&zoom) = self.history.get(at)
+        {
+            self.history_at = at;
+            self.show(zoom);
+        }
+    }
+
+    /// Shows `zoom` as the root and focuses the block zoomed out of when it is visible, else the
+    /// first block under the title, else the title.
+    fn show(&mut self, zoom: Option<ItemId>) {
+        let left = self.zoom;
+        self.zoom = zoom;
+        let rows = self.rows();
+        self.focus = left
+            .filter(|&id| rows.iter().any(|row| row.id == id))
+            .or_else(|| {
+                rows.iter()
+                    .find(|row| !row.title)
+                    .or(rows.first())
+                    .map(|row| row.id)
+            });
     }
 
     fn focus_parent(&mut self) {
         if let Some(parent) = self
-            .focus
-            .and_then(|id| blocks::parent(self.document(), id))
+            .focused_block()
+            .and_then(|block| blocks::parent(self.document(), block.id()))
         {
             self.focus = Some(parent.id());
         }
@@ -106,7 +178,9 @@ impl State {
     /// Focuses the sibling at the index `to` picks from the focused block's index among its
     /// siblings, if there is one.
     fn move_to_sibling(&mut self, to: impl FnOnce(usize) -> Option<usize>) {
-        let Some(id) = self.focus else { return };
+        let Some(id) = self.focused_block().map(|block| block.id()) else {
+            return;
+        };
         let siblings = self
             .document()
             .get(id)
@@ -132,10 +206,10 @@ impl State {
     }
 
     fn expand(&mut self) {
-        let Some(block) = self.focused_block() else {
+        let Some((block, title)) = self.focused() else {
             return;
         };
-        if !self.folds.remove(&block.id())
+        if (title || !self.folds.remove(&block.id()))
             && let Some(child) = self.children(&block).first()
         {
             self.focus = Some(child.id());
@@ -151,11 +225,16 @@ impl State {
         }
     }
 
+    /// On the title, acts on the blocks below it.
     fn toggle_subtree(&mut self) {
-        let Some(block) = self.focused_block() else {
+        let Some((block, title)) = self.focused() else {
             return;
         };
-        let mut subtree = vec![block.clone()];
+        let mut subtree = if title {
+            Vec::new()
+        } else {
+            vec![block.clone()]
+        };
         self.push_descendants(&block, &mut subtree);
         if subtree.iter().any(|block| self.is_expanded(block)) {
             self.fold(subtree);
@@ -534,6 +613,160 @@ mod tests {
         assert_eq!(visible(&state)[0], (0, "a".to_owned(), 0));
     }
 
+    /// The display text of the zoom block, or `Home`.
+    fn zoom_text(state: &State) -> String {
+        state
+            .breadcrumbs()
+            .pop()
+            .unwrap_or_else(|| "Home".to_owned())
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn zoom_in_shows_a_title_and_focuses_the_first_child() {
+        let mut state = open(TREE, 1);
+        state.update(Message::ZoomIn);
+        assert_eq!(state.zoom(), state.rows().first().map(|row| row.id));
+        assert_eq!(state.breadcrumbs(), ["A", "b"]);
+        assert_eq!(
+            visible(&state),
+            [(0, "b".to_owned(), 0), (0, "c".to_owned(), 0)]
+        );
+        assert_eq!(
+            state.rows().iter().map(|row| row.title).collect::<Vec<_>>(),
+            [true, false]
+        );
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::ZoomIn);
+        assert_eq!(zoom_text(&state), "c");
+        assert_eq!(focus_text(&state), "c", "a leaf focuses its title");
+        state.update(Message::ZoomIn);
+        assert_eq!(zoom_text(&state), "c", "the title does not zoom");
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn zoom_out_and_home_focus_the_block_left() {
+        let mut state = open(TREE, 2);
+        state.update(Message::ZoomIn);
+        state.update(Message::ZoomOut);
+        assert_eq!(zoom_text(&state), "b");
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::ZoomOut);
+        state.update(Message::ZoomOut);
+        assert_eq!(zoom_text(&state), "Home");
+        assert_eq!(focus_text(&state), "A");
+        state.update(Message::ZoomOut);
+        assert_eq!(zoom_text(&state), "Home");
+        state.update(Message::FocusNext);
+        state.update(Message::ZoomIn);
+        state.update(Message::GoHome);
+        assert_eq!(focus_text(&state), "b");
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn going_to_a_view_whose_block_left_is_hidden_focuses_its_first_block() {
+        let mut state = open(TREE, 1);
+        let b = state.focus().expect("a focus");
+        state.update(Message::ZoomIn);
+        state.update(Message::ZoomIn);
+        assert_eq!(zoom_text(&state), "c");
+        state.folds.insert(b);
+        state.update(Message::GoHome);
+        assert_eq!(
+            focus_text(&state),
+            "A",
+            "c is hidden inside the collapsed b"
+        );
+    }
+
+    // FR-NAV-04
+    #[test]
+    fn back_and_forward_walk_the_history_and_a_new_zoom_drops_the_rest() {
+        let mut state = open(TREE, 1);
+        state.update(Message::ZoomIn);
+        state.update(Message::ZoomIn);
+        state.update(Message::Back);
+        assert_eq!(zoom_text(&state), "b");
+        state.update(Message::Back);
+        assert_eq!(zoom_text(&state), "Home");
+        state.update(Message::Back);
+        assert_eq!(zoom_text(&state), "Home");
+        state.update(Message::Forward);
+        state.update(Message::Forward);
+        assert_eq!(zoom_text(&state), "c");
+        state.update(Message::Forward);
+        assert_eq!(zoom_text(&state), "c");
+        state.update(Message::Back);
+        state.update(Message::GoHome);
+        assert_eq!(state.history.len(), 3);
+        state.update(Message::Forward);
+        assert_eq!(zoom_text(&state), "Home");
+        state.update(Message::GoHome);
+        assert_eq!(state.history.len(), 3, "staying put is not a new entry");
+    }
+
+    // FR-NAV-02, FR-NAV-03
+    #[test]
+    fn the_title_does_not_fold_or_move_to_its_parent_or_siblings() {
+        let mut state = open(TREE, 1);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusPrevious);
+        assert_eq!(focus_text(&state), "b");
+        for message in [
+            Message::Collapse,
+            Message::ToggleFold,
+            Message::FocusParent,
+            Message::FocusNextSibling,
+            Message::FocusPreviousSibling,
+        ] {
+            state.update(message);
+            assert_eq!(focus_text(&state), "b", "{message:?}");
+            assert_eq!(state.folds, HashSet::new(), "{message:?}");
+        }
+        state.update(Message::Expand);
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::FocusParent);
+        assert_eq!(focus_text(&state), "b", "the title is the parent");
+    }
+
+    // FR-NAV-02, FR-NAV-03
+    #[test]
+    fn folding_under_a_zoom_stays_under_it() {
+        let mut state = open("A:\n\t- b\n\t\t- c\nD:\n\t- e", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::CollapseAll);
+        assert_eq!(state.folds.len(), 1, "only b");
+        state.update(Message::FocusPrevious);
+        state.update(Message::ToggleSubtree);
+        assert_eq!(
+            state.folds,
+            HashSet::new(),
+            "the title expands what is below it"
+        );
+        state.update(Message::ToggleSubtree);
+        assert_eq!(state.folds.len(), 1);
+        state.update(Message::GoHome);
+        state.update(Message::FocusLast);
+        state.update(Message::Collapse);
+        state.update(Message::Collapse);
+        state.update(Message::FocusFirst);
+        state.update(Message::ZoomIn);
+        state.update(Message::ExpandAll);
+        assert_eq!(state.folds.len(), 1, "D stays collapsed");
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn a_collapsed_block_shows_its_children_when_zoomed() {
+        let mut state = open(TREE, 0);
+        state.update(Message::Collapse);
+        state.update(Message::ZoomIn);
+        assert_eq!(visible(&state)[0], (0, "A".to_owned(), 0));
+        assert_eq!(visible(&state).len(), 4);
+    }
+
     #[test]
     fn motions_in_an_empty_document_keep_no_focus() {
         let mut state = State::new(Document::default(), None);
@@ -555,6 +788,11 @@ mod tests {
             Message::CollapseLevel,
             Message::ExpandAll,
             Message::CollapseAll,
+            Message::ZoomIn,
+            Message::ZoomOut,
+            Message::GoHome,
+            Message::Back,
+            Message::Forward,
         ] {
             assert_eq!(state.update(message), [], "{message:?}");
             assert_eq!(state.focus(), None, "{message:?}");

@@ -37,18 +37,24 @@ fn top_row(app: &mut Harness) -> String {
 // FR-NAV-01
 #[test]
 fn focus_starts_on_the_first_row_with_a_full_width_highlight() {
-    let mut app = Harness::with_text("A:\n\t- b\n", 12, 3);
-    let mut expected = Buffer::with_lines(["▾ A         ", "  ☐ b       ", &app.status(12)]);
-    expected.set_style(Rect::new(0, 0, 12, 1), Style::new().reversed());
-    expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
-    expected.set_style(Rect::new(0, 2, 8, 1), Style::new().bold());
+    let mut app = Harness::with_text("A:\n\t- b\n", 12, 4);
+    let mut expected = Buffer::with_lines([
+        "Home        ",
+        "▾ A         ",
+        "  ☐ b       ",
+        &app.status(12),
+    ]);
+    expected.set_style(Rect::new(0, 0, 12, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 1, 12, 1), Style::new().reversed());
+    expected.set_style(Rect::new(2, 1, 1, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 3, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
 // FR-NAV-01
 #[test]
 fn j_k_and_arrows_move_focus_one_row_and_stop_at_the_ends() {
-    let mut app = Harness::with_text(&tasks(3), 20, 10);
+    let mut app = Harness::with_text(&tasks(3), 20, 11);
     app.type_keys("j");
     assert_focus(&mut app, "☐ Task 02");
     app.press(KeyCode::Down, NONE);
@@ -68,7 +74,7 @@ fn j_k_and_arrows_move_focus_one_row_and_stop_at_the_ends() {
 // FR-NAV-01
 #[test]
 fn g_g_home_shift_g_and_end_jump_to_the_first_and_last_rows() {
-    let mut app = Harness::with_text(&tasks(30), 20, 6);
+    let mut app = Harness::with_text(&tasks(30), 20, 7);
     app.press(KeyCode::Char('G'), KeyModifiers::SHIFT);
     assert_focus(&mut app, "☐ Task 30");
     assert_eq!(top_row(&mut app), "☐ Task 26");
@@ -84,7 +90,7 @@ fn g_g_home_shift_g_and_end_jump_to_the_first_and_last_rows() {
 // FR-NAV-01
 #[test]
 fn moving_down_scrolls_to_keep_two_rows_below_the_focus() {
-    let mut app = Harness::with_text(&tasks(30), 20, 6);
+    let mut app = Harness::with_text(&tasks(30), 20, 7);
     app.type_keys("jj");
     assert_eq!(top_row(&mut app), "☐ Task 01");
     app.type_keys("j");
@@ -111,7 +117,7 @@ fn moving_down_scrolls_to_keep_two_rows_below_the_focus() {
 // FR-NAV-01
 #[test]
 fn page_keys_move_focus_and_view_by_the_outline_height() {
-    let mut app = Harness::with_text(&tasks(30), 20, 6);
+    let mut app = Harness::with_text(&tasks(30), 20, 7);
     app.render();
     app.press(KeyCode::PageDown, NONE);
     assert_focus(&mut app, "☐ Task 06");
@@ -139,7 +145,7 @@ fn page_keys_move_focus_and_view_by_the_outline_height() {
 // FR-NAV-01
 #[test]
 fn paging_up_from_the_bottom_keeps_the_focused_row_in_place_on_screen() {
-    let mut app = Harness::with_text(&tasks(30), 20, 11);
+    let mut app = Harness::with_text(&tasks(30), 20, 12);
     app.press(KeyCode::Char('G'), NONE);
     assert_eq!(top_row(&mut app), "☐ Task 21");
     app.press(KeyCode::PageUp, NONE);
@@ -150,7 +156,7 @@ fn paging_up_from_the_bottom_keeps_the_focused_row_in_place_on_screen() {
 // FR-NAV-01
 #[test]
 fn paging_stops_at_the_last_row_without_scrolling_past_it() {
-    let mut app = Harness::with_text(&tasks(8), 20, 6);
+    let mut app = Harness::with_text(&tasks(8), 20, 7);
     app.render();
     app.press(KeyCode::PageDown, NONE);
     app.press(KeyCode::PageDown, NONE);
@@ -169,7 +175,7 @@ fn paging_stops_at_the_last_row_without_scrolling_past_it() {
 
 #[test]
 fn the_status_line_shows_the_mode_and_the_path() {
-    let mut app = Harness::with_text("- a\n", 80, 2);
+    let mut app = Harness::with_text("- a\n", 80, 3);
     let path = app.path.clone().expect("a file was opened");
     assert_eq!(
         status_line(&mut app),
@@ -179,13 +185,13 @@ fn the_status_line_shows_the_mode_and_the_path() {
 
 #[test]
 fn the_status_line_marks_the_demo_as_held_in_memory() {
-    let mut app = Harness::demo(40, 2);
+    let mut app = Harness::demo(40, 3);
     assert_eq!(status_line(&mut app), "NAVIGATE · demo, in memory only");
 }
 
 #[test]
 fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
-    let mut app = Harness::demo(40, 2);
+    let mut app = Harness::demo(40, 3);
     app.type_keys("jg");
     assert_eq!(
         status_line(&mut app),
@@ -198,7 +204,7 @@ fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
 
 #[test]
 fn a_pending_prefix_covers_the_end_of_a_long_path() {
-    let mut app = Harness::with_text("- a\n", 16, 2);
+    let mut app = Harness::with_text("- a\n", 16, 3);
     app.type_keys("g");
     let status: String = app.status(16).chars().take(14).collect();
     assert_eq!(status_line(&mut app), format!("{status} g"));
@@ -206,7 +212,7 @@ fn a_pending_prefix_covers_the_end_of_a_long_path() {
 
 #[test]
 fn a_sequence_times_out_after_one_second() {
-    let mut app = Harness::with_text(&tasks(5), 20, 8);
+    let mut app = Harness::with_text(&tasks(5), 20, 9);
     app.type_keys("jjj");
     assert_eq!(app.tui.deadline(), None);
     app.type_keys("g");
@@ -226,7 +232,7 @@ fn a_sequence_times_out_after_one_second() {
 
 #[test]
 fn an_empty_document_has_no_focus_and_ignores_motions() {
-    let mut app = Harness::with_text("", 20, 3);
+    let mut app = Harness::with_text("", 20, 4);
     for (code, modifiers) in [
         (KeyCode::Char('j'), NONE),
         (KeyCode::Char('k'), NONE),
@@ -253,7 +259,7 @@ fn a_one_row_terminal_shows_only_the_status_line() {
 
 #[test]
 fn a_two_row_terminal_scrolls_one_row_at_a_time() {
-    let mut app = Harness::with_text(&tasks(5), 12, 2);
+    let mut app = Harness::with_text(&tasks(5), 12, 3);
     app.render();
     app.type_keys("j");
     assert_eq!(outline_rows(&mut app), ["☐ Task 02"]);

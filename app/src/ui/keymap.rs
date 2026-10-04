@@ -19,13 +19,23 @@ type Key = (KeyModifiers, KeyCode);
 type Binding = (&'static [Key], fn(usize) -> Message);
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
-/// named key and `key!(ctrl Down)` for a named key with `Ctrl`.
+/// named key, `key!(ctrl Down)` for a named key with `Ctrl`, and likewise with `alt` and
+/// `alt shift`.
 macro_rules! key {
     (ctrl $c:literal) => {
         (KeyModifiers::CONTROL, KeyCode::Char($c))
     };
     (ctrl $code:ident) => {
         (KeyModifiers::CONTROL, KeyCode::$code)
+    };
+    (alt $c:literal) => {
+        (KeyModifiers::ALT, KeyCode::Char($c))
+    };
+    (alt $code:ident) => {
+        (KeyModifiers::ALT, KeyCode::$code)
+    };
+    (alt shift $code:ident) => {
+        (KeyModifiers::ALT.union(KeyModifiers::SHIFT), KeyCode::$code)
     };
     ($c:literal) => {
         (KeyModifiers::NONE, KeyCode::Char($c))
@@ -66,6 +76,20 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('-')], |_| Message::CollapseLevel),
     (&[key!('+')], |_| Message::ExpandAll),
     (&[key!('_')], |_| Message::CollapseAll),
+    (&[key!('.')], |_| Message::ZoomIn),
+    (&[key!(alt 'l')], |_| Message::ZoomIn),
+    (&[key!(alt Right)], |_| Message::ZoomIn),
+    (&[key!('g'), key!('z')], |_| Message::ZoomIn),
+    (&[key!('>')], |_| Message::ZoomOut),
+    (&[key!(alt 'h')], |_| Message::ZoomOut),
+    (&[key!(alt Left)], |_| Message::ZoomOut),
+    (&[key!('g'), key!('u')], |_| Message::ZoomOut),
+    (&[key!(ctrl '\'')], |_| Message::GoHome),
+    (&[key!('g'), key!('h')], |_| Message::GoHome),
+    (&[key!('H')], |_| Message::Back),
+    (&[key!(alt shift Left)], |_| Message::Back),
+    (&[key!('L')], |_| Message::Forward),
+    (&[key!(alt shift Right)], |_| Message::Forward),
 ];
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,

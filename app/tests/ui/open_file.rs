@@ -8,8 +8,9 @@ use crate::support::Harness;
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
 fn shows_the_file_as_an_indented_outline() {
-    let mut app = Harness::open("groceries.taskpaper", 34, 8);
+    let mut app = Harness::open("groceries.taskpaper", 34, 9);
     let mut expected = Buffer::with_lines([
+        "Home                              ",
         "▾ Groceries                       ",
         "  ☐ Milk                          ",
         "  ☐ Bread                         ",
@@ -19,26 +20,29 @@ fn shows_the_file_as_an_indented_outline() {
         "  Notes about the week.           ",
         &app.status(34),
     ]);
-    expected.set_style(Rect::new(2, 0, 9, 1), Style::new().bold());
-    expected.set_style(Rect::new(4, 4, 5, 1), Style::new().bold());
-    expected.set_style(Rect::new(0, 0, 34, 1), Style::new().reversed());
-    expected.set_style(Rect::new(0, 7, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 0, 34, 1), Style::new().bold());
+    expected.set_style(Rect::new(2, 1, 9, 1), Style::new().bold());
+    expected.set_style(Rect::new(4, 5, 5, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 1, 34, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 8, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
 // FR-DOC-05
 #[test]
 fn shows_the_demo_outline_without_a_path() {
-    let mut app = Harness::demo(40, 4);
+    let mut app = Harness::demo(40, 5);
     let mut expected = Buffer::with_lines([
+        "Home                                    ",
         "▾ Trip to Lisbon                        ",
         "  ☐ Book flights                        ",
         "  ☐ Reserve a hotel near Alfama         ",
         "NAVIGATE · demo, in memory only         ",
     ]);
-    expected.set_style(Rect::new(2, 0, 14, 1), Style::new().bold());
-    expected.set_style(Rect::new(0, 0, 40, 1), Style::new().reversed());
-    expected.set_style(Rect::new(0, 3, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 0, 40, 1), Style::new().bold());
+    expected.set_style(Rect::new(2, 1, 14, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 1, 40, 1), Style::new().reversed());
+    expected.set_style(Rect::new(0, 4, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 

@@ -10,8 +10,8 @@ use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks, format};
 /// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
 const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 
-/// Everything the app knows: the open document, where it came from, the focused row and the
-/// collapsed blocks.
+/// Everything the app knows: the open document, where it came from, the focused row, the
+/// collapsed blocks and the zoom with its history.
 #[derive(Debug, Clone)]
 pub struct State {
     document: Document,
@@ -19,6 +19,12 @@ pub struct State {
     pub(super) focus: Option<ItemId>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
+    /// The block shown as the root, or `None` at home (FR-NAV-03).
+    pub(super) zoom: Option<ItemId>,
+    /// Every zoom visited, oldest first, for back and forward (FR-NAV-04).
+    pub(super) history: Vec<Option<ItemId>>,
+    /// The position of the current zoom in `history`.
+    pub(super) history_at: usize,
 }
 
 /// One visible block of the outline.
@@ -36,6 +42,8 @@ pub struct Row {
     pub done: bool,
     /// How many child blocks its fold hides; 0 when it is expanded or has none.
     pub hidden_children: usize,
+    /// Whether this is the title row of a zoomed view: the zoom block itself, above its children.
+    pub title: bool,
 }
 
 impl State {
@@ -47,6 +55,9 @@ impl State {
             path,
             focus: None,
             folds: HashSet::new(),
+            zoom: None,
+            history: vec![None],
+            history_at: 0,
         };
         state.focus = state.rows().first().map(|row| row.id);
         state
@@ -77,37 +88,76 @@ impl State {
         self.focus
     }
 
-    /// Every visible block of the document in order, one row each: collapsed blocks hide their
-    /// children and special nodes are never shown (FR-NAV-02, FR-SPC-01).
+    /// The block shown as the root, or `None` at home (FR-NAV-03).
+    #[must_use]
+    pub fn zoom(&self) -> Option<ItemId> {
+        self.zoom
+    }
+
+    /// The text of the first line of each block from the top level down to the zoom block; empty
+    /// at home (FR-NAV-03).
+    #[must_use]
+    pub fn breadcrumbs(&self) -> Vec<String> {
+        let mut crumbs: Vec<String> = std::iter::successors(self.zoom_block(), |block| {
+            blocks::parent(&self.document, block.id())
+        })
+        .filter_map(|block| self.document.get(block.id()))
+        .map(Item::display_text)
+        .collect();
+        crumbs.reverse();
+        crumbs
+    }
+
+    /// The visible rows: when zoomed, a title row for the zoom block, then its child blocks from
+    /// depth 0. Collapsed blocks hide their children and special nodes are never shown
+    /// (FR-NAV-02, FR-NAV-03, FR-SPC-01).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        self.blocks(true)
+        let title = self.zoom_block().map(|block| self.row(&block, 0, true));
+        title
             .into_iter()
-            .map(|(block, depth)| Row {
-                id: block.id(),
-                depth,
-                kind: block.kind(),
-                lines: block
-                    .lines()
-                    .iter()
-                    .filter_map(|&id| self.document.get(id))
-                    .map(Item::display_text)
-                    .collect(),
-                done: block.done(),
-                hidden_children: if self.folds.contains(&block.id()) {
-                    self.children(&block).len()
-                } else {
-                    0
-                },
-            })
+            .chain(
+                self.blocks(true)
+                    .into_iter()
+                    .map(|(block, depth)| self.row(&block, depth, false)),
+            )
             .collect()
     }
 
-    /// Every block of the document in order with its depth; with `folded`, only those not hidden
-    /// by a collapsed ancestor.
+    fn row(&self, block: &Block, depth: usize, title: bool) -> Row {
+        Row {
+            id: block.id(),
+            depth,
+            kind: block.kind(),
+            lines: block
+                .lines()
+                .iter()
+                .filter_map(|&id| self.document.get(id))
+                .map(Item::display_text)
+                .collect(),
+            done: block.done(),
+            hidden_children: if !title && self.folds.contains(&block.id()) {
+                self.children(block).len()
+            } else {
+                0
+            },
+            title,
+        }
+    }
+
+    /// The zoom block, or `None` at home.
+    pub(super) fn zoom_block(&self) -> Option<Block> {
+        blocks::block(&self.document, self.zoom?)
+    }
+
+    /// Every block below the zoom in order with its depth; with `folded`, only those not hidden
+    /// by a collapsed ancestor. The zoom block's own fold hides nothing.
     pub(super) fn blocks(&self, folded: bool) -> Vec<(Block, usize)> {
+        let top = self
+            .zoom_block()
+            .map_or(self.document.root(), |block| block.last_line());
         let mut out = Vec::new();
-        self.push_blocks(self.document.root(), 0, folded, &mut out);
+        self.push_blocks(top, 0, folded, &mut out);
         out
     }
 

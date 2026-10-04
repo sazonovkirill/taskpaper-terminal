@@ -122,11 +122,11 @@ pub fn focused_rows(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-/// The text of the screen's rows above the status line.
+/// The text of the screen's rows between the breadcrumb header and the status line.
 pub fn outline_rows(app: &mut Harness) -> Vec<String> {
     let buffer = app.render().buffer().clone();
     let area = buffer.area;
-    (area.top()..area.bottom() - 1)
+    (area.top() + 1..area.bottom() - 1)
         .map(|y| line(&buffer, y))
         .collect()
 }

@@ -3,7 +3,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::Widget,
 };
@@ -63,10 +63,36 @@ impl Widget for OutlineView<'_> {
     }
 }
 
+/// The breadcrumb header for a view zoomed into the last of `crumbs`: `Home`, then each crumb,
+/// dropping crumbs from the left behind `…` until it fits in `width` columns or only the last
+/// one is left (navigation §4). Bold, as the focused pane's header (ui.md §1).
+#[must_use]
+pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
+    let path: Vec<&str> = std::iter::once("Home")
+        .chain(crumbs.iter().map(String::as_str))
+        .collect();
+    let mut line = Line::from(path.join(" › "));
+    for start in 1..path.len() {
+        if line.width() <= width {
+            break;
+        }
+        let rest = path.get(start..).unwrap_or_default();
+        line = Line::from(format!("… › {}", rest.join(" › ")));
+    }
+    line.bold()
+}
+
 /// The screen lines of one block, `width` columns wide. Every block reserves a marker column so
 /// text lines up with the text of sibling tasks. A collapsed block shows `▸ n` after its text,
 /// except a project, whose marker shows it (ui.md §2).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
+    if row.title {
+        return row
+            .lines
+            .iter()
+            .map(|text| Line::from(text.as_str()).bold())
+            .collect();
+    }
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
         BlockKind::Project if row.hidden_children > 0 => ("▸", Style::new().bold()),
@@ -214,6 +240,33 @@ mod tests {
         expected.set_style(Rect::new(2, 4, 4, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 5, 12, 1), code_style());
         expected.set_style(Rect::new(5, 5, 4, 1), code_style().dim());
+        assert_eq!(buf, expected);
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn breadcrumbs_start_at_home_and_drop_crumbs_from_the_left_to_fit() {
+        let crumbs = ["Work".to_owned(), "Report".to_owned(), "Draft".to_owned()];
+        let text = |width| breadcrumbs(&crumbs, width).to_string();
+        assert_eq!(breadcrumbs(&[], 0).to_string(), "Home");
+        assert_eq!(text(28), "Home › Work › Report › Draft");
+        assert_eq!(text(27), "… › Work › Report › Draft");
+        assert_eq!(text(24), "… › Report › Draft");
+        assert_eq!(text(3), "… › Draft", "the last crumb always stays");
+        assert_eq!(breadcrumbs(&crumbs, 28).style, Style::new().bold());
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn the_title_row_is_bold_without_marker_or_indent() {
+        let mut state = State::new(format::parse("P:\n\tn\n\tm\n\t\t- t"), None);
+        state.update(Message::FocusNext);
+        state.update(Message::ZoomIn);
+        let rows = state.rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 5, 3));
+        OutlineView::new(&rows).render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["n    ", "m    ", "☐ t  "]);
+        expected.set_style(Rect::new(0, 0, 5, 2), Style::new().bold());
         assert_eq!(buf, expected);
     }
 

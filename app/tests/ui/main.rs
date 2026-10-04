@@ -6,3 +6,4 @@ mod folding;
 mod open_file;
 mod support;
 mod tags;
+mod zoom;
