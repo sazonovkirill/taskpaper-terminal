@@ -40,7 +40,7 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 | URL | `↗` | title styled as a link (underlined, accent color), slightly dimmed |
 | Divider | none | a horizontal rule across the pane in the rule-lines color, very dim |
 
-- Tasks (normal text) and projects stand out; every other block type is dimmed (D-29).
+- Tasks (normal text), projects and sections (their own colors) stand out; every other block type is dimmed (D-29).
 - No fold marker is shown on expanded blocks, since any block can be folded. A block that has children and is collapsed shows `▸ n` (hidden child count) after its text, projects included (D-29).
 - **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
