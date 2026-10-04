@@ -62,6 +62,13 @@ Agents cannot look at a running terminal app, so they inspect it the way the int
 - Read the committed `.snap` files under `app/tests/ui/snapshots/` to see what each screen looks like today, and read a failing `assert_buffer_lines` or snapshot diff as the visible difference between the expected and actual screen.
 - Verify a visible change through `TestBackend`, not by running the binary in a terminal or asking the owner for a screenshot. If a behavior cannot be seen through `TestBackend`, that is a gap in what the library exports for driving the app; fix the gap.
 
+## Traceability
+
+Feature-complete means every Must requirement has a test that shows it working.
+
+- An integration test names the requirement IDs it covers (`FR-NAV-03`, `F-FILE-04`, `N-REL-01`) in a comment on the test, for example `// FR-NAV-03, FR-NAV-04`. A unit test does the same when it is the main evidence for a requirement, such as a round-trip property test for F-FILE-03. A test that covers no requirement needs no reference.
+- `bash app/scripts/validate.sh trace` lists every Must requirement in [functional-requirements.md](../functional-requirements.md) and [requirements.md](../requirements.md) that no test or source file names yet. It reports and does not fail validation; delivering the last feature of v1 includes bringing it to zero.
+
 ## Parallel execution
 
 Every test must pass when run in parallel with every other test, in any order, as threads in one process (`cargo test`).

@@ -107,8 +107,8 @@ doctor() {
     if ! toolchain="$(rustup show active-toolchain 2>/dev/null)"; then
       echo 'doctor: the pinned Rust toolchain is not installed; rustup toolchain install' >&2
       missing=1
-    elif [[ "$toolchain" =~ ^(nightly|beta) ]]; then
-      echo "doctor: active toolchain is $toolchain, not the stable release pinned in rust-toolchain.toml; rustup override unset" >&2
+    elif [[ "$toolchain" != "$(sed -n 's/^channel = "\(.*\)"$/\1/p' ../rust-toolchain.toml)"-* ]]; then
+      echo "doctor: active toolchain is $toolchain, not the release pinned in rust-toolchain.toml; unset RUSTUP_TOOLCHAIN and run rustup override unset" >&2
       missing=1
     elif ! installed="$(rustup component list --installed 2>/dev/null)"; then
       echo 'doctor: the pinned Rust toolchain is not installed; rustup toolchain install' >&2
@@ -134,6 +134,20 @@ doctor() {
   echo 'doctor: all prerequisites found'
 }
 
+# Lists Must requirements that no test or source file names yet (docs/quality/testing-strategy.md, Traceability).
+trace() {
+  local id untraced=0 total=0
+  while IFS= read -r id; do
+    total=$((total + 1))
+    if ! grep -rqw -- "$id" src tests 2>/dev/null; then
+      echo "$id"
+      untraced=$((untraced + 1))
+    fi
+  done < <(grep -hoE '^\| (FR|F|N)-[A-Z]+-[0-9]+ \|.*\| Must \||^\*\*FR-[A-Z]+-[0-9]+ \(Must\)' ../docs/functional-requirements.md ../docs/requirements.md |
+    grep -oE '(FR|F|N)-[A-Z]+-[0-9]+' | awk '!seen[$0]++')
+  echo "trace: $untraced of $total Must requirements are not referenced by any test or source file"
+}
+
 case "${1:-all}" in
   format) format ;;
   static) static_checks ;;
@@ -141,6 +155,7 @@ case "${1:-all}" in
   coverage) coverage ;;
   mutants) mutants ;;
   doctor) doctor ;;
+  trace) trace ;;
   all) static_checks; unit; coverage ;;
-  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor]' >&2; exit 2 ;;
+  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace]' >&2; exit 2 ;;
 esac

@@ -5,7 +5,9 @@ A terminal editor for `.taskpaper` files: an infinite, Workflowy-like outliner b
 ## Layout
 
 - `app/` — the application (Rust crate: source code, resources)
-- `docs/` — requirements and specs
+- `docs/` — requirements, specs and references ([index](docs/README.md))
+
+Agents start with [AGENTS.md](AGENTS.md), which links the workflow and quality rules in [docs/quality/](docs/quality/README.md).
 
 ## Running
 
