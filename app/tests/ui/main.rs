@@ -1,5 +1,6 @@
 //! Integration tests: the whole app driven through key events and rendered in a `TestBackend`.
 
+mod blocks;
 mod focus_and_scrolling;
 mod open_file;
 mod support;

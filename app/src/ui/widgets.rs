@@ -3,14 +3,15 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Style,
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{Paragraph, Widget},
+    widgets::Widget,
 };
 
-use crate::{app::Row, document::ItemKind};
+use crate::{app::Row, document::BlockKind};
 
-/// The outline: one row per line, 2 columns of indent per level, then a marker and the text.
+/// The outline: one row per block, 2 columns of indent per level, then a marker and the text; a
+/// block with several lines takes several screen lines.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
@@ -29,13 +30,13 @@ impl<'a> OutlineView<'a> {
         }
     }
 
-    /// Starts drawing at row `offset` instead of the first row.
+    /// Starts drawing at screen line `offset` of the outline instead of its first line.
     #[must_use]
     pub fn offset(self, offset: usize) -> Self {
         Self { offset, ..self }
     }
 
-    /// Highlights row `index` across the full width (ui.md §2).
+    /// Highlights every line of row `index` across the full width (ui.md §2).
     #[must_use]
     pub fn focused(self, index: Option<usize>) -> Self {
         Self {
@@ -47,36 +48,71 @@ impl<'a> OutlineView<'a> {
 
 impl Widget for OutlineView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let lines: Vec<Line> = self
-            .rows
-            .iter()
-            .skip(self.offset)
-            .take(usize::from(area.height))
-            .map(row_line)
-            .collect();
-        Paragraph::new(lines).render(area, buf);
-        let focused_area = self
-            .focused
-            .and_then(|index| index.checked_sub(self.offset))
-            .and_then(|row| area.rows().nth(row));
-        if let Some(focused_area) = focused_area {
-            buf.set_style(focused_area, Style::new().reversed());
+        let width = usize::from(area.width);
+        let lines = self.rows.iter().enumerate().flat_map(|(index, row)| {
+            row_lines(row, width)
+                .into_iter()
+                .map(move |line| (index, line))
+        });
+        for ((index, line), line_area) in lines.skip(self.offset).zip(area.rows()) {
+            line.render(line_area, buf);
+            if Some(index) == self.focused {
+                buf.set_style(line_area, Style::new().reversed());
+            }
         }
     }
 }
 
-/// Every row reserves a marker column so notes line up with the text of sibling tasks.
-fn row_line(row: &Row) -> Line<'_> {
+/// The screen lines of one block, `width` columns wide. Every block reserves a marker column so
+/// text lines up with the text of sibling tasks.
+fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
+    let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
-        ItemKind::Project => ("▾", Style::new().bold()),
-        ItemKind::Task if row.done => ("☑", Style::new().dim().crossed_out()),
-        ItemKind::Task => ("☐", Style::new()),
-        ItemKind::Note => (" ", Style::new()),
+        BlockKind::Project => ("▾", Style::new().bold()),
+        BlockKind::Task if row.done => ("☑", Style::new().dim().crossed_out()),
+        BlockKind::Task => ("☐", Style::new()),
+        BlockKind::Url => ("↗", Style::new().underlined().cyan()),
+        BlockKind::Section => (" ", Style::new().bold()),
+        BlockKind::Code => (" ", code_style()),
+        BlockKind::Note | BlockKind::Divider => (" ", Style::new()),
     };
-    Line::from(vec![
-        Span::raw(format!("{}{marker} ", "  ".repeat(row.depth))),
-        Span::styled(row.text.as_str(), style),
-    ])
+    row.lines
+        .iter()
+        .enumerate()
+        .map(|(index, text)| {
+            let prefix = if index == 0 {
+                format!("{indent}{marker} ")
+            } else {
+                format!("{indent}  ")
+            };
+            let mut line = Line::from(vec![Span::raw(prefix)]);
+            match row.kind {
+                BlockKind::Divider => line.push_span(rule(&line, width)),
+                BlockKind::Section => {
+                    line.push_span(Span::styled(text.as_str(), style));
+                    line.push_span(" ");
+                    line.push_span(rule(&line, width));
+                }
+                BlockKind::Code => {
+                    line.push_span(Span::styled(text.as_str(), style));
+                    let fill = width.saturating_sub(line.width());
+                    line.push_span(Span::styled(" ".repeat(fill), style));
+                }
+                _ => line.push_span(Span::styled(text.as_str(), style)),
+            }
+            line
+        })
+        .collect()
+}
+
+/// A horizontal rule from the end of `line` to the right edge.
+fn rule(line: &Line, width: usize) -> Span<'static> {
+    Span::raw("─".repeat(width.saturating_sub(line.width())))
+}
+
+/// The background band of code blocks; themes arrive in step 6.2.
+fn code_style() -> Style {
+    Style::new().bg(Color::DarkGray)
 }
 
 #[cfg(test)]

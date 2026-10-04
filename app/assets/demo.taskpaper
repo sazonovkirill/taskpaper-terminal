@@ -2,18 +2,26 @@ Trip to Lisbon: @travel
 	- Book flights
 	- Reserve a hotel near Alfama @priority(1)
 		Prefer a room with a view of the river.
-	Packing:
+		A balcony would be a bonus.
+	Lisbon travel guide @url(https://www.visitlisboa.com)
+	Packing @section
 		- Passport @done
 		- Rain jacket
 		- Phone charger
 Website release 2.0:
 	- Write the release notes @done
 	- Fix the broken contact form @bug
-	Launch checklist:
+		Submitting the form twice shows a blank page.
+		COMMENTS @hidden @comments
+			[2026-10-04 09:30] Only happens in Safari.
+	Launch checklist @section
 		- Back up the database
 		- Deploy to production
 		- Announce it on the blog
+	---
 	Ship once every checklist item is done.
+	./deploy.sh --env production @code
+	./notify.sh "Release 2.0 is live"
 Reading list:
 	- The Pragmatic Programmer
 	- Thinking, Fast and Slow

@@ -1,0 +1,13 @@
+Kitchen:
+	Shopping list for the weekend.
+	Remember the coupons.
+	- Buy flour
+	Baking @section
+		- Preheat the oven
+	Recipe site @url(https://example.com/bread)
+	---
+	print("knead") @code
+	print("bake")
+	- Clean up
+		COMMENTS @hidden @comments
+			[2026-10-04 12:00] Use the blue sponge.

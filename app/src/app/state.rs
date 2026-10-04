@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::document::{Document, ItemId, ItemKind, format};
+use crate::document::{BlockKind, Document, Item, ItemId, blocks, format};
 
 /// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
 const DEMO: &str = include_str!("../../assets/demo.taskpaper");
@@ -15,18 +15,18 @@ pub struct State {
     pub(super) focus: Option<ItemId>,
 }
 
-/// One visible row of the outline.
+/// One visible block of the outline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
-    /// The item this row shows.
+    /// The block this row shows: the id of its first line.
     pub id: ItemId,
     /// Depth below the top level, starting at 0.
     pub depth: usize,
-    /// The item's TaskPaper type.
-    pub kind: ItemKind,
-    /// The text to show, without tags.
-    pub text: String,
-    /// Whether the line carries `@done`, with or without a value (D-17).
+    /// The block's type.
+    pub kind: BlockKind,
+    /// The text of each of its lines, without tags; never empty.
+    pub lines: Vec<String>,
+    /// Whether the block carries `@done`, with or without a value (D-17).
     pub done: bool,
 }
 
@@ -68,48 +68,56 @@ impl State {
         self.focus
     }
 
-    /// Every line of the document in order, one row each.
+    /// Every block of the document in order, one row each; special nodes are never shown
+    /// (FR-SPC-01).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        self.document
-            .descendants(self.document.root())
-            .filter_map(|(id, depth)| {
-                let item = self.document.get(id)?;
-                Some(Row {
-                    id,
-                    depth,
-                    kind: item.kind(),
-                    text: item.display_text(),
-                    done: item.tags().iter().any(|tag| tag.name == "done"),
-                })
-            })
-            .collect()
+        let mut rows = Vec::new();
+        self.push_rows(self.document.root(), 0, &mut rows);
+        rows
+    }
+
+    fn push_rows(&self, parent: ItemId, depth: usize, rows: &mut Vec<Row>) {
+        for block in blocks::children(&self.document, parent) {
+            rows.push(Row {
+                id: block.id(),
+                depth,
+                kind: block.kind(),
+                lines: block
+                    .lines()
+                    .iter()
+                    .filter_map(|&id| self.document.get(id))
+                    .map(Item::display_text)
+                    .collect(),
+                done: block.done(),
+            });
+            self.push_rows(block.last_line(), depth + 1, rows);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::document::Item;
 
-    fn summary(state: &State) -> Vec<(usize, ItemKind, String)> {
+    fn summary(state: &State) -> Vec<(usize, BlockKind, String)> {
         state
             .rows()
             .into_iter()
-            .map(|row| (row.depth, row.kind, row.text))
+            .map(|row| (row.depth, row.kind, row.lines.join("|")))
             .collect()
     }
 
     #[test]
-    fn rows_list_every_line_with_depth_kind_and_display_text() {
+    fn rows_list_every_block_with_depth_kind_and_display_text() {
         let state = State::new(format::parse("A:\n\t- b\n\t\tc\nd"), None);
         assert_eq!(
             summary(&state),
             [
-                (0, ItemKind::Project, "A".to_owned()),
-                (1, ItemKind::Task, "b".to_owned()),
-                (2, ItemKind::Note, "c".to_owned()),
-                (0, ItemKind::Note, "d".to_owned()),
+                (0, BlockKind::Project, "A".to_owned()),
+                (1, BlockKind::Task, "b".to_owned()),
+                (2, BlockKind::Note, "c".to_owned()),
+                (0, BlockKind::Note, "d".to_owned()),
             ]
         );
         let ids: Vec<_> = state
@@ -127,17 +135,37 @@ mod tests {
         );
     }
 
+    // FR-BLK-03, FR-SPC-01
+    #[test]
+    fn note_runs_are_one_row_and_special_nodes_no_row() {
+        let state = State::new(
+            format::parse("P:\n\tone @x\n\n\ttwo\n\t\tC @hidden\n\t\t\tc\n\t\t- child\n\t--- @y"),
+            None,
+        );
+        assert_eq!(
+            summary(&state),
+            [
+                (0, BlockKind::Project, "P".to_owned()),
+                (1, BlockKind::Note, "one||two".to_owned()),
+                (2, BlockKind::Task, "child".to_owned()),
+                (1, BlockKind::Divider, "---".to_owned()),
+            ]
+        );
+    }
+
     // FR-TAG-01, FR-DONE-01, D-17
     #[test]
-    fn rows_hide_tags_and_mark_lines_tagged_done() {
+    fn rows_hide_tags_and_mark_blocks_tagged_done() {
         let state = State::new(
-            format::parse("- a @done\n- b @done(2026-10-01) @x\n- c @due(1)\nP: @done\n- d @Done"),
+            format::parse(
+                "- a @done\n- b @done(2026-10-01) @x\n- c @due(1)\nP: @done\n- d @Done\nn\nm @done",
+            ),
             None,
         );
         let rows: Vec<_> = state
             .rows()
             .into_iter()
-            .map(|row| (row.text, row.done))
+            .map(|row| (row.lines.join("|"), row.done))
             .collect();
         assert_eq!(
             rows,
@@ -147,6 +175,7 @@ mod tests {
                 ("c".to_owned(), false),
                 ("P".to_owned(), true),
                 ("d".to_owned(), false),
+                ("n|m".to_owned(), true),
             ]
         );
     }
@@ -204,7 +233,15 @@ mod tests {
         let state = State::demo();
         assert_canonical(state.document());
         let rows = state.rows();
-        for kind in [ItemKind::Project, ItemKind::Task, ItemKind::Note] {
+        for kind in [
+            BlockKind::Project,
+            BlockKind::Task,
+            BlockKind::Note,
+            BlockKind::Section,
+            BlockKind::Code,
+            BlockKind::Url,
+            BlockKind::Divider,
+        ] {
             assert!(
                 rows.iter().any(|row| row.kind == kind),
                 "demo lacks a {kind:?}"
@@ -212,12 +249,12 @@ mod tests {
         }
         assert!(rows.iter().any(|row| row.depth >= 2), "demo lacks nesting");
         assert_eq!(
-            rows.first().map(|row| row.text.as_str()),
-            Some("Trip to Lisbon")
+            rows.first().map(|row| row.lines.clone()),
+            Some(vec!["Trip to Lisbon".to_owned()])
         );
         assert!(
             rows.iter()
-                .any(|row| row.kind == ItemKind::Task && row.done),
+                .any(|row| row.kind == BlockKind::Task && row.done),
             "demo lacks a done task"
         );
         let document = state.document();
@@ -228,8 +265,20 @@ mod tests {
             .count();
         assert!(tagged >= 3, "demo lacks tagged lines");
         assert!(
-            rows.iter().all(|row| !row.text.contains('@')),
+            rows.iter()
+                .flat_map(|row| &row.lines)
+                .all(|line| !line.contains('@')),
             "demo shows a tag"
         );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Note && row.lines.len() > 1),
+            "demo lacks a multi-line note"
+        );
+        let hidden = document
+            .descendants(document.root())
+            .filter_map(|(id, _)| document.get(id))
+            .any(|item| item.tags().iter().any(|tag| tag.name == "hidden"));
+        assert!(hidden, "demo lacks a special node");
     }
 }

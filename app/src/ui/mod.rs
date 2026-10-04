@@ -6,7 +6,7 @@ pub mod keymap;
 pub mod layout;
 pub mod widgets;
 
-use std::time::Duration;
+use std::{ops::Range, time::Duration};
 
 use crossterm::event::Event;
 use ratatui::{
@@ -51,7 +51,7 @@ impl Tui {
         let Some(message) = self.keymap.message_for(event, now, self.page_rows) else {
             return;
         };
-        let before = self.focused_index();
+        let before = self.focused_lines().map(|lines| lines.start);
         for effect in self.state.update(message) {
             match effect {
                 Effect::Quit => self.quit = true,
@@ -59,9 +59,11 @@ impl Tui {
         }
         // A page motion scrolls the view with the focus, so the focused row keeps its place on
         // screen instead of only being dragged into view.
-        if let (Message::PageDown { .. } | Message::PageUp { .. }, Some(before), Some(after)) =
-            (message, before, self.focused_index())
-        {
+        if let (Message::PageDown { .. } | Message::PageUp { .. }, Some(before), Some(after)) = (
+            message,
+            before,
+            self.focused_lines().map(|lines| lines.start),
+        ) {
             self.scroll = (self.scroll + after).saturating_sub(before);
         }
     }
@@ -89,9 +91,9 @@ impl Tui {
         self.page_rows = usize::from(outline.height);
         self.scroll = layout::scroll_offset(
             self.scroll,
-            focused.unwrap_or_default(),
+            self.focused_lines().unwrap_or_default(),
             self.page_rows,
-            rows.len(),
+            rows.iter().map(|row| row.lines.len()).sum(),
         );
         frame.render_widget(
             OutlineView::new(&rows).offset(self.scroll).focused(focused),
@@ -116,6 +118,15 @@ impl Tui {
         if !pending.is_empty() {
             frame.render_widget(Line::from(format!(" {pending}")).right_aligned(), area);
         }
+    }
+
+    /// The screen lines of the outline that the focused block takes.
+    fn focused_lines(&self) -> Option<Range<usize>> {
+        let rows = self.state.rows();
+        let index = self.focused_index()?;
+        let start = rows.iter().take(index).map(|row| row.lines.len()).sum();
+        let height = rows.get(index)?.lines.len();
+        Some(start..start + height)
     }
 
     /// The position of the focused row among the outline's rows.
