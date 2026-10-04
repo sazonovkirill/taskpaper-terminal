@@ -10,7 +10,7 @@ use crate::support::Harness;
 fn shows_the_file_as_an_indented_outline() {
     let mut app = Harness::open("groceries.taskpaper", 34, 8);
     let mut expected = Buffer::with_lines([
-        "▾ Groceries @home                 ",
+        "▾ Groceries                       ",
         "  ☐ Milk                          ",
         "  ☐ Bread                         ",
         "      Wholegrain if they have it. ",
@@ -19,7 +19,7 @@ fn shows_the_file_as_an_indented_outline() {
         "  Notes about the week.           ",
         "                                  ",
     ]);
-    expected.set_style(Rect::new(2, 0, 15, 1), Style::new().bold());
+    expected.set_style(Rect::new(2, 0, 9, 1), Style::new().bold());
     expected.set_style(Rect::new(4, 4, 5, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }

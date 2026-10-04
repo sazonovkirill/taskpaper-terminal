@@ -4,7 +4,7 @@ use std::ops::Range;
 
 /// One tag occurrence in a line body.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TagMatch {
+pub struct Tag {
     /// From the whitespace before `@` (or the line start) to the end of the tag.
     pub span: Range<usize>,
     /// The tag name, without `@`.
@@ -18,7 +18,7 @@ pub struct TagMatch {
 /// Empty names and the reserved names `id`, `text` and `type` are plain text, as file-format.md §5 says.
 /// Duplicates are returned too; deciding that the first occurrence wins is up to the caller.
 #[must_use]
-pub fn scan(text: &str) -> Vec<TagMatch> {
+pub fn scan(text: &str) -> Vec<Tag> {
     let mut tags = Vec::new();
     let mut resume = 0;
     for (at, _) in text.match_indices('@') {
@@ -33,7 +33,7 @@ pub fn scan(text: &str) -> Vec<TagMatch> {
         };
         resume = end;
         if !name.is_empty() && !matches!(name.as_str(), "id" | "text" | "type") {
-            tags.push(TagMatch {
+            tags.push(Tag {
                 span: start..end,
                 name,
                 value,

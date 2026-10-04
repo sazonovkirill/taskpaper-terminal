@@ -2,3 +2,4 @@
 
 mod open_file;
 mod support;
+mod tags;

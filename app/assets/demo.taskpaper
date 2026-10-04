@@ -1,14 +1,14 @@
-Trip to Lisbon:
+Trip to Lisbon: @travel
 	- Book flights
-	- Reserve a hotel near Alfama
+	- Reserve a hotel near Alfama @priority(1)
 		Prefer a room with a view of the river.
 	Packing:
-		- Passport
+		- Passport @done
 		- Rain jacket
 		- Phone charger
 Website release 2.0:
-	- Write the release notes
-	- Fix the broken contact form
+	- Write the release notes @done
+	- Fix the broken contact form @bug
 	Launch checklist:
 		- Back up the database
 		- Deploy to production

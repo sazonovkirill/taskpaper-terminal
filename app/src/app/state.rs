@@ -23,8 +23,10 @@ pub struct Row {
     pub depth: usize,
     /// The item's TaskPaper type.
     pub kind: ItemKind,
-    /// The text to show.
+    /// The text to show, without tags.
     pub text: String,
+    /// Whether the line carries `@done`, with or without a value (D-17).
+    pub done: bool,
 }
 
 impl State {
@@ -64,6 +66,7 @@ impl State {
                     depth,
                     kind: item.kind(),
                     text: item.display_text(),
+                    done: item.tags().iter().any(|tag| tag.name == "done"),
                 })
             })
             .collect()
@@ -107,6 +110,30 @@ mod tests {
                 .map(|row| row.id)
                 .collect::<Vec<_>>(),
             ids
+        );
+    }
+
+    // FR-TAG-01, FR-DONE-01, D-17
+    #[test]
+    fn rows_hide_tags_and_mark_lines_tagged_done() {
+        let state = State::new(
+            format::parse("- a @done\n- b @done(2026-10-01) @x\n- c @due(1)\nP: @done\n- d @Done"),
+            None,
+        );
+        let rows: Vec<_> = state
+            .rows()
+            .into_iter()
+            .map(|row| (row.text, row.done))
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                ("a".to_owned(), true),
+                ("b".to_owned(), true),
+                ("c".to_owned(), false),
+                ("P".to_owned(), true),
+                ("d".to_owned(), false),
+            ]
         );
     }
 
@@ -165,6 +192,22 @@ mod tests {
         assert_eq!(
             rows.first().map(|row| row.text.as_str()),
             Some("Trip to Lisbon")
+        );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == ItemKind::Task && row.done),
+            "demo lacks a done task"
+        );
+        let document = state.document();
+        let tagged = document
+            .descendants(document.root())
+            .filter_map(|(id, _)| document.get(id))
+            .filter(|item| !item.tags().is_empty())
+            .count();
+        assert!(tagged >= 3, "demo lacks tagged lines");
+        assert!(
+            rows.iter().all(|row| !row.text.contains('@')),
+            "demo shows a tag"
         );
     }
 }

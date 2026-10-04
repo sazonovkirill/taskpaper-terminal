@@ -81,21 +81,56 @@ pub fn kind(text: &str) -> ItemKind {
     }
 }
 
-/// The body without a task's `- ` and a project's `:`.
+/// The body without a task's `- `, a project's `:` and every tag (data-model.md §2).
 #[must_use]
 pub fn display_text(text: &str) -> String {
-    let run = tags::trailing_run_start(text);
+    let shown = without_tags(text);
     match kind(text) {
-        ItemKind::Task => text.chars().skip(2).collect(),
-        ItemKind::Project => {
-            let colon = run.saturating_sub(1);
-            [text.get(..colon), text.get(run..)]
-                .into_iter()
-                .flatten()
-                .collect()
-        }
-        ItemKind::Note => text.to_owned(),
+        ItemKind::Task => shown.chars().skip(2).collect(),
+        ItemKind::Project => shown.strip_suffix(':').unwrap_or(&shown).to_owned(),
+        ItemKind::Note => shown,
     }
+}
+
+/// The line's tags, keeping only the first occurrence of each name (file-format.md §5).
+#[must_use]
+pub fn tags(text: &str) -> Vec<tags::Tag> {
+    let mut found: Vec<tags::Tag> = Vec::new();
+    for tag in tags::scan(text) {
+        if found.iter().all(|seen| seen.name != tag.name) {
+            found.push(tag);
+        }
+    }
+    found
+}
+
+/// Removes every tag occurrence. A tag's span starts at the whitespace before it, so the text
+/// after a tag starts with the whitespace that followed it; that collapses to one space between
+/// the remaining text on either side, or to nothing at either end of the line.
+fn without_tags(text: &str) -> String {
+    let mut shown = String::with_capacity(text.len());
+    let mut rest = 0;
+    let line_end = text.len()..text.len();
+    for span in tags::scan(text)
+        .into_iter()
+        .map(|tag| tag.span)
+        .chain([line_end])
+    {
+        let piece = text.get(rest..span.start).unwrap_or_default();
+        let piece = if rest == 0 {
+            piece
+        } else {
+            piece.trim_start_matches(is_whitespace)
+        };
+        if !piece.is_empty() {
+            if !shown.is_empty() {
+                shown.push(' ');
+            }
+            shown.push_str(piece);
+        }
+        rest = span.end;
+    }
+    shown
 }
 
 /// The body without its trailing tag run, which decides the item type.
@@ -492,11 +527,11 @@ mod tests {
     fn display_text_drops_task_dash_and_project_colon() {
         let cases = [
             ("- Milk", "Milk"),
-            ("-\tMilk @x", "Milk @x"),
+            ("-\tMilk @x", "Milk"),
             ("- ", ""),
             ("Groceries:", "Groceries"),
-            ("Groceries: @home @a", "Groceries @home @a"),
-            ("a @x(1) b:", "a @x(1) b"),
+            ("Groceries: @home @a", "Groceries"),
+            ("a @x(1) b:", "a b"),
             ("Café:", "Café"),
             ("- é", "é"),
             ("note: text", "note: text"),
@@ -504,5 +539,79 @@ mod tests {
         for (text, expected) in cases {
             assert_eq!(display_text(text), expected, "{text:?}");
         }
+    }
+
+    // FR-TAG-01
+    #[test]
+    fn display_text_hides_every_tag() {
+        let cases = [
+            ("- Buy milk @due(2026-10-05) @home", "Buy milk"),
+            ("Inbox: @a(1)  ", "Inbox"),
+            ("@today", ""),
+            ("@a @b", ""),
+            ("@a  rest", "rest"),
+            ("- @a x", "x"),
+            ("-\t@a x", "x"),
+            ("a @x b", "a b"),
+            ("a  @x   b", "a b"),
+            ("a @x @y b @z c", "a b c"),
+            ("a\u{3000}@x\tb", "a b"),
+            ("x @a @a", "x"),
+            ("@a x @a(2) y", "x y"),
+            ("@a :", ""),
+            ("keep  inner   spaces @x", "keep  inner   spaces"),
+            ("trailing  ", "trailing  "),
+            ("a @x b  ", "a b  "),
+        ];
+        for (text, expected) in cases {
+            assert_eq!(display_text(text), expected, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn display_text_keeps_what_is_not_a_tag() {
+        let cases = [
+            ("mail foo@bar.com", "mail foo@bar.com"),
+            ("Proj:@x", "Proj:@x"),
+            ("a @due(2026)x", "a @due(2026)x"),
+            ("a @ b", "a @ b"),
+            ("@id @text @type(x)", "@id @text @type(x)"),
+            ("a @tag, b", "a @tag, b"),
+        ];
+        for (text, expected) in cases {
+            assert_eq!(display_text(text), expected, "{text:?}");
+        }
+    }
+
+    // FR-TAG-02
+    #[test]
+    fn tags_keep_the_first_occurrence_per_name() {
+        let found: Vec<_> = tags("- a @done @due(1) b @done(2026-10-01) @due(2) @x")
+            .into_iter()
+            .map(|tag| (tag.name, tag.value, tag.span))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                ("done".to_owned(), None, 3..9),
+                ("due".to_owned(), Some("1".to_owned()), 9..17),
+                ("x".to_owned(), None, 45..48),
+            ]
+        );
+    }
+
+    #[test]
+    fn tag_names_are_case_sensitive() {
+        let names: Vec<_> = tags("@Done @done")
+            .into_iter()
+            .map(|tag| tag.name)
+            .collect();
+        assert_eq!(names, ["Done", "done"]);
+    }
+
+    #[test]
+    fn line_without_tags_has_none() {
+        assert_eq!(tags("plain text"), Vec::new());
+        assert_eq!(tags(""), Vec::new());
     }
 }

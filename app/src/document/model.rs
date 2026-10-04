@@ -199,10 +199,16 @@ impl Item {
         format::kind(&self.text)
     }
 
-    /// The text without the task's `- ` and the project's `:`.
+    /// The text without the task's `- `, the project's `:` and every tag.
     #[must_use]
     pub fn display_text(&self) -> String {
         format::display_text(&self.text)
+    }
+
+    /// The tags on this line, first occurrence per name.
+    #[must_use]
+    pub fn tags(&self) -> Vec<format::tags::Tag> {
+        format::tags(&self.text)
     }
 }
 
@@ -282,8 +288,24 @@ mod tests {
         let task = document.push_child(root, "- Milk".into(), 0);
         let item = document.get(project).unwrap();
         assert_eq!(item.kind(), ItemKind::Project);
-        assert_eq!(item.display_text(), "Inbox @a");
+        assert_eq!(item.display_text(), "Inbox");
         assert_eq!(document.get(task).unwrap().kind(), ItemKind::Task);
         assert_eq!(document.get(task).unwrap().display_text(), "Milk");
+    }
+
+    #[test]
+    fn item_tags_follow_the_text() {
+        let mut document = Document::default();
+        let root = document.root();
+        let task = document.push_child(root, "- Milk @done @done(2026-10-01)".into(), 0);
+        let tags = document.get(task).unwrap().tags();
+        assert_eq!(
+            tags,
+            [format::tags::Tag {
+                span: 6..12,
+                name: "done".to_owned(),
+                value: None,
+            }]
+        );
     }
 }

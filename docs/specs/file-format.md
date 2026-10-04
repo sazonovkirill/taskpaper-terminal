@@ -54,7 +54,7 @@ Computed from the body with the trailing tag run removed (`content`):
 
 `* ` and `+ ` lines are notes (the current app dropped them as task markers).
 
-Display text (`content_text`): the body without the `- ` prefix, without the project `:` and without the trailing tag run.
+Display text: the body without the `- ` prefix, without the project `:` and without every tag, as [data-model.md §2](data-model.md#2-derived-line-attributes) defines it (FR-TAG-01). TaskPaper's own `content_text` drops only the trailing tag run.
 
 ## 5. Tags
 
