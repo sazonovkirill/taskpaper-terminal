@@ -5,6 +5,12 @@
 
 The order in which v1 is built. The app starts almost trivial and gains one feature per step; after every step it starts, shows the file and does everything earlier steps added, with no half-finished feature reachable by the user. Each step is sized to be one Todoist task for one agent and lists what it covers, what it needs first and what the owner can try when it lands. What each feature does is in the [functional requirements](functional-requirements.md) and the [specs](specs/README.md); this file only orders the work.
 
+## Milestones and acceptance
+
+Development goes one milestone at a time (owner, 2026-10-04). Each milestone is one Todoist task labeled `milestone`, with its steps listed in the description; an agent works through the steps in order, committing each through the review gate and recording progress in the task's comments. When every step is on `main`, the task moves to Done and work stops: the owner runs the app, reviews it and gives feedback. Closing the task accepts the milestone. Each milestone task names the previous one as a dependency, so it is not runnable until that one is closed ([agent workflow](quality/agent-workflow.md#backlog-and-task-selection)). Feedback that changes later steps is recorded here before the next milestone starts.
+
+The parallel lanes below still apply within a milestone when the owner starts more than one agent on it; each agent then records which steps it took in the task's comments.
+
 ## Rules for every step
 
 - A step ships its core logic, its key bindings, its entries in the `?` panel, palette and context menu (once those exist), its tests and any doc updates together, through the [agent workflow](quality/agent-workflow.md).
