@@ -71,9 +71,9 @@ Every test must pass when run in parallel with every other test, in any order, a
 
 ## Coverage and test quality
 
-- Pure logic (model, parser and serializer, update functions, input mapping) has 100% line coverage. Rendering and terminal glue are covered by widget and integration tests to the extent a `TestBackend` can reach; only `main.rs` terminal setup is excluded.
-- Measure with `cargo llvm-cov`. Coverage shows what is not tested; it does not prove that what is tested is checked.
-- Use `cargo-mutants` to check that tests actually assert behavior: a missed mutant is code that can be broken without any test failing. Run it on the changed code before review, and fix missed mutants in the changed code by adding assertions, not by excluding them.
+- Every line of the library crate (`app/src/` except `main.rs`) is covered: `bash app/scripts/validate.sh coverage` runs `cargo llvm-cov` over all tests and fails below 100% line coverage. Only `main.rs`, which holds nothing but terminal setup and the event loop, is excluded. Any further exclusion is a narrow, commented addition to the script's ignore pattern that the owner approves.
+- Coverage shows what is not tested; it does not prove that what is tested is checked.
+- Mutation testing is a required step before review: `bash app/scripts/validate.sh mutants` runs `cargo-mutants` on the code changed since the branch left `origin/main`. A missed mutant is code that can be broken without any test failing. Fix missed mutants by adding assertions, not by excluding them; a mutant that cannot be caught (an equivalent mutant) is recorded on the task with the reason, and reviewers may dispute it.
 
 ## Practices for agent-written tests
 

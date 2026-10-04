@@ -51,7 +51,7 @@ Independent review is required for every non-trivial commit, code or documentati
 
 For every non-trivial commit, including later fixes:
 
-1. **Ground first.** Prepare one coherent increment and run the validation for its change type. Every commit must leave the project valid. Deterministic checks, not reviewers, settle anything a tool can decide, such as formatting, lint, build and tests.
+1. **Ground first.** Prepare one coherent increment and run the validation for its change type. For code changes that means `bash app/scripts/validate.sh all` and `bash app/scripts/validate.sh mutants`, with every missed mutant fixed or recorded as equivalent ([testing strategy](testing-strategy.md)). Every commit must leave the project valid. Deterministic checks, not reviewers, settle anything a tool can decide, such as formatting, lint, build and tests.
 2. **Freeze and brief.** Freeze the base revision and proposed contents, then give a fresh Codex reviewer and a fresh Claude reviewer the same brief (below). Reviews are read-only and independent: neither inherits the implementer's conversation or sees the other reviewer's findings before reporting.
 3. **Record.** After both reviewers report, record on the task each reviewer's model, effort and session identifier when available, the base revision, a reproducible identifier of the reviewed contents such as the proposed Git tree, and the findings.
 4. **Adjudicate against source.** Apply the severity rules below. The implementer fixes verified P0/P1 findings; reviewers only report. Resolve disputes by checking the code, tests or accepted requirements, never by vote or by asking a model which argument is right. To verify a disputed P0/P1, send it to a fresh reviewer from the other model family, told to refute it and to default to refuted when uncertain. Record each finding's disposition and reason on the task.
@@ -110,7 +110,7 @@ Launch reviewers from the frozen worktree with the prompt on standard input, at 
 
 ## Validation, publication and delivery
 
-Code changes require `bash app/scripts/validate.sh all` to pass for the exact contents being committed, before pushing. There is no GitHub CI. Record the command and exit status on the task. Investigate failures and review and validate any corrective commit through the same gate. Do not hide failures with weaker tests, repeated blind retries or results from earlier contents.
+Code changes require `bash app/scripts/validate.sh all` (format, lint, tests and the coverage gate) and `bash app/scripts/validate.sh mutants` to pass for the exact contents being committed, before pushing. There is no GitHub CI. Record the command and exit status on the task. Investigate failures and review and validate any corrective commit through the same gate. Do not hide failures with weaker tests, repeated blind retries or results from earlier contents.
 
 Documentation-only work needs local review and `git diff --check` before staging plus `git diff --cached --check` after staging.
 
@@ -122,4 +122,4 @@ After delivering, the agent retires its worktree and stops unless the owner aske
 
 ## Prerequisites
 
-Agents need the Todoist MCP server (`https://ai.todoist.net/mcp`) registered under the name `todoist` and signed in for both Claude Code and Codex, the `codex` and `claude` CLIs for independent reviewers, `openssl`, and a stable Rust toolchain with `rustfmt` and `clippy`. Keep credentials out of Git, task records and model prompts.
+Agents need the Todoist MCP server (`https://ai.todoist.net/mcp`) registered under the name `todoist` and signed in for both Claude Code and Codex, the `codex` and `claude` CLIs for independent reviewers, `openssl`, and a stable Rust toolchain with `rustfmt`, `clippy` and `llvm-tools-preview` (`rustup component add llvm-tools-preview`), and `cargo install cargo-llvm-cov cargo-mutants --locked`. Keep credentials out of Git, task records and model prompts.

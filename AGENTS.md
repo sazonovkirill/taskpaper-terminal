@@ -21,7 +21,7 @@ This project's conventions override tool defaults. Before writing code:
 
 - **Product:** a feature-complete terminal clone of Workflowy that stores outlines as `.taskpaper` files. Requirements, specs and format references live in `docs/`.
 - **Language and stack:** Rust (edition 2024) with [Ratatui](https://ratatui.rs) 0.30 and crossterm 0.29. The crate lives in `app/`; versions are pinned in `app/Cargo.lock`.
-- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, tests). Use `format` to apply `rustfmt`, `static` for format and lint only, or `test` for tests only. Run the app with `cargo run` from `app/`.
+- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, tests, 100% line coverage gate). `bash app/scripts/validate.sh mutants` mutation-tests the changed code and is required before review. Use `format` to apply `rustfmt`, `static` for format and lint only, `test` for tests only, or `coverage` for the coverage gate only. Run the app with `cargo run` from `app/`.
 
 ### 2. Correct, not just green
 
@@ -64,7 +64,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 - [ ] Builds on the existing design without speculative abstractions
 - [ ] Handles edge cases at the correct layer without defensive clutter
 - [ ] Behavior changes include unit and integration tests as the [testing strategy](docs/quality/testing-strategy.md) requires, covering behavior rather than implementation details
-- [ ] `bash app/scripts/validate.sh all` passes on the committed contents; no tests weakened
+- [ ] `bash app/scripts/validate.sh all` and `bash app/scripts/validate.sh mutants` pass on the committed contents; no tests weakened
 - [ ] Addresses the root cause rather than masking it
 - [ ] Contains nothing beyond the requested task
 - [ ] Summarizes what was verified, what was not verified and what remains uncertain
