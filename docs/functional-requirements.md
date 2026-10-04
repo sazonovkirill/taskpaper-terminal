@@ -80,6 +80,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-KEY-03 | Modifier bindings use keys that work on macOS, Linux and Windows terminals (`Ctrl`, `Shift`, `Alt`); no binding requires `Cmd`/`Super`. | Must |
 | FR-KEY-04 | `?` toggles a keyboard-shortcuts panel on the left listing the most useful bindings for the current mode, like Workflowy and Dynalist. While open it takes the sidebar's place (D-12). | Must |
 | FR-KEY-05 | Mouse support: click to select a block or place the cursor, click fold markers, breadcrumbs, sidebar entries and pane headers, Alt+click a block, link or breadcrumb to open it in a new pane, wheel to scroll. Mouse support is secondary: no feature depends on it (D-16). | Must |
+| FR-KEY-06 | A context menu on blocks, the selection and other UI elements (sidebar entries, breadcrumbs, pane headers) lists every command available for that element, grouped logically, with each command's key binding. It opens from a key on the focused element or by right-click, is navigable with the keyboard, and runs the chosen command. | Must |
 
 ## FR-NAV · Navigation
 
