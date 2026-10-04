@@ -1,6 +1,6 @@
 # Requirements
 
-- Status: Draft
+- Status: Accepted
 - Last updated: 2026-10-04
 
 [functional-requirements.md](functional-requirements.md) (Accepted) defines what the app does and overrides this file. This file adds what that one leaves open: how files are handled safely, and the non-functional requirements. The "how" lives in [specs/](specs/README.md); undecided choices are in [open-questions.md](open-questions.md).

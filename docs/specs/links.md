@@ -1,6 +1,6 @@
 # Spec: Internal links
 
-- Status: Draft (priority **Later**, FR-OPS-10, D-14)
+- Status: Accepted (priority **Later**, FR-OPS-10, D-14)
 - Last updated: 2026-10-04
 
 Covers links from text to another block in the same file, and backlinks. The owner accepted this design on 2026-10-04; it is recorded now so that v1 does not preclude it, and implemented later.

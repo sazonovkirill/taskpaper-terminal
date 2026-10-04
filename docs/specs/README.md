@@ -1,6 +1,6 @@
 # Specifications
 
-- Status: Draft
+- Status: Accepted
 - Last updated: 2026-10-04
 
 [../functional-requirements.md](../functional-requirements.md) (Accepted) overrides these specs; requirement IDs `FR-…` and decisions `D-n` refer to it, and `F-FILE-…`/`N-…` to [../requirements.md](../requirements.md). Where the functional requirements leave a choice open, the specs assume the proposed default from [../open-questions.md](../open-questions.md), marked with its `OQ-` number.
