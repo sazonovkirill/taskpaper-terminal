@@ -109,6 +109,7 @@ A `t` prefix groups metadata commands so they are easy to discover in the `?` pa
 | Close pane | `Ctrl+W c` |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
 | Search (Later, FR-SRCH-01) | `/` |
+| Follow link / copy link / show backlinks (Later, FR-OPS-10, [links.md](links.md)) | `gd` / `gy` / `gb` |
 | Count blocks and words | command palette |
 | Save As (FR-DOC-06) | command palette |
 | Quit | `Ctrl+Q`, `ZZ` |
@@ -124,6 +125,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Line break in a note or code block | `Shift+Enter`, `Alt+Enter` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
+| Insert link (Later, FR-OPS-10) | `Ctrl+K`, typing `[[` |
 | Undo / redo (text, within the session) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ## 4. Other contexts

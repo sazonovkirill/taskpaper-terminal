@@ -40,7 +40,7 @@ Legend for **Fit**:
 | Archive completed | Archive @done (move to `Archive:` project) | Native | TaskPaper-only feature; included. |
 | Count | Count of items/words in subtree | Native | |
 | Mirrors | No equivalent | None | **OQ-12**. |
-| Internal links, backlinks | No equivalent (only file paths and URLs are links) | Convention / None | **OQ-12**. |
+| Internal links, backlinks | No equivalent (only file paths and URLs are links) | Convention / None | **OQ-12**. Later; designed in [specs/links.md](../specs/links.md). |
 | Inline bold/italic/colors | Plain text only | None | **OQ-13**. |
 | Numbered, quote, code, divider, paragraph types | Plain note lines | None | Rendered as notes. |
 | Board / table / dashboard layouts | — | None | Out of scope for v1. |

@@ -107,7 +107,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-OPS-07 | Complete/uncomplete, set color, set dates, toggle `@today` and bookmark the whole selection at once. | Must | Multi-select menu |
 | FR-OPS-08 | Undo and redo every change, structural ones included. | Must | Undo/redo |
 | FR-OPS-09 | Count blocks and words under a block. | Must | Count |
-| FR-OPS-10 | Internal links between blocks, with backlinks (D-14). | Later | Internal links |
+| FR-OPS-10 | Internal links between blocks, with backlinks (D-14). A linked block carries a hidden `@uid(ID)` tag and links are written `[[ID\|Title]]`; the design is in [specs/links.md](specs/links.md). | Later | Internal links |
 
 ## FR-DONE · Completed items
 
