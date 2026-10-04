@@ -86,7 +86,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
 
 // FR-NAV-01, FR-BLK-03
 #[test]
-fn focus_moves_by_block_and_highlights_every_line_of_it() {
+fn focus_moves_by_block_and_marks_every_line_of_it() {
     let mut app = Harness::open("blocks.taskpaper", 40, 14);
     app.type_keys("j");
     assert_eq!(focused_rows(&screen(&mut app)), [3, 4]);
