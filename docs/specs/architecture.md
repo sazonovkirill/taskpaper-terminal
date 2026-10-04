@@ -18,14 +18,14 @@ Document (core)        document::{model, blocks, format, dates, query}
 
 | Module | Layer | Responsibility |
 |---|---|---|
-| `document::model` | Document | Line arena, derived attributes, `Op`/`Transaction`, undo stack ([data-model.md §1–5](data-model.md)). |
+| `document::model` | Document | Line arena, derived attributes, `Op`/`Transaction` and applying or inverting them ([data-model.md §1–5](data-model.md)). |
 | `document::blocks` | Document | Block grouping and types derived from lines ([data-model.md §3](data-model.md#3-blocks)). |
 | `document::format` | Document | Parse text → `Document`, serialize `Document` → text, tag scanning and editing helpers ([file-format.md](file-format.md)). Pure: takes and returns strings, never touches files. |
 | `document::dates`, `document::query` | Document | Date parser now; search query parser and matcher later ([search.md](search.md)). Today's date is passed in. |
 | `app::workspace` | App | Panes, shared folds, focus, selection, modes, edit-mode text and caret, Today view, visible blocks of each pane ([data-model.md §6](data-model.md#6-panes-and-view-state), [navigation.md](navigation.md)). |
 | `app::commands` | App | Every user intent as a message handler: structural operations, block commands, mode changes ([editing.md](editing.md)). |
 | `app::pickers` | App | Go to Symbol, Go to Command, Move to, context-menu entries: candidate lists and fuzzy ranking. |
-| `app::update` | App | `update(state, message) -> effects`; autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
+| `app::update` | App | `update(state, message) -> effects`; the undo/redo history of transactions (code-quality.md assigns undo to App); autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
 | `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
 | `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
 | `ui::effects` | UI | Executes the core's effects: atomic save, Save As, backups, recovery files, view-state files, file watching, clipboard, opening URLs ([file-io.md](file-io.md)). |
