@@ -22,7 +22,7 @@ This project's conventions override tool defaults. Before writing code:
 
 - **Product:** a feature-complete terminal clone of Workflowy that stores outlines as `.taskpaper` files. Requirements, specs and format references live in `docs/`.
 - **Language and stack:** Rust (edition 2024) with [Ratatui](https://ratatui.rs) 0.30 and crossterm 0.29. The crate lives in `app/`; versions are pinned in `app/Cargo.lock`.
-- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, cargo-deny, tests, 100% line coverage gate). `bash app/scripts/validate.sh mutants` mutation-tests the changed code and is required before review. Run `bash app/scripts/validate.sh doctor` first in every session to check the tools the others need. Use `format` to apply `rustfmt`, `static` for format, lint and cargo-deny only, `test` for tests only, or `coverage` for the coverage gate only. Run the app with `cargo run` from `app/`. To see what the app shows, render it through Ratatui's `TestBackend` in an integration test and print the screen as text ([testing strategy](docs/quality/testing-strategy.md#seeing-the-app-without-a-terminal)); you cannot view a running terminal.
+- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, cargo-deny, tests, 100% line coverage gate). `bash app/scripts/validate.sh mutants` mutation-tests the changed code and is required before review. Run `bash app/scripts/validate.sh doctor` first in every session to check the tools the others need. A tracked `pre-push` hook runs `validate.sh all` before every push; never bypass it. Use `format` to apply `rustfmt`, `static` for format, lint and cargo-deny only, `test` for tests only, or `coverage` for the coverage gate only. Run the app with `cargo run` from `app/`. To see what the app shows, render it through Ratatui's `TestBackend` in an integration test and print the screen as text ([testing strategy](docs/quality/testing-strategy.md#seeing-the-app-without-a-terminal)); you cannot view a running terminal.
 
 ### 2. Correct, not just green
 
@@ -81,7 +81,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 ## Working agreement
 
 - Read the relevant task, docs and earlier records before changing code. Keep changes within the task's scope; record proposed scope or acceptance-criteria changes on the task before implementing them.
-- Work only in your own worktree, either the one the tool started your session in or one you create under `.worktrees/` ([version-control practices](docs/quality/version-control.md#worktrees-and-branches)). Never work in the primary checkout, and never touch another agent's worktree or branch.
+- Work only in your own worktree, either the one the tool started your session in or one you create under `.worktrees/` ([version-control practices](docs/quality/version-control.md#worktrees-and-branches)). Never work in the primary checkout (a Claude Code hook in `.claude/settings.json` blocks file edits there), and never touch another agent's worktree or branch.
 - Keep `docs/` current when a change alters agreed behavior or design.
 - Ask the owner in the agent session for unresolved decisions. Silence is not approval.
 

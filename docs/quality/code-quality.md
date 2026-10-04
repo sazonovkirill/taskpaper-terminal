@@ -93,6 +93,8 @@ indexing_slicing = "warn"
 - `validate.sh` runs Clippy with `-D warnings`, so every warning fails validation and the baseline stays at zero warnings. Tests may use `unwrap`, `panic!` and indexing through Clippy's `allow-unwrap-in-tests`, `allow-panic-in-tests` and `allow-indexing-slicing-in-tests` settings in `app/clippy.toml`.
 - Formatting is stock `rustfmt` with no configuration; `validate.sh static` checks it.
 - An `#[allow]` or `#[expect]` is placed on the smallest item possible, never crate-wide, and carries a `reason = "..."`. Prefer `#[expect]`, which fails once the lint no longer fires. Allowing a pedantic lint project-wide requires an owner decision recorded here.
+- `app/clippy.toml` lists `disallowed-methods` for sleeping and reading the clock, which belong to the frontend's edge ([UI-independent core](#ui-independent-core)). Frontend code that must read the clock opts out on that item with `#[expect(clippy::disallowed_methods, reason = "...")]`.
+- `validate.sh static` also fails when a line of `src/document` that is not a comment contains the word `ratatui`, `crossterm`, `app` or `ui`, or such a line of `src/app` contains `ratatui`, `crossterm` or `ui`, so the layer direction above is checked, not only reviewed. It matches whole words in any import form, alias or `super::` path; name local values in those layers so they do not collide.
 - New code uses the latest stable Rust and dependency APIs, as the agent workflow's [Modern Rust](agent-workflow.md#modern-rust) rule requires.
 
 ## Toolchain and dependencies

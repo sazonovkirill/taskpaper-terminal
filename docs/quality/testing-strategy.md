@@ -69,7 +69,7 @@ Every test must pass when run in parallel with every other test, in any order, a
 - No shared mutable state between tests: no `static mut`, no global caches, no singletons that tests write to.
 - Never use fixed paths, the home directory, or the real working directory. Every test that touches the filesystem creates its own `tempfile::TempDir` and keeps the guard alive until the test ends.
 - Never set or remove environment variables in a test; `std::env::set_var` is unsound in multi-threaded programs. Pass configuration in as parameters, or set it on a child process with `Command::env`.
-- Never sleep or read the wall clock. Inject time as a parameter or through a clock the test controls.
+- Never sleep or read the wall clock. Inject time as a parameter or through a clock the test controls. Clippy's `disallowed-methods` in `app/clippy.toml` rejects `std::thread::sleep`, `Instant::now` and `SystemTime::now` everywhere.
 - Tests are deterministic: no randomness without a fixed seed (proptest's own seeds and regression files excepted), and no dependence on terminal size, locale or timezone of the machine running them.
 - `serial_test` is a last resort for a resource that truly cannot be isolated, and needs a comment explaining why.
 
@@ -77,7 +77,7 @@ Every test must pass when run in parallel with every other test, in any order, a
 
 - Snapshot files (`.snap`) are committed and reviewed like code. Keep each snapshot small and named after the interaction it shows.
 - Review every changed snapshot with `cargo insta review` before accepting it. Never bulk-accept (`cargo insta accept`, `INSTA_UPDATE=always`) without having read each diff and understood why it changed; an unexplained snapshot change is a bug until proven otherwise.
-- Pending `.snap.new` files are never committed.
+- Pending `.snap.new` files are never committed; `validate.sh static` fails while any exist.
 
 ## Coverage and test quality
 

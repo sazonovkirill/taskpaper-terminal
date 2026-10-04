@@ -11,6 +11,33 @@ static_checks() {
   cargo clippy --locked --all-targets --all-features -- -D warnings
   cargo deny --locked check
   bash -n scripts/validate.sh
+  layers
+  pending_snapshots
+}
+
+# Document and App are the UI-independent core (docs/quality/code-quality.md, Architecture).
+layers() {
+  local found=0
+  if [[ -d src/document ]] && grep -rnwE 'ratatui|crossterm|app|ui' src/document | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//'; then
+    echo 'layers: src/document may depend only on std and small pure crates, never on ratatui, crossterm, app or ui' >&2
+    found=1
+  fi
+  if [[ -d src/app ]] && grep -rnwE 'ratatui|crossterm|ui' src/app | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//'; then
+    echo 'layers: src/app may depend only on document; turn key events into app messages and render in src/ui' >&2
+    found=1
+  fi
+  return "$found"
+}
+
+# Pending insta snapshots are never committed (docs/quality/testing-strategy.md, Snapshots).
+pending_snapshots() {
+  local pending
+  pending="$(find . -path ./target -prune -o \( -name '*.snap.new' -o -name '*.pending-snap' \) -print)"
+  if [[ -n "$pending" ]]; then
+    echo "$pending" >&2
+    echo 'snapshots: review these with cargo insta review before validating' >&2
+    return 1
+  fi
 }
 
 unit() {
@@ -58,6 +85,11 @@ doctor() {
   need claude 'install Claude Code: https://code.claude.com/docs/en/setup'
   need codex 'install Codex CLI: https://developers.openai.com/codex/cli'
   need rustup 'install rustup: https://rustup.rs'
+  need jq 'brew install jq'
+  if [[ "$(git config core.hooksPath || true)" != .githooks ]]; then
+    echo 'doctor: the pre-push validation hook is not installed; git config core.hooksPath .githooks' >&2
+    missing=1
+  fi
   if command -v claude >/dev/null 2>&1 && ! claude mcp get todoist >/dev/null 2>&1; then
     echo 'doctor: Claude Code has no todoist MCP server; claude mcp add --transport http --scope user todoist https://ai.todoist.net/mcp' >&2
     missing=1

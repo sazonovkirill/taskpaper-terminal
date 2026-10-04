@@ -2,3 +2,8 @@ allow-unwrap-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
 doc-valid-idents = ["TaskPaper", "Workflowy", ".."]
+disallowed-methods = [
+    { path = "std::thread::sleep", reason = "wait on events or timer messages; tests never sleep" },
+    { path = "std::time::Instant::now", reason = "only the frontend reads the clock and passes time to the core as a message" },
+    { path = "std::time::SystemTime::now", reason = "only the frontend reads the clock and passes time to the core as a message" },
+]
