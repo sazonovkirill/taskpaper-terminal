@@ -16,6 +16,7 @@ This project's conventions override tool defaults. Before writing code:
 - Search for existing helpers before writing new ones. Use `rg` for the concept, not only the name. Duplicating a utility that already exists is a defect.
 - Resolve unclear conventions from existing code and accepted documentation. If conflicting patterns require an owner decision, ask. Do not invent a third pattern.
 - Never assume an API, feature flag or crate version exists. Verify it in `Cargo.toml`, `Cargo.lock` or the crate's documentation for that exact version.
+- Write modern Rust: use the latest stable language features, standard-library APIs and current dependency APIs rather than deprecated or superseded ones. Reviewers check this specifically ([agent workflow](docs/quality/agent-workflow.md#modern-rust)).
 
 #### Project facts
 

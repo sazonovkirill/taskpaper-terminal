@@ -65,6 +65,10 @@ For a multi-commit feature, also review the aggregate change with fresh Codex an
 - **P0/P1 (critical/major):** a functional bug, data loss, security flaw, explicit violation of the task's acceptance criteria or governing documents, or a logical contradiction. Admissible only with a proof: an execution trace or test case naming concrete inputs, expected result and actual result, or for documents, the conflicting rules quoted with a concrete scenario in which an agent following them fails. A P0/P1 without a proof is demoted to P3 without follow-up questions.
 - **P2/P3 (minor/nitpick):** style, naming, wording, readability, optional hardening and anything outside the diff's scope. These never block a commit or start another round and are not debated. Record them on the task; turn worthwhile ones into follow-ups.
 
+### Modern Rust
+
+The project wants modern code. Reviewers pay extra attention to whether the diff uses the latest stable Rust language features, standard-library APIs and current APIs of its dependencies at their locked versions. Code that uses a deprecated or superseded API, or a hand-written workaround for something the language, `std` or a dependency now provides, is a violation of this rule and a P1. The proof names the outdated code, the stable replacement, and the Rust release or crate version that provides it, which must be no newer than the project's toolchain and `Cargo.lock`. Implementers check the same before freezing an increment.
+
 ### Taste and authority
 
 Reviewers from different model families have different preferences. Settle disagreements in this order: verified facts, tests and tool output; then the task's acceptance criteria and the governing documents; then the implementer's choice. A preference not written in the governing documents is P3 by definition, however strongly argued. Approve a change that meets its criteria and clearly improves the project even if it is not how the reviewer would write it. When the same preference keeps coming back across tasks, ask the owner once and record the decision in the governing documents, where it becomes a rule rather than a taste.
@@ -78,6 +82,9 @@ Determine whether this change meets its acceptance criteria and governing docume
 Review only the diff and what it touches; not the codebase as a whole. No nitpicks,
 no pedantic opinions, no scope creep. If there isn't anything major, just say so:
 finding nothing is a correct and expected outcome.
+
+Pay extra attention to whether the diff uses the latest stable Rust and dependency
+APIs; an outdated API with a stable replacement is a P1 (see Modern Rust).
 
 Report each P0/P1 with its proof (see docs/quality/agent-workflow.md, Severity).
 Do not raise findings listed in the registers below without new proof.
