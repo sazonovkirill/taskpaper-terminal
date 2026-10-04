@@ -50,7 +50,7 @@ Saves check the disk state immediately before renaming; if it changed since the 
 
 Restores the pane layout (FR-UI-04) and fold state (OQ-05 default A).
 
-- File: `$XDG_STATE_HOME/taskpaper-terminal/views.json` (platform equivalent via `directories`), keyed by canonical file path. Files under `/tmp` are not recorded.
+- File: `$XDG_STATE_HOME/taskpaper-terminal/views.json` (platform equivalent via `directories`), keyed by canonical file path.
 - Stored per file: the panes in order with their location, history, focused block, width and show-completed setting; the focused pane; collapsed blocks; sidebar visibility.
 - Blocks are stored as **text paths**: the list of first-line `text` values from the top level down to the block, plus the index among equal-text siblings.
 - On load, each path is re-matched; anything that doesn't match is dropped silently. View state never blocks opening a file.

@@ -104,6 +104,27 @@ Tags are never typed (FR-TAG-01), but TaskPaper has no way to escape `@`: a type
 **Proposed default:** A.
 **Affects:** [specs/editing.md](specs/editing.md).
 
+### OQ-26 · Adjacent note blocks — open
+
+D-2 makes consecutive sibling note lines one block, and TaskPaper text has no way to mark a boundary between two of them. So two note blocks can never be adjacent siblings: creating a note next to a note, deleting the block that separated two notes, or converting a block between notes into a note merges them.
+
+- **A. Accept merging as the consequence of D-2, and avoid it where the app chooses the type:** a new block (new below/above, `group`'s parent) that would be a note next to a note becomes a task instead. Conversions and deletions that make notes adjacent merge them, with a status message.
+- **B. Insert a separator** (an empty line or a divider) between them, changing the file.
+- **C. Revisit D-2** so that blank lines separate note blocks.
+
+**Proposed default:** A.
+**Affects:** [specs/editing.md](specs/editing.md), [specs/data-model.md](specs/data-model.md).
+
+### OQ-27 · Typed text that looks like task or project syntax — open
+
+The type is hidden while editing, but TaskPaper derives it from the text: a note ending in `:` is a project, a line starting with `- ` is a task. There is no escape.
+
+- **A. Let the text decide:** the block takes the type its text parses as, and the marker updates live. In a code block, a line that would parse as a task or project ends the code run; edit mode warns before that happens.
+- **B. Refuse the edit** (a trailing `:` on a note, a leading `- ` on a non-task) with a hint pointing to the type converter.
+
+**Proposed default:** A. It matches TaskPaper and loses nothing; B would forbid ordinary text like `Questions:` in a note.
+**Affects:** [specs/editing.md](specs/editing.md).
+
 ## Decided
 
 | # | Question | Decision |

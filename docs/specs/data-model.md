@@ -50,7 +50,7 @@ A block is what the user navigates, selects and edits (FR-BLK). Blocks are compu
 
 | Type | Rule |
 |---|---|
-| Divider | note line whose text is exactly `---` |
+| Divider | note line whose text without tags is exactly `---`, so metadata commands on a divider don't change its type |
 | Section | line with `@section` |
 | URL | line with `@url(...)` |
 | Code | note block whose first line has `@code` |
@@ -58,9 +58,9 @@ A block is what the user navigates, selects and edits (FR-BLK). Blocks are compu
 | Project | TaskPaper project line |
 | Note | anything else |
 
-The type is shown; how it is stored is never edited directly but through the type converter (FR-BLK-08), which rewrites the syntax and type tags of every line in the block ([editing.md §5](editing.md#5-block-commands)).
+The type is changed with the type converter (FR-BLK-08), which rewrites the syntax and type tags of every line in the block ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
 
-**Block attributes**: `id` (its first line's `ItemId`), `lines`, `children` (the children of the last line), `type`, and metadata read from the first line's tags: `done: Option<Date>`, `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-5), `bookmark`, `url`, and the list of unsupported tags (D-3). For a note block, metadata tags may sit on any of its lines; the first occurrence in the block wins, and commands write metadata to the first line.
+**Block attributes**: `id` (its first line's `ItemId`), `lines`, `children` (the children of the last line), `type`, and metadata read from the first line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-5), `bookmark`, `url`, and the list of unsupported tags (D-3). For a note block, metadata tags may sit on any of its lines; the first occurrence in the block wins, and commands write metadata to the first line.
 
 ## 4. Edits
 

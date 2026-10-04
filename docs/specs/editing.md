@@ -15,7 +15,7 @@ Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 The block's editor opens where the block is drawn, keeping its indentation, marker, surrounding blocks and scroll position. It grows downward as lines are added or wrap, pushing later rows down.
 
 **What is edited** is the block's visible text:
-- without `- ` and the project `:` (the type is shown by the marker, not typed);
+- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a note ending in `:` becomes a project, text starting with `- ` becomes a task), the block takes that type and the marker updates live (OQ-27 default A);
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message;
 - with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01).
 
@@ -46,7 +46,7 @@ Ending edit mode applies the canonical-outline repairs for the block ([file-form
 | `new_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
-The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. It opens in edit mode with empty text.
+The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2: a new note whose previous or next sibling line is a plain note line would merge into that note block, so in that position the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
 
@@ -56,7 +56,7 @@ All act on the selection, or on the focused block when nothing is selected. Each
 |---|---|
 | `indent` / `outdent` (FR-OPS-02) | Indent: become the last child of the previous sibling block (expanding it); no-op on the first sibling. Outdent: become the next sibling of the parent; following siblings stay where they are (Workflowy, inferred); no-op at the pane's zoom root level. |
 | `move_up` / `move_down` (FR-OPS-03) | Swap with the adjacent sibling block. At the first/last position, move to the end/start of the previous/next sibling of the parent. Never leaves the pane's zoom root. |
-| `group` (FR-OPS-04) | Wrap the selection in a new parent note block and open it in edit mode. |
+| `group` (FR-OPS-04) | Wrap the selection in a new parent block and open it in edit mode. The parent is a note, or a task where a note would merge with an adjacent note (OQ-26). |
 | `move_to` (FR-OPS-05) | Fuzzy-pick a destination block (any block, same picker as Go to Symbol); the selection becomes its last children. |
 | `delete` (FR-OPS-06) | Remove the blocks with their subtrees; focus moves to the next visible block, else the previous. |
 | `duplicate` | Deep copy inserted after the original. |

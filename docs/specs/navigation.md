@@ -39,7 +39,7 @@ Each row carries: block id, display depth (relative to the zoom block), whether 
 ## 5. Panes (FR-UI-02 – FR-UI-04, D-13)
 
 - Panes are columns, left to right. Each has its own zoom, breadcrumbs, history, focus, selection, mode, scroll, show-completed setting and, later, search. Folds are shared. Edits in one pane appear in all panes immediately.
-- `open_in_new_pane`: open the focused block (or, from a picker or the sidebar, the chosen entry; or with Alt+click, the clicked block, link or crumb) zoomed in a new pane inserted right of the focused pane, and focus it. With no block context it duplicates the focused pane's location.
+- `open_in_new_pane`: open the focused block (or, from a picker or the sidebar, the chosen entry; or with Alt+click, the clicked block, link or crumb) zoomed in a new pane inserted right of the focused pane, and focus it. `open_location_in_new_pane` opens the focused pane's current location (its zoom block or Today) in a new pane.
 - `focus_pane N` focuses the Nth pane; `focus_pane_left/right` moves between neighbors; `close_pane` closes the focused pane (the last pane cannot be closed).
 - Width: panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
 - The layout (number of panes, their zooms, histories, widths and show-completed settings) and the fold state are restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A ([file-io.md §5](file-io.md#5-view-state-persistence)).
@@ -55,7 +55,7 @@ A panel on the left with three sections, top to bottom:
 
 ## 7. Today view (FR-TAG-04, D-7)
 
-A built-in list of every block that is not done (a spec choice; FR-TAG-04 doesn't say) and has `@today`, or `@due` or `@start` on or before today's local date. Choosing Today in the sidebar shows this list in the focused pane instead of an outline; it is a location in the pane's history like a zoom. Entries are flat, each with its breadcrumb path. Navigation, edit mode and block commands (done, dates, today, color) work on the entries directly; `Alt+l`/`gz` on an entry goes to it in the outline. The list is recomputed on every document change and at local midnight.
+A built-in list of every block that has `@today`, or `@due` or `@start` on or before today's local date (FR-TAG-04). Done blocks follow the pane's show-completed setting (FR-DONE-02), like any other view. Choosing Today in the sidebar shows this list in the focused pane instead of an outline; it is a location in the pane's history like a zoom. Entries are flat, each with its breadcrumb path. Navigation, edit mode and block commands (done, dates, today, color) work on the entries directly; `Alt+l`/`gz` on an entry goes to it in the outline. The list is recomputed on every document change and at local midnight.
 
 ## 8. Go to Symbol and Go to Command (FR-NAV-05, FR-NAV-06)
 

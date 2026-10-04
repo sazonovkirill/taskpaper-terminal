@@ -100,6 +100,7 @@ A `t` prefix groups metadata commands so they are easy to discover in the `?` pa
 | Go to Symbol (FR-NAV-05) | `Ctrl+T`, `gs` |
 | Go to Command (FR-NAV-06) | `Ctrl+P`, `:` |
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
+| Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9` |
 | Focus pane left / right | `Ctrl+W h` / `Ctrl+W l` |
 | Close pane | `Ctrl+W c` |
