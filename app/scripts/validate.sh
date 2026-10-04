@@ -26,12 +26,16 @@ coverage() {
     --ignore-filename-regex 'src/main\.rs$' --fail-under-lines 100
 }
 
-# Mutation-tests the code changed since this branch left origin/main, including uncommitted changes.
+# Mutation-tests the code changed since this branch left origin/main, including uncommitted and untracked files.
+# Paths are made relative to app/, because cargo-mutants matches diff paths against the crate root.
 mutants() {
-  local diff
+  local diff file
   diff="$(mktemp)"
   trap 'rm -f "$diff"' RETURN
-  git diff "$(git merge-base origin/main HEAD)" -- . >"$diff"
+  git diff --relative "$(git merge-base origin/main HEAD)" -- . >"$diff"
+  while IFS= read -r file; do
+    git diff --no-index -- /dev/null "$file" >>"$diff" || [[ $? -eq 1 ]]
+  done < <(git ls-files --others --exclude-standard -- .)
   if [[ ! -s "$diff" ]]; then
     echo 'mutants: skipped, no changes since origin/main'
     return
