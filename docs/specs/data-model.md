@@ -43,10 +43,12 @@ A block is what the user navigates, selects and edits (FR-BLK). Blocks are compu
 **Grouping** (D-2, FR-BLK-03): a block is one line, except that a maximal run of consecutive sibling **plain note lines** forms one note block. A plain note line is a `note`-kind line that is not a divider and carries none of `@section`, `@url`. The run:
 - includes blank lines;
 - ends after a line that has children (that line's children are the block's children);
-- ends before a divider, section or URL line;
+- ends before a divider, section or URL line, except inside a code run (below);
 - ends before a line carrying `@code`, which starts a new run.
 
-**Type** (FR-BLK-01–07), checked in this order:
+A **code run** is a run whose first line carries `@code`. Inside it, note-kind lines that are dividers or carry `@section` or `@url` stay code instead of ending the run (D-18); the run still ends after a line with children, before a task or project line, and before another `@code` line.
+
+**Type** (FR-BLK-01–07), checked in this order (a code run is always Code, whatever its lines contain):
 
 | Type | Rule |
 |---|---|
@@ -98,7 +100,6 @@ struct Workspace {
     panes: Vec<Pane>,            // left to right (FR-UI-02)
     focused: usize,
     sidebar: SidebarState,       // visible, focus, panel = Sidebar | Shortcuts (D-12)
-    wrap: bool,                  // FR-UI-05
 }
 
 struct Pane {
@@ -108,10 +109,8 @@ struct Pane {
     focus: ItemId,               // focused block
     selection: Option<Selection>,// FR-OPS-01: a contiguous run (anchor..head) or a toggled set
     mode: Mode,                  // Navigate | Edit(EditorState)
-    scroll: usize,
-    width: u16,                  // FR-UI-03 resizing
     search: Option<Query>,       // Later (FR-SRCH-01)
 }
 ```
 
-The visible rows of a pane are computed from (document revision, folds, pane) and cached; see [navigation.md](navigation.md).
+The visible blocks of a pane are computed from (document revision, folds, pane) and cached; see [navigation.md](navigation.md). Presentation state (scroll offsets, pane widths, word wrap, theme) belongs to the UI layer, not to this model ([architecture.md §1](architecture.md#1-layers-and-modules)).

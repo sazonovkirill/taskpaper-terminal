@@ -10,13 +10,13 @@ A pane's rows come from a depth-first walk over **blocks** ([data-model.md §3](
 2. If the pane hides completed blocks (FR-DONE-02), skip done blocks and their whole subtrees.
 3. When search exists (Later, FR-SRCH-01): show matching blocks plus their ancestors up to the zoom block, ancestors shown only for context dimmed; non-matching descendants hidden; fold state ignored while searching but kept.
 
-Each row carries: block id, display depth (relative to the zoom block), whether it has hidden children, and, when wrapping is on, its wrapped line count. The row list is recomputed only when the document revision, the folds or the pane change.
+Each row carries: block id, display depth (relative to the zoom block) and whether it has hidden children. Wrapping and row heights are computed by the UI layer. The row list is recomputed only when the document revision, the folds or the pane change.
 
 ## 2. Focus and motion (FR-NAV-01)
 
 - In navigate mode each pane has one **focused block**. Motions: next/previous visible block, parent, first/last child, next/previous sibling, first/last block, page up/down.
 - If the focused block disappears (collapsed ancestor, hidden as done, deleted, changed in another pane), focus moves to the next visible block, else the previous, else the parent.
-- The pane scrolls to keep the focused block visible, with a margin of 2 rows when space allows.
+- The UI scrolls each pane to keep the focused block visible, with a margin of 2 rows when space allows. Page up/down messages carry the pane's height in rows.
 
 ## 3. Folding (FR-NAV-02)
 
@@ -38,10 +38,10 @@ Each row carries: block id, display depth (relative to the zoom block), whether 
 
 ## 5. Panes (FR-UI-02 – FR-UI-04, D-13)
 
-- Panes are columns, left to right. Each has its own zoom, breadcrumbs, history, focus, selection, mode, scroll, show-completed setting and, later, search. Folds are shared. Edits in one pane appear in all panes immediately.
+- Panes are columns, left to right. Each has its own zoom, breadcrumbs, history, focus, selection, mode, show-completed setting and, later, search. Folds are shared. Edits in one pane appear in all panes immediately.
 - `open_in_new_pane`: open the focused block (or, from a picker or the sidebar, the chosen entry; or with Alt+click, the clicked block, link or crumb) zoomed in a new pane inserted right of the focused pane, and focus it. `open_location_in_new_pane` opens the focused pane's current location (its zoom block or Today) in a new pane.
 - `focus_pane N` focuses the Nth pane; `focus_pane_left/right` moves between neighbors; `close_pane` closes the focused pane (the last pane cannot be closed).
-- Width: panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
+- Width (UI layer): panes share the width equally by default, with a minimum of 30 columns each. `narrow`/`widen` change the focused pane's width by 4 columns. When the panes' total minimum width exceeds the terminal, the pane strip scrolls horizontally to keep the focused pane fully visible.
 - The layout (number of panes, their zooms, histories, widths and show-completed settings) and the fold state are restored on the next launch of the same file (FR-UI-04), stored per OQ-05 default A ([file-io.md §5](file-io.md#5-view-state-persistence)).
 
 ## 6. Sidebar (FR-UI-01, D-7, D-11, D-12)

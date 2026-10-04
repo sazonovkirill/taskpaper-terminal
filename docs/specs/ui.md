@@ -1,6 +1,6 @@
 # Spec: Screen layout and styling
 
-Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04, FR-KEY-05, FR-UI-05–07 and N-PORT-02.
+Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–07 and N-PORT-02.
 
 ## 1. Layout
 
@@ -59,10 +59,15 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 
 `?` toggles a panel on the left, in the sidebar's place, listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
 
-## 5. Mouse (FR-KEY-05, D-16)
+## 5. Context menu (FR-KEY-06)
+
+A popup anchored at the focused element (or at the pointer for right-click) listing every command available for that element, grouped (Edit, Structure, Metadata, View, Panes), each with its key binding right-aligned. Commands that do not apply (for example Open URL on a block without one) are omitted. Entries come from the core's command list for that context, so the menu, the command palette and the `?` panel always agree.
+
+## 6. Mouse (FR-KEY-05, D-16)
 
 - Click a block: focus it (navigate mode); click inside the text of the block in edit mode: place the caret.
 - Click a fold marker: toggle fold. Click a crumb: zoom the pane there. Click a sidebar entry: go there. Click a pane header: focus that pane.
 - Alt+click a block, an internal link (once links exist, FR-OPS-10) or a crumb: open it in a new pane.
+- Right-click a block, the selection, a sidebar entry, a crumb or a pane header: open its context menu (FR-KEY-06).
 - Wheel: scroll the pane under the pointer without moving focus.
 - No feature depends on the mouse; every action above has a key.

@@ -97,7 +97,7 @@ Tags are hidden while editing (FR-TAG-01). Tags in the middle of a line have no 
 
 Tags are never typed (FR-TAG-01), but TaskPaper has no way to escape `@`: a typed `@word` at a word start is a tag when the file is read back.
 
-- **A. Refuse `@` at a word start** in edit mode, with a hint pointing to the tag commands. `@` inside a word (emails) is allowed.
+- **A. Refuse `@` at a word start** in edit mode, with a hint pointing to the tag commands. `@` inside a word (emails) is allowed. This also blocks code such as Python `@decorator` lines in code blocks.
 - **B. Accept it and let it become a hidden tag** on commit, with a status message.
 - **C. Substitute a look-alike** such as the fullwidth `＠` (U+FF20), which TaskPaper does not treat as a tag.
 

@@ -99,6 +99,7 @@ A `t` prefix groups metadata commands so they are easy to discover in the `?` pa
 | Shortcuts panel (FR-KEY-04) | `?` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+T`, `gs` |
 | Go to Command (FR-NAV-06) | `Ctrl+P`, `:` |
+| Context menu for the focused element (FR-KEY-06) | `M`, `Shift+F10`, the Menu key |
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9` |
@@ -125,6 +126,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 ## 4. Other contexts
 
+- **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `j`/`k`/arrows move, `Enter` runs, typing filters, `Esc` closes. `M`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.
 - **Prompts** (dates, URL, Save As path): standard text keys, `Enter` accepts, `Esc` cancels.
