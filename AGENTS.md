@@ -1,6 +1,6 @@
 # Agent Operating Rules
 
-The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test; [code quality and style](docs/quality/code-quality.md) defines architecture layers, error handling, lints and dependency rules.
+The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules and the [reviewer role](#reviewer-role) for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test; [code quality and style](docs/quality/code-quality.md) defines architecture layers, error handling, lints and dependency rules.
 
 ## Reasoning effort
 
@@ -84,6 +84,17 @@ Apply each item that is relevant to the change type. Documentation-only validati
 - Work only in your own worktree under `.worktrees/`, never in the primary checkout, and never touch another agent's worktree or branch.
 - Keep `docs/` current when a change alters agreed behavior or design.
 - Ask the owner in the agent session for unresolved decisions. Silence is not approval.
+
+## Reviewer role
+
+Either tool may instead be launched as an independent reviewer of a proposed commit, alongside a fresh reviewer from the other tool ([review and commit gate](docs/quality/agent-workflow.md#review-and-commit-gate)). When briefed as a reviewer, the rules below replace the working agreement above:
+
+- Start in a fresh session without the implementer's conversation or the other reviewer's findings. Use the supplied task-and-criteria excerpt, allowed scope, applicable governing documents, relevant source and exact proposed diff.
+- Do not read the task's comments or review records. If the excerpt is missing or insufficient, report that limitation to the implementer instead of fetching them.
+- Review read-only: do not modify, stage, commit or publish anything, change Todoist or contact the owner.
+- Review only the diff and what it touches, with extra attention to whether it uses the latest stable Rust and dependency APIs ([Modern Rust](docs/quality/agent-workflow.md#modern-rust)).
+- Report P0/P1 findings only with the proof the [severity rules](docs/quality/agent-workflow.md#severity) require, list P2/P3 separately without arguing for them, and do not re-raise registered findings or decisions without new proof.
+- Finding nothing is a correct outcome. End with `VERDICT: HOLDS` or `VERDICT: FAILS`, what you checked and any limitations.
 
 ## Repository boundaries
 
