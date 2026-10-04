@@ -1,6 +1,6 @@
 # Agent Operating Rules
 
-The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test.
+The owner starts Claude or Codex agent sessions manually on their Mac; either tool may implement a task. Several agents work in parallel, each in its own worktree. This file defines the engineering rules for both tools. [The agent workflow](docs/quality/agent-workflow.md) defines task selection, claims, the task record, review gates, validation, escalation and delivery; [version-control practices](docs/quality/version-control.md) define worktrees, branches, commits, rebasing and publication; the [testing strategy](docs/quality/testing-strategy.md) defines what and how to test; [code quality and style](docs/quality/code-quality.md) defines architecture layers, error handling, lints and dependency rules.
 
 ## Reasoning effort
 
