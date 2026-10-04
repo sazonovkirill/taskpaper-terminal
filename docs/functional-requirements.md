@@ -134,6 +134,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-UI-05 | A setting and key binding turn word wrap off; every block then occupies one line and overflowing text ends in `…`. | Must | — |
 | FR-UI-06 | Built-in themes, switchable from the command palette with a live preview, like VS Code's theme picker. | Must | Themes |
 | FR-UI-07 | The UI is clean, modern and sleek everywhere, and responds instantly. | Must | — |
+| FR-UI-08 | Twelve themes are built into the app, available without any configuration file: Catppuccin Mocha, Catppuccin Latte, Tokyo Night, Dracula, Nord, Gruvbox Dark, Rosé Pine, Rosé Pine Dawn, Kanagawa Wave, Everforest Dark, One Dark and Solarized Light. Each colors every part of the UI, including the six color tags. Palettes, origins and licenses are in [Built-in themes](reference/themes.md) (D-19). | Must | Themes |
 
 ## Out of scope
 
@@ -171,3 +172,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-16 | Mouse support is Must but secondary to the keyboard. |
 | D-17 | An existing `@done` without a date counts as completed; only newly completed blocks get the date. |
 | D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. |
+| D-19 | The app ships 10-12 attractive terminal color themes built in (owner, 2026-10-04). The chosen twelve are permissively licensed and include light themes. |

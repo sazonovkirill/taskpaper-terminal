@@ -1,6 +1,6 @@
 # Spec: Screen layout and styling
 
-Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–07 and N-PORT-02.
+Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–08 and N-PORT-02.
 
 ## 1. Layout
 
@@ -47,9 +47,9 @@ Each row: indent (2 columns per level) + marker + space + text, then right-align
 - **Edit mode**: the focused block's text becomes an inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02).
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.
 
-## 3. Themes (FR-UI-06, FR-UI-07)
+## 3. Themes (FR-UI-06–08)
 
-- Built-in themes: at least a light and a dark theme that use the terminal's 16 ANSI colors (so they follow the user's palette), plus truecolor themes used only when `COLORTERM` indicates support.
+- Built-in themes: at least a light and a dark theme that use the terminal's 16 ANSI colors (so they follow the user's palette), plus the twelve truecolor themes of FR-UI-08 ([palettes](../reference/themes.md)), used only when `COLORTERM` indicates support.
 - A theme defines colors for: text, dim text, accent, selection, focus, headers, rule lines, code, links, each of the six tag colors, chips, overdue, errors.
 - The theme picker in Go to Command previews each theme live as it is highlighted; `Enter` keeps it and saves it to the config (OQ-18), `Esc` restores the previous one.
 - `NO_COLOR` set: no colors, only bold, dim, italic, underline, strikethrough and reverse.
