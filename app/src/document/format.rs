@@ -35,9 +35,9 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<Document, DecodeError> {
     let bom = stripped.is_some();
     let body = stripped.unwrap_or(bytes);
     let text = str::from_utf8(body).map_err(|error| {
-        let valid = body.get(..error.valid_up_to()).unwrap_or_default();
+        let valid = body.utf8_chunks().next().map_or("", |chunk| chunk.valid());
         DecodeError::NotUtf8 {
-            line: valid.split(|&byte| byte == b'\n').count(),
+            line: split_lines(valid).0.len(),
             offset: error.valid_up_to() + if bom { BOM.len() } else { 0 },
         }
     })?;
@@ -482,6 +482,18 @@ mod tests {
             parse_bytes(b"\xEF\xBB\xBFx\xC3").unwrap_err(),
             DecodeError::NotUtf8 { line: 1, offset: 4 }
         );
+        for (text, line) in [
+            ("ok\rbad ", 2),
+            ("ok\r\nbad ", 2),
+            ("a\u{C}b\r", 3),
+            ("a\u{2029}b\u{2B7F}c\n", 4),
+        ] {
+            let error = parse_bytes(&[text.as_bytes(), b"\xff"].concat()).unwrap_err();
+            assert!(
+                matches!(error, DecodeError::NotUtf8 { line: l, .. } if l == line),
+                "{text:?}: {error}"
+            );
+        }
     }
 
     #[test]
