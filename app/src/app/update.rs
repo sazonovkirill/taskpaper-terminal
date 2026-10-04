@@ -32,6 +32,8 @@ pub enum Message {
     FocusNextSibling,
     /// Focus the previous sibling block.
     FocusPreviousSibling,
+    /// Focus the focused block's last child, expanding the block if it is collapsed.
+    FocusLastChild,
     /// Collapse the focused block; if it is a leaf or already collapsed, focus its parent.
     Collapse,
     /// Expand the focused block; if it is already expanded, focus its first child.
@@ -83,6 +85,7 @@ impl State {
             Message::FocusParent => self.focus_parent(),
             Message::FocusNextSibling => self.move_to_sibling(|at| at.checked_add(1)),
             Message::FocusPreviousSibling => self.move_to_sibling(|at| at.checked_sub(1)),
+            Message::FocusLastChild => self.focus_last_child(),
             Message::Collapse => self.collapse(),
             Message::Expand => self.expand(),
             Message::ToggleFold => self.toggle_fold(),
@@ -191,6 +194,19 @@ impl State {
             && let Some(sibling) = to(at).and_then(|index| siblings.get(index))
         {
             self.focus = Some(sibling.id());
+        }
+    }
+
+    /// On the title, focuses the last block below it and leaves the zoom block's fold alone.
+    fn focus_last_child(&mut self) {
+        let Some((block, title)) = self.focused() else {
+            return;
+        };
+        if let Some(child) = self.children(&block).last() {
+            if !title {
+                self.folds.remove(&block.id());
+            }
+            self.focus = Some(child.id());
         }
     }
 
@@ -602,6 +618,25 @@ mod tests {
         assert_eq!(focus_text(&state), "e");
     }
 
+    // FR-NAV-01
+    #[test]
+    fn last_child_expands_a_collapsed_block_and_ignores_leaves() {
+        let mut state = open(TREE, 0);
+        state.update(Message::Collapse);
+        state.update(Message::FocusLastChild);
+        assert_eq!(visible(&state).len(), 5);
+        assert_eq!(focus_text(&state), "d");
+        state.update(Message::FocusLastChild);
+        assert_eq!(focus_text(&state), "d", "a leaf has no children");
+        let mut zoomed = open(TREE, 0);
+        zoomed.update(Message::Collapse);
+        zoomed.update(Message::ZoomIn);
+        zoomed.update(Message::FocusFirst);
+        zoomed.update(Message::FocusLastChild);
+        assert_eq!(focus_text(&zoomed), "d", "the title's last child");
+        assert_eq!(zoomed.folds.len(), 1, "the title does not unfold");
+    }
+
     // FR-SPC-01
     #[test]
     fn a_block_with_only_special_children_is_a_leaf() {
@@ -780,6 +815,7 @@ mod tests {
             Message::FocusParent,
             Message::FocusNextSibling,
             Message::FocusPreviousSibling,
+            Message::FocusLastChild,
             Message::Collapse,
             Message::Expand,
             Message::ToggleFold,

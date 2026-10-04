@@ -26,6 +26,7 @@ The owner's bindings of 2026-10-04 (D-26) are the base of this section. Where th
 | Expand, or go to first child if already expanded | `l`, `→` |
 | Next / previous sibling | `Ctrl+↓` / `Ctrl+↑` (`}` / `{` now shift the due date) |
 | Parent | `gp` |
+| Last child | `gl` |
 | First / last block | `gg` / `G`, `Home` / `End` |
 | Page down / up | `Ctrl+D` / `Ctrl+U`, `PgDn` / `PgUp` |
 

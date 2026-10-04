@@ -69,6 +69,7 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl Down)], |_| Message::FocusNextSibling),
     (&[key!(ctrl Up)], |_| Message::FocusPreviousSibling),
     (&[key!('g'), key!('p')], |_| Message::FocusParent),
+    (&[key!('g'), key!('l')], |_| Message::FocusLastChild),
     (&[key!('\'')], |_| Message::ToggleFold),
     (&[key!(' ')], |_| Message::ToggleFold),
     (&[key!('"')], |_| Message::ToggleSubtree),

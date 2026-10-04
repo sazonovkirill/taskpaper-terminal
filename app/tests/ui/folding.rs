@@ -212,6 +212,18 @@ fn g_p_goes_to_the_parent() {
 
 // FR-NAV-01
 #[test]
+fn g_l_goes_to_the_last_child() {
+    let mut app = app();
+    app.type_keys("jjjjh");
+    app.type_keys("gl");
+    assert_focus(&mut app, "  ▾ Ideas");
+    assert_eq!(shown(&mut app).len(), 10, "Work expanded again");
+    app.type_keys("gl");
+    assert_focus(&mut app, "  ▾ Ideas");
+}
+
+// FR-NAV-01
+#[test]
 fn ctrl_arrows_move_between_siblings() {
     let mut app = app();
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
