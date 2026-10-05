@@ -46,7 +46,8 @@ struct Failure {
 /// The saving policy's memory of the document's revisions ([`crate::document::Document::revision`]).
 #[derive(Debug, Clone)]
 pub(super) struct Autosave {
-    /// The revision the file on disk holds, or `None` when it holds none of them.
+    /// The revision the file on disk holds, or `None` when it holds none of them, as after the
+    /// local version was kept in a conflict and must overwrite the file.
     saved: Option<u64>,
     /// The latest revision seen, and when it was first seen.
     seen: u64,
@@ -59,6 +60,8 @@ pub(super) struct Autosave {
     confirm_quit: bool,
     /// Whether a backup failure was reported; it is reported once per session.
     backup_warned: bool,
+    /// Whether the next save starts without waiting for the delay.
+    urgent: bool,
 }
 
 impl Autosave {
@@ -82,6 +85,7 @@ impl Autosave {
             ending: None,
             confirm_quit: false,
             backup_warned: false,
+            urgent: false,
         }
     }
 
@@ -102,7 +106,10 @@ impl Autosave {
             && match self.ending {
                 Some(Ending::Quit | Ending::Terminate) => true,
                 Some(Ending::Discard) => false,
-                None => !self.failed_at(revision) && now >= self.changed_at.saturating_add(DELAY),
+                None => {
+                    self.urgent
+                        || !self.failed_at(revision) && now >= self.changed_at.saturating_add(DELAY)
+                }
             }
     }
 
@@ -142,8 +149,19 @@ impl Autosave {
         self.ending = self.ending.max(Some(ending));
     }
 
+    /// How the session was asked to end, if it was.
+    pub(super) fn ending(&self) -> Option<Ending> {
+        self.ending
+    }
+
+    /// A save of `revision` starts.
+    fn start(&mut self, revision: u64) {
+        self.writing = Some(revision);
+        self.urgent = false;
+    }
+
     /// The save under way succeeded.
-    pub(super) fn saved(&mut self) {
+    fn saved(&mut self) {
         if let Some(revision) = self.writing.take() {
             self.saved = Some(revision);
             self.failure = None;
@@ -153,11 +171,17 @@ impl Autosave {
 
     /// The save under way failed for `reason`. A quit waiting for it is withdrawn and asks
     /// instead; a termination ends anyway.
-    pub(super) fn failed(&mut self, reason: String) {
+    fn failed(&mut self, reason: String) {
         let Some(revision) = self.writing.take() else {
             return;
         };
         self.failure = Some(Failure { revision, reason });
+        self.ending_failed();
+    }
+
+    /// What ending the session needed failed: a quit is withdrawn and asks instead, and a
+    /// termination ends anyway.
+    pub(super) fn ending_failed(&mut self) {
         match self.ending {
             Some(Ending::Quit) => {
                 self.ending = None;
@@ -166,6 +190,27 @@ impl Autosave {
             Some(Ending::Terminate) => self.ending = Some(Ending::Discard),
             Some(Ending::Discard) | None => {}
         }
+    }
+
+    /// The save under way was not done because the file changed on disk; it is not a failure.
+    fn refused(&mut self) {
+        self.writing = None;
+    }
+
+    /// The local version must overwrite the file on disk, at once, even if unchanged.
+    pub(super) fn overwrite(&mut self) {
+        self.saved = None;
+        self.urgent = true;
+    }
+
+    /// The document was replaced by the file on disk, now at `revision`: nothing is unsaved, and
+    /// a failure or quit question about the replaced version no longer applies.
+    pub(super) fn reloaded(&mut self, revision: u64) {
+        self.saved = Some(revision);
+        self.seen = revision;
+        self.failure = None;
+        self.confirm_quit = false;
+        self.urgent = false;
     }
 }
 
@@ -196,17 +241,25 @@ impl State {
 
     /// Notes a change since the last message, then starts a save that is due, after making sure
     /// today's backup exists, or ends a session whose saves are done (FR-DOC-02, F-FILE-05).
+    /// Nothing is saved while the conflict prompt is open, and ending the session then leaves
+    /// the conflict (file-io.md §3).
     pub(super) fn save_if_due(&mut self) -> Vec<Effect> {
         let revision = self.document().revision();
         self.autosave.observe(revision, self.now);
+        if self.external.in_conflict() {
+            return self.leave_conflict();
+        }
         let path = self.saveable_path();
         if let Some(path) = &path
             && self.autosave.due(revision, self.now)
         {
-            self.autosave.writing = Some(revision);
+            self.autosave.start(revision);
+            let text = format::serialize(self.document());
+            let expected = self.external.start_save(&text);
             let save = Effect::Disk(Disk::Save {
                 path: path.clone(),
-                text: format::serialize(self.document()),
+                text,
+                expected,
             });
             return self.backup().into_iter().chain([save]).collect();
         }
@@ -214,6 +267,25 @@ impl State {
             return vec![Effect::Quit];
         }
         Vec::new()
+    }
+
+    /// The save under way succeeded.
+    pub(super) fn saved(&mut self) {
+        self.autosave.saved();
+        self.external.save_ended(true);
+    }
+
+    /// The save under way failed for `reason`.
+    pub(super) fn save_failed(&mut self, reason: String) {
+        self.autosave.failed(reason);
+        self.external.save_ended(false);
+    }
+
+    /// The save under way was not done because the file on disk changed to `contents`.
+    pub(super) fn save_refused(&mut self, contents: Option<Vec<u8>>) {
+        self.autosave.refused();
+        self.external.save_ended(false);
+        self.found(contents);
     }
 
     /// Shows a backup failure, the first time one happens in the session.
@@ -226,7 +298,9 @@ impl State {
 
     /// When a save is next due without any message but the clock's, if one is.
     pub(super) fn save_deadline(&self) -> Option<Duration> {
-        self.saveable_path().and(self.autosave.deadline())
+        self.saveable_path()
+            .filter(|_| !self.external.in_conflict())
+            .and(self.autosave.deadline())
     }
 
     /// Whether the file holds every change, and whether the last save failed.
@@ -262,7 +336,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, state::NOTICE_TIME},
+        app::{Message, Version, state::NOTICE_TIME},
         document::{Op, Transaction},
     };
 
@@ -301,13 +375,20 @@ mod tests {
         state.update(Message::Tick { now })
     }
 
+    /// The effects of a save of `text` while there is no file yet.
     fn save(text: &str) -> Vec<Effect> {
+        save_over(text, None)
+    }
+
+    /// The effects of a save of `text` over the file holding `expected`.
+    fn save_over(text: &str, expected: Option<&str>) -> Vec<Effect> {
         let path = PathBuf::from(FILE);
         vec![
             Effect::Disk(Disk::Backup { path: path.clone() }),
             Effect::Disk(Disk::Save {
                 path,
                 text: text.to_owned(),
+                expected: expected.map(|text| Version::of(text.as_bytes())),
             }),
         ]
     }
@@ -354,7 +435,7 @@ mod tests {
             [],
             "the first save is still running"
         );
-        assert_eq!(state.update(Message::Saved), save("c\n"));
+        assert_eq!(state.update(Message::Saved), save_over("c\n", Some("b\n")));
         assert_eq!(state.update(Message::Saved), []);
         assert_eq!(state.save_state(), SaveState::Saved);
     }
@@ -574,6 +655,7 @@ mod tests {
             [Effect::Disk(Disk::Save {
                 path: PathBuf::from(FILE),
                 text: "b\n".to_owned(),
+                expected: None,
             })]
         );
     }

@@ -3,11 +3,13 @@
 
 pub mod demo;
 mod editing;
+pub mod external;
 pub mod history;
 pub mod saving;
 pub mod state;
 pub mod update;
 
+pub use external::{DiffLine, Version};
 pub use history::{History, Restore};
 pub use saving::SaveState;
 pub use state::{Access, Notice, Origin, Row, State};

@@ -1,9 +1,11 @@
 //! Carries out the core's I/O at the edge ([file-io.md](../../../docs/specs/file-io.md)):
-//! opening files, saving and backing them up on the disk worker, and recovery files.
+//! opening files, watching them, saving, checking and backing them up on the disk worker, and
+//! recovery files.
 
 mod atomic;
 mod backup;
 mod recovery;
+mod watch;
 mod worker;
 
 use std::{
@@ -19,10 +21,11 @@ use thiserror::Error;
 
 pub use backup::{BackupError, Backups, folder as backups_folder};
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
+pub use watch::{Watcher, watch};
 pub use worker::Io;
 
 use crate::{
-    app::{Access, Origin, State, demo},
+    app::{Access, Origin, State, Version, demo},
     document::{DecodeError, Document, format},
 };
 
@@ -78,8 +81,10 @@ pub enum OpenError {
 ///
 /// [`OpenError`] when the file cannot be read, is not UTF-8, or its folder does not exist.
 pub fn open(path: &Path) -> Result<State, OpenError> {
-    let document = read_document(path)?;
-    Ok(State::new(document, Some(path.to_owned())).with_access(access(path)))
+    let (document, version) = read_document(path)?;
+    Ok(State::new(document, Some(path.to_owned()))
+        .with_access(access(path))
+        .with_version(version))
 }
 
 /// Writes the demo document, dated relative to `now`, to a new file
@@ -100,9 +105,9 @@ pub fn create_demo(folder: &Path, now: DateTime) -> Result<State, OpenError> {
         };
         let path = folder.join(name);
         match create_new(&path, &text) {
-            Ok(()) => {
-                Ok(State::new(format::parse(&text), Some(path)).with_origin(Origin::Temporary))
-            }
+            Ok(()) => Ok(State::new(format::parse(&text), Some(path))
+                .with_origin(Origin::Temporary)
+                .with_version(Some(Version::of(text.as_bytes())))),
             Err(source) => Err(OpenError::Create { path, source }),
         }
     };
@@ -139,7 +144,11 @@ pub fn recover(path: &Path, recovered: &Path) -> Result<State, OpenError> {
         source,
     })?;
     let document = decode(recovered, &bytes)?;
-    Ok(State::recovered(document, Some(path.to_owned())).with_access(access(path)))
+    // The changes are saved over the file as it is now, not reported as a change made elsewhere.
+    let version = fs::read(path).ok().map(|bytes| Version::of(&bytes));
+    Ok(State::recovered(document, Some(path.to_owned()))
+        .with_access(access(path))
+        .with_version(version))
 }
 
 /// Read-only when the file has no write permission or the system refuses to open it for
@@ -180,17 +189,17 @@ fn app_folder(
     Some(base.join("taskpaper-terminal").join(name))
 }
 
-/// Reads and parses the file at `path`. A missing file in an existing folder is an empty
-/// document, created on the first save (F-FILE-01).
-fn read_document(path: &Path) -> Result<Document, OpenError> {
+/// Reads and parses the file at `path`, with the version read. A missing file in an existing
+/// folder is an empty document, created on the first save (F-FILE-01), and has no version.
+fn read_document(path: &Path) -> Result<(Document, Option<Version>), OpenError> {
     match std::fs::read(path) {
-        Ok(bytes) => decode(path, &bytes),
+        Ok(bytes) => decode(path, &bytes).map(|document| (document, Some(Version::of(&bytes)))),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             let folder = std::path::absolute(path)
                 .ok()
                 .and_then(|absolute| absolute.parent().map(Path::to_owned));
             match folder {
-                Some(folder) if folder.is_dir() => Ok(Document::default()),
+                Some(folder) if folder.is_dir() => Ok((Document::default(), None)),
                 Some(folder) => Err(OpenError::MissingFolder {
                     path: path.to_owned(),
                     folder,
@@ -221,7 +230,10 @@ mod tests {
     use std::error::Error as _;
 
     use super::*;
-    use crate::document::Item;
+    use crate::{
+        app::{Disk, Effect, Message},
+        document::Item,
+    };
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -238,8 +250,9 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let path = dir.path().join("todo.taskpaper");
         std::fs::write(&path, "A:\n\t- b\n")?;
-        let document = read_document(&path)?;
+        let (document, version) = read_document(&path)?;
         assert_eq!(texts(&document), ["A:", "- b"]);
+        assert_eq!(version, Some(Version::of(b"A:\n\t- b\n")));
         Ok(())
     }
 
@@ -262,7 +275,8 @@ mod tests {
     #[test]
     fn missing_file_in_an_existing_folder_is_an_empty_document() -> TestResult {
         let dir = tempfile::tempdir()?;
-        let document = read_document(&dir.path().join("new.taskpaper"))?;
+        let (document, version) = read_document(&dir.path().join("new.taskpaper"))?;
+        assert_eq!(version, None);
         assert_eq!(texts(&document), Vec::<&str>::new());
         assert_eq!(document.format(), &crate::document::FileFormat::default());
         Ok(())
@@ -325,6 +339,11 @@ mod tests {
         assert_eq!(fs::read_to_string(&path)?, text);
         assert_eq!(format::serialize(state.document()), text);
         assert_eq!(fs::metadata(&path)?.permissions().mode() & 0o777, 0o600);
+        let mut state = state;
+        state.update(Message::FileChecked {
+            contents: Some(text.into_bytes()),
+        });
+        assert_eq!(state.notice(), None);
         Ok(())
     }
 
@@ -426,6 +445,18 @@ mod tests {
         assert_eq!(texts(state.document()), ["- a", "- b"]);
         assert_eq!(state.unsaved_text().as_deref(), Some("- a\n- b\n"));
         assert_eq!(state.access(), Access::ReadWrite);
+        let mut state = state;
+        let effects = state.update(Message::Tick {
+            now: std::time::Duration::from_secs(1),
+        });
+        assert_eq!(
+            effects.last(),
+            Some(&Effect::Disk(Disk::Save {
+                path: path.clone(),
+                text: "- a\n- b\n".to_owned(),
+                expected: Some(Version::of(b"- a\n")),
+            }))
+        );
         fs::set_permissions(&path, fs::Permissions::from_mode(0o444))?;
         assert_eq!(recover(&path, &recovered)?.access(), Access::ReadOnly);
         Ok(())

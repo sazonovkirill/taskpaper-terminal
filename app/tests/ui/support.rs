@@ -7,7 +7,7 @@ use std::{
 };
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use jiff::civil::{Date, date};
+use jiff::civil::{Date, DateTime, date};
 use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
 use taskpaper_terminal::{
     app::{Origin, State},
@@ -20,6 +20,9 @@ use tempfile::TempDir;
 
 /// The local date every test runs on.
 pub const TODAY: Date = date(2026, 10, 5);
+
+/// The local time every test runs at.
+pub const NOW: DateTime = TODAY.at(9, 30, 0, 0);
 
 /// A running app with its terminal, the temporary folder holding its file and its backups
 /// folder, and a clock that only moves when the test says so.
@@ -89,7 +92,7 @@ impl Harness {
     fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
         let (results, inputs) = mpsc::channel();
-        let io = Io::start(results, Backups::new(Some(backups.clone()), || TODAY));
+        let io = Io::start(results, Backups::new(Some(backups.clone()), || NOW));
         Self {
             path: state.path().map(Path::to_owned),
             temporary: state.origin() == Origin::Temporary,

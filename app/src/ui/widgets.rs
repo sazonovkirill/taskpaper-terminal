@@ -5,11 +5,11 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::Widget,
+    widgets::{Block, Clear, Widget},
 };
 
 use crate::{
-    app::{Access, Notice, Row, SaveState},
+    app::{Access, DiffLine, Notice, Row, SaveState},
     document::BlockKind,
 };
 
@@ -102,13 +102,14 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
     line.bold()
 }
 
-/// What the status line says after the file's path (ui.md §1, file-io.md §1–2): `●` while changes
-/// are unsaved, an error badge when the last save failed, `read-only`, the question a failed save
-/// on quit asks, and the current notice.
+/// What the status line says after the file's path (ui.md §1, file-io.md §1–3): `●` while changes
+/// are unsaved, an error badge when the last save failed, `read-only`, `not on disk` when the file
+/// was deleted or moved away, the question a failed save on quit asks, and the current notice.
 #[must_use]
 pub fn file_status(
     save: SaveState,
     access: Access,
+    gone: bool,
     confirming_quit: bool,
     notice: Option<&Notice>,
 ) -> Vec<Span<'static>> {
@@ -123,6 +124,9 @@ pub fn file_status(
     if access == Access::ReadOnly {
         spans.push(Span::raw(" · read-only"));
     }
+    if gone {
+        spans.push(Span::raw(" · not on disk"));
+    }
     if confirming_quit {
         spans.push(Span::raw(" · "));
         spans.push(Span::styled(
@@ -130,16 +134,138 @@ pub fn file_status(
             Style::new().bold(),
         ));
     }
-    let notice = notice.map(|notice| match notice {
-        Notice::BackupFailed { reason } => (format!("backup failed: {reason}"), warning_style()),
-        Notice::ReadOnly => ("cannot edit a read-only file".to_owned(), warning_style()),
-        Notice::EditFailed { reason } => (format!("edit failed: {reason}"), error_style()),
-    });
-    if let Some((text, style)) = notice {
+    if let Some(notice) = notice {
         spans.push(Span::raw(" · "));
-        spans.push(Span::styled(text, style));
+        spans.push(notice_span(notice));
     }
     spans
+}
+
+/// The status line's words for `notice`.
+fn notice_span(notice: &Notice) -> Span<'static> {
+    match notice {
+        Notice::BackupFailed { reason } => {
+            Span::styled(format!("backup failed: {reason}"), warning_style())
+        }
+        Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style()),
+        Notice::EditFailed { reason } => {
+            Span::styled(format!("edit failed: {reason}"), error_style())
+        }
+        Notice::Reloaded => Span::raw("Reloaded (changed on disk)"),
+        Notice::KeptMine { copy } => Span::raw(format!(
+            "Kept your version; the one on disk is in {}",
+            copy.display()
+        )),
+        Notice::TookTheirs { copy } => Span::raw(format!(
+            "Took the version on disk; yours is in {}",
+            copy.display()
+        )),
+        Notice::ConflictCopyFailed { reason } => {
+            Span::styled(format!("conflict copy failed: {reason}"), error_style())
+        }
+        Notice::CannotTakeTheirs { reason } => Span::styled(
+            format!("cannot take the version on disk: {reason}"),
+            error_style(),
+        ),
+    }
+}
+
+/// The widest and, with the diff, tallest the conflict prompt gets (ui.md §1).
+const PROMPT_SIZE: (u16, u16) = (80, 20);
+
+/// The conflict prompt (file-io.md §3): a box over the middle of the screen saying the file
+/// changed on disk while there were unsaved changes, with the keys of the three choices. With the
+/// diff, the box is as large as prompts get and lists the diff from line `scroll` on.
+#[derive(Debug)]
+pub struct ConflictPrompt<'a> {
+    diff: Option<&'a [DiffLine]>,
+    scroll: usize,
+}
+
+impl<'a> ConflictPrompt<'a> {
+    /// The prompt, showing `diff` from line `scroll` on when there is one.
+    #[must_use]
+    pub fn new(diff: Option<&'a [DiffLine]>, scroll: usize) -> Self {
+        Self { diff, scroll }
+    }
+
+    /// How many diff lines fit at once when the prompt is drawn over `area`.
+    #[must_use]
+    pub fn diff_rows(area: Rect) -> usize {
+        usize::from(area.height.min(PROMPT_SIZE.1).saturating_sub(4))
+    }
+}
+
+impl Widget for ConflictPrompt<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let height = if self.diff.is_some() {
+            PROMPT_SIZE.1
+        } else {
+            4
+        };
+        let area = area.centered(
+            Constraint::Length(PROMPT_SIZE.0),
+            Constraint::Length(height),
+        );
+        Clear.render(area, buf);
+        let frame = Block::bordered().title(" The file changed on disk ");
+        let inner = frame.inner(area);
+        frame.render(area, buf);
+        let [top, body, keys] = inner.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+        ]));
+        let toggle = match self.diff {
+            None => {
+                Line::from("Your changes are not saved yet.").render(top, buf);
+                "show diff"
+            }
+            Some(diff) => {
+                Line::from(vec![
+                    Span::styled("- on disk", disk_style()),
+                    Span::raw("  "),
+                    Span::styled("+ yours", mine_style()),
+                ])
+                .render(top, buf);
+                for (line, row) in diff.iter().skip(self.scroll).zip(body.rows()) {
+                    diff_line(line).render(row, buf);
+                }
+                "hide diff"
+            }
+        };
+        Line::from(vec![
+            "m".bold(),
+            " keep mine · ".into(),
+            "t".bold(),
+            " take theirs · ".into(),
+            "d".bold(),
+            format!(" {toggle}").into(),
+        ])
+        .render(keys, buf);
+    }
+}
+
+/// One line of the diff, marked and colored by the version it is in, with each tab of its
+/// indentation drawn as 2 columns like a level of the outline.
+fn diff_line(line: &DiffLine) -> Line<'static> {
+    let shown = |text: &str| text.replace('\t', "  ");
+    match line {
+        DiffLine::Same(text) => Line::from(format!("  {}", shown(text))),
+        DiffLine::Disk(text) => Line::styled(format!("- {}", shown(text)), disk_style()),
+        DiffLine::Mine(text) => Line::styled(format!("+ {}", shown(text)), mine_style()),
+        DiffLine::Gap => Line::styled("⋯", rule_style()),
+    }
+}
+
+/// Lines only the file on disk has; themes arrive in step 6.2.
+fn disk_style() -> Style {
+    Style::new().fg(Color::Red)
+}
+
+/// Lines only the local version has; themes arrive in step 6.2.
+fn mine_style() -> Style {
+    Style::new().fg(Color::Green)
 }
 
 /// The screen lines of one block, `width` columns wide: indented 2 columns per level of depth
@@ -449,7 +575,7 @@ mod tests {
         confirming_quit: bool,
         notice: Option<&Notice>,
     ) -> Vec<(String, Style)> {
-        file_status(save, access, confirming_quit, notice)
+        file_status(save, access, false, confirming_quit, notice)
             .into_iter()
             .map(|span| (span.content.into_owned(), span.style))
             .collect()
@@ -526,5 +652,111 @@ mod tests {
                 ("edit failed: it changed".to_owned(), error_style())
             ]
         );
+    }
+
+    // F-FILE-06
+    #[test]
+    fn the_file_status_marks_a_file_gone_from_disk_and_external_change_notices() {
+        let rw = Access::ReadWrite;
+        assert_eq!(
+            file_status(SaveState::Saved, rw, true, false, None)
+                .into_iter()
+                .map(|span| span.content.into_owned())
+                .collect::<Vec<_>>(),
+            [" · not on disk"]
+        );
+        let copy = std::path::PathBuf::from("/b/c.taskpaper");
+        for (notice, expected) in [
+            (Notice::Reloaded, plain("Reloaded (changed on disk)")),
+            (
+                Notice::KeptMine { copy: copy.clone() },
+                plain("Kept your version; the one on disk is in /b/c.taskpaper"),
+            ),
+            (
+                Notice::TookTheirs { copy },
+                plain("Took the version on disk; yours is in /b/c.taskpaper"),
+            ),
+            (
+                Notice::ConflictCopyFailed {
+                    reason: "disk full".to_owned(),
+                },
+                ("conflict copy failed: disk full".to_owned(), error_style()),
+            ),
+            (
+                Notice::CannotTakeTheirs {
+                    reason: "not UTF-8".to_owned(),
+                },
+                (
+                    "cannot take the version on disk: not UTF-8".to_owned(),
+                    error_style(),
+                ),
+            ),
+        ] {
+            assert_eq!(
+                status(SaveState::Saved, rw, false, Some(&notice)),
+                [plain(" · "), expected]
+            );
+        }
+    }
+
+    /// Draws the conflict prompt over a blank `width` × `height` screen.
+    fn prompt(diff: Option<&[DiffLine]>, scroll: usize, width: u16, height: u16) -> Buffer {
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        ConflictPrompt::new(diff, scroll).render(buf.area, &mut buf);
+        buf
+    }
+
+    // OQ-16
+    #[test]
+    fn the_conflict_prompt_names_the_choices_in_a_box_in_the_middle() {
+        let mut expected = Buffer::with_lines([
+            "                                                                                  ",
+            " ┌ The file changed on disk ────────────────────────────────────────────────────┐ ",
+            " │Your changes are not saved yet.                                               │ ",
+            " │m keep mine · t take theirs · d show diff                                     │ ",
+            " └──────────────────────────────────────────────────────────────────────────────┘ ",
+            "                                                                                  ",
+        ]);
+        for x in [2, 16, 32] {
+            expected.set_style(Rect::new(x, 3, 1, 1), Style::new().bold());
+        }
+        assert_eq!(prompt(None, 0, 82, 6), expected);
+        let mut covered = Buffer::with_lines(vec!["x".repeat(82); 6]);
+        ConflictPrompt::new(None, 0).render(covered.area, &mut covered);
+        assert_eq!(covered[(0, 0)].symbol(), "x");
+        assert_eq!(
+            covered[(50, 2)].symbol(),
+            " ",
+            "the box hides what is under it"
+        );
+    }
+
+    // OQ-16
+    #[test]
+    fn the_conflict_prompt_lists_the_diff_from_the_scrolled_line() {
+        let diff = [
+            DiffLine::Same("one".to_owned()),
+            DiffLine::Disk("two".to_owned()),
+            DiffLine::Mine("TWO".to_owned()),
+            DiffLine::Gap,
+            DiffLine::Same("nine".to_owned()),
+        ];
+        let buf = prompt(Some(&diff), 1, 30, 7);
+        let row = |y: u16| -> String { (0..30).map(|x| buf[(x, y)].symbol()).collect::<String>() };
+        assert_eq!(row(0), "┌ The file changed on disk ──┐");
+        assert_eq!(row(1), "│- on disk  + yours          │");
+        assert_eq!(row(2), "│- two                       │");
+        assert_eq!(row(3), "│+ TWO                       │");
+        assert_eq!(row(4), "│⋯                           │");
+        assert_eq!(row(5), "│m keep mine · t take theirs │");
+        assert_eq!(buf[(1, 2)].fg, Color::Red);
+        assert_eq!(buf[(1, 3)].fg, Color::Green);
+        assert_eq!(buf[(1, 4)].fg, Color::DarkGray);
+        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 30, 7)), 3);
+        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 100, 50)), 16);
+        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 30, 3)), 0);
+        let same = prompt(Some(&diff), 0, 30, 7);
+        assert_eq!(same[(1, 2)].symbol(), " ");
+        assert_eq!(same[(3, 2)].symbol(), "o");
     }
 }

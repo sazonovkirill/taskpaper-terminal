@@ -68,7 +68,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Origin},
+        app::{Disk, Effect, Message, Origin, Version},
         document::{ItemId, format},
     };
 
@@ -175,13 +175,15 @@ mod tests {
     #[test]
     fn edits_undo_and_redo_are_saved() {
         let path = PathBuf::from("/notes/todo.taskpaper");
-        let mut state = State::new(format::parse("- a\n"), Some(path.clone()));
-        let save = |text: &str| {
+        let mut state = State::new(format::parse("- a\n"), Some(path.clone()))
+            .with_version(Some(Version::of(b"- a\n")));
+        let save = |text: &str, on_disk: &str| {
             vec![
                 Effect::Disk(Disk::Backup { path: path.clone() }),
                 Effect::Disk(Disk::Save {
                     path: path.clone(),
                     text: text.to_owned(),
+                    expected: Some(Version::of(on_disk.as_bytes())),
                 }),
             ]
         };
@@ -191,13 +193,22 @@ mod tests {
                 now: Duration::from_secs(seconds),
             })
         };
-        assert_eq!(later(&mut state, 1), save("- a @done(2026-10-05)\n"));
+        assert_eq!(
+            later(&mut state, 1),
+            save("- a @done(2026-10-05)\n", "- a\n")
+        );
         state.update(Message::Saved);
         state.update(Message::Undo);
-        assert_eq!(later(&mut state, 2), save("- a\n"));
+        assert_eq!(
+            later(&mut state, 2),
+            save("- a\n", "- a @done(2026-10-05)\n")
+        );
         state.update(Message::Saved);
         state.update(Message::Redo);
-        assert_eq!(later(&mut state, 3), save("- a @done(2026-10-05)\n"));
+        assert_eq!(
+            later(&mut state, 3),
+            save("- a @done(2026-10-05)\n", "- a\n")
+        );
     }
 
     // file-io.md §1

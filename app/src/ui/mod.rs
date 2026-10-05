@@ -20,8 +20,8 @@ use ratatui::{
 
 use crate::app::{Effect, Message, Origin, State};
 use effects::{Io, Recovery, RecoveryError};
-use keymap::{Context, Keymap};
-use widgets::OutlineView;
+use keymap::{Context, Keymap, PromptKey};
+use widgets::{ConflictPrompt, OutlineView};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +46,10 @@ pub struct Tui {
     page_rows: usize,
     /// Whether the process was told to end, so only saving is left.
     ending: bool,
+    /// The first line of the conflict prompt's diff on screen.
+    diff_scroll: usize,
+    /// How many diff lines the prompt showed at the last draw, which a page scrolls.
+    diff_rows: usize,
     quit: bool,
 }
 
@@ -62,6 +66,8 @@ impl Tui {
             scroll: 0,
             page_rows: 0,
             ending: false,
+            diff_scroll: 0,
+            diff_rows: 0,
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -79,6 +85,15 @@ impl Tui {
     /// Handles one terminal event at time `now` (since the frontend started): maps it to a
     /// message, updates the state and runs the effects.
     fn handle_event(&mut self, event: &Event, now: Duration) {
+        // Coming back to the terminal is when changes made elsewhere are likeliest (file-io.md §3).
+        if *event == Event::FocusGained {
+            self.send(Message::CheckFile, now);
+            return;
+        }
+        if self.state.in_conflict() {
+            self.handle_prompt_key(event, now);
+            return;
+        }
         let context = Context {
             page_rows: self.page_rows,
             today: (self.today)(),
@@ -96,6 +111,22 @@ impl Tui {
                 (before, self.focused_lines().map(|lines| lines.start))
         {
             self.scroll = (self.scroll + after).saturating_sub(before);
+        }
+    }
+
+    /// Handles a key of the conflict prompt at time `now`.
+    fn handle_prompt_key(&mut self, event: &Event, now: Duration) {
+        match keymap::prompt_key(event, self.diff_rows) {
+            Some(PromptKey::Send(message)) => {
+                if message == Message::ToggleDiff {
+                    self.diff_scroll = 0;
+                }
+                self.send(message, now);
+            }
+            Some(PromptKey::Scroll(lines)) => {
+                self.diff_scroll = self.diff_scroll.saturating_add_signed(lines);
+            }
+            None => {}
         }
     }
 
@@ -204,6 +235,13 @@ impl Tui {
             outline,
         );
         self.draw_status(frame, status);
+        if self.state.in_conflict() {
+            let diff = self.state.diff();
+            self.diff_rows = ConflictPrompt::diff_rows(pane);
+            let lines = diff.as_ref().map_or(0, Vec::len);
+            self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
+            frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), pane);
+        }
     }
 
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending
@@ -219,6 +257,7 @@ impl Tui {
         spans.extend(widgets::file_status(
             self.state.save_state(),
             self.state.access(),
+            self.state.gone_from_disk(),
             self.state.confirming_quit(),
             self.state.notice(),
         ));

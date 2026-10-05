@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use super::{History, saving::Autosave};
+use super::{History, external::External, saving::Autosave};
 use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
 
 /// How long a status-line notice stays.
@@ -24,6 +24,8 @@ pub struct State {
     origin: Origin,
     access: Access,
     pub(super) autosave: Autosave,
+    /// The file on disk as the core knows it, and a conflict with it.
+    pub(super) external: External,
     /// The frontend's time at the latest tick.
     pub(super) now: Duration,
     /// The notice the status line shows, and until when.
@@ -73,6 +75,28 @@ pub enum Notice {
         /// What did not fit.
         reason: String,
     },
+    /// The file changed on disk and was reloaded (file-io.md §3).
+    Reloaded,
+    /// A conflict was resolved by keeping the local version; the file's version is in `copy`.
+    KeptMine {
+        /// The conflict copy.
+        copy: PathBuf,
+    },
+    /// A conflict was resolved by reloading the file; the local version is in `copy`.
+    TookTheirs {
+        /// The conflict copy.
+        copy: PathBuf,
+    },
+    /// The conflict copy for a choice could not be written, so the choice was cancelled.
+    ConflictCopyFailed {
+        /// What the frontend reported.
+        reason: String,
+    },
+    /// The file on disk cannot be taken because it cannot be read as a document.
+    CannotTakeTheirs {
+        /// Why.
+        reason: String,
+    },
 }
 
 /// One visible block of the outline.
@@ -101,6 +125,7 @@ impl State {
     pub fn new(document: Document, path: Option<PathBuf>) -> Self {
         let mut state = Self {
             autosave: Autosave::new(document.revision()),
+            external: External::default(),
             document,
             edits: History::default(),
             path,

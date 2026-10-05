@@ -2,6 +2,7 @@
 
 mod blocks;
 mod completing;
+mod external_changes;
 mod focus_and_scrolling;
 mod folding;
 mod hang_up;

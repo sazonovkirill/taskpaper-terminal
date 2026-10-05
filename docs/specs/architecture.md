@@ -61,6 +61,7 @@ Existing: `ratatui` 0.30, `crossterm` 0.29 (UI only). Proposed additions, each a
 | `jiff` | Date arithmetic (Document); reading the local date and time zone happens in the UI layer. |
 | `nucleo-matcher` | Fuzzy matching for pickers (App). |
 | `notify` / `notify-debouncer-full` | File watching (UI effects). |
+| `similar` | Line diff of the external-change conflict prompt (App). |
 | `arboard` | System clipboard (UI effects; OSC 52 fallback is hand-written). |
 | `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). |
 | `directories` | State paths per platform (UI). The config and backup paths follow XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`, `$XDG_DATA_HOME` or `~/.local/share`), not `~/Library` (FR-SET-01, FR-DOC-07). |

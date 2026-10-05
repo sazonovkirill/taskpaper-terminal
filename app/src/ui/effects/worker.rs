@@ -2,6 +2,7 @@
 //! the event loop never waits on the disk (N-UX-01), and sends their results back as messages.
 
 use std::{
+    fs, io,
     path::Path,
     sync::mpsc::{self, Receiver, Sender},
     thread::{self, JoinHandle},
@@ -9,7 +10,7 @@ use std::{
 
 use super::{Backups, atomic};
 use crate::{
-    app::{Disk, Message},
+    app::{Disk, Message, Version},
     ui::Input,
 };
 
@@ -82,7 +83,20 @@ impl Drop for Io {
 fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
     for job in queue {
         let message = match job {
-            Job::Disk(Disk::Save { path, text }) => Some(save(&path, &text)),
+            Job::Disk(Disk::Save {
+                path,
+                text,
+                expected,
+            }) => Some(save(&path, &text, expected)),
+            Job::Disk(Disk::Check { path }) => check(&path),
+            Job::Disk(Disk::ConflictCopy { path, contents }) => {
+                Some(match backups.conflict(&path, &contents) {
+                    Ok(copy) => Message::ConflictCopied { copy },
+                    Err(error) => Message::ConflictCopyFailed {
+                        reason: error.to_string(),
+                    },
+                })
+            }
             Job::Disk(Disk::Backup { path }) => {
                 backups
                     .ensure(&path)
@@ -104,12 +118,35 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
     }
 }
 
-fn save(path: &Path, text: &str) -> Message {
-    match atomic::write(path, text.as_bytes()) {
-        Ok(()) => Message::Saved,
-        Err(error) => Message::SaveFailed {
-            reason: error.to_string(),
-        },
+/// Writes `text` to `path`, unless just before the rename the file is no longer at `expected`.
+fn save(path: &Path, text: &str, expected: Option<Version>) -> Message {
+    let saved = atomic::prepare(path, text.as_bytes()).and_then(|prepared| {
+        let found = read(prepared.target())?;
+        if found.as_deref().map(Version::of) == expected {
+            prepared.commit().map(|()| Message::Saved)
+        } else {
+            Ok(Message::SaveRefused { contents: found })
+        }
+    });
+    saved.unwrap_or_else(|error| Message::SaveFailed {
+        reason: error.to_string(),
+    })
+}
+
+/// What is at `path` now. A file that cannot be read is not reported: the next save reads it
+/// again and reports why it fails.
+fn check(path: &Path) -> Option<Message> {
+    read(path)
+        .ok()
+        .map(|contents| Message::FileChecked { contents })
+}
+
+/// The bytes of the file at `path`, or `None` when there is none.
+fn read(path: &Path) -> io::Result<Option<Vec<u8>>> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
     }
 }
 
@@ -126,7 +163,9 @@ mod tests {
     /// A worker with backups in `dir/backups`, and the channel its results arrive on.
     fn start(dir: &Path) -> (Io, Receiver<Input>) {
         let (results, inputs) = mpsc::channel();
-        let backups = Backups::new(Some(dir.join("backups")), || date(2026, 10, 5));
+        let backups = Backups::new(Some(dir.join("backups")), || {
+            date(2026, 10, 5).at(9, 30, 0, 0)
+        });
         (Io::start(results, backups), inputs)
     }
 
@@ -134,10 +173,17 @@ mod tests {
         inputs.try_iter().collect()
     }
 
+    /// A save of `text` to `path`, where there is no file yet.
     fn save_job(path: &Path, text: &str) -> Disk {
+        save_over(path, text, None)
+    }
+
+    /// A save of `text` to `path`, where the file holds `expected`.
+    fn save_over(path: &Path, text: &str, expected: Option<&str>) -> Disk {
         Disk::Save {
             path: path.to_owned(),
             text: text.to_owned(),
+            expected: expected.map(|text| Version::of(text.as_bytes())),
         }
     }
 
@@ -149,7 +195,7 @@ mod tests {
         let path = dir.path().join("todo.taskpaper");
         io.submit(save_job(&path, "one"));
         io.submit(save_job(&dir.path().join("missing/x.taskpaper"), "x"));
-        io.submit(save_job(&path, "two"));
+        io.submit(save_over(&path, "two", Some("one")));
         io.flush();
         let results = results(&inputs);
         assert_eq!(results.len(), 3);
@@ -171,7 +217,7 @@ mod tests {
         let path = dir.path().join("todo.taskpaper");
         fs::write(&path, "on disk")?;
         io.submit(Disk::Backup { path: path.clone() });
-        io.submit(save_job(&path, "saved"));
+        io.submit(save_over(&path, "saved", Some("on disk")));
         drop(io);
         assert_eq!(results(&inputs), [Input::Core(Message::Saved)]);
         let backups = dir.path().join("backups");
@@ -207,6 +253,125 @@ mod tests {
         io.submit(save_job(&path, "kept"));
         io.flush();
         assert_eq!(fs::read_to_string(&path)?, "kept");
+        Ok(())
+    }
+
+    // file-io.md §3
+    #[test]
+    fn a_save_is_refused_when_the_file_changed_and_leaves_it_alone() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "theirs")?;
+        io.submit(save_over(&path, "mine", Some("known")));
+        io.submit(save_job(&path, "mine"));
+        let gone = dir.path().join("gone.taskpaper");
+        io.submit(save_over(&gone, "mine", Some("known")));
+        io.flush();
+        let theirs = Some(b"theirs".to_vec());
+        assert_eq!(
+            results(&inputs),
+            [
+                Input::Core(Message::SaveRefused {
+                    contents: theirs.clone()
+                }),
+                Input::Core(Message::SaveRefused { contents: theirs }),
+                Input::Core(Message::SaveRefused { contents: None }),
+            ]
+        );
+        assert_eq!(fs::read_to_string(&path)?, "theirs");
+        assert!(!fs::exists(&gone)?);
+        assert_eq!(
+            fs::read_dir(dir.path())?.count(),
+            1,
+            "no temporary file is left"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_save_fails_when_the_file_cannot_be_read() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let link = dir.path().join("loop.taskpaper");
+        std::os::unix::fs::symlink(&link, &link)?;
+        io.submit(save_job(&link, "mine"));
+        io.flush();
+        assert!(matches!(
+            results(&inputs).as_slice(),
+            [Input::Core(Message::SaveFailed { reason })] if reason.contains("symbolic links")
+        ));
+        Ok(())
+    }
+
+    // F-FILE-06
+    #[test]
+    fn checks_report_the_file_or_its_absence() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "on disk")?;
+        io.submit(Disk::Check { path: path.clone() });
+        io.submit(Disk::Check {
+            path: dir.path().join("gone.taskpaper"),
+        });
+        io.submit(Disk::Check {
+            path: dir.path().to_owned(),
+        });
+        io.flush();
+        assert_eq!(
+            results(&inputs),
+            [
+                Input::Core(Message::FileChecked {
+                    contents: Some(b"on disk".to_vec())
+                }),
+                Input::Core(Message::FileChecked { contents: None }),
+            ],
+            "a path that cannot be read reports nothing"
+        );
+        Ok(())
+    }
+
+    // file-io.md §3
+    #[test]
+    fn writes_conflict_copies_and_reports_where() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "on disk")?;
+        io.submit(Disk::ConflictCopy {
+            path: path.clone(),
+            contents: b"theirs".to_vec(),
+        });
+        io.submit(Disk::ConflictCopy {
+            path: dir.path().join("gone/todo.taskpaper"),
+            contents: b"mine".to_vec(),
+        });
+        io.flush();
+        let results = results(&inputs);
+        assert!(
+            matches!(
+                results.as_slice(),
+                [
+                    Input::Core(Message::ConflictCopied { .. }),
+                    Input::Core(Message::ConflictCopyFailed { .. }),
+                ]
+            ),
+            "{results:?}"
+        );
+        let copies: Vec<_> = results
+            .iter()
+            .filter_map(|input| match input {
+                Input::Core(Message::ConflictCopied { copy }) => Some(copy),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(fs::read_to_string(copies[0])?, "theirs");
+        assert!(copies[0].starts_with(dir.path().join("backups")));
+        assert!(
+            matches!(&results[1], Input::Core(Message::ConflictCopyFailed { reason }) if reason.contains("No such file")),
+            "{results:?}"
+        );
         Ok(())
     }
 }

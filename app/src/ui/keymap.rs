@@ -121,6 +121,51 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl 'y')], |_| Message::Redo),
 ];
 
+/// What a key does while the conflict prompt is open (file-io.md §3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PromptKey {
+    /// Sends the core this message.
+    Send(Message),
+    /// Scrolls the diff by this many lines, down when positive.
+    Scroll(isize),
+}
+
+/// A prompt binding's key and what it does, given the rows in a page.
+type PromptBinding = (Key, fn(isize) -> PromptKey);
+
+/// Conflict prompt bindings: the choices, scrolling the diff and quitting.
+const PROMPT: &[PromptBinding] = &[
+    (key!(ctrl 'q'), |_| PromptKey::Send(Message::Quit)),
+    (key!('m'), |_| PromptKey::Send(Message::KeepMine)),
+    (key!('t'), |_| PromptKey::Send(Message::TakeTheirs)),
+    (key!('d'), |_| PromptKey::Send(Message::ToggleDiff)),
+    (key!('j'), |_| PromptKey::Scroll(1)),
+    (key!(Down), |_| PromptKey::Scroll(1)),
+    (key!('k'), |_| PromptKey::Scroll(-1)),
+    (key!(Up), |_| PromptKey::Scroll(-1)),
+    (key!(ctrl 'd'), PromptKey::Scroll),
+    (key!(PageDown), PromptKey::Scroll),
+    (key!(ctrl 'u'), |rows| {
+        PromptKey::Scroll(rows.saturating_neg())
+    }),
+    (key!(PageUp), |rows| {
+        PromptKey::Scroll(rows.saturating_neg())
+    }),
+];
+
+/// What `event` does in the conflict prompt, where a page is `page_rows` lines of the diff. Only
+/// key presses count.
+#[must_use]
+pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
+    let key = event.as_key_press_event()?;
+    let pressed = (key.modifiers, key.code);
+    let rows = isize::try_from(page_rows).unwrap_or(isize::MAX);
+    PROMPT
+        .iter()
+        .find(|(key, _)| *key == pressed)
+        .map(|(_, action)| action(rows))
+}
+
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
 /// fails to match or times out.
 #[derive(Debug, Default)]
@@ -403,5 +448,46 @@ mod tests {
         keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), CONTEXT);
         keymap.message_for(&Event::Resize(80, 24), ms(10), CONTEXT);
         assert_eq!(keymap.pending(), "g");
+    }
+
+    // file-io.md §3
+    #[test]
+    fn prompt_keys_choose_scroll_the_diff_and_quit() {
+        let prompt = |code, modifiers| prompt_key(&key(code, modifiers), PAGE);
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        let send = |message| Some(PromptKey::Send(message));
+        assert_eq!(prompt(KeyCode::Char('m'), none), send(Message::KeepMine));
+        assert_eq!(prompt(KeyCode::Char('t'), none), send(Message::TakeTheirs));
+        assert_eq!(prompt(KeyCode::Char('d'), none), send(Message::ToggleDiff));
+        assert_eq!(prompt(KeyCode::Char('q'), ctrl), send(Message::Quit));
+        for (code, modifiers, by) in [
+            (KeyCode::Char('j'), none, 1),
+            (KeyCode::Down, none, 1),
+            (KeyCode::Char('k'), none, -1),
+            (KeyCode::Up, none, -1),
+            (KeyCode::Char('d'), ctrl, 7),
+            (KeyCode::PageDown, none, 7),
+            (KeyCode::Char('u'), ctrl, -7),
+            (KeyCode::PageUp, none, -7),
+        ] {
+            assert_eq!(
+                prompt(code, modifiers),
+                Some(PromptKey::Scroll(by)),
+                "{code}"
+            );
+        }
+        assert_eq!(prompt(KeyCode::Char('x'), none), None);
+        assert_eq!(prompt(KeyCode::Char('q'), none), None);
+        assert_eq!(prompt_key(&Event::FocusGained, PAGE), None);
+        let release = Event::Key(KeyEvent {
+            kind: KeyEventKind::Release,
+            ..KeyEvent::new(KeyCode::Char('m'), none)
+        });
+        assert_eq!(prompt_key(&release, PAGE), None);
+        assert_eq!(
+            prompt_key(&key(KeyCode::PageDown, none), usize::MAX),
+            Some(PromptKey::Scroll(isize::MAX))
+        );
     }
 }

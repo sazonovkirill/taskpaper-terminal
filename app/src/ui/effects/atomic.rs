@@ -1,6 +1,7 @@
 //! Replacing a file so that it is never seen half written: the text goes to a temporary file
 //! beside it, which is renamed over it ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving),
-//! F-FILE-04).
+//! F-FILE-04), after a last look at the file if the caller wants one
+//! ([§3](../../../../docs/specs/file-io.md#3-external-changes)).
 
 use std::{
     ffi::OsString,
@@ -10,18 +11,52 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use tempfile::NamedTempFile;
+
 /// What a new file gets before the umask applies, as most programs create files.
 const NEW_FILE_MODE: u32 = 0o666;
 
-/// Replaces the file at `path` with `contents`, keeping its permissions; a new file gets the
-/// default ones. A symbolic link stays a link: the file it points to is replaced.
+/// New contents written beside the file they will replace, which is left as it was until they
+/// are committed; dropping them removes them.
+#[derive(Debug)]
+pub struct Prepared {
+    temp: NamedTempFile,
+    target: PathBuf,
+}
+
+/// Writes `contents` beside the file at `path`, ready to replace it keeping its permissions; a new
+/// file gets the default ones. A symbolic link stays a link: the file it points to is replaced.
 ///
 /// # Errors
 ///
-/// The I/O error of the step that failed; the file is then left as it was.
-pub fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
+/// The I/O error of the step that failed; the file is left as it was.
+pub fn prepare(path: &Path, contents: &[u8]) -> io::Result<Prepared> {
     let (target, permissions) = resolve(path)?;
-    replace(&target, contents, permissions)
+    let target = std::path::absolute(target)?;
+    let temp = write_beside(&target, contents, permissions)?;
+    Ok(Prepared { temp, target })
+}
+
+impl Prepared {
+    /// The absolute path of the file the contents will replace: a link's target.
+    #[must_use]
+    pub fn target(&self) -> &Path {
+        &self.target
+    }
+
+    /// Replaces the file with the contents.
+    ///
+    /// # Errors
+    ///
+    /// The I/O error of the rename; the file is then left as it was.
+    pub fn commit(self) -> io::Result<()> {
+        self.temp.persist(&self.target)?;
+        // Some systems refuse to sync a folder. The rename has replaced the file already; syncing
+        // the folder only makes the rename survive a power cut sooner, so a refusal is no failure.
+        let folder = self.target.parent().unwrap_or(&self.target);
+        let _ = File::open(folder).and_then(|folder| folder.sync_all());
+        Ok(())
+    }
 }
 
 /// Replaces the file at `target`, which is not a link, with `contents` and the given
@@ -32,7 +67,18 @@ pub fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
 /// The I/O error of the step that failed; the file is then left as it was.
 pub fn replace(target: &Path, contents: &[u8], permissions: Option<Permissions>) -> io::Result<()> {
     let target = std::path::absolute(target)?;
-    let folder = target.parent().unwrap_or(&target);
+    let temp = write_beside(&target, contents, permissions)?;
+    Prepared { temp, target }.commit()
+}
+
+/// A temporary file beside `target`, an absolute path, holding `contents` with the given
+/// permissions, or the default ones, synced to disk.
+fn write_beside(
+    target: &Path,
+    contents: &[u8],
+    permissions: Option<Permissions>,
+) -> io::Result<NamedTempFile> {
+    let folder = target.parent().unwrap_or(target);
     let mut prefix = OsString::from(".");
     prefix.push(target.file_name().unwrap_or_default());
     prefix.push(".tpt-");
@@ -47,11 +93,7 @@ pub fn replace(target: &Path, contents: &[u8], permissions: Option<Permissions>)
         temp.as_file().set_permissions(permissions)?;
     }
     temp.as_file().sync_all()?;
-    temp.persist(&target)?;
-    // Some systems refuse to sync a folder. The rename has replaced the file already; syncing
-    // the folder only makes the rename survive a power cut sooner, so a refusal is no failure.
-    let _ = File::open(folder).and_then(|folder| folder.sync_all());
-    Ok(())
+    Ok(temp)
 }
 
 /// The file `path` stands for, which is the file a symbolic link points to, with its
@@ -76,6 +118,11 @@ mod tests {
     use super::*;
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    /// Replaces the file at `path` with `contents` at once.
+    fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
+        prepare(path, contents)?.commit()
+    }
 
     fn mode(path: &Path) -> io::Result<u32> {
         Ok(fs::metadata(path)?.permissions().mode() & 0o7777)
@@ -167,6 +214,42 @@ mod tests {
                 .kind(),
             io::ErrorKind::NotADirectory
         );
+        Ok(())
+    }
+
+    // file-io.md §3
+    #[test]
+    fn prepared_contents_replace_the_file_only_when_committed() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let real = dir.path().join("real.taskpaper");
+        let link = dir.path().join("link.taskpaper");
+        fs::write(&real, "old")?;
+        fs::set_permissions(&real, Permissions::from_mode(0o640))?;
+        symlink(&real, &link)?;
+        let prepared = prepare(&link, b"new")?;
+        assert_eq!(prepared.target(), fs::canonicalize(&real)?);
+        assert_eq!(fs::read_to_string(&real)?, "old");
+        assert_eq!(
+            names(dir.path())?.len(),
+            3,
+            "the new contents wait beside it"
+        );
+        prepared.commit()?;
+        assert_eq!(fs::read_to_string(&real)?, "new");
+        assert_eq!(mode(&real)?, 0o640);
+        assert_eq!(names(dir.path())?, ["link.taskpaper", "real.taskpaper"]);
+        Ok(())
+    }
+
+    #[test]
+    fn dropped_contents_leave_the_file_and_no_temporary_file() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "theirs")?;
+        drop(prepare(&path, b"mine")?);
+        assert_eq!(fs::read_to_string(&path)?, "theirs");
+        assert_eq!(names(dir.path())?, ["todo.taskpaper"]);
+        assert!(prepare(&dir.path().join("missing/x"), b"x").is_err());
         Ok(())
     }
 }

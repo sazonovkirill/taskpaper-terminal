@@ -1,23 +1,35 @@
-//! Daily backups: before the app first changes a file on a given day, a copy of the file as it is
-//! on disk goes to a folder of its own under the backups folder, which keeps the newest
-//! [`KEEP`] daily copies ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-07).
+//! Backups: before the app first changes a file on a given day, a copy of the file as it is on
+//! disk goes to a folder of its own under the backups folder, which keeps the newest [`KEEP`]
+//! daily copies ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-07); the
+//! same folder keeps the newest [`KEEP`] conflict copies, the versions a conflict choice
+//! discards ([file-io.md §3](../../../../docs/specs/file-io.md#3-external-changes)).
 
 use std::{
     ffi::OsString,
-    fs, io,
+    fs::{self, Permissions},
+    io,
     path::{Path, PathBuf},
 };
 
-use jiff::civil::Date;
+use jiff::{
+    SignedDuration,
+    civil::{Date, DateTime},
+};
 use thiserror::Error;
 
 use super::atomic;
 
-/// How many daily copies each file keeps (`backups.keep`).
+/// How many daily copies, and how many conflict copies, each file keeps (`backups.keep`).
 pub const KEEP: usize = 30;
 
 /// The file in a file's backup folder that names the file.
 const SOURCE: &str = "source-path.txt";
+
+/// How a conflict copy's local time of writing is written in its name.
+const CONFLICT_TIME: &str = "%Y-%m-%d-%H%M%S";
+
+/// What ends a conflict copy's name.
+const CONFLICT_SUFFIX: &str = "-conflict.taskpaper";
 
 /// Why a backup could not be made.
 #[derive(Debug, Error)]
@@ -38,22 +50,22 @@ pub fn folder(xdg_data_home: Option<OsString>, home: Option<PathBuf>) -> Option<
     super::app_folder(xdg_data_home, home, ".local/share", "backups")
 }
 
-/// The daily backups of the files one session opens: where they go, what day it is, and which
-/// file was checked on which day, so each file is checked once a day.
+/// The backups of the files one session opens: where they go, what time it is, and which file
+/// was checked on which day, so each file is checked once a day.
 #[derive(Debug)]
 pub struct Backups {
     folder: Option<PathBuf>,
-    today: fn() -> Date,
+    now: fn() -> DateTime,
     checked: Option<(PathBuf, Date)>,
 }
 
 impl Backups {
-    /// Backups in `folder`, dated by the local date `today` returns.
+    /// Backups in `folder`, dated by the local time `now` returns.
     #[must_use]
-    pub fn new(folder: Option<PathBuf>, today: fn() -> Date) -> Self {
+    pub fn new(folder: Option<PathBuf>, now: fn() -> DateTime) -> Self {
         Self {
             folder,
-            today,
+            now,
             checked: None,
         }
     }
@@ -65,13 +77,23 @@ impl Backups {
     ///
     /// [`BackupError`] when the copy could not be made.
     pub fn ensure(&mut self, file: &Path) -> Result<(), BackupError> {
-        let check = (file.to_owned(), (self.today)());
+        let check = (file.to_owned(), (self.now)().date());
         if self.checked.as_ref() == Some(&check) {
             return Ok(());
         }
         let (file, today) = self.checked.insert(check);
         let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
         Ok(daily(file, folder, *today)?)
+    }
+
+    /// Writes `contents` to a new conflict copy of `file` and returns its path.
+    ///
+    /// # Errors
+    ///
+    /// [`BackupError`] when the copy could not be written.
+    pub fn conflict(&self, file: &Path, contents: &[u8]) -> Result<PathBuf, BackupError> {
+        let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
+        Ok(conflict(file, folder, (self.now)(), contents)?)
     }
 }
 
@@ -85,7 +107,7 @@ fn daily(file: &Path, backups: &Path, today: Date) -> io::Result<()> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
         Err(error) => return Err(error),
     };
-    let source = fs::canonicalize(file)?;
+    let (source, permissions) = locate(file)?;
     let folder = backups.join(folder_name(&source));
     fs::create_dir_all(&folder)?;
     let copy = folder.join(daily_name(today));
@@ -98,14 +120,66 @@ fn daily(file: &Path, backups: &Path, today: Date) -> io::Result<()> {
     {
         return Ok(());
     }
-    let permissions = fs::metadata(&source)?.permissions();
-    let path = source.as_os_str().as_encoded_bytes();
-    atomic::replace(&folder.join(SOURCE), path, Some(permissions.clone()))?;
-    atomic::replace(&copy, &bytes, Some(permissions))?;
+    write_copy(&source, &copy, &bytes, permissions)?;
     dates.push(today);
     dates.sort_unstable_by(|a, b| b.cmp(a));
-    for old in dates.into_iter().skip(KEEP) {
-        fs::remove_file(folder.join(daily_name(old)))?;
+    prune(&folder, dates, daily_name)
+}
+
+/// Writes `contents` to `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper`, named by the local time
+/// `now`, or the first later second no copy is named by, in `file`'s folder under `backups`; then
+/// drops the oldest conflict copies beyond [`KEEP`]. Returns the copy's path. A file gone from
+/// disk still has its folder of copies.
+fn conflict(file: &Path, backups: &Path, now: DateTime, contents: &[u8]) -> io::Result<PathBuf> {
+    let (source, permissions) = locate(file)?;
+    let folder = backups.join(folder_name(&source));
+    fs::create_dir_all(&folder)?;
+    let mut time = now;
+    while fs::exists(folder.join(conflict_name(time)))? {
+        time = time.saturating_add(SignedDuration::from_secs(1));
+    }
+    let copy = folder.join(conflict_name(time));
+    write_copy(&source, &copy, contents, permissions)?;
+    let copies = copies(&folder, parse_conflict_name)?;
+    prune(&folder, copies, conflict_name)?;
+    Ok(copy)
+}
+
+/// The canonical path of `file` and its permissions, or, when it is gone, the canonical path of
+/// its folder joined with its name, and no permissions.
+fn locate(file: &Path) -> io::Result<(PathBuf, Option<Permissions>)> {
+    match fs::canonicalize(file) {
+        Ok(source) => {
+            let permissions = fs::metadata(&source)?.permissions();
+            Ok((source, Some(permissions)))
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let file = std::path::absolute(file)?;
+            let folder = fs::canonicalize(file.parent().unwrap_or(&file))?;
+            Ok((folder.join(file.file_name().unwrap_or_default()), None))
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// Writes `contents` to `copy` with `permissions`, or those of a new file, recording the path
+/// of `source` in the folder's [`SOURCE`] file.
+fn write_copy(
+    source: &Path,
+    copy: &Path,
+    contents: &[u8],
+    permissions: Option<Permissions>,
+) -> io::Result<()> {
+    let folder = copy.parent().unwrap_or(copy);
+    let path = source.as_os_str().as_encoded_bytes();
+    atomic::replace(&folder.join(SOURCE), path, permissions.clone())?;
+    atomic::replace(copy, contents, permissions)
+}
+
+/// Deletes the copies in `folder` named by `name` from `newest_first` beyond the first [`KEEP`].
+fn prune<T>(folder: &Path, newest_first: Vec<T>, name: fn(T) -> String) -> io::Result<()> {
+    for old in newest_first.into_iter().skip(KEEP) {
+        fs::remove_file(folder.join(name(old)))?;
     }
     Ok(())
 }
@@ -133,17 +207,30 @@ fn daily_name(date: Date) -> String {
 
 /// The dates of the daily copies in `folder`, newest first; other files are not copies.
 fn daily_copies(folder: &Path) -> io::Result<Vec<Date>> {
-    let mut dates = Vec::new();
+    copies(folder, |name| {
+        let date = name.strip_suffix(".taskpaper")?.parse::<Date>().ok()?;
+        (daily_name(date) == name).then_some(date)
+    })
+}
+
+fn conflict_name(time: DateTime) -> String {
+    format!("{}{CONFLICT_SUFFIX}", time.strftime(CONFLICT_TIME))
+}
+
+fn parse_conflict_name(name: &str) -> Option<DateTime> {
+    let time = DateTime::strptime(CONFLICT_TIME, name.strip_suffix(CONFLICT_SUFFIX)?).ok()?;
+    (conflict_name(time) == name).then_some(time)
+}
+
+/// What `parse` reads from the names of the copies in `folder`, newest first; files it reads
+/// nothing from are not copies.
+fn copies<T: Ord>(folder: &Path, parse: impl Fn(&str) -> Option<T>) -> io::Result<Vec<T>> {
+    let mut found = Vec::new();
     for entry in fs::read_dir(folder)? {
-        let name = entry?.file_name();
-        let date = name.to_str().and_then(|name| {
-            let date = name.strip_suffix(".taskpaper")?.parse::<Date>().ok()?;
-            (daily_name(date) == name).then_some(date)
-        });
-        dates.extend(date);
+        found.extend(entry?.file_name().to_str().and_then(&parse));
     }
-    dates.sort_unstable_by(|a, b| b.cmp(a));
-    Ok(dates)
+    found.sort_unstable_by(|a, b| b.cmp(a));
+    Ok(found)
 }
 
 #[cfg(test)]
@@ -157,6 +244,8 @@ mod tests {
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
     const TODAY: Date = date(2026, 10, 5);
+
+    const NOW: DateTime = TODAY.at(9, 30, 0, 0);
 
     /// A file `todo.taskpaper` holding `text` and an empty backups folder, both in `dir`.
     fn setup(dir: &Path, text: &str) -> io::Result<(PathBuf, PathBuf)> {
@@ -331,7 +420,7 @@ mod tests {
     fn ensure_checks_each_file_once_a_day() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "")?;
-        let mut session = Backups::new(Some(backups.clone()), || TODAY);
+        let mut session = Backups::new(Some(backups.clone()), || NOW);
         session.ensure(&file)?;
         fs::write(&file, "changed by the app")?;
         session.ensure(&file)?;
@@ -350,7 +439,7 @@ mod tests {
     fn ensure_fails_once_a_day_without_a_folder() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, _) = setup(dir.path(), "x")?;
-        let mut session = Backups::new(None, || TODAY);
+        let mut session = Backups::new(None, || NOW);
         let error = session.ensure(&file).unwrap_err();
         assert!(matches!(error, BackupError::NoFolder));
         assert_eq!(
@@ -358,6 +447,95 @@ mod tests {
             "no folder for backups: neither $XDG_DATA_HOME nor a home folder is set"
         );
         session.ensure(&file)?;
+        Ok(())
+    }
+
+    // file-io.md §3
+    #[test]
+    fn writes_conflict_copies_named_by_the_time_beside_the_daily_ones() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "on disk")?;
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o600))?;
+        let session = Backups::new(Some(backups.clone()), || NOW);
+        let first = session.conflict(&file, b"theirs")?;
+        let second = session.conflict(&file, b"mine")?;
+        let folder = backup_folder(&file, &backups)?;
+        assert_eq!(first, folder.join("2026-10-05-093000-conflict.taskpaper"));
+        assert_eq!(
+            second,
+            folder.join("2026-10-05-093001-conflict.taskpaper"),
+            "a copy never replaces one written in the same second"
+        );
+        assert_eq!(fs::read_to_string(&first)?, "theirs");
+        assert_eq!(fs::read_to_string(&second)?, "mine");
+        assert_eq!(fs::metadata(&first)?.permissions().mode() & 0o777, 0o600);
+        assert_eq!(
+            fs::read_to_string(folder.join(SOURCE))?,
+            fs::canonicalize(&file)?.to_string_lossy()
+        );
+        assert_eq!(fs::read_to_string(&file)?, "on disk");
+        Ok(())
+    }
+
+    // file-io.md §2–3
+    #[test]
+    fn keeps_the_newest_conflict_copies_counted_apart_from_daily_ones() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "x")?;
+        let folder = backup_folder(&file, &backups)?;
+        fs::create_dir_all(&folder)?;
+        let first = date(2026, 1, 1).at(8, 0, 0, 0);
+        for minute in 0..KEEP {
+            let old = first.checked_add(jiff::Span::new().minutes(i64::try_from(minute)?))?;
+            fs::write(folder.join(conflict_name(old)), "")?;
+        }
+        let others = [
+            "2026-01-01.taskpaper",
+            "2026-01-01-0800-conflict.taskpaper",
+            "2026-01-01-080000-conflict.txt",
+        ];
+        for other in others {
+            fs::write(folder.join(other), "")?;
+        }
+        conflict(&file, &backups, NOW, b"new")?;
+        let names = names(&folder)?;
+        assert!(!names.contains(&"2026-01-01-080000-conflict.taskpaper".to_owned()));
+        assert!(names.contains(&"2026-01-01-080100-conflict.taskpaper".to_owned()));
+        assert!(names.contains(&"2026-10-05-093000-conflict.taskpaper".to_owned()));
+        assert_eq!(names.len(), KEEP + others.len() + 1, "{names:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn a_conflict_copy_fails_without_a_folder_or_a_readable_file() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "x")?;
+        let error = Backups::new(None, || NOW)
+            .conflict(&file, b"x")
+            .unwrap_err();
+        assert!(matches!(error, BackupError::NoFolder));
+        let session = Backups::new(Some(backups), || NOW);
+        let missing = session.conflict(&dir.path().join("gone/todo.taskpaper"), b"x");
+        assert!(matches!(missing, Err(BackupError::Io(_))));
+        let looped = dir.path().join("loop.taskpaper");
+        std::os::unix::fs::symlink(&looped, &looped)?;
+        let unreadable = session.conflict(&looped, b"x");
+        assert!(matches!(unreadable, Err(BackupError::Io(_))));
+        Ok(())
+    }
+
+    // file-io.md §3
+    #[test]
+    fn a_file_gone_from_disk_gets_its_conflict_copies_beside_the_others() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "on disk")?;
+        let folder = backup_folder(&file, &backups)?;
+        fs::remove_file(&file)?;
+        let session = Backups::new(Some(backups), || NOW);
+        let copy = session.conflict(&file, b"mine")?;
+        assert_eq!(copy, folder.join("2026-10-05-093000-conflict.taskpaper"));
+        assert_eq!(fs::read_to_string(&copy)?, "mine");
+        assert!(!fs::exists(&file)?);
         Ok(())
     }
 }

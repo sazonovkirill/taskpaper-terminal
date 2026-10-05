@@ -17,7 +17,7 @@ Covers FR-DOC-01, FR-DOC-02, FR-DOC-05, FR-DOC-06, FR-DOC-07, FR-UI-04 (storage)
 2. Write to a temp file in the same directory (`.<name>.tpt-XXXX`), `fsync` it.
 3. Copy the original file's permissions.
 4. Rename over the target; `fsync` the directory.
-5. Record the new file's metadata (mtime, size, content hash) as the "known disk state".
+5. Record the new file's version (its length and a hash of its bytes) as the "known disk state".
 
 If the target is a symlink, write through to the resolved path so the link is preserved.
 
@@ -42,14 +42,15 @@ Saving runs on a background thread with a snapshot of the serialized text; the U
 
 ## 3. External changes
 
-Watch the file with the `notify` crate (debounced), plus a metadata check on focus regain and before every save.
+Watch the file's folder with the `notify` crate (debounced, 200 ms), since many editors save by renaming a new file over the old one; each burst of changes there reads the file again, as does regaining terminal focus and every save. A read compares the file's version (length and hash of its bytes) with the known disk state, so reads of an unchanged file, such as after the app's own save, do nothing.
 
-When the on-disk content hash differs from the known disk state (OQ-16 default):
-- **No unsaved local changes:** reload silently, keep each pane's focus and zoom on the same blocks where they can be re-matched (same path of texts from root, else nearest surviving ancestor), and show "Reloaded (changed on disk)".
-- **Unsaved local changes:** pause autosave and prompt: *Keep mine* (first write the on-disk version to the file's backup folder as a conflict copy, then overwrite disk), *Take theirs* (write the local version there as a conflict copy, then reload; undo history is cleared because item ids no longer apply), *Show diff* (open a read-only line diff pane). A conflict copy is named `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper` (local time), is written even when backups are disabled, and failing to write it cancels the choice and shows the error, so the discarded version is never lost.
+When the version on disk differs from the known disk state (OQ-16 default):
+- **No unsaved local changes:** reload silently, keep each pane's focus, zoom, zoom history and collapsed blocks on the same blocks where they can be re-matched (same path of first-line texts from root, without tags and counting equal texts among siblings; else focus and zoom go to the nearest surviving ancestor and a fold is dropped), clear the undo history, whose item ids no longer apply, and show "Reloaded (changed on disk)".
+- **Unsaved local changes:** pause autosave and prompt: *Keep mine* (first write the on-disk version to the file's backup folder as a conflict copy, then overwrite disk at once), *Take theirs* (write the local version there as a conflict copy, then reload as above), *Show diff* (a read-only line diff from the file on disk to the local version, three unchanged lines around each change; it is shown in the prompt, which grows to the size of a prompt, until panes arrive in M5). A conflict copy is named `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper` (local time; a later second when that name is taken), is written even when backups are disabled, and failing to write it cancels the choice and shows the error, so the discarded version is never lost. A further change on disk while a choice waits for its copy cancels the choice, and the prompt then offers the newer version. Quitting, or being told to end, while the prompt is open leaves the file on disk as it is and writes the local version to a conflict copy; a quit ends once the copy is written and, when it fails, asks as after a failed save, while being told to end ends anyway. A file deleted on disk still gets its conflict copies in its backup folder. Keys: [keybindings.md §4](keybindings.md#4-other-contexts).
+- **Not UTF-8 on disk:** the file cannot be reloaded or taken, so the prompt opens even without unsaved local changes and *Take theirs* is refused with the reason; *Keep mine* overwrites it after its conflict copy, and the diff shows its invalid bytes as `�`.
 - **File deleted or moved:** keep the buffer, mark it "not on disk", and recreate the file on next save.
 
-Saves check the disk state immediately before renaming; if it changed since the last read, the save is aborted and the conflict prompt shown instead. This prevents overwriting edits made by TaskPaper 3, a sync tool or another editor.
+Saves read the file immediately before renaming; if its version is no longer the one the save expected, the save is aborted, its new file removed, and the version on disk handled as above, which with the unsaved changes the save was for opens the conflict prompt. This prevents overwriting edits made by TaskPaper 3, a sync tool or another editor. A file that cannot be read then fails the save with the reason, as any save failure does; a read that fails while checking is not reported, since the next save reports it.
 
 ## 4. Crash safety
 

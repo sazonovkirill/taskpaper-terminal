@@ -5,7 +5,7 @@ use std::{path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
-use super::{State, saving::Ending};
+use super::{State, Version, saving::Ending};
 use crate::document::{Block, Item, ItemId, blocks};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -23,6 +23,35 @@ pub enum Message {
     Saved,
     /// The [`Disk::Save`] under way failed.
     SaveFailed {
+        /// Why, for the status line.
+        reason: String,
+    },
+    /// The [`Disk::Save`] under way was not done: the file on disk is no longer the version it
+    /// expected (file-io.md §3).
+    SaveRefused {
+        /// The file's bytes now, or `None` when there is no file.
+        contents: Option<Vec<u8>>,
+    },
+    /// The open file may have changed on disk: the frontend saw it change or regained focus.
+    CheckFile,
+    /// What a [`Disk::Check`] found.
+    FileChecked {
+        /// The file's bytes, or `None` when there is no file.
+        contents: Option<Vec<u8>>,
+    },
+    /// Resolve the conflict by overwriting the file on disk with the local version.
+    KeepMine,
+    /// Resolve the conflict by reloading the file on disk, discarding the local version.
+    TakeTheirs,
+    /// Show or hide the diff between the file on disk and the local version.
+    ToggleDiff,
+    /// The [`Disk::ConflictCopy`] under way was written.
+    ConflictCopied {
+        /// Where the copy is.
+        copy: PathBuf,
+    },
+    /// The [`Disk::ConflictCopy`] under way failed.
+    ConflictCopyFailed {
         /// Why, for the status line.
         reason: String,
     },
@@ -117,13 +146,30 @@ pub enum Disk {
         /// The open file.
         path: PathBuf,
     },
-    /// Replace the file at `path` with `text` atomically (F-FILE-04); the result comes back as
-    /// [`Message::Saved`] or [`Message::SaveFailed`].
+    /// Replace the file at `path` with `text` atomically (F-FILE-04), unless just before that
+    /// the file is no longer at `expected`; the result comes back as [`Message::Saved`],
+    /// [`Message::SaveFailed`] or [`Message::SaveRefused`] (file-io.md §3).
     Save {
         /// The open file.
         path: PathBuf,
         /// The serialized document.
         text: String,
+        /// The version the file must still be, or `None` when there must be no file.
+        expected: Option<Version>,
+    },
+    /// Read the file at `path`; the result comes back as [`Message::FileChecked`].
+    Check {
+        /// The open file.
+        path: PathBuf,
+    },
+    /// Write `contents` to a new conflict copy in the backups folder of the file at `path`, even
+    /// when backups are off; the result comes back as [`Message::ConflictCopied`] or
+    /// [`Message::ConflictCopyFailed`] (file-io.md §3).
+    ConflictCopy {
+        /// The open file.
+        path: PathBuf,
+        /// The version a conflict choice discards.
+        contents: Vec<u8>,
     },
 }
 
@@ -134,8 +180,16 @@ impl State {
         match message {
             Message::Started => effects = self.backup_on_open(),
             Message::Tick { now } => self.now = now,
-            Message::Saved => self.autosave.saved(),
-            Message::SaveFailed { reason } => self.autosave.failed(reason),
+            Message::Saved => self.saved(),
+            Message::SaveFailed { reason } => self.save_failed(reason),
+            Message::SaveRefused { contents } => self.save_refused(contents),
+            Message::CheckFile => effects = self.check_file(),
+            Message::FileChecked { contents } => self.found(contents),
+            Message::KeepMine => effects = self.keep_mine(),
+            Message::TakeTheirs => effects = self.take_theirs(),
+            Message::ToggleDiff => self.toggle_diff(),
+            Message::ConflictCopied { copy } => self.conflict_copied(copy),
+            Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),

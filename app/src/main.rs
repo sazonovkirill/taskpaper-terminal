@@ -11,7 +11,10 @@ use std::{
 };
 
 use anyhow::{Context, bail};
-use crossterm::event;
+use crossterm::{
+    event::{self, DisableFocusChange, EnableFocusChange},
+    execute,
+};
 use signal_hook::{
     consts::{SIGHUP, SIGTERM},
     iterator::Signals,
@@ -56,13 +59,23 @@ fn main() -> anyhow::Result<()> {
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
     let folder = ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home);
     let today = || jiff::Zoned::now().date();
-    let io = Io::start(inputs.clone(), Backups::new(folder, today));
+    let io = Io::start(
+        inputs.clone(),
+        Backups::new(folder, || jiff::Zoned::now().datetime()),
+    );
+    // Without a watcher, the checks on regaining focus and before every save still find changes.
+    let _watcher = state
+        .path()
+        .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
     let mut tui = ui::Tui::new(state, io, today);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
+    // Terminals that cannot report focus ignore the request.
+    let _ = execute!(std::io::stdout(), EnableFocusChange);
     forward_terminal_events(inputs);
     // The panic hook `try_init` installed restores the terminal first; once the panic has
     // unwound to here, the document is written out as it stands.
     let result = panic::catch_unwind(AssertUnwindSafe(|| run(&mut terminal, &mut tui, &received)));
+    let _ = execute!(std::io::stdout(), DisableFocusChange);
     ratatui::restore();
     result.unwrap_or_else(|panic| {
         report_recovery(&tui, &recovery);
