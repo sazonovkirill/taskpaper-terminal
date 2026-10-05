@@ -49,7 +49,7 @@ fn the_header_shows_home_until_zoomed() {
             .contains(Modifier::BOLD),
         "the focused pane's header is highlighted"
     );
-    assert_eq!(shown(&mut app)[0], "  Shop:");
+    assert_eq!(shown(&mut app)[0], "Shop:");
 }
 
 // FR-NAV-03
@@ -58,8 +58,8 @@ fn zooming_in_shows_the_block_as_a_title_over_its_children() {
     let mut app = app(30);
     app.type_keys(".");
     assert_eq!(header(&mut app), "Home › Shop");
-    assert_eq!(shown(&mut app), ["Shop", "☐ Milk", "    organic", "☐ Eggs"]);
-    assert_focus(&mut app, "☐ Milk");
+    assert_eq!(shown(&mut app), ["Shop", "- Milk", "  organic", "- Eggs"]);
+    assert_focus(&mut app, "- Milk");
     let title = app.render().buffer()[(2, 2)].clone();
     assert!(title.modifier.contains(Modifier::BOLD), "the title is bold");
 }
@@ -98,17 +98,17 @@ fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
     assert_eq!(header(&mut app), "Home › Work › Report › Draft");
     app.type_keys(">");
     assert_eq!(header(&mut app), "Home › Work › Report");
-    assert_focus(&mut app, "☐ Draft");
+    assert_focus(&mut app, "- Draft");
     app.press(KeyCode::Char('h'), KeyModifiers::ALT);
     assert_eq!(header(&mut app), "Home › Work");
-    assert_focus(&mut app, "☐ Report");
+    assert_focus(&mut app, "- Report");
     app.press(KeyCode::Left, KeyModifiers::ALT);
     assert_eq!(header(&mut app), "Home");
-    assert_focus(&mut app, "  Work:");
+    assert_focus(&mut app, "Work:");
     app.type_keys("gu");
     assert_eq!(header(&mut app), "Home", "home has no parent");
     app.type_keys(".gu");
-    assert_focus(&mut app, "  Work:");
+    assert_focus(&mut app, "Work:");
 }
 
 // FR-NAV-03
@@ -118,7 +118,7 @@ fn g_h_and_ctrl_quote_go_home() {
     app.type_keys("jjjj..");
     app.type_keys("gh");
     assert_eq!(header(&mut app), "Home");
-    assert_focus(&mut app, "  ☐ Report");
+    assert_focus(&mut app, "  - Report");
     app.type_keys("jj.");
     app.press(KeyCode::Char('\''), KeyModifiers::CONTROL);
     assert_eq!(header(&mut app), "Home");
@@ -178,11 +178,11 @@ fn folding_works_under_the_zoom_and_leaves_the_title_alone() {
     let mut app = app(30);
     app.type_keys("jjjj.");
     app.type_keys("_");
-    assert_eq!(shown(&mut app), ["Work", "☐ Report ▸ 1", "  Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work", "- Report ▸ 1", "Ideas:"]);
     app.type_keys("gp");
     assert_focus(&mut app, "Work");
     app.type_keys("h'");
-    assert_eq!(shown(&mut app), ["Work", "☐ Report ▸ 1", "  Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work", "- Report ▸ 1", "Ideas:"]);
     app.type_keys("\"");
     assert_eq!(
         shown(&mut app).len(),
@@ -190,15 +190,15 @@ fn folding_works_under_the_zoom_and_leaves_the_title_alone() {
         "the subtree below the title expands"
     );
     app.type_keys("\"");
-    assert_eq!(shown(&mut app), ["Work", "☐ Report ▸ 1", "  Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work", "- Report ▸ 1", "Ideas:"]);
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "Work");
     app.type_keys("l");
-    assert_focus(&mut app, "☐ Report ▸ 1");
+    assert_focus(&mut app, "- Report ▸ 1");
     app.type_keys("+");
     assert_eq!(shown(&mut app).len(), 4);
     app.type_keys("gh");
-    assert_eq!(shown(&mut app)[..2], ["  Shop:", "  ☐ Milk"]);
+    assert_eq!(shown(&mut app)[..2], ["Shop:", "  - Milk"]);
 }
 
 // FR-NAV-03
@@ -208,7 +208,7 @@ fn a_collapsed_block_shows_its_children_when_zoomed() {
     app.type_keys("h.");
     assert_eq!(shown(&mut app).len(), 4);
     app.type_keys("gu");
-    assert_eq!(shown(&mut app)[0], "  Shop: ▸ 2");
+    assert_eq!(shown(&mut app)[0], "Shop: ▸ 2");
 }
 
 // FR-NAV-03

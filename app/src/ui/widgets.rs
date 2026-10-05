@@ -95,9 +95,10 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
     line.bold()
 }
 
-/// The screen lines of one block, `width` columns wide. Every block reserves a marker column so
-/// text lines up with the text of sibling tasks; only tasks and URLs fill it. A collapsed block
-/// with children shows `▸ n` after its text (ui.md §2).
+/// The screen lines of one block, `width` columns wide, indented 2 columns per level as in
+/// TaskPaper: tasks and URLs start with their marker, every other block with its text, so a
+/// child's text lines up with its parent task's text (D-31). A collapsed block with children
+/// shows `▸ n` after its text (ui.md §2).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     if row.title {
         return row
@@ -108,14 +109,14 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     }
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
-        BlockKind::Project => (" ", Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => ("☑", Style::new().dim().crossed_out()),
-        BlockKind::Task => ("☐", Style::new()),
-        BlockKind::Url => ("↗", Style::new().dim().underlined().cyan()),
-        BlockKind::Section => (" ", Style::new().bold().fg(SECONDARY)),
-        BlockKind::Code => (" ", code_style().dim()),
-        BlockKind::Note => (" ", Style::new().dim()),
-        BlockKind::Divider => (" ", rule_style()),
+        BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
+        BlockKind::Task if row.done => ("☑ ", Style::new().dim().crossed_out()),
+        BlockKind::Task => ("- ", Style::new()),
+        BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
+        BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
+        BlockKind::Code => ("", code_style().dim()),
+        BlockKind::Note => ("", Style::new().dim()),
+        BlockKind::Divider => ("", rule_style()),
     };
     let count_style = if row.kind == BlockKind::Code {
         code_style()
@@ -130,9 +131,9 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         .enumerate()
         .map(|(index, text)| {
             let prefix = if index == 0 {
-                format!("{indent}{marker} ")
+                format!("{indent}{marker}")
             } else {
-                format!("{indent}  ")
+                format!("{indent}{}", " ".repeat(marker.chars().count()))
             };
             let mut line = Line::from(vec![Span::raw(prefix)]);
             match row.kind {
@@ -225,14 +226,14 @@ mod tests {
     #[test]
     fn draws_markers_indents_projects_and_dim_notes() {
         let mut expected = Buffer::with_lines([
-            "  Home:      ",
-            "  ☐ Milk     ",
-            "      on sale",
-            "  note       ",
+            "Home:        ",
+            "  - Milk     ",
+            "    on sale  ",
+            "note         ",
         ]);
-        expected.set_style(Rect::new(2, 0, 5, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(6, 2, 7, 1), Style::new().dim());
-        expected.set_style(Rect::new(2, 3, 4, 1), Style::new().dim());
+        expected.set_style(Rect::new(0, 0, 5, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().dim());
+        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().dim());
         assert_eq!(
             render("Home:\n\t- Milk\n\t\ton sale\nnote", 13, 4),
             expected
@@ -242,10 +243,10 @@ mod tests {
     // FR-DONE-01
     #[test]
     fn done_tasks_are_checked_dimmed_and_struck_through() {
-        let mut expected = Buffer::with_lines(["☑ a ", "☐ b ", "  P:", "  n "]);
+        let mut expected = Buffer::with_lines(["☑ a ", "- b ", "P:  ", "n   "]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(2, 2, 2, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().dim());
+        expected.set_style(Rect::new(0, 2, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().dim());
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
@@ -260,26 +261,26 @@ mod tests {
         state.update(Message::CollapseAll);
         let buf = draw(&state.rows(), 14, 8);
         let mut expected = Buffer::with_lines([
-            "  P: ▸ 1      ",
-            "  n           ",
-            "  m ▸ 1       ",
-            "  S ▸ 1       ",
-            "   ▸ 1 ───────",
-            "  f() ▸ 1     ",
-            "☐ v           ",
+            "P: ▸ 1        ",
+            "n             ",
+            "m ▸ 1         ",
+            "S ▸ 1         ",
+            " ▸ 1 ─────────",
+            "f() ▸ 1       ",
+            "- v           ",
             "              ",
         ]);
         let dim = Style::new().dim();
-        expected.set_style(Rect::new(2, 0, 2, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(4, 0, 4, 1), dim);
-        expected.set_style(Rect::new(2, 1, 1, 2), dim);
-        expected.set_style(Rect::new(3, 2, 4, 1), dim);
-        expected.set_style(Rect::new(2, 3, 1, 1), Style::new().bold().fg(SECONDARY));
-        expected.set_style(Rect::new(3, 3, 4, 1), dim);
-        expected.set_style(Rect::new(2, 4, 4, 1), dim);
-        expected.set_style(Rect::new(7, 4, 7, 1), rule_style());
-        expected.set_style(Rect::new(2, 5, 12, 1), code_style());
-        expected.set_style(Rect::new(2, 5, 7, 1), code_style().dim());
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(2, 0, 4, 1), dim);
+        expected.set_style(Rect::new(0, 1, 1, 2), dim);
+        expected.set_style(Rect::new(1, 2, 4, 1), dim);
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().bold().fg(SECONDARY));
+        expected.set_style(Rect::new(1, 3, 4, 1), dim);
+        expected.set_style(Rect::new(0, 4, 4, 1), dim);
+        expected.set_style(Rect::new(5, 4, 9, 1), rule_style());
+        expected.set_style(Rect::new(0, 5, 14, 1), code_style());
+        expected.set_style(Rect::new(0, 5, 7, 1), code_style().dim());
         assert_eq!(buf, expected);
     }
 
@@ -303,21 +304,21 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
         let buf = draw(&state.rows(), 5, 3);
-        let mut expected = Buffer::with_lines(["n    ", "m    ", "☐ t  "]);
+        let mut expected = Buffer::with_lines(["n    ", "m    ", "- t  "]);
         expected.set_style(Rect::new(0, 0, 5, 2), Style::new().bold());
         assert_eq!(buf, expected);
     }
 
     #[test]
     fn clips_rows_that_do_not_fit() {
-        let expected = Buffer::with_lines(["☐ abc", "☐ d  "]);
+        let expected = Buffer::with_lines(["- abc", "- d  "]);
         assert_eq!(render("- abcdef\n- d\n- e", 5, 2), expected);
     }
 
     // D-30
     #[test]
     fn marks_the_focused_row_in_the_gutter_without_highlighting_it() {
-        let mut expected = Buffer::with_lines(["  ☐ a", "▎ ☐ b", "  ☐ c"]);
+        let mut expected = Buffer::with_lines(["  - a", "▎ - b", "  - c"]);
         expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
@@ -330,16 +331,16 @@ mod tests {
         OutlineView::new(&rows)
             .focused(Some(1))
             .render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["  ☐ a ", "▎   n ", "▎   m "]);
+        let mut expected = Buffer::with_lines(["  - a ", "▎ n   ", "▎ m   "]);
         expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(4, 1, 1, 2), Style::new().dim());
+        expected.set_style(Rect::new(2, 1, 1, 2), Style::new().dim());
         assert_eq!(buf, expected);
     }
 
     #[test]
     fn starts_at_the_offset_and_marks_relative_to_it() {
         let area = Rect::new(2, 1, 6, 2);
-        let mut expected = Buffer::with_lines(["  ☐ c ", "▎ ☐ d "]);
+        let mut expected = Buffer::with_lines(["  - c ", "▎ - d "]);
         expected.area = area;
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(2, Some(3), area), expected);
@@ -347,7 +348,7 @@ mod tests {
 
     #[test]
     fn focus_outside_the_view_is_not_marked() {
-        let expected = Buffer::with_lines(["  ☐ b ", "  ☐ c "]);
+        let expected = Buffer::with_lines(["  - b ", "  - c "]);
         assert_eq!(render_scrolled(1, Some(0), Rect::new(0, 0, 6, 2)), expected);
         assert_eq!(render_scrolled(1, Some(3), Rect::new(0, 0, 6, 2)), expected);
         assert_eq!(render_scrolled(1, None, Rect::new(0, 0, 6, 2)), expected);

@@ -11,25 +11,25 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     let mut expected = Buffer::with_lines([
         "Home                                    ",
         "────────────────────────────────────────",
-        "▎   Errands:                            ",
-        "    ☐ Call about the lease              ",
+        "▎ Errands:                              ",
+        "    - Call about the lease              ",
         "    ☑ Post the letter                   ",
         "    ☑ Buy stamps                        ",
         "    ☑ Return books                      ",
-        "      Paid:                             ",
-        "      mail me@example.com about Proj:@x ",
+        "    Paid:                               ",
+        "    mail me@example.com about Proj:@x   ",
         &app.status(40),
     ]);
     let done = Style::new().dim().crossed_out();
     let project = Style::new().bold().light_blue();
     expected.set_style(Rect::new(0, 0, 40, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
-    expected.set_style(Rect::new(4, 2, 8, 1), project);
+    expected.set_style(Rect::new(2, 2, 8, 1), project);
     expected.set_style(Rect::new(6, 4, 15, 1), done);
     expected.set_style(Rect::new(6, 5, 10, 1), done);
     expected.set_style(Rect::new(6, 6, 12, 1), done);
-    expected.set_style(Rect::new(6, 7, 5, 1), project);
-    expected.set_style(Rect::new(6, 8, 33, 1), Style::new().dim());
+    expected.set_style(Rect::new(4, 7, 5, 1), project);
+    expected.set_style(Rect::new(4, 8, 33, 1), Style::new().dim());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);

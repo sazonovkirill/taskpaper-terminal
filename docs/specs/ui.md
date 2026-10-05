@@ -8,9 +8,9 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ┌ Bookmarks ─────────┬ Home › Work ──────────────────────┬ Home › Ideas ─────────────────┐
 │ ★ Launch plan      │ Work                              │ Ideas                         │
 │ Today          3   │   Launch:                         │ • Terminal outliner           │
-│ Projects           │   ☐ Draft announcement  Fri 8 Oct │ • Plain-text sync             │
+│ Projects           │   - Draft announcement  Fri 8 Oct │ • Plain-text sync             │
 │ ▾ Work             │   ☑ Book venue                    │                               │
-│   ▸ Launch         │   ☐ Budget review  ▸ 3            │                               │
+│   ▸ Launch         │   - Budget review  ▸ 3            │                               │
 │ ▸ Ideas            │     Notes about the venue wrap    │                               │
 │                    │     under the text like this.     │                               │
 │                    │   Later                           │                               │
@@ -28,13 +28,13 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 
 ## 2. Blocks
 
-Each row: indent (2 columns per level) + marker + space + text, then right-aligned chips.
+Each row: indent (2 columns per level), then text and right-aligned chips. Tasks and URLs start with their marker and a space; every other block starts with its text. A block's children are indented one level, so a note under a task lines up with the task's text and the indentation shows which block each belongs to, as in TaskPaper (D-31).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
 | Project | none | bold heading in the accent color (Textual's `$primary`), ending in `:` as in the file |
-| Task | `☐`, done `☑` | normal; done tasks dimmed and struck through (falls back to dim) |
-| Note | none; aligned with sibling text | slightly dimmed, several lines |
+| Task | `-`, done `☑` | normal; done tasks dimmed and struck through (falls back to dim) |
+| Note | none | slightly dimmed, several lines |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
 | Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |
 | URL | `↗` | title styled as a link (underlined, accent color), slightly dimmed |

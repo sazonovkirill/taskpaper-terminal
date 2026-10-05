@@ -93,7 +93,7 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
     let path = dir.path().join("todo.taskpaper");
     std::fs::write(&path, "Errands:\n\t- Post office\n")?;
     let mut terminal = termlens::bin!("tpt", arg(&path))?;
-    terminal.wait_until(|screen| screen.contains("☐ Post office"))?;
+    terminal.wait_until(|screen| screen.contains("- Post office"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
     assert_eq!(
