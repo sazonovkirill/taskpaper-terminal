@@ -1,13 +1,21 @@
 # Open questions
 
 - Status: Living
-- Last updated: 2026-10-04
+- Last updated: 2026-10-05
 
 Product choices not settled by [functional-requirements.md](functional-requirements.md). Each lists the options, the **proposed default** the specs currently assume, and what it affects. When the owner decides one, record the answer under **Decision**, update the affected specs, and keep the entry for history.
 
 ## Open
 
-None.
+### OQ-30 · Where does a URL block's address come from?
+
+FR-BLK-08 converts blocks to URL blocks (`Title @url(…)`, D-10), and editing.md §5 first said the converter prompts for the address. Tags are never typed (OQ-25), so the converter is the only way to make one. Step 3.7 had to choose; the M3 implementer chose the proposed default below, which the specs now follow.
+
+- **A. Prompt for the address**, with the block's text as the title.
+- **B. Take the first link in the text** as the address: a bare URL (D-10) or, in a text block, a Markdown link (FR-FMT-03). The rest of the text, with a `[title](url)` link's title in its place, becomes the title, or the address when nothing else is left; a block without a link keeps its type and the status line says to add one. Typing a link into a block and converting it is enough, and the converter needs no prompt.
+
+**Proposed default:** B.
+**Affects:** [specs/editing.md](specs/editing.md#5-block-commands), [specs/keybindings.md](specs/keybindings.md#4-other-contexts).
 
 ## Decided with the proposed defaults
 

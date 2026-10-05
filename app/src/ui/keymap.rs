@@ -44,6 +44,8 @@ pub enum Overlay {
     ColorPicker,
     /// The date prompt (FR-TAG-03).
     DatePrompt,
+    /// The type picker (FR-BLK-08).
+    TypePicker,
     /// The details popup, which any key closes (D-3).
     Details,
 }
@@ -168,6 +170,7 @@ const NAVIGATE: &[Binding] = &[
     }),
     (&[key!('m'), key!('s')], |c| date_prompt(DateTag::Start, c)),
     (&[key!('m'), key!('d')], |c| date_prompt(DateTag::Due, c)),
+    (&[key!('m'), key!('y')], |_| Message::OpenTypePicker),
     (&[key!('m'), key!('i')], |_| Message::OpenDetails),
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
@@ -459,6 +462,7 @@ impl Keymap {
             return match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
+                Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -1091,6 +1095,36 @@ mod tests {
             Some(Message::Quit)
         );
         assert_eq!(keymap.pending(), "");
+    }
+
+    // FR-BLK-08, D-42: plain characters, which both key reportings send alike.
+    #[test]
+    fn m_y_opens_the_type_picker_which_takes_the_keys_of_pickers() {
+        assert_eq!(
+            messages("my", CONTEXT),
+            [None, Some(Message::OpenTypePicker)]
+        );
+        let open = &Context {
+            overlay: Some(Overlay::TypePicker),
+            ..*CONTEXT
+        };
+        let picker = |input| Some(Message::TypePicker(input));
+        assert_eq!(messages("t", open), [picker(MenuInput::Type('t'))]);
+        let mut keymap = Keymap::default();
+        let mut press = |code, modifiers| keymap.message_for(&key(code, modifiers), ms(0), open);
+        let none = KeyModifiers::NONE;
+        assert_eq!(press(KeyCode::Up, none), picker(MenuInput::Previous));
+        assert_eq!(
+            press(KeyCode::Char('n'), KeyModifiers::CONTROL),
+            picker(MenuInput::Next)
+        );
+        assert_eq!(press(KeyCode::Enter, none), picker(MenuInput::Choose));
+        assert_eq!(press(KeyCode::Esc, none), picker(MenuInput::Dismiss));
+        assert_eq!(press(KeyCode::Backspace, none), picker(MenuInput::Erase));
+        assert_eq!(
+            press(KeyCode::Char('q'), KeyModifiers::CONTROL),
+            Some(Message::Quit)
+        );
     }
 
     // D-3, D-42: plain characters, which both key reportings send alike.

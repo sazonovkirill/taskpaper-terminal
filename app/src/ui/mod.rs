@@ -298,6 +298,11 @@ impl Tui {
             .state
             .color_picker()
             .map(|picker| Popup::colors(&picker))
+            .or_else(|| {
+                self.state
+                    .type_picker()
+                    .map(|picker| Popup::block_types(&picker))
+            })
             .or_else(|| self.state.details().map(|details| Popup::details(&details)));
         if let Some(popup) = centered {
             let (width, height) = popup.size();
@@ -359,6 +364,8 @@ impl Tui {
             Some(Overlay::DatePrompt)
         } else if self.state.color_picker().is_some() {
             Some(Overlay::ColorPicker)
+        } else if self.state.type_picker().is_some() {
+            Some(Overlay::TypePicker)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }

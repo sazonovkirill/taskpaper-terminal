@@ -158,13 +158,14 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 ## 4. Other contexts
 
 - **Type menu** ([editing.md §2.3](editing.md#23-type-menu)): `p`, `s`, `n`, `t` right after `/` choose Project, Section, Note (text) or Task at once; other characters filter; `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. Divider has no letter: `/div` then `Enter`. The menu shows the type names only.
+- **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `sec` and `Enter` makes a section.
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.
 - **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03).
-- **Prompts** (dates, URL, Save As path): standard text keys, `Enter` accepts, `Esc` cancels.
+- **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels.
 - **External-change conflict prompt** ([file-io.md §3](file-io.md#3-external-changes)): `m` keeps mine, `t` takes theirs, `d` shows or hides the diff, `j`/`k`/arrows scroll the diff a line and `Ctrl+D`/`Ctrl+U`/`PageDown`/`PageUp` a page, `Ctrl+Q` quits. Other keys do nothing; the prompt has no `Esc`, because saving stays paused until a choice is made.
 
 ## 5. Configuration

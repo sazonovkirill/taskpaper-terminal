@@ -265,6 +265,20 @@ mod tests {
         );
     }
 
+    // FR-BLK-08, OQ-30
+    #[test]
+    fn demo_has_a_text_block_with_a_url_to_make_a_url_block_of() {
+        let state = State::new(format::parse(&text(TODAY)), None);
+        assert!(state.rows().iter().any(|row| {
+            row.kind == BlockKind::Text
+                && !crate::document::inline::urls(
+                    &row.text,
+                    crate::document::inline::Syntax::of(row.kind),
+                )
+                .is_empty()
+        }));
+    }
+
     // D-3
     #[test]
     fn demo_has_unsupported_tags_and_hidden_data_for_the_details() {

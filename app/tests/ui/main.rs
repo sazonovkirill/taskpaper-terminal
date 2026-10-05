@@ -2,6 +2,7 @@
 
 mod blocks;
 mod completing;
+mod converting;
 mod creating;
 mod date_prompt;
 mod details;

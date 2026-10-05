@@ -161,6 +161,34 @@ pub fn urls(text: &str, syntax: Syntax) -> Vec<&str> {
         .collect()
 }
 
+/// A link in a text: where it is, where it goes and the title it shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Link<'a> {
+    /// The bytes of the link with its delimiters.
+    pub span: Range<usize>,
+    /// Its address.
+    pub address: &'a str,
+    /// The title of a `[title](url)` link; empty for a URL, which shows its address.
+    pub title: &'a str,
+}
+
+/// The first link in `text`, as [`urls`] finds them.
+#[must_use]
+pub fn first_link(text: &str, syntax: Syntax) -> Option<Link<'_>> {
+    elements(text, syntax).into_iter().find_map(|e| {
+        let (address, title) = match e.kind {
+            Kind::Marker(_) => return None,
+            Kind::Url => (e.inner, ""),
+            Kind::Link(address) => (address, text.get(e.inner)?),
+        };
+        Some(Link {
+            span: e.outer,
+            address: text.get(address)?,
+            title,
+        })
+    })
+}
+
 /// Whether `address` starts with a URL scheme, such as `https:` or `mailto:`, so that an opener
 /// never reads it as an option or a file name.
 #[must_use]
@@ -579,6 +607,34 @@ mod tests {
             ["https://x.y", "http://b.c/d"]
         );
         assert_eq!(urls("none", Syntax::Inline), Vec::<&str>::new());
+    }
+
+    // D-10, FR-FMT-03
+    #[test]
+    fn finds_the_first_link_with_its_span_address_and_title() {
+        let link = |span, address, title| {
+            Some(Link {
+                span,
+                address,
+                title,
+            })
+        };
+        assert_eq!(
+            first_link("é **https://x.y** and http://b.c", Syntax::Inline),
+            link(5..16, "https://x.y", "")
+        );
+        assert_eq!(
+            first_link(
+                "See [the docs](https://a.b) or <https://c.d>",
+                Syntax::Markdown
+            ),
+            link(4..27, "https://a.b", "the docs")
+        );
+        assert_eq!(
+            first_link("<https://c.d> https://e.f", Syntax::Markdown),
+            link(0..13, "https://c.d", "")
+        );
+        assert_eq!(first_link("`https://no.t` none", Syntax::Inline), None);
     }
 
     /// The text and range after toggling `marker` on the bytes `[`…`]` mark in `before`, written

@@ -16,6 +16,7 @@ mod selection;
 pub mod state;
 mod structure;
 pub mod text_field;
+mod type_picker;
 pub mod update;
 
 pub use date_prompt::{DateInput, DatePromptView};

@@ -202,6 +202,7 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             error_style(),
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
+        Notice::NoAddress => Span::raw("Add a URL to the text to make a URL block"),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::OpenUrlFailed { url, reason } => {
@@ -303,7 +304,7 @@ impl Popup {
     pub fn types(menu: &TypeMenuView) -> Self {
         let names = menu.entries.iter().map(|entry| (entry.name, Style::new()));
         Self {
-            title: "Node type:",
+            title: NODE_TYPE,
             entries: entries(names, menu.selected),
             filter: if menu.filter.is_empty() {
                 String::new()
@@ -322,6 +323,17 @@ impl Popup {
             .map(|&(color, name)| (name, tint(Style::new(), color)));
         Self {
             title: "Color:",
+            entries: entries(names, picker.selected),
+            filter: picker.filter.to_owned(),
+        }
+    }
+
+    /// The type picker, titled "Node type:" like the type menu (FR-BLK-08).
+    #[must_use]
+    pub fn block_types(picker: &PickerView<BlockKind>) -> Self {
+        let names = picker.entries.iter().map(|&(_, name)| (name, Style::new()));
+        Self {
+            title: NODE_TYPE,
             entries: entries(names, picker.selected),
             filter: picker.filter.to_owned(),
         }
@@ -377,6 +389,9 @@ impl Popup {
         (width, height)
     }
 }
+
+/// The title of the type menu and the type picker.
+const NODE_TYPE: &str = "Node type:";
 
 /// A menu's entry lines: each name padded by a space and in its style, the one at `selected`
 /// reversed.
@@ -1047,6 +1062,35 @@ mod tests {
         assert_eq!(type_menu(&[Type('e'), Type('c'), Type('t')]), expected);
     }
 
+    // FR-BLK-08, keybindings.md §4
+    #[test]
+    fn the_type_picker_lists_the_six_types_under_the_type_menus_title() {
+        let mut state = State::new(format::parse("a"), None);
+        state.update(Message::OpenTypePicker);
+        let popup = Popup::block_types(&state.type_picker().unwrap());
+        assert_eq!(popup.size(), (12, 8));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 8));
+        popup.render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines([
+            "┌Node type:┐",
+            "│ Project  │",
+            "│ Section  │",
+            "│ Note     │",
+            "│ Task     │",
+            "│ URL      │",
+            "│ Divider  │",
+            "└──────────┘",
+        ]);
+        expected.set_style(Rect::new(1, 3, 10, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+        state.update(Message::TypePicker(crate::app::MenuInput::Type('u')));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
+        Popup::block_types(&state.type_picker().unwrap()).render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["┌Node type:┐", "│ URL      │", "└u─────────┘"]);
+        expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+    }
+
     /// The details popup of the first block of `text`, drawn at its size.
     fn details(text: &str) -> Buffer {
         let mut state = State::new(format::parse(text), None);
@@ -1686,6 +1730,10 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
+            (
+                Notice::NoAddress,
+                plain("Add a URL to the text to make a URL block"),
+            ),
             (
                 Notice::KeptMine { copy: copy.clone() },
                 plain("Kept your version; the one on disk is in /b/c.taskpaper"),

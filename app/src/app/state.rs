@@ -47,6 +47,8 @@ pub struct State {
     pub(super) color_picker: Option<Picker<Option<TagColor>>>,
     /// The prompt for a block's start or due date, while it is open (FR-TAG-03).
     pub(super) date_prompt: Option<DatePrompt>,
+    /// The type picker over the focused block, while it is open (FR-BLK-08).
+    pub(super) type_picker: Option<Picker<BlockKind>>,
     /// Whether the details popup is open over the focused block (D-3).
     pub(super) details: bool,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -121,6 +123,8 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
+    /// A block could not become a URL block because its text holds no URL to link to (OQ-30).
+    NoAddress,
     /// A bookmark was added to the focused block, or removed when `added` is false; bookmarks
     /// show only in the sidebar (D-11).
     Bookmark {
@@ -201,6 +205,7 @@ impl State {
             edit: None,
             color_picker: None,
             date_prompt: None,
+            type_picker: None,
             details: false,
             folds: HashSet::new(),
             zoom: None,

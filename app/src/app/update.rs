@@ -157,6 +157,10 @@ pub enum Message {
     },
     /// A key of the open date prompt (FR-TAG-03).
     DatePrompt(DateInput),
+    /// Open the type picker on the focused block (FR-BLK-08).
+    OpenTypePicker,
+    /// A key of the open type picker (FR-BLK-08).
+    TypePicker(MenuInput),
     /// Open the details popup on the focused block (D-3).
     OpenDetails,
     /// Close the details popup.
@@ -294,6 +298,8 @@ impl Message {
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
+            | Self::OpenTypePicker
+            | Self::TypePicker(_)
             | Self::OpenDetails
             | Self::CloseDetails
             | Self::NewBelow
@@ -403,16 +409,8 @@ impl State {
             Message::CollapseLevel => self.collapse_level(),
             Message::ExpandAll => self.expand_all(),
             Message::CollapseAll => self.collapse_all(),
-            Message::ZoomIn => {
-                if let Some(block) = self.focused_block() {
-                    self.go_to(Some(block.id()));
-                }
-            }
-            Message::ZoomOut => {
-                if let Some(zoom) = self.zoom {
-                    self.go_to(blocks::parent(self.document(), zoom).map(|block| block.id()));
-                }
-            }
+            Message::ZoomIn => self.zoom_in(),
+            Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(None),
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
@@ -424,6 +422,8 @@ impl State {
             Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
             Message::DatePrompt(input) => self.date_prompt_input(input),
+            Message::OpenTypePicker => self.open_type_picker(),
+            Message::TypePicker(input) => self.type_picker_input(input),
             Message::OpenDetails => self.open_details(),
             Message::CloseDetails => self.close_details(),
             Message::Undo => match self.mode() {
@@ -485,6 +485,20 @@ impl State {
             .and_then(Item::parent)
             .map(|line| blocks::children(self.document(), line))
             .unwrap_or_default()
+    }
+
+    /// Zooms into the focused block (FR-NAV-03).
+    fn zoom_in(&mut self) {
+        if let Some(block) = self.focused_block() {
+            self.go_to(Some(block.id()));
+        }
+    }
+
+    /// Zooms out to the parent of the zoomed block (FR-NAV-03).
+    fn zoom_out(&mut self) {
+        if let Some(zoom) = self.zoom {
+            self.go_to(blocks::parent(self.document(), zoom).map(|block| block.id()));
+        }
     }
 
     /// Zooms to `zoom`, a new entry in the history that drops any forward entries.
