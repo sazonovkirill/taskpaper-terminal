@@ -5,7 +5,8 @@
 use super::{Access, Notice, Restore, State};
 use crate::document::{
     Block, BlockKind, ItemId, Transaction, blocks,
-    structure::{self, Place, Shift, Typed},
+    format::Typed,
+    structure::{self, Place, Shift},
 };
 
 /// Where a new block goes, relative to the focused block (editing.md §3).

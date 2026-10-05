@@ -52,7 +52,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 
 **Milestone result:** a usable outliner with safe saving, backups and undo.
 
-**Owner feedback on M2 (2026-10-05):** back to a model close to TaskPaper, one line per block with six types: project, section, task, divider, URL and text (D-43); code blocks, fenced code and multi-line text move to Later.
+**Owner feedback on M2 (2026-10-05):** back to a model close to TaskPaper, one line per block with six types: project, section, task, divider, URL and text (D-43); code blocks, fenced code and multi-line text move to Later. In edit mode, `/` opens a type menu that makes the block a project, section, text node ("Note"), task or divider (D-44, [editing.md §2.3](specs/editing.md#23-type-menu)).
 
 ## M3 · Metadata and formatting
 
@@ -64,7 +64,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 3.4 | **Today, colors and bookmarks.** `mt` and its marker chip; `c` cycling and the `mc` picker, text tint; `mb`. | FR-TAG-04 (tag), FR-TAG-05, FR-TAG-06, D-11 | 3.2 | Color a task red |
 | 3.5 | **Selection. hub** `J`/`K`, `Shift`+arrows, `v`, `Ctrl+A`, `Esc`; every command so far applies to the selection; `gG` groups it. | FR-OPS-01, FR-OPS-04, FR-OPS-07 | 2.9, 3.4 | Complete five tasks at once |
 | 3.6 | **Clipboard and duplicate.** `Ctrl+C`/`Ctrl+X`/`Ctrl+V`/`Alt+V` with hierarchy, `D`; `arboard` with the OSC 52 and bracketed-paste fallbacks; paste in edit mode with the `@` rule. | FR-OPS-06 | 3.5 | Copy a project into another file |
-| 3.7 | **Type converter and details.** The `my` picker for all six types and the `mi` popup with unsupported tags and unknown special nodes. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
+| 3.7 | **Type converter and details.** The `my` picker for all six types and the `mi` popup with unsupported tags and unknown special nodes. The edit-mode type menu of D-44 already converts the edited block between five types; the picker can extend it with URL and selections. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
 | 3.8 | **Typed shortcuts.** `--- `, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 3.7 | Type `--- ` |
 | 3.9 | **Inline formatting and URLs.** `**bold**` and `` `code` `` rendered, bare URLs underlined, URL blocks, `gx` opening the browser; `Ctrl+B` and `` Alt+` `` in edit mode (Should). | FR-FMT-01, FR-FMT-02, FR-BLK-06, D-10 | 2.5 | Bold text renders bold |
 | 3.10 | **Markdown in text.** Headings and links rendered in navigate mode. | FR-FMT-03, editing §2.2 | 3.9 | A text block with a `## heading` |
@@ -81,7 +81,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 4.6 | **Sidebar.** Bookmarks, the Today entry and the project tree; `Ctrl+B`, `Alt+0` and the sidebar keys; hidden below 80 columns. | FR-UI-01, navigation §6 | 3.4 | Jump to a bookmark |
 | 4.7 | **Today view.** A pane location listing today's blocks with their breadcrumbs, editable in place. | FR-TAG-04 (view), D-7, navigation §7 | 4.6, 3.2 | Open Today |
 | 4.8 | **Shortcuts panel.** `?` opens the secondary sidebar on the right with the bindings for the current mode, from the registry. | FR-KEY-04, ui §1 and §4, D-28 | 4.1 | Press `?` |
-| 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
+| 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. Can reuse the type menu's popup and its placement at the caret (`TypeMenuPopup`, `layout::anchored`). | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
 
 ## M5 · Panes
 

@@ -4,7 +4,7 @@
 
 use super::{
     blocks::{self, Block, BlockKind},
-    format::canonical,
+    format::{LineParts, Typed, canonical},
     model::{Document, ItemId, Op, Snapshot},
 };
 
@@ -21,28 +21,6 @@ pub enum Place<'a> {
     LastChild(&'a Block),
     /// As the first top-level block.
     Start,
-}
-
-/// A type the user picks for a new block (FR-MODE-06, D-26).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Typed {
-    /// A project.
-    Project,
-    /// A section.
-    Section,
-    /// A task.
-    Task,
-}
-
-impl Typed {
-    /// The line of an empty block of this type.
-    fn empty_line(self) -> &'static str {
-        match self {
-            Self::Project => ":",
-            Self::Section => "@section",
-            Self::Task => "- ",
-        }
-    }
 }
 
 /// An empty block at `place` that the user is about to type into: its line and the ops that put
@@ -73,20 +51,21 @@ pub fn new_block(
         }
         Place::Start => (document.root(), 0),
     };
-    let text = typed.map_or_else(|| fitting_line(place), Typed::empty_line);
+    let (parts, text) =
+        LineParts::default().retyped(typed.unwrap_or_else(|| fitting_type(place)), "");
     let mut ops = repairs(document, parent);
     let id = document.new_id();
     ops.push(Op::Insert {
         parent,
         index,
-        subtree: Snapshot::line(id, text.to_owned()),
+        subtree: Snapshot::line(id, parts.line(&text)),
     });
     Some((id, ops))
 }
 
-/// The line of an empty block at `place` whose type the user did not pick: a task after or
+/// The type of an empty block at `place` whose type the user did not pick: a task after or
 /// before a task and under a project or task, else text (OQ-03).
-fn fitting_line(place: Place<'_>) -> &'static str {
+fn fitting_type(place: Place<'_>) -> Typed {
     let task = match place {
         Place::Below(block) | Place::Above(block) => block.kind() == BlockKind::Task,
         Place::FirstChild(block) | Place::LastChild(block) => {
@@ -94,7 +73,7 @@ fn fitting_line(place: Place<'_>) -> &'static str {
         }
         Place::Start => false,
     };
-    if task { "- " } else { "" }
+    if task { Typed::Task } else { Typed::Text }
 }
 
 /// The ops repairing what a new line under `parent` breaks: an empty parent would be read back

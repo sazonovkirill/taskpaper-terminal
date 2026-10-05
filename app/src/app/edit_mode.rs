@@ -1,9 +1,15 @@
 //! Edit mode: the focused block's text edited in place with the text keys, written to the
 //! document as it is typed, refused where it would type a tag, undone as one step and repaired
-//! when editing ends ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03,
-//! OQ-24, OQ-25, OQ-27).
+//! when editing ends, with the type menu that `/` opens
+//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, OQ-24, OQ-25,
+//! OQ-27, D-44).
+
+mod type_menu;
 
 use std::{mem, ops::Range};
+
+use type_menu::{Closed, TypeMenu};
+pub use type_menu::{MenuEntry, MenuInput, TypeMenuView};
 
 use super::{
     Access, Notice, Restore, Row, State,
@@ -12,7 +18,7 @@ use super::{
 };
 use crate::document::{
     Block, BlockKind, Document, ItemId, Op, Transaction, blocks,
-    format::{self, LineParts, canonical, tags},
+    format::{self, LineParts, Typed, canonical, tags},
 };
 
 /// Whether keys move between blocks or edit one block's text (FR-MODE-01).
@@ -63,6 +69,8 @@ pub(super) struct Session {
     /// Whether the latest change typed a character, so that the next one typed joins its undo
     /// step.
     typing: bool,
+    /// The type menu, while `/` has it open (D-44).
+    menu: Option<TypeMenu>,
 }
 
 impl Session {
@@ -81,6 +89,7 @@ impl Session {
             undo: Vec::new(),
             redo: Vec::new(),
             typing: false,
+            menu: None,
         }
     }
 
@@ -136,6 +145,17 @@ impl Session {
             ));
             self.typing = false;
         }
+    }
+
+    /// Gives the text the type `typed` as one change to undo, keeping the caret where it was
+    /// (editing.md §2.3).
+    fn retype(&mut self, typed: Typed) {
+        self.undo.push((self.parts.clone(), self.field.clone()));
+        self.redo.clear();
+        self.typing = false;
+        let (parts, text) = self.parts.retyped(typed, self.field.text());
+        self.field = TextField::with_caret(text, self.field.caret());
+        self.parts = parts;
     }
 
     /// The line the text and parts make: the line as it was while they are as they were.
@@ -236,6 +256,47 @@ impl State {
             self.write(false);
         } else {
             self.notify(Notice::TypedTag);
+        }
+    }
+
+    /// The type menu, while it is open (D-44).
+    #[must_use]
+    pub fn type_menu(&self) -> Option<TypeMenuView<'_>> {
+        self.edit.as_ref()?.menu.as_ref().map(TypeMenu::view)
+    }
+
+    /// `/` in edit mode: opens the type menu (editing.md §2.3).
+    pub(super) fn open_type_menu(&mut self) {
+        if let Some(session) = &mut self.edit {
+            session.menu = Some(TypeMenu::default());
+        }
+    }
+
+    /// Applies `input` to the open type menu, and once it closes, gives the block the chosen
+    /// type as a change of the session or types what the menu took as text. A divider is not
+    /// edited, so choosing one ends editing (editing.md §2.3).
+    pub(super) fn type_menu_input(&mut self, input: MenuInput) {
+        let Some(session) = &mut self.edit else {
+            return;
+        };
+        let Some(closed) = session.menu.as_mut().and_then(|menu| menu.input(input)) else {
+            return;
+        };
+        session.menu = None;
+        match closed {
+            Closed::Apply(typed) => {
+                session.retype(typed);
+                self.write(false);
+                if typed == Typed::Divider {
+                    self.stop_editing();
+                }
+            }
+            Closed::Literal(literal) => {
+                for c in literal.chars() {
+                    self.edit_text(TextEdit::Insert(c));
+                }
+            }
+            Closed::Erased => {}
         }
     }
 
@@ -1034,5 +1095,164 @@ Site @url(https://x.y)",
         typed(&mut state, "!");
         state.update(Message::StopEditing);
         assert_eq!(texts(&state), ["run()! @code", "Site! @url(https://x.y)"]);
+    }
+
+    fn menu(state: &mut State, input: MenuInput) {
+        state.update(Message::TypeMenu(input));
+    }
+
+    /// Opens the type menu and types `keys` into it.
+    fn slash(state: &mut State, keys: &str) {
+        state.update(Message::OpenTypeMenu);
+        for c in keys.chars() {
+            menu(state, MenuInput::Type(c));
+        }
+    }
+
+    // D-44, editing.md §2.3
+    #[test]
+    fn a_shortcut_after_the_slash_gives_the_block_its_type_with_the_caret_kept() {
+        for (keys, line, kind) in [
+            ("p", "Call Ana: @x", BlockKind::Project),
+            ("s", "Call Ana @x @section", BlockKind::Section),
+            ("n", "Call Ana @x", BlockKind::Text),
+            ("t", "- Call Ana @x", BlockKind::Task),
+        ] {
+            let mut state = open("- Call Ana @x\n- t", 0);
+            state.update(Message::EditAtEnd);
+            go(&mut state, Motion::WordLeft);
+            state.update(Message::OpenTypeMenu);
+            assert!(state.type_menu().is_some());
+            assert_eq!(texts(&state)[0], "- Call Ana @x", "opening changes nothing");
+            menu(&mut state, MenuInput::Type(keys.chars().next().unwrap()));
+            assert_eq!(state.type_menu(), None, "{keys}");
+            assert_eq!(texts(&state)[0], line, "{keys}");
+            assert_eq!(state.rows()[0].kind, kind, "{keys}");
+            assert_eq!(shown(&state), "Call |Ana", "{keys}");
+            assert_eq!(state.mode(), Mode::Edit);
+        }
+    }
+
+    // D-44, editing.md §2.3
+    #[test]
+    fn typing_after_the_slash_filters_and_enter_chooses_the_highlighted_entry() {
+        let mut state = open("- a", 0);
+        state.update(Message::EditAtEnd);
+        slash(&mut state, "e");
+        let names: Vec<_> = state
+            .type_menu()
+            .unwrap()
+            .entries
+            .iter()
+            .map(|entry| entry.name)
+            .collect();
+        assert_eq!(names, ["Project", "Section", "Note", "Divider"]);
+        assert_eq!(state.type_menu().unwrap().filter, "e");
+        menu(&mut state, MenuInput::Next);
+        menu(&mut state, MenuInput::Next);
+        menu(&mut state, MenuInput::Next);
+        menu(&mut state, MenuInput::Previous);
+        assert_eq!(state.type_menu().unwrap().selected, 2);
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), ["a"]);
+        assert_eq!(shown(&state), "a|");
+    }
+
+    // D-44, editing.md §2.3
+    #[test]
+    fn esc_or_a_filter_matching_nothing_types_the_slash_and_the_filter() {
+        let mut state = open("see", 0);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, " ");
+        slash(&mut state, "");
+        menu(&mut state, MenuInput::Dismiss);
+        assert_eq!(shown(&state), "see /|");
+        slash(&mut state, "h");
+        assert_eq!(state.type_menu(), None, "nothing is called h");
+        typed(&mut state, "ome");
+        assert_eq!(texts(&state), ["see //home"]);
+        slash(&mut state, "ro");
+        menu(&mut state, MenuInput::Dismiss);
+        assert_eq!(shown(&state), "see //home/ro|");
+        slash(&mut state, "o");
+        menu(&mut state, MenuInput::Erase);
+        menu(&mut state, MenuInput::Erase);
+        assert_eq!(state.type_menu(), None);
+        assert_eq!(
+            shown(&state),
+            "see //home/ro|",
+            "erasing the slash types nothing"
+        );
+    }
+
+    // D-44
+    #[test]
+    fn a_menu_input_without_an_open_menu_does_nothing() {
+        let mut state = open("a", 0);
+        menu(&mut state, MenuInput::Choose);
+        state.update(Message::OpenTypeMenu);
+        assert_eq!(state.type_menu(), None, "no menu in navigate mode");
+        state.update(Message::EditAtEnd);
+        menu(&mut state, MenuInput::Type('t'));
+        assert_eq!(texts(&state), ["a"]);
+        state.update(Message::OpenTypeMenu);
+        state.update(Message::StopEditing);
+        state.update(Message::EditAtEnd);
+        assert_eq!(state.type_menu(), None, "the menu ends with the session");
+    }
+
+    // D-44, FR-OPS-08
+    #[test]
+    fn a_type_change_is_a_step_of_the_session() {
+        let mut state = open("note\n- t", 0);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "s");
+        slash(&mut state, "p");
+        assert_eq!(texts(&state), ["notes:", "- t"]);
+        assert_eq!(state.editor().unwrap().suffix, ":");
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["notes", "- t"]);
+        state.update(Message::Redo);
+        assert_eq!(texts(&state), ["notes:", "- t"]);
+        typed(&mut state, "!");
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(
+            texts(&state),
+            ["notes", "- t"],
+            "typing after it is a change of its own"
+        );
+        state.update(Message::Redo);
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["note", "- t"], "one step with the typing");
+    }
+
+    // D-44
+    #[test]
+    fn a_divider_takes_the_line_and_ends_editing_as_one_step() {
+        let mut state = open("- a @x\n- b", 0);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "!");
+        slash(&mut state, "div");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), ["--- @x", "- b"]);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.rows()[0].kind, BlockKind::Divider);
+        assert_eq!(state.focus, Some(state.rows()[0].id));
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @x", "- b"]);
+    }
+
+    // D-44
+    #[test]
+    fn a_new_block_made_a_divider_is_undone_with_its_creation() {
+        let mut state = open("- a", 0);
+        state.update(Message::NewBelow);
+        slash(&mut state, "di");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), ["- a", "---"]);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a"]);
     }
 }

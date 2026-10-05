@@ -5,11 +5,8 @@ use std::{path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
-use super::{Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
-use crate::document::{
-    Block, Item, ItemId, blocks,
-    structure::{Shift, Typed},
-};
+use super::{MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
+use crate::document::{Block, Item, ItemId, blocks, format::Typed, structure::Shift};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,6 +133,10 @@ pub enum Message {
     Text(TextEdit),
     /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
     StopEditing,
+    /// Open the type menu at the caret, as typing `/` in edit mode does (D-44).
+    OpenTypeMenu,
+    /// A key of the open type menu (D-44).
+    TypeMenu(MenuInput),
     /// Add a block after the focused block's subtree and edit it (FR-MODE-04).
     NewBelow,
     /// Add a block before the focused block and edit it (FR-MODE-04).
@@ -195,6 +196,8 @@ impl Message {
             | Self::EditAtEnd
             | Self::Text(_)
             | Self::StopEditing
+            | Self::OpenTypeMenu
+            | Self::TypeMenu(_)
             | Self::NewNext
             | Self::EditPrevious
             | Self::EditNext
@@ -361,6 +364,8 @@ impl State {
             Message::EditAtEnd => self.start_editing(),
             Message::Text(edit) => self.edit_text(edit),
             Message::StopEditing => self.stop_editing(),
+            Message::OpenTypeMenu => self.open_type_menu(),
+            Message::TypeMenu(input) => self.type_menu_input(input),
             Message::NewBelow => self.add_block(NewBlock::Below, None),
             Message::NewAbove => self.add_block(NewBlock::Above, None),
             Message::NewFirstChild => self.add_block(NewBlock::FirstChild, None),

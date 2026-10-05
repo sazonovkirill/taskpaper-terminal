@@ -13,5 +13,6 @@ mod open_file;
 mod saving;
 mod support;
 mod tags;
+mod type_menu;
 mod typed_creation;
 mod zoom;

@@ -139,7 +139,7 @@ mod tests {
         assert_eq!(outline(&parse(text)), expected, "blocks of {text:?}");
     }
 
-    // FR-BLK-01, FR-BLK-02, FR-BLK-04, FR-BLK-06, FR-BLK-07
+    // FR-BLK-01, FR-BLK-02, FR-BLK-03, FR-BLK-04, FR-BLK-06, FR-BLK-07
     #[test]
     fn every_line_is_a_block_of_its_type() {
         check(

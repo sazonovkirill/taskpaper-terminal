@@ -149,6 +149,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | End editing and create the next block | `Enter` |
 | End editing and edit the previous / next visible block that is not a divider, at the same column (D-43) | `↑` / `↓` |
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
+| Open the type menu (D-44, [editing.md §2.3](editing.md#23-type-menu)) | `/` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
@@ -156,6 +157,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 ## 4. Other contexts
 
+- **Type menu** ([editing.md §2.3](editing.md#23-type-menu)): `p`, `s`, `n`, `t` right after `/` choose Project, Section, Note (text) or Task at once; other characters filter; `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. Divider has no letter: `/div` then `Enter`. The menu shows the type names only.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.

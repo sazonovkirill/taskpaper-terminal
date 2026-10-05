@@ -12,7 +12,7 @@ mod structure;
 pub mod text_field;
 pub mod update;
 
-pub use edit_mode::{Editor, Mode};
+pub use edit_mode::{Editor, MenuEntry, MenuInput, Mode, TypeMenuView};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};
 pub use saving::SaveState;

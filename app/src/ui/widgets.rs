@@ -11,7 +11,7 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    app::{Access, DiffLine, Editor, Notice, Row, SaveState},
+    app::{Access, DiffLine, Editor, Notice, Row, SaveState, TypeMenuView},
     document::BlockKind,
 };
 
@@ -263,6 +263,81 @@ impl Widget for ConflictPrompt<'_> {
             format!(" {toggle}").into(),
         ])
         .render(keys, buf);
+    }
+}
+
+/// The type menu ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a box titled
+/// "Node type:" listing the entries the filter matches, the highlighted one reversed, with `/` and
+/// the filter at the bottom once one is typed.
+#[derive(Debug)]
+pub struct TypeMenuPopup<'a> {
+    menu: &'a TypeMenuView<'a>,
+}
+
+impl<'a> TypeMenuPopup<'a> {
+    const TITLE: &'static str = "Node type:";
+
+    /// The popup showing `menu`.
+    #[must_use]
+    pub fn new(menu: &'a TypeMenuView<'a>) -> Self {
+        Self { menu }
+    }
+
+    /// The popup's width and height: its widest entry or its title, which is wider than any
+    /// filter that matches an entry, and a line per entry, with the border.
+    #[must_use]
+    pub fn size(&self) -> (u16, u16) {
+        let entries = self.entries();
+        let widest = entries
+            .iter()
+            .map(Line::width)
+            .chain([Line::from(Self::TITLE).width()])
+            .max()
+            .unwrap_or_default();
+        let width = u16::try_from(widest).unwrap_or(u16::MAX).saturating_add(2);
+        let height = u16::try_from(entries.len())
+            .unwrap_or(u16::MAX)
+            .saturating_add(2);
+        (width, height)
+    }
+
+    fn filter(&self) -> Line<'static> {
+        if self.menu.filter.is_empty() {
+            Line::default()
+        } else {
+            Line::from(format!("/{}", self.menu.filter))
+        }
+    }
+
+    fn entries(&self) -> Vec<Line<'static>> {
+        self.menu
+            .entries
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| {
+                let line = Line::from(format!(" {} ", entry.name));
+                if index == self.menu.selected {
+                    line.reversed()
+                } else {
+                    line
+                }
+            })
+            .collect()
+    }
+}
+
+impl Widget for TypeMenuPopup<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Clear.render(area, buf);
+        let frame = Block::bordered()
+            .title(Self::TITLE)
+            .title_bottom(self.filter());
+        let inner = frame.inner(area);
+        frame.render(area, buf);
+        for (line, row) in self.entries().into_iter().zip(inner.rows()) {
+            buf.set_style(row, line.style);
+            line.render(row, buf);
+        }
     }
 }
 
@@ -551,6 +626,52 @@ mod tests {
         expected.set_style(Rect::new(2, 5, 6, 1), divider_style());
         expected.set_style(Rect::new(2, 6, 3, 1), Style::new().fg(TEXT).dim());
         assert_eq!(render(text, 8, 8), expected);
+    }
+
+    /// The type menu of a session on `a` after `keys`, drawn at its size.
+    fn type_menu(keys: &[crate::app::MenuInput]) -> Buffer {
+        let mut state = State::new(format::parse("a"), None);
+        state.update(Message::EditAtEnd);
+        state.update(Message::OpenTypeMenu);
+        for key in keys {
+            state.update(Message::TypeMenu(*key));
+        }
+        let menu = state.type_menu().unwrap();
+        let popup = TypeMenuPopup::new(&menu);
+        let (width, height) = popup.size();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        popup.render(buf.area, &mut buf);
+        buf
+    }
+
+    // D-44, ui.md §5
+    #[test]
+    fn the_type_menu_lists_the_types_under_its_title_with_the_highlight_reversed() {
+        let mut expected = Buffer::with_lines([
+            "┌Node type:┐",
+            "│ Project  │",
+            "│ Section  │",
+            "│ Note     │",
+            "│ Task     │",
+            "│ Divider  │",
+            "└──────────┘",
+        ]);
+        expected.set_style(Rect::new(1, 2, 10, 1), Style::new().reversed());
+        assert_eq!(type_menu(&[crate::app::MenuInput::Next]), expected);
+    }
+
+    // D-44, ui.md §5
+    #[test]
+    fn the_type_menu_shows_the_filter_at_the_bottom() {
+        use crate::app::MenuInput::Type;
+        let mut expected = Buffer::with_lines([
+            "┌Node type:┐",
+            "│ Project  │",
+            "│ Section  │",
+            "└/ect──────┘",
+        ]);
+        expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
+        assert_eq!(type_menu(&[Type('e'), Type('c'), Type('t')]), expected);
     }
 
     // FR-NAV-02

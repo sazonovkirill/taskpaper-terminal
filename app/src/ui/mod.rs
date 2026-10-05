@@ -21,7 +21,7 @@ use ratatui::{
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, PromptKey};
-use widgets::{ConflictPrompt, OutlineView};
+use widgets::{ConflictPrompt, OutlineView, TypeMenuPopup};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +98,7 @@ impl Tui {
             page_rows: self.page_rows,
             today: (self.today)(),
             mode: self.state.mode(),
+            type_menu: self.state.type_menu().is_some(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
@@ -239,7 +240,7 @@ impl Tui {
                 .editor(editor.as_ref()),
             outline,
         );
-        // The conflict prompt covers the outline, caret included.
+        // The conflict prompt covers the outline, caret and type menu included.
         if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
             && let Some(index) = focused
             && let Some(row) = rows.get(index)
@@ -250,10 +251,16 @@ impl Tui {
                 .unwrap_or(u16::MAX)
                 .min(text_width.saturating_sub(1));
             let y = u16::try_from(index.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
-            frame.set_cursor_position((
+            let caret = (
                 outline.x.saturating_add(widgets::GUTTER_WIDTH + x),
                 outline.y.saturating_add(y),
-            ));
+            );
+            frame.set_cursor_position(caret);
+            if let Some(menu) = self.state.type_menu() {
+                let popup = TypeMenuPopup::new(&menu);
+                let area = layout::anchored(outline, caret, popup.size());
+                frame.render_widget(popup, area);
+            }
         }
         self.draw_status(frame, status);
         if self.state.in_conflict() {

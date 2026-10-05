@@ -9,7 +9,7 @@ pub mod tags;
 use thiserror::Error;
 
 use super::model::{Document, FileFormat, IndentUnit, ItemId, ItemKind, LineEnding};
-pub use parts::LineParts;
+pub use parts::{LineParts, Typed};
 pub use serialize::serialize;
 use tags::is_whitespace;
 

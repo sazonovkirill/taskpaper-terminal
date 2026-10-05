@@ -5,6 +5,25 @@
 use super::{canonical::PLACEHOLDER, display_text, kind, tags};
 use crate::document::ItemKind;
 
+/// A type the user gives a block: when adding it (FR-MODE-06, D-26) or from the type menu
+/// (D-44).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Typed {
+    /// A project.
+    Project,
+    /// A section.
+    Section,
+    /// A task.
+    Task,
+    /// Text.
+    Text,
+    /// A divider.
+    Divider,
+}
+
+/// The tags that give a line its type, which a type change takes off (editing.md §5).
+const TYPE_TAGS: [&str; 2] = ["section", "url"];
+
 /// A line's type syntax and tags, which stay while the text between them is edited. The default
 /// is a note's: no syntax and no tags.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -84,6 +103,44 @@ impl LineParts {
             tags: self.tags.clone(),
         };
         Some((parts, format!("{rest}{}", self.suffix())))
+    }
+}
+
+impl LineParts {
+    /// The parts and text that give the line holding `text` the type `typed`: the old type's
+    /// syntax and type tags go, the new type's come and every other tag stays (editing.md §5). A
+    /// divider's text is `---` (D-44).
+    #[must_use]
+    pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
+        let kept = (typed == Typed::Section).then_some("section");
+        let mut tags: Vec<String> = self
+            .tags
+            .iter()
+            .filter(|tag| {
+                tags::scan(tag).iter().all(|found| {
+                    !TYPE_TAGS.contains(&found.name.as_str()) || Some(found.name.as_str()) == kept
+                })
+            })
+            .cloned()
+            .collect();
+        let sectioned = tags
+            .iter()
+            .any(|tag| tags::scan(tag).iter().any(|found| found.name == "section"));
+        if typed == Typed::Section && !sectioned {
+            tags.push("@section".to_owned());
+        }
+        let prefix = match typed {
+            Typed::Task if self.prefix.is_empty() => "- ".to_owned(),
+            Typed::Task => self.prefix.clone(),
+            _ => String::new(),
+        };
+        let text = if typed == Typed::Divider { "---" } else { text };
+        let parts = Self {
+            prefix,
+            project: typed == Typed::Project,
+            tags,
+        };
+        (parts, text.to_owned())
     }
 }
 
@@ -188,5 +245,53 @@ mod tests {
         assert_eq!(note.as_task("- "), None, "a dash before tags is a note");
         let (task, _) = LineParts::split("- a");
         assert_eq!(task.as_task("- b"), None, "already a task");
+    }
+
+    /// The line that `line` becomes when its display text takes the type `typed`.
+    #[track_caller]
+    fn retyped(line: &str, typed: Typed) -> String {
+        let (parts, text) = LineParts::split(line);
+        let (parts, text) = parts.retyped(typed, &text);
+        parts.line(&text)
+    }
+
+    // editing.md §5, D-44
+    #[test]
+    fn a_type_change_swaps_the_type_syntax_and_keeps_other_tags() {
+        let types = [Typed::Project, Typed::Task, Typed::Text, Typed::Section];
+        let lines = ["P: @x", "- P @x", "P @x", "P @x @section"];
+        for from in lines.into_iter().chain(["P @url(https://a.b) @x"]) {
+            for (typed, to) in types.into_iter().zip(lines) {
+                assert_eq!(retyped(from, typed), to, "{from:?} to {typed:?}");
+            }
+        }
+        assert_eq!(retyped("-\ta", Typed::Task), "-\ta", "kept as it is");
+        assert_eq!(
+            retyped("a @section @x", Typed::Section),
+            "a @section @x",
+            "the tag keeps its place"
+        );
+        assert_eq!(retyped("f() @code", Typed::Task), "- f() @code");
+    }
+
+    // D-44
+    #[test]
+    fn a_divider_takes_dashes_for_its_text_and_keeps_other_tags() {
+        assert_eq!(retyped("- a @x @section", Typed::Divider), "--- @x");
+        assert_eq!(retyped("P:", Typed::Divider), "---");
+    }
+
+    // FR-MODE-06
+    #[test]
+    fn an_empty_line_takes_the_syntax_of_its_type() {
+        for (typed, line) in [
+            (Typed::Project, ":"),
+            (Typed::Section, "@section"),
+            (Typed::Task, "- "),
+            (Typed::Text, ""),
+            (Typed::Divider, "---"),
+        ] {
+            assert_eq!(retyped("", typed), line, "{typed:?}");
+        }
     }
 }

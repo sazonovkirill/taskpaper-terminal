@@ -74,6 +74,36 @@ Text blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 - `open_url` (§5) opens the link of a text block: the one under the caret in edit mode, the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - Markdown in task, project and section text stays limited to FR-FMT-01 and bare URLs.
 
+### 2.3 Type menu
+
+Typing `/` in edit mode opens a menu at the caret that gives the block another type (D-44, FR-BLK-08). It reads:
+
+```
+Node type:
+Project
+Section
+Note
+Task
+Divider
+```
+
+"Note" is the menu's label for a text node. The `/` is not typed while the menu is open.
+
+| Key | Effect |
+|---|---|
+| `p`, `s`, `n`, `t` right after `/` | Choose Project, Section, Note (text) or Task at once |
+| Other characters | Filter the entries by name, ignoring case, highlighting the first (`/div` leaves Divider) |
+| `↑`/`↓`, `Ctrl+P`/`Ctrl+N` | Move the highlight |
+| `Enter` | Choose the highlighted entry |
+| `Esc` | Close the menu and type `/` and the filter as text |
+| `Backspace` | Erase the filter's last character; on an empty filter, close the menu, typing nothing |
+
+A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text. Other keys do nothing while the menu is open.
+
+Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and the type tags `@section` and `@url` go, other tags stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, `@section` for a section, nothing for text. The caret stays where it was. A divider replaces the text with `---`, keeping the other tags, without confirmation, and ends editing, because a divider's text is its type (§2). The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
+
+URL is not in the menu: a URL block needs an address, which typing cannot give (OQ-25); it is made by `convert_type`.
+
 ## 3. Creating blocks (FR-MODE-04)
 
 | Command | Result |
@@ -117,7 +147,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 
 | Command | Behavior |
 |---|---|
-| `convert_type` (FR-BLK-08) | Picker: project, task, text, section, URL, divider. Rewrites each selected block's syntax: removes `- `/`:` and the type tags `@section`, `@url`, then applies the new type's syntax (`- `, `:`, `@section`, `@url(…)` prompting for the address); converting to a divider replaces the text with `---` after confirmation if the text was non-empty. |
+| `convert_type` (FR-BLK-08) | In edit mode, the type menu of §2.3 does this for the edited block. Picker: project, task, text, section, URL, divider. Rewrites each selected block's syntax: removes `- `/`:` and the type tags `@section`, `@url`, then applies the new type's syntax (`- `, `:`, `@section`, `@url(…)` prompting for the address); converting to a divider replaces the text with `---` after confirmation if the text was non-empty. |
 | `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |

@@ -1,5 +1,7 @@
 //! Placement on screen that the core leaves to the frontend ([ui.md](../../../docs/specs/ui.md)).
 
+use ratatui::layout::Rect;
+
 /// Rows kept between the focused row and the top or bottom edge when the view is tall enough
 /// ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01)).
 const SCROLL_MARGIN: usize = 2;
@@ -20,9 +22,43 @@ pub fn scroll_offset(offset: usize, focus: usize, height: usize, len: usize) -> 
         .min(len.saturating_sub(height))
 }
 
+/// Where a popup of `size` (width, height) anchored at the caret at `caret` goes inside `area`:
+/// from the caret's column on the line below it, or above the caret's line when there is no room
+/// below, moved left or up as far as it must to stay inside `area` (ui.md §5).
+#[must_use]
+pub fn anchored(area: Rect, caret: (u16, u16), size: (u16, u16)) -> Rect {
+    let (x, line) = caret;
+    let (width, height) = size;
+    let below = line.saturating_add(1);
+    let y = if below.saturating_add(height) <= area.bottom() {
+        below
+    } else {
+        line.saturating_sub(height)
+    };
+    Rect::new(x, y, width, height).clamp(area)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_popup_opens_below_the_caret_or_above_it_without_room() {
+        let area = Rect::new(2, 1, 40, 10);
+        assert_eq!(anchored(area, (5, 3), (10, 4)), Rect::new(5, 4, 10, 4));
+        assert_eq!(
+            anchored(area, (5, 6), (10, 4)),
+            Rect::new(5, 7, 10, 4),
+            "just fits"
+        );
+        assert_eq!(anchored(area, (5, 7), (10, 4)), Rect::new(5, 3, 10, 4));
+        assert_eq!(anchored(area, (38, 3), (10, 4)), Rect::new(32, 4, 10, 4));
+        assert_eq!(
+            anchored(area, (5, 2), (50, 20)),
+            Rect::new(2, 1, 40, 10),
+            "a popup larger than the area fills it"
+        );
+    }
 
     #[track_caller]
     fn check(offset: usize, focus: usize, height: usize, len: usize, expected: usize) {

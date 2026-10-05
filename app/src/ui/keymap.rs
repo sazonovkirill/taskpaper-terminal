@@ -6,8 +6,8 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::{
-    app::{Message, Mode, Motion, TextEdit},
-    document::structure::Typed,
+    app::{MenuInput, Message, Mode, Motion, TextEdit},
+    document::format::Typed,
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -31,6 +31,8 @@ pub struct Context {
     pub today: Date,
     /// Whether keys navigate or edit text, which decides their bindings.
     pub mode: Mode,
+    /// Whether the type menu is open, which takes the keys of edit mode (D-44).
+    pub type_menu: bool,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -208,6 +210,7 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
 const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
+    (&[key!('/')], |_| Message::OpenTypeMenu),
     (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
@@ -250,17 +253,49 @@ fn go(motion: Motion, select: bool) -> Message {
     Message::Text(TextEdit::Move { motion, select })
 }
 
-/// The edit-mode message for `key`: its binding, else typing the character it is. `Ctrl+Alt`
-/// counts as no modifier, because some terminals report `AltGr` that way.
-fn edit_message((modifiers, code): Key, context: &Context) -> Option<Message> {
-    if let Some((_, message)) = EDIT.iter().find(|(keys, _)| *keys == [(modifiers, code)]) {
-        return Some(message(context));
+/// Bindings of the open type menu ([keybindings.md §3], [editing.md §2.3]); characters without
+/// other bindings filter it, and other keys do nothing.
+///
+/// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
+/// [editing.md §2.3]: ../../../docs/specs/editing.md#23-type-menu
+const TYPE_MENU: &[(Key, MenuInput)] = &[
+    (key!(Esc), MenuInput::Dismiss),
+    (key!(Enter), MenuInput::Choose),
+    (key!(Up), MenuInput::Previous),
+    (key!(ctrl 'p'), MenuInput::Previous),
+    (key!(Down), MenuInput::Next),
+    (key!(ctrl 'n'), MenuInput::Next),
+    (key!(Backspace), MenuInput::Erase),
+];
+
+/// The type-menu message for `key`: `Ctrl+Q` quits, a menu binding, else typing the character
+/// it is, as in edit mode.
+fn type_menu_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
     }
+    if let Some((_, input)) = TYPE_MENU.iter().find(|(bound, _)| *bound == key) {
+        return Some(Message::TypeMenu(*input));
+    }
+    typed_char(key).map(|c| Message::TypeMenu(MenuInput::Type(c)))
+}
+
+/// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
+/// terminals report for `AltGr`.
+fn typed_char((modifiers, code): Key) -> Option<char> {
     let typed = modifiers.is_empty() || modifiers == KeyModifiers::CONTROL.union(KeyModifiers::ALT);
     match code {
-        KeyCode::Char(c) if typed => Some(Message::Text(TextEdit::Insert(c))),
+        KeyCode::Char(c) if typed => Some(c),
         _ => None,
     }
+}
+
+/// The edit-mode message for `key`: its binding, else typing the character it is.
+fn edit_message(key: Key, context: &Context) -> Option<Message> {
+    if let Some((_, message)) = EDIT.iter().find(|(keys, _)| *keys == [key]) {
+        return Some(message(context));
+    }
+    typed_char(key).map(|c| Message::Text(TextEdit::Insert(c)))
 }
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
@@ -302,7 +337,11 @@ impl Keymap {
         };
         if context.mode == Mode::Edit {
             self.pending.clear();
-            return edit_message(pressed, context);
+            return if context.type_menu {
+                type_menu_message(pressed)
+            } else {
+                edit_message(pressed, context)
+            };
         }
         self.pending.push(pressed);
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
@@ -357,6 +396,7 @@ mod tests {
         page_rows: PAGE,
         today: TODAY,
         mode: Mode::Navigate,
+        type_menu: false,
     };
 
     const EDITING: &Context = &Context {
@@ -634,6 +674,61 @@ mod tests {
         ] {
             check_editing(code, modifiers, Some(&expected));
         }
+    }
+
+    const IN_MENU: &Context = &Context {
+        type_menu: true,
+        ..*EDITING
+    };
+
+    /// The message each key sends while the type menu is open.
+    #[track_caller]
+    fn check_menu(code: KeyCode, modifiers: KeyModifiers, expected: Option<MenuInput>) {
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.message_for(&key(code, modifiers), ms(0), IN_MENU),
+            expected.map(Message::TypeMenu),
+            "{modifiers:?} {code:?}"
+        );
+    }
+
+    // D-44
+    #[test]
+    fn slash_opens_the_type_menu_in_edit_mode() {
+        check_editing(
+            KeyCode::Char('/'),
+            KeyModifiers::NONE,
+            Some(&Message::OpenTypeMenu),
+        );
+    }
+
+    // D-44, keybindings.md §3
+    #[test]
+    fn the_type_menu_takes_the_keys_of_pickers() {
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        check_menu(KeyCode::Up, none, Some(MenuInput::Previous));
+        check_menu(KeyCode::Char('p'), ctrl, Some(MenuInput::Previous));
+        check_menu(KeyCode::Down, none, Some(MenuInput::Next));
+        check_menu(KeyCode::Char('n'), ctrl, Some(MenuInput::Next));
+        check_menu(KeyCode::Enter, none, Some(MenuInput::Choose));
+        check_menu(KeyCode::Esc, none, Some(MenuInput::Dismiss));
+        check_menu(KeyCode::Backspace, none, Some(MenuInput::Erase));
+        check_menu(KeyCode::Char('s'), none, Some(MenuInput::Type('s')));
+        check_menu(KeyCode::Char('/'), none, Some(MenuInput::Type('/')));
+        check_menu(
+            KeyCode::Char('d'),
+            ctrl.union(KeyModifiers::ALT),
+            Some(MenuInput::Type('d')),
+        );
+        check_menu(KeyCode::Left, none, None);
+        check_menu(KeyCode::Tab, none, None);
+        check_menu(KeyCode::Char('z'), ctrl, None);
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.message_for(&key(KeyCode::Char('q'), ctrl), ms(0), IN_MENU),
+            Some(Message::Quit)
+        );
     }
 
     #[test]
