@@ -1,6 +1,7 @@
 //! The Document layer: the outline tree and the `.taskpaper` format. Depends on `std` and small pure crates only.
 
 pub mod blocks;
+pub mod dates;
 pub mod format;
 pub mod metadata;
 pub mod model;
