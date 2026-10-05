@@ -35,7 +35,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
             "  - Buy flour".to_owned(),
             "  Baking".to_owned(),
             "    - Preheat the oven".to_owned(),
-            "  ↗ Recipe site".to_owned(),
+            "  Recipe site".to_owned(),
             format!("  {}", rule(2)),
             r#"  print("knead")"#.to_owned(),
             r#"  print("bake")"#.to_owned(),
@@ -74,7 +74,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
         divider.modifier.contains(Modifier::DIM),
         "dividers are dimmer than the header rule"
     );
-    let link = &buffer[(6, 8)];
+    let link = &buffer[(4, 8)];
     assert!(
         link.modifier.contains(Modifier::UNDERLINED),
         "URL title is underlined"
@@ -149,7 +149,7 @@ fn a_block_taller_than_the_view_shows_its_start() {
 fn demo_shows_every_block_type() {
     let mut app = Harness::demo(60, 51);
     let text = app.render().to_string();
-    for expected in ["↗ ", "─────", "✔ ", "Trip to Lisbon:"] {
+    for expected in ["Lisbon travel guide", "─────", "✔ ", "Trip to Lisbon:"] {
         assert!(text.contains(expected), "demo lacks {expected:?}:\n{text}");
     }
     assert!(

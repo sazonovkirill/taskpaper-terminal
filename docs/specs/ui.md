@@ -28,7 +28,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 
 ## 2. Blocks
 
-Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Tasks and URLs have markers; every other block starts with its text. So a task's note, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
+Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text, and a URL block shows only its underlined title (D-38). So a task's note, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
@@ -37,7 +37,7 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 | Note | none | slightly dimmed, several lines; less dim than done tasks and the other dimmed blocks (D-37) |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
 | Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |
-| URL | `↗` | title styled as a link (underlined, accent color), slightly dimmed |
+| URL | none | title styled as a link (underlined, accent color), slightly dimmed |
 | Divider | none | a horizontal rule across the pane in the rule-lines color, dimmed further so it is fainter than the header rule (D-33) |
 
 - Tasks (normal text), projects and sections (their own colors) stand out; every other block type is dimmed (D-29).
@@ -83,7 +83,7 @@ A popup anchored at the focused element (or at the pointer for right-click) list
 
 - `icons = "nerd"` (default) draws Nerd Font glyphs; `icons = "none"` draws the Unicode markers of §2. When the locale is not UTF-8, both settings draw the ASCII fallbacks of §3.
 - Every icon has exactly one fallback, defined next to it in one table in `ui::theme`, so the two sets cannot drift. Icons are drawn only by the UI; the core reports types and states, never glyphs.
-- Icons cover: the breadcrumb root (`⌂`), project fold state, task and done task, URL block, collapsed-children count, date chips (start, due, overdue), `@today`, bookmarks and the Today view in the sidebar, the status line's mode and save state, and the entries of pickers, the context menu and the settings window.
+- Icons cover: the breadcrumb root (`⌂`), project fold state, task and done task, collapsed-children count, date chips (start, due, overdue), `@today`, bookmarks and the Today view in the sidebar, the status line's mode and save state, and the entries of pickers, the context menu and the settings window.
 - Nerd Font glyphs are taken from the Nerd Fonts v3 code points (not the retired v2 Material Design range) and must be one cell wide in the terminals of N-PORT-01, so layout and alignment are identical with icons on and off; widths come from the same `unicode-width` measurement as text, and a glyph that measures two cells is not used.
 - The app cannot detect whether the terminal font has the glyphs. The `?` panel and the settings window's icon entry say how to turn icons off, and the settings window's own labels are plain text, so it stays usable when glyphs render as boxes.
 

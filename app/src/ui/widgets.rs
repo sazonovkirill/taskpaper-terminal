@@ -284,7 +284,7 @@ fn mine_style() -> Style {
 }
 
 /// The screen lines of one block, `width` columns wide: indented 2 columns per level of depth
-/// whatever its type, then the marker of a task or URL, then the text (D-31). A collapsed block
+/// whatever its type, then the marker of a task, then the text (D-31). A collapsed block
 /// with children shows `▸ n` after its text (ui.md §2). The zoom title is drawn like its block,
 /// in bold (D-34).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
@@ -342,7 +342,7 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("✔ ", Style::new().dim().crossed_out()),
         BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
+        BlockKind::Url => ("", Style::new().dim().underlined().cyan()),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
         BlockKind::Code => ("", code_style().dim()),
         BlockKind::Note => ("", Style::new().fg(NOTE)),

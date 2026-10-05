@@ -44,7 +44,7 @@ fn shift_s_in_the_demo_adds_a_section_after_the_tasks_of_the_list() {
     esc(&mut app);
     assert_eq!(
         outline_rows(&mut app)[5..8],
-        ["  ↗ Lisbon travel guide", "  Day trips", "  Packing"]
+        ["  Lisbon travel guide", "  Day trips", "  Packing"]
     );
     assert_eq!(focused_rows(&mut app), ["  Day trips"]);
     assert!(
