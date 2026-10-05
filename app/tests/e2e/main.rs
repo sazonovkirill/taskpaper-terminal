@@ -330,3 +330,37 @@ fn opens_the_file_as_saved_when_the_recovered_changes_are_declined() -> TestResu
     );
     Ok(())
 }
+
+/// Whether the status line of the temporary file shows it saved, with no `●` after it.
+fn saved(screen: &termlens::Screen) -> bool {
+    status(screen).ends_with("temporary")
+}
+
+// FR-DONE-01, FR-OPS-08, FR-DOC-02
+#[test]
+fn completing_a_task_saves_it_and_undo_saves_the_file_back() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        env("XDG_DATA_HOME", dir.path().join("data")),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
+    terminal.wait_until(saved)?;
+    let path = temporary_file(&terminal.screen())?;
+    let original = std::fs::read_to_string(&path)?;
+    terminal.send(termlens::Key::Char('j'))?;
+    terminal.send(termlens::Key::Char('x'))?;
+    terminal.wait_until(|screen| status(screen).contains('●'))?;
+    terminal.wait_until(saved)?;
+    let completed = std::fs::read_to_string(&path)?;
+    terminal.send(termlens::Key::Char('z'))?;
+    terminal.wait_until(|screen| status(screen).contains('●'))?;
+    terminal.wait_until(saved)?;
+    let reverted = std::fs::read_to_string(&path)?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    std::fs::remove_file(&path)?;
+    assert!(completed.contains("\t- Book flights @done("), "{completed}");
+    assert_eq!(reverted, original);
+    Ok(())
+}
