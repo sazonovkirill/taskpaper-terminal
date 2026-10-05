@@ -33,7 +33,7 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
 | Project | none | bold heading in the accent color (Textual's `$primary`), ending in `:` as in the file |
-| Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim) |
+| Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim), their `✔` dimmed too (D-36) |
 | Note | none | slightly dimmed, several lines |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
 | Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |

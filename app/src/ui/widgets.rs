@@ -116,6 +116,12 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         BlockKind::Divider => ("", divider_style()),
     };
     let style = if row.title { style.bold() } else { style };
+    // A done task's check mark recedes with its text (D-36).
+    let marker_style = if row.kind == BlockKind::Task && row.done {
+        Style::new().dim()
+    } else {
+        Style::new()
+    };
     let count_style = if row.kind == BlockKind::Code {
         code_style()
     } else {
@@ -128,12 +134,12 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         .iter()
         .enumerate()
         .map(|(index, text)| {
-            let prefix = if index == 0 {
-                format!("{indent}{marker}")
+            let marker = if index == 0 {
+                Span::styled(marker, marker_style)
             } else {
-                format!("{indent}{}", " ".repeat(marker.chars().count()))
+                Span::raw(" ".repeat(marker.chars().count()))
             };
-            let mut line = Line::from(vec![Span::raw(prefix)]);
+            let mut line = Line::from(vec![Span::raw(indent.clone()), marker]);
             match row.kind {
                 BlockKind::Divider => {}
                 // TaskPaper marks a project with a trailing colon, which the display text drops.
@@ -251,6 +257,7 @@ mod tests {
     #[test]
     fn done_tasks_are_checked_dimmed_and_struck_through() {
         let mut expected = Buffer::with_lines(["✔ a ", "- b ", "P:  ", "n   "]);
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
         expected.set_style(Rect::new(0, 2, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().dim());
