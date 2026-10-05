@@ -21,11 +21,18 @@ pub fn serialize(document: &Document) -> String {
         text.push_str(BOM);
     }
     let last = lines.len().checked_sub(1);
+    let mut previous_break = "";
     for (index, (content, &(item, _))) in contents.iter().zip(&lines).enumerate() {
         text.push_str(content);
         // An empty last line is only read back when a line break ends it (file-format.md §3.1).
         if Some(index) != last || format.trailing_newline || content.is_empty() {
-            text.push_str(line_break(item, format.line_ending));
+            let mut this_break = line_break(item, format.line_ending);
+            // A `\r` directly followed by `\n` reads back as one break, losing this empty line.
+            if content.is_empty() && previous_break == "\r" && this_break.starts_with('\n') {
+                this_break = "\r";
+            }
+            text.push_str(this_break);
+            previous_break = this_break;
         }
     }
     text
@@ -414,6 +421,34 @@ mod tests {
         assert_eq!(serialize(&document), "A:\r\n  - B\n\n  - c\r\n");
         document.apply(&mut edit.inverse()).unwrap();
         assert_eq!(serialize(&document), text);
+    }
+
+    // F-FILE-03, N-REL-02
+    #[test]
+    fn a_blank_line_after_a_carriage_return_is_not_read_back_as_part_of_it() {
+        let cases: [(&[u8], &str); 3] = [
+            (b"- a\r- b\n\n\n- c\n", "- a\r\r\r- c\n- b\n"),
+            (b"- a\r- b\n\r\n- c\n", "- a\r\r\n- c\n- b\n"),
+            (b"- a\r- b\n- c\n", "- a\r- c\n- b\n"),
+        ];
+        for (bytes, expected) in cases {
+            let mut document = parse_bytes(bytes).unwrap();
+            let root = document.root();
+            let children = document.get(root).unwrap().children().to_vec();
+            let mut edit = Transaction::new(
+                vec![Op::Move {
+                    id: children[1],
+                    from: (root, 1),
+                    to: (root, children.len() - 1),
+                }],
+                (),
+                (),
+            );
+            document.apply(&mut edit).unwrap();
+            let text = serialize(&document);
+            assert_eq!(text, expected);
+            assert_eq!(outline(&parse(&text)), outline(&document), "{text:?}");
+        }
     }
 
     #[test]
