@@ -35,11 +35,7 @@ pub enum BackupError {
 /// macOS. `None` when neither is known.
 #[must_use]
 pub fn folder(xdg_data_home: Option<OsString>, home: Option<PathBuf>) -> Option<PathBuf> {
-    let data = xdg_data_home
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .or_else(|| home.map(|home| home.join(".local/share")))?;
-    Some(data.join("taskpaper-terminal/backups"))
+    super::app_folder(xdg_data_home, home, ".local/share", "backups")
 }
 
 /// The daily backups of the files one session opens: where they go, what day it is, and which

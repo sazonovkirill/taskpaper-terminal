@@ -6,6 +6,7 @@ mod backup;
 mod worker;
 
 use std::{
+    ffi::OsString,
     fs, io,
     io::Write as _,
     os::unix::fs::OpenOptionsExt as _,
@@ -143,6 +144,23 @@ fn access(path: &Path) -> Access {
     } else {
         Access::ReadWrite
     }
+}
+
+/// The app's folder `name` under an XDG base directory: `<base>/taskpaper-terminal/<name>`, where
+/// `base` is the directory's variable, or `fallback` under the home folder when that is unset or
+/// not absolute, as the XDG base directory specification says; also on macOS. `None` when
+/// neither is known.
+fn app_folder(
+    variable: Option<OsString>,
+    home: Option<PathBuf>,
+    fallback: &str,
+    name: &str,
+) -> Option<PathBuf> {
+    let base = variable
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| home.map(|home| home.join(fallback)))?;
+    Some(base.join("taskpaper-terminal").join(name))
 }
 
 /// Reads and parses the file at `path`. A missing file in an existing folder is an empty
