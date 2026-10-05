@@ -101,15 +101,8 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
 /// The screen lines of one block, `width` columns wide, indented 2 columns per level as in
 /// TaskPaper: tasks and URLs start with their marker, every other block with its text, so a
 /// child's text lines up with its parent task's text (D-31). A collapsed block with children
-/// shows `▸ n` after its text (ui.md §2).
+/// shows `▸ n` after its text (ui.md §2). The zoom title is drawn like its block, in bold (D-34).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
-    if row.title {
-        return row
-            .lines
-            .iter()
-            .map(|text| Line::from(text.as_str()).bold())
-            .collect();
-    }
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
@@ -121,6 +114,7 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         BlockKind::Note => ("", Style::new().dim()),
         BlockKind::Divider => ("", divider_style()),
     };
+    let style = if row.title { style.bold() } else { style };
     let count_style = if row.kind == BlockKind::Code {
         code_style()
     } else {
@@ -311,14 +305,26 @@ mod tests {
 
     // FR-NAV-03
     #[test]
-    fn the_title_row_is_bold_without_marker_or_indent() {
-        let mut state = State::new(format::parse("P:\n\tn\n\tm\n\t\t- t"), None);
-        state.update(Message::FocusNext);
-        state.update(Message::ZoomIn);
-        let buf = draw(&state.rows(), 5, 3);
-        let mut expected = Buffer::with_lines(["n    ", "m    ", "- t  "]);
-        expected.set_style(Rect::new(0, 0, 5, 2), Style::new().bold());
-        assert_eq!(buf, expected);
+    fn the_title_row_is_styled_by_its_type_in_bold_without_indent() {
+        let title = |text: &str| {
+            let mut state = State::new(format::parse(text), None);
+            state.update(Message::FocusNext);
+            state.update(Message::ZoomIn);
+            draw(&state.rows(), 6, 3)
+        };
+        let mut expected = Buffer::with_lines(["n     ", "m     ", "- t   "]);
+        expected.set_style(Rect::new(0, 0, 1, 2), Style::new().bold().dim());
+        assert_eq!(title("P:\n\tn\n\tm\n\t\t- t"), expected, "a note is dim");
+        let mut expected = Buffer::with_lines(["Q:    ", "- t   ", "      "]);
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        assert_eq!(title("P:\n\tQ:\n\t\t- t"), expected, "a project is colored");
+        let mut expected = Buffer::with_lines(["- t   ", "- u   ", "      "]);
+        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
+        assert_eq!(
+            title("P:\n\t- t\n\t\t- u"),
+            expected,
+            "a task has its marker"
+        );
     }
 
     #[test]
