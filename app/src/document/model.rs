@@ -1,8 +1,12 @@
 //! The document as a tree of lines ([data-model.md §1–2](../../../docs/specs/data-model.md)).
 
+mod edit;
+
 use slotmap::{SlotMap, new_key_type};
 
 use super::format;
+
+pub use edit::{EditError, Op, Snapshot, Transaction};
 
 new_key_type! {
     /// Identifies one item (line) for the session; stale ids fail lookups instead of aliasing.
@@ -12,9 +16,12 @@ new_key_type! {
 /// A parsed `.taskpaper` document: one item per line under a virtual root.
 #[derive(Debug, Clone)]
 pub struct Document {
-    items: SlotMap<ItemId, Item>,
+    /// Every line of the session; a removed line's slot is emptied, not freed, so undo can put
+    /// the line back under the same id.
+    items: SlotMap<ItemId, Option<Item>>,
     root: ItemId,
     format: FileFormat,
+    revision: u64,
 }
 
 /// One line of the file.
@@ -93,16 +100,17 @@ impl Document {
     #[must_use]
     pub fn new(format: FileFormat) -> Self {
         let mut items = SlotMap::with_key();
-        let root = items.insert(Item {
+        let root = items.insert(Some(Item {
             parent: None,
             children: Vec::new(),
             text: String::new(),
             extra_indent: 0,
-        });
+        }));
         Self {
             items,
             root,
             format,
+            revision: 0,
         }
     }
 
@@ -115,13 +123,19 @@ impl Document {
     /// The item with this id, or `None` if it does not exist.
     #[must_use]
     pub fn get(&self, id: ItemId) -> Option<&Item> {
-        self.items.get(id)
+        self.items.get(id)?.as_ref()
     }
 
     /// How the file was written.
     #[must_use]
     pub fn format(&self) -> &FileFormat {
         &self.format
+    }
+
+    /// Counts the transactions applied so far, so views and saving can tell that it changed.
+    #[must_use]
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     /// Every item below `id` in document order, with its depth relative to `id`'s children (0).
@@ -151,20 +165,20 @@ impl Document {
         text: String,
         extra_indent: usize,
     ) -> ItemId {
-        let id = self.items.insert(Item {
+        let id = self.items.insert(Some(Item {
             parent: Some(parent),
             children: Vec::new(),
             text,
             extra_indent,
-        });
-        if let Some(parent) = self.items.get_mut(parent) {
+        }));
+        if let Some(Some(parent)) = self.items.get_mut(parent) {
             parent.children.push(id);
         }
         id
     }
 
     fn children_of(&self, id: ItemId) -> &[ItemId] {
-        self.items.get(id).map_or(&[], |item| &item.children)
+        self.get(id).map_or(&[], |item| &item.children)
     }
 }
 

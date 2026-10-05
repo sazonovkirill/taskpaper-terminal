@@ -73,14 +73,16 @@ All mutations go through a small set of primitive line operations so that undo, 
 ```rust
 enum Op {
     SetText { id, before: String, after: String },
-    Insert  { id, parent, index, subtree: Snapshot },
-    Remove  { id, parent, index, subtree: Snapshot },
+    Insert  { parent, index, subtree: Snapshot },   // the snapshot carries the ids
+    Remove  { parent, index, subtree: Snapshot },
     Move    { id, from: (ItemId, usize), to: (ItemId, usize) },
     SetExtraIndent { id, before: u16, after: u16 },
 }
 ```
 
 - A user command produces a `Transaction` (a `Vec<Op>` plus an opaque, view-defined restore token for the focus/selection before and after, so `document::model` does not depend on `app::workspace`). The Document layer applies and inverts transactions; the undo/redo history itself lives in the App layer ([architecture.md §1](architecture.md#1-layers-and-modules)). Undo applies the inverse ops in reverse order; redo re-applies (FR-OPS-08).
+- Applying a transaction is all or nothing: every op checks that the document is in its `before` state, and if one does not fit, the ops before it are undone and the error returned. Placement repairs (rule 1) are appended to the transaction as `SetExtraIndent` ops, so undo and redo restore them too.
+- A removed line keeps its id: `Remove` empties its arena slot instead of freeing it, so undoing the removal puts the same ids back and later steps in the history still find their lines. A new line takes a reserved id that finds nothing until its `Insert` applies.
 - Block-level operations (move, indent, delete, convert) expand to line ops over all lines of the block plus its subtree.
 - One edit-mode session on a block is one undo step ([editing.md §2](editing.md#2-edit-mode)). Text changes are applied to the document as the user types, so autosave and every other pane see them immediately (FR-UI-02).
 - Metadata helpers (`set_tag`, `remove_tag`, `set_type`, `toggle_done`) build `SetText` ops using the tag rules in [file-format.md §5](file-format.md#5-tags) and TaskPaper's type-change rules:

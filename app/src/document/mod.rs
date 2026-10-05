@@ -6,4 +6,7 @@ pub mod model;
 
 pub use blocks::{Block, BlockKind};
 pub use format::DecodeError;
-pub use model::{Document, FileFormat, IndentUnit, Item, ItemId, ItemKind, LineEnding};
+pub use model::{
+    Document, EditError, FileFormat, IndentUnit, Item, ItemId, ItemKind, LineEnding, Op, Snapshot,
+    Transaction,
+};

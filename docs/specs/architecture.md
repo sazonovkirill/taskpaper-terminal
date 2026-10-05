@@ -10,7 +10,7 @@ How the crate in `app/` is organized. Detailed behavior is in the other specs.
 UI (frontend)          ui::{keymap, widgets, layout, theme, animation, effects, config}
    │                            │
    ▼                            ▼
-App (core)             app::{state, update, workspace, commands, pickers, today}
+App (core)             app::{state, update, history, workspace, commands, pickers, today}
    │
    ▼
 Document (core)        document::{model, blocks, format, dates, query}
@@ -25,7 +25,8 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `app::workspace` | App | Panes, shared folds, focus, selection, modes, edit-mode text and caret, Today view, visible blocks of each pane ([data-model.md §6](data-model.md#6-panes-and-view-state), [navigation.md](navigation.md)). |
 | `app::commands` | App | Every user intent as a message handler: structural operations, block commands, mode changes ([editing.md](editing.md)). |
 | `app::pickers` | App | Go to Symbol, Go to Command, Move to, context-menu entries: candidate lists and fuzzy ranking. |
-| `app::update` | App | `update(state, message) -> effects`; the undo/redo history of transactions (code-quality.md assigns undo to App); autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
+| `app::history` | App | The undo/redo history of committed transactions and the focus to restore with each (code-quality.md assigns undo to App). |
+| `app::update` | App | `update(state, message) -> effects`, committing each command's transaction to the history; autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
 | `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
 | `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
 | `ui::animation` | UI | Animation effects drawn over rendered frames, their triggers and the animation setting ([ui.md §9](ui.md#9-animation-fr-ui-11)). |
