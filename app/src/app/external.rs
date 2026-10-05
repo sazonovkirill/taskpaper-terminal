@@ -335,7 +335,7 @@ impl State {
     }
 }
 
-/// The block of `to` at the place block `id` has in `from`: the path of first-line texts from the
+/// The block of `to` at the place block `id` has in `from`: the path of block texts from the
 /// top level down, counting equal texts among siblings, leads to it. When the path breaks off,
 /// the nearest surviving ancestor; the flag says whether the whole path matched.
 fn rematch(from: &Document, to: &Document, id: ItemId) -> Option<(ItemId, bool)> {
@@ -349,31 +349,31 @@ fn rematch(from: &Document, to: &Document, id: ItemId) -> Option<(ItemId, bool)>
     for (text, nth) in path.iter().rev() {
         let Some(next) = blocks::children(to, line)
             .into_iter()
-            .filter(|block| first_text(to, block.id()).as_ref() == Some(text))
+            .filter(|block| shown_text(to, block.id()).as_ref() == Some(text))
             .nth(*nth)
         else {
             return found.map(|id| (id, false));
         };
-        line = next.last_line();
+        line = next.id();
         found = Some(next.id());
     }
     found.map(|id| (id, true))
 }
 
-/// The first-line text of block `id` and how many earlier sibling blocks have the same one.
+/// The text of block `id` and how many earlier sibling blocks have the same one.
 fn step(document: &Document, id: ItemId) -> Option<(String, usize)> {
-    let text = first_text(document, id)?;
+    let text = shown_text(document, id)?;
     let parent = document.get(id)?.parent()?;
     let nth = blocks::children(document, parent)
         .into_iter()
         .take_while(|block| block.id() != id)
-        .filter(|block| first_text(document, block.id()).as_ref() == Some(&text))
+        .filter(|block| shown_text(document, block.id()).as_ref() == Some(&text))
         .count();
     Some((text, nth))
 }
 
-/// The text of block `id`'s first line as shown, so a change of tags alone keeps the match.
-fn first_text(document: &Document, id: ItemId) -> Option<String> {
+/// The text of block `id` as shown, so a change of tags alone keeps the match.
+fn shown_text(document: &Document, id: ItemId) -> Option<String> {
     document.get(id).map(crate::document::Item::display_text)
 }
 
@@ -450,11 +450,7 @@ mod tests {
     }
 
     fn texts(state: &State) -> Vec<String> {
-        state
-            .rows()
-            .into_iter()
-            .map(|row| row.lines.join("|"))
-            .collect()
+        state.rows().into_iter().map(|row| row.text).collect()
     }
 
     /// The text of the block with id `id`.

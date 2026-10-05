@@ -28,15 +28,14 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 
 ## 2. Blocks
 
-Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text, and a URL block shows only its underlined title (D-38). So a task's note, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
+Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text, and a URL block shows only its underlined title (D-38). So a task's text node, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
 | Project | none | bold heading in the accent color (Textual's `$primary`), ending in `:` as in the file |
 | Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim), their `✔` dimmed too (D-36) |
-| Note | none | slightly dimmed, several lines; less dim than done tasks and the other dimmed blocks (D-37) |
+| Text | none | slightly dimmed; less dim than done tasks and the other dimmed blocks (D-37). A line carrying `@code` is text like any other (D-43) |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
-| Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |
 | URL | none | title styled as a link (underlined, accent color), slightly dimmed |
 | Divider | none | a horizontal rule across the pane in the rule-lines color, dimmed further so it is fainter than the header rule (D-33) |
 
@@ -46,12 +45,11 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 - **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★`-style marker chip (FR-TAG-04), a color tag tints the block's text (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
 - **Bare URLs** in text are underlined (D-10).
-- **Markdown in notes** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-notes)), navigate mode only; edit mode shows the raw text:
-  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold. Heading rows keep the note's indentation and get no rule, so they never look like a section.
+- **Markdown in text** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-text)), navigate mode only; edit mode shows the raw text:
+  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold. Heading rows keep the block's indentation and get no rule, so they never look like a section.
   - Links show their title (or URL) in the link style (underlined, accent color) and hide `[`, `](url)`, `<` and `>`.
-  - Fenced code is drawn like a code block: a background band in the code style, fence lines hidden, the language name, if any, as a dim label at the band's right edge.
-- **Focus and selection**: the focused block is marked by a `▎` in the accent color in a 2-column gutter left of the outline, on each of its lines (D-30). Those lines, gutter included and across the pane's full width, also get the current-line background, a step brighter than the normal one, in navigate and edit mode alike; it changes no text color or style, so dimmed, done and colored blocks look the same as unfocused, and a code band keeps its own background (D-39). Until themes arrive it is the 256-color grey 235, chosen for dark terminals. Selected blocks get a dimmer marker.
-- **Edit mode**: the focused block's text becomes an inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02).
+- **Focus and selection**: the focused block is marked by a `▎` in the accent color in a 2-column gutter left of the outline, on its line (D-30). That line, gutter included and across the pane's full width, also gets the current-line background, a step brighter than the normal one, in navigate and edit mode alike; it changes no text color or style, so dimmed, done and colored blocks look the same as unfocused (D-39). Until themes arrive it is the 256-color grey 235, chosen for dark terminals. Selected blocks get a dimmer marker.
+- **Edit mode**: the focused block's text becomes a one-line inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02). Text wider than the pane scrolls to keep the caret in view.
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.
 
 ## 3. Themes (FR-UI-06–08)

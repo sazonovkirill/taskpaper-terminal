@@ -125,6 +125,7 @@ D-2 makes consecutive note lines one block, and FR-BLK-05 says Enter inserts a n
 
 **Proposed default:** A.
 **Decision (2026-10-04):** the owner accepted the proposed default.
+**Note (2026-10-05):** moot since D-43 made every block one line: no key breaks a line, and `Enter` ends editing and creates the next block in every block.
 **Affects:** [specs/editing.md](specs/editing.md), [specs/keybindings.md](specs/keybindings.md).
 
 ### OQ-24 · Where tags go when a block's text is edited — decided
@@ -160,6 +161,7 @@ D-2 makes consecutive sibling note lines one block, and TaskPaper text has no wa
 
 **Proposed default:** A.
 **Decision (2026-10-04):** the owner accepted the proposed default.
+**Note (2026-10-05):** moot since D-43 made every line its own block: adjacent text blocks no longer merge, there is no "Notes merged" notice, and a new block next to text is text.
 **Affects:** [specs/editing.md](specs/editing.md), [specs/data-model.md](specs/data-model.md).
 
 ### OQ-27 · Typed text that looks like task or project syntax — decided
@@ -171,6 +173,7 @@ The type is hidden while editing, but TaskPaper derives it from the text: a note
 
 **Proposed default:** A. It matches TaskPaper and loses nothing; B would forbid ordinary text like `Questions:` in a note.
 **Decision (2026-10-04):** the owner accepted the proposed default.
+**Note (2026-10-05):** since D-43 every block is one line, so only the live marker update applies; there are no multi-line blocks to split and no split hint.
 **Affects:** [specs/editing.md](specs/editing.md).
 
 ## Decided by the functional requirements

@@ -145,9 +145,14 @@ pub enum Message {
     /// Add a last child to the focused block, expanding it, and edit it (FR-MODE-04).
     NewLastChild,
     /// Stop editing and add the next block: a first child when the block shows children, else
-    /// a block below it (editing.md §3). In a code block being edited, break the line instead
-    /// (OQ-23).
+    /// a block below it (editing.md §3).
     NewNext,
+    /// Stop editing and edit the previous visible block that is not a divider, keeping the
+    /// caret's column where it can (editing.md §2).
+    EditPrevious,
+    /// Stop editing and edit the next visible block that is not a divider, keeping the caret's
+    /// column where it can (editing.md §2).
+    EditNext,
     /// Add a block of this type at the top of the focused block's list, its parent's children,
     /// and edit it; a section goes before the list's first section (FR-MODE-06).
     NewTop(Typed),
@@ -191,6 +196,8 @@ impl Message {
             | Self::Text(_)
             | Self::StopEditing
             | Self::NewNext
+            | Self::EditPrevious
+            | Self::EditNext
             | Self::Indent
             | Self::Outdent => false,
             Self::Quit
@@ -359,6 +366,8 @@ impl State {
             Message::NewFirstChild => self.add_block(NewBlock::FirstChild, None),
             Message::NewLastChild => self.add_block(NewBlock::LastChild, None),
             Message::NewNext => self.new_next(),
+            Message::EditPrevious => self.edit_adjacent(false),
+            Message::EditNext => self.edit_adjacent(true),
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_focused(),
@@ -573,14 +582,11 @@ impl State {
         }
     }
 
-    /// Moves focus from a line that joined the note run before it to that run's block (OQ-26),
-    /// and off a block a fold hid: to the next visible block in document order, else the
+    /// Moves focus off a block a fold hid: to the next visible block in document order, else the
     /// previous one (navigation §2). A hidden block always has a visible ancestor before it, so
     /// one of the two exists.
     fn repair_focus(&mut self) {
         let Some(focus) = self.focus else { return };
-        let focus = blocks::holding(self.document(), focus).map_or(focus, |block| block.id());
-        self.focus = Some(focus);
         let visible: Vec<_> = self.rows().into_iter().map(|row| row.id).collect();
         if visible.contains(&focus) {
             return;
@@ -709,7 +715,7 @@ mod tests {
         state
             .rows()
             .into_iter()
-            .map(|row| (row.depth, row.lines.join("|"), row.hidden_children))
+            .map(|row| (row.depth, row.text, row.hidden_children))
             .collect()
     }
 
@@ -717,7 +723,7 @@ mod tests {
     fn focus_text(state: &State) -> String {
         let rows = state.rows();
         let row = rows.iter().find(|row| Some(row.id) == state.focus());
-        row.map(|row| row.lines.join("|")).unwrap_or_default()
+        row.map(|row| row.text.clone()).unwrap_or_default()
     }
 
     /// `text` with focus moved down `index` rows.

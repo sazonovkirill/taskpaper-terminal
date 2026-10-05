@@ -38,33 +38,26 @@ struct Item {
 
 ## 3. Blocks
 
-A block is what the user navigates, selects and edits (FR-BLK). Blocks are computed from the line tree and cached per document revision; they are never stored.
+A block is what the user navigates, selects and edits (FR-BLK). Every line of the document is one block, as in TaskPaper (D-43); blocks are derived from the line tree and never stored.
 
-**Special nodes** (FR-SPC-01): a line tagged `@hidden` and its whole subtree are skipped before grouping; they form no block and never join a note run, and their tags are not block metadata ([special-nodes.md](special-nodes.md)). A line whose child is a special node still has children, so it ends its run.
+**Special nodes** (FR-SPC-01): a line tagged `@hidden` and its whole subtree form no block, and their tags are not block metadata ([special-nodes.md](special-nodes.md)).
 
-**Grouping** (D-2, FR-BLK-03): a block is one line, except that a maximal run of consecutive sibling **plain note lines** forms one note block. A plain note line is a `note`-kind line that is not a divider and carries none of `@section`, `@url`. The run:
-- includes blank lines;
-- ends after a line that has children (that line's children are the block's children);
-- ends before a divider, section or URL line, except inside a code run (below);
-- ends before a line carrying `@code`, which starts a new run.
-
-A **code run** is a run whose first line carries `@code`. Inside it, note-kind lines that are dividers or carry `@section` or `@url` stay code instead of ending the run (D-18); the run still ends after a line with children, before a task or project line, and before another `@code` line.
-
-**Type** (FR-BLK-01–07), checked in this order (a code run is always Code, whatever its lines contain):
+**Type** (FR-BLK-01–04, FR-BLK-06–07), checked in this order:
 
 | Type | Rule |
 |---|---|
-| Divider | note line whose text without tags is exactly `---`, so metadata commands on a divider don't change its type |
+| Divider | TaskPaper note line whose text without tags is exactly `---`, so metadata commands on a divider don't change its type |
 | Section | line with `@section` |
 | URL | line with `@url(...)` |
-| Code | note block whose first line has `@code` |
 | Task | TaskPaper task line |
 | Project | TaskPaper project line |
-| Note | anything else |
+| Text | anything else, blank lines included |
 
-The type is changed with the type converter (FR-BLK-08), which rewrites the syntax and type tags of every line in the block ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
+`@code` has no meaning for the type: a line carrying it is whatever the rules above make it, usually text, and the tag stays hidden and preserved like any unsupported tag (D-43).
 
-**Block attributes**: `id` (its first line's `ItemId`), `lines`, `children` (the children of the last line), `type`, and metadata read from the first line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-5), `bookmark`, `url`, and the list of unsupported tags (D-3). For a note block, metadata tags may sit on any of its lines; the first occurrence in the block wins, and commands write metadata to the first line.
+The type is changed with the type converter (FR-BLK-08), which rewrites the line's syntax and type tags ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
+
+**Block attributes**: `id` (its line's `ItemId`), `children` (the blocks of its line's children), `type`, and metadata read from the line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-5), `bookmark`, `url`, and the list of unsupported tags (D-3).
 
 ## 4. Edits
 
@@ -83,7 +76,7 @@ enum Op {
 - A user command produces a `Transaction` (a `Vec<Op>` plus an opaque, view-defined restore token for the focus/selection before and after, so `document::model` does not depend on `app::workspace`). The Document layer applies and inverts transactions; the undo/redo history itself lives in the App layer ([architecture.md §1](architecture.md#1-layers-and-modules)). Undo applies the inverse ops in reverse order; redo re-applies (FR-OPS-08).
 - Applying a transaction is all or nothing: every op checks that the document is in its `before` state, and if one does not fit, the ops before it are undone and the error returned. Placement repairs (rule 1) are appended to the transaction as `SetExtraIndent` ops, so undo and redo restore them too.
 - A removed line keeps its id: `Remove` empties its arena slot instead of freeing it, so undoing the removal puts the same ids back and later steps in the history still find their lines. A new line takes a reserved id that finds nothing until its `Insert` applies.
-- Block-level operations (move, indent, delete, convert) expand to line ops over all lines of the block plus its subtree.
+- Block-level operations (move, indent, delete, convert) are line ops on the block's line, which carry its subtree.
 - One edit-mode session on a block is one undo step ([editing.md §2](editing.md#2-edit-mode)). Text changes are applied to the document as the user types, so autosave and every other pane see them immediately (FR-UI-02).
 - Metadata helpers (`set_tag`, `remove_tag`, `set_type`, `toggle_done`) build `SetText` ops using the tag rules in [file-format.md §5](file-format.md#5-tags) and TaskPaper's type-change rules:
   - to task: prepend `- `; from task: remove the leading `- `.
@@ -93,7 +86,7 @@ enum Op {
 
 - The tree is acyclic; every item except the root has exactly one parent.
 - `Move` rejects moving an item into its own subtree.
-- `text` never contains a line break. A multi-line note block is several items.
+- `text` never contains a line break.
 - A canonical document ([file-format.md §3.1](file-format.md#31-canonical-outlines)) serializes to text that parses back to an equal tree. Placement (rule 1) holds after every transaction; rules 2–4 hold for every saved document.
 
 ## 6. Panes and view state

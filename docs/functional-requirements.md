@@ -1,7 +1,7 @@
 # Functional Requirements
 
 - Status: Accepted
-- Last updated: 2026-10-04
+- Last updated: 2026-10-05
 
 What taskpaper-terminal does, as stated by the owner and mapped against Workflowy's feature set as of 2026-10-04. The owner's answers to the clarifying questions are recorded under [Decisions](#decisions) and referenced as **(D-n)**.
 
@@ -14,7 +14,8 @@ taskpaper-terminal is a keyboard-driven, Workflowy-style infinite outliner for t
 ## Terms
 
 - **Line**: one line of the `.taskpaper` file. TaskPaper classifies it as a project, task or note.
-- **Block**: the unit the user navigates, selects and edits. Usually one line; a note block can span several lines ([FR-BLK-03](#fr-blk--blocks)).
+- **Block**: the unit the user navigates, selects and edits: one line of the file (D-43).
+- **Text node**: a block that is none of the other types, called a note in TaskPaper ([FR-BLK-03](#fr-blk--blocks)).
 - **Navigate mode**: keys act on blocks. **Edit mode**: keys edit the text of one block in place.
 - **Pane**: one column of the split view, showing its own zoomed part of the same document.
 
@@ -32,26 +33,26 @@ taskpaper-terminal is a keyboard-driven, Workflowy-style infinite outliner for t
 
 ## FR-BLK · Blocks
 
-Each block type, how it is stored and how it looks. Types are mutually exclusive per block. A divider, section or URL line is always its own block and ends a note run; a line carrying `@code` starts a new run. Inside a code block, a `---`, `@section` or `@url` line stays code instead of ending the block (D-18).
+Each block type, how it is stored and how it looks. Every line of the file is one block, and types are mutually exclusive per block (D-43).
 
 | ID | Type | Stored as | Shown as | Priority |
 |---|---|---|---|---|
 | FR-BLK-01 | Project | `Name:` | Bold heading with a fold marker. | Must |
 | FR-BLK-02 | Task | `- Text` | Checkbox and text; done tasks dimmed and struck through. | Must |
-| FR-BLK-03 | Note | One or more consecutive sibling plain note lines, blank lines included (D-2) | One multi-line text block. The block's children are the children of its last line. | Must |
+| FR-BLK-03 | Text | Any other line, blank lines included (D-43) | Plain text, slightly dimmed. Consecutive text lines are separate blocks; a text block of several lines is Later (D-43). | Must |
 | FR-BLK-04 | Section | `Name @section` | Things 3 style header with a rule; groups its indented children (D-8). | Must |
-| FR-BLK-05 | Code | A note run whose first line carries `@code` (D-9) | Monospace, no inline formatting; Enter inserts a newline while editing. | Must |
+| FR-BLK-05 | Code | Dropped for v1: a line carrying `@code` is a text block, its tag hidden and kept (D-43). Code blocks may return after v1. | — | Later |
 | FR-BLK-06 | URL | `Title @url(https://…)` (D-10) | Title styled as a link; a command opens it in the system browser. | Must |
-| FR-BLK-07 | Divider | Note line `---` | Horizontal rule across the pane; selectable and movable like any block, no children. | Must |
+| FR-BLK-07 | Divider | Text line `---` | Horizontal rule across the pane; selectable and movable like any block, no children. | Must |
 
-**FR-BLK-08 (Must):** a command converts the selected blocks between project, task, note, section, code, URL and divider. Because tags are never typed ([FR-TAG-01](#fr-tag--tags-as-metadata)), this and the typed shortcuts of [FR-MODE-05](#fr-mode--block-editing) are how the tag-based types are created.
+**FR-BLK-08 (Must):** a command converts the selected blocks between project, task, text, section, URL and divider. Because tags are never typed ([FR-TAG-01](#fr-tag--tags-as-metadata)), this and the typed shortcuts of [FR-MODE-05](#fr-mode--block-editing) are how the tag-based types are created.
 
 ## FR-TAG · Tags as metadata
 
 | ID | Requirement | Priority |
 |---|---|---|
 | FR-TAG-01 | Tags are hidden from the displayed and edited text. The app sets and clears them through commands, never by typing `@`. All tags, supported or not, are hidden; unsupported ones are listed in an item details popup (D-3). | Must |
-| FR-TAG-02 | Supported tags: `@start(DATE)`, `@due(DATE)`, `@today`, the colors `@red @orange @yellow @green @blue @violet`, plus the block-type tags `@section @code @url` and the internal `@done(YYYY-MM-DD)` (D-4) and `@bookmark` (D-11). | Must |
+| FR-TAG-02 | Supported tags: `@start(DATE)`, `@due(DATE)`, `@today`, the colors `@red @orange @yellow @green @blue @violet`, plus the block-type tags `@section @url` and the internal `@done(YYYY-MM-DD)` (D-4) and `@bookmark` (D-11). | Must |
 | FR-TAG-03 | Dates are stored as `YYYY-MM-DD` and entered through a prompt that accepts natural language such as "tomorrow" or "fri" (D-6). They show as a compact chip; overdue `@due` is highlighted. | Must |
 | FR-TAG-04 | `@today` is toggled by a command and shown as a marker. A built-in Today view lists `@today` items and items due or started on or before today (D-7). | Must |
 | FR-TAG-05 | A color tag tints the block's text; a block has at most one color, and setting one replaces the other (D-5). | Must |
@@ -61,9 +62,9 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-FMT-01 | Task and note text supports Markdown `**bold**` and `` `code` ``. Markers are hidden in navigate mode and visible in edit mode. | Must |
+| FR-FMT-01 | Task and text block text supports Markdown `**bold**` and `` `code` ``. Markers are hidden in navigate mode and visible in edit mode. | Must |
 | FR-FMT-02 | Commands toggle bold and inline code on the selected text in edit mode. | Should |
-| FR-FMT-03 | Note blocks also support Markdown headings (`# ` to `###### `), links (`[title](url)` and `<url>`) and fenced code blocks (lines between ```` ``` ```` fences). Navigate mode renders them with the markers hidden; edit mode shows the raw Markdown ([editing.md §2.2](specs/editing.md#22-markdown-in-notes)) (D-25). | Must |
+| FR-FMT-03 | Text blocks also support Markdown headings (`# ` to `###### `) and links (`[title](url)` and `<url>`). Navigate mode renders them with the markers hidden; edit mode shows the raw Markdown ([editing.md §2.2](specs/editing.md#22-markdown-in-text)) (D-25). Fenced code, which spans lines, is Later (D-43). | Must |
 
 ## FR-MODE · Block editing
 
@@ -73,7 +74,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 | FR-MODE-02 | Editing happens in place: the editor opens where the block is, keeping indentation, surrounding blocks and scroll position, as in Things 3. | Must |
 | FR-MODE-03 | Edit mode uses standard text-editing keys (arrows, Home/End, word motion, word delete, selection, clipboard), not vim normal mode (D-1). | Must |
 | FR-MODE-04 | Creating a block (new sibling below/above, new child) opens it directly in edit mode. | Must |
-| FR-MODE-05 | Typing a Markdown-style prefix followed by a space at the start of a single-line note or task turns it into another block type: `--- ` a divider, ```` ``` ```` a code block, `[] ` or `[ ] ` a task, `[x] ` a completed task. `- ` and a trailing `:` already make a task and a project, as in TaskPaper. The very next `Backspace` or `Ctrl+Z` reverts the conversion, and undo reverts a divider ([editing.md §2.1](specs/editing.md#21-typed-shortcuts)) (D-24). | Must |
+| FR-MODE-05 | Typing a Markdown-style prefix followed by a space at the start of a text block or task turns it into another block type: `--- ` a divider, `[] ` or `[ ] ` a task, `[x] ` a completed task. `- ` and a trailing `:` already make a task and a project, as in TaskPaper. The very next `Backspace` or `Ctrl+Z` reverts the conversion, and undo reverts a divider ([editing.md §2.1](specs/editing.md#21-typed-shortcuts)) (D-24). | Must |
 | FR-MODE-06 | Single keys create a project, section or task at the top of the current list or below the focused block, opened in edit mode (D-26). | Must |
 
 ## FR-KEY · Keyboard
@@ -168,7 +169,7 @@ Owner decisions:
 - Tables, boards and other non-list layouts.
 - `Archive:` handling, for now ([FR-DOC-04](#fr-doc--document-and-file)).
 - Several files in one instance ([FR-DOC-01](#fr-doc--document-and-file)).
-- Mirrors, sorting children, templates, heading/quote/numbered/paragraph block types, italic, underline, strikethrough and highlight, export and import, trash (D-14). Headings exist only as Markdown inside note text (D-25), not as a block type.
+- Mirrors, sorting children, templates, heading/quote/numbered/paragraph block types, italic, underline, strikethrough and highlight, export and import, trash (D-14). Headings exist only as Markdown inside a text block (D-25), not as a block type.
 
 Cloud and GUI-only Workflowy features have no meaning here: sharing, mentions, sync, uploads, embeds, AI, email and calendar integrations.
 
@@ -179,14 +180,14 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | # | Decision |
 |---|---|
 | D-1 | Navigate and edit modes; text editing uses standard keys, not vim normal mode. |
-| D-2 | Consecutive sibling note lines, blank lines included, form one block; children of the last line belong to the block. |
+| D-2 | Consecutive sibling note lines, blank lines included, form one block; children of the last line belong to the block. Superseded by D-43. |
 | D-3 | All tags are hidden; unsupported ones are preserved and shown in a details popup. |
 | D-4 | Completion writes `@done(YYYY-MM-DD)`. |
 | D-5 | A color tag tints the text. |
 | D-6 | Dates have no time part. |
 | D-7 | The sidebar has a built-in Today view. |
 | D-8 | A section groups its indented children, not the following lines. |
-| D-9 | `@code` on a note block's first line makes the whole block code. |
+| D-9 | `@code` on a note block's first line makes the whole block code. Superseded by D-43. |
 | D-10 | URL blocks are `Title @url(…)`; bare URLs in text are also openable. |
 | D-11 | Bookmarks are a hidden `@bookmark` tag on any block; searches can be bookmarked once search exists. |
 | D-12 | The `?` panel temporarily replaces the sidebar. Superseded by D-28. |
@@ -195,14 +196,14 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-15 | Running without a path creates a file in `/tmp` that can later be saved elsewhere. |
 | D-16 | Mouse support is Must but secondary to the keyboard. |
 | D-17 | An existing `@done` without a date counts as completed; only newly completed blocks get the date. |
-| D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. |
+| D-18 | Inside a code block, `---`, `@section` and `@url` lines stay code instead of splitting the block. Superseded by D-43. |
 | D-19 | The app ships 10-12 attractive terminal color themes built in (owner, 2026-10-04). The chosen twelve are permissively licensed and include light themes. |
 | D-20 | The app uses Nerd Font icons, with a setting to turn all icons off. It has a settings window; settings are per user under `~/.config` in a modern format (owner, 2026-10-04). The format is TOML, as already decided in OQ-18: it is the norm for Rust and terminal tools (Cargo, Helix, Alacritty, starship) and avoids YAML's indentation and implicit-typing pitfalls. |
 | D-21 | Animation is used only where it helps orientation or feedback and never slows the user down. The owner delegated where to animate (decided in [specs/ui.md §9](specs/ui.md#9-animation-fr-ui-11)). |
 | D-22 | The app makes daily backups of every file it opens (owner, 2026-10-04). They go to the XDG data directory, `~/.local/share/taskpaper-terminal/backups/`, next to the `~/.config` settings, rather than the owner's suggested `~/.taskpaper-terminal/backups/`, which a setting can still select. A copy is taken on the first open or save of each local day, before anything is written; one folder per file, named after the file plus a hash of its full path; copies are named by date; identical copies are skipped; the newest 30 are kept. Both choices of an external-change conflict first save the version they discard as a conflict copy. Details in [file-io.md](specs/file-io.md#2-saving). |
 | D-23 | Some features are stored as special nodes: hidden child lines tagged `@hidden` plus a feature tag, which other TaskPaper apps see as plain lines (owner, 2026-10-04). Comments are the first: Todoist-style dated comments stored under a `COMMENTS @hidden @comments` child. The owner accepted every proposed default: a count badge and a side panel, `[YYYY-MM-DD HH:MM]` local 24-hour timestamps, multi-line comments as deeper-indented lines, bold, code and URLs in comments, `@hidden` as a general mechanism, nodes that travel with their block and stay its last child, hand-typed comment lines accepted, and comments as the only special node for now. Details in [special-nodes.md](specs/special-nodes.md). |
-| D-24 | Typing `--- ` creates a divider and ```` ``` ```` plus a space a code block; similar shortcuts apply where they make input simpler (owner, 2026-10-04). The owner delegated the rest of the set. Chosen: Workflowy's `[] ` and `[ ] ` task triggers plus `[x] ` for a completed task, while `- ` and a trailing `:` keep TaskPaper's own meaning. Shortcuts fire only on a typed space, never on paste, and can be reverted at once. `# ` stays a Markdown heading in a note (OQ-28). Details in [editing.md §2.1](specs/editing.md#21-typed-shortcuts). |
-| D-25 | Note blocks support Markdown headings, URLs, code spans and code blocks, rendered in navigate mode and shown raw while editing (owner, 2026-10-04). The owner delegated the details: headings stay note text, so the file stays plain TaskPaper and D-14's "no heading block type" holds; links are `[title](url)`, `<url>` and bare URLs; fenced code renders like a code block but stays part of the note, without syntax highlighting. Details in [editing.md §2.2](specs/editing.md#22-markdown-in-notes). |
+| D-24 | Typing `--- ` creates a divider and ```` ``` ```` plus a space a code block; similar shortcuts apply where they make input simpler (owner, 2026-10-04). The owner delegated the rest of the set. Chosen: Workflowy's `[] ` and `[ ] ` task triggers plus `[x] ` for a completed task, while `- ` and a trailing `:` keep TaskPaper's own meaning. Shortcuts fire only on a typed space, never on paste, and can be reverted at once. `# ` stays a Markdown heading in a note (OQ-28). The code-block shortcut was dropped with code blocks (D-43). Details in [editing.md §2.1](specs/editing.md#21-typed-shortcuts). |
+| D-25 | Note blocks support Markdown headings, URLs, code spans and code blocks, rendered in navigate mode and shown raw while editing (owner, 2026-10-04). The owner delegated the details: headings stay note text, so the file stays plain TaskPaper and D-14's "no heading block type" holds; links are `[title](url)`, `<url>` and bare URLs; fenced code renders like a code block but stays part of the note, without syntax highlighting. Fenced code and code blocks are Later since D-43. Details in [editing.md §2.2](specs/editing.md#22-markdown-in-text). |
 | D-26 | The owner's basic key bindings (2026-10-04): `P`/`p`, `S`/`s`, `A`/`a` add a project, section or task at the top of the list or below the current block; `O`/`o` insert above/below; `'` and `"` toggle a block's fold and its whole subtree's; expand and collapse by level exist, as in TaskPaper; fold state lives in memory and is not persisted; `c` cycles the color; `t`/`y` set the start date to today/tomorrow and `T`/`Y` the due date; `[`/`]` and `{`/`}` move the start and due date by a day; `/` searches; `.` and `Shift+.` zoom in and out; `\` opens the context menu; `Ctrl+'` goes home; `z`/`Shift+Z` undo and redo; `Ctrl+K` opens the command palette and `Ctrl+P` Go to Symbol. Where these displaced earlier bindings, see OQ-29; details in [keybindings.md](specs/keybindings.md#2-navigate-mode). |
 | D-27 | Running without a path fills the new `/tmp` file with demo data, a few toy projects sufficient to demonstrate every feature implemented, to make testing easy (owner, 2026-10-04). The demo grows with each feature ([implementation plan](implementation-plan.md#rules-for-every-step)); details in [file-io.md §1](specs/file-io.md#1-opening). |
 | D-28 | The navigation sidebar (bookmarks, Today, projects) stays on the left. A secondary sidebar on the right shows either the keyboard shortcuts or the comments of the focused block; nodes are still edited in place (owner, 2026-10-04). Supersedes D-12. |
@@ -220,3 +221,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-40 | Any block can be completed, not only tasks: projects, sections, notes and every other type take `@done` the same way (owner, 2026-10-05, M2 feedback). A done block is dimmed and struck through in its type's style, a task also showing `✔`; every block inside it, at any depth, is dimmed too, without being marked done or changed in the file. This holds when zoomed into or below a done block, for the title row too. Hiding completed blocks hides each done block with everything inside it. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-41 | `o`/`O` insert neighbors and `i`/`I` insert children, leaving only `Enter` for editing (owner, 2026-10-05, M2 feedback). In navigate mode `i` adds a last child and `I` a first child, each expanding the block and opening the new block in edit mode; on the zoom title they add its last and first child. `i` no longer edits with the caret at the start, and `Alt+o`, the earlier new-child key, is free. Changes D-26's key set and OQ-29's `i`. Details in [keybindings.md §2](specs/keybindings.md#2-navigate-mode) and [editing.md §3](specs/editing.md#3-creating-blocks-fr-mode-04). |
 | D-42 | Every key binding has two variants: one that works in a classic terminal with legacy key reporting, and one for the kitty keyboard protocol (owner, 2026-10-05). A key both deliver the same way, such as `j`, `Enter` or `Ctrl+D`, counts as both; a key only the kitty protocol reports, such as `Ctrl+Enter` or `Shift+Enter`, always has a classic variant bound beside it, which is not an `Alt` key alone. The app asks for the kitty protocol on start. Details in [keybindings.md §1](specs/keybindings.md#1-terminal-constraints). |
+| D-43 | Back to a model close to TaskPaper: every line is one block, and a block is a project, section, task, divider, URL or text node (owner, 2026-10-05, M2 feedback). "Text node" replaces "note" in the app and the docs; TaskPaper's own term stays where its format is meant. Consecutive text lines, blank lines included, are separate blocks, so nothing merges and no edit splits a block. Code is dropped for now: a line carrying `@code` is text, its tag hidden and kept, with no special styling. A URL block stays, as one line (owner: "no harm in that"). Edit mode edits one line: no key breaks a line, `Enter` ends editing and adds the next block, and, as in a traditional editor, `↑`/`↓` end the session and edit the previous or next visible block that is not a divider, at the same column where possible, each session one undo step. Supersedes D-2, D-9 and D-18 and the code parts of D-24 and D-25; code blocks, fenced code and text blocks of several lines may return after v1. Details in [data-model.md §3](specs/data-model.md#3-blocks) and [editing.md §2](specs/editing.md#2-edit-mode). |

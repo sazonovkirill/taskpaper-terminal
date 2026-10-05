@@ -116,16 +116,15 @@ fn tab_while_typing_a_new_block_indents_it_and_keeps_editing() {
     );
 }
 
-// OQ-26
+// D-43
 #[test]
-fn indenting_a_note_after_a_note_says_they_merged() {
+fn indenting_a_text_line_after_a_text_line_leaves_them_apart() {
     let mut app = Harness::with_text("Ideas:\n\tFirst note\nSecond note\n", 200, 6);
     app.type_keys("jj");
     app.press(KeyCode::Tab, KeyModifiers::NONE);
-    assert_eq!(focused_rows(&mut app), ["  First note", "  Second note"]);
-    assert!(
-        status_line(&mut app).ends_with(" · Notes merged"),
-        "{}",
-        status_line(&mut app)
+    assert_eq!(focused_rows(&mut app), ["  Second note"]);
+    assert_eq!(
+        outline_rows(&mut app)[1..3],
+        ["  First note", "  Second note"]
     );
 }

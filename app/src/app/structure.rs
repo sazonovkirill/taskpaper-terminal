@@ -1,6 +1,6 @@
 //! Adding a block next to the focused one to type into, deleting blocks and moving them, each one
 //! step to undo ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
-//! FR-MODE-04, FR-OPS-02, FR-OPS-03, FR-OPS-06, OQ-26).
+//! FR-MODE-04, FR-OPS-02, FR-OPS-03, FR-OPS-06).
 
 use super::{Access, Notice, Restore, State};
 use crate::document::{
@@ -92,7 +92,7 @@ impl State {
         };
         let leaf = self
             .document
-            .get(block.last_line())
+            .get(block.id())
             .is_some_and(|item| item.children().is_empty());
         let rows = self.rows();
         let previous = rows.iter().take_while(|row| row.id != block.id()).last();
@@ -107,19 +107,20 @@ impl State {
         self.start_editing();
     }
 
-    /// Deletes `block` with its subtree as one step to undo that ends with `focus`, saying so
-    /// when the notes on either side of it merge (OQ-26). A read-only file refuses with a notice.
+    /// Deletes `block` with its subtree as one step to undo that ends with `focus`. A read-only
+    /// file refuses with a notice.
     fn delete_block(&mut self, block: &Block, focus: Option<ItemId>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
-        let starts = self.block_starts();
-        let mut transaction = Transaction::new(structure::delete(&self.document, block), (), ());
+        let ops = structure::delete(&self.document, block)
+            .into_iter()
+            .collect();
+        let mut transaction = Transaction::new(ops, (), ());
         self.document
             .apply(&mut transaction)
-            .expect("the ops are built from the document as it is");
-        self.report_merged(&starts);
+            .expect("the op is built from the document as it is");
         let before = Restore {
             focus: Some(block.id()),
         };
@@ -132,50 +133,21 @@ impl State {
     }
 
     /// Moves the focused block with its subtree as `by` says without leaving the zoom, as one
-    /// step to undo, expanding the block it lands under and saying so when notes merge
-    /// (FR-OPS-02, FR-OPS-03, OQ-26). The zoom title, which stands for the view's root, stays.
-    /// An edited block whose lines read as several blocks splits first, and the block with the
-    /// caret moves and is edited on from its end (OQ-27).
+    /// step to undo, expanding the block it lands under (FR-OPS-02, FR-OPS-03). The zoom title,
+    /// which stands for the view's root, stays.
     pub(super) fn shift_focused(&mut self, by: Shift) {
-        if self.editor().is_some_and(|editor| editor.splits) {
-            self.stop_editing();
-            self.start_editing();
-        }
         let Some((block, false)) = self.focused() else {
             return;
         };
         let top = self
             .zoom_block()
-            .map_or(self.document.root(), |zoom| zoom.last_line());
+            .map_or(self.document.root(), |zoom| zoom.id());
         let Some(ops) = structure::shift(&self.document, &block, by, top) else {
             return;
         };
-        let starts = self.block_starts();
         self.commit(ops);
         if let Some(parent) = blocks::parent(&self.document, block.id()) {
             self.folds.remove(&parent.id());
-        }
-        self.report_merged(&starts);
-        self.edit_merged();
-    }
-
-    /// The first line of every block below the zoom, for telling after an edit which blocks it
-    /// merged.
-    fn block_starts(&self) -> Vec<ItemId> {
-        self.blocks(false)
-            .into_iter()
-            .map(|(block, _)| block.id())
-            .collect()
-    }
-
-    /// Says so when a line of `starts`, each the first line of a block before an edit, is still
-    /// in the document but no longer starts a block, because the edit put it after a note run
-    /// that it joined (OQ-26).
-    fn report_merged(&mut self, starts: &[ItemId]) {
-        if starts.iter().any(|&id| {
-            self.document.get(id).is_some() && blocks::block(&self.document, id).is_none()
-        }) {
-            self.notify(Notice::NotesMerged);
         }
     }
 }
@@ -237,14 +209,14 @@ mod tests {
         state.update(Message::Text(TextEdit::DeleteBackward));
     }
 
-    /// The first line of the focused row.
+    /// The text of the focused row.
     fn focused(state: &State) -> String {
         let rows = state.rows();
         let row = rows
             .iter()
             .find(|row| Some(row.id) == state.focus())
             .unwrap();
-        row.lines[0].clone()
+        row.text.clone()
     }
 
     /// The text being edited with `|` at the caret.
@@ -383,7 +355,7 @@ mod tests {
         state.update(Message::NewBelow);
         typed(&mut state, "first");
         state.update(Message::NewNext);
-        assert_eq!(lines(&state), ["first", "- "], "a note would join the note");
+        assert_eq!(lines(&state), ["first", ""], "text after text");
     }
 
     // FR-MODE-06, OQ-29
@@ -441,9 +413,9 @@ mod tests {
         );
     }
 
-    // FR-MODE-06, OQ-26
+    // FR-MODE-06
     #[test]
-    fn lower_case_adds_a_typed_block_below_without_joining_notes() {
+    fn lower_case_adds_a_typed_block_below() {
         for (typed, line) in [
             (Typed::Project, ":"),
             (Typed::Section, "@section"),
@@ -455,18 +427,6 @@ mod tests {
             assert_eq!(lines(&state), ["n", "\t- a", line, "m"], "{typed:?}");
             assert_eq!(state.mode(), Mode::Edit);
         }
-    }
-
-    // FR-MODE-06, D-18
-    #[test]
-    fn a_section_below_code_stays_a_section_as_it_is_typed() {
-        let mut state = open("f() @code\nx", 0);
-        state.update(Message::NewTypedBelow(Typed::Section));
-        typed(&mut state, "Run");
-        state.update(Message::StopEditing);
-        assert_eq!(lines(&state), ["f() @code", "x", "Run: @section"]);
-        assert_eq!(state.rows()[1].kind, BlockKind::Section);
-        assert_eq!(state.rows()[1].lines, ["Run"]);
     }
 
     // FR-NAV-03, FR-MODE-06
@@ -586,45 +546,6 @@ mod tests {
         state.update(Message::Collapse);
         state.update(Message::Delete);
         assert_eq!(focused(&state), "b");
-    }
-
-    // OQ-26
-    #[test]
-    fn deleting_the_block_between_two_notes_merges_them_and_says_so() {
-        let mut state = open("n\n- t\nm\n- u", 1);
-        state.update(Message::Delete);
-        assert_eq!(lines(&state), ["n", "m", "- u"]);
-        assert_eq!(state.rows()[0].lines, ["n", "m"]);
-        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
-        assert_eq!(
-            state.focus(),
-            Some(state.rows()[0].id),
-            "on the merged block"
-        );
-        state.update(Message::Undo);
-        assert_eq!(state.rows().len(), 4, "undo separates them again");
-        state.update(Message::Redo);
-        assert_eq!(state.focus(), Some(state.rows()[0].id));
-        let mut state = open("- x\nn\n- t\nm", 2);
-        state.update(Message::Delete);
-        assert_eq!(focused(&state), "n", "the merged block, wherever it is");
-    }
-
-    // OQ-26, editing.md §2
-    #[test]
-    fn backspace_on_an_emptied_task_between_notes_merges_them() {
-        let mut state = open("n\n- t\nm", 1);
-        state.update(Message::EditAtEnd);
-        backspace(&mut state);
-        backspace(&mut state);
-        assert_eq!(state.rows()[0].lines, ["n", "m"]);
-        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
-        assert_eq!(
-            shown(&state),
-            "n\nm|",
-            "the merged note is edited at its end"
-        );
-        assert_eq!(state.focus(), Some(state.rows()[0].id));
     }
 
     // FR-NAV-03
@@ -805,12 +726,12 @@ mod tests {
         state.update(Message::NewAbove);
         typed(&mut state, "c");
         later(&mut state, 2);
-        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- c", ""]);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\tc", ""]);
         state.update(Message::StopEditing);
         state.update(Message::Undo);
-        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- ", ""]);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t", ""]);
         state.update(Message::Undo);
-        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- ", "\t"]);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t", "\t"]);
         state.update(Message::Undo);
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["Work:", "\t- a", "\t", "\t- b"]);
@@ -913,28 +834,6 @@ mod tests {
         );
     }
 
-    // OQ-26
-    #[test]
-    fn a_move_that_puts_notes_together_merges_them_and_says_so() {
-        let mut state = open("n\n- t\nm\n- u", 2);
-        state.update(Message::MoveUp);
-        assert_eq!(lines(&state), ["n", "m", "- t", "- u"]);
-        assert_eq!(state.rows()[0].lines, ["n", "m"]);
-        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
-        assert_eq!(
-            state.focus(),
-            Some(state.rows()[0].id),
-            "on the merged block"
-        );
-        state.update(Message::Undo);
-        assert_eq!(state.rows().len(), 4, "undo separates them again");
-        state.update(Message::Redo);
-        assert_eq!(state.focus(), Some(state.rows()[0].id));
-        let mut state = open("- t\nn\n- u", 1);
-        state.update(Message::MoveDown);
-        assert_eq!(state.notice(), None, "nothing merged");
-    }
-
     // FR-OPS-02, editing.md §2
     #[test]
     fn tab_and_shift_tab_keep_editing_as_one_session() {
@@ -970,63 +869,6 @@ mod tests {
         assert_eq!(lines(&state), ["- a", "- "]);
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["- a"]);
-    }
-
-    // OQ-26, editing.md §2
-    #[test]
-    fn a_block_being_edited_that_merges_into_a_note_goes_on_being_edited_whole() {
-        let mut state = open("P:\n\tn\nm", 2);
-        state.update(Message::EditAtEnd);
-        typed(&mut state, "!");
-        state.update(Message::Indent);
-        assert_eq!(lines(&state), ["P:", "\tn", "\tm!"]);
-        assert_eq!(state.mode(), Mode::Edit);
-        assert_eq!(shown(&state), "n\nm!|");
-        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
-        assert_eq!(state.focus(), Some(state.rows()[1].id));
-        typed(&mut state, "?");
-        state.update(Message::StopEditing);
-        assert_eq!(lines(&state), ["P:", "\tn", "\tm!?"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["P:", "\tn", "\tm!"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["P:", "\tn", "\tm"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["P:", "\tn", "m"]);
-    }
-
-    // OQ-26, editing.md §2
-    #[test]
-    fn the_caret_stays_on_its_line_when_spaces_before_tags_are_dropped_by_merging() {
-        for next in ["é", "n"] {
-            let mut state = open(&format!("P:\n\tm @x\n{next}"), 1);
-            state.update(Message::EditAtEnd);
-            typed(&mut state, "  ");
-            state.update(Message::Outdent);
-            typed(&mut state, "z");
-            assert_eq!(shown(&state), format!("mz|\n{next}"));
-        }
-    }
-
-    // OQ-26, editing.md §2
-    #[test]
-    fn the_caret_on_a_later_line_of_a_merging_note_stays_on_that_line() {
-        let mut state = open("P:\n\tn\nm\no", 2);
-        state.update(Message::EditAtEnd);
-        state.update(Message::Indent);
-        typed(&mut state, "!");
-        assert_eq!(shown(&state), "n\nm\no!|");
-    }
-
-    // OQ-26, editing.md §2
-    #[test]
-    fn a_block_being_edited_that_a_note_joins_goes_on_being_edited_whole() {
-        let mut state = open("P:\n\tm\nn", 1);
-        state.update(Message::EditAtEnd);
-        state.update(Message::Outdent);
-        assert_eq!(state.rows()[1].lines, ["m", "n"]);
-        assert_eq!(shown(&state), "m|\nn");
-        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
     }
 
     // FR-OPS-03

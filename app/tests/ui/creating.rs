@@ -130,18 +130,13 @@ fn dd_and_delete_remove_a_block_with_its_subtree_and_z_brings_it_back() {
     assert_eq!(saved(&mut app), GROCERIES);
 }
 
-// OQ-26
+// D-43
 #[test]
-fn deleting_the_block_between_two_notes_says_they_merged() {
+fn deleting_the_block_between_two_text_lines_leaves_them_apart() {
     let mut app = Harness::with_text("One note\n- task\nAnother note\n", 200, 6);
     app.type_keys("jdd");
     assert_eq!(outline_rows(&mut app)[..2], ["One note", "Another note"]);
-    assert_eq!(focused_rows(&mut app), ["One note", "Another note"]);
-    assert!(
-        status_line(&mut app).ends_with(" · Notes merged"),
-        "{}",
-        status_line(&mut app)
-    );
+    assert_eq!(focused_rows(&mut app), ["Another note"]);
 }
 
 // file-format §3.1

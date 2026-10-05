@@ -13,7 +13,6 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+Enter` | Toggle done | `x` |
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
   | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`; `Z` in navigate mode (legacy sends `Ctrl+Z`, which undoes) |
-  | `Shift+Enter` (edit mode) | Line break | `Ctrl+J`, `Alt+Enter` (legacy sends `Enter`) |
   | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
   | Menu key | Context menu | `\`, `Shift+F10` |
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
@@ -147,8 +146,9 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Command | Keys |
 |---|---|
 | End editing | `Esc` |
-| End editing and create the next block | `Enter` (code blocks: inserts a line break) |
-| Line break in a note or code block | `Shift+Enter`, `Ctrl+J`, `Alt+Enter` |
+| End editing and create the next block | `Enter` |
+| End editing and edit the previous / next visible block that is not a divider, at the same column (D-43) | `↑` / `↓` |
+| Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |

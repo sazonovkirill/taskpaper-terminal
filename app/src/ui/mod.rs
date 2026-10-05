@@ -6,7 +6,7 @@ pub mod keymap;
 pub mod layout;
 pub mod widgets;
 
-use std::{ops::Range, path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration};
 
 use crossterm::event::Event;
 use jiff::civil::Date;
@@ -103,14 +103,11 @@ impl Tui {
             return;
         };
         let paging = matches!(message, Message::PageDown { .. } | Message::PageUp { .. });
-        let before = self.focused_lines().map(|lines| lines.start);
+        let before = self.focused_index();
         self.send(message, now);
         // A page motion scrolls the view with the focus, so the focused row keeps its place on
         // screen instead of only being dragged into view.
-        if paging
-            && let (Some(before), Some(after)) =
-                (before, self.focused_lines().map(|lines| lines.start))
-        {
+        if paging && let (Some(before), Some(after)) = (before, self.focused_index()) {
             self.scroll = (self.scroll + after).saturating_sub(before);
         }
     }
@@ -230,9 +227,9 @@ impl Tui {
         self.page_rows = usize::from(outline.height);
         self.scroll = layout::scroll_offset(
             self.scroll,
-            self.focused_lines().unwrap_or_default(),
+            focused.unwrap_or_default(),
             self.page_rows,
-            rows.iter().map(|row| row.lines.len()).sum(),
+            rows.len(),
         );
         let editor = self.state.editor();
         frame.render_widget(
@@ -244,15 +241,15 @@ impl Tui {
         );
         // The conflict prompt covers the outline, caret included.
         if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
-            && let Some(row) = focused.and_then(|index| rows.get(index))
-            && let Some(start) = self.focused_lines().map(|lines| lines.start)
+            && let Some(index) = focused
+            && let Some(row) = rows.get(index)
         {
             let text_width = outline.width.saturating_sub(widgets::GUTTER_WIDTH);
-            let (_, (column, line)) = widgets::editor_lines(row, editor, usize::from(text_width));
+            let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
             let x = u16::try_from(column)
                 .unwrap_or(u16::MAX)
                 .min(text_width.saturating_sub(1));
-            let y = u16::try_from((start + line).saturating_sub(self.scroll)).unwrap_or(u16::MAX);
+            let y = u16::try_from(index.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
             frame.set_cursor_position((
                 outline.x.saturating_add(widgets::GUTTER_WIDTH + x),
                 outline.y.saturating_add(y),
@@ -289,10 +286,6 @@ impl Tui {
             self.state.confirming_quit(),
             self.state.notice(),
         ));
-        if self.state.editor().is_some_and(|editor| editor.splits) {
-            spans.push(" · ".into());
-            spans.push(widgets::split_hint());
-        }
         frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a
         // long path rather than the other way round.
@@ -300,15 +293,6 @@ impl Tui {
         if !pending.is_empty() {
             frame.render_widget(Line::from(format!(" {pending}")).right_aligned(), area);
         }
-    }
-
-    /// The screen lines of the outline that the focused block takes.
-    fn focused_lines(&self) -> Option<Range<usize>> {
-        let rows = self.state.rows();
-        let index = self.focused_index()?;
-        let start = rows.iter().take(index).map(|row| row.lines.len()).sum();
-        let height = rows.get(index)?.lines.len();
-        Some(start..start + height)
     }
 
     /// The position of the focused row among the outline's rows.

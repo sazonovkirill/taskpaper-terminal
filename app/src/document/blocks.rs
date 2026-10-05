@@ -1,54 +1,47 @@
-//! Blocks, what the user navigates, derived from the line tree
-//! ([data-model.md §3](../../../docs/specs/data-model.md#3-blocks)).
+//! Blocks, what the user navigates: every line that is not a special node is one block, whose
+//! type is derived from its text ([data-model.md §3](../../../docs/specs/data-model.md#3-blocks)).
 
 use super::model::{Document, Item, ItemId, ItemKind};
 
-/// The type of a block (FR-BLK-01–07).
+/// The type of a block (FR-BLK-01–04, FR-BLK-06–07).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
     /// A project line.
     Project,
     /// A task line.
     Task,
-    /// A run of plain note lines.
-    Note,
+    /// A line of any other text, blank lines included.
+    Text,
     /// A line tagged `@section`.
     Section,
-    /// A note run whose first line carries `@code`.
-    Code,
     /// A line tagged `@url`.
     Url,
-    /// A note line reading `---`.
+    /// A text line reading `---`.
     Divider,
 }
 
-/// One block: a line, or a run of consecutive sibling note lines.
+/// One block: a line of the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     id: ItemId,
-    last_line: ItemId,
-    lines: Vec<ItemId>,
     kind: BlockKind,
     done: bool,
 }
 
 impl Block {
-    /// The block's id: the id of its first line.
+    /// The block of the line `item`, whose id is `id`.
+    fn of(id: ItemId, item: &Item) -> Self {
+        Self {
+            id,
+            kind: kind(item),
+            done: has_tag(item, "done"),
+        }
+    }
+
+    /// The block's id: the id of its line.
     #[must_use]
     pub fn id(&self) -> ItemId {
         self.id
-    }
-
-    /// Its lines in order.
-    #[must_use]
-    pub fn lines(&self) -> &[ItemId] {
-        &self.lines
-    }
-
-    /// The line whose children are the block's children.
-    #[must_use]
-    pub fn last_line(&self) -> ItemId {
-        self.last_line
     }
 
     /// Its type.
@@ -57,152 +50,41 @@ impl Block {
         self.kind
     }
 
-    /// Whether any of its lines carries `@done`, with or without a date (D-17).
+    /// Whether its line carries `@done`, with or without a date (D-17).
     #[must_use]
     pub fn done(&self) -> bool {
         self.done
     }
 }
 
-/// The blocks formed by the children of the line `parent` (or the root), in order.
-/// Special nodes (`@hidden` lines and their subtrees) form no block and never join a run.
+/// The blocks formed by the children of the line `parent` (or the root), in order. Special nodes
+/// (`@hidden` lines and their subtrees) form no block.
 #[must_use]
 pub fn children(document: &Document, parent: ItemId) -> Vec<Block> {
-    let lines: Vec<(ItemId, &Item)> = document
+    document
         .get(parent)
         .map(Item::children)
         .unwrap_or_default()
         .iter()
         .filter_map(|&id| Some((id, document.get(id)?)))
         .filter(|(_, item)| !is_special(item))
-        .collect();
-    let mut blocks = Vec::new();
-    let mut rest = lines.as_slice();
-    while let Some(((first_id, first), after)) = rest.split_first() {
-        let code = first.kind() == ItemKind::Note && has_tag(first, "code");
-        let mut run = vec![(*first_id, *first)];
-        rest = after;
-        if code || is_plain_note(first) {
-            while let Some(((id, item), after)) = rest.split_first()
-                && run
-                    .last()
-                    .is_some_and(|(_, last)| last.children().is_empty())
-                && joins_run(item, code)
-            {
-                run.push((*id, *item));
-                rest = after;
-            }
-        }
-        blocks.push(run_block((*first_id, first), &run, code));
-    }
-    blocks
+        .map(|(id, item)| Block::of(id, item))
+        .collect()
 }
 
-/// The block whose first line is `id`, or `None` when no block starts there.
+/// The block of the line `id`, or `None` for the root, a special node or a line not in
+/// `document`.
 #[must_use]
 pub fn block(document: &Document, id: ItemId) -> Option<Block> {
-    let parent = document.get(id)?.parent()?;
-    children(document, parent)
-        .into_iter()
-        .find(|block| block.id == id)
-}
-
-/// The block that has the line `id` among its lines, or `None` when no block does.
-#[must_use]
-pub fn holding(document: &Document, id: ItemId) -> Option<Block> {
-    let parent = document.get(id)?.parent()?;
-    children(document, parent)
-        .into_iter()
-        .find(|block| block.lines.contains(&id))
-}
-
-/// The block of type `kind` that `lines`, consecutive sibling lines, make when they are kept
-/// together as one run, as edit mode keeps a block's lines until editing ends (OQ-27); `None`
-/// without lines.
-#[must_use]
-pub fn joined(document: &Document, lines: &[ItemId], kind: BlockKind) -> Option<Block> {
-    Some(Block {
-        id: *lines.first()?,
-        last_line: *lines.last()?,
-        lines: lines.to_vec(),
-        kind,
-        done: lines
-            .iter()
-            .filter_map(|&id| document.get(id))
-            .any(|item| has_tag(item, "done")),
-    })
+    let item = document.get(id)?;
+    item.parent()?;
+    (!is_special(item)).then(|| Block::of(id, item))
 }
 
 /// The block whose children include the block `id`, or `None` at the top level.
 #[must_use]
 pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
-    let line = document.get(id)?.parent()?;
-    let above = document.get(line)?.parent()?;
-    children(document, above)
-        .into_iter()
-        .find(|block| block.last_line == line)
-}
-
-/// Whether a blank line without children put at `index` among the children of the line `parent`
-/// would join the note or code run before it or the note run after it, becoming part of that
-/// block (D-2, D-18).
-#[must_use]
-pub fn blank_line_joins_run(document: &Document, parent: ItemId, index: usize) -> bool {
-    let (before, after) = shown_neighbors(document, parent, index);
-    ends_run(
-        document,
-        parent,
-        before,
-        &[BlockKind::Note, BlockKind::Code],
-    ) || after.is_some_and(|(_, item)| joins_run(item, false))
-}
-
-/// Whether a note line without children, such as a section, put at `index` among the children
-/// of the line `parent` would join the code run before it, which keeps every note line (D-18).
-#[must_use]
-pub fn note_line_joins_code(document: &Document, parent: ItemId, index: usize) -> bool {
-    let (before, _) = shown_neighbors(document, parent, index);
-    ends_run(document, parent, before, &[BlockKind::Code])
-}
-
-/// A line of the document with its id.
-type Line<'a> = (ItemId, &'a Item);
-
-/// The lines that are not special nodes nearest before and after `index` among the children of
-/// the line `parent`.
-fn shown_neighbors(
-    document: &Document,
-    parent: ItemId,
-    index: usize,
-) -> (Option<Line<'_>>, Option<Line<'_>>) {
-    let shown = |&id: &ItemId| {
-        document
-            .get(id)
-            .filter(|item| !is_special(item))
-            .map(|item| (id, item))
-    };
-    let lines = document.get(parent).map(Item::children).unwrap_or_default();
-    let (before, after) = lines.split_at(index.min(lines.len()));
-    (
-        before.iter().rev().find_map(shown),
-        after.iter().find_map(shown),
-    )
-}
-
-/// Whether `line`, a child of the line `parent`, ends a run of one of `kinds` that a line put
-/// right after it would continue: it has no children and is the last line of such a block.
-fn ends_run(
-    document: &Document,
-    parent: ItemId,
-    line: Option<Line<'_>>,
-    kinds: &[BlockKind],
-) -> bool {
-    line.is_some_and(|(id, item)| {
-        item.children().is_empty()
-            && children(document, parent)
-                .iter()
-                .any(|block| block.last_line == id && kinds.contains(&block.kind))
-    })
+    block(document, document.get(id)?.parent()?)
 }
 
 /// Whether `item` starts a special node, which with its subtree forms no block (FR-SPC-01).
@@ -211,55 +93,21 @@ pub fn is_special(item: &Item) -> bool {
     has_tag(item, "hidden")
 }
 
-/// Whether `item` continues a run: any note line inside code, else a plain note line;
-/// a line carrying `@code` always starts a new run.
-fn joins_run(item: &Item, code: bool) -> bool {
-    !has_tag(item, "code")
-        && if code {
-            item.kind() == ItemKind::Note
-        } else {
-            is_plain_note(item)
-        }
-}
-
-/// The block made of `run`, whose first line is `first`; its type is checked in data-model §3's order.
-fn run_block((id, first): (ItemId, &Item), run: &[(ItemId, &Item)], code: bool) -> Block {
-    let kind = if code {
-        BlockKind::Code
-    } else if is_divider(first) {
+/// The type of the line `item`, checked in data-model §3's order.
+fn kind(item: &Item) -> BlockKind {
+    if item.kind() == ItemKind::Note && item.display_text() == "---" {
         BlockKind::Divider
-    } else if has_tag(first, "section") {
+    } else if has_tag(item, "section") {
         BlockKind::Section
-    } else if has_tag(first, "url") {
+    } else if has_tag(item, "url") {
         BlockKind::Url
     } else {
-        match first.kind() {
+        match item.kind() {
             ItemKind::Task => BlockKind::Task,
             ItemKind::Project => BlockKind::Project,
-            ItemKind::Note => BlockKind::Note,
+            ItemKind::Note => BlockKind::Text,
         }
-    };
-    let lines: Vec<ItemId> = run.iter().map(|&(line, _)| line).collect();
-    Block {
-        id,
-        last_line: lines.last().copied().unwrap_or(id),
-        lines,
-        kind,
-        done: run.iter().any(|(_, item)| has_tag(item, "done")),
     }
-}
-
-/// A note line that is not a divider, section or URL.
-fn is_plain_note(item: &Item) -> bool {
-    item.kind() == ItemKind::Note
-        && !is_divider(item)
-        && !has_tag(item, "section")
-        && !has_tag(item, "url")
-}
-
-/// A note line whose text without tags is exactly `---`.
-fn is_divider(item: &Item) -> bool {
-    item.kind() == ItemKind::Note && item.display_text() == "---"
 }
 
 fn has_tag(item: &Item, name: &str) -> bool {
@@ -271,18 +119,14 @@ mod tests {
     use super::*;
     use crate::document::format::parse;
 
-    /// Each block below `parent`, recursively, as `depth kind [texts]` plus ` done` when done.
+    /// Each block below `parent`, recursively, as `depth kind text` plus ` done` when done.
     fn outline(document: &Document) -> Vec<String> {
         fn walk(document: &Document, parent: ItemId, depth: usize, out: &mut Vec<String>) {
             for block in children(document, parent) {
-                let texts: Vec<&str> = block
-                    .lines()
-                    .iter()
-                    .map(|&id| document.get(id).unwrap().text())
-                    .collect();
+                let text = document.get(block.id()).unwrap().text();
                 let done = if block.done() { " done" } else { "" };
-                out.push(format!("{depth} {:?} {texts:?}{done}", block.kind()));
-                walk(document, block.last_line(), depth + 1, out);
+                out.push(format!("{depth} {:?} {text:?}{done}", block.kind()));
+                walk(document, block.id(), depth + 1, out);
             }
         }
         let mut out = Vec::new();
@@ -295,147 +139,89 @@ mod tests {
         assert_eq!(outline(&parse(text)), expected, "blocks of {text:?}");
     }
 
+    // FR-BLK-01, FR-BLK-02, FR-BLK-04, FR-BLK-06, FR-BLK-07
     #[test]
-    fn single_lines_are_blocks_of_their_type() {
+    fn every_line_is_a_block_of_its_type() {
         check(
             "P:\n\t- t\n\tS @section\n\tL @url(https://x.y)\n\t---\n\tn",
             &[
-                r#"0 Project ["P:"]"#,
-                r#"1 Task ["- t"]"#,
-                r#"1 Section ["S @section"]"#,
-                r#"1 Url ["L @url(https://x.y)"]"#,
-                r#"1 Divider ["---"]"#,
-                r#"1 Note ["n"]"#,
+                r#"0 Project "P:""#,
+                r#"1 Task "- t""#,
+                r#"1 Section "S @section""#,
+                r#"1 Url "L @url(https://x.y)""#,
+                r#"1 Divider "---""#,
+                r#"1 Text "n""#,
             ],
         );
     }
 
+    // D-43
     #[test]
-    fn consecutive_sibling_notes_form_one_block_with_blank_lines() {
+    fn consecutive_text_lines_and_blank_lines_are_blocks_of_their_own() {
         check(
-            "a\n\nb\n- t\nc",
+            "a\n\nb\n\tc\n- t",
             &[
-                r#"0 Note ["a", "", "b"]"#,
-                r#"0 Task ["- t"]"#,
-                r#"0 Note ["c"]"#,
+                r#"0 Text "a""#,
+                r#"0 Text """#,
+                r#"0 Text "b""#,
+                r#"1 Text "c""#,
+                r#"0 Task "- t""#,
             ],
         );
     }
 
+    // D-43
     #[test]
-    fn a_note_with_children_ends_its_run_and_owns_them() {
+    fn code_is_text_whose_tag_changes_nothing() {
         check(
-            "a\nb\n\tchild\nc",
+            "f() @code\n- t @code\n--- @code",
             &[
-                r#"0 Note ["a", "b"]"#,
-                r#"1 Note ["child"]"#,
-                r#"0 Note ["c"]"#,
-            ],
-        );
-    }
-
-    #[test]
-    fn dividers_sections_and_urls_end_a_note_run() {
-        check(
-            "a\n---\nb\nS @section\nc\nL @url(u)\nd",
-            &[
-                r#"0 Note ["a"]"#,
-                r#"0 Divider ["---"]"#,
-                r#"0 Note ["b"]"#,
-                r#"0 Section ["S @section"]"#,
-                r#"0 Note ["c"]"#,
-                r#"0 Url ["L @url(u)"]"#,
-                r#"0 Note ["d"]"#,
+                r#"0 Text "f() @code""#,
+                r#"0 Task "- t @code""#,
+                r#"0 Divider "--- @code""#,
             ],
         );
     }
 
     #[test]
     fn divider_ignores_tags_but_not_other_text() {
-        check("--- @red", &[r#"0 Divider ["--- @red"]"#]);
-        check("a\n----", &[r#"0 Note ["a", "----"]"#]);
-        check("- ---", &[r#"0 Task ["- ---"]"#]);
-    }
-
-    #[test]
-    fn code_line_starts_a_new_run() {
-        check(
-            "a\nx @code\ny\nz @code\nw",
-            &[
-                r#"0 Note ["a"]"#,
-                r#"0 Code ["x @code", "y"]"#,
-                r#"0 Code ["z @code", "w"]"#,
-            ],
-        );
-    }
-
-    #[test]
-    fn code_run_keeps_dividers_sections_and_urls() {
-        check(
-            "f() @code\n---\nS @section\nL @url(u)\n\nend",
-            &[r#"0 Code ["f() @code", "---", "S @section", "L @url(u)", "", "end"]"#],
-        );
-    }
-
-    #[test]
-    fn code_run_ends_before_tasks_and_projects_and_after_children() {
-        check(
-            "x @code\n- t\ny @code\nP:\nz @code\nk\n\tc\nl",
-            &[
-                r#"0 Code ["x @code"]"#,
-                r#"0 Task ["- t"]"#,
-                r#"0 Code ["y @code"]"#,
-                r#"0 Project ["P:"]"#,
-                r#"0 Code ["z @code", "k"]"#,
-                r#"1 Note ["c"]"#,
-                r#"0 Note ["l"]"#,
-            ],
-        );
-    }
-
-    #[test]
-    fn code_tag_on_a_task_or_project_does_not_make_code() {
-        check(
-            "- t @code\nP: @code",
-            &[r#"0 Task ["- t @code"]"#, r#"0 Project ["P: @code"]"#],
-        );
-    }
-
-    #[test]
-    fn code_tag_beats_divider_and_section() {
-        check("--- @code", &[r#"0 Code ["--- @code"]"#]);
-        check(
-            "S @section @code\nx",
-            &[r#"0 Code ["S @section @code", "x"]"#],
-        );
+        check("--- @red", &[r#"0 Divider "--- @red""#]);
+        check("----", &[r#"0 Text "----""#]);
+        check("- ---", &[r#"0 Task "- ---""#]);
     }
 
     #[test]
     fn section_and_url_tags_win_over_task_and_project() {
         check(
-            "- t @section\nP: @url(u)",
-            &[r#"0 Section ["- t @section"]"#, r#"0 Url ["P: @url(u)"]"#],
-        );
-    }
-
-    #[test]
-    fn special_nodes_are_skipped_but_still_end_a_run() {
-        check(
-            "a\nb\n\tC @hidden @comments\n\t\tcomment\nc\nX @hidden\nd",
-            &[r#"0 Note ["a", "b"]"#, r#"0 Note ["c", "d"]"#],
-        );
-    }
-
-    #[test]
-    fn done_comes_from_any_line_of_the_block_but_not_special_nodes() {
-        check(
-            "- a @done\n- b @done(2026-10-04)\n- c @done(soon)\nn\nm @done\n- d\n\tx @hidden @done",
+            "- t @section\nP: @url(u)\nS @section @url(u)",
             &[
-                r#"0 Task ["- a @done"] done"#,
-                r#"0 Task ["- b @done(2026-10-04)"] done"#,
-                r#"0 Task ["- c @done(soon)"] done"#,
-                r#"0 Note ["n", "m @done"] done"#,
-                r#"0 Task ["- d"]"#,
+                r#"0 Section "- t @section""#,
+                r#"0 Url "P: @url(u)""#,
+                r#"0 Section "S @section @url(u)""#,
+            ],
+        );
+    }
+
+    // FR-SPC-01
+    #[test]
+    fn special_nodes_and_their_subtrees_are_skipped() {
+        check(
+            "a\n\tC @hidden @comments\n\t\tcomment\nX @hidden\nd",
+            &[r#"0 Text "a""#, r#"0 Text "d""#],
+        );
+    }
+
+    // D-17
+    #[test]
+    fn done_comes_from_the_line_with_or_without_a_date() {
+        check(
+            "- a @done\n- b @done(2026-10-04)\n- c @done(soon)\nm @done\n- d",
+            &[
+                r#"0 Task "- a @done" done"#,
+                r#"0 Task "- b @done(2026-10-04)" done"#,
+                r#"0 Task "- c @done(soon)" done"#,
+                r#"0 Text "m @done" done"#,
+                r#"0 Task "- d""#,
             ],
         );
     }
@@ -451,19 +237,17 @@ mod tests {
 
     #[test]
     fn finds_a_block_and_its_parent_by_id() {
-        let document = parse("P:\n\ta\n\tb\n\t\t- t\n- u");
+        let document = parse("P:\n\ta\n\t\t- t\n\th @hidden\n- u");
         let top = children(&document, document.root());
-        let notes = &children(&document, top[0].last_line())[0];
-        let task = &children(&document, notes.last_line())[0];
-        assert_eq!(block(&document, notes.id()).as_ref(), Some(notes));
-        assert_eq!(
-            block(&document, notes.last_line()),
-            None,
-            "not a first line"
-        );
-        assert_eq!(parent(&document, task.id()).as_ref(), Some(notes));
-        assert_eq!(parent(&document, notes.id()).as_ref(), Some(&top[0]));
+        let note = &children(&document, top[0].id())[0];
+        let task = &children(&document, note.id())[0];
+        assert_eq!(block(&document, note.id()).as_ref(), Some(note));
+        assert_eq!(block(&document, task.id()).as_ref(), Some(task));
+        assert_eq!(parent(&document, task.id()).as_ref(), Some(note));
+        assert_eq!(parent(&document, note.id()).as_ref(), Some(&top[0]));
         assert_eq!(parent(&document, top[1].id()), None);
+        let hidden = document.get(top[0].id()).unwrap().children()[1];
+        assert_eq!(block(&document, hidden), None, "a special node");
         assert_eq!(block(&document, document.root()), None);
         assert_eq!(parent(&document, document.root()), None);
     }
@@ -477,133 +261,5 @@ mod tests {
             .map(|(id, _)| is_special(document.get(id).unwrap()))
             .collect();
         assert_eq!(special, [true, true, false, false, true]);
-    }
-
-    #[test]
-    fn finds_the_block_holding_any_of_its_lines() {
-        let document = parse("P:\n\ta\n\tb\n\th @hidden\n- u");
-        let top = children(&document, document.root());
-        let notes = &children(&document, top[0].last_line())[0];
-        assert_eq!(holding(&document, notes.id()).as_ref(), Some(notes));
-        assert_eq!(holding(&document, notes.last_line()).as_ref(), Some(notes));
-        assert_eq!(holding(&document, top[1].id()).as_ref(), Some(&top[1]));
-        let hidden = document.get(top[0].last_line()).unwrap().children()[2];
-        assert_eq!(holding(&document, hidden), None, "a special node");
-        assert_eq!(holding(&document, document.root()), None);
-    }
-
-    /// Whether a blank line at `index` under the line reading `parent` (the root when empty)
-    /// joins a run.
-    #[track_caller]
-    fn joins(text: &str, parent: &str, index: usize) -> bool {
-        let document = parse(text);
-        let parent = document
-            .descendants(document.root())
-            .map(|(id, _)| id)
-            .find(|&id| document.get(id).unwrap().text() == parent)
-            .unwrap_or(document.root());
-        blank_line_joins_run(&document, parent, index)
-    }
-
-    // D-2, OQ-26
-    #[test]
-    fn a_blank_line_joins_the_note_run_before_or_after_it() {
-        assert!(joins("a\n- t", "", 1), "after a note");
-        assert!(joins("- t\na", "", 1), "before a note");
-        assert!(joins("a\nb", "", 1), "inside a run");
-        assert!(
-            joins("P:\n\ta", "P:", 0),
-            "as the first child before a note"
-        );
-        assert!(!joins("- t\n- u", "", 1));
-        assert!(!joins("P:\n- u", "", 1));
-        assert!(!joins("", "", 0), "nothing to join");
-        assert!(!joins("P:", "P:", 0));
-    }
-
-    // D-2, D-18, OQ-26
-    #[test]
-    fn a_blank_line_joins_code_before_it_but_not_after_it() {
-        assert!(
-            joins("f() @code\n---\n- t", "", 2),
-            "code ending in a divider"
-        );
-        assert!(!joins("- t\nf() @code", "", 1), "a @code line starts a run");
-    }
-
-    // D-2
-    #[test]
-    fn a_blank_line_does_not_join_a_note_with_children_or_other_types() {
-        assert!(!joins("a\n\tc\n- t", "", 1), "the run ends after children");
-        assert!(
-            joins("- t\na\n\tc", "", 1),
-            "but a note after it with children"
-        );
-        for other in ["---", "S @section", "L @url(u)"] {
-            assert!(!joins(&format!("{other}\n{other}"), "", 1), "{other}");
-        }
-    }
-
-    // D-18
-    #[test]
-    fn a_note_line_joins_only_the_code_run_before_it() {
-        let joins_code = |text: &str, index| {
-            let document = parse(text);
-            note_line_joins_code(&document, document.root(), index)
-        };
-        assert!(joins_code("f() @code\nx", 2));
-        assert!(
-            joins_code("f() @code\nX @hidden", 2),
-            "across special nodes"
-        );
-        assert!(
-            !joins_code("f() @code\n\tx", 1),
-            "the run ends after children"
-        );
-        assert!(!joins_code("a\n- t", 1), "a plain note run");
-        assert!(!joins_code("- t\nf() @code", 1), "nor the code after it");
-    }
-
-    // FR-SPC-01
-    #[test]
-    fn a_blank_line_joins_across_special_nodes() {
-        assert!(joins("a\nX @hidden\n- t", "", 2));
-        assert!(joins("- t\nX @hidden\na", "", 1));
-        assert!(!joins("- t\nX @hidden\n- u", "", 2));
-    }
-
-    #[test]
-    fn a_position_past_the_end_counts_as_the_end() {
-        assert!(joins("a", "", 5));
-    }
-
-    #[test]
-    fn block_ids_and_lines() {
-        let document = parse("a\nb\n- t");
-        let blocks = children(&document, document.root());
-        let root_lines = document.get(document.root()).unwrap().children().to_vec();
-        assert_eq!(blocks[0].id(), root_lines[0]);
-        assert_eq!(blocks[0].lines(), &root_lines[..2]);
-        assert_eq!(blocks[0].last_line(), root_lines[1]);
-        assert_eq!(blocks[1].id(), root_lines[2]);
-        assert_eq!(blocks[1].last_line(), root_lines[2]);
-    }
-
-    // OQ-27
-    #[test]
-    fn lines_joined_into_one_block() {
-        let document = parse("a\n- b @done\nc");
-        let lines = document.get(document.root()).unwrap().children().to_vec();
-        let block = joined(&document, &lines, BlockKind::Note).unwrap();
-        assert_eq!((block.id(), block.last_line()), (lines[0], lines[2]));
-        assert_eq!(block.lines(), &lines[..]);
-        assert_eq!(block.kind(), BlockKind::Note);
-        assert!(block.done());
-        assert!(
-            !joined(&document, &lines[..1], BlockKind::Code)
-                .unwrap()
-                .done()
-        );
-        assert_eq!(joined(&document, &[], BlockKind::Note), None);
     }
 }

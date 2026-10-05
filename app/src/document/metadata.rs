@@ -1,5 +1,5 @@
-//! Block metadata commands as line edits: which tags a command writes or removes on which lines
-//! of a block ([data-model.md §3–4](../../../docs/specs/data-model.md#4-edits),
+//! Block metadata commands as line edits: which tags a command writes or removes on a block's
+//! line ([data-model.md §3–4](../../../docs/specs/data-model.md#4-edits),
 //! [editing.md §5](../../../docs/specs/editing.md#5-block-commands)).
 
 use jiff::civil::Date;
@@ -7,50 +7,37 @@ use jiff::civil::Date;
 use super::{
     blocks::Block,
     format::{canonical::PLACEHOLDER, tags},
-    model::{Document, ItemId, Op},
+    model::{Document, Op},
 };
 
-/// The ops that complete `block` with `@done(today)` on its first line, or, when it is done
-/// already, remove `@done` with any value from every line that carries it (FR-DONE-01, D-4).
+/// The op that completes `block` with `@done(today)`, or, when it is done already, removes
+/// `@done` with any value (FR-DONE-01, D-4); `None` when the block is not in `document`.
 #[must_use]
-pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Vec<Op> {
-    let lines = block
-        .lines()
-        .iter()
-        .filter_map(|&id| Some((id, document.get(id)?.text())));
-    if block.done() {
-        lines
-            .filter_map(|(id, text)| set_text(id, text, kept(text, tags::remove(text, DONE))))
-            .collect()
+pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Option<Op> {
+    let before = document.get(block.id())?.text();
+    let after = if block.done() {
+        kept(tags::remove(before, DONE))
     } else {
-        lines
-            .take(1)
-            .filter_map(|(id, text)| set_text(id, text, tags::set(text, DONE, &today.to_string())))
-            .collect()
-    }
+        tags::set(before, DONE, &today.to_string())
+    };
+    Some(Op::SetText {
+        id: block.id(),
+        before: before.to_owned(),
+        after,
+    })
 }
 
 /// The tag that marks a block completed.
 const DONE: &str = "done";
 
-/// `after`, or the placeholder when an edit emptied `before`, because an empty line would be read
-/// back elsewhere when it has children or ends the file below the top level; a line that was
-/// blank stays blank.
-fn kept(before: &str, after: String) -> String {
-    if after.is_empty() && !before.is_empty() {
+/// `after`, or the placeholder when the edit emptied the line, because an empty line would be
+/// read back elsewhere when it has children or ends the file below the top level.
+fn kept(after: String) -> String {
+    if after.is_empty() {
         PLACEHOLDER.to_owned()
     } else {
         after
     }
-}
-
-/// The op that changes line `id` from `before` to `after`, or `None` when they are the same.
-fn set_text(id: ItemId, before: &str, after: String) -> Option<Op> {
-    (before != after).then(|| Op::SetText {
-        id,
-        before: before.to_owned(),
-        after,
-    })
 }
 
 #[cfg(test)]
@@ -70,12 +57,12 @@ mod tests {
             .into_iter()
             .next()
             .unwrap();
-        let ops = toggle_done(&document, &block, TODAY);
+        let op = toggle_done(&document, &block, TODAY).unwrap();
         assert!(
-            ops.iter().all(|op| matches!(op, Op::SetText { .. })),
-            "only text changes: {ops:?}"
+            matches!(op, Op::SetText { .. }),
+            "only text changes: {op:?}"
         );
-        let mut transaction = crate::document::Transaction::new(ops, (), ());
+        let mut transaction = crate::document::Transaction::new(vec![op], (), ());
         document.apply(&mut transaction).unwrap();
         document
             .descendants(document.root())
@@ -102,29 +89,24 @@ mod tests {
         assert_eq!(toggled("Inbox: @done(someday)"), ["Inbox:"]);
     }
 
-    // FR-DONE-01
+    // FR-DONE-01, D-40
     #[test]
-    fn a_note_block_is_completed_on_its_first_line() {
-        assert_eq!(toggled("a\nb\n- c"), ["a @done(2026-10-05)", "b", "- c"]);
-    }
-
-    // FR-DONE-01, data-model §3
-    #[test]
-    fn a_note_block_loses_done_on_every_line_that_carries_it() {
-        assert_eq!(toggled("a\nb @done\nc @x @done(1)"), ["a", "b", "c @x"]);
+    fn a_text_block_is_completed_on_its_own_line() {
+        assert_eq!(toggled("a\nb"), ["a @done(2026-10-05)", "b"]);
     }
 
     // file-format §3.1
     #[test]
     fn a_line_left_empty_gets_the_placeholder_so_the_outline_stays_canonical() {
         assert_eq!(toggled("@done\n\t- x"), ["…", "- x"]);
-        assert_eq!(toggled("a\n@done(1)\n\t- c"), ["a", "…", "- c"]);
         assert_eq!(toggled("@done"), ["…"]);
-        assert_eq!(
-            toggled("a @done\n\nb"),
-            ["a", "", "b"],
-            "blank lines stay blank"
-        );
+    }
+
+    #[test]
+    fn a_block_not_in_the_document_is_not_toggled() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(toggle_done(&parse("- a"), &stale, TODAY), None);
     }
 
     #[test]

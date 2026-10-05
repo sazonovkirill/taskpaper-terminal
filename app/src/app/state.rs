@@ -102,8 +102,6 @@ pub enum Notice {
         /// Why.
         reason: String,
     },
-    /// An edit left two note runs next to each other, which TaskPaper reads as one block (OQ-26).
-    NotesMerged,
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
@@ -112,14 +110,14 @@ pub enum Notice {
 /// One visible block of the outline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
-    /// The block this row shows: the id of its first line.
+    /// The block this row shows: the id of its line.
     pub id: ItemId,
     /// Depth below the top level, starting at 0.
     pub depth: usize,
     /// The block's type.
     pub kind: BlockKind,
-    /// The text of each of its lines, without tags; never empty.
-    pub lines: Vec<String>,
+    /// Its text without type syntax and tags.
+    pub text: String,
     /// Whether the block carries `@done`, with or without a value (D-17).
     pub done: bool,
     /// Whether a block above it is done, also one above the zoom; its own `@done` is `done`
@@ -246,7 +244,7 @@ impl State {
         self.zoom
     }
 
-    /// The text of the first line of each block from the top level down to the zoom block; empty
+    /// The text of each block from the top level down to the zoom block; empty
     /// at home (FR-NAV-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
@@ -294,12 +292,11 @@ impl State {
             id: block.id(),
             depth,
             kind: block.kind(),
-            lines: block
-                .lines()
-                .iter()
-                .filter_map(|&id| self.document.get(id))
+            text: self
+                .document
+                .get(block.id())
                 .map(Item::display_text)
-                .collect(),
+                .unwrap_or_default(),
             done: block.done(),
             inside_done,
             hidden_children: if !title && self.folds.contains(&block.id()) {
@@ -313,7 +310,7 @@ impl State {
 
     /// The zoom block, or `None` at home.
     pub(super) fn zoom_block(&self) -> Option<Block> {
-        blocks::block(&self.document, self.zoom?).and_then(|block| self.shown_block(block))
+        blocks::block(&self.document, self.zoom?)
     }
 
     /// Every block below the zoom in order with its depth; with `folded`, only those not hidden
@@ -321,29 +318,26 @@ impl State {
     pub(super) fn blocks(&self, folded: bool) -> Vec<(Block, usize)> {
         let top = self
             .zoom_block()
-            .map_or(self.document.root(), |block| block.last_line());
+            .map_or(self.document.root(), |block| block.id());
         let mut out = Vec::new();
         self.push_blocks(top, 0, folded, &mut out);
         out
     }
 
     fn push_blocks(&self, line: ItemId, depth: usize, folded: bool, out: &mut Vec<(Block, usize)>) {
-        for block in blocks::children(&self.document, line)
-            .into_iter()
-            .filter_map(|block| self.shown_block(block))
-        {
-            let last_line = block.last_line();
-            let open = !(folded && self.folds.contains(&block.id()));
+        for block in blocks::children(&self.document, line) {
+            let id = block.id();
+            let open = !(folded && self.folds.contains(&id));
             out.push((block, depth));
             if open {
-                self.push_blocks(last_line, depth + 1, folded, out);
+                self.push_blocks(id, depth + 1, folded, out);
             }
         }
     }
 
     /// The child blocks of `block`.
     pub(super) fn children(&self, block: &Block) -> Vec<Block> {
-        blocks::children(&self.document, block.last_line())
+        blocks::children(&self.document, block.id())
     }
 }
 
@@ -356,7 +350,7 @@ mod tests {
         state
             .rows()
             .into_iter()
-            .map(|row| (row.depth, row.kind, row.lines.join("|")))
+            .map(|row| (row.depth, row.kind, row.text))
             .collect()
     }
 
@@ -368,8 +362,8 @@ mod tests {
             [
                 (0, BlockKind::Project, "A".to_owned()),
                 (1, BlockKind::Task, "b".to_owned()),
-                (2, BlockKind::Note, "c".to_owned()),
-                (0, BlockKind::Note, "d".to_owned()),
+                (2, BlockKind::Text, "c".to_owned()),
+                (0, BlockKind::Text, "d".to_owned()),
             ]
         );
         let ids: Vec<_> = state
@@ -387,9 +381,9 @@ mod tests {
         );
     }
 
-    // FR-BLK-03, FR-SPC-01
+    // D-43, FR-SPC-01
     #[test]
-    fn note_runs_are_one_row_and_special_nodes_no_row() {
+    fn every_line_is_a_row_and_special_nodes_no_row() {
         let state = State::new(
             format::parse("P:\n\tone @x\n\n\ttwo\n\t\tC @hidden\n\t\t\tc\n\t\t- child\n\t--- @y"),
             None,
@@ -398,7 +392,9 @@ mod tests {
             summary(&state),
             [
                 (0, BlockKind::Project, "P".to_owned()),
-                (1, BlockKind::Note, "one||two".to_owned()),
+                (1, BlockKind::Text, "one".to_owned()),
+                (1, BlockKind::Text, String::new()),
+                (1, BlockKind::Text, "two".to_owned()),
                 (2, BlockKind::Task, "child".to_owned()),
                 (1, BlockKind::Divider, "---".to_owned()),
             ]
@@ -417,7 +413,7 @@ mod tests {
         let rows: Vec<_> = state
             .rows()
             .into_iter()
-            .map(|row| (row.lines.join("|"), row.done))
+            .map(|row| (row.text, row.done))
             .collect();
         assert_eq!(
             rows,
@@ -427,17 +423,18 @@ mod tests {
                 ("c".to_owned(), false),
                 ("P".to_owned(), true),
                 ("d".to_owned(), false),
-                ("n|m".to_owned(), true),
+                ("n".to_owned(), false),
+                ("m".to_owned(), true),
             ]
         );
     }
 
-    /// Each row's first line, whether it is done and whether it is inside a done block.
+    /// Each row's text, whether it is done and whether it is inside a done block.
     fn completion(state: &State) -> Vec<(String, bool, bool)> {
         state
             .rows()
             .into_iter()
-            .map(|row| (row.lines[0].clone(), row.done, row.inside_done))
+            .map(|row| (row.text, row.done, row.inside_done))
             .collect()
     }
 

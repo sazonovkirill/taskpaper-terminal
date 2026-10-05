@@ -39,11 +39,11 @@ fn shift_s_in_the_demo_adds_a_section_after_the_tasks_of_the_list() {
     app.settle();
     app.type_keys("j");
     shifted(&mut app, 'S');
-    assert_caret(&mut app, 4, 8);
+    assert_caret(&mut app, 4, 7);
     app.type_keys("Day trips");
     esc(&mut app);
     assert_eq!(
-        outline_rows(&mut app)[5..8],
+        outline_rows(&mut app)[4..7],
         ["  Lisbon travel guide", "  Day trips", "  Packing"]
     );
     assert_eq!(focused_rows(&mut app), ["  Day trips"]);

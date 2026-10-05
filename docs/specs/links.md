@@ -18,9 +18,9 @@ All four link to a stable identifier rather than to a title, so renames and move
 
 ## 2. Syntax
 
-**Target.** A linked block carries a hidden tag `@uid(ID)` on its first line. The tag is hidden and preserved like every other tag (FR-TAG-01, FR-DOC-03). It is not `@id`, because TaskPaper 3 reserves `@id`, `@text` and `@type` and treats them as plain text ([file-format.md §5](file-format.md#5-tags)).
+**Target.** A linked block carries a hidden tag `@uid(ID)` on its line. The tag is hidden and preserved like every other tag (FR-TAG-01, FR-DOC-03). It is not `@id`, because TaskPaper 3 reserves `@id`, `@text` and `@type` and treats them as plain text ([file-format.md §5](file-format.md#5-tags)).
 
-**Link.** `[[ID|Title]]` anywhere in a block's text, including notes and comments:
+**Link.** `[[ID|Title]]` anywhere in a block's text, including text blocks and comments:
 
 ```
 - Ship the release @uid(k3x9q2ab)

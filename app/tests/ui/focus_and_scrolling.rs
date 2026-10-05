@@ -271,7 +271,7 @@ fn a_two_row_terminal_scrolls_one_row_at_a_time() {
 
 // D-30, D-39
 #[test]
-fn every_line_of_the_focused_block_gets_a_brighter_band_that_keeps_its_colors() {
+fn the_focused_block_gets_a_brighter_band_that_keeps_its_colors() {
     let mut app = Harness::with_text("- a\nfirst\nsecond\n- b\n", 16, 7);
     let unfocused = app.render().buffer().clone();
     app.type_keys("j");
@@ -279,13 +279,9 @@ fn every_line_of_the_focused_block_gets_a_brighter_band_that_keeps_its_colors() 
     app.press(KeyCode::Enter, NONE);
     let edit = app.render().buffer().clone();
     for buffer in [&navigate, &edit] {
-        assert_eq!([line(buffer, 3), line(buffer, 4)], ["▎ first", "▎ second"]);
+        assert_eq!([line(buffer, 3), line(buffer, 4)], ["▎ first", "  second"]);
         for y in 2..6 {
-            let band = if (3..5).contains(&y) {
-                CURRENT_LINE
-            } else {
-                Color::Reset
-            };
+            let band = if y == 3 { CURRENT_LINE } else { Color::Reset };
             for x in 0..16 {
                 let (cell, before) = (&buffer[(x, y)], &unfocused[(x, y)]);
                 assert_eq!(cell.bg, band, "column {x}, row {y}");

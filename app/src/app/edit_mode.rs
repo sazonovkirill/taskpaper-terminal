@@ -1,20 +1,18 @@
-//! Edit mode: the focused block's text edited in place with the text keys, its lines written to
-//! the document as they are typed, refused where it would type a tag, kept together until editing
-//! ends, undone as one step and repaired when editing ends
-//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, FR-BLK-03, FR-BLK-05,
-//! OQ-23, OQ-24, OQ-25, OQ-27).
+//! Edit mode: the focused block's text edited in place with the text keys, written to the
+//! document as it is typed, refused where it would type a tag, undone as one step and repaired
+//! when editing ends ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03,
+//! OQ-24, OQ-25, OQ-27).
 
 use std::{mem, ops::Range};
 
 use super::{
-    Access, Notice, Restore, State,
+    Access, Notice, Restore, Row, State,
     structure::NewBlock,
     text_field::{TextEdit, TextField},
 };
 use crate::document::{
-    Block, BlockKind, Document, Item, ItemId, Op, Transaction, blocks,
-    format::{self, BlockLines, LineParts, canonical, tags},
-    structure,
+    Block, BlockKind, Document, ItemId, Op, Transaction, blocks,
+    format::{self, LineParts, canonical, tags},
 };
 
 /// Whether keys move between blocks or edit one block's text (FR-MODE-01).
@@ -31,8 +29,7 @@ pub enum Mode {
 pub struct Editor<'a> {
     /// The block being edited, which is the focused block.
     pub id: ItemId,
-    /// The text as typed so far: the block's text without its type syntax and tags, with `\n`
-    /// between its lines.
+    /// The text as typed so far: the block's text without its type syntax and tags.
     pub text: &'a str,
     /// The caret's byte offset into `text`.
     pub caret: usize,
@@ -40,38 +37,25 @@ pub struct Editor<'a> {
     pub selection: Option<Range<usize>>,
     /// What follows the text as part of the block's type and cannot be edited: a project's `:`.
     pub suffix: &'static str,
-    /// Whether a line of the text reads as another type, so that the block splits there when
-    /// editing ends (OQ-27).
-    pub splits: bool,
 }
 
-/// One edit session: the block's lines as they started and as they are written now, the parts of
-/// its first line and the text field, with the session's own undo history of the text.
+/// One edit session: the block's line as it started and as it is written now, its parts and the
+/// text field, with the session's own undo history of the text.
 #[derive(Debug, Clone)]
 pub(super) struct Session {
-    /// The block's first line, which stays its first line.
+    /// The block's line.
     id: ItemId,
     /// The applied ops that created the block for this session, undone with it as one step; empty
     /// for a block that was there before.
     created: Vec<Op>,
     /// The focus before the session's step.
     before: Option<ItemId>,
-    /// The block's type when the session started, which it keeps on screen while its text has
-    /// several lines.
-    kind: BlockKind,
-    /// The block's lines when the session started, which the text rewrites.
-    block: BlockLines,
-    /// The ids of those lines, in order.
-    originals: Vec<ItemId>,
-    /// The ids of the lines the text added, in the order it added them, kept for adding again.
-    added: Vec<ItemId>,
-    /// The lines as the document has them without `applied`.
-    base: Vec<ItemId>,
-    /// The lines the text is written to, in order.
-    lines: Vec<ItemId>,
-    /// The ops that wrote the text over `base`, applied outside the history.
-    applied: Vec<Op>,
-    /// The first line's parts, which change as the text gives a one-line block a task's type.
+    /// The line's text when the session started, written back as it was while the text and
+    /// parts are as they were, so its mid-line tags stay where they are.
+    original: String,
+    /// The text the session has written over `original`, if any.
+    written: Option<String>,
+    /// The line's parts, which change as the text gives the line a task's type.
     parts: LineParts,
     field: TextField,
     undo: Vec<(LineParts, TextField)>,
@@ -82,27 +66,17 @@ pub(super) struct Session {
 }
 
 impl Session {
-    /// A session editing `block` of `document` with the caret at the end of its text.
-    fn new(document: &Document, block: &Block) -> Self {
-        let originals = block.lines().to_vec();
-        let (lines, text) = BlockLines::split(
-            originals
-                .iter()
-                .filter_map(|&id| document.get(id))
-                .map(Item::text),
-        );
+    /// A session editing the line `id`, which reads `line`, with the caret at the end of its
+    /// text.
+    fn new(id: ItemId, line: &str) -> Self {
+        let (parts, text) = LineParts::split(line);
         Self {
-            id: block.id(),
+            id,
             created: Vec::new(),
-            before: Some(block.id()),
-            kind: block.kind(),
-            parts: lines.first(),
-            block: lines,
-            base: originals.clone(),
-            lines: originals.clone(),
-            originals,
-            added: Vec::new(),
-            applied: Vec::new(),
+            before: Some(id),
+            original: line.to_owned(),
+            written: None,
+            parts,
             field: TextField::new(text),
             undo: Vec::new(),
             redo: Vec::new(),
@@ -112,8 +86,8 @@ impl Session {
 
     /// Applies `edit` to the text, or returns `false` and changes nothing when it would type a
     /// tag (OQ-25). A character that breaks a line is not typed, since it would split the line
-    /// when the file is read back; [`TextEdit::LineBreak`] breaks it. Text that makes a one-line
-    /// text a task takes the task's syntax, so that its dash shows as the marker (OQ-27).
+    /// when the file is read back. Text that makes the line a task takes the task's syntax, so
+    /// that its dash shows as the marker (OQ-27).
     fn edit(&mut self, edit: TextEdit) -> bool {
         if let TextEdit::Insert(c) = edit
             && format::breaks_line(c)
@@ -135,10 +109,7 @@ impl Session {
         }
         self.redo.clear();
         self.typing = typing;
-        let as_task = Some(field.text())
-            .filter(|text| !text.contains('\n'))
-            .and_then(|text| self.parts.as_task(text));
-        self.field = match as_task {
+        self.field = match self.parts.as_task(field.text()) {
             Some((parts, text)) => {
                 let cut =
                     (field.text().len() + self.parts.suffix().len()).saturating_sub(text.len());
@@ -167,10 +138,26 @@ impl Session {
         }
     }
 
-    /// The line holding the caret.
-    fn caret_line(&self) -> Option<ItemId> {
-        let before = self.field.text().get(..self.field.caret())?;
-        self.lines.get(before.matches('\n').count()).copied()
+    /// The line the text and parts make: the line as it was while they are as they were.
+    fn line(&self) -> String {
+        let (parts, text) = LineParts::split(&self.original);
+        if parts == self.parts && text == self.field.text() {
+            self.original.clone()
+        } else {
+            self.parts.line(self.field.text())
+        }
+    }
+
+    /// The op that wrote the session's text over the line, if it changed it.
+    fn applied(&self) -> Option<Op> {
+        self.written
+            .clone()
+            .filter(|after| *after != self.original)
+            .map(|after| Op::SetText {
+                id: self.id,
+                before: self.original.clone(),
+                after,
+            })
     }
 }
 
@@ -195,8 +182,6 @@ impl State {
             caret: session.field.caret(),
             selection: session.field.selection(),
             suffix: session.parts.suffix(),
-            splits: blocks::block(&self.document, session.id)
-                .is_none_or(|block| block.lines() != session.lines),
         })
     }
 
@@ -213,35 +198,38 @@ impl State {
             self.notify(Notice::ReadOnly);
             return;
         }
-        self.edit = Some(Session::new(&self.document, &block));
+        self.edit = self.session(&block);
+    }
+
+    /// A session editing `block` with the caret at the end of its text.
+    fn session(&self, block: &Block) -> Option<Session> {
+        let line = self.document.get(block.id())?.text();
+        Some(Session::new(block.id(), line))
     }
 
     /// Starts editing the new line `id`, which the applied `created` ops put in while the focus
     /// was on `before`, with an empty text (FR-MODE-04).
     pub(super) fn edit_new_block(&mut self, id: ItemId, created: Vec<Op>, before: Option<ItemId>) {
-        if let Some(block) = blocks::block(&self.document, id) {
+        if let Some(session) =
+            blocks::block(&self.document, id).and_then(|block| self.session(&block))
+        {
             self.edit = Some(Session {
                 created,
                 before,
-                ..Session::new(&self.document, &block)
+                ..session
             });
         }
     }
 
     /// Applies `edit` to the text being edited and writes it to the document, or shows why a
-    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead, and
-    /// only note and code blocks take line breaks (editing.md §2).
+    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead
+    /// (editing.md §2).
     pub(super) fn edit_text(&mut self, edit: TextEdit) {
-        let takes_line_breaks =
-            matches!(self.edited_kind(), Some(BlockKind::Note | BlockKind::Code));
         let Some(session) = &mut self.edit else {
             return;
         };
         if edit == TextEdit::DeleteBackward && session.field.text().is_empty() {
             self.delete_empty_block();
-            return;
-        }
-        if edit == TextEdit::LineBreak && !takes_line_breaks {
             return;
         }
         if session.edit(edit) {
@@ -251,14 +239,37 @@ impl State {
         }
     }
 
-    /// `Enter` in edit mode: breaks the line in a code block, else ends editing and adds the next
-    /// block (OQ-23, editing.md §2–3).
+    /// `Enter` in edit mode: ends editing and adds the next block (editing.md §2–3, D-43).
     pub(super) fn new_next(&mut self) {
-        if self.edited_kind() == Some(BlockKind::Code) {
-            self.edit_text(TextEdit::LineBreak);
+        self.stop_editing();
+        self.add_block(NewBlock::Next, None);
+    }
+
+    /// `↑`/`↓` in edit mode: ends editing and edits the visible block above or below, skipping
+    /// dividers, with the caret as many graphemes from the start as it was, or at the end of a
+    /// shorter text; nothing happens without such a block (editing.md §2, D-43).
+    pub(super) fn edit_adjacent(&mut self, down: bool) {
+        let Some(session) = &self.edit else {
+            return;
+        };
+        let column = session.field.column();
+        let rows = self.rows();
+        let editable = |row: &&Row| row.kind != BlockKind::Divider;
+        let above = rows.iter().take_while(|row| row.id != session.id);
+        let mut below = rows.iter().skip_while(|row| row.id != session.id).skip(1);
+        let target = if down {
+            below.find(editable)
         } else {
-            self.stop_editing();
-            self.add_block(NewBlock::Next, None);
+            above.filter(editable).last()
+        };
+        let Some(target) = target.map(|row| row.id) else {
+            return;
+        };
+        self.stop_editing();
+        self.focus = Some(target);
+        self.start_editing();
+        if let Some(session) = &mut self.edit {
+            session.field = TextField::at_column(session.field.text().to_owned(), column);
         }
     }
 
@@ -278,43 +289,12 @@ impl State {
         self.write(false);
     }
 
-    /// Ends editing: writes the lines repaired where they break canonical-outline rule 2 or 4,
-    /// records the whole session, with the block's creation, as one step to undo, and focuses the
-    /// block holding the caret, which is another one when the text split the block
-    /// (file-format.md §3.1, FR-OPS-08, OQ-27).
+    /// Ends editing: writes the line repaired where it breaks canonical-outline rule 2 or 4 and
+    /// records the whole session, with the block's creation, as one step to undo
+    /// (file-format.md §3.1, FR-OPS-08).
     pub(super) fn stop_editing(&mut self) {
         self.write(true);
         let Some(session) = self.edit.take() else {
-            return;
-        };
-        let focus = session
-            .caret_line()
-            .and_then(|line| blocks::holding(&self.document, line))
-            .map_or(session.id, |block| block.id());
-        let before = Restore {
-            focus: session.before,
-        };
-        let after = Restore { focus: Some(focus) };
-        let ops = session.created.into_iter().chain(session.applied).collect();
-        self.edits.record(Transaction::new(ops, before, after));
-        self.focus = Some(focus);
-    }
-
-    /// Goes on editing the block being edited in the block it is now part of, after a step put it
-    /// next to note lines that it joined (OQ-26): what the session wrote so far becomes a step of
-    /// its own, and a new session edits the merged block with the caret where it was.
-    pub(super) fn edit_merged(&mut self) {
-        let Some(session) = self.edit.take() else {
-            return;
-        };
-        let Some(block) = blocks::holding(&self.document, session.id).filter(|block| {
-            block.lines().len() > session.lines.len()
-                && session
-                    .lines
-                    .iter()
-                    .all(|line| block.lines().contains(line))
-        }) else {
-            self.edit = Some(session);
             return;
         };
         let before = Restore {
@@ -323,55 +303,24 @@ impl State {
         let after = Restore {
             focus: Some(session.id),
         };
-        let ops = session.created.into_iter().chain(session.applied).collect();
-        self.edits.record(Transaction::new(ops, before, after));
-        let mut merged = Session::new(&self.document, &block);
-        // The caret keeps its line and column: the merged text shows each line without the
-        // spaces before its tags, so the session's byte offsets do not carry over.
-        let before_caret = session
-            .field
-            .text()
-            .get(..session.field.caret())
-            .unwrap_or_default();
-        let row = block
-            .lines()
+        let ops = session
+            .created
             .iter()
-            .take_while(|&&line| line != session.id)
-            .count()
-            + before_caret.matches('\n').count();
-        let column = before_caret.rsplit('\n').next().map_or(0, str::len);
-        let text = merged.field.text().to_owned();
-        let caret = text
-            .split('\n')
-            .scan(0, |start, line| {
-                let line_start = *start;
-                *start += line.len() + 1;
-                Some(line_start + line.floor_char_boundary(column))
-            })
-            .nth(row)
-            .unwrap_or(text.len());
-        merged.field = TextField::with_caret(text, caret);
-        self.focus = Some(block.id());
-        self.edit = Some(merged);
+            .cloned()
+            .chain(session.applied())
+            .collect();
+        self.edits.record(Transaction::new(ops, before, after));
+        self.focus = Some(session.id);
     }
 
-    /// Records the creation of the block being edited and, once its text has added or removed
-    /// lines, what it wrote so far, as a step of its own, so that a step committed while it is
-    /// edited, which may count or move its lines, comes after it in the history and is undone
-    /// before it. Text written to lines that stay in place is recorded when editing ends.
+    /// Records the creation of the block being edited as a step of its own, so that a step
+    /// committed while it is edited, which may move it, comes after it in the history and is
+    /// undone before it. The text is recorded when editing ends.
     pub(super) fn record_edit_so_far(&mut self) {
         let Some(session) = self.edit.as_mut() else {
             return;
         };
-        let mut ops = mem::take(&mut session.created);
-        if session
-            .applied
-            .iter()
-            .any(|op| matches!(op, Op::Insert { .. } | Op::Remove { .. } | Op::Move { .. }))
-        {
-            ops.append(&mut session.applied);
-            session.base.clone_from(&session.lines);
-        }
+        let ops = mem::take(&mut session.created);
         if !ops.is_empty() {
             let before = Restore {
                 focus: session.before.replace(session.id),
@@ -394,7 +343,7 @@ impl State {
         else {
             return false;
         };
-        let ops = session.created.iter().chain(&session.applied).cloned();
+        let ops = session.created.iter().cloned().chain(session.applied());
         let mut undo = Transaction::new(ops.collect(), (), ()).inverse();
         if self.document.apply(&mut undo).is_err() {
             return false;
@@ -403,106 +352,49 @@ impl State {
         true
     }
 
-    /// Whether saving waits because a line being edited breaks rule 2 or 4 for now, or is one of
-    /// the empty lines ending the document that break rule 3: typing may repair it, and ending
+    /// Whether saving waits because the line being edited breaks rule 2 or 4 for now, or is one
+    /// of the empty lines ending the document that break rule 3: typing may repair it, and ending
     /// the session or the save after it does (file-format.md §3.1).
     pub(super) fn editing_holds_save(&self) -> bool {
         let only_line = only_line(&self.document);
-        self.edit
-            .iter()
-            .flat_map(|session| &session.lines)
-            .any(|&id| {
-                self.document.get(id).is_some_and(|item| {
-                    canonical::needs_repair(item.text(), !item.children().is_empty(), only_line)
-                        || item.text().is_empty()
-                            && canonical::trailing_blanks(&self.document).contains(&id)
-                })
+        self.edit.as_ref().is_some_and(|session| {
+            self.document.get(session.id).is_some_and(|item| {
+                canonical::needs_repair(item.text(), !item.children().is_empty(), only_line)
+                    || item.text().is_empty()
+                        && canonical::trailing_blanks(&self.document).contains(&session.id)
             })
+        })
     }
 
-    /// What `block` shows as while its lines are edited: the block being edited, kept as one
-    /// block of the type it started with while its text has several lines, in place of the
-    /// block of its first line, and nothing in place of the blocks of its other lines, which its
-    /// text may have split off (OQ-27). Any other block shows as itself.
-    pub(super) fn shown_block(&self, block: Block) -> Option<Block> {
-        match &self.edit {
-            Some(session) if session.lines.len() > 1 && block.id() == session.id => {
-                blocks::joined(&self.document, &session.lines, session.kind)
-            }
-            Some(session) if block.id() != session.id && session.lines.contains(&block.id()) => {
-                None
-            }
-            _ => Some(block),
-        }
-    }
-
-    /// The type of the block being edited: the type it started with while its text has several
-    /// lines, else the type its line has now (OQ-27).
-    fn edited_kind(&self) -> Option<BlockKind> {
-        let session = self.edit.as_ref()?;
-        if session.lines.len() > 1 {
-            Some(session.kind)
-        } else {
-            blocks::block(&self.document, session.id).map(|block| block.kind())
-        }
-    }
-
-    /// Writes the text being edited to the block's lines in place of what it wrote before,
-    /// outside the undo history, so that saving and every view see it at once; with `repair`,
-    /// with the lines repaired where they break canonical-outline rule 2 or 4. Lines that already
-    /// read so are left alone.
+    /// Writes the text being edited to the block's line, outside the undo history, so that
+    /// saving and every view see it at once; with `repair`, repaired where it breaks
+    /// canonical-outline rule 2 or 4. A line that already reads so is left alone.
     fn write(&mut self, repair: bool) {
-        let Some(session) = self.edit.as_mut() else {
+        let only_line = only_line(&self.document);
+        let Some((session, item)) = self.edit.as_mut().and_then(|session| {
+            let item = self.document.get(session.id)?;
+            Some((session, item))
+        }) else {
             return;
         };
-        let lines = session.block.lines(&session.parts, session.field.text());
-        let only_line = lines.len() == 1
-            && self.document.descendants(self.document.root()).count() == session.lines.len();
-        let last = session.lines.last().and_then(|&id| self.document.get(id));
-        let has_children = last.is_some_and(|item| !item.children().is_empty());
-        let new_lines = lines.iter().filter(|(from, _)| from.is_none()).count();
-        let missing = new_lines.saturating_sub(session.added.len());
-        session
-            .added
-            .extend(std::iter::repeat_with(|| self.document.new_id()).take(missing));
-        let mut added = session.added.iter();
-        let mut target = Vec::new();
-        for (index, (from, text)) in lines.iter().enumerate() {
-            let id = match from {
-                Some(from) => session.originals.get(*from),
-                None => added.next(),
-            };
-            let id = *id.expect("every line has an id: the one it rewrites or one made for it");
-            let text = if repair {
-                canonical::repaired(text, has_children && index + 1 == lines.len(), only_line)
-            } else {
-                text.clone()
-            };
-            target.push((id, text));
-        }
-        let written = target.iter().map(|(id, _)| id).eq(&session.lines)
-            && target.iter().all(|(id, text)| {
-                self.document
-                    .get(*id)
-                    .is_some_and(|item| item.text() == text)
-            });
-        if written {
+        let line = session.line();
+        let after = if repair {
+            canonical::repaired(&line, !item.children().is_empty(), only_line)
+        } else {
+            line
+        };
+        if item.text() == after {
             return;
         }
-        let mut revert = Transaction::new(mem::take(&mut session.applied), (), ()).inverse();
+        let op = Op::SetText {
+            id: session.id,
+            before: item.text().to_owned(),
+            after: after.clone(),
+        };
         self.document
-            .apply(&mut revert)
-            .expect("a session's own ops are the latest change to the document");
-        let mut transaction = Transaction::new(
-            structure::rewrite(&self.document, &session.base, &target),
-            (),
-            (),
-        );
-        self.document
-            .apply(&mut transaction)
-            .expect("the ops are built from the document as it is, with fresh ids for new lines");
-        session.applied = transaction.ops().to_vec();
-        session.lines = target.into_iter().map(|(id, _)| id).collect();
+            .apply(&mut Transaction::new(vec![op], (), ()))
+            .expect("the op is built from the line as it is");
+        session.written = Some(after);
     }
 }
 
@@ -600,7 +492,7 @@ mod tests {
         state.update(Message::EditAtEnd);
         typed(&mut state, "s");
         assert_eq!(texts(&state), ["- Milks"]);
-        assert_eq!(state.rows()[0].lines, ["Milks"]);
+        assert_eq!(state.rows()[0].text, "Milks");
         press(&mut state, TextEdit::DeleteBackward, 2);
         assert_eq!(texts(&state), ["- Mil"]);
         state.update(Message::Text(TextEdit::Move {
@@ -667,7 +559,7 @@ mod tests {
         assert_eq!(shown(&state), "Questions:|", "the colon stays text");
         assert_eq!(state.editor().unwrap().suffix, "");
         typed(&mut state, " why");
-        assert_eq!(state.rows()[0].kind, BlockKind::Note);
+        assert_eq!(state.rows()[0].kind, BlockKind::Text);
         state.update(Message::Text(TextEdit::SelectAll));
         typed(&mut state, "- buy");
         assert_eq!(state.rows()[0].kind, BlockKind::Task);
@@ -773,7 +665,7 @@ mod tests {
         state.update(Message::Undo);
         assert_eq!(shown(&state), "|a");
         assert_eq!(texts(&state), ["a"]);
-        assert_eq!(state.rows()[0].kind, BlockKind::Note);
+        assert_eq!(state.rows()[0].kind, BlockKind::Text);
     }
 
     // file-format §3.1
@@ -1008,23 +900,9 @@ mod tests {
         assert_eq!(effects, save(&path, "…\n\tb\n", "a\n\tb\n"));
     }
 
-    /// Each line as a tab per depth and its text.
-    fn lines(state: &State) -> Vec<String> {
-        let document = state.document();
-        document
-            .descendants(document.root())
-            .map(|(id, depth)| {
-                format!("{}{}", "\t".repeat(depth), document.get(id).unwrap().text())
-            })
-            .collect()
-    }
-
     /// Edits the focused block with the caret at the start of its text.
     fn edit_from_start(state: &mut State) {
         state.update(Message::EditAtEnd);
-        for _ in 0..state.editor().unwrap().text.matches('\n').count() {
-            go(state, Motion::Up);
-        }
         go(state, Motion::Start);
     }
 
@@ -1035,313 +913,97 @@ mod tests {
         }));
     }
 
-    fn line_break(state: &mut State) {
-        state.update(Message::Text(TextEdit::LineBreak));
-    }
-
-    // FR-BLK-03, OQ-23, editing.md §2
+    // editing.md §2, D-43
     #[test]
-    fn a_line_break_adds_a_note_line_written_as_typed() {
-        let mut state = open("Plan @x\n- t", 0);
+    fn up_and_down_edit_the_block_above_and_below_at_the_same_column() {
+        let mut state = open(
+            "- abcdef
+P:
+	- x😀yz
+- ab",
+            2,
+        );
         state.update(Message::EditAtEnd);
-        line_break(&mut state);
-        assert_eq!(texts(&state), ["Plan @x", "", "- t"]);
-        typed(&mut state, "Step two");
-        line_break(&mut state);
-        typed(&mut state, "Step three");
-        assert_eq!(shown(&state), "Plan\nStep two\nStep three|");
-        assert_eq!(texts(&state), ["Plan @x", "Step two", "Step three", "- t"]);
-        assert_eq!(state.rows()[0].lines, ["Plan", "Step two", "Step three"]);
-        assert!(!state.editor().unwrap().splits);
-        state.update(Message::StopEditing);
-        assert_eq!(state.rows()[0].kind, BlockKind::Note);
-        assert_eq!(state.rows()[0].lines.len(), 3);
-        assert_eq!(state.rows()[1].lines, ["t"]);
-    }
-
-    // OQ-23
-    #[test]
-    fn only_note_and_code_blocks_take_line_breaks() {
-        for text in ["- t", "P:", "S @section", "L @url(https://x.y)"] {
-            let mut state = open(text, 0);
-            state.update(Message::EditAtEnd);
-            let before = shown(&state);
-            line_break(&mut state);
-            assert_eq!(shown(&state), before, "{text:?}");
-            assert_eq!(state.document().revision(), 0, "{text:?}");
-        }
-        let mut state = open("note", 0);
-        edit_from_start(&mut state);
-        typed(&mut state, "- ");
-        line_break(&mut state);
-        assert_eq!(shown(&state), "|note", "a note that became a task");
-    }
-
-    // FR-BLK-05, OQ-23
-    #[test]
-    fn enter_breaks_the_line_in_a_code_block_and_esc_ends_it() {
-        let mut state = open("f() @code\n- t", 0);
-        state.update(Message::EditAtEnd);
-        state.update(Message::NewNext);
-        typed(&mut state, "g()");
+        go(&mut state, Motion::Start);
+        go(&mut state, Motion::Right);
+        go(&mut state, Motion::Right);
+        state.update(Message::EditPrevious);
         assert_eq!(state.mode(), Mode::Edit);
-        assert_eq!(texts(&state), ["f() @code", "g()", "- t"]);
-        state.update(Message::StopEditing);
-        assert_eq!(state.rows()[0].kind, BlockKind::Code);
-        assert_eq!(state.rows()[0].lines, ["f()", "g()"]);
-        assert_eq!(state.rows().len(), 2);
+        assert_eq!(state.focus(), Some(state.rows()[1].id));
+        assert_eq!(shown(&state), "P|", "at the end of a shorter text");
+        state.update(Message::EditPrevious);
+        assert_eq!(shown(&state), "a|bcdef", "the column it had on P");
+        state.update(Message::EditNext);
+        state.update(Message::EditNext);
+        go(&mut state, Motion::Right);
+        go(&mut state, Motion::Right);
+        assert_eq!(shown(&state), "x😀y|z", "by grapheme");
+        state.update(Message::EditNext);
+        assert_eq!(shown(&state), "ab|");
+        assert_eq!(state.focus(), Some(state.rows()[3].id));
     }
 
-    // FR-BLK-03, editing.md §2
+    // editing.md §2, D-43
     #[test]
-    fn a_block_of_several_lines_is_edited_as_one_text() {
-        let mut state = open("one @a\ntwo\n- t", 0);
-        edit_from_start(&mut state);
-        assert_eq!(shown(&state), "|one\ntwo");
-        go(&mut state, Motion::Down);
-        go(&mut state, Motion::End);
-        typed(&mut state, "!");
-        assert_eq!(texts(&state), ["one @a", "two!", "- t"]);
-        state.update(Message::StopEditing);
+    fn up_and_down_skip_dividers_and_stay_at_the_ends() {
+        let mut state = open(
+            "- a
+---
+- b",
+            2,
+        );
+        state.update(Message::EditAtEnd);
+        state.update(Message::EditNext);
+        assert_eq!(shown(&state), "b|", "nothing below");
+        assert_eq!(state.focus(), Some(state.rows()[2].id));
+        state.update(Message::EditPrevious);
+        assert_eq!(shown(&state), "a|");
         assert_eq!(state.focus(), Some(state.rows()[0].id));
-    }
-
-    // editing.md §2, FR-DOC-03
-    #[test]
-    fn lines_keep_their_tags_and_the_tags_of_removed_lines_move_to_the_first() {
-        let mut state = open("a @x\nb @y\nc @z", 0);
+        state.update(Message::EditPrevious);
+        assert_eq!(shown(&state), "a|", "nothing above");
+        let mut state = open(
+            "- a
+	- b
+- c",
+            0,
+        );
+        state.update(Message::Collapse);
         state.update(Message::EditAtEnd);
-        go(&mut state, Motion::Up);
-        go(&mut state, Motion::Up);
-        line_break(&mut state);
-        typed(&mut state, "new");
-        assert_eq!(texts(&state), ["a @x", "new", "b @y", "c @z"]);
-        press(&mut state, TextEdit::DeleteBackward, 4);
-        go(&mut state, Motion::Down);
-        go(&mut state, Motion::Down);
-        go(&mut state, Motion::Start);
-        press(&mut state, TextEdit::DeleteBackward, 1);
-        assert_eq!(shown(&state), "a\nb|c");
-        assert_eq!(texts(&state), ["a @x @z", "bc @y"]);
-        state.update(Message::Text(TextEdit::SelectAll));
-        typed(&mut state, "z");
-        assert_eq!(texts(&state), ["z @x @y @z"]);
-    }
-
-    // FR-BLK-03, special-nodes.md §1
-    #[test]
-    fn the_children_and_special_nodes_follow_the_last_line() {
-        let mut state = open("n\nm\n\t- c\n\tC @hidden @comments\n\t\tx\n- t", 0);
-        state.update(Message::EditAtEnd);
-        line_break(&mut state);
-        typed(&mut state, "o");
-        assert_eq!(
-            lines(&state),
-            [
-                "n",
-                "m",
-                "o",
-                "\t- c",
-                "\tC @hidden @comments",
-                "\t\tx",
-                "- t"
-            ]
-        );
-        assert_eq!(
-            state.rows().len(),
-            3,
-            "the child stays shown under the block"
-        );
-        state.update(Message::Text(TextEdit::SelectAll));
-        typed(&mut state, "k");
-        assert_eq!(
-            lines(&state),
-            ["k", "\t- c", "\tC @hidden @comments", "\t\tx", "- t"]
-        );
+        state.update(Message::EditNext);
+        assert_eq!(shown(&state), "c|", "the next visible block");
         state.update(Message::StopEditing);
-        state.update(Message::Undo);
-        assert_eq!(
-            lines(&state),
-            ["n", "m", "\t- c", "\tC @hidden @comments", "\t\tx", "- t"],
-            "one step"
-        );
-        state.update(Message::Redo);
-        assert_eq!(lines(&state)[0..2], ["k", "\t- c"]);
+        state.update(Message::EditNext);
+        assert_eq!(state.mode(), Mode::Navigate, "only in edit mode");
     }
 
-    // OQ-27
+    // FR-OPS-08, editing.md §2, D-43
     #[test]
-    fn a_line_of_another_type_splits_the_block_when_editing_ends() {
-        let mut state = open("note\nmore\nlast\n\t- c", 0);
-        state.update(Message::EditAtEnd);
-        go(&mut state, Motion::Up);
-        go(&mut state, Motion::Start);
-        typed(&mut state, "- ");
-        assert_eq!(texts(&state), ["note", "- more", "last", "- c"]);
-        assert!(state.editor().unwrap().splits);
-        let rows = state.rows();
-        assert_eq!(rows.len(), 2, "one edit area until editing ends");
-        assert_eq!((rows[0].kind, rows[0].lines.len()), (BlockKind::Note, 3));
-        assert_eq!(rows[1].depth, 1);
-        state.update(Message::StopEditing);
-        let rows = state.rows();
-        let kinds: Vec<BlockKind> = rows.iter().map(|row| row.kind).collect();
-        assert_eq!(
-            kinds,
-            [
-                BlockKind::Note,
-                BlockKind::Task,
-                BlockKind::Note,
-                BlockKind::Task
-            ]
+    fn each_block_edited_on_with_up_and_down_is_its_own_undo_step() {
+        let mut state = open(
+            "- a
+- b", 0,
         );
-        assert_eq!(state.focus(), Some(rows[1].id), "the block with the caret");
-        assert_eq!(rows[3].depth, 1, "the children stay under the last line");
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "1");
+        state.update(Message::EditNext);
+        typed(&mut state, "2");
+        state.update(Message::StopEditing);
+        assert_eq!(texts(&state), ["- a1", "- b2"]);
         state.update(Message::Undo);
-        assert_eq!(state.rows().len(), 2);
+        assert_eq!(texts(&state), ["- a1", "- b"]);
+        assert_eq!(state.focus(), Some(state.rows()[1].id));
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a", "- b"]);
         assert_eq!(state.focus(), Some(state.rows()[0].id));
-    }
-
-    // OQ-27
-    #[test]
-    fn a_first_line_that_becomes_a_project_splits_off_too() {
-        let mut state = open("Questions\nwhy", 0);
-        edit_from_start(&mut state);
-        go(&mut state, Motion::End);
-        typed(&mut state, ":");
-        assert!(state.editor().unwrap().splits);
-        assert_eq!(state.rows()[0].kind, BlockKind::Note, "shown as it started");
-        line_break(&mut state);
-        press(&mut state, TextEdit::DeleteBackward, 1);
-        assert_eq!(
-            shown(&state),
-            "Questions:|\nwhy",
-            "still a note while edited"
-        );
-        assert_eq!(texts(&state), ["Questions:", "why"]);
-        state.update(Message::StopEditing);
-        let rows = state.rows();
-        assert_eq!(
-            (rows[0].kind, rows[1].kind),
-            (BlockKind::Project, BlockKind::Note)
-        );
-        assert_eq!(state.focus(), Some(rows[0].id));
-    }
-
-    // OQ-27, FR-OPS-02, editing.md §2
-    #[test]
-    fn tab_on_a_block_that_splits_splits_it_and_moves_the_block_with_the_caret() {
-        let mut state = open("- a\nnote\nmore", 1);
-        edit_from_start(&mut state);
-        go(&mut state, Motion::Down);
-        typed(&mut state, "- ");
-        state.update(Message::Indent);
-        assert_eq!(state.mode(), Mode::Edit);
-        assert_eq!(shown(&state), "more|");
-        line_break(&mut state);
-        typed(&mut state, "!");
-        state.update(Message::StopEditing);
-        assert_eq!(lines(&state), ["- a", "note", "\t- more!"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["- a", "note", "\t- more"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["- a", "note", "- more"]);
-        state.update(Message::Undo);
-        assert_eq!(lines(&state), ["- a", "note", "more"]);
-    }
-
-    // OQ-26, OQ-27, editing.md §2
-    #[test]
-    fn a_block_split_off_by_tab_that_joins_a_note_is_edited_whole() {
-        let mut state = open("- a\n\tn1\nx\ny", 2);
-        edit_from_start(&mut state);
-        go(&mut state, Motion::Down);
-        typed(&mut state, "- ");
-        go(&mut state, Motion::Up);
-        state.update(Message::Indent);
-        assert_eq!(lines(&state), ["- a", "\tn1", "\tx", "- y"]);
-        assert_eq!(state.mode(), Mode::Edit);
-        assert_eq!(shown(&state), "n1\nx|");
-    }
-
-    // special-nodes.md §1, FR-DOC-03
-    #[test]
-    fn a_special_node_between_the_lines_stays_put() {
-        let mut state = open("n\nX @hidden\nm", 0);
-        state.update(Message::EditAtEnd);
-        assert_eq!(shown(&state), "n\nm|");
-        typed(&mut state, "!");
-        assert_eq!(texts(&state), ["n", "X @hidden", "m!"]);
-    }
-
-    // FR-OPS-08, editing.md §2
-    #[test]
-    fn a_session_of_line_breaks_taken_back_is_no_undo_step() {
-        let mut state = open("- a\nn", 0);
-        state.update(Message::ToggleDone {
-            today: jiff::civil::date(2026, 10, 5),
-        });
-        state.update(Message::FocusNext);
-        state.update(Message::EditAtEnd);
-        line_break(&mut state);
-        typed(&mut state, "x");
-        state.update(Message::Undo);
-        state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a @done(2026-10-05)", "n"]);
-        state.update(Message::Redo);
-        assert_eq!(texts(&state), ["- a @done(2026-10-05)", "n", ""]);
-        press(&mut state, TextEdit::DeleteBackward, 1);
-        state.update(Message::StopEditing);
-        state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a", "n"], "undo skips the empty session");
-    }
-
-    // FR-MODE-04, editing.md §2
-    #[test]
-    fn a_new_note_can_take_lines_and_backspace_still_discards_it() {
-        let mut state = open("P:", 0);
-        state.update(Message::NewBelow);
-        line_break(&mut state);
-        assert_eq!(texts(&state), ["P:", "", ""]);
-        press(&mut state, TextEdit::DeleteBackward, 2);
-        assert_eq!(texts(&state), ["P:"]);
-        assert_eq!(state.mode(), Mode::Edit, "back on P");
-        state.update(Message::StopEditing);
-        let revision = state.document().revision();
-        state.update(Message::Undo);
-        assert_eq!(state.document().revision(), revision, "nothing to undo");
-    }
-
-    // file-format §3.1
-    #[test]
-    fn ending_the_session_repairs_every_line() {
-        let mut state = open("a\nb\n\t- c", 0);
-        edit_from_start(&mut state);
-        go(&mut state, Motion::Down);
-        typed(&mut state, " ");
-        go(&mut state, Motion::End);
-        press(&mut state, TextEdit::DeleteBackward, 2);
-        assert_eq!(texts(&state), ["a", "", "- c"]);
-        assert!(state.editing_holds_save());
-        state.update(Message::StopEditing);
-        assert_eq!(texts(&state), ["a", "…", "- c"]);
-        let mut state = open("a\nb", 0);
-        state.update(Message::EditAtEnd);
-        go(&mut state, Motion::Start);
-        typed(&mut state, "  ");
-        assert!(state.editing_holds_save());
-        state.update(Message::StopEditing);
-        assert_eq!(texts(&state), ["a", "b"]);
     }
 
     // FR-OPS-08
     #[test]
-    fn a_step_committed_while_lines_are_added_comes_after_them() {
+    fn a_step_committed_while_a_new_block_is_edited_comes_after_its_creation() {
         let mut state = open("n\n- t", 0);
-        state.update(Message::EditAtEnd);
-        line_break(&mut state);
+        state.update(Message::NewBelow);
         typed(&mut state, "m");
-        let task = state.rows()[1].id;
+        let task = state.rows()[2].id;
         state.commit(vec![Op::SetText {
             id: task,
             before: "- t".to_owned(),
@@ -1351,24 +1013,26 @@ mod tests {
         state.update(Message::StopEditing);
         assert_eq!(texts(&state), ["n", "mo", "- u"]);
         state.update(Message::Undo);
-        assert_eq!(texts(&state), ["n", "m", "- u"]);
+        assert_eq!(texts(&state), ["n", "", "- u"]);
         state.update(Message::Undo);
-        assert_eq!(texts(&state), ["n", "m", "- t"]);
+        assert_eq!(texts(&state), ["n", "", "- t"]);
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["n", "- t"]);
     }
 
-    // FR-NAV-03, FR-BLK-03
+    // D-43
     #[test]
-    fn the_zoom_title_keeps_its_children_while_it_splits() {
-        let mut state = open("n\nm\n\t- c", 0);
-        state.update(Message::ZoomIn);
-        state.update(Message::FocusFirst);
+    fn code_and_url_lines_are_edited_like_any_other_line() {
+        let mut state = open(
+            "run() @code
+Site @url(https://x.y)",
+            0,
+        );
         state.update(Message::EditAtEnd);
-        go(&mut state, Motion::Start);
-        typed(&mut state, "- ");
-        let rows = state.rows();
-        assert_eq!(rows.len(), 2);
-        assert_eq!((rows[0].title, rows[0].lines.len()), (true, 2));
+        typed(&mut state, "!");
+        state.update(Message::EditNext);
+        typed(&mut state, "!");
+        state.update(Message::StopEditing);
+        assert_eq!(texts(&state), ["run()! @code", "Site! @url(https://x.y)"]);
     }
 }

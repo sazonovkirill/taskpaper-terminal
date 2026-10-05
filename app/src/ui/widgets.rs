@@ -15,9 +15,9 @@ use crate::{
     document::BlockKind,
 };
 
-/// The outline: a gutter that marks the focused block, whose lines get a brighter background, then one row per block, 2 columns of
-/// indent per level, a marker and the text; a block with several lines takes several screen
-/// lines. A block being edited shows the text as typed instead.
+/// The outline: a gutter that marks the focused block, whose line gets a brighter background, then
+/// one line per block, 2 columns of indent per level, a marker and the text. A block being edited
+/// shows the text as typed instead.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
@@ -38,13 +38,13 @@ impl<'a> OutlineView<'a> {
         }
     }
 
-    /// Starts drawing at screen line `offset` of the outline instead of its first line.
+    /// Starts drawing at row `offset` of the outline instead of its first row.
     #[must_use]
     pub fn offset(self, offset: usize) -> Self {
         Self { offset, ..self }
     }
 
-    /// Marks every line of row `index` in the gutter and gives it the current-line band (ui.md §2).
+    /// Marks row `index` in the gutter and gives it the current-line band (ui.md §2).
     #[must_use]
     pub fn focused(self, index: Option<usize>) -> Self {
         Self {
@@ -67,19 +67,19 @@ impl Widget for OutlineView<'_> {
             Constraint::Fill(1),
         ]));
         let width = usize::from(text.width);
-        let lines = self.rows.iter().enumerate().flat_map(|(index, row)| {
-            let lines = match self.editor.filter(|editor| editor.id == row.id) {
-                Some(editor) => editor_lines(row, editor, width).0,
-                None => row_lines(row, width),
+        let lines = self.rows.iter().enumerate().map(|(index, row)| {
+            let line = match self.editor.filter(|editor| editor.id == row.id) {
+                Some(editor) => editor_line(row, editor, width).0,
+                None => row_line(row, width),
             };
-            lines.into_iter().map(move |line| (index, line))
+            (index, line)
         });
         for ((index, line), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
             let focused = Some(index) == self.focused;
-            // The line patches its own styles over the band, so a code band and every
-            // foreground color and modifier survive on the focused row.
+            // The line patches its own styles over the band, so every foreground color and
+            // modifier survives on the focused row.
             if focused {
                 buf.set_style(gutter_area.union(line_area), current_line_style());
             }
@@ -95,7 +95,7 @@ impl Widget for OutlineView<'_> {
 /// root crumb lines up with top-level blocks (D-35).
 pub const GUTTER_WIDTH: u16 = 2;
 
-/// Marks each line of the focused block in the gutter (D-30).
+/// Marks the focused block in the gutter (D-30).
 const FOCUS_MARKER: &str = "▎";
 
 /// Stands for the document root in the breadcrumbs (D-32).
@@ -186,7 +186,6 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             format!("cannot take the version on disk: {reason}"),
             error_style(),
         ),
-        Notice::NotesMerged => Span::raw("Notes merged"),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
     }
 }
@@ -289,59 +288,38 @@ fn mine_style() -> Style {
     Style::new().fg(Color::Green)
 }
 
-/// The screen lines of one block, `width` columns wide: indented 2 columns per level of depth
+/// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text (D-31). A collapsed block
 /// with children shows `▸ n` after its text (ui.md §2). The zoom title is drawn like its block,
 /// in bold (D-34).
-fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
-    let indent = "  ".repeat(row.depth);
+fn row_line(row: &Row, width: usize) -> Line<'_> {
     let (marker, marker_style, style) = row_style(row);
-    let count_style = if row.kind == BlockKind::Code {
-        code_style()
-    } else {
-        Style::new()
-    };
-    let count = (row.hidden_children > 0)
-        .then(|| Span::styled(format!(" ▸ {}", row.hidden_children), count_style.dim()));
-    let last = row.lines.len().saturating_sub(1);
-    row.lines
-        .iter()
-        .enumerate()
-        .map(|(index, text)| {
-            let marker = if index == 0 {
-                Span::styled(marker, marker_style)
-            } else {
-                Span::raw(" ".repeat(marker.chars().count()))
-            };
-            let mut line = Line::from(vec![Span::raw(indent.clone()), marker]);
-            match row.kind {
-                BlockKind::Divider => {}
-                // TaskPaper marks a project with a trailing colon, which the display text drops.
-                BlockKind::Project => line.push_span(Span::styled(format!("{text}:"), style)),
-                _ => line.push_span(Span::styled(text.as_str(), style)),
-            }
-            if index == last
-                && let Some(count) = count.clone()
-            {
-                line.push_span(count);
-                if row.kind == BlockKind::Divider {
-                    line.push_span(" ");
-                }
-            }
-            match row.kind {
-                BlockKind::Divider => line.push_span(rule(&line, width)),
-                BlockKind::Code => {
-                    let fill = width.saturating_sub(line.width());
-                    line.push_span(Span::styled(" ".repeat(fill), code_style()));
-                }
-                _ => {}
-            }
-            line
-        })
-        .collect()
+    let mut line = Line::from(vec![
+        Span::raw("  ".repeat(row.depth)),
+        Span::styled(marker, marker_style),
+    ]);
+    match row.kind {
+        BlockKind::Divider => {}
+        // TaskPaper marks a project with a trailing colon, which the display text drops.
+        BlockKind::Project => line.push_span(Span::styled(format!("{}:", row.text), style)),
+        _ => line.push_span(Span::styled(row.text.as_str(), style)),
+    }
+    if row.hidden_children > 0 {
+        line.push_span(Span::styled(
+            format!(" ▸ {}", row.hidden_children),
+            Style::new().dim(),
+        ));
+        if row.kind == BlockKind::Divider {
+            line.push_span(" ");
+        }
+    }
+    if row.kind == BlockKind::Divider {
+        line.push_span(rule(&line, width));
+    }
+    line
 }
 
-/// The marker of a block's first line with its style, and the style of its text, by its type and
+/// The marker of a block with its style, and the style of its text, by its type and
 /// whether it is done or inside a done block (ui.md §2).
 fn row_style(row: &Row) -> (&'static str, Style, Style) {
     let (marker, style) = match row.kind {
@@ -350,8 +328,7 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Task => ("- ", Style::new()),
         BlockKind::Url => ("", Style::new().dim().underlined().cyan()),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
-        BlockKind::Code => ("", code_style().dim()),
-        BlockKind::Note => ("", Style::new().fg(NOTE)),
+        BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
     };
     let style = if row.title { style.bold() } else { style };
@@ -366,74 +343,42 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
     }
 }
 
-/// The screen lines of `row` while `editor` edits it, `width` columns wide, and the caret's column
-/// and line among them: one per line of the text, after the row's indent and, on the first, its
-/// marker, with the selection reversed and a project's `:` after the text, all styled as the row
-/// (FR-MODE-02). When the caret would be past the right edge, its line scrolls left by whole
-/// graphemes to keep it in view.
+/// The screen line of `row` while `editor` edits it, `width` columns wide, and the caret's column
+/// on it: the row's indent and marker, then the text with the selection reversed and a project's
+/// `:` after it, all styled as the row (FR-MODE-02). When the caret would be past the right edge,
+/// the text scrolls left by whole graphemes to keep it in view.
 #[must_use]
-pub fn editor_lines<'a>(
-    row: &Row,
-    editor: &'a Editor,
-    width: usize,
-) -> (Vec<Line<'a>>, (usize, usize)) {
+pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
     let (marker, marker_style, style) = row_style(row);
+    let text = editor.text;
     let selection = editor
         .selection
         .clone()
         .unwrap_or(editor.caret..editor.caret);
-    let (mut lines, mut caret, mut start) = (Vec::new(), (0, 0), 0);
-    let count = editor.text.split('\n').count();
-    for (index, text) in editor.text.split('\n').enumerate() {
-        let end = start + text.len();
-        let marker = if index == 0 {
-            Span::styled(marker, marker_style)
-        } else {
-            Span::raw(" ".repeat(marker.chars().count()))
-        };
-        let mut line = Line::from(vec![Span::raw("  ".repeat(row.depth)), marker]);
-        let at_caret = (start..=end)
-            .contains(&editor.caret)
-            .then(|| editor.caret - start);
-        let before_caret = text.get(..at_caret.unwrap_or_default()).unwrap_or_default();
-        let column = line.width() + Span::raw(before_caret).width();
-        // The caret takes a column of its own after the text before it.
-        let overflow = at_caret.map_or(0, |_| (column + 1).saturating_sub(width));
-        let (mut from, mut scrolled) = (0, 0);
-        for (at, grapheme) in text.grapheme_indices(true) {
-            if scrolled >= overflow || at >= before_caret.len() {
-                break;
-            }
-            from = at + grapheme.len();
-            scrolled += Span::raw(grapheme).width();
+    let mut line = Line::from(vec![
+        Span::raw("  ".repeat(row.depth)),
+        Span::styled(marker, marker_style),
+    ]);
+    let before_caret = text.get(..editor.caret).unwrap_or_default();
+    let column = line.width() + Span::raw(before_caret).width();
+    // The caret takes a column of its own after the text before it.
+    let overflow = (column + 1).saturating_sub(width);
+    let (mut from, mut scrolled) = (0, 0);
+    for (at, grapheme) in text.grapheme_indices(true) {
+        if scrolled >= overflow || at >= before_caret.len() {
+            break;
         }
-        if at_caret.is_some() {
-            caret = (column - scrolled, index);
-        }
-        let local = |at: usize| (at.clamp(start, end) - start).max(from);
-        let selected = local(selection.start)..local(selection.end);
-        let piece = |range: std::ops::Range<usize>| text.get(range).unwrap_or_default();
-        line.push_span(Span::styled(piece(from..selected.start), style));
-        line.push_span(Span::styled(piece(selected.clone()), style.reversed()));
-        line.push_span(Span::styled(piece(selected.end..text.len()), style));
-        if index + 1 == count {
-            line.push_span(Span::styled(editor.suffix, style));
-        }
-        if row.kind == BlockKind::Code {
-            let fill = width.saturating_sub(line.width());
-            line.push_span(Span::styled(" ".repeat(fill), code_style()));
-        }
-        lines.push(line);
-        start = end + 1;
+        from = at + grapheme.len();
+        scrolled += Span::raw(grapheme).width();
     }
-    (lines, caret)
-}
-
-/// The hint edit mode shows while a line of the text would split the block when editing ends
-/// (OQ-27).
-#[must_use]
-pub fn split_hint() -> Span<'static> {
-    Span::styled("Splits into blocks when editing ends", warning_style())
+    let local = |at: usize| at.min(text.len()).max(from);
+    let selected = local(selection.start)..local(selection.end);
+    let piece = |range: std::ops::Range<usize>| text.get(range).unwrap_or_default();
+    line.push_span(Span::styled(piece(from..selected.start), style));
+    line.push_span(Span::styled(piece(selected.clone()), style.reversed()));
+    line.push_span(Span::styled(piece(selected.end..text.len()), style));
+    line.push_span(Span::styled(editor.suffix, style));
+    (line, column - scrolled)
 }
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
@@ -453,9 +398,9 @@ fn divider_style() -> Style {
 /// The theme's accent (Textual's `$primary`), for projects; themes arrive in step 6.2.
 const PRIMARY: Color = Color::LightBlue;
 
-/// Note text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
+/// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
 /// step 6.2.
-const NOTE: Color = Color::Gray;
+const TEXT: Color = Color::Gray;
 
 /// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
 const SECONDARY: Color = Color::LightMagenta;
@@ -480,11 +425,6 @@ fn warning_style() -> Style {
 /// than a dark terminal's background (D-39); themes arrive in step 6.2.
 fn current_line_style() -> Style {
     Style::new().bg(Color::Indexed(235))
-}
-
-/// The background band of code blocks; themes arrive in step 6.2.
-fn code_style() -> Style {
-    Style::new().bg(Color::DarkGray)
 }
 
 #[cfg(test)]
@@ -526,7 +466,7 @@ mod tests {
     }
 
     #[test]
-    fn draws_markers_indents_projects_and_dim_notes() {
+    fn draws_markers_indents_projects_and_dim_text() {
         let mut expected = Buffer::with_lines([
             "Home:        ",
             "  - Milk     ",
@@ -534,8 +474,8 @@ mod tests {
             "note         ",
         ]);
         expected.set_style(Rect::new(0, 0, 5, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().fg(NOTE));
-        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().fg(NOTE));
+        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().fg(TEXT));
         assert_eq!(
             render("Home:\n\t- Milk\n\t\ton sale\nnote", 13, 4),
             expected
@@ -553,7 +493,7 @@ mod tests {
             Rect::new(0, 2, 2, 1),
             struck(Style::new().bold().fg(PRIMARY)),
         );
-        expected.set_style(Rect::new(0, 3, 1, 1), struck(Style::new().fg(NOTE)));
+        expected.set_style(Rect::new(0, 3, 1, 1), struck(Style::new().fg(TEXT)));
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
@@ -568,8 +508,7 @@ mod tests {
             struck(Style::new().underlined().cyan()),
         );
         expected.set_style(Rect::new(0, 2, 6, 1), divider_style());
-        expected.set_style(Rect::new(0, 3, 6, 1), code_style());
-        expected.set_style(Rect::new(0, 3, 3, 1), struck(code_style()));
+        expected.set_style(Rect::new(0, 3, 3, 1), struck(Style::new().fg(TEXT)));
         assert_eq!(
             render(
                 "S @section @done\nu @url(x) @done\n--- @done\nf() @code @done",
@@ -600,7 +539,7 @@ mod tests {
             Style::new().bold().fg(PRIMARY).dim().crossed_out(),
         );
         expected.set_style(Rect::new(2, 1, 3, 1), dim);
-        expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(NOTE).dim());
+        expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(TEXT).dim());
         expected.set_style(
             Rect::new(2, 3, 1, 1),
             Style::new().bold().fg(SECONDARY).dim(),
@@ -610,8 +549,7 @@ mod tests {
             Style::new().dim().underlined().cyan(),
         );
         expected.set_style(Rect::new(2, 5, 6, 1), divider_style());
-        expected.set_style(Rect::new(2, 6, 6, 1), code_style());
-        expected.set_style(Rect::new(2, 6, 3, 1), code_style().dim());
+        expected.set_style(Rect::new(2, 6, 3, 1), Style::new().fg(TEXT).dim());
         assert_eq!(render(text, 8, 8), expected);
     }
 
@@ -635,14 +573,14 @@ mod tests {
         let dim = Style::new().dim();
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(2, 0, 4, 1), dim);
-        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(NOTE));
+        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(TEXT));
         expected.set_style(Rect::new(1, 2, 4, 1), dim);
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().bold().fg(SECONDARY));
         expected.set_style(Rect::new(1, 3, 4, 1), dim);
         expected.set_style(Rect::new(0, 4, 4, 1), dim);
         expected.set_style(Rect::new(5, 4, 9, 1), divider_style());
-        expected.set_style(Rect::new(0, 5, 14, 1), code_style());
-        expected.set_style(Rect::new(0, 5, 7, 1), code_style().dim());
+        expected.set_style(Rect::new(0, 5, 3, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(3, 5, 4, 1), dim);
         assert_eq!(buf, expected);
     }
 
@@ -668,9 +606,9 @@ mod tests {
             state.update(Message::ZoomIn);
             draw(&state.rows(), 6, 3)
         };
-        let mut expected = Buffer::with_lines(["n     ", "m     ", "  - t "]);
-        expected.set_style(Rect::new(0, 0, 1, 2), Style::new().bold().fg(NOTE));
-        assert_eq!(title("P:\n\tn\n\tm\n\t\t- t"), expected, "a note is dim");
+        let mut expected = Buffer::with_lines(["m     ", "  - t ", "      "]);
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().bold().fg(TEXT));
+        assert_eq!(title("P:\n\tm\n\t\t- t"), expected, "text is dim");
         let mut expected = Buffer::with_lines(["Q:    ", "  - t ", "      "]);
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
         assert_eq!(title("P:\n\tQ:\n\t\t- t"), expected, "a project is colored");
@@ -688,9 +626,8 @@ mod tests {
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
         let rows = State::new(format::parse(text), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
-        let (lines, (caret, line)) = editor_lines(&rows[0], editor, usize::from(width));
-        assert_eq!(line, 0, "one line");
-        (&lines[0]).render(buf.area, &mut buf);
+        let (line, caret) = editor_line(&rows[0], editor, usize::from(width));
+        line.render(buf.area, &mut buf);
         (buf, caret)
     }
 
@@ -701,7 +638,6 @@ mod tests {
             caret,
             selection,
             suffix: "",
-            splits: false,
         }
     }
 
@@ -754,61 +690,6 @@ mod tests {
 
     // FR-MODE-02
     #[test]
-    fn the_editor_of_a_code_block_fills_its_band() {
-        let (buf, _) = edited("f() @code", &editor("f()", 3, None), 5);
-        let mut expected = Buffer::with_lines(["f()  "]);
-        expected.set_style(Rect::new(0, 0, 5, 1), code_style());
-        expected.set_style(Rect::new(0, 0, 3, 1), code_style().dim());
-        assert_eq!(buf, expected);
-    }
-
-    /// The first row of `text` drawn as `editor` edits it, `width` columns wide and as many lines
-    /// as it takes, with the caret's column and line.
-    fn edited_lines(text: &str, editor: &Editor, width: u16) -> (Buffer, (usize, usize)) {
-        let rows = State::new(format::parse(text), None).rows();
-        let (lines, caret) = editor_lines(&rows[0], editor, usize::from(width));
-        let height = u16::try_from(lines.len()).unwrap();
-        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        for (line, area) in lines.iter().zip(buf.area.rows()) {
-            line.render(area, &mut buf);
-        }
-        (buf, caret)
-    }
-
-    // FR-BLK-03, FR-MODE-02
-    #[test]
-    fn the_editor_draws_each_line_with_the_selection_across_them() {
-        let (buf, caret) = edited_lines("- a", &editor("ab\ncd\nef", 4, Some(1..4)), 5);
-        let mut expected = Buffer::with_lines(["- ab ", "  cd ", "  ef "]);
-        expected.set_style(Rect::new(3, 0, 1, 1), Style::new().reversed());
-        expected.set_style(Rect::new(2, 1, 1, 1), Style::new().reversed());
-        assert_eq!(buf, expected);
-        assert_eq!(caret, (3, 1));
-    }
-
-    // FR-MODE-02
-    #[test]
-    fn only_the_caret_line_scrolls_and_the_suffix_follows_the_last_line() {
-        let mut two = editor("abcdef\nxy", 6, None);
-        two.suffix = ":";
-        let (buf, caret) = edited_lines("- a", &two, 5);
-        assert_eq!(buf, Buffer::with_lines(["- ef ", "  xy:"]));
-        assert_eq!(caret, (4, 0));
-    }
-
-    // FR-BLK-05, FR-MODE-02
-    #[test]
-    fn every_line_of_a_code_editor_fills_its_band() {
-        let (buf, caret) = edited_lines("f() @code", &editor("f()\n", 4, None), 4);
-        let mut expected = Buffer::with_lines(["f() ", "    "]);
-        expected.set_style(Rect::new(0, 0, 4, 2), code_style());
-        expected.set_style(Rect::new(0, 0, 3, 1), code_style().dim());
-        assert_eq!(buf, expected);
-        assert_eq!(caret, (0, 1));
-    }
-
-    // FR-MODE-02
-    #[test]
     fn the_outline_draws_the_edited_block_as_its_editor() {
         let mut state = State::new(format::parse("- a\n- bc"), None);
         state.update(Message::FocusNext);
@@ -840,30 +721,15 @@ mod tests {
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
 
-    // D-30
-    #[test]
-    fn marks_every_line_of_a_multi_line_focused_block() {
-        let rows = State::new(format::parse("- a\nn\nm"), None).rows();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 6, 3));
-        OutlineView::new(&rows)
-            .focused(Some(1))
-            .render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["  - a ", "▎ n   ", "▎ m   "]);
-        expected.set_style(Rect::new(0, 1, 6, 2), current_line_style());
-        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(2, 1, 1, 2), Style::new().fg(NOTE));
-        assert_eq!(buf, expected);
-    }
-
     // D-39
     #[test]
-    fn the_band_keeps_every_text_style_and_the_code_band_of_each_block_kind() {
+    fn the_band_keeps_every_text_style_of_each_block_kind() {
         let rows = State::new(
-            format::parse("P:\n- a @done\nn\nS @section\n---\nf() @code\nhttps://x.y @url"),
+            format::parse("P:\n- a @done\nn\nS @section\n---\nhttps://x.y @url"),
             None,
         )
         .rows();
-        let area = Rect::new(0, 0, 12, 7);
+        let area = Rect::new(0, 0, 12, 6);
         let mut plain = Buffer::empty(area);
         OutlineView::new(&rows).render(area, &mut plain);
         for index in 0..rows.len() {
@@ -874,13 +740,14 @@ mod tests {
             let y = u16::try_from(index).unwrap();
             for x in GUTTER_WIDTH..area.width {
                 let (cell, before) = (&focused[(x, y)], &plain[(x, y)]);
-                let bg = match before.bg {
-                    Color::Reset => Color::Indexed(235),
-                    code => code,
-                };
                 assert_eq!(
                     (cell.symbol(), cell.fg, cell.modifier, cell.bg),
-                    (before.symbol(), before.fg, before.modifier, bg),
+                    (
+                        before.symbol(),
+                        before.fg,
+                        before.modifier,
+                        Color::Indexed(235)
+                    ),
                     "row {index}, column {x}"
                 );
             }
@@ -1027,7 +894,6 @@ mod tests {
         let copy = std::path::PathBuf::from("/b/c.taskpaper");
         for (notice, expected) in [
             (Notice::Reloaded, plain("Reloaded (changed on disk)")),
-            (Notice::NotesMerged, plain("Notes merged")),
             (
                 Notice::BlanksLifted,
                 plain("Empty lines at the end moved to the top level"),

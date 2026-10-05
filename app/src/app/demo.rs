@@ -141,9 +141,8 @@ mod tests {
         for kind in [
             BlockKind::Project,
             BlockKind::Task,
-            BlockKind::Note,
+            BlockKind::Text,
             BlockKind::Section,
-            BlockKind::Code,
             BlockKind::Url,
             BlockKind::Divider,
         ] {
@@ -154,8 +153,8 @@ mod tests {
         }
         assert!(rows.iter().any(|row| row.depth >= 2), "demo lacks nesting");
         assert_eq!(
-            rows.first().map(|row| row.lines.clone()),
-            Some(vec!["Trip to Lisbon".to_owned()])
+            rows.first().map(|row| row.text.as_str()),
+            Some("Trip to Lisbon")
         );
         assert!(
             rows.iter()
@@ -193,20 +192,8 @@ mod tests {
             .count();
         assert!(tagged >= 3, "demo lacks tagged lines");
         assert!(
-            rows.iter()
-                .flat_map(|row| &row.lines)
-                .all(|line| !line.contains('@')),
+            rows.iter().all(|row| !row.text.contains('@')),
             "demo shows a tag"
-        );
-        assert!(
-            rows.iter()
-                .any(|row| row.kind == BlockKind::Note && row.lines.len() > 1),
-            "demo lacks a multi-line note"
-        );
-        assert!(
-            rows.iter()
-                .any(|row| row.kind == BlockKind::Code && row.lines.len() > 1),
-            "demo lacks a code block of several lines"
         );
         let hidden = document
             .descendants(document.root())

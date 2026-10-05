@@ -10,9 +10,10 @@ use crate::document::{Document, EditError, Op, Transaction, metadata};
 impl State {
     /// Completes the focused block, or uncompletes it when it is done (FR-DONE-01).
     pub(super) fn toggle_done(&mut self, today: Date) {
-        if let Some((block, _)) = self.focused() {
-            let ops = metadata::toggle_done(self.document(), &block, today);
-            self.commit(ops);
+        if let Some((block, _)) = self.focused()
+            && let Some(op) = metadata::toggle_done(self.document(), &block, today)
+        {
+            self.commit(vec![op]);
         }
     }
 

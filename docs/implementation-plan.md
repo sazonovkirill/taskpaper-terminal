@@ -1,7 +1,7 @@
 # Implementation plan
 
 - Status: Draft
-- Last updated: 2026-10-04
+- Last updated: 2026-10-05
 
 The order in which v1 is built. The app starts almost trivial and gains one feature per step; after every step it starts, shows the file and does everything earlier steps added, with no half-finished feature reachable by the user. Each step is sized to be one Todoist task for one agent and lists what it covers, what it needs first and what the owner can try when it lands. What each feature does is in the [functional requirements](functional-requirements.md) and the [specs](specs/README.md); this file only orders the work.
 
@@ -27,7 +27,7 @@ The app opens a real file and shows it as an outline. Nothing is written to disk
 | 1.1 | **Open and show a file.** `tpt <path>` reads it, refuses non-UTF-8 and unreadable files on stderr, parses indentation, hierarchy and item types, and draws one row per line with 2-column indents, bold projects and `☐` tasks. Without a path it shows the demo document from memory, still without date placeholders (the `/tmp` file arrives in 2.10, dates in 3.2). `Ctrl+Q` quits. Sets up the three layers, `update(state, message) -> effects` and the `TestBackend` test harness. | F-FILE-01 (read), F-FILE-02, F-FILE-07, FR-DOC-01, FR-DOC-03 (nothing dropped on read); file-format §1–4 without tags | — | `cargo run` shows the demo outline |
 | 1.2 | **Focus and scrolling. hub** A focused row; `j`/`k`, arrows, `gg`/`G`, `Home`/`End`, page up/down; scrolling keeps focus visible. Status line with mode and path. Multi-key sequences with timeout and the pending prefix shown. | FR-NAV-01 (part), keybindings §1 | 1.1 | Move through a long file |
 | 1.3 | **Tags hidden.** Tag grammar, derived tags and display text; tags vanish from rows; `@done` tasks show `☑`, dimmed and struck through. | FR-TAG-01 (display), FR-TAG-02, FR-DONE-01 (display), file-format §5 | 1.1 | Tagged lines look clean |
-| 1.4 | **Blocks.** The block layer: note runs as one multi-line block, special nodes skipped, divider, section, URL and code blocks drawn as in ui §2. Focus moves by block. | FR-BLK-01–07, FR-SPC-01 (skipping), data-model §3 | 1.2, 1.3 | Notes, sections and dividers look right |
+| 1.4 | **Blocks.** The block layer: note runs as one multi-line block, special nodes skipped, divider, section, URL and code blocks drawn as in ui §2. Focus moves by block. Since D-43 every line is one block and there are no code blocks. | FR-BLK-01–07, FR-SPC-01 (skipping), data-model §3 | 1.2, 1.3 | Notes, sections and dividers look right |
 | 1.5 | **Folding. hub** In-memory shared folds; `h`/`l`, `'`, `Space`, `"`, `=`/`-`, `+`/`_`; fold markers and `▸ n`; focus repair when the focused block is hidden. Parent and sibling motion. | FR-NAV-01, FR-NAV-02, navigation §2–3 | 1.4 | Collapse a project |
 | 1.6 | **Zoom and breadcrumbs. hub** `.`, `>`, `Alt+l`/`Alt+h`, `gz`/`gu`, `gh` and `Ctrl+'` (which arrives only under the kitty protocol, D-42), the title row, the breadcrumb header, back and forward with `H`/`L`. | FR-NAV-03, FR-NAV-04, navigation §4 | 1.5 | Zoom into a project and back |
 
@@ -44,13 +44,15 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 2.5 | **Edit mode for one-line blocks. hub** `Enter`/`i`, `Esc`, standard text keys by grapheme, tags kept and appended (OQ-24), the `@` refusal (OQ-25), live type change (OQ-27), one undo step per session, rules 2 and 4 repaired on leaving. | FR-MODE-01–03, editing §1–2 | 2.4 | Rename a task in place |
 | 2.6 | **Creating and deleting blocks. hub** `o`/`O`, `Alt+o`, `Enter` creating the next block, `Backspace` in an empty block, `dd`/`Delete`; new block types per OQ-03 and OQ-26; autosave waits on transient shapes. | FR-MODE-04, FR-OPS-06 (delete), editing §3–4 | 2.5 | Write a new list from scratch |
 | 2.7 | **Typed creation.** `P`/`p`, `S`/`s`, `A`/`a`. | FR-MODE-06, editing §3 | 2.6 | Add a section with `S` |
-| 2.8 | **Multi-line notes and code.** `Shift+Enter`/`Alt+Enter`, `Enter` in code, line splitting when editing ends (OQ-27), tags and special nodes moving to surviving lines. | FR-BLK-03, FR-BLK-05, OQ-23, special-nodes §1 (edits) | 2.6 | Write a three-line note |
-| 2.9 | **Indent, outdent and move.** `Tab`/`Shift+Tab` in both modes, `Alt+j`/`Alt+k`, crossing into the neighboring parent, merged notes reported. | FR-OPS-02, FR-OPS-03, OQ-26 | 2.6 | Reorder a list |
+| 2.8 | ~~**Multi-line notes and code.**~~ Reverted by M2 owner feedback (D-43): every block is one line, there are no code blocks, and `↑`/`↓` in edit mode move to the block above or below. | — | 2.6 | Write three text lines with `Enter` |
+| 2.9 | **Indent, outdent and move.** `Tab`/`Shift+Tab` in both modes, `Alt+j`/`Alt+k`, crossing into the neighboring parent. | FR-OPS-02, FR-OPS-03 | 2.6 | Reorder a list |
 | 2.10 | **Demo file in `/tmp`.** `tpt` without a path writes the demo document with resolved dates to a new temporary file and opens it, marked in the status line. Save As follows in 4.3. | FR-DOC-05, D-27, file-io §1 | 2.3 | Start `tpt` with no path |
 | 2.11 | **External changes.** File watching, silent reload, the conflict prompt with conflict copies, the disk check before every save, deleted files. | F-FILE-06, OQ-16, file-io §3 | 2.3 | Edit the file in another editor while the app is open |
 | 2.12 | **Crash recovery.** A panic hook restores the terminal and writes a recovery file, offered on the next start. | N-REL-01, file-io §4 | 2.3 | (tests) |
 
 **Milestone result:** a usable outliner with safe saving, backups and undo.
+
+**Owner feedback on M2 (2026-10-05):** back to a model close to TaskPaper, one line per block with six types: project, section, task, divider, URL and text (D-43); code blocks, fenced code and multi-line text move to Later.
 
 ## M3 · Metadata and formatting
 
@@ -62,10 +64,10 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 3.4 | **Today, colors and bookmarks.** `mt` and its marker chip; `c` cycling and the `mc` picker, text tint; `mb`. | FR-TAG-04 (tag), FR-TAG-05, FR-TAG-06, D-11 | 3.2 | Color a task red |
 | 3.5 | **Selection. hub** `J`/`K`, `Shift`+arrows, `v`, `Ctrl+A`, `Esc`; every command so far applies to the selection; `gG` groups it. | FR-OPS-01, FR-OPS-04, FR-OPS-07 | 2.9, 3.4 | Complete five tasks at once |
 | 3.6 | **Clipboard and duplicate.** `Ctrl+C`/`Ctrl+X`/`Ctrl+V`/`Alt+V` with hierarchy, `D`; `arboard` with the OSC 52 and bracketed-paste fallbacks; paste in edit mode with the `@` rule. | FR-OPS-06 | 3.5 | Copy a project into another file |
-| 3.7 | **Type converter and details.** The `my` picker for all seven types and the `mi` popup with unsupported tags and unknown special nodes. | FR-BLK-08, D-3 | 3.4 | Turn a note into a section |
-| 3.8 | **Typed shortcuts.** `--- `, ```` ``` ````, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 2.8, 3.7 | Type `--- ` |
+| 3.7 | **Type converter and details.** The `my` picker for all six types and the `mi` popup with unsupported tags and unknown special nodes. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
+| 3.8 | **Typed shortcuts.** `--- `, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 3.7 | Type `--- ` |
 | 3.9 | **Inline formatting and URLs.** `**bold**` and `` `code` `` rendered, bare URLs underlined, URL blocks, `gx` opening the browser; `Ctrl+B` and `` Alt+` `` in edit mode (Should). | FR-FMT-01, FR-FMT-02, FR-BLK-06, D-10 | 2.5 | Bold text renders bold |
-| 3.10 | **Markdown in notes.** Headings, links and fenced code rendered in navigate mode. | FR-FMT-03, editing §2.2 | 2.8, 3.9 | A note with a `## heading` |
+| 3.10 | **Markdown in text.** Headings and links rendered in navigate mode. | FR-FMT-03, editing §2.2 | 3.9 | A text block with a `## heading` |
 
 ## M4 · Finding things
 
@@ -123,12 +125,14 @@ Cross-cutting Musts (FR-KEY-01, FR-KEY-02, FR-UI-07, FR-DOC-04) are checked in e
 
 Search with live filtering and its query language, bookmarked searches, then internal links ([search.md](specs/search.md), [links.md](specs/links.md)). They are planned once v1 is accepted.
 
+Code blocks, fenced code in text and text blocks of several lines were dropped from v1 by D-43 and may return after it (FR-BLK-05, FR-FMT-03).
+
 ## What can run in parallel
 
 Parallel work stays inside the current milestone; a step of a later milestone waits for the earlier milestone's acceptance even when its **After** steps are on `main`. Within each milestone:
 
 - **M1:** 1.1 first; then 1.2 and 1.3 together; then 1.4, 1.5 and 1.6 in order.
-- **M2:** 2.1 and 2.2 together; then 2.3; then 2.10, 2.11 and 2.12 together; then 2.4, 2.5 and 2.6 in order; then 2.7, 2.8 and 2.9 together.
+- **M2:** 2.1 and 2.2 together; then 2.3; then 2.10, 2.11 and 2.12 together; then 2.4, 2.5 and 2.6 in order; then 2.7 and 2.9 together.
 - **M3:** 3.1, 3.2 and 3.9 together; then 3.3, 3.4 and 3.10; then 3.5 and 3.7; then 3.6 and 3.8.
 - **M4:** 4.1 and 4.5 together; then 4.2 and 4.6; then 4.3, 4.4, 4.7 and 4.8; then 4.9.
 - **M5** and **M7:** in order.
