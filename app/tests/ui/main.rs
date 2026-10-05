@@ -10,6 +10,7 @@ mod focus_and_scrolling;
 mod folding;
 mod formatting;
 mod hang_up;
+mod markdown;
 mod marks;
 mod moving;
 mod open_file;

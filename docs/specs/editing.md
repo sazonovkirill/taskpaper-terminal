@@ -65,13 +65,13 @@ Text blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 | Syntax | Meaning |
 |---|---|
 | `#` to `######`, a space, then text, at the start of the line | Heading of level 1 to 6. A line ending in `:` is a project, not a heading (OQ-27). |
-| `[title](url)` | Link showing `title`. |
-| `<url>` and bare `http(s)://` URLs | Link showing the URL (bare URLs as in D-10). |
+| `[title](url)` | Link showing `title`, which may hold bold and code but no other link. The address has no spaces, and its parentheses pair up. |
+| `<url>` and bare `http(s)://` URLs | Link showing the URL (bare URLs as in D-10). Between `<` and `>` it starts with a scheme such as `https:` or `mailto:`. |
 | `` `code` `` | Code span (FR-FMT-01). |
 
 - In navigate mode the markers are hidden and the result is rendered ([ui.md §2](ui.md#2-blocks)). In edit mode the raw text is shown and edited (FR-MODE-02).
 - Anything else, including italic, lists, quotes, tables and fenced code, is ordinary text (D-14, D-43).
-- `open_url` (§5) opens the link of a text block: the one under the caret in edit mode, the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)).
+- `open_url` (§5) opens the link of a text block: the one under the caret in edit mode, the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)). Until the picker of step 4.2, it opens the first link whose address has a scheme, so `[notes](notes.txt)` is skipped.
 - Markdown in task, project and section text stays limited to FR-FMT-01 and bare URLs.
 
 ### 2.3 Type menu

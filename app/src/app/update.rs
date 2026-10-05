@@ -997,6 +997,20 @@ mod tests {
             .unwrap_or_else(|| "Home".to_owned())
     }
 
+    // FR-NAV-03, FR-FMT-01, FR-FMT-03
+    #[test]
+    fn breadcrumbs_show_each_block_without_its_formatting_delimiters() {
+        let mut state = open(
+            "**Work** `x`:\n\t## [Notes](https://a.b)\n\t\t- [c](https://d.e) `f`\n\t\t\tg",
+            2,
+        );
+        state.update(Message::ZoomIn);
+        assert_eq!(
+            state.breadcrumbs(),
+            ["Work x", "Notes", "[c](https://d.e) f"]
+        );
+    }
+
     // FR-NAV-03
     #[test]
     fn zoom_in_shows_a_title_and_focuses_the_first_child() {

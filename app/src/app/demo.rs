@@ -132,6 +132,27 @@ mod tests {
         );
     }
 
+    // FR-FMT-03, D-27
+    #[test]
+    fn demo_has_markdown_headings_and_links_in_text_blocks() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        let texts: Vec<&str> = rows
+            .iter()
+            .filter(|row| row.kind == BlockKind::Text)
+            .map(|row| row.text.as_str())
+            .collect();
+        assert!(
+            texts.iter().any(|text| text.starts_with("## ")),
+            "demo lacks a Markdown heading in a text block"
+        );
+        for (syntax, what) in [("](", "a Markdown link"), ("<https://", "a <url> link")] {
+            assert!(
+                texts.iter().any(|text| text.contains(syntax)),
+                "demo lacks {what} in a text block"
+            );
+        }
+    }
+
     // FR-DOC-05, D-27
     #[test]
     fn demo_is_a_canonical_outline_with_every_implemented_type() {

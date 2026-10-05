@@ -3,14 +3,19 @@
 //! FR-BLK-06, D-10).
 
 use super::{Effect, Notice, State};
-use crate::document::{Item, inline};
+use crate::document::{
+    Item, blocks,
+    inline::{self, Syntax},
+};
 
 impl State {
     /// Asks the frontend to open the focused block's address, if it has one (FR-BLK-06).
     pub(super) fn open_url(&self) -> Vec<Effect> {
         self.focus
-            .and_then(|id| self.document.get(id))
-            .and_then(address)
+            .and_then(|id| {
+                let kind = blocks::block(&self.document, id)?.kind();
+                address(self.document.get(id)?, Syntax::of(kind))
+            })
             .map(Effect::OpenUrl)
             .into_iter()
             .collect()
@@ -22,33 +27,22 @@ impl State {
     }
 }
 
-/// The address of the line `item`: its `@url` value when that is a URL, else the first bare URL
-/// in its text (D-10). A block with several bare URLs opens the first until a picker can offer
-/// them all (editing.md §2.2).
-fn address(item: &Item) -> Option<String> {
+/// The address of the line `item`, whose text has `syntax`: its `@url` value when that is a URL,
+/// else the first link in its text whose address is a URL (D-10, FR-FMT-03). A block with several
+/// opens the first until a picker can offer them all (editing.md §2.2).
+fn address(item: &Item, syntax: Syntax) -> Option<String> {
     item.tags()
         .into_iter()
         .find(|tag| tag.name == "url")
         .and_then(|tag| tag.value)
         .map(|value| value.trim().to_owned())
-        .filter(|value| has_scheme(value))
+        .filter(|value| inline::has_scheme(value))
         .or_else(|| {
-            inline::urls(&item.display_text())
-                .first()
-                .map(|&url| url.to_owned())
+            inline::urls(&item.display_text(), syntax)
+                .into_iter()
+                .find(|url| inline::has_scheme(url))
+                .map(str::to_owned)
         })
-}
-
-/// Whether `address` starts with a URL scheme, such as `https:` or `mailto:`, so that an opener
-/// never reads it as an option or a file name.
-fn has_scheme(address: &str) -> bool {
-    address.split_once(':').is_some_and(|(scheme, _)| {
-        let mut chars = scheme.chars();
-        chars
-            .next()
-            .is_some_and(|first| first.is_ascii_alphabetic())
-            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
-    })
 }
 
 #[cfg(test)]
@@ -90,6 +84,27 @@ mod tests {
         );
         assert_eq!(opened("https://a.b @url"), open("https://a.b"));
         assert_eq!(opened("P https://a.b:"), open("https://a.b"));
+    }
+
+    // FR-FMT-03
+    #[test]
+    fn opens_the_first_markdown_link_with_a_url_in_a_text_block() {
+        assert_eq!(
+            opened("See [the guide](https://a.b/c) or https://x.y"),
+            open("https://a.b/c")
+        );
+        assert_eq!(opened("Mail <mailto:x@y.z>"), open("mailto:x@y.z"));
+        assert_eq!(
+            opened("[local](notes.txt) then [web](https://a.b)"),
+            open("https://a.b")
+        );
+        assert_eq!(opened("[local](notes.txt)"), []);
+        assert_eq!(
+            opened("- Read [it](https://a.b/c)"),
+            open("https://a.b/c"),
+            "a task's bare URL, as Markdown links are text blocks' only"
+        );
+        assert_eq!(opened("- <mailto:x@y.z>"), []);
     }
 
     // FR-BLK-06

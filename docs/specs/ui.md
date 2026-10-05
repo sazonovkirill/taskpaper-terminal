@@ -47,8 +47,8 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
 - **Bare URLs** in text are underlined (D-10).
 - **Markdown in text** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-text)), navigate mode only; edit mode shows the raw text:
-  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold. Heading rows keep the block's indentation and get no rule, so they never look like a section.
-  - Links show their title (or URL) in the link style (underlined, accent color) and hide `[`, `](url)`, `<` and `>`.
+  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold; a color tag's tint replaces the heading's color. Heading rows keep the block's indentation and get no rule, so they never look like a section.
+  - Links, bare URLs included, show their title (or URL) in the link style (underlined, in the links color of URL blocks) and hide `[`, `](url)`, `<` and `>`.
 - **Focus and selection**: the focused block is marked by a `▎` in the accent color in a 2-column gutter left of the outline, on its line (D-30). That line, gutter included and across the pane's full width, also gets the current-line background, a step brighter than the normal one, in navigate and edit mode alike; it changes no text color or style, so dimmed, done and colored blocks look the same as unfocused (D-39). Until themes arrive it is the 256-color grey 235, chosen for dark terminals. Selected blocks get a dimmer marker.
 - **Edit mode**: the focused block's text becomes a one-line inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02). Text wider than the pane scrolls to keep the caret in view.
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.

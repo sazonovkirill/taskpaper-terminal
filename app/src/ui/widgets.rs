@@ -21,7 +21,7 @@ use crate::{
     document::{
         BlockKind, DateTag, TagColor,
         dates::DateError,
-        inline::{self, Format},
+        inline::{self, Format, Syntax},
     },
 };
 
@@ -120,9 +120,8 @@ const HOME_ICON: &str = "⌂";
 /// one is left (navigation §4). Bold, as the focused pane's header (ui.md §1).
 #[must_use]
 pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
-    let shown: Vec<String> = crumbs.iter().map(|crumb| shown_text(crumb)).collect();
     let path: Vec<&str> = std::iter::once(HOME_ICON)
-        .chain(shown.iter().map(String::as_str))
+        .chain(crumbs.iter().map(String::as_str))
         .collect();
     let mut line = Line::from(path.join(" › "));
     for start in 1..path.len() {
@@ -498,18 +497,28 @@ fn mine_style() -> Style {
     Style::new().fg(Color::Green)
 }
 
-/// `text` as navigate mode shows it, without the delimiters of its inline formatting
-/// (FR-FMT-01).
-fn shown_text(text: &str) -> String {
-    inline::runs(text).iter().map(|run| run.text).collect()
-}
-
-/// The spans of `text` in `style` with its inline formatting applied over it: bold, code in the
-/// code color and URLs underlined, with the delimiters hidden (FR-FMT-01, D-10).
-fn formatted(text: &str, style: Style) -> impl Iterator<Item = Span<'_>> {
-    inline::runs(text).into_iter().map(move |run| {
-        let Format { bold, code, link } = run.format;
+/// The spans of `row`'s text in `style` with its formatting applied over it, the delimiters
+/// hidden: a heading bold, level 1 in the accent and level 2 in the headers color unless a color
+/// tag tints the row; bold; code in the code color; and links underlined, in a text block also in
+/// the link color (FR-FMT-01, FR-FMT-03, D-10).
+fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
+    let syntax = Syntax::of(row.kind);
+    inline::runs(&row.text, syntax).into_iter().map(move |run| {
+        let Format {
+            bold,
+            code,
+            link,
+            heading,
+        } = run.format;
         let mut style = style;
+        if let Some(level) = heading {
+            style = style.bold();
+            match (level, row.color) {
+                (1, None) => style = style.fg(PRIMARY),
+                (2, None) => style = style.fg(SECONDARY),
+                _ => {}
+            }
+        }
         if bold {
             style = style.bold();
         }
@@ -518,6 +527,9 @@ fn formatted(text: &str, style: Style) -> impl Iterator<Item = Span<'_>> {
         }
         if link {
             style = style.underlined();
+        }
+        if link && syntax == Syntax::Markdown {
+            style = style.fg(LINK);
         }
         Span::styled(run.text, style)
     })
@@ -538,10 +550,10 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
         BlockKind::Divider => {}
         // TaskPaper marks a project with a trailing colon, which the display text drops.
         BlockKind::Project => {
-            line.extend(formatted(&row.text, style));
+            line.extend(formatted(row, style));
             line.push_span(Span::styled(":", style));
         }
-        _ => line.extend(formatted(&row.text, style)),
+        _ => line.extend(formatted(row, style)),
     }
     if row.hidden_children > 0 {
         line.push_span(Span::styled(
@@ -609,7 +621,7 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("✔ ", Style::new()),
         BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Url => ("", Style::new().dim().underlined().cyan()),
+        BlockKind::Url => ("", Style::new().dim().underlined().fg(LINK)),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
         BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
@@ -722,6 +734,10 @@ const PRIMARY: Color = Color::LightBlue;
 /// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
 /// step 6.2.
 const TEXT: Color = Color::Gray;
+
+/// The theme's link color, for URL blocks and links in text blocks (ui.md §2); themes arrive in
+/// step 6.2.
+const LINK: Color = Color::Cyan;
 
 /// Inline code (FR-FMT-01); themes arrive in step 6.2.
 const CODE: Color = Color::LightYellow;
@@ -1153,11 +1169,36 @@ mod tests {
         );
     }
 
-    // FR-FMT-01, FR-NAV-03
+    // FR-FMT-03
     #[test]
-    fn breadcrumbs_hide_the_delimiters_of_inline_formatting() {
-        let crumbs = ["**Work**".to_owned(), "`x` y".to_owned()];
-        assert_eq!(breadcrumbs(&crumbs, 40).to_string(), "⌂ › Work › x y");
+    fn text_blocks_draw_headings_and_links_with_their_markers_hidden() {
+        let mut expected = Buffer::with_lines([
+            "A           ",
+            "B           ",
+            "C d         ",
+            "e f https://",
+            "H mailto:g  ",
+            "- [i](j)    ",
+        ]);
+        let text = Style::new().fg(TEXT);
+        expected.set_style(Rect::new(0, 0, 1, 1), text.bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 1, 1, 1), text.bold().fg(SECONDARY));
+        expected.set_style(Rect::new(0, 2, 3, 1), text.bold());
+        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(CODE));
+        let link = text.underlined().fg(LINK);
+        expected.set_style(Rect::new(0, 3, 4, 1), text);
+        expected.set_style(Rect::new(0, 3, 1, 1), link);
+        expected.set_style(Rect::new(4, 3, 8, 1), link);
+        expected.set_style(Rect::new(0, 4, 10, 1), Style::new().fg(Color::Red).bold());
+        expected.set_style(Rect::new(2, 4, 8, 1), Style::new().fg(LINK).underlined());
+        assert_eq!(
+            render(
+                "# A\n## B\n### C `d`\n[e](f) f <https://g.h>\n# H <mailto:g> @red\n- [i](j)",
+                12,
+                6
+            ),
+            expected
+        );
     }
 
     // FR-NAV-03

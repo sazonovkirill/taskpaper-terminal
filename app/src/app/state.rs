@@ -12,7 +12,10 @@ use super::{
     History, color_picker::ColorPicker, date_prompt::DatePrompt, edit_mode::Session,
     external::External, saving::Autosave,
 };
-use crate::document::{Block, BlockKind, Document, Item, ItemId, TagColor, blocks};
+use crate::document::{
+    Block, BlockKind, Document, Item, ItemId, TagColor, blocks,
+    inline::{self, Syntax},
+};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
@@ -289,15 +292,18 @@ impl State {
         self.zoom
     }
 
-    /// The text of each block from the top level down to the zoom block; empty
-    /// at home (FR-NAV-03).
+    /// The text of each block from the top level down to the zoom block as shown, without the
+    /// delimiters of its formatting; empty at home (FR-NAV-03, FR-FMT-01, FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
         let mut crumbs: Vec<String> = std::iter::successors(self.zoom_block(), |block| {
             blocks::parent(&self.document, block.id())
         })
-        .filter_map(|block| self.document.get(block.id()))
-        .map(Item::display_text)
+        .filter_map(|block| {
+            let text = self.document.get(block.id())?.display_text();
+            let runs = inline::runs(&text, Syntax::of(block.kind()));
+            Some(runs.iter().map(|run| run.text).collect())
+        })
         .collect();
         crumbs.reverse();
         crumbs

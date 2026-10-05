@@ -67,7 +67,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 3.7 | **Type converter and details.** The `my` picker for all six types and the `mi` popup with unsupported tags and unknown special nodes. The edit-mode type menu of D-44 already converts the edited block between five types; the picker can extend it with URL and selections. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
 | 3.8 | **Typed shortcuts.** `--- `, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 3.7 | Type `--- ` |
 | 3.9 | **Inline formatting and URLs.** `**bold**` and `` `code` `` rendered, bare URLs underlined, URL blocks, `gx` opening the browser; `Ctrl+B` and `` Alt+` `` (with `Ctrl+E` as its non-`Alt` route) in edit mode (Should). Until the picker of 4.2, `gx` on a block with several URLs opens the first. | FR-FMT-01, FR-FMT-02, FR-BLK-06, D-10 | 2.5 | Bold text renders bold |
-| 3.10 | **Markdown in text.** Headings and links rendered in navigate mode. | FR-FMT-03, editing §2.2 | 3.9 | A text block with a `## heading` |
+| 3.10 | **Markdown in text.** Headings and links rendered in navigate mode; `gx` also opens a Markdown link, the first with a URL. | FR-FMT-03, editing §2.2 | 3.9 | A text block with a `## heading` |
 
 ## M4 · Finding things
 

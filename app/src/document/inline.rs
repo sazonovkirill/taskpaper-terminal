@@ -1,9 +1,35 @@
-//! Inline Markdown in a line's text: `**bold**`, `` `code` `` and bare `http(s)://` URLs, derived
-//! for display while the text stays as typed (FR-FMT-01, D-10,
-//! [ui.md §2](../../../docs/specs/ui.md#2-blocks)). Hides the inline syntax: which delimiters
-//! pair up, where a URL ends, and how a marker is added or removed.
+//! Inline Markdown in a line's text: `**bold**`, `` `code` `` and bare `http(s)://` URLs in every
+//! block, and headings and links in text blocks, derived for display while the text stays as typed
+//! (FR-FMT-01, FR-FMT-03, D-10, [ui.md §2](../../../docs/specs/ui.md#2-blocks)). Hides the inline
+//! syntax: which delimiters pair up, where a URL ends, and how a marker is added or removed.
 
 use std::ops::Range;
+
+use super::BlockKind;
+
+/// Which inline syntax a line's text has ([editing.md §2.2](../../../docs/specs/editing.md#22-markdown-in-text)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Syntax {
+    /// Bold, code and bare URLs (FR-FMT-01, D-10).
+    Inline,
+    /// Those, headings, `[title](url)` and `<url>` links (FR-FMT-03).
+    Markdown,
+}
+
+impl Syntax {
+    /// The syntax of the text of a block of type `kind`: Markdown in text blocks only.
+    #[must_use]
+    pub fn of(kind: BlockKind) -> Self {
+        match kind {
+            BlockKind::Text => Self::Markdown,
+            BlockKind::Project
+            | BlockKind::Task
+            | BlockKind::Section
+            | BlockKind::Url
+            | BlockKind::Divider => Self::Inline,
+        }
+    }
+}
 
 /// A pair of delimiters that formats the text between them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,8 +57,10 @@ pub struct Format {
     pub bold: bool,
     /// Inside `` `…` ``.
     pub code: bool,
-    /// Part of a URL.
+    /// Part of a URL or the title of a link.
     pub link: bool,
+    /// The level, 1 to 6, of the heading the text belongs to (FR-FMT-03).
+    pub heading: Option<u8>,
 }
 
 /// A piece of the text as shown, with the delimiters hidden, all of it formatted one way.
@@ -44,27 +72,50 @@ pub struct Run<'a> {
     pub format: Format,
 }
 
-/// One formatted part of a text: a marker's span with its delimiters, or a URL, whose inner and
-/// outer ranges are the same.
+/// What a formatted part of a text is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Kind {
+    /// A marker's span.
+    Marker(Marker),
+    /// A bare URL or a `<url>` link, which shows its address.
+    Url,
+    /// A `[title](url)` link, which shows its title, to the address at these bytes.
+    Link(Range<usize>),
+}
+
+/// One formatted part of a text: the bytes with its delimiters (outer) and the bytes shown
+/// (inner); a bare URL's are the same.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Element {
-    /// The marker, or `None` for a URL.
-    marker: Option<Marker>,
+    /// What it is.
+    kind: Kind,
     /// The bytes with the delimiters.
     outer: Range<usize>,
     /// The bytes between the delimiters.
     inner: Range<usize>,
 }
 
-/// `text` as shown: runs in order with the delimiters of bold and code left out. A delimiter without a partner is shown as typed. Code shows its
-/// content as typed; bold may hold code and URLs but not more bold.
+/// What a scan may find besides code spans: bold except inside bold, links except inside a
+/// link's title, and Markdown links only in Markdown.
+#[derive(Debug, Clone, Copy)]
+struct Scope {
+    markdown: bool,
+    bold: bool,
+    links: bool,
+}
+
+/// `text` as shown: runs in order with the delimiters of bold, code, links and a heading left out.
+/// A delimiter without a partner is shown as typed. Code shows its content as typed; bold may
+/// hold code and links but not more bold, and a link's title may hold bold and code but no link.
 #[must_use]
-pub fn runs(text: &str) -> Vec<Run<'_>> {
-    let elements = elements(text);
+pub fn runs(text: &str, syntax: Syntax) -> Vec<Run<'_>> {
+    let (heading, body) = heading(text, syntax).unzip();
+    let body = body.unwrap_or_default();
+    let elements = elements(text, syntax);
     let mut bounds: Vec<usize> = elements
         .iter()
         .flat_map(|e| [e.outer.start, e.inner.start, e.inner.end, e.outer.end])
-        .chain([0, text.len()])
+        .chain([body, text.len()])
         .collect();
     bounds.sort_unstable();
     bounds.dedup();
@@ -77,12 +128,15 @@ pub fn runs(text: &str) -> Vec<Run<'_>> {
         {
             continue;
         }
-        let mut format = Format::default();
+        let mut format = Format {
+            heading,
+            ..Format::default()
+        };
         for element in elements.iter().filter(|e| inside(&e.inner)) {
-            match element.marker {
-                Some(Marker::Bold) => format.bold = true,
-                Some(Marker::Code) => format.code = true,
-                None => format.link = true,
+            match element.kind {
+                Kind::Marker(Marker::Bold) => format.bold = true,
+                Kind::Marker(Marker::Code) => format.code = true,
+                Kind::Url | Kind::Link(_) => format.link = true,
             }
         }
         runs.push(Run {
@@ -93,14 +147,31 @@ pub fn runs(text: &str) -> Vec<Run<'_>> {
     runs
 }
 
-/// The bare URLs in `text`, in order (D-10).
+/// The addresses of the links in `text`, in order: bare URLs (D-10) and, in Markdown, the
+/// addresses of `[title](url)` and `<url>` links (FR-FMT-03).
 #[must_use]
-pub fn urls(text: &str) -> Vec<&str> {
-    elements(text)
+pub fn urls(text: &str, syntax: Syntax) -> Vec<&str> {
+    elements(text, syntax)
         .into_iter()
-        .filter(|e| e.marker.is_none())
-        .filter_map(|e| text.get(e.inner))
+        .filter_map(|e| match e.kind {
+            Kind::Marker(_) => None,
+            Kind::Url => text.get(e.inner),
+            Kind::Link(address) => text.get(address),
+        })
         .collect()
+}
+
+/// Whether `address` starts with a URL scheme, such as `https:` or `mailto:`, so that an opener
+/// never reads it as an option or a file name.
+#[must_use]
+pub fn has_scheme(address: &str) -> bool {
+    address.split_once(':').is_some_and(|(scheme, _)| {
+        let mut chars = scheme.chars();
+        chars
+            .next()
+            .is_some_and(|first| first.is_ascii_alphabetic())
+            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    })
 }
 
 /// `text` with `marker` taken off the bytes `range`, or put on them, and where those bytes are
@@ -117,8 +188,8 @@ pub fn toggle(text: &str, range: Range<usize>, marker: Marker) -> (String, Range
         && piece(range.end..range.end + width) == delimiter;
     let span = (!wrapped)
         .then(|| {
-            elements(text).into_iter().find(|e| {
-                e.marker == Some(marker)
+            elements(text, Syntax::Inline).into_iter().find(|e| {
+                e.kind == Kind::Marker(marker)
                     && (e.outer == range
                         || (e.inner.start <= range.start && range.end <= e.inner.end))
             })
@@ -158,32 +229,125 @@ pub fn toggle(text: &str, range: Range<usize>, marker: Marker) -> (String, Range
     (wrapped, range.start + width..range.end + width)
 }
 
-/// Every element of `text`, ordered by where it starts; an element inside bold follows it.
-fn elements(text: &str) -> Vec<Element> {
+/// Every element of `text` in `syntax`, ordered by where it starts; an element inside bold or a
+/// link's title follows it.
+fn elements(text: &str, syntax: Syntax) -> Vec<Element> {
+    let body = heading(text, syntax).map_or(0, |(_, body)| body);
+    let scope = Scope {
+        markdown: syntax == Syntax::Markdown,
+        bold: true,
+        links: true,
+    };
     let mut found = Vec::new();
-    scan(text, 0..text.len(), true, &mut found);
+    scan(text, body..text.len(), scope, &mut found);
     found
 }
 
-/// Adds the elements of the bytes `range` of `text` to `found`, bold ones only with `bold`.
-fn scan(text: &str, range: Range<usize>, bold: bool, found: &mut Vec<Element>) {
+/// Adds the elements of the bytes `range` of `text` that `scope` allows to `found`.
+fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>) {
     let mut at = range.start;
     while let Some(next) = text.get(at..range.end).and_then(|rest| rest.chars().next()) {
-        let element = code_at(text, at, range.end)
-            .or_else(|| bold.then(|| bold_at(text, at, range.end)).flatten())
-            .or_else(|| url_at(text, at, range.end));
-        if let Some(element) = element {
-            at = element.outer.end;
-            let inner = element.inner.clone();
-            let is_bold = element.marker == Some(Marker::Bold);
-            found.push(element);
-            if is_bold {
-                scan(text, inner, false, found);
-            }
-        } else {
+        let end = range.end;
+        let markdown = scope.links && scope.markdown;
+        let element = code_at(text, at, end)
+            .or_else(|| scope.bold.then(|| bold_at(text, at, end)).flatten())
+            .or_else(|| markdown.then(|| link_at(text, at, end)).flatten())
+            .or_else(|| markdown.then(|| autolink_at(text, at, end)).flatten())
+            .or_else(|| scope.links.then(|| url_at(text, at, end)).flatten());
+        let Some(element) = element else {
             at += next.len_utf8();
+            continue;
+        };
+        at = element.outer.end;
+        let inner = match element.kind {
+            Kind::Marker(Marker::Bold) => Some(Scope {
+                bold: false,
+                ..scope
+            }),
+            Kind::Link(_) => Some(Scope {
+                links: false,
+                ..scope
+            }),
+            Kind::Marker(Marker::Code) | Kind::Url => None,
+        }
+        .map(|inner| (element.inner.clone(), inner));
+        found.push(element);
+        if let Some((range, inner)) = inner {
+            scan(text, range, inner, found);
         }
     }
+}
+
+/// The level of the Markdown heading `text` is and the byte its title starts at: one to six `#`,
+/// a space and text that is not all whitespace (FR-FMT-03).
+fn heading(text: &str, syntax: Syntax) -> Option<(u8, usize)> {
+    if syntax != Syntax::Markdown {
+        return None;
+    }
+    let level = text.bytes().take_while(|&byte| byte == b'#').count();
+    let title = text.get(level..)?.strip_prefix(' ')?.trim_start();
+    let level = u8::try_from(level)
+        .ok()
+        .filter(|level| (1..=6).contains(level))?;
+    (!title.is_empty()).then_some((level, text.len() - title.len()))
+}
+
+/// The Markdown link starting at byte `at` and ending by byte `end`: `[`, a title of at least one
+/// character without brackets outside code spans, `](`, an address of at least one character
+/// without whitespace whose parentheses pair up, and `)`.
+fn link_at(text: &str, at: usize, end: usize) -> Option<Element> {
+    text.get(at..end)?.strip_prefix('[')?;
+    let title = at + 1;
+    let mut close = title;
+    loop {
+        if let Some(code) = code_at(text, close, end) {
+            close = code.outer.end;
+            continue;
+        }
+        match text.get(close..end)?.chars().next()? {
+            ']' => break,
+            '[' => return None,
+            other => close += other.len_utf8(),
+        }
+    }
+    let address = close + 2;
+    if close == title || !text.get(close + 1..end)?.starts_with('(') {
+        return None;
+    }
+    let mut depth = 0_usize;
+    let mut stop = address;
+    for c in text.get(address..end)?.chars() {
+        match c {
+            ')' if depth == 0 => break,
+            ')' => depth -= 1,
+            '(' => depth += 1,
+            c if c.is_whitespace() => return None,
+            _ => {}
+        }
+        stop += c.len_utf8();
+    }
+    (stop > address && text.get(stop..end)?.starts_with(')')).then(|| Element {
+        kind: Kind::Link(address..stop),
+        outer: at..stop + 1,
+        inner: title..close,
+    })
+}
+
+/// The `<url>` link starting at byte `at` and ending by byte `end`: `<`, an address with a
+/// scheme, something after its `:` and no whitespace, and `>`.
+fn autolink_at(text: &str, at: usize, end: usize) -> Option<Element> {
+    let rest = text.get(at..end)?.strip_prefix('<')?;
+    let address = rest.get(..rest.find('>')?)?;
+    let valid = has_scheme(address)
+        && address
+            .split_once(':')
+            .is_some_and(|(_, after)| !after.is_empty())
+        && !address.contains(|c: char| c.is_whitespace() || c == '<');
+    valid.then(|| Element {
+        kind: Kind::Url,
+        outer: at..at + address.len() + 2,
+        inner: at + 1..at + 1 + address.len(),
+    })
 }
 
 /// The code span starting at byte `at` and ending by byte `end`: a backtick, at least one
@@ -192,7 +356,7 @@ fn code_at(text: &str, at: usize, end: usize) -> Option<Element> {
     let rest = text.get(at..end)?.strip_prefix('`')?;
     let close = at + 1 + rest.find('`')?;
     (close > at + 1).then(|| Element {
-        marker: Some(Marker::Code),
+        kind: Kind::Marker(Marker::Code),
         outer: at..close + 1,
         inner: at + 1..close,
     })
@@ -215,7 +379,7 @@ fn bold_at(text: &str, at: usize, end: usize) -> Option<Element> {
         let before = text.get(..close)?.chars().next_back()?;
         if rest.starts_with("**") && !before.is_whitespace() {
             return Some(Element {
-                marker: Some(Marker::Bold),
+                kind: Kind::Marker(Marker::Bold),
                 outer: at..close + 2,
                 inner: content..close,
             });
@@ -258,7 +422,7 @@ fn url_at(text: &str, at: usize, end: usize) -> Option<Element> {
         }
     }
     (url.len() > scheme.len()).then(|| Element {
-        marker: None,
+        kind: Kind::Url,
         outer: at..at + url.len(),
         inner: at..at + url.len(),
     })
@@ -272,6 +436,7 @@ mod tests {
         bold: false,
         code: false,
         link: false,
+        heading: None,
     };
     const BOLD: Format = Format {
         bold: true,
@@ -288,11 +453,16 @@ mod tests {
 
     #[track_caller]
     fn check(text: &str, expected: &[(&str, Format)]) {
-        let runs: Vec<(&str, Format)> = runs(text)
+        check_in(Syntax::Inline, text, expected);
+    }
+
+    #[track_caller]
+    fn check_in(syntax: Syntax, text: &str, expected: &[(&str, Format)]) {
+        let runs: Vec<(&str, Format)> = runs(text, syntax)
             .into_iter()
             .map(|run| (run.text, run.format))
             .collect();
-        assert_eq!(runs, expected, "{text:?}");
+        assert_eq!(runs, expected, "{syntax:?} {text:?}");
     }
 
     // FR-FMT-01
@@ -352,7 +522,7 @@ mod tests {
                     Format {
                         bold: true,
                         code: true,
-                        link: false,
+                        ..PLAIN
                     },
                 ),
                 (" c", BOLD),
@@ -402,10 +572,13 @@ mod tests {
     #[test]
     fn lists_the_bare_urls_in_order() {
         assert_eq!(
-            urls("a https://x.y, `https://no.t` **http://b.c/d**"),
+            urls(
+                "a https://x.y, `https://no.t` **http://b.c/d**",
+                Syntax::Inline
+            ),
             ["https://x.y", "http://b.c/d"]
         );
-        assert_eq!(urls("none"), Vec::<&str>::new());
+        assert_eq!(urls("none", Syntax::Inline), Vec::<&str>::new());
     }
 
     /// The text and range after toggling `marker` on the bytes `[`…`]` mark in `before`, written
@@ -449,19 +622,183 @@ mod tests {
         check_toggle("`a [b] c`", Marker::Bold, "`a **[b]** c`");
     }
 
+    // FR-FMT-03
+    #[test]
+    fn markdown_is_the_syntax_of_text_blocks_only() {
+        assert_eq!(Syntax::of(BlockKind::Text), Syntax::Markdown);
+        for kind in [
+            BlockKind::Project,
+            BlockKind::Task,
+            BlockKind::Section,
+            BlockKind::Url,
+            BlockKind::Divider,
+        ] {
+            assert_eq!(Syntax::of(kind), Syntax::Inline, "{kind:?}");
+        }
+    }
+
+    const fn heading(level: u8) -> Format {
+        Format {
+            heading: Some(level),
+            ..PLAIN
+        }
+    }
+
+    // FR-FMT-03
+    #[test]
+    fn a_heading_hides_its_hashes_and_marks_every_run_with_its_level() {
+        let markdown =
+            |text, expected: &[(&str, Format)]| check_in(Syntax::Markdown, text, expected);
+        markdown("# Title", &[("Title", heading(1))]);
+        markdown("###### Six", &[("Six", heading(6))]);
+        markdown("##   Spaced out ", &[("Spaced out ", heading(2))]);
+        markdown(
+            "### **Big** news",
+            &[
+                (
+                    "Big",
+                    Format {
+                        bold: true,
+                        ..heading(3)
+                    },
+                ),
+                (" news", heading(3)),
+            ],
+        );
+        markdown(
+            "# [a](https://b.c)",
+            &[(
+                "a",
+                Format {
+                    link: true,
+                    ..heading(1)
+                },
+            )],
+        );
+        for text in [
+            "#tag",
+            "####### Seven",
+            "# ",
+            "#   ",
+            " # x",
+            "#\tx",
+            "a # b",
+            "#",
+        ] {
+            markdown(text, &[(text, PLAIN)]);
+        }
+        check("# Title", &[("# Title", PLAIN)]);
+    }
+
+    // FR-FMT-03
+    #[test]
+    fn markdown_links_show_their_title_or_address() {
+        let markdown =
+            |text, expected: &[(&str, Format)]| check_in(Syntax::Markdown, text, expected);
+        markdown(
+            "See [the site](https://a.b/c) now",
+            &[("See ", PLAIN), ("the site", LINK), (" now", PLAIN)],
+        );
+        markdown(
+            "see <https://a.b>.",
+            &[("see ", PLAIN), ("https://a.b", LINK), (".", PLAIN)],
+        );
+        markdown("<mailto:x@y.z>", &[("mailto:x@y.z", LINK)]);
+        markdown("<a<b:c>", &[("<a", PLAIN), ("b:c", LINK)]);
+        markdown("[w](https://x.y/a_(b))", &[("w", LINK)]);
+        markdown("[notes](notes.txt)", &[("notes", LINK)]);
+        markdown("[https://a.b](https://a.b)", &[("https://a.b", LINK)]);
+        markdown("[日本](https://a.b)語", &[("日本", LINK), ("語", PLAIN)]);
+        markdown("[a[b](https://c.d)", &[("[a", PLAIN), ("b", LINK)]);
+    }
+
+    // FR-FMT-03
+    #[test]
+    fn a_link_title_holds_bold_and_code_and_bold_holds_links() {
+        let markdown =
+            |text, expected: &[(&str, Format)]| check_in(Syntax::Markdown, text, expected);
+        let both = |format: Format| Format {
+            link: true,
+            ..format
+        };
+        markdown(
+            "[**a** `]`](https://b.c)",
+            &[("a", both(BOLD)), (" ", LINK), ("]", both(CODE))],
+        );
+        markdown("**[a](https://b.c)**", &[("a", both(BOLD))]);
+        markdown("**<https://b.c>**", &[("https://b.c", both(BOLD))]);
+    }
+
+    // FR-FMT-03
+    #[test]
+    fn malformed_markdown_links_stay_as_typed() {
+        for text in [
+            "[](x.y)",
+            "[a]()",
+            "[a] (x.y)",
+            "[a](b c)",
+            "[a](x.y",
+            "[a](x(y)",
+            "[a",
+            "<a.b>",
+            "<https:>",
+            "<x:a b>",
+            "<>",
+            "<-x:y>",
+        ] {
+            check_in(Syntax::Markdown, text, &[(text, PLAIN)]);
+        }
+        check(
+            "[a](https://u.v)",
+            &[("[a](", PLAIN), ("https://u.v", LINK), (")", PLAIN)],
+        );
+    }
+
+    // FR-FMT-03, D-10
+    #[test]
+    fn lists_markdown_link_addresses_with_the_bare_urls_in_order() {
+        assert_eq!(
+            urls(
+                "[a](rel) <mailto:x@y.z> https://b.c **[d](https://e.f)** `[g](h)`",
+                Syntax::Markdown
+            ),
+            ["rel", "mailto:x@y.z", "https://b.c", "https://e.f"]
+        );
+        assert_eq!(
+            urls("[https://a.b](https://c.d)", Syntax::Markdown),
+            ["https://c.d"]
+        );
+        assert_eq!(
+            urls("[a](https://c.d) <https://e.f>", Syntax::Inline),
+            ["https://c.d", "https://e.f"]
+        );
+    }
+
+    #[test]
+    fn a_scheme_is_a_letter_then_letters_digits_or_plus_minus_dot_before_a_colon() {
+        for address in ["https://a", "mailto:x", "a+b-c.d:x", "x:"] {
+            assert!(has_scheme(address), "{address:?}");
+        }
+        for address in ["-help", "/etc/x", "1x:y", "a_b:c", "", ":x", "www.x"] {
+            assert!(!has_scheme(address), "{address:?}");
+        }
+    }
+
     proptest::proptest! {
         /// Any text shows as runs of itself in order, and a wrap comes off again.
         #[test]
         fn runs_are_pieces_of_any_text_and_a_wrap_toggles_back(
-            text in "[a*` hps:/.()日]{0,24}",
+            text in "[a*` hps:/.()#\\[\\]<>日]{0,24}",
         ) {
-            let mut rest = text.as_str();
-            for run in runs(&text) {
-                let at = rest.find(run.text);
-                proptest::prop_assert!(at.is_some(), "{:?} not in {:?}", run.text, rest);
-                rest = &rest[at.unwrap() + run.text.len()..];
+            for syntax in [Syntax::Inline, Syntax::Markdown] {
+                let mut rest = text.as_str();
+                for run in runs(&text, syntax) {
+                    let at = rest.find(run.text);
+                    proptest::prop_assert!(at.is_some(), "{:?} not in {:?}", run.text, rest);
+                    rest = &rest[at.unwrap() + run.text.len()..];
+                }
+                let _ = urls(&text, syntax);
             }
-            let _ = urls(&text);
             let end = text.len();
             for marker in [Marker::Bold, Marker::Code] {
                 let (wrapped, range) = toggle(&text, end..end, marker);

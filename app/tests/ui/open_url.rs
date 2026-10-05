@@ -44,6 +44,20 @@ fn g_x_opens_a_url_blocks_address_or_a_bare_url_in_the_text() {
     assert_eq!(notice(&mut app), "", "a block without a URL opens nothing");
 }
 
+// FR-FMT-03
+#[test]
+fn g_x_opens_the_first_markdown_link_with_a_url_in_a_text_block() {
+    let mut app = Harness::with_text(
+        "See [the guide](https://a.b) or https://c.d\n[notes](notes.txt) <mailto:x@y.z>\n",
+        120,
+        6,
+    );
+    app.type_keys("gx");
+    assert_eq!(notice(&mut app), failed("https://a.b"));
+    app.type_keys("jgx");
+    assert_eq!(notice(&mut app), failed("mailto:x@y.z"));
+}
+
 // FR-BLK-06
 #[test]
 fn g_x_in_edit_mode_types_the_letters() {

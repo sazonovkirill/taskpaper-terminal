@@ -28,6 +28,8 @@ Reading list:
 		- Piranesi @green
 		- Return Piranesi to the library @due({today+12})
 	Ask friends for more recommendations.
+	## Where to find books
+	Try [the city library](https://library.example.com) or <https://openlibrary.org>.
 Move to the new flat: @done({today-3})
 	- Pack the books
 	- Hand back the old keys @done({today-4})
