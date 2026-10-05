@@ -7,13 +7,10 @@ use std::{
 };
 
 use super::saving::Autosave;
-use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks, format};
+use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
-
-/// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
-const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 
 /// Everything the app knows: the open document, where it came from and whether it is saved, the
 /// focused row, the collapsed blocks, the zoom with its history and the status-line notice.
@@ -21,6 +18,7 @@ const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 pub struct State {
     pub(super) document: Document,
     path: Option<PathBuf>,
+    origin: Origin,
     access: Access,
     pub(super) autosave: Autosave,
     /// The frontend's time at the latest tick.
@@ -45,6 +43,16 @@ pub enum Access {
     ReadWrite,
     /// It is never written, because the user may not write it (file-io.md §1).
     ReadOnly,
+}
+
+/// Who chose the open file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Origin {
+    /// The user named it.
+    Chosen,
+    /// The app made it in `/tmp` for a start without a path; it is not backed up and the status
+    /// line marks it until it is saved elsewhere (file-io.md §1, §2).
+    Temporary,
 }
 
 /// A message the status line shows for a while.
@@ -85,6 +93,7 @@ impl State {
             autosave: Autosave::new(document.revision()),
             document,
             path,
+            origin: Origin::Chosen,
             access: Access::ReadWrite,
             now: Duration::ZERO,
             notice: None,
@@ -98,12 +107,6 @@ impl State {
         state
     }
 
-    /// State showing the demo outline, held only in memory.
-    #[must_use]
-    pub fn demo() -> Self {
-        Self::new(format::parse(DEMO), None)
-    }
-
     /// The open document.
     #[must_use]
     pub fn document(&self) -> &Document {
@@ -114,6 +117,18 @@ impl State {
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
+    }
+
+    /// This state with the file made by `origin`.
+    #[must_use]
+    pub fn with_origin(self, origin: Origin) -> Self {
+        Self { origin, ..self }
+    }
+
+    /// Who chose the open file.
+    #[must_use]
+    pub fn origin(&self) -> Origin {
+        self.origin
     }
 
     /// This state with the file opened with `access`.
@@ -259,6 +274,7 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::document::format;
 
     fn summary(state: &State) -> Vec<(usize, BlockKind, String)> {
         state
@@ -360,85 +376,16 @@ mod tests {
             Some(PathBuf::from("/notes/todo.taskpaper")),
         );
         assert_eq!(state.path(), Some(Path::new("/notes/todo.taskpaper")));
-        assert_eq!(State::demo().path(), None);
+        assert_eq!(State::new(Document::default(), None).path(), None);
     }
 
-    /// The canonical-outline rules of file-format.md §3.1, checked on the parsed tree.
-    fn assert_canonical(document: &Document) {
-        let items: Vec<&Item> = document
-            .descendants(document.root())
-            .filter_map(|(id, _)| document.get(id))
-            .collect();
-        let placed = |item: &&Item| item.extra_indent() == 0;
-        let not_empty_parent = |item: &&Item| !item.text().is_empty() || item.children().is_empty();
-        let trimmed = |item: &&Item| !item.text().starts_with(char::is_whitespace);
-        let blank = |item: &&&Item| item.text().is_empty();
-        assert!(items.iter().all(placed), "placement");
-        assert!(items.iter().all(not_empty_parent), "empty parent");
-        assert!(items.iter().all(trimmed), "leading whitespace");
-        let trailing_parents: Vec<Option<ItemId>> = items
-            .iter()
-            .rev()
-            .take_while(blank)
-            .copied()
-            .map(Item::parent)
-            .collect();
-        let top_level = vec![Some(document.root()); trailing_parents.len()];
-        assert_eq!(trailing_parents, top_level, "trailing indented blank");
-    }
-
-    // FR-DOC-05, D-27
+    // FR-DOC-05
     #[test]
-    fn demo_is_a_canonical_outline_with_every_implemented_type() {
-        let state = State::demo();
-        assert_canonical(state.document());
-        let rows = state.rows();
-        for kind in [
-            BlockKind::Project,
-            BlockKind::Task,
-            BlockKind::Note,
-            BlockKind::Section,
-            BlockKind::Code,
-            BlockKind::Url,
-            BlockKind::Divider,
-        ] {
-            assert!(
-                rows.iter().any(|row| row.kind == kind),
-                "demo lacks a {kind:?}"
-            );
-        }
-        assert!(rows.iter().any(|row| row.depth >= 2), "demo lacks nesting");
-        assert_eq!(
-            rows.first().map(|row| row.lines.clone()),
-            Some(vec!["Trip to Lisbon".to_owned()])
-        );
-        assert!(
-            rows.iter()
-                .any(|row| row.kind == BlockKind::Task && row.done),
-            "demo lacks a done task"
-        );
-        let document = state.document();
-        let tagged = document
-            .descendants(document.root())
-            .filter_map(|(id, _)| document.get(id))
-            .filter(|item| !item.tags().is_empty())
-            .count();
-        assert!(tagged >= 3, "demo lacks tagged lines");
-        assert!(
-            rows.iter()
-                .flat_map(|row| &row.lines)
-                .all(|line| !line.contains('@')),
-            "demo shows a tag"
-        );
-        assert!(
-            rows.iter()
-                .any(|row| row.kind == BlockKind::Note && row.lines.len() > 1),
-            "demo lacks a multi-line note"
-        );
-        let hidden = document
-            .descendants(document.root())
-            .filter_map(|(id, _)| document.get(id))
-            .any(|item| item.tags().iter().any(|tag| tag.name == "hidden"));
-        assert!(hidden, "demo lacks a special node");
+    fn a_file_is_chosen_unless_marked_temporary() {
+        let state = State::new(Document::default(), Some(PathBuf::from("/tmp/t.taskpaper")));
+        assert_eq!(state.origin(), Origin::Chosen);
+        let temporary = state.with_origin(Origin::Temporary);
+        assert_eq!(temporary.origin(), Origin::Temporary);
+        assert_eq!(temporary.path(), Some(Path::new("/tmp/t.taskpaper")));
     }
 }

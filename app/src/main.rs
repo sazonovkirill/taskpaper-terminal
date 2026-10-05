@@ -1,7 +1,8 @@
-//! `tpt [path]`: opens a `.taskpaper` file, or the demo outline without a path, in the terminal.
+//! `tpt [path]`: opens a `.taskpaper` file, or a new temporary file holding the demo outline
+//! without a path, in the terminal.
 
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
     time::Instant,
@@ -14,7 +15,7 @@ use signal_hook::{
     iterator::Signals,
 };
 use taskpaper_terminal::{
-    app::{Message, State},
+    app::Message,
     ui::{
         self, Input,
         effects::{Backups, Io},
@@ -29,7 +30,10 @@ fn main() -> anyhow::Result<()> {
     }
     let state = match path {
         Some(path) => ui::effects::open(&path)?,
-        None => State::demo(),
+        None => ui::effects::create_demo(
+            Path::new(ui::effects::TEMPORARY_FOLDER),
+            jiff::Zoned::now().datetime(),
+        )?,
     };
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;

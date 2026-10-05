@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn quit_asks_the_frontend_to_quit() {
-        assert_eq!(State::demo().update(Message::Quit), [Effect::Quit]);
+        assert_eq!(state().update(Message::Quit), [Effect::Quit]);
     }
 
     // FR-NAV-01

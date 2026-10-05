@@ -1,9 +1,13 @@
-//! Step 1.1: opening a file, showing it as an outline, the demo, and quitting.
+//! Step 1.1: opening a file, showing it as an outline, the demo, and quitting. Step 2.10: the
+//! demo in a new temporary file.
+
+use std::fs;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
+use taskpaper_terminal::app::demo;
 
-use crate::support::Harness;
+use crate::support::{Harness, TODAY, line};
 
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
@@ -43,7 +47,7 @@ fn shows_the_demo_outline_without_a_path() {
         "▎ Trip to Lisbon:                       ",
         "    - Book flights                      ",
         "    - Reserve a hotel near Alfama       ",
-        "NAVIGATE · demo, in memory only         ",
+        &app.status(40),
     ]);
     expected.set_style(Rect::new(2, 0, 38, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
@@ -61,4 +65,30 @@ fn ctrl_q_quits() {
     assert!(!app.tui.should_quit(), "plain q must not quit");
     app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
     assert!(app.tui.should_quit());
+}
+
+// FR-DOC-05, D-27, file-io.md §1
+#[test]
+fn the_demo_is_a_new_temporary_file_marked_in_the_status_line() {
+    let mut app = Harness::demo(160, 3);
+    let path = app.path.clone().expect("the demo has a file");
+    assert_eq!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("taskpaper-20261005-123000.taskpaper")
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), demo::text(TODAY));
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        line(&buffer, 2),
+        format!("NAVIGATE · {} · temporary", path.display())
+    );
+    assert_eq!(app.status(160).trim_end(), line(&buffer, 2));
+}
+
+// FR-DOC-05, file-io.md §2
+#[test]
+fn the_temporary_file_is_not_backed_up() {
+    let mut app = Harness::demo(40, 3);
+    app.settle();
+    assert!(!app.backups.exists(), "a backup was made");
 }

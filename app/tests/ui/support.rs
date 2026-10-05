@@ -10,7 +10,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use jiff::civil::{Date, date};
 use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
 use taskpaper_terminal::{
-    app::State,
+    app::{Origin, State},
     ui::{
         Input, Tui,
         effects::{self, Backups, Io},
@@ -27,6 +27,8 @@ pub struct Harness {
     pub tui: Tui,
     pub terminal: Terminal<TestBackend>,
     pub path: Option<PathBuf>,
+    /// Whether the file is the temporary one a start without a path makes.
+    temporary: bool,
     pub backups: PathBuf,
     inputs: Receiver<Input>,
     now: Duration,
@@ -62,14 +64,13 @@ impl Harness {
         Self::start(state, dir, width, height)
     }
 
-    /// Starts without a path, on the demo outline.
+    /// Starts without a path at 12:30 on [`TODAY`]: on the demo outline, written to a new file
+    /// in a temporary folder that stands for `/tmp`.
     pub fn demo(width: u16, height: u16) -> Self {
-        Self::start(
-            State::demo(),
-            tempfile::tempdir().expect("a temporary folder"),
-            width,
-            height,
-        )
+        let dir = tempfile::tempdir().expect("a temporary folder");
+        let state = effects::create_demo(dir.path(), TODAY.at(12, 30, 0, 0))
+            .expect("the temporary folder is writable");
+        Self::start(state, dir, width, height)
     }
 
     /// Starts the app on `state` with its backups in `dir/backups`.
@@ -79,6 +80,7 @@ impl Harness {
         let io = Io::start(results, Backups::new(Some(backups.clone()), || TODAY));
         Self {
             path: state.path().map(Path::to_owned),
+            temporary: state.origin() == Origin::Temporary,
             tui: Tui::new(state, io),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
@@ -127,10 +129,12 @@ impl Harness {
         self.tui.tick(self.now);
     }
 
-    /// The status line for the opened file: the mode and the file's path.
+    /// The status line for the opened file: the mode, the file's path and whether it is
+    /// temporary.
     pub fn status(&self, width: u16) -> String {
         let path = self.path.as_ref().expect("a file was opened");
-        let status = format!("NAVIGATE · {}", path.display());
+        let mark = if self.temporary { " · temporary" } else { "" };
+        let status = format!("NAVIGATE · {}{mark}", path.display());
         format!("{status:width$.width$}", width = usize::from(width))
     }
 

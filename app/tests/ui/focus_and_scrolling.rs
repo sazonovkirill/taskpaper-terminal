@@ -186,21 +186,13 @@ fn the_status_line_shows_the_mode_and_the_path() {
 }
 
 #[test]
-fn the_status_line_marks_the_demo_as_held_in_memory() {
-    let mut app = Harness::demo(40, 4);
-    assert_eq!(status_line(&mut app), "NAVIGATE · demo, in memory only");
-}
-
-#[test]
 fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
     let mut app = Harness::demo(40, 4);
     app.type_keys("jg");
-    assert_eq!(
-        status_line(&mut app),
-        "NAVIGATE · demo, in memory only        g"
-    );
+    let status: String = app.status(40).chars().take(38).collect();
+    assert_eq!(status_line(&mut app), format!("{status} g"));
     app.type_keys("g");
-    assert_eq!(status_line(&mut app), "NAVIGATE · demo, in memory only");
+    assert_eq!(status_line(&mut app), app.status(40).trim_end());
     assert_focus(&mut app, "Trip to Lisbon:");
 }
 
@@ -252,10 +244,10 @@ fn an_empty_document_has_no_focus_and_ignores_motions() {
 #[test]
 fn a_one_row_terminal_shows_only_the_status_line() {
     let mut app = Harness::demo(12, 1);
-    assert_eq!(status_line(&mut app), "NAVIGATE · d");
+    assert_eq!(status_line(&mut app), app.status(12));
     app.type_keys("j");
     app.press(KeyCode::PageDown, NONE);
-    assert_eq!(status_line(&mut app), "NAVIGATE · d");
+    assert_eq!(status_line(&mut app), app.status(12));
     assert_eq!(focused_rows(&mut app), Vec::<String>::new());
 }
 

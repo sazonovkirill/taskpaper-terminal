@@ -7,18 +7,27 @@ mod worker;
 
 use std::{
     fs, io,
+    io::Write as _,
+    os::unix::fs::OpenOptionsExt as _,
     path::{Path, PathBuf},
 };
 
+use jiff::civil::DateTime;
 use thiserror::Error;
 
 pub use backup::{BackupError, Backups, folder as backups_folder};
 pub use worker::Io;
 
 use crate::{
-    app::{Access, State},
+    app::{Access, Origin, State, demo},
     document::{DecodeError, Document, format},
 };
+
+/// Where a start without a path makes its file (D-15).
+pub const TEMPORARY_FOLDER: &str = "/tmp";
+
+/// How many names [`create_demo`] tries before giving up.
+const NAME_ATTEMPTS: u32 = 100;
 
 /// Why a file could not be opened.
 #[derive(Debug, Error)]
@@ -41,6 +50,15 @@ pub enum OpenError {
         #[source]
         source: DecodeError,
     },
+    /// The temporary file could not be made.
+    #[error("cannot create {}", path.display())]
+    Create {
+        /// The file that was to be made.
+        path: PathBuf,
+        /// What the system reported.
+        #[source]
+        source: io::Error,
+    },
     /// The file does not exist and its folder does not either, so it could never be saved.
     #[error("cannot open {}: the folder {} does not exist", path.display(), folder.display())]
     MissingFolder {
@@ -59,6 +77,51 @@ pub enum OpenError {
 pub fn open(path: &Path) -> Result<State, OpenError> {
     let document = read_document(path)?;
     Ok(State::new(document, Some(path.to_owned())).with_access(access(path)))
+}
+
+/// Writes the demo document, dated relative to `now`, to a new file
+/// `taskpaper-<YYYYMMDD-HHMMSS>.taskpaper` in `folder` and opens it as the temporary file
+/// (FR-DOC-05, file-io.md §1). A name already taken gets a `-2`, `-3`… suffix, so a file made in
+/// the same second is never overwritten.
+///
+/// # Errors
+///
+/// [`OpenError::Create`] when no new file can be made in `folder`.
+pub fn create_demo(folder: &Path, now: DateTime) -> Result<State, OpenError> {
+    let text = demo::text(now.date());
+    let stamp = now.strftime("%Y%m%d-%H%M%S");
+    let create = |attempt| {
+        let name = match attempt {
+            1 => format!("taskpaper-{stamp}.taskpaper"),
+            n => format!("taskpaper-{stamp}-{n}.taskpaper"),
+        };
+        let path = folder.join(name);
+        match create_new(&path, &text) {
+            Ok(()) => {
+                Ok(State::new(format::parse(&text), Some(path)).with_origin(Origin::Temporary))
+            }
+            Err(source) => Err(OpenError::Create { path, source }),
+        }
+    };
+    for attempt in 1..NAME_ATTEMPTS {
+        match create(attempt) {
+            Err(OpenError::Create { source, .. })
+                if source.kind() == io::ErrorKind::AlreadyExists => {}
+            result => return result,
+        }
+    }
+    create(NAME_ATTEMPTS)
+}
+
+/// Writes `text` to a file at `path` that does not exist yet. Only the user may read it, as it
+/// sits in a folder every user can list.
+fn create_new(path: &Path, text: &str) -> io::Result<()> {
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?
+        .write_all(text.as_bytes())
 }
 
 /// Read-only when the file has no write permission or the system refuses to open it for
@@ -199,6 +262,85 @@ mod tests {
         assert_eq!(
             error.to_string(),
             format!("cannot read {}", dir.path().display())
+        );
+        assert!(error.source().is_some());
+        Ok(())
+    }
+
+    fn noon() -> DateTime {
+        jiff::civil::date(2026, 10, 5).at(12, 3, 4, 0)
+    }
+
+    // FR-DOC-05, D-27, file-io.md §1
+    #[test]
+    fn creates_the_demo_as_a_new_temporary_file() -> TestResult {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = tempfile::tempdir()?;
+        let state = create_demo(dir.path(), noon())?;
+        let path = dir.path().join("taskpaper-20261005-120304.taskpaper");
+        assert_eq!(state.path(), Some(path.as_path()));
+        assert_eq!(state.origin(), Origin::Temporary);
+        assert_eq!(state.access(), Access::ReadWrite);
+        let text = demo::text(noon().date());
+        assert_eq!(fs::read_to_string(&path)?, text);
+        assert_eq!(format::serialize(state.document()), text);
+        assert_eq!(fs::metadata(&path)?.permissions().mode() & 0o777, 0o600);
+        Ok(())
+    }
+
+    #[test]
+    fn a_taken_name_gets_a_number_and_stays_as_it_was() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let taken = dir.path().join("taskpaper-20261005-120304.taskpaper");
+        fs::write(&taken, "mine")?;
+        let second = create_demo(dir.path(), noon())?;
+        let third = create_demo(dir.path(), noon())?;
+        assert_eq!(fs::read_to_string(&taken)?, "mine");
+        assert_eq!(
+            second.path(),
+            Some(
+                dir.path()
+                    .join("taskpaper-20261005-120304-2.taskpaper")
+                    .as_path()
+            )
+        );
+        assert_eq!(
+            third.path(),
+            Some(
+                dir.path()
+                    .join("taskpaper-20261005-120304-3.taskpaper")
+                    .as_path()
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn gives_up_when_every_name_is_taken() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        for _ in 0..NAME_ATTEMPTS {
+            create_demo(dir.path(), noon())?;
+        }
+        let last = dir.path().join("taskpaper-20261005-120304-100.taskpaper");
+        assert!(last.exists());
+        let error = create_demo(dir.path(), noon()).unwrap_err();
+        assert!(matches!(
+            &error,
+            OpenError::Create { path, source } if *path == last && source.kind() == io::ErrorKind::AlreadyExists
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn refuses_a_folder_that_cannot_hold_the_demo() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let folder = dir.path().join("nowhere");
+        let error = create_demo(&folder, noon()).unwrap_err();
+        let path = folder.join("taskpaper-20261005-120304.taskpaper");
+        assert!(matches!(&error, OpenError::Create { path: p, .. } if *p == path));
+        assert_eq!(
+            error.to_string(),
+            format!("cannot create {}", path.display())
         );
         assert!(error.source().is_some());
         Ok(())

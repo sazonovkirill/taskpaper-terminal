@@ -17,7 +17,7 @@ use ratatui::{
     text::Line,
 };
 
-use crate::app::{Effect, Message, State};
+use crate::app::{Effect, Message, Origin, State};
 use effects::Io;
 use keymap::Keymap;
 use widgets::OutlineView;
@@ -185,14 +185,16 @@ impl Tui {
         self.draw_status(frame, status);
     }
 
-    /// The mode, the file with its save state and notice, and any pending key sequence
-    /// ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
+    /// The mode, the file, marked when temporary, with its save state and notice, and any pending
+    /// key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
     fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let file = self.state.path().map_or_else(
-            || "demo, in memory only".to_owned(),
-            |path| path.display().to_string(),
-        );
-        let mut spans = vec!["NAVIGATE".bold(), format!(" · {file}").into()];
+        let mut spans = vec!["NAVIGATE".bold()];
+        if let Some(path) = self.state.path() {
+            spans.push(format!(" · {}", path.display()).into());
+        }
+        if self.state.origin() == Origin::Temporary {
+            spans.push(" · temporary".into());
+        }
         spans.extend(widgets::file_status(
             self.state.save_state(),
             self.state.access(),

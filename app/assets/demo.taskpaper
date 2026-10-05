@@ -9,11 +9,11 @@ Trip to Lisbon: @travel
 		- Rain jacket
 		- Phone charger
 Website release 2.0:
-	- Write the release notes @done
+	- Write the release notes @done({today-1})
 	- Fix the broken contact form @bug
 		Submitting the form twice shows a blank page.
 		COMMENTS @hidden @comments
-			[2026-10-04 09:30] Only happens in Safari.
+			[{today-1} 09:30] Only happens in Safari.
 	Launch checklist @section
 		- Back up the database
 		- Deploy to production

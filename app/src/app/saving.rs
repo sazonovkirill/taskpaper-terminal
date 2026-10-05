@@ -5,7 +5,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use super::{Access, Effect, Notice, State, update::Disk};
+use super::{Access, Effect, Notice, Origin, State, update::Disk};
 use crate::document::format;
 
 /// How long after the last change a save starts (file-io.md §2, `autosave_delay_ms`).
@@ -171,10 +171,18 @@ impl State {
 
     /// A backup of the opened file (FR-DOC-07).
     pub(super) fn backup_on_open(&self) -> Vec<Effect> {
-        self.path()
-            .map(|path| Effect::Disk(Disk::Backup { path: path.into() }))
-            .into_iter()
-            .collect()
+        self.backup().into_iter().collect()
+    }
+
+    /// Making sure today's backup of the file exists, unless there is no file or it is the
+    /// temporary one, which is not backed up (file-io.md §2).
+    fn backup(&self) -> Option<Effect> {
+        match self.origin() {
+            Origin::Chosen => self
+                .path()
+                .map(|path| Effect::Disk(Disk::Backup { path: path.into() })),
+            Origin::Temporary => None,
+        }
     }
 
     /// Notes a change since the last message, then starts a save that is due, after making sure
@@ -187,13 +195,11 @@ impl State {
             && self.autosave.due(revision, self.now)
         {
             self.autosave.writing = Some(revision);
-            return vec![
-                Effect::Disk(Disk::Backup { path: path.clone() }),
-                Effect::Disk(Disk::Save {
-                    path: path.clone(),
-                    text: format::serialize(self.document()),
-                }),
-            ];
+            let save = Effect::Disk(Disk::Save {
+                path: path.clone(),
+                text: format::serialize(self.document()),
+            });
+            return self.backup().into_iter().chain([save]).collect();
         }
         if self.autosave.finished(revision, path.is_some()) {
             return vec![Effect::Quit];
@@ -493,8 +499,25 @@ mod tests {
         assert_eq!(opened().update(Message::Started), backup);
         let read_only = opened().with_access(Access::ReadOnly);
         assert_eq!(read_only.clone().update(Message::Started), backup);
-        assert_eq!(State::demo().update(Message::Started), []);
         assert_eq!(read_only.path(), Some(Path::new(FILE)));
+        let unnamed = State::new(format::parse("a\n"), None);
+        assert_eq!(unnamed.clone().update(Message::Started), []);
+        let temporary = opened().with_origin(Origin::Temporary);
+        assert_eq!(temporary.clone().update(Message::Started), []);
+    }
+
+    // FR-DOC-05, file-io.md §2
+    #[test]
+    fn the_temporary_file_is_saved_without_backups() {
+        let mut state = opened().with_origin(Origin::Temporary);
+        edit(&mut state, "b", ms(0));
+        assert_eq!(
+            tick(&mut state, ms(1000)),
+            [Effect::Disk(Disk::Save {
+                path: PathBuf::from(FILE),
+                text: "b\n".to_owned(),
+            })]
+        );
     }
 
     // FR-DOC-07

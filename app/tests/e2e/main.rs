@@ -3,6 +3,7 @@
 
 use std::{
     fmt::Write as _,
+    path::PathBuf,
     process::{Command, Output},
 };
 
@@ -76,14 +77,41 @@ fn refuses_more_than_one_path() -> TestResult {
     Ok(())
 }
 
-// F-FILE-01, FR-DOC-05
+/// The status line of `screen`, without trailing blanks.
+fn status(screen: &termlens::Screen) -> String {
+    screen.row_text(screen.rows() - 1).trim_end().to_owned()
+}
+
+/// The temporary file a start without a path made, as the status line names it.
+fn temporary_file(screen: &termlens::Screen) -> Result<PathBuf, String> {
+    let status = status(screen);
+    status
+        .strip_prefix("NAVIGATE · ")
+        .and_then(|rest| rest.strip_suffix(" · temporary"))
+        .map(PathBuf::from)
+        .ok_or_else(|| format!("no temporary file in {status:?}"))
+}
+
+// F-FILE-01, FR-DOC-05, D-27
 #[test]
-fn shows_the_demo_and_quits_with_ctrl_q_restoring_the_terminal() -> termlens::Result<()> {
-    let mut terminal = termlens::bin!("tpt")?;
-    terminal.wait_until(|screen| screen.contains("Trip to Lisbon") && screen.alternate_screen())?;
+fn writes_the_demo_to_a_new_file_in_tmp_and_quits_with_ctrl_q() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let data = dir.path().join("data");
+    let mut terminal = termlens::bin!("tpt", env("XDG_DATA_HOME", &data))?;
+    terminal.wait_until(|screen| {
+        screen.contains("Trip to Lisbon")
+            && screen.alternate_screen()
+            && status(screen).ends_with("temporary")
+    })?;
+    let path = temporary_file(&terminal.screen())?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
     assert!(!terminal.screen().alternate_screen());
+    let text = std::fs::read_to_string(&path)?;
+    std::fs::remove_file(&path)?;
+    assert!(path.starts_with("/tmp"), "{}", path.display());
+    assert!(text.starts_with("Trip to Lisbon:"), "{text}");
+    assert!(!data.exists(), "the temporary file was backed up");
     Ok(())
 }
 
@@ -105,15 +133,17 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
 }
 
 #[test]
-fn a_pending_key_prefix_times_out_without_further_input() -> termlens::Result<()> {
-    let mut terminal = termlens::bin!("tpt")?;
-    let status = |screen: &termlens::Screen| screen.row_text(screen.rows() - 1);
-    terminal.wait_until(|screen| status(screen).contains("NAVIGATE"))?;
+fn a_pending_key_prefix_times_out_without_further_input() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let mut terminal = termlens::bin!("tpt", env("XDG_DATA_HOME", dir.path()))?;
+    terminal.wait_until(|screen| status(screen).ends_with("temporary"))?;
+    let path = temporary_file(&terminal.screen())?;
     terminal.send(termlens::Key::Char('g'))?;
-    terminal.wait_until(|screen| status(screen).trim_end().ends_with(" g"))?;
-    terminal.wait_until(|screen| status(screen).trim_end().ends_with("only"))?;
+    terminal.wait_until(|screen| status(screen).ends_with(" g"))?;
+    terminal.wait_until(|screen| status(screen).ends_with("temporary"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
+    std::fs::remove_file(path)?;
     Ok(())
 }
 
