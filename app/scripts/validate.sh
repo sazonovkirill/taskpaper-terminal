@@ -69,7 +69,8 @@ mutants() {
     echo 'mutants: skipped, no changes since origin/main'
     return
   fi
-  cargo mutants --in-diff "$diff"
+  # Builds of parallel jobs share one jobserver capped at the CPU count, so half the CPUs keeps every core busy.
+  CARGO_MUTANTS_JOBS="${CARGO_MUTANTS_JOBS:-$(( ($(getconf _NPROCESSORS_ONLN) + 1) / 2 ))}" cargo mutants --in-diff "$diff"
 }
 
 # Checks the prerequisites in docs/quality/agent-workflow.md and prints how to fix each missing one.
@@ -159,6 +160,7 @@ case "${1:-all}" in
   mutants) mutants ;;
   doctor) doctor ;;
   trace) trace ;;
-  all) static_checks; unit; coverage ;;
+  # The coverage run is the test run: llvm-cov runs every test, and clippy above already denies warnings.
+  all) static_checks; coverage ;;
   *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace]' >&2; exit 2 ;;
 esac
