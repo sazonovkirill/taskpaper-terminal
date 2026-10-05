@@ -106,6 +106,25 @@ pub fn remove(text: &str, name: &str) -> String {
     out
 }
 
+/// Whether changing the text `before` into `after` puts an `@` at the start of a word or makes a
+/// tag out of text. TaskPaper has no escape for `@`, so such text would be read back as a hidden
+/// tag; edit mode refuses it (OQ-25). An `@` inside a word, as in an email address, is text.
+#[must_use]
+pub fn adds_tag(before: &str, after: &str) -> bool {
+    word_start_ats(after) > word_start_ats(before) || scan(after).len() > scan(before).len()
+}
+
+/// How many `@` start a word: at the start of `text` or after whitespace, where a tag can start.
+fn word_start_ats(text: &str) -> usize {
+    text.match_indices('@')
+        .filter(|&(at, _)| {
+            text.get(..at)
+                .and_then(|before| before.chars().next_back())
+                .is_none_or(is_whitespace)
+        })
+        .count()
+}
+
 /// Parses the tag whose `@` is at byte `at`; returns its end, name and value.
 fn tag_at(text: &str, at: usize) -> Option<(usize, String, Option<String>)> {
     let rest = text.get(at + 1..)?;
@@ -463,5 +482,36 @@ mod tests {
         ] {
             assert!(!is_name_char(c), "{c:?}");
         }
+    }
+
+    // OQ-25
+    #[test]
+    fn an_at_sign_starting_a_word_adds_a_tag() {
+        assert!(adds_tag("", "@"));
+        assert!(adds_tag("a ", "a @"));
+        assert!(adds_tag("a\tb", "a\t@b"));
+        assert!(adds_tag("ab", "a @b"), "a space before an @ inside a word");
+        assert!(adds_tag("a@b", "@b"), "deleting what stood before it");
+    }
+
+    // OQ-25
+    #[test]
+    fn text_turning_into_a_tag_adds_one() {
+        assert!(adds_tag("a @ b", "a @x b"), "a lone @ gets a name");
+        assert!(
+            adds_tag("a @id", "a @idx"),
+            "a reserved name becomes another"
+        );
+    }
+
+    // OQ-25
+    #[test]
+    fn an_at_sign_inside_a_word_or_an_edit_elsewhere_adds_none() {
+        assert!(!adds_tag("me", "me@"));
+        assert!(!adds_tag("me@example.com", "me@example.co"));
+        assert!(!adds_tag("a @ b", "a @ bc"));
+        assert!(!adds_tag("a @id", "b @id"));
+        assert!(!adds_tag("@ a", "a"), "removing one");
+        assert!(!adds_tag("", ""));
     }
 }

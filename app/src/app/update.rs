@@ -5,7 +5,7 @@ use std::{path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
-use super::{State, Version, saving::Ending};
+use super::{Mode, State, TextEdit, Version, saving::Ending};
 use crate::document::{Block, Item, ItemId, blocks};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -122,10 +122,73 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
-    /// Revert the latest edit (FR-OPS-08).
+    /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
-    /// Replay the latest undone edit (FR-OPS-08).
+    /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
+    /// text.
     Redo,
+    /// Edit the focused block's text with the caret at its end (FR-MODE-01).
+    EditAtEnd,
+    /// Edit the focused block's text with the caret at its start (FR-MODE-01).
+    EditAtStart,
+    /// Change the text being edited (FR-MODE-03).
+    Text(TextEdit),
+    /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
+    StopEditing,
+}
+
+impl Message {
+    /// Whether this intent belongs to navigate mode, so that it ends an edit session first,
+    /// rather than to edit mode or the frontend's reports, which leave the session alone.
+    fn ends_editing(&self) -> bool {
+        match self {
+            Self::Started
+            | Self::Tick { .. }
+            | Self::Saved
+            | Self::SaveFailed { .. }
+            | Self::SaveRefused { .. }
+            | Self::CheckFile
+            | Self::FileChecked { .. }
+            | Self::ToggleDiff
+            | Self::ConflictCopied { .. }
+            | Self::ConflictCopyFailed { .. }
+            | Self::BackupFailed { .. }
+            | Self::Undo
+            | Self::Redo
+            | Self::EditAtEnd
+            | Self::EditAtStart
+            | Self::Text(_)
+            | Self::StopEditing => false,
+            Self::Quit
+            | Self::Terminate
+            | Self::KeepMine
+            | Self::TakeTheirs
+            | Self::FocusNext
+            | Self::FocusPrevious
+            | Self::FocusFirst
+            | Self::FocusLast
+            | Self::PageDown { .. }
+            | Self::PageUp { .. }
+            | Self::FocusParent
+            | Self::FocusNextSibling
+            | Self::FocusPreviousSibling
+            | Self::FocusLastChild
+            | Self::Collapse
+            | Self::Expand
+            | Self::ToggleFold
+            | Self::ToggleSubtree
+            | Self::ExpandLevel
+            | Self::CollapseLevel
+            | Self::ExpandAll
+            | Self::CollapseAll
+            | Self::ZoomIn
+            | Self::ZoomOut
+            | Self::GoHome
+            | Self::Back
+            | Self::Forward
+            | Self::ToggleDone { .. } => true,
+        }
+    }
 }
 
 /// Work the frontend performs for the core.
@@ -177,6 +240,9 @@ impl State {
     /// Applies `message` and returns the effects the frontend must carry out.
     pub fn update(&mut self, message: Message) -> Vec<Effect> {
         let mut effects = Vec::new();
+        if message.ends_editing() {
+            self.stop_editing();
+        }
         match message {
             Message::Started => effects = self.backup_on_open(),
             Message::Tick { now } => self.now = now,
@@ -234,8 +300,18 @@ impl State {
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
             Message::ToggleDone { today } => self.toggle_done(today),
-            Message::Undo => self.undo(),
-            Message::Redo => self.redo(),
+            Message::Undo => match self.mode() {
+                Mode::Navigate => self.undo(),
+                Mode::Edit => self.undo_typing(),
+            },
+            Message::Redo => match self.mode() {
+                Mode::Navigate => self.redo(),
+                Mode::Edit => self.redo_typing(),
+            },
+            Message::EditAtEnd => self.start_editing(true),
+            Message::EditAtStart => self.start_editing(false),
+            Message::Text(edit) => self.edit_text(edit),
+            Message::StopEditing => self.stop_editing(),
         }
         self.repair_focus();
         self.expire_notice();

@@ -18,7 +18,7 @@ use ratatui::{
     text::Line,
 };
 
-use crate::app::{Effect, Message, Origin, State};
+use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, PromptKey};
 use widgets::{ConflictPrompt, OutlineView};
@@ -97,6 +97,7 @@ impl Tui {
         let context = Context {
             page_rows: self.page_rows,
             today: (self.today)(),
+            mode: self.state.mode(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
@@ -230,10 +231,30 @@ impl Tui {
             self.page_rows,
             rows.iter().map(|row| row.lines.len()).sum(),
         );
+        let editor = self.state.editor();
         frame.render_widget(
-            OutlineView::new(&rows).offset(self.scroll).focused(focused),
+            OutlineView::new(&rows)
+                .offset(self.scroll)
+                .focused(focused)
+                .editor(editor.as_ref()),
             outline,
         );
+        // The conflict prompt covers the outline, caret included.
+        if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
+            && let Some(row) = focused.and_then(|index| rows.get(index))
+            && let Some(start) = self.focused_lines().map(|lines| lines.start)
+        {
+            let text_width = outline.width.saturating_sub(widgets::GUTTER_WIDTH);
+            let (_, caret) = widgets::editor_line(row, editor, usize::from(text_width));
+            let x = u16::try_from(caret)
+                .unwrap_or(u16::MAX)
+                .min(text_width.saturating_sub(1));
+            let y = u16::try_from(start.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
+            frame.set_cursor_position((
+                outline.x.saturating_add(widgets::GUTTER_WIDTH + x),
+                outline.y.saturating_add(y),
+            ));
+        }
         self.draw_status(frame, status);
         if self.state.in_conflict() {
             let diff = self.state.diff();
@@ -247,7 +268,11 @@ impl Tui {
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending
     /// key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
     fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let mut spans = vec!["NAVIGATE".bold()];
+        let mode = match self.state.mode() {
+            Mode::Navigate => "NAVIGATE",
+            Mode::Edit => "EDIT",
+        };
+        let mut spans = vec![mode.bold()];
         if let Some(path) = self.state.path() {
             spans.push(format!(" · {}", path.display()).into());
         }

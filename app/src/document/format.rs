@@ -1,12 +1,15 @@
 //! The `.taskpaper` syntax: parsing text into a [`Document`] and writing it back
 //! ([file-format.md](../../../docs/specs/file-format.md)). Pure: it takes and returns text and never touches files.
 
+pub mod canonical;
+mod parts;
 mod serialize;
 pub mod tags;
 
 use thiserror::Error;
 
 use super::model::{Document, FileFormat, IndentUnit, ItemId, ItemKind, LineEnding};
+pub use parts::LineParts;
 pub use serialize::serialize;
 use tags::is_whitespace;
 
@@ -153,6 +156,13 @@ fn without_tags(text: &str) -> String {
 /// The body without its trailing tag run, which decides the item type.
 fn content(text: &str) -> &str {
     text.get(..tags::trailing_run_start(text)).unwrap_or(text)
+}
+
+/// Whether `c` ends a line wherever it stands, so that text holding it is read back as several
+/// lines (file-format.md §1).
+#[must_use]
+pub fn breaks_line(c: char) -> bool {
+    matches!(c, '\r' | '\n' | '\u{C}' | '\u{2029}' | '\u{2B7F}')
 }
 
 /// A line of the text and the break that ended it.
@@ -334,6 +344,18 @@ mod tests {
     #[track_caller]
     fn check(text: &str, expected: &[&str]) {
         assert_eq!(outline(&parse(text)), expected, "parsing {text:?}");
+    }
+
+    // file-format §1
+    #[test]
+    fn breaks_line_names_exactly_the_characters_lines_are_split_on() {
+        for c in [
+            '\r', '\n', '\u{C}', '\u{2029}', '\u{2B7F}', '\u{2028}', '\t', 'a', '\u{B}',
+        ] {
+            let read = parse(&format!("a{c}b"));
+            let lines = read.descendants(read.root()).count();
+            assert_eq!(lines == 2, breaks_line(c), "{c:?}");
+        }
     }
 
     #[test]

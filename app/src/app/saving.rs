@@ -252,6 +252,7 @@ impl State {
         let path = self.saveable_path();
         if let Some(path) = &path
             && self.autosave.due(revision, self.now)
+            && !self.editing_holds_save()
         {
             self.autosave.start(revision);
             let text = format::serialize(self.document());
@@ -301,6 +302,7 @@ impl State {
         self.saveable_path()
             .filter(|_| !self.external.in_conflict())
             .and(self.autosave.deadline())
+            .filter(|_| !self.editing_holds_save())
     }
 
     /// Whether the file holds every change, and whether the last save failed.

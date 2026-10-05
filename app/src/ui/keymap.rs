@@ -5,7 +5,7 @@ use std::time::Duration;
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
-use crate::app::Message;
+use crate::app::{Message, Mode, Motion, TextEdit};
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
 ///
@@ -26,11 +26,13 @@ pub struct Context {
     pub page_rows: usize,
     /// The local date, which completing a block writes.
     pub today: Date,
+    /// Whether keys navigate or edit text, which decides their bindings.
+    pub mode: Mode,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
-/// named key, `key!(ctrl Down)` for a named key with `Ctrl`, and likewise with `alt` and
-/// `alt shift`.
+/// named key, `key!(ctrl Down)` for a named key with `Ctrl`, and likewise with `alt`, `shift`,
+/// `alt shift` and `ctrl shift`.
 macro_rules! key {
     (ctrl $c:literal) => {
         (KeyModifiers::CONTROL, KeyCode::Char($c))
@@ -46,6 +48,15 @@ macro_rules! key {
     };
     (alt shift $code:ident) => {
         (KeyModifiers::ALT.union(KeyModifiers::SHIFT), KeyCode::$code)
+    };
+    (ctrl shift $code:ident) => {
+        (
+            KeyModifiers::CONTROL.union(KeyModifiers::SHIFT),
+            KeyCode::$code,
+        )
+    };
+    (shift $code:ident) => {
+        (KeyModifiers::SHIFT, KeyCode::$code)
     };
     ($c:literal) => {
         (KeyModifiers::NONE, KeyCode::Char($c))
@@ -119,6 +130,8 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
+    (&[key!(Enter)], |_| Message::EditAtEnd),
+    (&[key!('i')], |_| Message::EditAtStart),
 ];
 
 /// What a key does while the conflict prompt is open (file-io.md §3).
@@ -166,6 +179,63 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
         .map(|(_, action)| action(rows))
 }
 
+/// Edit-mode bindings ([keybindings.md §3], [editing.md §2]); characters without other bindings
+/// are typed.
+///
+/// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
+/// [editing.md §2]: ../../../docs/specs/editing.md#2-edit-mode
+const EDIT: &[Binding] = &[
+    (&[key!(ctrl 'q')], |_| Message::Quit),
+    (&[key!(Esc)], |_| Message::StopEditing),
+    // Until creating blocks exists, `Enter` only ends editing.
+    (&[key!(Enter)], |_| Message::StopEditing),
+    (&[key!(Left)], |_| go(Motion::Left, false)),
+    (&[key!(Right)], |_| go(Motion::Right, false)),
+    (&[key!(ctrl Left)], |_| go(Motion::WordLeft, false)),
+    (&[key!(ctrl Right)], |_| go(Motion::WordRight, false)),
+    (&[key!(alt 'b')], |_| go(Motion::WordLeft, false)),
+    (&[key!(alt 'f')], |_| go(Motion::WordRight, false)),
+    (&[key!(Home)], |_| go(Motion::Start, false)),
+    (&[key!(End)], |_| go(Motion::End, false)),
+    (&[key!(shift Left)], |_| go(Motion::Left, true)),
+    (&[key!(shift Right)], |_| go(Motion::Right, true)),
+    (&[key!(ctrl shift Left)], |_| go(Motion::WordLeft, true)),
+    (&[key!(ctrl shift Right)], |_| go(Motion::WordRight, true)),
+    (&[key!(shift Home)], |_| go(Motion::Start, true)),
+    (&[key!(shift End)], |_| go(Motion::End, true)),
+    (&[key!(Backspace)], |_| {
+        Message::Text(TextEdit::DeleteBackward)
+    }),
+    (&[key!(Delete)], |_| Message::Text(TextEdit::DeleteForward)),
+    (&[key!(ctrl 'w')], |_| {
+        Message::Text(TextEdit::DeleteWordBackward)
+    }),
+    (&[key!(alt Backspace)], |_| {
+        Message::Text(TextEdit::DeleteWordBackward)
+    }),
+    (&[key!(ctrl 'a')], |_| Message::Text(TextEdit::SelectAll)),
+    (&[key!(ctrl 'z')], |_| Message::Undo),
+    (&[key!(ctrl 'y')], |_| Message::Redo),
+];
+
+/// Moving the caret by `motion`, extending the selection with `select`.
+fn go(motion: Motion, select: bool) -> Message {
+    Message::Text(TextEdit::Move { motion, select })
+}
+
+/// The edit-mode message for `key`: its binding, else typing the character it is. `Ctrl+Alt`
+/// counts as no modifier, because some terminals report `AltGr` that way.
+fn edit_message((modifiers, code): Key, context: &Context) -> Option<Message> {
+    if let Some((_, message)) = EDIT.iter().find(|(keys, _)| *keys == [(modifiers, code)]) {
+        return Some(message(context));
+    }
+    let typed = modifiers.is_empty() || modifiers == KeyModifiers::CONTROL.union(KeyModifiers::ALT);
+    match code {
+        KeyCode::Char(c) if typed => Some(Message::Text(TextEdit::Insert(c))),
+        _ => None,
+    }
+}
+
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
 /// fails to match or times out.
 #[derive(Debug, Default)]
@@ -194,6 +264,10 @@ impl Keymap {
             KeyCode::Char(_) => key.modifiers.difference(KeyModifiers::SHIFT),
             _ => key.modifiers,
         };
+        if context.mode == Mode::Edit {
+            self.pending.clear();
+            return edit_message((modifiers, key.code), context);
+        }
         self.pending.push((modifiers, key.code));
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
             self.pending.clear();
@@ -246,6 +320,12 @@ mod tests {
     const CONTEXT: &Context = &Context {
         page_rows: PAGE,
         today: TODAY,
+        mode: Mode::Navigate,
+    };
+
+    const EDITING: &Context = &Context {
+        mode: Mode::Edit,
+        ..*CONTEXT
     };
 
     fn key(code: KeyCode, modifiers: KeyModifiers) -> Event {
@@ -325,7 +405,6 @@ mod tests {
         let done = Some(&Message::ToggleDone { today: TODAY });
         check(KeyCode::Char('x'), none, done);
         check(KeyCode::Enter, ctrl, done);
-        check(KeyCode::Enter, none, None);
         check(KeyCode::Char('z'), none, Some(&Message::Undo));
         check(KeyCode::Char('z'), ctrl, Some(&Message::Undo));
         check(
@@ -334,6 +413,120 @@ mod tests {
             Some(&Message::Redo),
         );
         check(KeyCode::Char('y'), ctrl, Some(&Message::Redo));
+    }
+
+    // FR-MODE-01
+    #[test]
+    fn enter_and_i_start_editing() {
+        check(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            Some(&Message::EditAtEnd),
+        );
+        check(
+            KeyCode::Char('i'),
+            KeyModifiers::NONE,
+            Some(&Message::EditAtStart),
+        );
+    }
+
+    /// The message each key sends in edit mode.
+    #[track_caller]
+    fn check_editing(code: KeyCode, modifiers: KeyModifiers, expected: Option<&Message>) {
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap
+                .message_for(&key(code, modifiers), ms(0), EDITING)
+                .as_ref(),
+            expected,
+            "{modifiers:?} {code:?}"
+        );
+    }
+
+    fn text(edit: TextEdit) -> Message {
+        Message::Text(edit)
+    }
+
+    // FR-MODE-01, FR-MODE-03
+    #[test]
+    fn characters_are_typed_in_edit_mode() {
+        let none = KeyModifiers::NONE;
+        for c in ['j', 'x', 'g', 'z', 'i', ' ', '@', 'é'] {
+            check_editing(KeyCode::Char(c), none, Some(&text(TextEdit::Insert(c))));
+        }
+        check_editing(
+            KeyCode::Char('A'),
+            KeyModifiers::SHIFT,
+            Some(&text(TextEdit::Insert('A'))),
+        );
+        check_editing(
+            KeyCode::Char('@'),
+            KeyModifiers::CONTROL | KeyModifiers::ALT,
+            Some(&text(TextEdit::Insert('@'))),
+        );
+        check_editing(KeyCode::Char('k'), KeyModifiers::CONTROL, None);
+        check_editing(KeyCode::Char('x'), KeyModifiers::ALT, None);
+        check_editing(KeyCode::Down, none, None);
+        check_editing(KeyCode::Tab, none, None);
+    }
+
+    // FR-MODE-01
+    #[test]
+    fn esc_and_enter_stop_editing_and_ctrl_q_quits() {
+        let none = KeyModifiers::NONE;
+        check_editing(KeyCode::Esc, none, Some(&Message::StopEditing));
+        check_editing(KeyCode::Enter, none, Some(&Message::StopEditing));
+        check_editing(
+            KeyCode::Char('q'),
+            KeyModifiers::CONTROL,
+            Some(&Message::Quit),
+        );
+    }
+
+    // FR-MODE-03
+    #[test]
+    fn text_keys_move_select_and_delete() {
+        let none = KeyModifiers::NONE;
+        let shift = KeyModifiers::SHIFT;
+        let ctrl = KeyModifiers::CONTROL;
+        let alt = KeyModifiers::ALT;
+        let to = |motion, select| text(TextEdit::Move { motion, select });
+        for (code, modifiers, expected) in [
+            (KeyCode::Left, none, to(Motion::Left, false)),
+            (KeyCode::Right, none, to(Motion::Right, false)),
+            (KeyCode::Left, ctrl, to(Motion::WordLeft, false)),
+            (KeyCode::Right, ctrl, to(Motion::WordRight, false)),
+            (KeyCode::Char('b'), alt, to(Motion::WordLeft, false)),
+            (KeyCode::Char('f'), alt, to(Motion::WordRight, false)),
+            (KeyCode::Home, none, to(Motion::Start, false)),
+            (KeyCode::End, none, to(Motion::End, false)),
+            (KeyCode::Left, shift, to(Motion::Left, true)),
+            (KeyCode::Right, shift, to(Motion::Right, true)),
+            (KeyCode::Left, ctrl | shift, to(Motion::WordLeft, true)),
+            (KeyCode::Right, ctrl | shift, to(Motion::WordRight, true)),
+            (KeyCode::Home, shift, to(Motion::Start, true)),
+            (KeyCode::End, shift, to(Motion::End, true)),
+            (KeyCode::Backspace, none, text(TextEdit::DeleteBackward)),
+            (KeyCode::Delete, none, text(TextEdit::DeleteForward)),
+            (KeyCode::Char('w'), ctrl, text(TextEdit::DeleteWordBackward)),
+            (KeyCode::Backspace, alt, text(TextEdit::DeleteWordBackward)),
+            (KeyCode::Char('a'), ctrl, text(TextEdit::SelectAll)),
+            (KeyCode::Char('z'), ctrl, Message::Undo),
+            (KeyCode::Char('y'), ctrl, Message::Redo),
+        ] {
+            check_editing(code, modifiers, Some(&expected));
+        }
+    }
+
+    #[test]
+    fn edit_mode_ends_a_pending_sequence() {
+        let mut keymap = Keymap::default();
+        keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), CONTEXT);
+        assert_eq!(
+            keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(1), EDITING),
+            Some(Message::Text(TextEdit::Insert('g')))
+        );
+        assert_eq!(keymap.pending(), "");
     }
 
     #[test]

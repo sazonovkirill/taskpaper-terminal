@@ -8,19 +8,22 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::{
-    app::{Access, DiffLine, Notice, Row, SaveState},
+    app::{Access, DiffLine, Editor, Notice, Row, SaveState},
     document::BlockKind,
 };
 
 /// The outline: a gutter that marks the focused block, then one row per block, 2 columns of
 /// indent per level, a marker and the text; a block with several lines takes several screen
-/// lines.
+/// lines. A block being edited shows the text as typed instead.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
     offset: usize,
     focused: Option<usize>,
+    editor: Option<&'a Editor<'a>>,
 }
 
 impl<'a> OutlineView<'a> {
@@ -31,6 +34,7 @@ impl<'a> OutlineView<'a> {
             rows,
             offset: 0,
             focused: None,
+            editor: None,
         }
     }
 
@@ -48,6 +52,12 @@ impl<'a> OutlineView<'a> {
             ..self
         }
     }
+
+    /// Draws the block `editor` edits as its editor (FR-MODE-02).
+    #[must_use]
+    pub fn editor(self, editor: Option<&'a Editor<'a>>) -> Self {
+        Self { editor, ..self }
+    }
 }
 
 impl Widget for OutlineView<'_> {
@@ -58,9 +68,11 @@ impl Widget for OutlineView<'_> {
         ]));
         let width = usize::from(text.width);
         let lines = self.rows.iter().enumerate().flat_map(|(index, row)| {
-            row_lines(row, width)
-                .into_iter()
-                .map(move |line| (index, line))
+            let lines = match self.editor.filter(|editor| editor.id == row.id) {
+                Some(editor) => vec![editor_line(row, editor, width).0],
+                None => row_lines(row, width),
+            };
+            lines.into_iter().map(move |line| (index, line))
         });
         for ((index, line), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
@@ -148,6 +160,7 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             Span::styled(format!("backup failed: {reason}"), warning_style())
         }
         Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style()),
+        Notice::TypedTag => Span::styled("Tags are set with commands", warning_style()),
         Notice::EditFailed { reason } => {
             Span::styled(format!("edit failed: {reason}"), error_style())
         }
@@ -274,23 +287,7 @@ fn mine_style() -> Style {
 /// in bold (D-34).
 fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     let indent = "  ".repeat(row.depth);
-    let (marker, style) = match row.kind {
-        BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => ("✔ ", Style::new().dim().crossed_out()),
-        BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
-        BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
-        BlockKind::Code => ("", code_style().dim()),
-        BlockKind::Note => ("", Style::new().fg(NOTE)),
-        BlockKind::Divider => ("", divider_style()),
-    };
-    let style = if row.title { style.bold() } else { style };
-    // A done task's check mark recedes with its text (D-36).
-    let marker_style = if row.kind == BlockKind::Task && row.done {
-        Style::new().dim()
-    } else {
-        Style::new()
-    };
+    let (marker, marker_style, style) = row_style(row);
     let count_style = if row.kind == BlockKind::Code {
         code_style()
     } else {
@@ -334,6 +331,69 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
             line
         })
         .collect()
+}
+
+/// The marker of a block's first line with its style, and the style of its text, by its type
+/// (ui.md §2).
+fn row_style(row: &Row) -> (&'static str, Style, Style) {
+    let (marker, style) = match row.kind {
+        BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
+        BlockKind::Task if row.done => ("✔ ", Style::new().dim().crossed_out()),
+        BlockKind::Task => ("- ", Style::new()),
+        BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
+        BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
+        BlockKind::Code => ("", code_style().dim()),
+        BlockKind::Note => ("", Style::new().fg(NOTE)),
+        BlockKind::Divider => ("", divider_style()),
+    };
+    let style = if row.title { style.bold() } else { style };
+    // A done task's check mark recedes with its text (D-36).
+    let marker_style = if row.kind == BlockKind::Task && row.done {
+        Style::new().dim()
+    } else {
+        Style::new()
+    };
+    (marker, marker_style, style)
+}
+
+/// The screen line of the one-line block `row` while `editor` edits it, `width` columns wide,
+/// and the caret's column in it: the row's indent and marker, the text as typed with the
+/// selection reversed, then a project's `:`, all styled as the row (FR-MODE-02). When the caret
+/// would be past the right edge, the text scrolls left by whole graphemes to keep it in view.
+#[must_use]
+pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
+    let (marker, marker_style, style) = row_style(row);
+    let mut line = Line::from(vec![
+        Span::raw("  ".repeat(row.depth)),
+        Span::styled(marker, marker_style),
+    ]);
+    let before_caret = editor.text.get(..editor.caret).unwrap_or_default();
+    let caret = line.width() + Span::raw(before_caret).width();
+    // The caret takes a column of its own after the text before it.
+    let overflow = (caret + 1).saturating_sub(width);
+    let (mut start, mut scrolled) = (0, 0);
+    for (at, grapheme) in editor.text.grapheme_indices(true) {
+        if scrolled >= overflow || at >= editor.caret {
+            break;
+        }
+        start = at + grapheme.len();
+        scrolled += Span::raw(grapheme).width();
+    }
+    let selection = editor
+        .selection
+        .clone()
+        .map(|selection| selection.start.max(start)..selection.end.max(start))
+        .unwrap_or(start..start);
+    let piece = |range: std::ops::Range<usize>| editor.text.get(range).unwrap_or_default();
+    line.push_span(Span::styled(piece(start..selection.start), style));
+    line.push_span(Span::styled(piece(selection.clone()), style.reversed()));
+    line.push_span(Span::styled(piece(selection.end..editor.text.len()), style));
+    line.push_span(Span::styled(editor.suffix, style));
+    if row.kind == BlockKind::Code {
+        let fill = width.saturating_sub(line.width());
+        line.push_span(Span::styled(" ".repeat(fill), code_style()));
+    }
+    (line, caret - scrolled)
 }
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
@@ -518,6 +578,101 @@ mod tests {
         );
     }
 
+    /// The first row of `text` drawn as `editor` edits it, `width` columns wide, with the caret's
+    /// column.
+    fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
+        let rows = State::new(format::parse(text), None).rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
+        let (line, caret) = editor_line(&rows[0], editor, usize::from(width));
+        line.render(buf.area, &mut buf);
+        (buf, caret)
+    }
+
+    fn editor(text: &str, caret: usize, selection: Option<std::ops::Range<usize>>) -> Editor<'_> {
+        Editor {
+            id: crate::document::ItemId::default(),
+            text,
+            caret,
+            selection,
+            suffix: "",
+        }
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn the_editor_draws_the_text_as_typed_after_the_marker_with_the_selection_reversed() {
+        let (buf, caret) = edited("- a", &editor("ab:cd", 3, Some(1..3)), 9);
+        let mut expected = Buffer::with_lines(["- ab:cd  "]);
+        expected.set_style(Rect::new(3, 0, 2, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+        assert_eq!(caret, 5, "after the marker and the text before the caret");
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn the_editor_shows_a_projects_colon_after_the_text() {
+        let mut project = editor("Inbox", 5, None);
+        project.suffix = ":";
+        let (buf, caret) = edited("Inbox:", &project, 8);
+        let mut expected = Buffer::with_lines(["Inbox:  "]);
+        expected.set_style(Rect::new(0, 0, 6, 1), Style::new().bold().fg(PRIMARY));
+        assert_eq!(buf, expected);
+        assert_eq!(caret, 5);
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn the_editor_scrolls_the_text_by_graphemes_to_keep_the_caret_in_view() {
+        let (buf, caret) = edited("- a", &editor("日本語ab", 11, None), 6);
+        assert_eq!(buf, Buffer::with_lines(["- ab  "]));
+        assert_eq!(caret, 4);
+        let (buf, caret) = edited("- a", &editor("日本語ab", 6, Some(0..9)), 6);
+        let mut expected = Buffer::with_lines(["- 本語"]);
+        for x in [2, 4] {
+            expected.set_style(Rect::new(x, 0, 1, 1), Style::new().reversed());
+        }
+        assert_eq!(
+            buf, expected,
+            "the scrolled-off part of the selection is not drawn"
+        );
+        assert_eq!(caret, 4);
+        let (buf, caret) = edited("- a", &editor("abc", 0, None), 3);
+        assert_eq!(
+            buf,
+            Buffer::with_lines(["- a"]),
+            "no scrolling while the caret fits"
+        );
+        assert_eq!(caret, 2);
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn the_editor_of_a_code_block_fills_its_band() {
+        let (buf, _) = edited("f() @code", &editor("f()", 3, None), 5);
+        let mut expected = Buffer::with_lines(["f()  "]);
+        expected.set_style(Rect::new(0, 0, 5, 1), code_style());
+        expected.set_style(Rect::new(0, 0, 3, 1), code_style().dim());
+        assert_eq!(buf, expected);
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn the_outline_draws_the_edited_block_as_its_editor() {
+        let mut state = State::new(format::parse("- a\n- bc"), None);
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        state.update(Message::Text(crate::app::TextEdit::SelectAll));
+        let rows = state.rows();
+        let editor = state.editor();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 7, 2));
+        OutlineView::new(&rows)
+            .editor(editor.as_ref())
+            .render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["  - a  ", "  - bc "]);
+        expected.set_style(Rect::new(4, 1, 2, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+    }
+
     #[test]
     fn clips_rows_that_do_not_fit() {
         let expected = Buffer::with_lines(["- abc", "- d  "]);
@@ -629,6 +784,23 @@ mod tests {
         );
         assert_eq!(error_style(), Style::new().red().bold());
         assert_eq!(warning_style(), Style::new().yellow());
+    }
+
+    // OQ-25
+    #[test]
+    fn the_file_status_hints_that_tags_are_set_with_commands() {
+        assert_eq!(
+            status(
+                SaveState::Saved,
+                Access::ReadWrite,
+                false,
+                Some(&Notice::TypedTag)
+            ),
+            [
+                plain(" · "),
+                ("Tags are set with commands".to_owned(), warning_style())
+            ]
+        );
     }
 
     // file-io.md §1, FR-OPS-08

@@ -6,7 +6,7 @@ use jiff::civil::Date;
 
 use super::{
     blocks::Block,
-    format::tags,
+    format::{canonical::PLACEHOLDER, tags},
     model::{Document, ItemId, Op},
 };
 
@@ -33,12 +33,9 @@ pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Vec<Op> {
 /// The tag that marks a block completed.
 const DONE: &str = "done";
 
-/// Stands in for a line that removing its tags left empty: an empty line would be read back
-/// elsewhere when it has children or ends the file below the top level
-/// ([file-format.md §3.1](../../../docs/specs/file-format.md#31-canonical-outlines), rules 2–3).
-const PLACEHOLDER: &str = "…";
-
-/// `after`, or the placeholder when an edit emptied `before`; a line that was blank stays blank.
+/// `after`, or the placeholder when an edit emptied `before`, because an empty line would be read
+/// back elsewhere when it has children or ends the file below the top level; a line that was
+/// blank stays blank.
 fn kept(before: &str, after: String) -> String {
     if after.is_empty() && !before.is_empty() {
         PLACEHOLDER.to_owned()

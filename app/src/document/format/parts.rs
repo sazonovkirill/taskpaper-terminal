@@ -1,0 +1,190 @@
+//! A line split into the text the user edits and what edit mode keeps around it: the type syntax
+//! and the tags ([editing.md §2](../../../../docs/specs/editing.md#2-edit-mode), OQ-24, OQ-27).
+
+use super::{canonical::PLACEHOLDER, display_text, kind, tags};
+use crate::document::ItemKind;
+
+/// A line's type syntax and tags, which stay while the text between them is edited.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LineParts {
+    /// A task's dash and the whitespace after it; empty for other types.
+    prefix: String,
+    /// Whether a project's `:` follows the text.
+    project: bool,
+    /// Every tag occurrence as written, without the whitespace before it, in order.
+    tags: Vec<String>,
+}
+
+impl LineParts {
+    /// The parts of `line`, and its display text, which is what edit mode edits.
+    #[must_use]
+    pub fn split(line: &str) -> (Self, String) {
+        let prefix = match kind(line) {
+            ItemKind::Task => line.chars().take(2).collect(),
+            ItemKind::Project | ItemKind::Note => String::new(),
+        };
+        let tags = tags::scan(line)
+            .into_iter()
+            .filter_map(|tag| line.get(tag.span))
+            .map(|tag| tag.trim_start_matches(tags::is_whitespace).to_owned())
+            .collect();
+        let parts = Self {
+            prefix,
+            project: kind(line) == ItemKind::Project,
+            tags,
+        };
+        (parts, display_text(line))
+    }
+
+    /// What follows the text on screen as part of the type: a project's `:`, else nothing.
+    #[must_use]
+    pub fn suffix(&self) -> &'static str {
+        if self.project { ":" } else { "" }
+    }
+
+    /// The line holding `text`: the type syntax around it and the tags after it in their
+    /// original order, so tags from the middle of the line move to its end (OQ-24). The text of a
+    /// task that would stop being one, because only whitespace stands before its tags, becomes
+    /// the placeholder.
+    #[must_use]
+    pub fn line(&self, text: &str) -> String {
+        let line = self.compose(text);
+        if !self.prefix.is_empty() && kind(&line) != ItemKind::Task {
+            return self.compose(PLACEHOLDER);
+        }
+        line
+    }
+
+    fn compose(&self, text: &str) -> String {
+        let mut line = format!("{}{text}{}", self.prefix, self.suffix());
+        for tag in &self.tags {
+            if !line.is_empty() && !line.ends_with(tags::is_whitespace) {
+                line.push(' ');
+            }
+            line.push_str(tag);
+        }
+        line
+    }
+
+    /// When `text` makes the line a task although these are not a task's parts: the task's parts
+    /// and the text after its dash and whitespace, which give the same line. The dash then shows
+    /// as the task's marker instead of as text (OQ-27).
+    #[must_use]
+    pub fn as_task(&self, text: &str) -> Option<(Self, String)> {
+        if !self.prefix.is_empty() || kind(&self.line(text)) != ItemKind::Task {
+            return None;
+        }
+        let split = text.char_indices().nth(2).map_or(text.len(), |(at, _)| at);
+        let (prefix, rest) = text.split_at(split);
+        let parts = Self {
+            prefix: prefix.to_owned(),
+            project: false,
+            tags: self.tags.clone(),
+        };
+        Some((parts, format!("{rest}{}", self.suffix())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `line` with its display text replaced by `text`.
+    #[track_caller]
+    fn edited(line: &str, text: &str) -> String {
+        LineParts::split(line).0.line(text)
+    }
+
+    #[test]
+    fn splits_off_the_display_text() {
+        for (line, text) in [
+            ("- Buy milk @due(1)", "Buy milk"),
+            ("Inbox: @a", "Inbox"),
+            ("note @x more", "note more"),
+            ("", ""),
+        ] {
+            assert_eq!(LineParts::split(line).1, text, "{line:?}");
+        }
+    }
+
+    // editing.md §2
+    #[test]
+    fn the_unchanged_text_gives_the_line_back_when_tags_trail() {
+        for line in [
+            "- Buy milk @due(1)",
+            "-\tBuy milk",
+            "Inbox: @a @b(x)",
+            "Inbox:",
+            "a note",
+            "f() @code",
+            "@x",
+            "",
+            "-  two spaces",
+        ] {
+            assert_eq!(edited(line, &LineParts::split(line).1), line);
+        }
+    }
+
+    // editing.md §2, OQ-24
+    #[test]
+    fn edited_text_keeps_the_type_syntax_and_appends_the_tags_in_order() {
+        assert_eq!(edited("- a @due(1) b @x", "c"), "- c @due(1) @x");
+        assert_eq!(edited("Inbox @a later: @b", "Mail"), "Mail: @a @b");
+        assert_eq!(edited("@today note", "text"), "text @today");
+        assert_eq!(edited("- a @x", "b "), "- b @x", "no second space");
+        assert_eq!(edited("a @x", ""), "@x");
+        assert_eq!(edited("- a @x @x", "b"), "- b @x @x", "duplicates are kept");
+        assert_eq!(edited("a @id", "b @id"), "b @id", "reserved names are text");
+        assert_eq!(edited("- a", ""), "- ");
+        assert_eq!(edited("P:", ""), ":");
+    }
+
+    // OQ-27
+    #[test]
+    fn the_text_decides_a_type_change() {
+        assert_eq!(kind(&edited("note", "Questions:")), ItemKind::Project);
+        assert_eq!(kind(&edited("note @x", "- a")), ItemKind::Task);
+        assert_eq!(kind(&edited("- a", "b:")), ItemKind::Task);
+        assert_eq!(kind(&edited("P:", "- a")), ItemKind::Task);
+    }
+
+    // file-format §4
+    #[test]
+    fn a_task_left_without_text_before_its_tags_gets_the_placeholder() {
+        assert_eq!(edited("- a @done", ""), "- … @done");
+        assert_eq!(edited("- a @done", "  "), "- … @done");
+        assert_eq!(edited("- a", "  "), "-   ", "without tags it stays a task");
+    }
+
+    #[test]
+    fn the_suffix_is_a_projects_colon() {
+        assert_eq!(LineParts::split("P: @x").0.suffix(), ":");
+        assert_eq!(LineParts::split("- P:").0.suffix(), "");
+        assert_eq!(LineParts::split("P").0.suffix(), "");
+    }
+
+    // OQ-27
+    #[test]
+    fn text_starting_a_task_turns_into_the_tasks_parts() {
+        let (note, _) = LineParts::split("a @x");
+        let (task, text) = note.as_task("- b").unwrap();
+        assert_eq!(text, "b");
+        assert_eq!(task.line(&text), note.line("- b"));
+        assert_eq!(task.line(&text), "- b @x");
+        let (project, _) = LineParts::split("P:");
+        let (task, text) = project.as_task("-\u{3000}P").unwrap();
+        assert_eq!(text, "P:", "the project's colon becomes text");
+        assert_eq!(task.line(&text), "-\u{3000}P:");
+        assert_eq!(task.suffix(), "");
+    }
+
+    #[test]
+    fn text_that_starts_no_task_keeps_the_parts() {
+        let (note, _) = LineParts::split("a @x");
+        assert_eq!(note.as_task("b - c"), None);
+        assert_eq!(note.as_task("-"), None);
+        assert_eq!(note.as_task("- "), None, "a dash before tags is a note");
+        let (task, _) = LineParts::split("- a");
+        assert_eq!(task.as_task("- b"), None, "already a task");
+    }
+}

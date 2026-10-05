@@ -143,7 +143,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
-| Undo / redo (text, within the session) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
+| Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ## 4. Other contexts
 

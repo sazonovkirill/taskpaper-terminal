@@ -19,6 +19,7 @@ similar = "2.7.0"
 slotmap = "1.1.1"
 tempfile = "3.27.0"
 thiserror = "2.0.21"
+unicode-segmentation = "1.13.3"
 
 [lints.rust]
 unsafe_code = "forbid"

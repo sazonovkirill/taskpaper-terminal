@@ -280,8 +280,10 @@ impl State {
     }
 
     /// Replaces the document with `document`, keeping the zoom, the focus, the history and the
-    /// collapsed blocks on the blocks they were on.
+    /// collapsed blocks on the blocks they were on. An edit session ends with the document it
+    /// edited, whose text is saved or in a conflict copy.
     fn reload(&mut self, document: Document) {
+        self.edit = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
         self.zoom = self.zoom.and_then(nearest);

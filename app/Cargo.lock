@@ -1735,6 +1735,7 @@ dependencies = [
  "tempfile",
  "termlens",
  "thiserror 2.0.21",
+ "unicode-segmentation",
 ]
 
 [[package]]

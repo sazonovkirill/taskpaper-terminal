@@ -6,15 +6,15 @@ use std::{
     time::Duration,
 };
 
-use super::{History, external::External, saving::Autosave};
+use super::{History, edit_mode::Session, external::External, saving::Autosave};
 use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
-/// whether it is saved, the focused row, the collapsed blocks, the zoom with its history and the
-/// status-line notice.
+/// whether it is saved, the focused row and any edit session on it, the collapsed blocks, the
+/// zoom with its history and the status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -31,6 +31,8 @@ pub struct State {
     /// The notice the status line shows, and until when.
     notice: Option<(Notice, Duration)>,
     pub(super) focus: Option<ItemId>,
+    /// The edit session of the focused block, in edit mode (FR-MODE-01).
+    pub(super) edit: Option<Session>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
@@ -70,6 +72,9 @@ pub enum Notice {
     },
     /// An edit was refused because the file is read-only (file-io.md §1).
     ReadOnly,
+    /// Typing would have made a tag, which TaskPaper has no way to escape; tags are set with
+    /// commands (OQ-25).
+    TypedTag,
     /// An edit, undo or redo did not fit the document, for this reason, and changed nothing.
     EditFailed {
         /// What did not fit.
@@ -134,6 +139,7 @@ impl State {
             now: Duration::ZERO,
             notice: None,
             focus: None,
+            edit: None,
             folds: HashSet::new(),
             zoom: None,
             history: vec![None],

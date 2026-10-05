@@ -32,11 +32,18 @@ impl History {
         mut transaction: Transaction<Restore>,
     ) -> Result<(), EditError> {
         document.apply(&mut transaction)?;
+        self.record(transaction);
+        Ok(())
+    }
+
+    /// Makes `transaction`, which the document has already been changed by, the next step to
+    /// undo, dropping everything undone before it, as for a change applied while it was being
+    /// made, such as an edit session's typing. A transaction without ops is not recorded.
+    pub fn record(&mut self, transaction: Transaction<Restore>) {
         if !transaction.ops().is_empty() {
             self.undo.push(transaction.inverse());
             self.redo.clear();
         }
-        Ok(())
     }
 
     /// Reverts the latest step and returns where the view was before it, or `None` when there is
@@ -167,6 +174,30 @@ mod tests {
             ["b"],
             "the undone step is still there to redo"
         );
+    }
+
+    // FR-OPS-08
+    #[test]
+    fn a_recorded_change_is_undone_and_redone_like_a_committed_one() {
+        let mut document = parse("a");
+        let mut history = History::default();
+        commit(&mut history, &mut document, "a", "b");
+        history.undo(&mut document).unwrap();
+        let mut typed = rename(&document, "a", "abc");
+        document.apply(&mut typed).unwrap();
+        history.record(typed);
+        assert_eq!(
+            history.redo(&mut document),
+            Ok(None),
+            "the undone step is dropped"
+        );
+        assert_eq!(history.undo(&mut document), Ok(Some(BEFORE)));
+        assert_eq!(texts(&document), ["a"]);
+        assert!(history.redo(&mut document).unwrap().is_some());
+        assert_eq!(texts(&document), ["abc"]);
+        history.record(Transaction::new(Vec::new(), BEFORE, BEFORE));
+        history.undo(&mut document).unwrap();
+        assert_eq!(texts(&document), ["a"], "an empty change is not a step");
     }
 
     #[test]
