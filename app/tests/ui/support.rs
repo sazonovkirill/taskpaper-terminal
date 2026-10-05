@@ -2,25 +2,35 @@
 
 use std::{
     path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver},
     time::Duration,
 };
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use jiff::civil::{Date, date};
 use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
 use taskpaper_terminal::{
     app::State,
-    ui::{Tui, effects::read_document},
+    ui::{
+        Input, Tui,
+        effects::{self, Backups, Io},
+    },
 };
 use tempfile::TempDir;
 
-/// A running app with its terminal, the temporary folder holding its file and a clock that only
-/// moves when the test says so.
+/// The local date every test runs on.
+pub const TODAY: Date = date(2026, 10, 5);
+
+/// A running app with its terminal, the temporary folder holding its file and its backups
+/// folder, and a clock that only moves when the test says so.
 pub struct Harness {
     pub tui: Tui,
     pub terminal: Terminal<TestBackend>,
     pub path: Option<PathBuf>,
+    pub backups: PathBuf,
+    inputs: Receiver<Input>,
     now: Duration,
-    _dir: Option<TempDir>,
+    _dir: TempDir,
 }
 
 fn fixture(name: &str) -> PathBuf {
@@ -35,8 +45,7 @@ impl Harness {
         let dir = tempfile::tempdir().expect("a temporary folder");
         let path = dir.path().join(name);
         std::fs::copy(fixture(name), &path).expect("the fixture exists");
-        let document = read_document(&path).expect("the fixture opens");
-        Self::start(State::new(document, Some(path)), Some(dir), width, height)
+        Self::open_path(dir, &path, width, height)
     }
 
     /// Starts on `text` as a file in a temporary folder.
@@ -44,29 +53,65 @@ impl Harness {
         let dir = tempfile::tempdir().expect("a temporary folder");
         let path = dir.path().join("outline.taskpaper");
         std::fs::write(&path, text).expect("the temporary folder is writable");
-        let document = read_document(&path).expect("the file opens");
-        Self::start(State::new(document, Some(path)), Some(dir), width, height)
+        Self::open_path(dir, &path, width, height)
+    }
+
+    /// Opens `path`, a file in `dir` that the test prepared.
+    pub fn open_path(dir: TempDir, path: &Path, width: u16, height: u16) -> Self {
+        let state = effects::open(path).expect("the file opens");
+        Self::start(state, dir, width, height)
     }
 
     /// Starts without a path, on the demo outline.
     pub fn demo(width: u16, height: u16) -> Self {
-        Self::start(State::demo(), None, width, height)
+        Self::start(
+            State::demo(),
+            tempfile::tempdir().expect("a temporary folder"),
+            width,
+            height,
+        )
     }
 
-    fn start(state: State, dir: Option<TempDir>, width: u16, height: u16) -> Self {
+    /// Starts the app on `state` with its backups in `dir/backups`.
+    fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
+        let backups = dir.path().join("backups");
+        let (results, inputs) = mpsc::channel();
+        let io = Io::start(results, Backups::new(Some(backups.clone()), || TODAY));
         Self {
             path: state.path().map(Path::to_owned),
-            tui: Tui::new(state),
+            tui: Tui::new(state, io),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
+            backups,
+            inputs,
             now: Duration::ZERO,
             _dir: dir,
         }
     }
 
+    /// Waits for the disk work asked for so far and hands its results to the app, until no more
+    /// work follows.
+    pub fn settle(&mut self) {
+        loop {
+            self.tui.flush();
+            let inputs: Vec<Input> = self.inputs.try_iter().collect();
+            if inputs.is_empty() {
+                return;
+            }
+            for input in inputs {
+                self.tui.handle(input, self.now);
+            }
+        }
+    }
+
+    /// Hands `input` to the app, as the event loop does with signals and results.
+    pub fn send(&mut self, input: Input) {
+        self.tui.handle(input, self.now);
+    }
+
     /// Presses `code` with `modifiers`.
     pub fn press(&mut self, code: KeyCode, modifiers: KeyModifiers) {
-        self.tui
-            .handle_event(&Event::Key(KeyEvent::new(code, modifiers)), self.now);
+        let key = Event::Key(KeyEvent::new(code, modifiers));
+        self.tui.handle(Input::Terminal(key), self.now);
     }
 
     /// Presses each character of `keys` without modifiers.

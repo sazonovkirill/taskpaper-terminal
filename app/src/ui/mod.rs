@@ -17,13 +17,24 @@ use ratatui::{
 };
 
 use crate::app::{Effect, Message, State};
+use effects::Io;
 use keymap::Keymap;
 use widgets::OutlineView;
+
+/// What the event loop waits for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Input {
+    /// A terminal event.
+    Terminal(Event),
+    /// A message for the core from outside the terminal: a signal or the result of an effect.
+    Core(Message),
+}
 
 /// The app as the terminal sees it: the core state plus what the frontend tracks itself.
 #[derive(Debug)]
 pub struct Tui {
     state: State,
+    io: Io,
     keymap: Keymap,
     /// The first outline row on screen.
     scroll: usize,
@@ -33,50 +44,86 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// A frontend showing `state`.
+    /// A frontend showing `state` that carries out disk work with `io`, starting with what the
+    /// core asks for on opening.
     #[must_use]
-    pub fn new(state: State) -> Self {
-        Self {
+    pub fn new(state: State, io: Io) -> Self {
+        let mut tui = Self {
             state,
+            io,
             keymap: Keymap::default(),
             scroll: 0,
             page_rows: 0,
             quit: false,
+        };
+        tui.send(Message::Started, Duration::ZERO);
+        tui
+    }
+
+    /// Handles one input at time `now` (since the frontend started).
+    pub fn handle(&mut self, input: Input, now: Duration) {
+        match input {
+            Input::Terminal(event) => self.handle_event(&event, now),
+            Input::Core(message) => self.send(message, now),
         }
     }
 
     /// Handles one terminal event at time `now` (since the frontend started): maps it to a
     /// message, updates the state and runs the effects.
-    pub fn handle_event(&mut self, event: &Event, now: Duration) {
+    fn handle_event(&mut self, event: &Event, now: Duration) {
         let Some(message) = self.keymap.message_for(event, now, self.page_rows) else {
             return;
         };
+        let paging = matches!(message, Message::PageDown { .. } | Message::PageUp { .. });
         let before = self.focused_lines().map(|lines| lines.start);
-        for effect in self.state.update(message) {
-            match effect {
-                Effect::Quit => self.quit = true,
-            }
-        }
+        self.send(message, now);
         // A page motion scrolls the view with the focus, so the focused row keeps its place on
         // screen instead of only being dragged into view.
-        if let (Message::PageDown { .. } | Message::PageUp { .. }, Some(before), Some(after)) = (
-            message,
-            before,
-            self.focused_lines().map(|lines| lines.start),
-        ) {
+        if paging
+            && let (Some(before), Some(after)) =
+                (before, self.focused_lines().map(|lines| lines.start))
+        {
             self.scroll = (self.scroll + after).saturating_sub(before);
         }
     }
 
-    /// Lets time pass to `now` without an event, ending a key sequence that timed out.
+    /// Lets time pass to `now` without an event: ends a key sequence that timed out and lets the
+    /// core start a save that is due.
     pub fn tick(&mut self, now: Duration) {
         self.keymap.expire(now);
+        let effects = self.state.update(Message::Tick { now });
+        self.run(effects);
     }
 
-    /// When [`Tui::tick`] next has work to do, or `None` when only an event can change anything.
+    /// When [`Tui::tick`] next has work to do, or `None` when only an input can change anything.
     #[must_use]
     pub fn deadline(&self) -> Option<Duration> {
-        self.keymap.deadline()
+        self.keymap
+            .deadline()
+            .into_iter()
+            .chain(self.state.deadline())
+            .min()
+    }
+
+    /// Waits until the disk work asked for so far is done; its results are inputs to handle.
+    pub fn flush(&self) {
+        self.io.flush();
+    }
+
+    /// Tells the core the time, then sends it `message`, and carries out the effects.
+    fn send(&mut self, message: Message, now: Duration) {
+        let mut effects = self.state.update(Message::Tick { now });
+        effects.extend(self.state.update(message));
+        self.run(effects);
+    }
+
+    fn run(&mut self, effects: Vec<Effect>) {
+        for effect in effects {
+            match effect {
+                Effect::Quit => self.quit = true,
+                Effect::Disk(disk) => self.io.submit(disk),
+            }
+        }
     }
 
     /// Draws the whole screen: the breadcrumb header over a rule, the outline scrolled to keep the focus
@@ -122,16 +169,21 @@ impl Tui {
         self.draw_status(frame, status);
     }
 
-    /// The mode, the file and any pending key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
+    /// The mode, the file with its save state and notice, and any pending key sequence
+    /// ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
     fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let file = self.state.path().map_or_else(
             || "demo, in memory only".to_owned(),
             |path| path.display().to_string(),
         );
-        frame.render_widget(
-            Line::from(vec!["NAVIGATE".bold(), format!(" · {file}").into()]),
-            area,
-        );
+        let mut spans = vec!["NAVIGATE".bold(), format!(" · {file}").into()];
+        spans.extend(widgets::file_status(
+            self.state.save_state(),
+            self.state.access(),
+            self.state.confirming_quit(),
+            self.state.notice(),
+        ));
+        frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a
         // long path rather than the other way round.
         let pending = self.keymap.pending();

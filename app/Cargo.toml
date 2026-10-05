@@ -11,8 +11,11 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.104"
 crossterm = "0.29.0"
+jiff = "0.2.37"
 ratatui = "0.30.2"
+signal-hook = "0.3.18"
 slotmap = "1.1.1"
+tempfile = "3.27.0"
 thiserror = "2.0.21"
 
 [lints.rust]
@@ -31,5 +34,4 @@ cognitive_complexity = "warn"
 [dev-dependencies]
 insta = "1.49.0"
 proptest = "1.11.0"
-tempfile = "3.27.0"
 termlens = "0.11.4"

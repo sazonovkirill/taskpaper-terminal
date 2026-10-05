@@ -92,7 +92,8 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
     let dir = tempfile::tempdir()?;
     let path = dir.path().join("todo.taskpaper");
     std::fs::write(&path, "Errands:\n\t- Post office\n")?;
-    let mut terminal = termlens::bin!("tpt", arg(&path))?;
+    let data = dir.path().join("data");
+    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
     terminal.wait_until(|screen| screen.contains("- Post office"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
@@ -125,7 +126,8 @@ fn a_completed_key_sequence_acts_at_once() -> TestResult {
         text
     });
     std::fs::write(&path, text)?;
-    let mut terminal = termlens::bin!("tpt", arg(&path))?;
+    let data = dir.path().join("data");
+    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
     terminal.wait_until(|screen| screen.contains("Task 001"))?;
     terminal.send(termlens::Key::Char('G'))?;
     terminal.wait_until(|screen| screen.contains("Task 100") && !screen.contains("Task 001"))?;
@@ -135,5 +137,56 @@ fn a_completed_key_sequence_acts_at_once() -> TestResult {
     terminal.wait_until(|screen| screen.contains("Task 001"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
+    Ok(())
+}
+
+/// The daily copies under the backups folder in `data`, the `XDG_DATA_HOME` the app ran with.
+fn daily_copies(data: &std::path::Path) -> std::io::Result<Vec<String>> {
+    let backups = data.join("taskpaper-terminal/backups");
+    let mut copies = Vec::new();
+    for folder in std::fs::read_dir(backups)? {
+        for file in std::fs::read_dir(folder?.path())? {
+            let file = file?.path();
+            if file
+                .extension()
+                .is_some_and(|extension| extension == "taskpaper")
+            {
+                copies.push(std::fs::read_to_string(file)?);
+            }
+        }
+    }
+    Ok(copies)
+}
+
+// FR-DOC-07, F-FILE-09
+#[test]
+fn opening_a_file_backs_it_up_under_xdg_data_home() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "- Call the bank\n")?;
+    let data = dir.path().join("data");
+    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    terminal.wait_until(|screen| screen.contains("- Call the bank"))?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert_eq!(daily_copies(&data)?, ["- Call the bank\n"]);
+    Ok(())
+}
+
+// F-FILE-05
+#[test]
+fn sigterm_and_sighup_end_the_session_and_restore_the_terminal() -> TestResult {
+    for signal in [termlens::Signal::Term, termlens::Signal::Hup] {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        std::fs::write(&path, "- Water the plants\n")?;
+        let data = dir.path().join("data");
+        let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+        terminal.wait_until(|screen| screen.contains("- Water the plants"))?;
+        terminal.signal(signal)?;
+        assert!(terminal.wait_exit()?.success(), "{signal:?}");
+        assert!(!terminal.screen().alternate_screen(), "{signal:?}");
+        assert_eq!(std::fs::read_to_string(&path)?, "- Water the plants\n");
+    }
     Ok(())
 }

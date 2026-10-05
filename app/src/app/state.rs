@@ -3,19 +3,30 @@
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
+use super::saving::Autosave;
 use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks, format};
+
+/// How long a status-line notice stays.
+pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// The demo outline shown when the app starts without a path (FR-DOC-05, D-27).
 const DEMO: &str = include_str!("../../assets/demo.taskpaper");
 
-/// Everything the app knows: the open document, where it came from, the focused row, the
-/// collapsed blocks and the zoom with its history.
+/// Everything the app knows: the open document, where it came from and whether it is saved, the
+/// focused row, the collapsed blocks, the zoom with its history and the status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
-    document: Document,
+    pub(super) document: Document,
     path: Option<PathBuf>,
+    access: Access,
+    pub(super) autosave: Autosave,
+    /// The frontend's time at the latest tick.
+    pub(super) now: Duration,
+    /// The notice the status line shows, and until when.
+    notice: Option<(Notice, Duration)>,
     pub(super) focus: Option<ItemId>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
@@ -25,6 +36,25 @@ pub struct State {
     pub(super) history: Vec<Option<ItemId>>,
     /// The position of the current zoom in `history`.
     pub(super) history_at: usize,
+}
+
+/// Whether the open file may be written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Access {
+    /// Changes are saved to it.
+    ReadWrite,
+    /// It is never written, because the user may not write it (file-io.md §1).
+    ReadOnly,
+}
+
+/// A message the status line shows for a while.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Notice {
+    /// A backup could not be made, for this reason; shown once per session (FR-DOC-07).
+    BackupFailed {
+        /// What the frontend reported.
+        reason: String,
+    },
 }
 
 /// One visible block of the outline.
@@ -47,12 +77,17 @@ pub struct Row {
 }
 
 impl State {
-    /// State for a document opened from `path`, or held only in memory when `path` is `None`.
+    /// State for a document opened from `path`, which holds it as it is, or held only in memory
+    /// when `path` is `None`.
     #[must_use]
     pub fn new(document: Document, path: Option<PathBuf>) -> Self {
         let mut state = Self {
+            autosave: Autosave::new(document.revision()),
             document,
             path,
+            access: Access::ReadWrite,
+            now: Duration::ZERO,
+            notice: None,
             focus: None,
             folds: HashSet::new(),
             zoom: None,
@@ -79,6 +114,48 @@ impl State {
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
+    }
+
+    /// This state with the file opened with `access`.
+    #[must_use]
+    pub fn with_access(self, access: Access) -> Self {
+        Self { access, ..self }
+    }
+
+    /// Whether the open file may be written.
+    #[must_use]
+    pub fn access(&self) -> Access {
+        self.access
+    }
+
+    /// The notice the status line shows, if any.
+    #[must_use]
+    pub fn notice(&self) -> Option<&Notice> {
+        self.notice.as_ref().map(|(notice, _)| notice)
+    }
+
+    /// Shows `notice` for [`NOTICE_TIME`] from the latest tick.
+    pub(super) fn notify(&mut self, notice: Notice) {
+        self.notice = Some((notice, self.now.saturating_add(NOTICE_TIME)));
+    }
+
+    /// Drops the notice once its time is up.
+    pub(super) fn expire_notice(&mut self) {
+        if self
+            .notice
+            .as_ref()
+            .is_some_and(|&(_, until)| self.now >= until)
+        {
+            self.notice = None;
+        }
+    }
+
+    /// When the core next has work to do if only the clock moves: a save falls due or a notice
+    /// expires.
+    #[must_use]
+    pub fn deadline(&self) -> Option<Duration> {
+        let notice = self.notice.as_ref().map(|&(_, until)| until);
+        notice.into_iter().chain(self.save_deadline()).min()
     }
 
     /// The focused row's item: the first row when opened, `None` only when there are no rows

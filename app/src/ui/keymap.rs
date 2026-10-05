@@ -178,10 +178,12 @@ mod tests {
 
     /// The message each key sends from a fresh keymap.
     #[track_caller]
-    fn check(code: KeyCode, modifiers: KeyModifiers, expected: Option<Message>) {
+    fn check(code: KeyCode, modifiers: KeyModifiers, expected: Option<&Message>) {
         let mut keymap = Keymap::default();
         assert_eq!(
-            keymap.message_for(&key(code, modifiers), ms(0), PAGE),
+            keymap
+                .message_for(&key(code, modifiers), ms(0), PAGE)
+                .as_ref(),
             expected,
             "{modifiers:?} {code:?}"
         );
@@ -192,7 +194,7 @@ mod tests {
         check(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,
-            Some(Message::Quit),
+            Some(&Message::Quit),
         );
     }
 
@@ -211,14 +213,14 @@ mod tests {
     #[test]
     fn moving_keys_send_their_motions() {
         let none = KeyModifiers::NONE;
-        let next = Some(Message::FocusNext);
-        let previous = Some(Message::FocusPrevious);
-        let last = Some(Message::FocusLast);
+        let next = Some(&Message::FocusNext);
+        let previous = Some(&Message::FocusPrevious);
+        let last = Some(&Message::FocusLast);
         check(KeyCode::Char('j'), none, next);
         check(KeyCode::Down, none, next);
         check(KeyCode::Char('k'), none, previous);
         check(KeyCode::Up, none, previous);
-        check(KeyCode::Home, none, Some(Message::FocusFirst));
+        check(KeyCode::Home, none, Some(&Message::FocusFirst));
         check(KeyCode::End, none, last);
         check(KeyCode::Char('G'), KeyModifiers::SHIFT, last);
         check(KeyCode::Char('G'), none, last);
@@ -227,8 +229,8 @@ mod tests {
     // FR-NAV-01
     #[test]
     fn page_keys_carry_the_page_height() {
-        let down = Some(Message::PageDown { rows: PAGE });
-        let up = Some(Message::PageUp { rows: PAGE });
+        let down = Some(&Message::PageDown { rows: PAGE });
+        let up = Some(&Message::PageUp { rows: PAGE });
         check(KeyCode::PageDown, KeyModifiers::NONE, down);
         check(KeyCode::Char('d'), KeyModifiers::CONTROL, down);
         check(KeyCode::PageUp, KeyModifiers::NONE, up);

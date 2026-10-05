@@ -8,7 +8,10 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::{app::Row, document::BlockKind};
+use crate::{
+    app::{Access, Notice, Row, SaveState},
+    document::BlockKind,
+};
 
 /// The outline: a gutter that marks the focused block, then one row per block, 2 columns of
 /// indent per level, a marker and the text; a block with several lines takes several screen
@@ -97,6 +100,47 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
         line = Line::from(format!("… › {}", rest.join(" › ")));
     }
     line.bold()
+}
+
+/// What the status line says after the file's path (ui.md §1, file-io.md §1–2): `●` while changes
+/// are unsaved, an error badge when the last save failed, `read-only`, the question a failed save
+/// on quit asks, and the current notice.
+#[must_use]
+pub fn file_status(
+    save: SaveState,
+    access: Access,
+    confirming_quit: bool,
+    notice: Option<&Notice>,
+) -> Vec<Span<'static>> {
+    let mut spans = match save {
+        SaveState::Saved => Vec::new(),
+        SaveState::Unsaved => vec![Span::raw(" ●")],
+        SaveState::Failed { reason } => vec![
+            Span::raw(" ● "),
+            Span::styled(format!("save failed: {reason}"), error_style()),
+        ],
+    };
+    if access == Access::ReadOnly {
+        spans.push(Span::raw(" · read-only"));
+    }
+    if confirming_quit {
+        spans.push(Span::raw(" · "));
+        spans.push(Span::styled(
+            "Ctrl+Q again quits without saving",
+            Style::new().bold(),
+        ));
+    }
+    match notice {
+        Some(Notice::BackupFailed { reason }) => {
+            spans.push(Span::raw(" · "));
+            spans.push(Span::styled(
+                format!("backup failed: {reason}"),
+                warning_style(),
+            ));
+        }
+        None => {}
+    }
+    spans
 }
 
 /// The screen lines of one block, `width` columns wide: indented 2 columns per level of depth
@@ -195,6 +239,16 @@ const SECONDARY: Color = Color::LightMagenta;
 #[must_use]
 pub fn rule_style() -> Style {
     Style::new().fg(Color::DarkGray)
+}
+
+/// Errors, such as a failed save; themes arrive in step 6.2.
+fn error_style() -> Style {
+    Style::new().fg(Color::Red).bold()
+}
+
+/// Warnings, such as a failed backup; themes arrive in step 6.2.
+fn warning_style() -> Style {
+    Style::new().fg(Color::Yellow)
 }
 
 /// The background band of code blocks; themes arrive in step 6.2.
@@ -387,5 +441,68 @@ mod tests {
     #[test]
     fn empty_outline_draws_nothing() {
         assert_eq!(render("", 4, 1), Buffer::with_lines(["    "]));
+    }
+
+    /// The spans `file_status` draws, as text and style.
+    fn status(
+        save: SaveState,
+        access: Access,
+        confirming_quit: bool,
+        notice: Option<&Notice>,
+    ) -> Vec<(String, Style)> {
+        file_status(save, access, confirming_quit, notice)
+            .into_iter()
+            .map(|span| (span.content.into_owned(), span.style))
+            .collect()
+    }
+
+    fn plain(text: &str) -> (String, Style) {
+        (text.to_owned(), Style::new())
+    }
+
+    // FR-DOC-02
+    #[test]
+    fn the_file_status_marks_unsaved_changes_and_a_failed_save() {
+        let rw = Access::ReadWrite;
+        assert_eq!(status(SaveState::Saved, rw, false, None), []);
+        assert_eq!(status(SaveState::Unsaved, rw, false, None), [plain(" ●")]);
+        let failed = SaveState::Failed {
+            reason: "disk full",
+        };
+        assert_eq!(
+            status(failed, rw, false, None),
+            [
+                plain(" ● "),
+                ("save failed: disk full".to_owned(), error_style())
+            ]
+        );
+        assert_eq!(
+            status(failed, rw, true, None)[2..],
+            [
+                plain(" · "),
+                (
+                    "Ctrl+Q again quits without saving".to_owned(),
+                    Style::new().bold()
+                )
+            ]
+        );
+    }
+
+    // FR-DOC-07
+    #[test]
+    fn the_file_status_shows_read_only_and_a_failed_backup() {
+        let notice = Notice::BackupFailed {
+            reason: "no space".to_owned(),
+        };
+        assert_eq!(
+            status(SaveState::Saved, Access::ReadOnly, false, Some(&notice)),
+            [
+                plain(" · read-only"),
+                plain(" · "),
+                ("backup failed: no space".to_owned(), warning_style())
+            ]
+        );
+        assert_eq!(error_style(), Style::new().red().bold());
+        assert_eq!(warning_style(), Style::new().yellow());
     }
 }

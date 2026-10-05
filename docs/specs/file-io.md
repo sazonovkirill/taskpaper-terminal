@@ -27,7 +27,7 @@ If the target is a symlink, write through to the resolved path so the link is pr
 
 **Save As** (FR-DOC-06): prompt for a path (with `~` expansion and completion of directories); if the file exists, confirm overwriting. Write the document there with the atomic routine below, then make it the open file: autosave, file watching, backups and view-state persistence switch to the new path. The previous file is left as it was.
 
-Saving runs on a background thread with a snapshot of the serialized text; the UI never waits on disk (N-UX-01). The status line shows `●` while there are unsaved changes and an error badge if the last save failed. A failed save keeps retrying on the next change and on quit; quit with unsaved changes after a failed save asks before exiting.
+Saving runs on a background thread with a snapshot of the serialized text; the UI never waits on disk (N-UX-01). The status line shows `●` while there are unsaved changes and an error badge if the last save failed. A failed save keeps retrying on the next change and on quit; quit with unsaved changes after a failed save asks before exiting: the status line says that quitting again exits without saving, until the next change or a successful save.
 
 **Daily backups** (FR-DOC-07, F-FILE-09, D-22):
 - **Where:** `$XDG_DATA_HOME/taskpaper-terminal/backups/`, or `~/.local/share/taskpaper-terminal/backups/` when it is unset, on macOS too. Backups are user data rather than disposable state, so they go under the data directory, not `$XDG_STATE_HOME`. The `backups.dir` setting overrides the folder (for example `~/.taskpaper-terminal/backups`); `~` is expanded.

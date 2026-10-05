@@ -4,6 +4,7 @@ mod blocks;
 mod focus_and_scrolling;
 mod folding;
 mod open_file;
+mod saving;
 mod support;
 mod tags;
 mod zoom;

@@ -1,13 +1,38 @@
-//! The update function: messages are user intents, effects are what the frontend must do.
+//! The update function: messages are user intents and reports from the frontend, effects are
+//! what the frontend must do.
 
-use super::State;
+use std::{path::PathBuf, time::Duration};
+
+use super::{State, saving::Ending};
 use crate::document::{Block, Item, ItemId, blocks};
 
-/// A user intent, independent of how a frontend receives it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A user intent or a report from the frontend, independent of how a frontend receives it.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
-    /// Leave the app.
+    /// The frontend is ready to carry out effects; sent once, first.
+    Started,
+    /// The frontend's clock reads `now`, the time since it started. A frontend sends one before
+    /// every other message and whenever [`State::deadline`] passes.
+    Tick {
+        /// The time since the frontend started.
+        now: Duration,
+    },
+    /// The [`Disk::Save`] under way succeeded.
+    Saved,
+    /// The [`Disk::Save`] under way failed.
+    SaveFailed {
+        /// Why, for the status line.
+        reason: String,
+    },
+    /// A [`Disk::Backup`] failed.
+    BackupFailed {
+        /// Why, for the status line.
+        reason: String,
+    },
+    /// Leave the app, saving first; if that save fails, ask (file-io.md §2).
     Quit,
+    /// The process is told to end (`SIGTERM`, `SIGHUP`): save first and end even if that fails.
+    Terminate,
     /// Focus the next visible row.
     FocusNext,
     /// Focus the previous visible row.
@@ -63,17 +88,45 @@ pub enum Message {
 }
 
 /// Work the frontend performs for the core.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effect {
     /// End the session.
     Quit,
+    /// Disk work, carried out in order and away from the frontend's event handling (N-UX-01).
+    Disk(Disk),
+}
+
+/// Disk work for the frontend; each kind reports its result back as a [`Message`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Disk {
+    /// Make sure today's backup copy of the file at `path` exists, copying the file as it is on
+    /// disk if not (FR-DOC-07); a failure comes back as [`Message::BackupFailed`].
+    Backup {
+        /// The open file.
+        path: PathBuf,
+    },
+    /// Replace the file at `path` with `text` atomically (F-FILE-04); the result comes back as
+    /// [`Message::Saved`] or [`Message::SaveFailed`].
+    Save {
+        /// The open file.
+        path: PathBuf,
+        /// The serialized document.
+        text: String,
+    },
 }
 
 impl State {
     /// Applies `message` and returns the effects the frontend must carry out.
     pub fn update(&mut self, message: Message) -> Vec<Effect> {
+        let mut effects = Vec::new();
         match message {
-            Message::Quit => return vec![Effect::Quit],
+            Message::Started => effects = self.backup_on_open(),
+            Message::Tick { now } => self.now = now,
+            Message::Saved => self.autosave.saved(),
+            Message::SaveFailed { reason } => self.autosave.failed(reason),
+            Message::BackupFailed { reason } => self.backup_failed(reason),
+            Message::Quit => self.autosave.end(Ending::Quit),
+            Message::Terminate => self.autosave.end(Ending::Terminate),
             Message::FocusNext => self.move_focus(|at, last| at.saturating_add(1).min(last)),
             Message::FocusPrevious => self.move_focus(|at, _| at.saturating_sub(1)),
             Message::FocusFirst => self.move_focus(|_, _| 0),
@@ -116,7 +169,9 @@ impl State {
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
         }
         self.repair_focus();
-        Vec::new()
+        self.expire_notice();
+        effects.extend(self.save_if_due());
+        effects
     }
 
     /// The focused block and whether it is the title row.
@@ -384,8 +439,9 @@ mod tests {
     #[track_caller]
     fn check(from: usize, message: Message, expected: usize) {
         let mut state = at(from);
-        assert_eq!(state.update(message), [], "{message:?} has no effects");
-        assert_eq!(focused(&state), Some(expected), "{message:?} from {from}");
+        let name = format!("{message:?}");
+        assert_eq!(state.update(message), [], "{name} has no effects");
+        assert_eq!(focused(&state), Some(expected), "{name} from {from}");
     }
 
     #[test]
@@ -437,7 +493,7 @@ mod tests {
             Message::FocusLast,
             Message::PageDown { rows: 5 },
         ] {
-            state.update(message);
+            state.update(message.clone());
             assert_eq!(state.focus(), only, "{message:?}");
         }
     }
@@ -756,7 +812,7 @@ mod tests {
             Message::FocusNextSibling,
             Message::FocusPreviousSibling,
         ] {
-            state.update(message);
+            state.update(message.clone());
             assert_eq!(focus_text(&state), "b", "{message:?}");
             assert_eq!(state.folds, HashSet::new(), "{message:?}");
         }
@@ -830,7 +886,7 @@ mod tests {
             Message::Back,
             Message::Forward,
         ] {
-            assert_eq!(state.update(message), [], "{message:?}");
+            assert_eq!(state.update(message.clone()), [], "{message:?}");
             assert_eq!(state.focus(), None, "{message:?}");
         }
     }
