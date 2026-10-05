@@ -39,13 +39,13 @@ fn top_row(app: &mut Harness) -> String {
 fn focus_starts_on_the_first_row_with_a_gutter_marker() {
     let mut app = Harness::with_text("A:\n\t- b\n", 12, 5);
     let mut expected = Buffer::with_lines([
-        "⌂           ",
+        "  ⌂         ",
         "────────────",
         "▎ A:        ",
         "    - b     ",
         &app.status(12),
     ]);
-    expected.set_style(Rect::new(0, 0, 12, 1), Style::new().bold());
+    expected.set_style(Rect::new(2, 0, 10, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 12, 1), Style::new().dark_gray());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(2, 2, 2, 1), Style::new().bold().light_blue());

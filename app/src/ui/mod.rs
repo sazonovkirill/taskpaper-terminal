@@ -91,9 +91,13 @@ impl Tui {
             Constraint::Length(1),
             Constraint::Fill(1),
         ]));
+        let [_, crumbs] = header.layout(&Layout::horizontal([
+            Constraint::Length(widgets::GUTTER_WIDTH),
+            Constraint::Fill(1),
+        ]));
         frame.render_widget(
-            widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(header.width)),
-            header,
+            widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(crumbs.width)),
+            crumbs,
         );
         frame.render_widget(
             Line::styled(

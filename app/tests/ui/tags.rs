@@ -9,7 +9,7 @@ use crate::support::Harness;
 fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     let mut app = Harness::open("tags.taskpaper", 40, 10);
     let mut expected = Buffer::with_lines([
-        "⌂                                       ",
+        "  ⌂                                     ",
         "────────────────────────────────────────",
         "▎ Errands:                              ",
         "    - Call about the lease              ",
@@ -22,7 +22,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     ]);
     let done = Style::new().dim().crossed_out();
     let project = Style::new().bold().light_blue();
-    expected.set_style(Rect::new(0, 0, 40, 1), Style::new().bold());
+    expected.set_style(Rect::new(2, 0, 38, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
     expected.set_style(Rect::new(2, 2, 8, 1), project);
     expected.set_style(Rect::new(6, 4, 15, 1), done);

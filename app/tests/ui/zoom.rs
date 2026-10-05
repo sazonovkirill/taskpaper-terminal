@@ -3,7 +3,7 @@
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{Harness, focused_rows, line, outline_line, outline_rows};
 
 const OUTLINE: &str = "\
 Shop:
@@ -28,9 +28,9 @@ fn shown(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-/// The breadcrumb header, the pane's first row.
+/// The breadcrumb header, the pane's first row, after the gutter.
 fn header(app: &mut Harness) -> String {
-    line(app.render().buffer(), 0)
+    outline_line(app.render().buffer(), 0)
 }
 
 #[track_caller]
@@ -42,9 +42,13 @@ fn assert_focus(app: &mut Harness, expected: &str) {
 #[test]
 fn the_header_shows_home_until_zoomed() {
     let mut app = app(30);
-    assert_eq!(header(&mut app), "⌂");
+    assert_eq!(
+        line(app.render().buffer(), 0),
+        "  ⌂",
+        "the root crumb lines up with top-level blocks"
+    );
     assert!(
-        app.render().buffer()[(0, 0)]
+        app.render().buffer()[(2, 0)]
             .modifier
             .contains(Modifier::BOLD),
         "the focused pane's header is highlighted"
@@ -163,7 +167,7 @@ fn breadcrumbs_too_wide_are_cut_from_the_left() {
     let mut app = app(22);
     app.type_keys("jjjj...");
     assert_eq!(header(&mut app), "… › Report › Draft");
-    let mut narrow = app_at_draft(9);
+    let mut narrow = app_at_draft(11);
     assert_eq!(header(&mut narrow), "… › Draft");
 }
 

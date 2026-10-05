@@ -70,8 +70,9 @@ impl Widget for OutlineView<'_> {
     }
 }
 
-/// Columns left of the outline for the focus marker.
-const GUTTER_WIDTH: u16 = 2;
+/// Columns left of the outline for the focus marker; the breadcrumbs start after it too, so the
+/// root crumb lines up with top-level blocks (D-35).
+pub const GUTTER_WIDTH: u16 = 2;
 
 /// Marks each line of the focused block in the gutter (D-30).
 const FOCUS_MARKER: &str = "▎";
