@@ -2,7 +2,7 @@
 //! date it resolves to as it is typed, and setting or removing that date
 //! ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), FR-TAG-03).
 
-use std::ops::Range;
+use std::{mem, ops::Range};
 
 use jiff::civil::Date;
 
@@ -11,7 +11,7 @@ use super::{
     text_field::{TextEdit, TextField},
 };
 use crate::document::{
-    DateTag, ItemId, blocks,
+    Block, DateTag, ItemId, blocks,
     dates::{self, DateError},
     metadata,
 };
@@ -44,11 +44,11 @@ pub struct DatePromptView<'a> {
     pub date: Result<Option<Date>, DateError>,
 }
 
-/// The open prompt: the block and date it sets, the local date it was opened on, which the text
+/// The open prompt: the blocks and date it sets, the local date it was opened on, which the text
 /// is resolved against, and the text field.
 #[derive(Debug, Clone)]
 pub(super) struct DatePrompt {
-    id: ItemId,
+    ids: Vec<ItemId>,
     tag: DateTag,
     today: Date,
     field: TextField,
@@ -79,9 +79,10 @@ impl State {
         })
     }
 
-    /// Opens the prompt for the focused block's `tag` date, resolving what is typed against
-    /// `today`, with the date it holds already typed and selected, so that typing replaces it and
-    /// `Enter` keeps it. A read-only file refuses with a notice.
+    /// Opens the prompt for the `tag` date of the selected blocks, else the focused block,
+    /// resolving what is typed against `today`, with the focused block's date already typed and
+    /// selected, so that typing replaces it and `Enter` keeps it (FR-OPS-07). A read-only file
+    /// refuses with a notice.
     pub(super) fn open_date_prompt(&mut self, tag: DateTag, today: Date) {
         let Some((block, _)) = self.focused() else {
             return;
@@ -96,15 +97,15 @@ impl State {
         };
         let text = current.map(|date| date.to_string()).unwrap_or_default();
         self.date_prompt = Some(DatePrompt {
-            id: block.id(),
+            ids: self.targets().iter().map(Block::id).collect(),
             tag,
             today,
             field: TextField::new(text).edited(TextEdit::SelectAll),
         });
     }
 
-    /// Applies `input` to the open prompt; applying sets the date of the block the prompt was
-    /// opened on as one step to undo (FR-OPS-08).
+    /// Applies `input` to the open prompt; applying sets the date of the blocks the prompt was
+    /// opened on that are still there as one step to undo (FR-OPS-08).
     pub(super) fn date_prompt_input(&mut self, input: DateInput) {
         let Some(prompt) = &mut self.date_prompt else {
             return;
@@ -116,13 +117,14 @@ impl State {
                 let Ok(date) = prompt.date() else {
                     return;
                 };
-                let (id, tag) = (prompt.id, prompt.tag);
+                let (ids, tag) = (mem::take(&mut prompt.ids), prompt.tag);
                 self.date_prompt = None;
-                if let Some(op) = blocks::block(self.document(), id)
-                    .and_then(|block| metadata::set_date(self.document(), &block, tag, date))
-                {
-                    self.commit(vec![op]);
-                }
+                let ops = ids
+                    .into_iter()
+                    .filter_map(|id| blocks::block(self.document(), id))
+                    .filter_map(|block| metadata::set_date(self.document(), &block, tag, date))
+                    .collect();
+                self.commit_any(ops);
             }
         }
     }
@@ -134,7 +136,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, Motion},
+        app::{Message, Motion, SelectionChange},
         document::{Document, format},
     };
 
@@ -376,5 +378,22 @@ mod tests {
         input(&mut state, DateInput::Apply);
         assert_eq!(texts(&state), ["- a"]);
         assert_eq!(state.date_prompt(), None);
+    }
+
+    // FR-OPS-07, FR-TAG-03, FR-OPS-08
+    #[test]
+    fn enter_sets_the_date_of_every_selected_block_as_one_step() {
+        let mut state = open("- a @due(2026-10-01)\n- b\n- c", 0);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(prompt(DateTag::Due));
+        assert_eq!(shown(&state).0, "", "the focused b's date");
+        typed(&mut state, "fri");
+        input(&mut state, DateInput::Apply);
+        assert_eq!(
+            texts(&state),
+            ["- a @due(2026-10-09)", "- b @due(2026-10-09)", "- c"]
+        );
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @due(2026-10-01)", "- b", "- c"]);
     }
 }

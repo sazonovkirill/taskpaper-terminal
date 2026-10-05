@@ -162,3 +162,17 @@ fn metadata_keys_mark_every_selected_block() {
             .replace("\t- Bank", "\t- Bank @red @today @bookmark")
     );
 }
+
+// FR-OPS-07, FR-TAG-03
+#[test]
+fn m_d_dates_every_selected_block_with_the_date_typed() {
+    let mut app = Harness::with_text(ERRANDS, 40, 10);
+    app.type_keys("jJmdfri");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        ERRANDS
+            .replace("\t- Post office", "\t- Post office @due(2026-10-09)")
+            .replace("\t- Bank", "\t- Bank @due(2026-10-09)")
+    );
+}
