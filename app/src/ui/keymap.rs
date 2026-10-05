@@ -132,6 +132,7 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
+    (&[key!(ctrl 'Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
     (&[key!(Enter)], |_| Message::EditAtEnd),
     (&[key!('o')], |_| Message::NewBelow),
@@ -209,6 +210,7 @@ const EDIT: &[Binding] = &[
     (&[key!(Esc)], |_| Message::StopEditing),
     (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(shift Enter)], |_| Message::Text(TextEdit::LineBreak)),
+    (&[key!(ctrl 'j')], |_| Message::Text(TextEdit::LineBreak)),
     (&[key!(alt Enter)], |_| Message::Text(TextEdit::LineBreak)),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
@@ -242,6 +244,7 @@ const EDIT: &[Binding] = &[
     }),
     (&[key!(ctrl 'a')], |_| Message::Text(TextEdit::SelectAll)),
     (&[key!(ctrl 'z')], |_| Message::Undo),
+    (&[key!(ctrl 'Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
 ];
 
@@ -287,15 +290,24 @@ impl Keymap {
         if self.pending.is_empty() {
             self.started = now;
         }
-        let modifiers = match key.code {
-            KeyCode::Char(_) => key.modifiers.difference(KeyModifiers::SHIFT),
-            _ => key.modifiers,
+        // The kitty protocol sends `Alt+Shift+Z` and `Ctrl+Shift+Z` as `z` with `Shift`, where
+        // other reportings send `Z` (D-42); both become `Z`.
+        let pressed = match key.code {
+            KeyCode::Char(c) => (
+                key.modifiers.difference(KeyModifiers::SHIFT),
+                KeyCode::Char(if key.modifiers.contains(KeyModifiers::SHIFT) {
+                    c.to_ascii_uppercase()
+                } else {
+                    c
+                }),
+            ),
+            code => (key.modifiers, code),
         };
         if context.mode == Mode::Edit {
             self.pending.clear();
-            return edit_message((modifiers, key.code), context);
+            return edit_message(pressed, context);
         }
-        self.pending.push((modifiers, key.code));
+        self.pending.push(pressed);
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
             self.pending.clear();
             return Some(message(context));
@@ -442,6 +454,16 @@ mod tests {
         check(KeyCode::Char('y'), ctrl, Some(&Message::Redo));
     }
 
+    // D-42: the kitty protocol sends `Ctrl+Shift+Z` as `z` with `Shift`, other reportings as `Z`.
+    #[test]
+    fn ctrl_shift_z_redoes_in_both_key_reportings() {
+        let ctrl_shift = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
+        for code in [KeyCode::Char('Z'), KeyCode::Char('z')] {
+            check(code, ctrl_shift, Some(&Message::Redo));
+            check_editing(code, ctrl_shift, Some(&Message::Redo));
+        }
+    }
+
     // FR-MODE-01
     #[test]
     fn enter_alone_starts_editing() {
@@ -571,6 +593,12 @@ mod tests {
         for modifiers in [KeyModifiers::SHIFT, KeyModifiers::ALT] {
             check_editing(KeyCode::Enter, modifiers, Some(&text(TextEdit::LineBreak)));
         }
+        // D-42: the line break's variant for terminals without the kitty protocol.
+        check_editing(
+            KeyCode::Char('j'),
+            KeyModifiers::CONTROL,
+            Some(&text(TextEdit::LineBreak)),
+        );
         check_editing(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,

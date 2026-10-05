@@ -364,3 +364,22 @@ fn completing_a_task_saves_it_and_undo_saves_the_file_back() -> TestResult {
     assert_eq!(reverted, original);
     Ok(())
 }
+
+// D-42, N-PORT-03: termlens has no kitty protocol, so it lists the push and pop as unsupported.
+#[test]
+fn asks_for_the_kitty_keyboard_protocol_and_gives_it_back_on_quit() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "- Call the bank\n")?;
+    let data = dir.path().join("data");
+    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    terminal.wait_until(|screen| screen.contains("- Call the bank"))?;
+    let push = "^[[>1u";
+    let pop = "^[[1<u";
+    assert!(terminal.screen().unsupported().contains(push));
+    assert!(!terminal.screen().unsupported().contains(pop));
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert!(terminal.screen().unsupported().contains(pop));
+    Ok(())
+}

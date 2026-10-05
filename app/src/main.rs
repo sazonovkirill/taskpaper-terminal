@@ -12,7 +12,10 @@ use std::{
 
 use anyhow::{Context, bail};
 use crossterm::{
-    event::{self, DisableFocusChange, EnableFocusChange},
+    event::{
+        self, DisableFocusChange, EnableFocusChange, KeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+    },
     execute,
 };
 use signal_hook::{
@@ -69,13 +72,22 @@ fn main() -> anyhow::Result<()> {
         .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
     let mut tui = ui::Tui::new(state, io, today);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
-    // Terminals that cannot report focus ignore the request.
-    let _ = execute!(std::io::stdout(), EnableFocusChange);
+    // Terminals that cannot report focus or the kitty keyboard protocol ignore the requests, so
+    // keys arrive as legacy reporting sends them (keybindings.md §1).
+    let _ = execute!(
+        std::io::stdout(),
+        EnableFocusChange,
+        PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+    );
     forward_terminal_events(inputs);
     // The panic hook `try_init` installed restores the terminal first; once the panic has
     // unwound to here, the document is written out as it stands.
     let result = panic::catch_unwind(AssertUnwindSafe(|| run(&mut terminal, &mut tui, &received)));
-    let _ = execute!(std::io::stdout(), DisableFocusChange);
+    let _ = execute!(
+        std::io::stdout(),
+        PopKeyboardEnhancementFlags,
+        DisableFocusChange
+    );
     ratatui::restore();
     result.unwrap_or_else(|panic| {
         report_recovery(&tui, &recovery);

@@ -29,7 +29,7 @@ The app opens a real file and shows it as an outline. Nothing is written to disk
 | 1.3 | **Tags hidden.** Tag grammar, derived tags and display text; tags vanish from rows; `@done` tasks show `☑`, dimmed and struck through. | FR-TAG-01 (display), FR-TAG-02, FR-DONE-01 (display), file-format §5 | 1.1 | Tagged lines look clean |
 | 1.4 | **Blocks.** The block layer: note runs as one multi-line block, special nodes skipped, divider, section, URL and code blocks drawn as in ui §2. Focus moves by block. | FR-BLK-01–07, FR-SPC-01 (skipping), data-model §3 | 1.2, 1.3 | Notes, sections and dividers look right |
 | 1.5 | **Folding. hub** In-memory shared folds; `h`/`l`, `'`, `Space`, `"`, `=`/`-`, `+`/`_`; fold markers and `▸ n`; focus repair when the focused block is hidden. Parent and sibling motion. | FR-NAV-01, FR-NAV-02, navigation §2–3 | 1.4 | Collapse a project |
-| 1.6 | **Zoom and breadcrumbs. hub** `.`, `>`, `Alt+l`/`Alt+h`, `gz`/`gu`, `gh` and `Ctrl+'` (which arrives only under the kitty protocol, enabled in 8.4), the title row, the breadcrumb header, back and forward with `H`/`L`. | FR-NAV-03, FR-NAV-04, navigation §4 | 1.5 | Zoom into a project and back |
+| 1.6 | **Zoom and breadcrumbs. hub** `.`, `>`, `Alt+l`/`Alt+h`, `gz`/`gu`, `gh` and `Ctrl+'` (which arrives only under the kitty protocol, D-42), the title row, the breadcrumb header, back and forward with `H`/`L`. | FR-NAV-03, FR-NAV-04, navigation §4 | 1.5 | Zoom into a project and back |
 
 ## M2 · Editing that saves
 
@@ -112,7 +112,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 8.1 | **Core animations.** The tachyonfx effect manager, synchronized output, the landing flash, change highlight, refusal flash and spinner; the `animations` setting with the SSH default. | FR-UI-11, UI-ANIM-01–03 and 08, ui §9 | 6.4 | Press `G` and see where focus landed |
 | 8.2 | **Remaining animations** (Should). | UI-ANIM-04–07 and 09 | 8.1 | Complete a task |
 | 8.3 | **Performance.** A 100k-line fixture; open under 300 ms, keystrokes under 16 ms, idle CPU near zero; fix what fails. | N-PERF-01–03 | 5.2 | (benchmarks) |
-| 8.4 | **Terminal support.** Kitty keyboard protocol with fallbacks, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
+| 8.4 | **Terminal support.** Kitty variants and classic fallbacks for the keys added since D-42 checked, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
 | 8.5 | **Keymap validation** (owner, by hand). Every binding in the terminals of N-PORT-01, with and without the kitty protocol and inside tmux; swallowed keys get new bindings. | keybindings §6 | 8.4 | — |
 
 Cross-cutting Musts (FR-KEY-01, FR-KEY-02, FR-UI-07, FR-DOC-04) are checked in every step's review rather than owned by one step.

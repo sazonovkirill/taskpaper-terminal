@@ -5,12 +5,21 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 ## 1. Terminal constraints
 
 - **No Cmd/Super** (FR-KEY-03). Bindings use `Ctrl`, `Shift` and `Alt` only.
-- **Legacy key reporting** cannot distinguish `Ctrl+Enter`, `Shift+Enter`, `Ctrl+Shift+<letter>`, `Ctrl+I` vs `Tab`, `Ctrl+M` vs `Enter`, or `Ctrl+[` vs `Esc`. When the terminal supports the kitty keyboard protocol, enable it (crossterm `PushKeyboardEnhancementFlags` with `DISAMBIGUATE_ESCAPE_CODES`). Every binding that needs it has a fallback that works with legacy reporting; both stay active.
+- **Legacy key reporting** cannot distinguish `Ctrl+Enter`, `Shift+Enter`, `Ctrl+Shift+<letter>`, `Ctrl+I` vs `Tab`, `Ctrl+M` vs `Enter`, or `Ctrl+[` vs `Esc`. The app asks for the kitty keyboard protocol on start (crossterm `PushKeyboardEnhancementFlags` with `DISAMBIGUATE_ESCAPE_CODES`) and gives it back on exit; terminals without it ignore the request and keep legacy reporting.
+- **Two variants per binding** (D-42). Every command bound to a key has a classic variant, which legacy reporting delivers, and a kitty variant, which the kitty protocol delivers; both stay bound. A key both deliver the same way (letters, digits, punctuation, arrows, `Enter`, `Esc`, `Tab`, `Shift+Tab`, function keys, `Ctrl+<letter>` other than `Ctrl+H`, `Ctrl+I`, `Ctrl+M` and `Ctrl+[`, and their `Alt` and `Shift` forms with named keys) is both variants at once. A key only the kitty protocol reports is a kitty variant and needs a classic variant beside it. The classic variant is not an `Alt` key alone, since `Alt` needs a setting on macOS (below). Under the kitty protocol a letter with `Ctrl` or `Alt` and `Shift` arrives as the lowercase letter plus `Shift`; the keymap matches it as the uppercase letter, as other reportings send it. The kitty-only keys and their classic variants:
+
+  | Kitty variant | Command | Classic variant |
+  |---|---|---|
+  | `Ctrl+Enter` | Toggle done | `x` |
+  | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
+  | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`; `Z` in navigate mode (legacy sends `Ctrl+Z`, which undoes) |
+  | `Shift+Enter` (edit mode) | Line break | `Ctrl+J`, `Alt+Enter` (legacy sends `Enter`) |
+  | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
+  | Menu key | Context menu | `\`, `Shift+F10` |
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- `Ctrl+'` (go home) and `Ctrl+Shift+Z` are only reported under the kitty keyboard protocol; legacy terminals send a plain `'` or nothing. Their routes without it are `gh` and `Ctrl+Y`.
 - Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else.
 
 ## 2. Navigate mode
@@ -139,7 +148,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 |---|---|
 | End editing | `Esc` |
 | End editing and create the next block | `Enter` (code blocks: inserts a line break) |
-| Line break in a note or code block | `Shift+Enter`, `Alt+Enter` |
+| Line break in a note or code block | `Shift+Enter`, `Ctrl+J`, `Alt+Enter` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
