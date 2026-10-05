@@ -2,7 +2,9 @@
 
 use std::{
     cell::RefCell,
+    io::{self, Write},
     path::{Path, PathBuf},
+    rc::Rc,
     sync::mpsc::{self, Receiver},
     time::Duration,
 };
@@ -23,7 +25,7 @@ use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
         Input, Tui,
-        effects::{self, Backups, Browser, Io},
+        effects::{self, Backups, Browser, Clipboard, Io},
     },
 };
 use tempfile::TempDir;
@@ -46,6 +48,55 @@ fn local(time: DateTime) -> Zoned {
         .expect("a date jiff can place in UTC")
 }
 
+/// Bytes written to the terminal, shared with the test.
+#[derive(Debug, Clone, Default)]
+pub struct Output(Rc<RefCell<Vec<u8>>>);
+
+impl Write for Output {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        self.0.borrow_mut().extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Output {
+    /// The text of each OSC 52 sequence written so far, decoded: what was put on the
+    /// terminal's clipboard.
+    pub fn copied(&self) -> Vec<String> {
+        let written = String::from_utf8(self.0.borrow().clone()).expect("UTF-8 output");
+        written
+            .split("\x1b]52;c;")
+            .skip(1)
+            .map(|rest| {
+                let encoded = rest.split('\x1b').next().expect("a terminated sequence");
+                String::from_utf8(base64_decode(encoded)).expect("UTF-8 text")
+            })
+            .collect()
+    }
+}
+
+/// Decodes standard Base64 with padding.
+fn base64_decode(encoded: &str) -> Vec<u8> {
+    const DIGITS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut bits = 0u32;
+    let mut count = 0;
+    let mut bytes = Vec::new();
+    for c in encoded.chars().filter(|&c| c != '=') {
+        bits =
+            bits << 6 | u32::try_from(DIGITS.find(c).expect("a Base64 digit")).expect("below 64");
+        count += 6;
+        if count >= 8 {
+            count -= 8;
+            bytes.push(u8::try_from(bits >> count & 0xFF).expect("masked to a byte"));
+        }
+    }
+    bytes
+}
+
 /// The program the app opens URLs with: one that does not exist, so that the error it shows
 /// names the URL `gx` chose.
 pub const OPENER: &str = "tpt-test-no-such-opener";
@@ -58,6 +109,9 @@ pub const CURRENT_LINE: Color = Color::Indexed(235);
 pub struct Harness {
     pub tui: Tui,
     pub terminal: Terminal<TestBackend>,
+    /// What the app wrote to the terminal besides drawing: the clipboard's OSC 52, as no system
+    /// clipboard is reachable.
+    pub terminal_output: Output,
     pub path: Option<PathBuf>,
     /// Whether the file is the temporary one a start without a path makes.
     temporary: bool,
@@ -124,12 +178,18 @@ impl Harness {
         CLOCK.set(local(NOW));
         let (results, inputs) = mpsc::channel();
         let io = Io::start(results, Backups::new(Some(backups.clone()), || NOW));
+        let terminal_output = Output::default();
         Self {
             path: state.path().map(Path::to_owned),
             temporary: state.origin() == Origin::Temporary,
-            tui: Tui::new(state, io, Browser::new(OPENER), || {
-                CLOCK.with_borrow(Zoned::clone)
-            }),
+            tui: Tui::new(
+                state,
+                io,
+                Browser::new(OPENER),
+                Clipboard::new(None, terminal_output.clone()),
+                || CLOCK.with_borrow(Zoned::clone),
+            ),
+            terminal_output,
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
             inputs,

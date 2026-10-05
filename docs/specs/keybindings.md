@@ -91,7 +91,7 @@ The six typed creation commands are in [editing.md §3](editing.md#3-creating-bl
 | Delete | `dd`, `Delete` |
 | Duplicate | `D` (was `yd`) |
 | Copy / cut | `Ctrl+C` / `Ctrl+X` (`y` now sets tomorrow) |
-| Paste below / above | `Ctrl+V` / `Alt+V` (`p`, `P` now add projects) |
+| Paste below / above | `Ctrl+V` / `Alt+V` (`p`, `P` now add projects); text pasted into the terminal goes below |
 | Undo / redo | `z` / `Z`, `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ### Block metadata (FR-BLK-08, FR-TAG, FR-DONE-01)
@@ -155,6 +155,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
 | Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
+| Copy / cut the selected text, paste ([editing.md §2](editing.md#2-edit-mode)) | `Ctrl+C` / `Ctrl+X`, `Ctrl+V` |
 
 ## 4. Other contexts
 

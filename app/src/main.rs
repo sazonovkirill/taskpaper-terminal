@@ -13,8 +13,8 @@ use std::{
 use anyhow::{Context, bail};
 use crossterm::{
     event::{
-        self, DisableFocusChange, EnableFocusChange, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        self, DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange,
+        KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
     execute,
 };
@@ -26,7 +26,7 @@ use taskpaper_terminal::{
     app::Message,
     ui::{
         self, Input,
-        effects::{Backups, Browser, Io, Recovery},
+        effects::{Backups, Browser, Clipboard, Io, Recovery, SystemClipboard},
     },
 };
 
@@ -69,13 +69,19 @@ fn main() -> anyhow::Result<()> {
     let _watcher = state
         .path()
         .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
-    let mut tui = ui::Tui::new(state, io, Browser::system(), jiff::Zoned::now);
+    // Without a display server, as over SSH, there is no system clipboard to reach.
+    let system = arboard::Clipboard::new()
+        .ok()
+        .map(|clipboard| Box::new(Arboard(clipboard)) as Box<dyn SystemClipboard>);
+    let clipboard = Clipboard::new(system, io::stdout());
+    let mut tui = ui::Tui::new(state, io, Browser::system(), clipboard, jiff::Zoned::now);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
-    // Terminals that cannot report focus or the kitty keyboard protocol ignore the requests, so
-    // keys arrive as legacy reporting sends them (keybindings.md §1).
+    // Terminals that cannot report focus, bracket pasted text or speak the kitty keyboard protocol
+    // ignore the requests, so keys arrive as legacy reporting sends them (keybindings.md §1).
     let _ = execute!(
         std::io::stdout(),
         EnableFocusChange,
+        EnableBracketedPaste,
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
     forward_terminal_events(inputs);
@@ -85,6 +91,7 @@ fn main() -> anyhow::Result<()> {
     let _ = execute!(
         std::io::stdout(),
         PopKeyboardEnhancementFlags,
+        DisableBracketedPaste,
         DisableFocusChange
     );
     ratatui::restore();
@@ -92,6 +99,19 @@ fn main() -> anyhow::Result<()> {
         report_recovery(&tui, &recovery);
         panic::resume_unwind(panic)
     })
+}
+
+/// The system clipboard through `arboard`.
+struct Arboard(arboard::Clipboard);
+
+impl SystemClipboard for Arboard {
+    fn set(&mut self, text: &str) -> bool {
+        self.0.set_text(text).is_ok()
+    }
+
+    fn get(&mut self) -> Option<String> {
+        self.0.get_text().ok()
+    }
 }
 
 /// After a crash, writes the unsaved document to a recovery file and says where (N-REL-01).

@@ -35,7 +35,23 @@ pub fn new_block(
     place: Place<'_>,
     typed: Option<Typed>,
 ) -> Option<(ItemId, Vec<Op>)> {
-    let (parent, index) = match place {
+    let (parent, index) = position(document, place)?;
+    let (parts, text) =
+        LineParts::default().retyped(typed.unwrap_or_else(|| fitting_type(place)), "");
+    let mut ops = repairs(document, parent);
+    let id = document.new_id();
+    ops.push(Op::Insert {
+        parent,
+        index,
+        subtree: Snapshot::line(id, parts.line(&text)),
+    });
+    Some((id, ops))
+}
+
+/// The parent of a block at `place` and its position among the parent's children, or `None`
+/// when `place` names a block that is not in `document`.
+fn position(document: &Document, place: Place<'_>) -> Option<(ItemId, usize)> {
+    Some(match place {
         Place::Below(block) => {
             let (parent, index) = document.position(block.id())?;
             (parent, index + 1)
@@ -50,17 +66,30 @@ pub fn new_block(
             (block.id(), end(document, children))
         }
         Place::Start => (document.root(), 0),
-    };
-    let (parts, text) =
-        LineParts::default().retyped(typed.unwrap_or_else(|| fitting_type(place)), "");
-    let mut ops = repairs(document, parent);
-    let id = document.new_id();
-    ops.push(Op::Insert {
-        parent,
-        index,
-        subtree: Snapshot::line(id, parts.line(&text)),
-    });
-    Some((id, ops))
+    })
+}
+
+/// The top-level lines of `pasted`, a document read from pasted text, with their subtrees put at
+/// `place` in order under fresh ids: their new lines and the ops that put them there, or `None`
+/// when `place` names a block that is not in `document` (FR-OPS-06).
+#[must_use]
+pub fn paste(
+    document: &mut Document,
+    place: Place<'_>,
+    pasted: &Document,
+) -> Option<(Vec<ItemId>, Vec<Op>)> {
+    let (parent, index) = position(document, place)?;
+    let copies: Vec<Snapshot> = pasted
+        .get(pasted.root())?
+        .children()
+        .iter()
+        .filter_map(|&top| Some(document.fresh_copy(&pasted.snapshot(top)?)))
+        .collect();
+    if copies.is_empty() {
+        return Some((Vec::new(), Vec::new()));
+    }
+    let tops = copies.iter().map(Snapshot::id).collect();
+    Some((tops, insert(document, parent, index, copies)))
 }
 
 /// The type of an empty block at `place` whose type the user did not pick: a task after or
@@ -943,5 +972,125 @@ mod tests {
         let mut document = format::parse("- a");
         let blocks = [block(&document, "- a"), block(&other, "- y")];
         assert_eq!(duplicate(&mut document, &blocks), None);
+    }
+
+    /// The lines of `text` once `pasted` is pasted `at` the block reading `of`, or at the start
+    /// without one, with the pasted top lines marked and the ops checked to undo.
+    #[track_caller]
+    fn pasted(text: &str, at: At, of: Option<&str>, pasted: &str) -> Vec<String> {
+        let mut document = format::parse(text);
+        let block = of.map(|of| block(&document, of));
+        let place = match (at, &block) {
+            (_, None) => Place::Start,
+            (At::Below, Some(block)) => Place::Below(block),
+            (At::Above, Some(block)) => Place::Above(block),
+            (At::FirstChild, Some(block)) => Place::FirstChild(block),
+            (At::LastChild, Some(block)) => Place::LastChild(block),
+        };
+        let (tops, ops) = paste(&mut document, place, &format::parse(pasted)).unwrap();
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after: Vec<String> = document
+            .descendants(document.root())
+            .map(|(id, depth)| {
+                let mark = if tops.contains(&id) { ">" } else { "" };
+                let text = document.get(id).unwrap().text();
+                format!("{}{mark}{text}", "\t".repeat(depth))
+            })
+            .collect();
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        after
+    }
+
+    // FR-OPS-06, editing.md §4
+    #[test]
+    fn pasted_lines_go_below_or_above_the_block_at_its_depth_keeping_their_structure() {
+        let text = "P:\n\t- a\n\t\t- b\n\t- c";
+        let clip = "- x @due(1)\n\t- y\n- z\n";
+        assert_eq!(
+            pasted(text, At::Below, Some("- a"), clip),
+            [
+                "P:",
+                "\t- a",
+                "\t\t- b",
+                "\t>- x @due(1)",
+                "\t\t- y",
+                "\t>- z",
+                "\t- c"
+            ]
+        );
+        assert_eq!(
+            pasted(text, At::Above, Some("- a"), clip),
+            [
+                "P:",
+                "\t>- x @due(1)",
+                "\t\t- y",
+                "\t>- z",
+                "\t- a",
+                "\t\t- b",
+                "\t- c"
+            ]
+        );
+        assert_eq!(
+            pasted(text, At::FirstChild, Some("P:"), "n"),
+            ["P:", "\t>n", "\t- a", "\t\t- b", "\t- c"]
+        );
+        assert_eq!(
+            pasted(text, At::LastChild, Some("P:"), "n"),
+            ["P:", "\t- a", "\t\t- b", "\t- c", "\t>n"]
+        );
+        assert_eq!(
+            pasted("", At::Below, None, clip),
+            [">- x @due(1)", "\t- y", ">- z"]
+        );
+    }
+
+    // FR-OPS-06, file-format.md §3.1
+    #[test]
+    fn pasted_lines_are_placed_and_repaired_where_they_would_be_read_back_elsewhere() {
+        assert_eq!(
+            pasted("- a\n- b", At::Below, Some("- a"), "\t\t- x\n- y"),
+            ["- a", ">- x", ">- y", "- b"],
+            "a deeper first line is placed at the block's depth"
+        );
+        assert_eq!(
+            pasted("- a", At::Below, Some("- a"), "  - x"),
+            ["- a", ">- x"],
+            "a single line keeps its leading whitespace only as the only line"
+        );
+        assert_eq!(pasted("", At::Below, None, "  - x"), [">  - x"]);
+        assert_eq!(
+            pasted("  a", At::Below, Some("  a"), "b"),
+            ["a", ">b"],
+            "nor does the line that was the only one"
+        );
+    }
+
+    #[test]
+    fn pasting_nothing_changes_nothing() {
+        assert_eq!(pasted("- a", At::Below, Some("- a"), ""), ["- a"]);
+        let mut document = format::parse("\n- a");
+        let blank = block(&document, "");
+        assert_eq!(
+            paste(
+                &mut document,
+                Place::FirstChild(&blank),
+                &Document::default()
+            ),
+            Some((Vec::new(), Vec::new())),
+            "not even the placeholder an empty parent would need"
+        );
+    }
+
+    #[test]
+    fn pasting_at_a_block_not_in_the_document_pastes_nothing() {
+        let other = format::parse("- x\n- y");
+        let mut document = format::parse("- a");
+        let stranger = block(&other, "- y");
+        assert_eq!(
+            paste(&mut document, Place::Below(&stranger), &format::parse("b")),
+            None
+        );
     }
 }

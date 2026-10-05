@@ -3,7 +3,7 @@
 
 use std::borrow::Cow;
 
-use super::super::model::{Document, IndentUnit, Item, LineEnding};
+use super::super::model::{Document, IndentUnit, Item, ItemId, LineEnding};
 use super::{BOM, LineOrigin, is_whitespace, leading_space_runs};
 
 /// The file contents for `document`, BOM included: an unedited document gives back the exact text
@@ -34,6 +34,38 @@ pub fn serialize(document: &Document) -> String {
             text.push_str(this_break);
             previous_break = this_break;
         }
+    }
+    text
+}
+
+/// The lines `tops`, none inside another and in document order, with their subtrees as
+/// TaskPaper text for the clipboard: tags included, tab-indented relative to the shallowest of
+/// them and each ended by `\n`, whatever the file uses ([editing.md §4](../../../../docs/specs/editing.md#4-structural-operations-fr-ops)).
+/// Lines not in `document` are left out.
+#[must_use]
+pub fn serialize_blocks(document: &Document, tops: &[ItemId]) -> String {
+    let ids: Vec<ItemId> = document
+        .descendants(document.root())
+        .map(|(id, _)| id)
+        .collect();
+    let lines = lines_with_depth(document);
+    let runs: Vec<&[(&Item, usize)]> = tops
+        .iter()
+        .filter_map(|&top| {
+            let start = ids.iter().position(|&id| id == top)?;
+            lines.get(start..=start + document.descendants(top).count())
+        })
+        .collect();
+    let shallowest = runs
+        .iter()
+        .filter_map(|run| run.first().map(|&(_, depth)| depth))
+        .min()
+        .unwrap_or_default();
+    let mut text = String::new();
+    for &(item, depth) in runs.iter().copied().flatten() {
+        text.push_str(&indent(IndentUnit::Tab, depth.saturating_sub(shallowest)));
+        text.push_str(item.text());
+        text.push('\n');
     }
     text
 }
@@ -651,5 +683,63 @@ mod tests {
         let document = parse("\u{FEFF}A");
         assert_eq!(serialize(&document), "\u{FEFF}A");
         assert!(!document.format().bom);
+    }
+
+    /// The text `serialize_blocks` gives for the lines of `text` reading each of `tops`.
+    #[track_caller]
+    fn copied(text: &str, tops: &[&str]) -> String {
+        let document = parse(text);
+        let ids: Vec<ItemId> = tops
+            .iter()
+            .map(|top| {
+                document
+                    .descendants(document.root())
+                    .map(|(id, _)| id)
+                    .find(|&id| document.get(id).unwrap().text() == *top)
+                    .unwrap()
+            })
+            .collect();
+        serialize_blocks(&document, &ids)
+    }
+
+    // FR-OPS-06, special-nodes.md §1
+    #[test]
+    fn copied_blocks_keep_their_subtrees_tags_and_special_nodes_with_tabs_and_line_feeds() {
+        assert_eq!(
+            copied(
+                "x\r\nP: @a\r\n  - b @due(1)\r\n    n\r\n  C @hidden\r\n    c\r\ny",
+                &["P: @a"]
+            ),
+            "P: @a\n\t- b @due(1)\n\t\tn\n\tC @hidden\n\t\tc\n"
+        );
+    }
+
+    // FR-OPS-06, editing.md §4
+    #[test]
+    fn copied_blocks_are_indented_relative_to_the_shallowest() {
+        assert_eq!(
+            copied("P:\n\t- a\n\t\t- b\n\t- c\nQ:", &["- a", "- c"]),
+            "- a\n\t- b\n- c\n"
+        );
+        assert_eq!(
+            copied("P:\n\t- a\n\t\t- b\nQ:", &["- b", "Q:"]),
+            "\t\t- b\nQ:\n",
+            "a deeper first block keeps its depth below a later shallower one"
+        );
+        assert_eq!(
+            copied("a\n\t\t\tb\nc", &["a", "c"]),
+            "a\n\t\t\tb\nc\n",
+            "an indent jump is kept"
+        );
+        assert_eq!(copied("a\n\nb", &[""]), "\n", "a blank line");
+    }
+
+    #[test]
+    fn copying_nothing_or_lines_not_in_the_document_gives_no_text() {
+        let document = parse("a");
+        let other = parse("x\ny");
+        let stranger = other.descendants(other.root()).nth(1).unwrap().0;
+        assert_eq!(serialize_blocks(&document, &[]), "");
+        assert_eq!(serialize_blocks(&document, &[stranger]), "");
     }
 }

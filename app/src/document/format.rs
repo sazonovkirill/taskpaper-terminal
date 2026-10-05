@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use super::model::{Document, FileFormat, IndentUnit, ItemId, ItemKind, LineEnding};
 pub use parts::{LineParts, Typed};
-pub use serialize::serialize;
+pub use serialize::{serialize, serialize_blocks};
 use tags::is_whitespace;
 
 const BOM: &str = "\u{FEFF}";

@@ -1,6 +1,7 @@
 //! The App layer: application state, messages, the update function and effects. Depends only on
 //! the document layer, so the same core can run behind another frontend.
 
+mod clipboard;
 mod color_picker;
 mod date_prompt;
 pub mod demo;
@@ -19,6 +20,7 @@ pub mod text_field;
 mod type_picker;
 pub mod update;
 
+pub use clipboard::Paste;
 pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{Editor, MenuEntry, MenuInput, Mode, TypeMenuView};
 pub use external::{DiffLine, Version};

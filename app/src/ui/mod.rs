@@ -19,7 +19,7 @@ use ratatui::{
 };
 
 use crate::app::{Effect, Message, Mode, Origin, State};
-use effects::{Browser, Io, Recovery, RecoveryError};
+use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, Overlay, PromptKey};
 use widgets::{ConflictPrompt, DatePromptPopup, OutlineView, Popup};
 
@@ -39,6 +39,8 @@ pub struct Tui {
     io: Io,
     /// Shows URLs the core asks to open.
     browser: Browser,
+    /// Holds what the core copies and gives it back to paste.
+    clipboard: Clipboard,
     /// Reads the local time, whose date messages that write one carry and chips are drawn on.
     clock: fn() -> Zoned,
     /// When the local date next changes while the outline shows a due date, which may then become
@@ -60,14 +62,21 @@ pub struct Tui {
 
 impl Tui {
     /// A frontend showing `state` that carries out disk work with `io`, opens URLs with
-    /// `browser` and reads the local time from `clock`, starting with what the core asks for on
-    /// opening.
+    /// `browser`, copies and pastes with `clipboard` and reads the local time from `clock`,
+    /// starting with what the core asks for on opening.
     #[must_use]
-    pub fn new(state: State, io: Io, browser: Browser, clock: fn() -> Zoned) -> Self {
+    pub fn new(
+        state: State,
+        io: Io,
+        browser: Browser,
+        clipboard: Clipboard,
+        clock: fn() -> Zoned,
+    ) -> Self {
         let mut tui = Self {
             state,
             io,
             browser,
+            clipboard,
             clock,
             midnight: None,
             keymap: Keymap::default(),
@@ -208,6 +217,13 @@ impl Tui {
             match effect {
                 Effect::Quit => self.quit = true,
                 Effect::Disk(disk) => self.io.submit(disk),
+                Effect::CopyToClipboard(text) => self.clipboard.copy(&text),
+                Effect::ReadClipboard(at) => {
+                    if let Some(text) = self.clipboard.paste() {
+                        let effects = self.state.update(Message::Pasted { text, at });
+                        self.run(effects);
+                    }
+                }
                 Effect::OpenUrl(url) => {
                     if let Err(error) = self.browser.open(&url) {
                         let reason = error.to_string();

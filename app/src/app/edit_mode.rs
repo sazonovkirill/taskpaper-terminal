@@ -140,6 +140,21 @@ impl Session {
         true
     }
 
+    /// Puts `line`, which holds no line break, in place of the selection or at the caret as one
+    /// change to undo, leaving out each `@` that would start a tag, as typing it would (OQ-25);
+    /// returns whether it left one out.
+    fn paste(&mut self, line: &str) -> bool {
+        let steps = self.undo.len();
+        self.typing = false;
+        let mut refused = false;
+        for c in line.chars() {
+            refused |= !self.edit(TextEdit::Insert(c));
+        }
+        self.undo.truncate(steps + 1);
+        self.typing = false;
+        refused
+    }
+
     /// Takes the text back to before its latest change, or with `undo` false, replays the
     /// latest change undone.
     fn step(&mut self, undo: bool) {
@@ -281,6 +296,19 @@ impl State {
         } else {
             self.notify(Notice::TypedTag);
         }
+    }
+
+    /// Pastes `line`, which holds no line break, into the text being edited and writes it to the
+    /// document, saying so when it left out an `@` that would start a tag (editing.md §2, OQ-25).
+    pub(super) fn paste_text(&mut self, line: &str) {
+        if self
+            .edit
+            .as_mut()
+            .is_some_and(|session| session.paste(line))
+        {
+            self.notify(Notice::TypedTag);
+        }
+        self.write(false);
     }
 
     /// The type menu, while it is open (D-44).

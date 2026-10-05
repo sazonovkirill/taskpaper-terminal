@@ -6,7 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::{
-    app::{DateInput, MenuInput, Message, Mode, Motion, SelectionChange, TextEdit},
+    app::{DateInput, MenuInput, Message, Mode, Motion, Paste, SelectionChange, TextEdit},
     document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
 };
 
@@ -191,6 +191,10 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
     (&[key!('D')], |_| Message::Duplicate),
+    (&[key!(ctrl 'c')], |_| Message::Copy),
+    (&[key!(ctrl 'x')], |_| Message::Cut),
+    (&[key!(ctrl 'v')], |_| Message::Paste(Paste::Below)),
+    (&[key!(alt 'v')], |_| Message::Paste(Paste::Above)),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
     (&[key!(alt 'k')], |_| Message::MoveUp),
@@ -307,6 +311,9 @@ const EDIT: &[Binding] = &[
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!(ctrl 'Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
+    (&[key!(ctrl 'c')], |_| Message::Copy),
+    (&[key!(ctrl 'x')], |_| Message::Cut),
+    (&[key!(ctrl 'v')], |_| Message::Paste(Paste::Below)),
 ];
 
 /// Moving the caret by a [`Motion`], extending the selection when the second argument is `true`.
@@ -435,14 +442,22 @@ pub struct Keymap {
 
 impl Keymap {
     /// The message `event` completes at time `now`, if any, carrying what it needs of
-    /// `context`. Only key presses count; repeats, releases and other events are ignored. A
-    /// key that continues no binding ends the pending sequence and does nothing.
+    /// `context`. Only key presses and text pasted into the terminal count, the latter in
+    /// navigate and edit mode alone; repeats, releases and other events are ignored. A key that
+    /// continues no binding ends the pending sequence and does nothing.
     pub fn message_for(
         &mut self,
         event: &Event,
         now: Duration,
         context: &Context,
     ) -> Option<Message> {
+        if let Event::Paste(text) = event {
+            let menu = context.type_menu || context.overlay.is_some();
+            return (!menu).then(|| Message::Pasted {
+                text: text.clone(),
+                at: Paste::Below,
+            });
+        }
         let key = event.as_key_press_event()?;
         self.expire(now);
         if self.pending.is_empty() {
@@ -1385,5 +1400,54 @@ mod tests {
             prompt_key(&key(KeyCode::PageDown, none), usize::MAX),
             Some(PromptKey::Scroll(isize::MAX))
         );
+    }
+
+    // FR-OPS-06, D-42
+    #[test]
+    fn clipboard_keys_copy_cut_and_paste_in_both_modes() {
+        let ctrl = KeyModifiers::CONTROL;
+        let below = Message::Paste(Paste::Below);
+        for context in [CONTEXT, EDITING] {
+            let message = |code, modifiers| {
+                Keymap::default().message_for(&key(code, modifiers), ms(0), context)
+            };
+            assert_eq!(message(KeyCode::Char('c'), ctrl), Some(Message::Copy));
+            assert_eq!(message(KeyCode::Char('x'), ctrl), Some(Message::Cut));
+            assert_eq!(message(KeyCode::Char('v'), ctrl), Some(below.clone()));
+        }
+        check(
+            KeyCode::Char('v'),
+            KeyModifiers::ALT,
+            Some(&Message::Paste(Paste::Above)),
+        );
+    }
+
+    // FR-OPS-06, editing.md §4
+    #[test]
+    fn text_pasted_into_the_terminal_is_pasted_below_except_in_menus_and_prompts() {
+        let pasted = Event::Paste("a\nb".to_owned());
+        let expected = Some(Message::Pasted {
+            text: "a\nb".to_owned(),
+            at: Paste::Below,
+        });
+        let mut keymap = Keymap::default();
+        assert_eq!(keymap.message_for(&pasted, ms(0), CONTEXT), expected);
+        assert_eq!(keymap.message_for(&pasted, ms(0), EDITING), expected);
+        for context in [
+            Context {
+                type_menu: true,
+                ..*EDITING
+            },
+            Context {
+                overlay: Some(Overlay::ColorPicker),
+                ..*CONTEXT
+            },
+            Context {
+                overlay: Some(Overlay::DatePrompt),
+                ..*CONTEXT
+            },
+        ] {
+            assert_eq!(keymap.message_for(&pasted, ms(0), &context), None);
+        }
     }
 }

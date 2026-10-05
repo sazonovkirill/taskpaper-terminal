@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, MenuInput, Mode, SelectionChange, State, TextEdit, Version, saving::Ending,
+    DateInput, MenuInput, Mode, Paste, SelectionChange, State, TextEdit, Version, saving::Ending,
     structure::NewBlock,
 };
 use crate::document::{
@@ -213,6 +213,21 @@ pub enum Message {
     NewTypedBelow(Typed),
     /// Delete the selected blocks, else the focused block, with their subtrees (FR-OPS-06).
     Delete,
+    /// Copy the selected text in edit mode, else the selected blocks, else the focused block, to
+    /// the clipboard (FR-OPS-06).
+    Copy,
+    /// Copy as [`Message::Copy`] does, then delete what was copied (FR-OPS-06).
+    Cut,
+    /// Paste what the clipboard holds; the frontend reads it for [`Effect::ReadClipboard`]
+    /// (FR-OPS-06).
+    Paste(Paste),
+    /// Text from the clipboard or pasted into the terminal, to paste (FR-OPS-06).
+    Pasted {
+        /// The text.
+        text: String,
+        /// Where blocks it becomes go.
+        at: Paste,
+    },
     /// Put a copy of each of the selected blocks, else the focused block, with its subtree after
     /// it (FR-OPS-06).
     Duplicate,
@@ -274,7 +289,11 @@ impl Message {
             | Self::EditPrevious
             | Self::EditNext
             | Self::Indent
-            | Self::Outdent => false,
+            | Self::Outdent
+            | Self::Copy
+            | Self::Cut
+            | Self::Paste(_)
+            | Self::Pasted { .. } => false,
             Self::Quit
             | Self::Terminate
             | Self::KeepMine
@@ -337,6 +356,11 @@ pub enum Effect {
     Quit,
     /// Disk work, carried out in order and away from the frontend's event handling (N-UX-01).
     Disk(Disk),
+    /// Put this text on the clipboard (FR-OPS-06).
+    CopyToClipboard(String),
+    /// Read the clipboard and send what it holds as [`Message::Pasted`] at this place
+    /// (FR-OPS-06).
+    ReadClipboard(Paste),
     /// Show this URL in the system browser; a failure comes back as [`Message::OpenUrlFailed`]
     /// (FR-BLK-06).
     OpenUrl(String),
@@ -463,6 +487,10 @@ impl State {
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_selected(),
             Message::Duplicate => self.duplicate(),
+            Message::Copy => effects = self.copy(),
+            Message::Cut => effects = self.cut(),
+            Message::Paste(at) => effects.push(Effect::ReadClipboard(at)),
+            Message::Pasted { text, at } => self.pasted(&text, at),
             Message::Indent => self.shift_selected(Shift::Indent),
             Message::Outdent => self.shift_selected(Shift::Outdent),
             Message::MoveUp => self.shift_selected(Shift::Up),
