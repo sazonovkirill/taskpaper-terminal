@@ -9,14 +9,7 @@ use jiff::{
 };
 use thiserror::Error;
 
-/// The date a text is entered for: a month and day without a year resolve differently for each.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DateField {
-    /// `@start`: a month and day always fall in the current year.
-    Start,
-    /// `@due`: a month and day already past this year fall in the next year.
-    Due,
-}
+use super::metadata::DateTag;
 
 /// Why a text is not a date. Offsets are byte offsets into the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -44,12 +37,13 @@ pub enum DateError {
     },
 }
 
-/// Resolves `text` to a date relative to `today`.
+/// Resolves `text` to a date relative to `today` for the `tag` date: a month and day already
+/// past this year fall in the next year only for `@due`.
 ///
 /// # Errors
 ///
 /// A [`DateError`] saying why `text` is not a date.
-pub fn parse(text: &str, today: Date, field: DateField) -> Result<Date, DateError> {
+pub fn parse(text: &str, today: Date, tag: DateTag) -> Result<Date, DateError> {
     let tokens = lex(text)?;
     if tokens.is_empty() {
         return Err(DateError::Empty);
@@ -58,7 +52,7 @@ pub fn parse(text: &str, today: Date, field: DateField) -> Result<Date, DateErro
         tokens: tokens.into_iter(),
         end: text.len(),
         today,
-        field,
+        tag,
     }
     .expression()
 }
@@ -150,7 +144,7 @@ struct Parser<'a> {
     /// The text's length, reported as the offset when a token is missing.
     end: usize,
     today: Date,
-    field: DateField,
+    tag: DateTag,
 }
 
 impl<'a> Parser<'a> {
@@ -300,7 +294,7 @@ impl<'a> Parser<'a> {
         };
         let on = |year| Date::new(year, month, day).map_err(|_| no_such_day);
         let this_year = on(self.today.year())?;
-        if self.field == DateField::Due && this_year < self.today {
+        if self.tag == DateTag::Due && this_year < self.today {
             let next_year = self
                 .today
                 .first_of_year()
@@ -342,12 +336,8 @@ mod tests {
 
     #[track_caller]
     fn check_on(today: Date, text: &str, expected: Date) {
-        for field in [DateField::Start, DateField::Due] {
-            assert_eq!(
-                parse(text, today, field),
-                Ok(expected),
-                "{text:?} as {field:?}"
-            );
+        for tag in [DateTag::Start, DateTag::Due] {
+            assert_eq!(parse(text, today, tag), Ok(expected), "{text:?} as {tag:?}");
         }
     }
 
@@ -358,11 +348,11 @@ mod tests {
 
     #[track_caller]
     fn fails_on(today: Date, text: &str, expected: DateError) {
-        for field in [DateField::Start, DateField::Due] {
+        for tag in [DateTag::Start, DateTag::Due] {
             assert_eq!(
-                parse(text, today, field),
+                parse(text, today, tag),
                 Err(expected),
-                "{text:?} as {field:?}"
+                "{text:?} as {tag:?}"
             );
         }
     }
@@ -400,11 +390,11 @@ mod tests {
     #[test]
     fn a_past_month_and_day_is_next_year_only_for_due() {
         for text in ["3/7", "03-07"] {
-            assert_eq!(parse(text, TODAY, DateField::Start), Ok(date(2026, 3, 7)));
-            assert_eq!(parse(text, TODAY, DateField::Due), Ok(date(2027, 3, 7)));
+            assert_eq!(parse(text, TODAY, DateTag::Start), Ok(date(2026, 3, 7)));
+            assert_eq!(parse(text, TODAY, DateTag::Due), Ok(date(2027, 3, 7)));
         }
-        assert_eq!(parse("10-06", TODAY, DateField::Due), Ok(date(2027, 10, 6)));
-        assert_eq!(parse("10-07", TODAY, DateField::Due), Ok(TODAY));
+        assert_eq!(parse("10-06", TODAY, DateTag::Due), Ok(date(2027, 10, 6)));
+        assert_eq!(parse("10-07", TODAY, DateTag::Due), Ok(TODAY));
     }
 
     #[test]
@@ -417,7 +407,7 @@ mod tests {
         fails("02-29", DateError::NoSuchDay { offset: 0 });
         check_on(date(2028, 1, 10), "02-29", date(2028, 2, 29));
         assert_eq!(
-            parse("02-29", date(2028, 3, 1), DateField::Due),
+            parse("02-29", date(2028, 3, 1), DateTag::Due),
             Err(DateError::NoSuchDay { offset: 0 }),
             "2029 has no February 29"
         );
@@ -582,7 +572,7 @@ mod tests {
         fails_on(Date::MAX, "next week", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MIN, "last month", DateError::OutOfRange { offset: 0 });
         assert_eq!(
-            parse("12-25", Date::MAX, DateField::Due),
+            parse("12-25", Date::MAX, DateTag::Due),
             Err(DateError::OutOfRange { offset: 0 })
         );
     }
