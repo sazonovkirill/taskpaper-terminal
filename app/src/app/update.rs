@@ -665,7 +665,7 @@ mod tests {
         assert_eq!(state.breadcrumbs(), ["A", "b"]);
         assert_eq!(
             visible(&state),
-            [(0, "b".to_owned(), 0), (0, "c".to_owned(), 0)]
+            [(0, "b".to_owned(), 0), (1, "c".to_owned(), 0)]
         );
         assert_eq!(
             state.rows().iter().map(|row| row.title).collect::<Vec<_>>(),

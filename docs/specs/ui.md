@@ -28,7 +28,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 
 ## 2. Blocks
 
-Each row: indent (2 columns per level), then text and right-aligned chips. Tasks and URLs start with their marker and a space; every other block starts with its text. A block's children are indented one level, so a note under a task lines up with the task's text and the indentation shows which block each belongs to, as in TaskPaper (D-31).
+Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Tasks and URLs have markers; every other block starts with its text. So a task's note, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|

@@ -62,8 +62,11 @@ fn zooming_in_shows_the_block_as_a_title_over_its_children() {
     let mut app = app(30);
     app.type_keys(".");
     assert_eq!(header(&mut app), "⌂ › Shop");
-    assert_eq!(shown(&mut app), ["Shop:", "- Milk", "  organic", "- Eggs"]);
-    assert_focus(&mut app, "- Milk");
+    assert_eq!(
+        shown(&mut app),
+        ["Shop:", "  - Milk", "    organic", "  - Eggs"]
+    );
+    assert_focus(&mut app, "  - Milk");
     let title = app.render().buffer()[(2, 2)].clone();
     assert!(title.modifier.contains(Modifier::BOLD), "the title is bold");
     assert_eq!(title.fg, Color::LightBlue, "a project title is colored");
@@ -103,10 +106,10 @@ fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
     assert_eq!(header(&mut app), "⌂ › Work › Report › Draft");
     app.type_keys(">");
     assert_eq!(header(&mut app), "⌂ › Work › Report");
-    assert_focus(&mut app, "- Draft");
+    assert_focus(&mut app, "  - Draft");
     app.press(KeyCode::Char('h'), KeyModifiers::ALT);
     assert_eq!(header(&mut app), "⌂ › Work");
-    assert_focus(&mut app, "- Report");
+    assert_focus(&mut app, "  - Report");
     app.press(KeyCode::Left, KeyModifiers::ALT);
     assert_eq!(header(&mut app), "⌂");
     assert_focus(&mut app, "Work:");
@@ -183,11 +186,11 @@ fn folding_works_under_the_zoom_and_leaves_the_title_alone() {
     let mut app = app(30);
     app.type_keys("jjjj.");
     app.type_keys("_");
-    assert_eq!(shown(&mut app), ["Work:", "- Report ▸ 1", "Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work:", "  - Report ▸ 1", "  Ideas:"]);
     app.type_keys("gp");
     assert_focus(&mut app, "Work:");
     app.type_keys("h'");
-    assert_eq!(shown(&mut app), ["Work:", "- Report ▸ 1", "Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work:", "  - Report ▸ 1", "  Ideas:"]);
     app.type_keys("\"");
     assert_eq!(
         shown(&mut app).len(),
@@ -195,11 +198,11 @@ fn folding_works_under_the_zoom_and_leaves_the_title_alone() {
         "the subtree below the title expands"
     );
     app.type_keys("\"");
-    assert_eq!(shown(&mut app), ["Work:", "- Report ▸ 1", "Ideas:"]);
+    assert_eq!(shown(&mut app), ["Work:", "  - Report ▸ 1", "  Ideas:"]);
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "Work:");
     app.type_keys("l");
-    assert_focus(&mut app, "- Report ▸ 1");
+    assert_focus(&mut app, "  - Report ▸ 1");
     app.type_keys("+");
     assert_eq!(shown(&mut app).len(), 4);
     app.type_keys("gh");

@@ -34,7 +34,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 
 ## 4. Zoom and history (FR-NAV-03, FR-NAV-04)
 
-- `zoom_in`: the focused block becomes the pane's root; its children are shown at depth 0 under a title row showing the block itself (editable like any block). Zooming into a leaf shows an empty page with focus on the title.
+- `zoom_in`: the focused block becomes the pane's root; its children are shown one level in (depth 1) under a title row at depth 0 showing the block itself (D-31) (editable like any block). Zooming into a leaf shows an empty page with focus on the title.
 - `zoom_out`: zoom to the parent block and focus the block you were zoomed into.
 - `go_home`: zoom to the document root.
 - Every zoom change pushes onto the pane's history; `back` / `forward` walk it, skipping blocks that no longer exist.

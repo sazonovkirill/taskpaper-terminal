@@ -108,18 +108,19 @@ impl State {
         crumbs
     }
 
-    /// The visible rows: when zoomed, a title row for the zoom block, then its child blocks from
-    /// depth 0. Collapsed blocks hide their children and special nodes are never shown
-    /// (FR-NAV-02, FR-NAV-03, FR-SPC-01).
+    /// The visible rows: when zoomed, a title row for the zoom block at depth 0, then its child
+    /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
+    /// their children and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-SPC-01).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
         let title = self.zoom_block().map(|block| self.row(&block, 0, true));
+        let below = usize::from(title.is_some());
         title
             .into_iter()
             .chain(
                 self.blocks(true)
                     .into_iter()
-                    .map(|(block, depth)| self.row(&block, depth, false)),
+                    .map(|(block, depth)| self.row(&block, depth + below, false)),
             )
             .collect()
     }
