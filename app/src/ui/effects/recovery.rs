@@ -336,14 +336,13 @@ mod tests {
             recovery(dir.path()).write(Some(&inside_a_file), "x"),
             Err(RecoveryError::Io(_))
         ));
+        // A name the file system takes whose recovery file's name is too long for it: a failure
+        // that is no taken name, which permissions cannot cause for root.
         let dir = tempfile::tempdir()?;
-        let folder = dir.path().join("recovery");
-        fs::create_dir(&folder)?;
-        fs::set_permissions(&folder, fs::Permissions::from_mode(0o500))?;
-        let written = recovery(dir.path()).write(None, "x");
-        fs::set_permissions(&folder, fs::Permissions::from_mode(0o700))?;
+        let long = dir.path().join("x".repeat(240));
+        let written = recovery(dir.path()).write(Some(&long), "x");
         assert!(
-            matches!(written, Err(RecoveryError::Io(ref error)) if error.kind() == io::ErrorKind::PermissionDenied),
+            matches!(written, Err(RecoveryError::Io(ref error)) if error.kind() == io::ErrorKind::InvalidFilename),
             "{written:?}"
         );
         assert!(
