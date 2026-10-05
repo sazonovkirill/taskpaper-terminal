@@ -1,5 +1,6 @@
 //! Widgets that draw the core's view state ([ui.md §2](../../../docs/specs/ui.md#2-blocks)).
 
+use jiff::civil::Date;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -16,22 +17,25 @@ use crate::{
 };
 
 /// The outline: a gutter that marks the focused block, whose line gets a brighter background, then
-/// one line per block, 2 columns of indent per level, a marker and the text. A block being edited
-/// shows the text as typed instead.
+/// one line per block, 2 columns of indent per level, a marker and the text, with its date chips
+/// at the right edge. A block being edited shows the text as typed instead, without chips.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
+    today: Date,
     offset: usize,
     focused: Option<usize>,
     editor: Option<&'a Editor<'a>>,
 }
 
 impl<'a> OutlineView<'a> {
-    /// A view of `rows`, drawn from the top of its area with no row focused.
+    /// A view of `rows` on `today`, the local date, drawn from the top of its area with no row
+    /// focused.
     #[must_use]
-    pub fn new(rows: &'a [Row]) -> Self {
+    pub fn new(rows: &'a [Row], today: Date) -> Self {
         Self {
             rows,
+            today,
             offset: 0,
             focused: None,
             editor: None,
@@ -68,13 +72,13 @@ impl Widget for OutlineView<'_> {
         ]));
         let width = usize::from(text.width);
         let lines = self.rows.iter().enumerate().map(|(index, row)| {
-            let line = match self.editor.filter(|editor| editor.id == row.id) {
-                Some(editor) => editor_line(row, editor, width).0,
-                None => row_line(row, width),
+            let (line, chips) = match self.editor.filter(|editor| editor.id == row.id) {
+                Some(editor) => (editor_line(row, editor, width).0, Line::default()),
+                None => (row_line(row, width), chips(row, self.today)),
             };
-            (index, line)
+            (index, line, chips)
         });
-        for ((index, line), (gutter_area, line_area)) in
+        for ((index, line, chips), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
             let focused = Some(index) == self.focused;
@@ -84,6 +88,7 @@ impl Widget for OutlineView<'_> {
                 buf.set_style(gutter_area.union(line_area), current_line_style());
             }
             line.render(line_area, buf);
+            chips.render(line_area, buf);
             if focused {
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
             }
@@ -394,6 +399,40 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
     line
 }
 
+/// The date chips of `row` on `today`, right-aligned after a space: its start and due dates as
+/// `start Fri 8 Oct` and `due Fri 8 Oct`, with the year when it is not this year's, an overdue
+/// date in the error color, and dimmed with a done block or one inside it (ui.md §2, FR-TAG-03).
+fn chips(row: &Row, today: Date) -> Line<'static> {
+    let receded = row.done || row.inside_done;
+    let chip = |label: &str, date: Date, style: Style| {
+        let format = if date.year() == today.year() {
+            "%a %-d %b"
+        } else {
+            "%a %-d %b %Y"
+        };
+        let style = if receded { style.dim() } else { style };
+        Span::styled(format!(" {label} {}", date.strftime(format)), style)
+    };
+    let due_style = if row.overdue(today) {
+        error_style()
+    } else {
+        chip_style()
+    };
+    let spans: Vec<Span> = [
+        row.start.map(|date| chip("start", date, chip_style())),
+        row.due.map(|date| chip("due", date, due_style)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    Line::from(spans).right_aligned()
+}
+
+/// Date chips that are not overdue; themes arrive in step 6.2.
+fn chip_style() -> Style {
+    Style::new().fg(Color::Cyan)
+}
+
 /// The marker of a block with its style, and the style of its text, by its type and
 /// whether it is done or inside a done block (ui.md §2).
 fn row_style(row: &Row) -> (&'static str, Style, Style) {
@@ -510,11 +549,13 @@ mod tests {
         document::format,
     };
 
+    const TODAY: Date = jiff::civil::date(2026, 10, 5);
+
     /// Draws `rows` with nothing focused and returns the `width` × `height` columns right of
     /// the gutter.
     fn draw(rows: &[Row], width: u16, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, width + GUTTER_WIDTH, height));
-        OutlineView::new(rows).render(buf.area, &mut buf);
+        OutlineView::new(rows, TODAY).render(buf.area, &mut buf);
         let mut text = Buffer::empty(Rect::new(0, 0, width, height));
         for y in 0..height {
             for x in 0..width {
@@ -533,7 +574,7 @@ mod tests {
     fn render_scrolled(offset: usize, focused: Option<usize>, area: Rect) -> Buffer {
         let rows = State::new(format::parse("- a\n- b\n- c\n- d"), None).rows();
         let mut buf = Buffer::empty(area);
-        OutlineView::new(&rows)
+        OutlineView::new(&rows, TODAY)
             .offset(offset)
             .focused(focused)
             .render(area, &mut buf);
@@ -819,11 +860,84 @@ mod tests {
         let rows = state.rows();
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 7, 2));
-        OutlineView::new(&rows)
+        OutlineView::new(&rows, TODAY)
             .editor(editor.as_ref())
             .render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines(["  - a  ", "  - bc "]);
         expected.set_style(Rect::new(4, 1, 2, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+    }
+
+    // FR-TAG-03
+    #[test]
+    fn dates_show_as_chips_at_the_right_edge() {
+        let mut expected = Buffer::with_lines([
+            "- a  start Mon 5 Oct due Fri 9 Oct",
+            "- b                  due Sun 4 Oct",
+            "- c           start Fri 1 Oct 2027",
+            "- d                               ",
+        ]);
+        expected.set_style(Rect::new(4, 0, 30, 1), chip_style());
+        expected.set_style(Rect::new(20, 1, 14, 1), error_style());
+        expected.set_style(Rect::new(13, 2, 21, 1), chip_style());
+        assert_eq!(
+            render(
+                "- a @due(2026-10-09) @start(2026-10-05)\n- b @due(2026-10-04)\n- c @start(2027-10-01) @due(x)\n- d @start",
+                34,
+                4
+            ),
+            expected
+        );
+    }
+
+    // FR-TAG-03, D-40
+    #[test]
+    fn chips_of_done_blocks_recede_and_are_not_overdue() {
+        let mut expected = Buffer::with_lines(["P:    due Sun 4 Oct", "  - a due Sun 4 Oct"]);
+        expected.set_style(
+            Rect::new(0, 0, 2, 1),
+            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+        );
+        expected.set_style(Rect::new(5, 0, 14, 1), chip_style().dim());
+        expected.set_style(Rect::new(2, 1, 3, 1), Style::new().dim());
+        expected.set_style(Rect::new(5, 1, 14, 1), chip_style().dim());
+        assert_eq!(
+            render("P: @done @due(2026-10-04)\n\t- a @due(2026-10-04)", 19, 2),
+            expected
+        );
+    }
+
+    // FR-TAG-03, D-39
+    #[test]
+    fn chips_keep_the_band_of_the_focused_row() {
+        let rows = State::new(format::parse("- a @due(2026-10-04)"), None).rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 1));
+        OutlineView::new(&rows, TODAY)
+            .focused(Some(0))
+            .render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["▎ - a  due Sun 4 Oct"]);
+        expected.set_style(expected.area, current_line_style());
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(PRIMARY));
+        expected.set_style(Rect::new(6, 0, 14, 1), error_style());
+        assert_eq!(buf, expected);
+    }
+
+    // FR-TAG-03, FR-MODE-02
+    #[test]
+    fn the_edited_block_shows_no_chips() {
+        let mut state = State::new(
+            format::parse("- a @due(2026-10-05)\n- b @due(2026-10-05)"),
+            None,
+        );
+        state.update(Message::EditAtEnd);
+        let rows = state.rows();
+        let editor = state.editor();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 2));
+        OutlineView::new(&rows, TODAY)
+            .editor(editor.as_ref())
+            .render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["  - a               ", "  - b  due Mon 5 Oct"]);
+        expected.set_style(Rect::new(6, 1, 14, 1), chip_style());
         assert_eq!(buf, expected);
     }
 
@@ -852,10 +966,10 @@ mod tests {
         .rows();
         let area = Rect::new(0, 0, 12, 6);
         let mut plain = Buffer::empty(area);
-        OutlineView::new(&rows).render(area, &mut plain);
+        OutlineView::new(&rows, TODAY).render(area, &mut plain);
         for index in 0..rows.len() {
             let mut focused = Buffer::empty(area);
-            OutlineView::new(&rows)
+            OutlineView::new(&rows, TODAY)
                 .focused(Some(index))
                 .render(area, &mut focused);
             let y = u16::try_from(index).unwrap();

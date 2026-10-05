@@ -6,7 +6,9 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
-use crate::document::{Block, Item, ItemId, blocks, format::Typed, structure::Shift};
+use crate::document::{
+    Block, DateChange, DateTag, Item, ItemId, blocks, format::Typed, structure::Shift,
+};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +124,16 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
+    /// Set or move the focused block's `tag` date as `change` says, `today` being the frontend's
+    /// local date (FR-TAG-06).
+    ChangeDate {
+        /// The date to change.
+        tag: DateTag,
+        /// How it changes.
+        change: DateChange,
+        /// The frontend's local date.
+        today: Date,
+    },
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -231,6 +243,7 @@ impl Message {
             | Self::Back
             | Self::Forward
             | Self::ToggleDone { .. }
+            | Self::ChangeDate { .. }
             | Self::NewBelow
             | Self::NewAbove
             | Self::NewFirstChild
@@ -353,6 +366,7 @@ impl State {
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
             Message::ToggleDone { today } => self.toggle_done(today),
+            Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),
             Message::Undo => match self.mode() {
                 Mode::Navigate => self.undo(),
                 Mode::Edit => self.undo_typing(),

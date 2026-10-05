@@ -184,6 +184,17 @@ mod tests {
             section_after_task,
             "demo lacks a list with tasks above a section, where `S` adds one"
         );
+        let starts = rows.iter().filter(|row| row.start.is_some()).count();
+        assert!(starts >= 2, "demo lacks start dates");
+        assert!(
+            rows.iter()
+                .any(|row| row.due.is_some_and(|due| due > TODAY)),
+            "demo lacks a due date to come"
+        );
+        assert!(
+            rows.iter().any(|row| row.overdue(TODAY)),
+            "demo lacks an overdue task"
+        );
         let document = state.document();
         let tagged = document
             .descendants(document.root())

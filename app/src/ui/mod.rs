@@ -9,7 +9,7 @@ pub mod widgets;
 use std::{path::PathBuf, time::Duration};
 
 use crossterm::event::Event;
-use jiff::civil::Date;
+use jiff::Zoned;
 use ratatui::{
     Frame, Terminal,
     backend::Backend,
@@ -37,8 +37,11 @@ pub enum Input {
 pub struct Tui {
     state: State,
     io: Io,
-    /// Reads the local date, which messages that write one carry.
-    today: fn() -> Date,
+    /// Reads the local time, whose date messages that write one carry and chips are drawn on.
+    clock: fn() -> Zoned,
+    /// When the local date next changes while the outline shows a due date, which may then become
+    /// overdue (FR-TAG-03).
+    midnight: Option<Duration>,
     keymap: Keymap,
     /// The first outline row on screen.
     scroll: usize,
@@ -54,14 +57,15 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// A frontend showing `state` that carries out disk work with `io` and reads the local date
-    /// from `today`, starting with what the core asks for on opening.
+    /// A frontend showing `state` that carries out disk work with `io` and reads the local time
+    /// from `clock`, starting with what the core asks for on opening.
     #[must_use]
-    pub fn new(state: State, io: Io, today: fn() -> Date) -> Self {
+    pub fn new(state: State, io: Io, clock: fn() -> Zoned) -> Self {
         let mut tui = Self {
             state,
             io,
-            today,
+            clock,
+            midnight: None,
             keymap: Keymap::default(),
             scroll: 0,
             page_rows: 0,
@@ -96,7 +100,7 @@ impl Tui {
         }
         let context = Context {
             page_rows: self.page_rows,
-            today: (self.today)(),
+            today: (self.clock)().date(),
             mode: self.state.mode(),
             type_menu: self.state.type_menu().is_some(),
         };
@@ -135,16 +139,31 @@ impl Tui {
         self.keymap.expire(now);
         let effects = self.state.update(Message::Tick { now });
         self.run(effects);
+        self.midnight = self.next_midnight(now);
     }
 
-    /// When [`Tui::tick`] next has work to do, or `None` when only an input can change anything.
+    /// When [`Tui::tick`] next has work to do or the screen changes by itself, or `None` when
+    /// only an input can change anything.
     #[must_use]
     pub fn deadline(&self) -> Option<Duration> {
         self.keymap
             .deadline()
             .into_iter()
             .chain(self.state.deadline())
+            .chain(self.midnight)
             .min()
+    }
+
+    /// When the local date changes, counted like `now`, if the outline shows a due date that the
+    /// new date may make overdue.
+    fn next_midnight(&self, now: Duration) -> Option<Duration> {
+        if !self.state.rows().iter().any(|row| row.due.is_some()) {
+            return None;
+        }
+        let local = (self.clock)();
+        let tomorrow = local.tomorrow().and_then(|day| day.start_of_day()).ok()?;
+        let wait = Duration::try_from(local.duration_until(&tomorrow)).ok()?;
+        now.checked_add(wait)
     }
 
     /// Writes the document to a recovery file with `recovery` when its file lacks some of it, as
@@ -176,6 +195,7 @@ impl Tui {
         let mut effects = self.state.update(Message::Tick { now });
         effects.extend(self.state.update(message));
         self.run(effects);
+        self.midnight = self.next_midnight(now);
     }
 
     fn run(&mut self, effects: Vec<Effect>) {
@@ -234,7 +254,7 @@ impl Tui {
         );
         let editor = self.state.editor();
         frame.render_widget(
-            OutlineView::new(&rows)
+            OutlineView::new(&rows, (self.clock)().date())
                 .offset(self.scroll)
                 .focused(focused)
                 .editor(editor.as_ref()),

@@ -5,23 +5,23 @@ Trip to Lisbon: @travel
 	Lisbon travel guide @url(https://www.visitlisboa.com)
 	Packing @section
 		- Passport @done
-		- Rain jacket
+		- Rain jacket @due({today+6})
 		- Phone charger
 Website release 2.0:
 	- Write the release notes @done({today-1})
-	- Fix the broken contact form @bug
+	- Fix the broken contact form @bug @due({today-2})
 		Submitting the form twice shows a blank page.
 		COMMENTS @hidden @comments
 			[{today-1} 09:30] Only happens in Safari.
 	Launch checklist @section
 		- Back up the database
-		- Deploy to production
+		- Deploy to production @start({today+1}) @due({today+3})
 		- Announce it on the blog
 	---
 	Ship once every checklist item is done.
 Reading list:
 	- The Pragmatic Programmer
-	- Thinking, Fast and Slow
+	- Thinking, Fast and Slow @start({today})
 	Novels:
 		- The Name of the Wind
 		- Piranesi

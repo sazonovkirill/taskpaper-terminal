@@ -27,6 +27,59 @@ pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Option<Op
     })
 }
 
+/// Which of a block's dates a command sets (FR-TAG-02).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DateTag {
+    /// `@start`.
+    Start,
+    /// `@due`.
+    Due,
+}
+
+/// How a quick date command changes a date, without a prompt (FR-TAG-06, D-26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DateChange {
+    /// To today.
+    Today,
+    /// To tomorrow.
+    Tomorrow,
+    /// One day back.
+    Earlier,
+    /// One day forward.
+    Later,
+}
+
+/// The op that sets the `tag` date of `block` as `change` says, `today` being the local date; a
+/// block without that date moves as if it were today (editing.md §5). `None` when the date stays
+/// as it is, would leave the calendar or the block is not in `document`.
+#[must_use]
+pub fn change_date(
+    document: &Document,
+    block: &Block,
+    tag: DateTag,
+    change: DateChange,
+    today: Date,
+) -> Option<Op> {
+    let before = document.get(block.id())?.text();
+    let (name, current) = match tag {
+        DateTag::Start => ("start", block.start()),
+        DateTag::Due => ("due", block.due()),
+    };
+    let date = match change {
+        DateChange::Today => Ok(today),
+        DateChange::Tomorrow => today.tomorrow(),
+        DateChange::Earlier => current.unwrap_or(today).yesterday(),
+        DateChange::Later => current.unwrap_or(today).tomorrow(),
+    }
+    .ok()?;
+    let after = tags::set(before, name, &date.to_string());
+    (after != before).then(|| Op::SetText {
+        id: block.id(),
+        before: before.to_owned(),
+        after,
+    })
+}
+
 /// The tag that marks a block completed.
 const DONE: &str = "done";
 
@@ -107,6 +160,172 @@ mod tests {
         let other = parse("- x\n- y");
         let stale = blocks::children(&other, other.root())[1].clone();
         assert_eq!(toggle_done(&parse("- a"), &stale, TODAY), None);
+    }
+
+    /// The first line's text after `change` to its `tag` date, or `None` when nothing changes.
+    #[track_caller]
+    fn changed(text: &str, tag: DateTag, change: DateChange, today: Date) -> Option<String> {
+        let mut document = parse(text);
+        let block = blocks::children(&document, document.root())
+            .into_iter()
+            .next()
+            .unwrap();
+        let op = change_date(&document, &block, tag, change, today)?;
+        assert!(
+            matches!(op, Op::SetText { .. }),
+            "only text changes: {op:?}"
+        );
+        let mut transaction = crate::document::Transaction::new(vec![op], (), ());
+        document.apply(&mut transaction).unwrap();
+        Some(document.get(block.id()).unwrap().text().to_owned())
+    }
+
+    // FR-TAG-06, D-26
+    #[test]
+    fn today_and_tomorrow_set_the_date_or_add_it() {
+        use DateChange::{Today, Tomorrow};
+        use DateTag::{Due, Start};
+        let check = |text: &str, tag, change, expected: &str| {
+            assert_eq!(
+                changed(text, tag, change, TODAY).as_deref(),
+                Some(expected),
+                "{text:?} {tag:?} {change:?}"
+            );
+        };
+        check("- a", Start, Today, "- a @start(2026-10-05)");
+        check("- a", Start, Tomorrow, "- a @start(2026-10-06)");
+        check("- a @x", Due, Today, "- a @x @due(2026-10-05)");
+        check("P:", Due, Tomorrow, "P: @due(2026-10-06)");
+        check(
+            "- a @due(2026-01-01) @x",
+            Due,
+            Tomorrow,
+            "- a @due(2026-10-06) @x",
+        );
+        check(
+            "- a @start(2026-10-09) @due(2026-10-09)",
+            Start,
+            Today,
+            "- a @start(2026-10-05) @due(2026-10-09)",
+        );
+        check("- a @due(soon)", Due, Today, "- a @due(2026-10-05)");
+        check("- a @due", Due, Tomorrow, "- a @due(2026-10-06)");
+    }
+
+    // FR-TAG-06, D-26
+    #[test]
+    fn earlier_and_later_move_the_date_a_day() {
+        use DateChange::{Earlier, Later};
+        use DateTag::{Due, Start};
+        let check = |text: &str, tag, change, expected: &str| {
+            assert_eq!(
+                changed(text, tag, change, TODAY).as_deref(),
+                Some(expected),
+                "{text:?} {tag:?} {change:?}"
+            );
+        };
+        check(
+            "- a @start(2026-12-31)",
+            Start,
+            Later,
+            "- a @start(2027-01-01)",
+        );
+        check(
+            "- a @start(2026-03-01)",
+            Start,
+            Earlier,
+            "- a @start(2026-02-28)",
+        );
+        check(
+            "- a @due(2026-10-01) @start(2026-10-01)",
+            Due,
+            Later,
+            "- a @due(2026-10-02) @start(2026-10-01)",
+        );
+        check("- a @due(2020-01-10)", Due, Earlier, "- a @due(2020-01-09)");
+    }
+
+    // editing.md §5
+    #[test]
+    fn earlier_and_later_without_a_date_count_from_today() {
+        use DateChange::{Earlier, Later};
+        use DateTag::{Due, Start};
+        let check = |text: &str, tag, change, expected: &str| {
+            assert_eq!(
+                changed(text, tag, change, TODAY).as_deref(),
+                Some(expected),
+                "{text:?} {tag:?} {change:?}"
+            );
+        };
+        check("- a", Start, Earlier, "- a @start(2026-10-04)");
+        check("- a", Due, Later, "- a @due(2026-10-06)");
+        check("- a @due(someday)", Due, Earlier, "- a @due(2026-10-04)");
+        check(
+            "- a @start(2026-10-01)",
+            Due,
+            Later,
+            "- a @start(2026-10-01) @due(2026-10-06)",
+        );
+    }
+
+    #[test]
+    fn a_date_that_stays_or_would_leave_the_calendar_changes_nothing() {
+        assert_eq!(
+            changed(
+                "- a @due(2026-10-05)",
+                DateTag::Due,
+                DateChange::Today,
+                TODAY
+            ),
+            None
+        );
+        assert_eq!(
+            changed(
+                "- a @start(2026-10-06)",
+                DateTag::Start,
+                DateChange::Tomorrow,
+                TODAY
+            ),
+            None
+        );
+        assert_eq!(
+            changed(
+                "- a @due(9999-12-31)",
+                DateTag::Due,
+                DateChange::Later,
+                TODAY
+            ),
+            None
+        );
+        assert_eq!(
+            changed(
+                "- a @start(-009999-01-01)",
+                DateTag::Start,
+                DateChange::Earlier,
+                TODAY
+            ),
+            None
+        );
+        assert_eq!(
+            changed("- a", DateTag::Due, DateChange::Tomorrow, Date::MAX),
+            None
+        );
+    }
+
+    #[test]
+    fn a_date_of_a_block_not_in_the_document_is_not_changed() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(
+            change_date(
+                &parse("- a"),
+                &stale,
+                DateTag::Due,
+                DateChange::Today,
+                TODAY
+            ),
+            None
+        );
     }
 
     #[test]

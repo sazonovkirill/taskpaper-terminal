@@ -111,7 +111,11 @@ fn tags_stay_hidden_and_follow_the_edited_text() {
     assert_eq!(outline_rows(&mut app)[0], "- Call Ana");
     app.type_keys(" back");
     press(&mut app, KeyCode::Esc, 1);
-    assert_eq!(outline_rows(&mut app)[0], "- Call Ana back");
+    assert_eq!(
+        outline_rows(&mut app)[0],
+        "- Call Ana back          due Fri 9 Oct",
+        "the due date shows only as its chip (FR-TAG-03)"
+    );
     assert_eq!(saved(&mut app), "- Call Ana back @due(2026-10-09) @home\n");
 }
 

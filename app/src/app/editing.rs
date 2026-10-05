@@ -5,13 +5,22 @@
 use jiff::civil::Date;
 
 use super::{Access, History, Notice, Restore, State};
-use crate::document::{Document, EditError, Op, Transaction, metadata};
+use crate::document::{DateChange, DateTag, Document, EditError, Op, Transaction, metadata};
 
 impl State {
     /// Completes the focused block, or uncompletes it when it is done (FR-DONE-01).
     pub(super) fn toggle_done(&mut self, today: Date) {
         if let Some((block, _)) = self.focused()
             && let Some(op) = metadata::toggle_done(self.document(), &block, today)
+        {
+            self.commit(vec![op]);
+        }
+    }
+
+    /// Sets or moves the focused block's `tag` date as `change` says (FR-TAG-06).
+    pub(super) fn change_date(&mut self, tag: DateTag, change: DateChange, today: Date) {
+        if let Some((block, _)) = self.focused()
+            && let Some(op) = metadata::change_date(self.document(), &block, tag, change, today)
         {
             self.commit(vec![op]);
         }
@@ -127,6 +136,79 @@ mod tests {
         assert_eq!(state.document().revision(), 0);
         assert_eq!(state.update(Message::Undo), []);
         assert_eq!(state.update(Message::Redo), []);
+    }
+
+    fn quick(tag: DateTag, change: DateChange) -> Message {
+        Message::ChangeDate {
+            tag,
+            change,
+            today: TODAY,
+        }
+    }
+
+    // FR-TAG-06, FR-OPS-08
+    #[test]
+    fn change_date_sets_the_focused_block_and_undoes_in_one_step() {
+        let mut state = open("- a\n- b @due(2026-10-01)", 1);
+        assert_eq!(state.update(quick(DateTag::Start, DateChange::Today)), []);
+        assert_eq!(
+            texts(&state),
+            ["- a", "- b @due(2026-10-01) @start(2026-10-05)"]
+        );
+        state.update(quick(DateTag::Due, DateChange::Later));
+        assert_eq!(
+            texts(&state),
+            ["- a", "- b @due(2026-10-02) @start(2026-10-05)"]
+        );
+        let row = &state.rows()[1];
+        assert_eq!((row.start, row.due), (Some(TODAY), Some(date_of(2))));
+        state.update(Message::Undo);
+        assert_eq!(
+            texts(&state),
+            ["- a", "- b @due(2026-10-01) @start(2026-10-05)"]
+        );
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a", "- b @due(2026-10-01)"]);
+    }
+
+    fn date_of(day: i8) -> Date {
+        date(2026, 10, day)
+    }
+
+    #[test]
+    fn change_date_that_changes_nothing_records_no_step() {
+        let mut state = open("- a @due(2026-10-06)", 0);
+        state.update(quick(DateTag::Due, DateChange::Tomorrow));
+        assert_eq!(state.document().revision(), 0);
+        state.update(quick(DateTag::Due, DateChange::Today));
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @due(2026-10-06)"]);
+    }
+
+    // FR-TAG-06, FR-NAV-03
+    #[test]
+    fn change_date_works_on_the_zoom_title_and_not_in_an_empty_document() {
+        let mut state = open("P:\n\t- a", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(quick(DateTag::Due, DateChange::Earlier));
+        assert_eq!(texts(&state), ["P: @due(2026-10-04)", "- a"]);
+        let mut empty = State::new(Document::default(), None);
+        assert_eq!(empty.update(quick(DateTag::Start, DateChange::Today)), []);
+        assert_eq!(empty.document().revision(), 0);
+    }
+
+    // file-io.md §1
+    #[test]
+    fn a_read_only_file_refuses_dates() {
+        let mut state = State::new(
+            format::parse("- a"),
+            Some(PathBuf::from("/notes/todo.taskpaper")),
+        )
+        .with_access(Access::ReadOnly);
+        state.update(quick(DateTag::Due, DateChange::Today));
+        assert_eq!(texts(&state), ["- a"]);
+        assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
 
     // FR-OPS-08, N-UX-02

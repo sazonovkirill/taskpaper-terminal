@@ -6,6 +6,8 @@ use std::{
     time::Duration,
 };
 
+use jiff::civil::Date;
+
 use super::{History, edit_mode::Session, external::External, saving::Autosave};
 use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
 
@@ -127,6 +129,19 @@ pub struct Row {
     pub hidden_children: usize,
     /// Whether this is the title row of a zoomed view: the zoom block itself, above its children.
     pub title: bool,
+    /// The date of its `@start`, if it holds one (FR-TAG-03).
+    pub start: Option<Date>,
+    /// The date of its `@due`, if it holds one (FR-TAG-03).
+    pub due: Option<Date>,
+}
+
+impl Row {
+    /// Whether its due date has passed on `today`, the local date; a block that is done, or
+    /// inside a done block, is overdue no longer (FR-TAG-03).
+    #[must_use]
+    pub fn overdue(&self, today: Date) -> bool {
+        !self.done && !self.inside_done && self.due.is_some_and(|due| due < today)
+    }
 }
 
 impl State {
@@ -305,6 +320,8 @@ impl State {
                 0
             },
             title,
+            start: block.start(),
+            due: block.due(),
         }
     }
 
@@ -425,6 +442,37 @@ mod tests {
                 ("d".to_owned(), false),
                 ("n".to_owned(), false),
                 ("m".to_owned(), true),
+            ]
+        );
+    }
+
+    // FR-TAG-03
+    #[test]
+    fn rows_carry_their_dates_and_say_when_they_are_overdue() {
+        let today = jiff::civil::date(2026, 10, 5);
+        let state = State::new(
+            format::parse(
+                "- a @start(2026-10-01) @due(2026-10-04)\n- b @due(2026-10-05)\n- c @due(x)\n- d @due(2026-10-04) @done\nP: @done\n\t- e @due(2026-10-01)\n- f @start(2026-10-01)",
+            ),
+            None,
+        );
+        let dates: Vec<_> = state
+            .rows()
+            .into_iter()
+            .map(|row| (row.text.clone(), row.start, row.due, row.overdue(today)))
+            .collect();
+        let day = |d| Some(jiff::civil::date(2026, 10, d));
+        let row = |text: &str, start, due, overdue| (text.to_owned(), start, due, overdue);
+        assert_eq!(
+            dates,
+            [
+                row("a", day(1), day(4), true),
+                row("b", None, day(5), false),
+                row("c", None, None, false),
+                row("d", None, day(4), false),
+                row("P", None, None, false),
+                row("e", None, day(1), false),
+                row("f", day(1), None, false),
             ]
         );
     }

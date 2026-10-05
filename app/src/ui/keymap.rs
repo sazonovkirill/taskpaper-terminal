@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use crate::{
     app::{MenuInput, Message, Mode, Motion, TextEdit},
-    document::format::Typed,
+    document::{DateChange, DateTag, format::Typed},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -27,7 +27,7 @@ type Binding = (&'static [Key], fn(&Context) -> Message);
 pub struct Context {
     /// The height a page motion moves, in rows.
     pub page_rows: usize,
-    /// The local date, which completing a block writes.
+    /// The local date, which completing a block and the date keys write.
     pub today: Date,
     /// Whether keys navigate or edit text, which decides their bindings.
     pub mode: Mode,
@@ -131,6 +131,20 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl Enter)], |context| Message::ToggleDone {
         today: context.today,
     }),
+    (&[key!('t')], |c| date(DateTag::Start, DateChange::Today, c)),
+    (&[key!('y')], |c| {
+        date(DateTag::Start, DateChange::Tomorrow, c)
+    }),
+    (&[key!('T')], |c| date(DateTag::Due, DateChange::Today, c)),
+    (&[key!('Y')], |c| {
+        date(DateTag::Due, DateChange::Tomorrow, c)
+    }),
+    (&[key!('[')], |c| {
+        date(DateTag::Start, DateChange::Earlier, c)
+    }),
+    (&[key!(']')], |c| date(DateTag::Start, DateChange::Later, c)),
+    (&[key!('{')], |c| date(DateTag::Due, DateChange::Earlier, c)),
+    (&[key!('}')], |c| date(DateTag::Due, DateChange::Later, c)),
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
@@ -156,6 +170,15 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(alt 'j')], |_| Message::MoveDown),
     (&[key!(alt Down)], |_| Message::MoveDown),
 ];
+
+/// Changing the focused block's `tag` date as `change` says, from the local date (FR-TAG-06).
+fn date(tag: DateTag, change: DateChange, context: &Context) -> Message {
+    Message::ChangeDate {
+        tag,
+        change,
+        today: context.today,
+    }
+}
 
 /// What a key does while the conflict prompt is open (file-io.md §3).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -489,6 +512,46 @@ mod tests {
             Some(&Message::Redo),
         );
         check(KeyCode::Char('y'), ctrl, Some(&Message::Redo));
+    }
+
+    // FR-TAG-06, D-26, D-42: plain characters, which both key reportings send alike; the kitty
+    // protocol may add `Shift` to shifted ones.
+    #[test]
+    fn date_keys_set_and_move_the_start_and_due_dates() {
+        for (c, tag, change) in [
+            ('t', DateTag::Start, DateChange::Today),
+            ('y', DateTag::Start, DateChange::Tomorrow),
+            ('T', DateTag::Due, DateChange::Today),
+            ('Y', DateTag::Due, DateChange::Tomorrow),
+            ('[', DateTag::Start, DateChange::Earlier),
+            (']', DateTag::Start, DateChange::Later),
+            ('{', DateTag::Due, DateChange::Earlier),
+            ('}', DateTag::Due, DateChange::Later),
+        ] {
+            let expected = Message::ChangeDate {
+                tag,
+                change,
+                today: TODAY,
+            };
+            check(KeyCode::Char(c), KeyModifiers::NONE, Some(&expected));
+            if matches!(c, 'T' | 'Y' | '{' | '}') {
+                check(KeyCode::Char(c), KeyModifiers::SHIFT, Some(&expected));
+            }
+            check_editing(
+                KeyCode::Char(c),
+                KeyModifiers::NONE,
+                Some(&Message::Text(TextEdit::Insert(c))),
+            );
+        }
+        check(
+            KeyCode::Char('t'),
+            KeyModifiers::SHIFT,
+            Some(&Message::ChangeDate {
+                tag: DateTag::Due,
+                change: DateChange::Today,
+                today: TODAY,
+            }),
+        );
     }
 
     // D-42: the kitty protocol sends `Ctrl+Shift+Z` as `z` with `Shift`, other reportings as `Z`.

@@ -1,6 +1,8 @@
 //! Blocks, what the user navigates: every line that is not a special node is one block, whose
 //! type is derived from its text ([data-model.md §3](../../../docs/specs/data-model.md#3-blocks)).
 
+use jiff::civil::Date;
+
 use super::model::{Document, Item, ItemId, ItemKind};
 
 /// The type of a block (FR-BLK-01–04, FR-BLK-06–07).
@@ -26,6 +28,8 @@ pub struct Block {
     id: ItemId,
     kind: BlockKind,
     done: bool,
+    start: Option<Date>,
+    due: Option<Date>,
 }
 
 impl Block {
@@ -35,6 +39,8 @@ impl Block {
             id,
             kind: kind(item),
             done: has_tag(item, "done"),
+            start: date_tag(item, "start"),
+            due: date_tag(item, "due"),
         }
     }
 
@@ -54,6 +60,18 @@ impl Block {
     #[must_use]
     pub fn done(&self) -> bool {
         self.done
+    }
+
+    /// The date of its `@start`, or `None` without one or when its value is not a date.
+    #[must_use]
+    pub fn start(&self) -> Option<Date> {
+        self.start
+    }
+
+    /// The date of its `@due`, or `None` without one or when its value is not a date.
+    #[must_use]
+    pub fn due(&self) -> Option<Date> {
+        self.due
     }
 }
 
@@ -112,6 +130,13 @@ fn kind(item: &Item) -> BlockKind {
 
 fn has_tag(item: &Item, name: &str) -> bool {
     item.tags().iter().any(|tag| tag.name == name)
+}
+
+/// The date the first tag `name` of `item` holds, read as an ISO 8601 date such as the
+/// `YYYY-MM-DD` the app writes (D-6).
+fn date_tag(item: &Item, name: &str) -> Option<Date> {
+    let tag = item.tags().into_iter().find(|tag| tag.name == name)?;
+    tag.value?.parse().ok()
 }
 
 #[cfg(test)]
@@ -223,6 +248,51 @@ mod tests {
                 r#"0 Text "m @done" done"#,
                 r#"0 Task "- d""#,
             ],
+        );
+    }
+
+    /// The start and due dates of each top-level block of `text`.
+    fn dates(text: &str) -> Vec<(Option<Date>, Option<Date>)> {
+        let document = parse(text);
+        children(&document, document.root())
+            .iter()
+            .map(|block| (block.start(), block.due()))
+            .collect()
+    }
+
+    // FR-TAG-02, FR-TAG-03
+    #[test]
+    fn start_and_due_come_from_their_tags_when_they_hold_dates() {
+        let day = |d| Some(jiff::civil::date(2026, 10, d));
+        assert_eq!(
+            dates(
+                "- a @start(2026-10-05) @due(2026-10-06)\n- b @due(2026-10-07)\nP: @start(2026-10-08)\n- c"
+            ),
+            [
+                (day(5), day(6)),
+                (None, day(7)),
+                (day(8), None),
+                (None, None)
+            ]
+        );
+    }
+
+    // FR-TAG-03, D-6
+    #[test]
+    fn a_date_tag_without_a_date_gives_no_date() {
+        assert_eq!(
+            dates(
+                "- a @due\n- b @due()\n- c @due(soon)\n- d @due(2026-13-01)\n- e @Due(2026-10-05)\n- f @due(2026-02-30)"
+            ),
+            [(None, None); 6]
+        );
+    }
+
+    #[test]
+    fn the_first_date_tag_of_a_name_counts() {
+        assert_eq!(
+            dates("- a @due(2026-10-05) @due(2026-10-09)"),
+            [(None, Some(jiff::civil::date(2026, 10, 5)))]
         );
     }
 

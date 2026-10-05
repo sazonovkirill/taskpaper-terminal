@@ -1,13 +1,18 @@
 //! Starting the app on fixtures and driving it with keys.
 
 use std::{
+    cell::RefCell,
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver},
     time::Duration,
 };
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use jiff::civil::{Date, DateTime, date};
+use jiff::{
+    Zoned,
+    civil::{Date, DateTime, date},
+    tz::TimeZone,
+};
 use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, style::Color};
 use taskpaper_terminal::{
     app::{Origin, State},
@@ -23,6 +28,18 @@ pub const TODAY: Date = date(2026, 10, 5);
 
 /// The local time every test runs at.
 pub const NOW: DateTime = TODAY.at(9, 30, 0, 0);
+
+thread_local! {
+    /// The local time the app reads, [`NOW`] in UTC when a harness starts and moved by
+    /// [`Harness::wait`]. Each test runs on a thread of its own, so no two tests share it.
+    static CLOCK: RefCell<Zoned> = RefCell::new(local(NOW));
+}
+
+/// `time` as the local time, in UTC so that no test depends on the machine's time zone.
+fn local(time: DateTime) -> Zoned {
+    time.to_zoned(TimeZone::UTC)
+        .expect("a date jiff can place in UTC")
+}
 
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
@@ -95,12 +112,13 @@ impl Harness {
     /// Starts the app on `state` with its backups in `dir/backups`.
     fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
+        CLOCK.set(local(NOW));
         let (results, inputs) = mpsc::channel();
         let io = Io::start(results, Backups::new(Some(backups.clone()), || NOW));
         Self {
             path: state.path().map(Path::to_owned),
             temporary: state.origin() == Origin::Temporary,
-            tui: Tui::new(state, io, || TODAY),
+            tui: Tui::new(state, io, || CLOCK.with_borrow(Zoned::clone)),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
             inputs,
@@ -144,6 +162,9 @@ impl Harness {
 
     /// Lets `duration` pass without input.
     pub fn wait(&mut self, duration: Duration) {
+        CLOCK.with_borrow_mut(|clock| {
+            *clock = clock.checked_add(duration).expect("a time jiff can hold");
+        });
         self.now += duration;
         self.tui.tick(self.now);
     }

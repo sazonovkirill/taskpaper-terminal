@@ -10,6 +10,7 @@ mod folding;
 mod hang_up;
 mod moving;
 mod open_file;
+mod quick_dates;
 mod saving;
 mod support;
 mod tags;

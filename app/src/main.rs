@@ -64,13 +64,12 @@ fn main() -> anyhow::Result<()> {
     };
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
-    let today = || jiff::Zoned::now().date();
     let io = Io::start(inputs.clone(), backups);
     // Without a watcher, the checks on regaining focus and before every save still find changes.
     let _watcher = state
         .path()
         .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
-    let mut tui = ui::Tui::new(state, io, today);
+    let mut tui = ui::Tui::new(state, io, jiff::Zoned::now);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
     // Terminals that cannot report focus or the kitty keyboard protocol ignore the requests, so
     // keys arrive as legacy reporting sends them (keybindings.md §1).
