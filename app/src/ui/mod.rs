@@ -21,7 +21,7 @@ use ratatui::{
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, PromptKey};
-use widgets::{ConflictPrompt, OutlineView, TypeMenuPopup};
+use widgets::{ConflictPrompt, MenuPopup, OutlineView};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +103,7 @@ impl Tui {
             today: (self.clock)().date(),
             mode: self.state.mode(),
             type_menu: self.state.type_menu().is_some(),
+            color_picker: self.state.color_picker().is_some(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
@@ -277,10 +278,16 @@ impl Tui {
             );
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.type_menu() {
-                let popup = TypeMenuPopup::new(&menu);
+                let popup = MenuPopup::types(&menu);
                 let area = layout::anchored(outline, caret, popup.size());
                 frame.render_widget(popup, area);
             }
+        }
+        if let Some(picker) = self.state.color_picker() {
+            let popup = MenuPopup::colors(&picker);
+            let (width, height) = popup.size();
+            let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
+            frame.render_widget(popup, area);
         }
         self.draw_status(frame, status);
         if self.state.in_conflict() {

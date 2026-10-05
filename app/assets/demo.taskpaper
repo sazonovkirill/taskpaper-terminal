@@ -1,4 +1,4 @@
-Trip to Lisbon: @travel
+Trip to Lisbon: @travel @bookmark
 	- Book flights
 	- Reserve a hotel near Alfama @priority(1)
 		Prefer a room with a view of the river.
@@ -6,17 +6,17 @@ Trip to Lisbon: @travel
 	Packing @section
 		- Passport @done
 		- Rain jacket @due({today+6})
-		- Phone charger
+		- Phone charger @today
 Website release 2.0:
 	- Write the release notes @done({today-1})
-	- Fix the broken contact form @bug @due({today-2})
+	- Fix the broken contact form @bug @due({today-2}) @red
 		Submitting the form twice shows a blank page.
 		COMMENTS @hidden @comments
 			[{today-1} 09:30] Only happens in Safari.
 	Launch checklist @section
 		- Back up the database
 		- Deploy to production @start({today+1}) @due({today+3})
-		- Announce it on the blog
+		- Announce it on the blog @today @blue
 	---
 	Ship once every checklist item is done.
 Reading list:
@@ -24,7 +24,7 @@ Reading list:
 	- Thinking, Fast and Slow @start({today})
 	Novels:
 		- The Name of the Wind
-		- Piranesi
+		- Piranesi @green
 	Ask friends for more recommendations.
 Move to the new flat: @done({today-3})
 	- Pack the books

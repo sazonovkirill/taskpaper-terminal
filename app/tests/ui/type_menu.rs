@@ -99,7 +99,7 @@ fn slash_div_makes_a_divider_that_keeps_the_tags() {
     assert!(status_line(&mut app).starts_with("NAV"));
     assert_eq!(saved(&mut app), "--- @today\n- Next\n");
     app.type_keys("z");
-    assert_eq!(outline_rows(&mut app)[0], "- Later");
+    assert_eq!(outline_rows(&mut app)[0], format!("{:<27}★", "- Later"));
     assert_eq!(saved(&mut app), "- Later @today\n- Next\n");
 }
 

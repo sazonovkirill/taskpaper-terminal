@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use super::{MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
 use crate::document::{
-    Block, DateChange, DateTag, Item, ItemId, blocks, format::Typed, structure::Shift,
+    Block, DateChange, DateTag, Flag, Item, ItemId, blocks, format::Typed, structure::Shift,
 };
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -134,6 +134,16 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
+    /// Add the bare tag `@today` or `@bookmark` to the focused block, or remove it (FR-TAG-04,
+    /// D-11).
+    ToggleFlag(Flag),
+    /// Give the focused block the color after its own: none, red, orange, yellow, green, blue,
+    /// violet and back to none (FR-TAG-06, D-26).
+    CycleColor,
+    /// Open the color picker on the focused block (FR-TAG-05).
+    OpenColorPicker,
+    /// A key of the open color picker (FR-TAG-05).
+    ColorPicker(MenuInput),
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -244,6 +254,10 @@ impl Message {
             | Self::Forward
             | Self::ToggleDone { .. }
             | Self::ChangeDate { .. }
+            | Self::ToggleFlag(_)
+            | Self::CycleColor
+            | Self::OpenColorPicker
+            | Self::ColorPicker(_)
             | Self::NewBelow
             | Self::NewAbove
             | Self::NewFirstChild
@@ -367,6 +381,10 @@ impl State {
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
             Message::ToggleDone { today } => self.toggle_done(today),
             Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),
+            Message::ToggleFlag(flag) => self.toggle_flag(flag),
+            Message::CycleColor => self.cycle_color(),
+            Message::OpenColorPicker => self.open_color_picker(),
+            Message::ColorPicker(input) => self.color_picker_input(input),
             Message::Undo => match self.mode() {
                 Mode::Navigate => self.undo(),
                 Mode::Edit => self.undo_typing(),

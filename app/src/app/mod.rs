@@ -1,6 +1,7 @@
 //! The App layer: application state, messages, the update function and effects. Depends only on
 //! the document layer, so the same core can run behind another frontend.
 
+mod color_picker;
 pub mod demo;
 mod edit_mode;
 mod editing;
@@ -12,6 +13,7 @@ mod structure;
 pub mod text_field;
 pub mod update;
 
+pub use color_picker::ColorPickerView;
 pub use edit_mode::{Editor, MenuEntry, MenuInput, Mode, TypeMenuView};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};

@@ -195,7 +195,17 @@ mod tests {
             rows.iter().any(|row| row.overdue(TODAY)),
             "demo lacks an overdue task"
         );
+        assert!(rows.iter().any(|row| row.today), "demo lacks @today");
+        let colors = rows.iter().filter_map(|row| row.color);
+        assert!(colors.count() >= 2, "demo lacks color tags");
         let document = state.document();
+        assert!(
+            document
+                .descendants(document.root())
+                .filter_map(|(id, _)| crate::document::blocks::block(document, id))
+                .any(|block| block.bookmark()),
+            "demo lacks a bookmark"
+        );
         let tagged = document
             .descendants(document.root())
             .filter_map(|(id, _)| document.get(id))

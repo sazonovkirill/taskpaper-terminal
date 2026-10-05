@@ -12,8 +12,8 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    app::{Access, DiffLine, Editor, Notice, Row, SaveState, TypeMenuView},
-    document::BlockKind,
+    app::{Access, ColorPickerView, DiffLine, Editor, Notice, Row, SaveState, TypeMenuView},
+    document::{BlockKind, TagColor},
 };
 
 /// The outline: a gutter that marks the focused block, whose line gets a brighter background, then
@@ -192,6 +192,8 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             error_style(),
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
+        Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
+        Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
     }
 }
 
@@ -271,75 +273,94 @@ impl Widget for ConflictPrompt<'_> {
     }
 }
 
-/// The type menu ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a box titled
-/// "Node type:" listing the entries the filter matches, the highlighted one reversed, with `/` and
-/// the filter at the bottom once one is typed.
+/// A menu over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
+/// box with a title listing the entries the filter matches, the highlighted one reversed, with
+/// the filter at the bottom once one is typed. It shows the type menu (D-44) and the color picker
+/// (FR-TAG-05).
 #[derive(Debug)]
-pub struct TypeMenuPopup<'a> {
-    menu: &'a TypeMenuView<'a>,
+pub struct MenuPopup {
+    title: &'static str,
+    entries: Vec<Line<'static>>,
+    filter: String,
 }
 
-impl<'a> TypeMenuPopup<'a> {
-    const TITLE: &'static str = "Node type:";
-
-    /// The popup showing `menu`.
+impl MenuPopup {
+    /// The type menu, titled "Node type:", with `/` before its filter.
     #[must_use]
-    pub fn new(menu: &'a TypeMenuView<'a>) -> Self {
-        Self { menu }
+    pub fn types(menu: &TypeMenuView) -> Self {
+        let names = menu.entries.iter().map(|entry| (entry.name, Style::new()));
+        Self {
+            title: "Node type:",
+            entries: entries(names, menu.selected),
+            filter: if menu.filter.is_empty() {
+                String::new()
+            } else {
+                format!("/{}", menu.filter)
+            },
+        }
+    }
+
+    /// The color picker, titled "Color:", each color's name in its tint.
+    #[must_use]
+    pub fn colors(picker: &ColorPickerView) -> Self {
+        let names = picker
+            .entries
+            .iter()
+            .map(|&(color, name)| (name, tint(Style::new(), color)));
+        Self {
+            title: "Color:",
+            entries: entries(names, picker.selected),
+            filter: picker.filter.to_owned(),
+        }
     }
 
     /// The popup's width and height: its widest entry or its title, which is wider than any
     /// filter that matches an entry, and a line per entry, with the border.
     #[must_use]
     pub fn size(&self) -> (u16, u16) {
-        let entries = self.entries();
-        let widest = entries
+        let widest = self
+            .entries
             .iter()
             .map(Line::width)
-            .chain([Line::from(Self::TITLE).width()])
+            .chain([Line::from(self.title).width()])
             .max()
             .unwrap_or_default();
         let width = u16::try_from(widest).unwrap_or(u16::MAX).saturating_add(2);
-        let height = u16::try_from(entries.len())
+        let height = u16::try_from(self.entries.len())
             .unwrap_or(u16::MAX)
             .saturating_add(2);
         (width, height)
     }
-
-    fn filter(&self) -> Line<'static> {
-        if self.menu.filter.is_empty() {
-            Line::default()
-        } else {
-            Line::from(format!("/{}", self.menu.filter))
-        }
-    }
-
-    fn entries(&self) -> Vec<Line<'static>> {
-        self.menu
-            .entries
-            .iter()
-            .enumerate()
-            .map(|(index, entry)| {
-                let line = Line::from(format!(" {} ", entry.name));
-                if index == self.menu.selected {
-                    line.reversed()
-                } else {
-                    line
-                }
-            })
-            .collect()
-    }
 }
 
-impl Widget for TypeMenuPopup<'_> {
+/// A menu's entry lines: each name padded by a space and in its style, the one at `selected`
+/// reversed.
+fn entries<'a>(
+    names: impl Iterator<Item = (&'a str, Style)>,
+    selected: usize,
+) -> Vec<Line<'static>> {
+    names
+        .enumerate()
+        .map(|(index, (name, style))| {
+            let line = Line::styled(format!(" {name} "), style);
+            if index == selected {
+                line.reversed()
+            } else {
+                line
+            }
+        })
+        .collect()
+}
+
+impl Widget for MenuPopup {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let frame = Block::bordered()
-            .title(Self::TITLE)
-            .title_bottom(self.filter());
+            .title(self.title)
+            .title_bottom(self.filter);
         let inner = frame.inner(area);
         frame.render(area, buf);
-        for (line, row) in self.entries().into_iter().zip(inner.rows()) {
+        for (line, row) in self.entries.into_iter().zip(inner.rows()) {
             buf.set_style(row, line.style);
             line.render(row, buf);
         }
@@ -399,19 +420,19 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
     line
 }
 
-/// The date chips of `row` on `today`, right-aligned after a space: its start and due dates as
-/// `start Fri 8 Oct` and `due Fri 8 Oct`, with the year when it is not this year's, an overdue
+/// The chips of `row` on `today`, right-aligned, each after a space: `★` when it has `@today`
+/// (FR-TAG-04), then its start and due dates as `start Fri 8 Oct` and `due Fri 8 Oct`, with the year when it is not this year's, an overdue
 /// date in the error color, and dimmed with a done block or one inside it (ui.md §2, FR-TAG-03).
 fn chips(row: &Row, today: Date) -> Line<'static> {
     let receded = row.done || row.inside_done;
+    let recede = |style: Style| if receded { style.dim() } else { style };
     let chip = |label: &str, date: Date, style: Style| {
         let format = if date.year() == today.year() {
             "%a %-d %b"
         } else {
             "%a %-d %b %Y"
         };
-        let style = if receded { style.dim() } else { style };
-        Span::styled(format!(" {label} {}", date.strftime(format)), style)
+        Span::styled(format!(" {label} {}", date.strftime(format)), recede(style))
     };
     let due_style = if row.overdue(today) {
         error_style()
@@ -419,6 +440,8 @@ fn chips(row: &Row, today: Date) -> Line<'static> {
         chip_style()
     };
     let spans: Vec<Span> = [
+        row.today
+            .then(|| Span::styled(format!(" {TODAY_MARKER}"), recede(today_style()))),
         row.start.map(|date| chip("start", date, chip_style())),
         row.due.map(|date| chip("due", date, due_style)),
     ]
@@ -428,12 +451,20 @@ fn chips(row: &Row, today: Date) -> Line<'static> {
     Line::from(spans).right_aligned()
 }
 
+/// Marks a block that has `@today` (ui.md §2).
+const TODAY_MARKER: &str = "★";
+
+/// The `@today` marker chip; themes arrive in step 6.2.
+fn today_style() -> Style {
+    Style::new().fg(Color::Yellow)
+}
+
 /// Date chips that are not overdue; themes arrive in step 6.2.
 fn chip_style() -> Style {
     Style::new().fg(Color::Cyan)
 }
 
-/// The marker of a block with its style, and the style of its text, by its type and
+/// The marker of a block with its style, and the style of its text, by its type, its color and
 /// whether it is done or inside a done block (ui.md §2).
 fn row_style(row: &Row) -> (&'static str, Style, Style) {
     let (marker, style) = match row.kind {
@@ -445,7 +476,7 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
     };
-    let style = if row.title { style.bold() } else { style };
+    let style = tint(if row.title { style.bold() } else { style }, row.color);
     // A done block recedes and is struck through, and everything inside it recedes; markers
     // recede with their text (D-36, D-40).
     if row.done {
@@ -501,6 +532,22 @@ fn rule(line: &Line, width: usize) -> Span<'static> {
         "─".repeat(width.saturating_sub(line.width())),
         divider_style(),
     )
+}
+
+/// `style` with the text in `color`'s tint, if there is one (FR-TAG-05); themes arrive in step
+/// 6.2, until when orange is the 256-color orange 208 and violet the terminal's magenta.
+fn tint(style: Style, color: Option<TagColor>) -> Style {
+    let Some(color) = color else {
+        return style;
+    };
+    style.fg(match color {
+        TagColor::Red => Color::Red,
+        TagColor::Orange => Color::Indexed(208),
+        TagColor::Yellow => Color::Yellow,
+        TagColor::Green => Color::Green,
+        TagColor::Blue => Color::Blue,
+        TagColor::Violet => Color::Magenta,
+    })
 }
 
 /// Divider blocks: the rule-lines color, dimmed further so they recede behind the header rule
@@ -678,7 +725,7 @@ mod tests {
             state.update(Message::TypeMenu(*key));
         }
         let menu = state.type_menu().unwrap();
-        let popup = TypeMenuPopup::new(&menu);
+        let popup = MenuPopup::types(&menu);
         let (width, height) = popup.size();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
         popup.render(buf.area, &mut buf);
@@ -713,6 +760,105 @@ mod tests {
         ]);
         expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
         assert_eq!(type_menu(&[Type('e'), Type('c'), Type('t')]), expected);
+    }
+
+    // FR-TAG-05, keybindings.md §4
+    #[test]
+    fn the_color_picker_names_each_color_in_its_tint() {
+        let mut state = State::new(format::parse("- a @blue"), None);
+        state.update(Message::OpenColorPicker);
+        let picker = state.color_picker().unwrap();
+        let popup = MenuPopup::colors(&picker);
+        assert_eq!(popup.size(), (10, 9));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 9));
+        popup.render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines([
+            "┌Color:──┐",
+            "│ Red    │",
+            "│ Orange │",
+            "│ Yellow │",
+            "│ Green  │",
+            "│ Blue   │",
+            "│ Violet │",
+            "│ None   │",
+            "└────────┘",
+        ]);
+        for (y, color) in (1..).zip(TagColor::ALL) {
+            expected.set_style(Rect::new(1, y, 8, 1), tint(Style::new(), Some(color)));
+        }
+        expected.set_style(Rect::new(1, 5, 8, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+        state.update(Message::ColorPicker(crate::app::MenuInput::Type('v')));
+        let picker = state.color_picker().unwrap();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
+        MenuPopup::colors(&picker).render(buf.area, &mut buf);
+        let mut expected = Buffer::with_lines(["┌Color:──┐", "│ Violet │", "└v───────┘"]);
+        expected.set_style(
+            Rect::new(1, 1, 8, 1),
+            Style::new().fg(Color::Magenta).reversed(),
+        );
+        assert_eq!(buf, expected);
+    }
+
+    // FR-TAG-05, D-5
+    #[test]
+    fn a_color_tag_tints_the_text_of_any_block_but_not_its_marker() {
+        let mut expected = Buffer::with_lines(["- a   ", "P:    ", "S     ", "n     ", "✔ d   "]);
+        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().fg(Color::Red));
+        expected.set_style(
+            Rect::new(0, 1, 2, 1),
+            Style::new().bold().fg(Color::Indexed(208)),
+        );
+        expected.set_style(Rect::new(0, 2, 1, 1), Style::new().bold().fg(Color::Yellow));
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(Color::Green));
+        expected.set_style(Rect::new(0, 4, 2, 1), Style::new().dim());
+        expected.set_style(
+            Rect::new(2, 4, 1, 1),
+            Style::new().fg(Color::Blue).dim().crossed_out(),
+        );
+        assert_eq!(
+            render(
+                "- a @red\nP: @orange\nS @section @yellow\nn @green\n- d @blue @done",
+                6,
+                5
+            ),
+            expected
+        );
+        let mut expected = Buffer::with_lines(["u     "]);
+        expected.set_style(
+            Rect::new(0, 0, 1, 1),
+            Style::new().dim().underlined().fg(Color::Magenta),
+        );
+        assert_eq!(render("u @url(x) @violet", 6, 1), expected);
+    }
+
+    // FR-TAG-04, ui.md §2
+    #[test]
+    fn today_shows_as_a_star_chip_before_the_dates() {
+        let mut expected = Buffer::with_lines([
+            "- a  ★ due Fri 9 Oct",
+            "- b                ★",
+            "P:                 ★",
+            "  - c              ★",
+        ]);
+        expected.set_style(Rect::new(4, 0, 2, 1), today_style());
+        expected.set_style(Rect::new(6, 0, 14, 1), chip_style());
+        expected.set_style(Rect::new(18, 1, 2, 1), today_style());
+        expected.set_style(
+            Rect::new(0, 2, 2, 1),
+            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+        );
+        expected.set_style(Rect::new(18, 2, 2, 1), today_style().dim());
+        expected.set_style(Rect::new(2, 3, 3, 1), Style::new().dim());
+        expected.set_style(Rect::new(18, 3, 2, 1), today_style().dim());
+        assert_eq!(
+            render(
+                "- a @due(2026-10-09) @today\n- b @today(x)\nP: @today @done\n\t- c @today",
+                20,
+                4
+            ),
+            expected
+        );
     }
 
     // FR-NAV-02
@@ -1133,6 +1279,8 @@ mod tests {
                 Notice::BlanksLifted,
                 plain("Empty lines at the end moved to the top level"),
             ),
+            (Notice::Bookmark { added: true }, plain("Bookmarked")),
+            (Notice::Bookmark { added: false }, plain("Bookmark removed")),
             (
                 Notice::KeptMine { copy: copy.clone() },
                 plain("Kept your version; the one on disk is in /b/c.taskpaper"),

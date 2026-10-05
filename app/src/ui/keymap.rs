@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use crate::{
     app::{MenuInput, Message, Mode, Motion, TextEdit},
-    document::{DateChange, DateTag, format::Typed},
+    document::{DateChange, DateTag, Flag, format::Typed},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -33,6 +33,8 @@ pub struct Context {
     pub mode: Mode,
     /// Whether the type menu is open, which takes the keys of edit mode (D-44).
     pub type_menu: bool,
+    /// Whether the color picker is open, which takes the keys of navigate mode (FR-TAG-05).
+    pub color_picker: bool,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -145,6 +147,14 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(']')], |c| date(DateTag::Start, DateChange::Later, c)),
     (&[key!('{')], |c| date(DateTag::Due, DateChange::Earlier, c)),
     (&[key!('}')], |c| date(DateTag::Due, DateChange::Later, c)),
+    (&[key!('c')], |_| Message::CycleColor),
+    (&[key!('m'), key!('c')], |_| Message::OpenColorPicker),
+    (&[key!('m'), key!('t')], |_| {
+        Message::ToggleFlag(Flag::Today)
+    }),
+    (&[key!('m'), key!('b')], |_| {
+        Message::ToggleFlag(Flag::Bookmark)
+    }),
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
@@ -276,12 +286,12 @@ fn go(motion: Motion, select: bool) -> Message {
     Message::Text(TextEdit::Move { motion, select })
 }
 
-/// Bindings of the open type menu ([keybindings.md §3], [editing.md §2.3]); characters without
-/// other bindings filter it, and other keys do nothing.
+/// Bindings of the open type menu and color picker ([keybindings.md §3–4], [editing.md §2.3]);
+/// characters without other bindings filter them, and other keys do nothing.
 ///
-/// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
+/// [keybindings.md §3–4]: ../../../docs/specs/keybindings.md#4-other-contexts
 /// [editing.md §2.3]: ../../../docs/specs/editing.md#23-type-menu
-const TYPE_MENU: &[(Key, MenuInput)] = &[
+const MENU: &[(Key, MenuInput)] = &[
     (key!(Esc), MenuInput::Dismiss),
     (key!(Enter), MenuInput::Choose),
     (key!(Up), MenuInput::Previous),
@@ -291,16 +301,16 @@ const TYPE_MENU: &[(Key, MenuInput)] = &[
     (key!(Backspace), MenuInput::Erase),
 ];
 
-/// The type-menu message for `key`: `Ctrl+Q` quits, a menu binding, else typing the character
-/// it is, as in edit mode.
-fn type_menu_message(key: Key) -> Option<Message> {
+/// The message of the open type menu or color picker for `key`, made by `to`: `Ctrl+Q` quits, a
+/// menu binding, else typing the character it is, as in edit mode.
+fn menu_message(key: Key, to: fn(MenuInput) -> Message) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
     }
-    if let Some((_, input)) = TYPE_MENU.iter().find(|(bound, _)| *bound == key) {
-        return Some(Message::TypeMenu(*input));
+    if let Some((_, input)) = MENU.iter().find(|(bound, _)| *bound == key) {
+        return Some(to(*input));
     }
-    typed_char(key).map(|c| Message::TypeMenu(MenuInput::Type(c)))
+    typed_char(key).map(|c| to(MenuInput::Type(c)))
 }
 
 /// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
@@ -361,10 +371,14 @@ impl Keymap {
         if context.mode == Mode::Edit {
             self.pending.clear();
             return if context.type_menu {
-                type_menu_message(pressed)
+                menu_message(pressed, Message::TypeMenu)
             } else {
                 edit_message(pressed, context)
             };
+        }
+        if context.color_picker {
+            self.pending.clear();
+            return menu_message(pressed, Message::ColorPicker);
         }
         self.pending.push(pressed);
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
@@ -420,6 +434,7 @@ mod tests {
         today: TODAY,
         mode: Mode::Navigate,
         type_menu: false,
+        color_picker: false,
     };
 
     const EDITING: &Context = &Context {
@@ -792,6 +807,94 @@ mod tests {
             keymap.message_for(&key(KeyCode::Char('q'), ctrl), ms(0), IN_MENU),
             Some(Message::Quit)
         );
+    }
+
+    /// The messages `keys` send one after another from a fresh keymap in `context`.
+    fn messages(keys: &str, context: &Context) -> Vec<Option<Message>> {
+        let mut keymap = Keymap::default();
+        keys.chars()
+            .map(|c| keymap.message_for(&key(KeyCode::Char(c), KeyModifiers::NONE), ms(0), context))
+            .collect()
+    }
+
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42: plain characters, which both key
+    // reportings send alike.
+    #[test]
+    fn color_today_and_bookmark_keys() {
+        check(
+            KeyCode::Char('c'),
+            KeyModifiers::NONE,
+            Some(&Message::CycleColor),
+        );
+        for (second, expected) in [
+            ('c', Message::OpenColorPicker),
+            ('t', Message::ToggleFlag(Flag::Today)),
+            ('b', Message::ToggleFlag(Flag::Bookmark)),
+        ] {
+            assert_eq!(
+                messages(&format!("m{second}"), CONTEXT),
+                [None, Some(expected)]
+            );
+        }
+        assert_eq!(messages("mx", CONTEXT), [None, None]);
+        assert_eq!(
+            messages("mc", EDITING),
+            [
+                Some(Message::Text(TextEdit::Insert('m'))),
+                Some(Message::Text(TextEdit::Insert('c')))
+            ]
+        );
+    }
+
+    const IN_PICKER: &Context = &Context {
+        color_picker: true,
+        ..*CONTEXT
+    };
+
+    // FR-TAG-05, keybindings.md §4
+    #[test]
+    fn the_color_picker_takes_the_keys_of_pickers() {
+        let mut keymap = Keymap::default();
+        let mut press =
+            |code, modifiers, context| keymap.message_for(&key(code, modifiers), ms(0), context);
+        let none = KeyModifiers::NONE;
+        let picker = |input| Some(Message::ColorPicker(input));
+        assert_eq!(press(KeyCode::Char('g'), none, CONTEXT), None);
+        assert_eq!(
+            press(KeyCode::Char('g'), none, IN_PICKER),
+            picker(MenuInput::Type('g')),
+            "the picker ends a pending sequence"
+        );
+        assert_eq!(
+            press(KeyCode::Char('j'), none, IN_PICKER),
+            picker(MenuInput::Type('j'))
+        );
+        assert_eq!(
+            press(KeyCode::Down, none, IN_PICKER),
+            picker(MenuInput::Next)
+        );
+        assert_eq!(
+            press(KeyCode::Char('p'), KeyModifiers::CONTROL, IN_PICKER),
+            picker(MenuInput::Previous)
+        );
+        assert_eq!(
+            press(KeyCode::Enter, none, IN_PICKER),
+            picker(MenuInput::Choose)
+        );
+        assert_eq!(
+            press(KeyCode::Esc, none, IN_PICKER),
+            picker(MenuInput::Dismiss)
+        );
+        assert_eq!(
+            press(KeyCode::Backspace, none, IN_PICKER),
+            picker(MenuInput::Erase)
+        );
+        assert_eq!(press(KeyCode::Tab, none, IN_PICKER), None);
+        assert_eq!(
+            press(KeyCode::Char('q'), KeyModifiers::CONTROL, IN_PICKER),
+            Some(Message::Quit)
+        );
+        assert_eq!(keymap.pending(), "");
     }
 
     #[test]

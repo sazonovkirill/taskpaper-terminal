@@ -22,6 +22,62 @@ pub enum BlockKind {
     Divider,
 }
 
+/// A color tag, which tints a block's text (FR-TAG-05, D-5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagColor {
+    /// `@red`.
+    Red,
+    /// `@orange`.
+    Orange,
+    /// `@yellow`.
+    Yellow,
+    /// `@green`.
+    Green,
+    /// `@blue`.
+    Blue,
+    /// `@violet`.
+    Violet,
+}
+
+impl TagColor {
+    /// Every color, in the order the color command cycles through them (D-26).
+    pub const ALL: [Self; 6] = [
+        Self::Red,
+        Self::Orange,
+        Self::Yellow,
+        Self::Green,
+        Self::Blue,
+        Self::Violet,
+    ];
+
+    /// The tag's name, without `@`.
+    #[must_use]
+    pub fn tag(self) -> &'static str {
+        match self {
+            Self::Red => "red",
+            Self::Orange => "orange",
+            Self::Yellow => "yellow",
+            Self::Green => "green",
+            Self::Blue => "blue",
+            Self::Violet => "violet",
+        }
+    }
+
+    /// The color after `current` in the cycle none, red, orange, yellow, green, blue, violet and
+    /// back to none (editing.md §5).
+    #[must_use]
+    pub fn cycle(current: Option<Self>) -> Option<Self> {
+        match current {
+            None => Self::ALL.first().copied(),
+            Some(color) => Self::ALL
+                .iter()
+                .skip_while(|&&other| other != color)
+                .nth(1)
+                .copied(),
+        }
+    }
+}
+
 /// One block: a line of the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
@@ -30,6 +86,9 @@ pub struct Block {
     done: bool,
     start: Option<Date>,
     due: Option<Date>,
+    today: bool,
+    bookmark: bool,
+    color: Option<TagColor>,
 }
 
 impl Block {
@@ -41,6 +100,9 @@ impl Block {
             done: has_tag(item, "done"),
             start: date_tag(item, "start"),
             due: date_tag(item, "due"),
+            today: has_tag(item, "today"),
+            bookmark: has_tag(item, "bookmark"),
+            color: color(item),
         }
     }
 
@@ -72,6 +134,24 @@ impl Block {
     #[must_use]
     pub fn due(&self) -> Option<Date> {
         self.due
+    }
+
+    /// Whether its line carries `@today`, with or without a value (FR-TAG-04).
+    #[must_use]
+    pub fn today(&self) -> bool {
+        self.today
+    }
+
+    /// Whether its line carries `@bookmark`, with or without a value (D-11).
+    #[must_use]
+    pub fn bookmark(&self) -> bool {
+        self.bookmark
+    }
+
+    /// Its color: that of the first color tag on its line (D-5).
+    #[must_use]
+    pub fn color(&self) -> Option<TagColor> {
+        self.color
     }
 }
 
@@ -130,6 +210,15 @@ fn kind(item: &Item) -> BlockKind {
 
 fn has_tag(item: &Item, name: &str) -> bool {
     item.tags().iter().any(|tag| tag.name == name)
+}
+
+/// The color of the first color tag of `item`.
+fn color(item: &Item) -> Option<TagColor> {
+    item.tags().iter().find_map(|tag| {
+        TagColor::ALL
+            .into_iter()
+            .find(|color| color.tag() == tag.name)
+    })
 }
 
 /// The date the first tag `name` of `item` holds, read as an ISO 8601 date such as the
@@ -293,6 +382,69 @@ mod tests {
         assert_eq!(
             dates("- a @due(2026-10-05) @due(2026-10-09)"),
             [(None, Some(jiff::civil::date(2026, 10, 5)))]
+        );
+    }
+
+    /// Whether each top-level block of `text` has `@today` and `@bookmark`, and its color.
+    fn marks(text: &str) -> Vec<(bool, bool, Option<TagColor>)> {
+        let document = parse(text);
+        children(&document, document.root())
+            .iter()
+            .map(|block| (block.today(), block.bookmark(), block.color()))
+            .collect()
+    }
+
+    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11
+    #[test]
+    fn today_bookmark_and_color_come_from_their_tags() {
+        use TagColor::{Blue, Green, Orange, Red, Violet, Yellow};
+        assert_eq!(
+            marks(
+                "- a @today
+- b @bookmark(x)
+P: @blue @red
+- c @violet
+- d @orange @x
+- e @yellow
+- f @green @today @bookmark
+- g @Red @todays @redish
+- h"
+            ),
+            [
+                (true, false, None),
+                (false, true, None),
+                (false, false, Some(Blue)),
+                (false, false, Some(Violet)),
+                (false, false, Some(Orange)),
+                (false, false, Some(Yellow)),
+                (true, true, Some(Green)),
+                (false, false, None),
+                (false, false, None),
+            ]
+        );
+        assert_eq!(marks("- a @red(x)"), [(false, false, Some(Red))]);
+    }
+
+    // D-26, editing.md §5
+    #[test]
+    fn colors_cycle_from_none_through_the_six_and_back() {
+        let cycle: Vec<_> =
+            std::iter::successors(Some(None), |&color| Some(TagColor::cycle(color)))
+                .take(8)
+                .map(|color| color.map(TagColor::tag))
+                .collect();
+        assert_eq!(
+            cycle,
+            [
+                None,
+                Some("red"),
+                Some("orange"),
+                Some("yellow"),
+                Some("green"),
+                Some("blue"),
+                Some("violet"),
+                None
+            ]
         );
     }
 

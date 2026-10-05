@@ -8,8 +8,10 @@ use std::{
 
 use jiff::civil::Date;
 
-use super::{History, edit_mode::Session, external::External, saving::Autosave};
-use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
+use super::{
+    History, color_picker::ColorPicker, edit_mode::Session, external::External, saving::Autosave,
+};
+use crate::document::{Block, BlockKind, Document, Item, ItemId, TagColor, blocks};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
@@ -35,6 +37,8 @@ pub struct State {
     pub(super) focus: Option<ItemId>,
     /// The edit session of the focused block, in edit mode (FR-MODE-01).
     pub(super) edit: Option<Session>,
+    /// The color picker over the focused block, while it is open (FR-TAG-05).
+    pub(super) color_picker: Option<ColorPicker>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
@@ -107,10 +111,20 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
+    /// A bookmark was added to the focused block, or removed when `added` is false; bookmarks
+    /// show only in the sidebar (D-11).
+    Bookmark {
+        /// Whether the block is bookmarked now.
+        added: bool,
+    },
 }
 
 /// One visible block of the outline.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts about a block that a frontend shows, not states of one machine"
+)]
 pub struct Row {
     /// The block this row shows: the id of its line.
     pub id: ItemId,
@@ -133,6 +147,10 @@ pub struct Row {
     pub start: Option<Date>,
     /// The date of its `@due`, if it holds one (FR-TAG-03).
     pub due: Option<Date>,
+    /// Whether it carries `@today` (FR-TAG-04).
+    pub today: bool,
+    /// The color that tints its text (FR-TAG-05).
+    pub color: Option<TagColor>,
 }
 
 impl Row {
@@ -161,6 +179,7 @@ impl State {
             notice: None,
             focus: None,
             edit: None,
+            color_picker: None,
             folds: HashSet::new(),
             zoom: None,
             history: vec![None],
@@ -322,6 +341,8 @@ impl State {
             title,
             start: block.start(),
             due: block.due(),
+            today: block.today(),
+            color: block.color(),
         }
     }
 

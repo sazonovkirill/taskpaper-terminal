@@ -5,7 +5,7 @@
 use jiff::civil::Date;
 
 use super::{Access, History, Notice, Restore, State};
-use crate::document::{DateChange, DateTag, Document, EditError, Op, Transaction, metadata};
+use crate::document::{DateChange, DateTag, Document, EditError, Flag, Op, Transaction, metadata};
 
 impl State {
     /// Completes the focused block, or uncompletes it when it is done (FR-DONE-01).
@@ -22,6 +22,20 @@ impl State {
         if let Some((block, _)) = self.focused()
             && let Some(op) = metadata::change_date(self.document(), &block, tag, change, today)
         {
+            self.commit(vec![op]);
+        }
+    }
+
+    /// Adds the bare tag `flag` to the focused block, or removes it (FR-TAG-04, D-11).
+    pub(super) fn toggle_flag(&mut self, flag: Flag) {
+        if let Some((block, _)) = self.focused()
+            && let Some(op) = metadata::toggle_flag(self.document(), &block, flag)
+        {
+            if flag == Flag::Bookmark {
+                self.notify(Notice::Bookmark {
+                    added: !block.bookmark(),
+                });
+            }
             self.commit(vec![op]);
         }
     }
@@ -136,6 +150,42 @@ mod tests {
         assert_eq!(state.document().revision(), 0);
         assert_eq!(state.update(Message::Undo), []);
         assert_eq!(state.update(Message::Redo), []);
+    }
+
+    // FR-TAG-04, D-11, FR-OPS-08
+    #[test]
+    fn toggle_flag_adds_and_removes_today_and_bookmarks_in_undoable_steps() {
+        let mut state = open("- a\n- b", 1);
+        assert_eq!(state.update(Message::ToggleFlag(Flag::Today)), []);
+        assert!(state.rows()[1].today);
+        assert_eq!(state.notice(), None, "today shows as a chip");
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(texts(&state), ["- a", "- b @today @bookmark"]);
+        assert_eq!(state.notice(), Some(&Notice::Bookmark { added: true }));
+        state.update(Message::ToggleFlag(Flag::Today));
+        assert!(!state.rows()[1].today);
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(texts(&state), ["- a", "- b"]);
+        assert_eq!(state.notice(), Some(&Notice::Bookmark { added: false }));
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a", "- b @bookmark"]);
+        let mut empty = State::new(Document::default(), None);
+        empty.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(empty.notice(), None);
+        assert_eq!(empty.document().revision(), 0);
+    }
+
+    // D-11, file-io.md §1
+    #[test]
+    fn a_read_only_file_refuses_a_bookmark_and_says_so() {
+        let mut state = State::new(
+            format::parse("- a"),
+            Some(PathBuf::from("/notes/todo.taskpaper")),
+        )
+        .with_access(Access::ReadOnly);
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(texts(&state), ["- a"]);
+        assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
 
     fn quick(tag: DateTag, change: DateChange) -> Message {

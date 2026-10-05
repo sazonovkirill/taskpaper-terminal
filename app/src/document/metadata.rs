@@ -5,7 +5,7 @@
 use jiff::civil::Date;
 
 use super::{
-    blocks::Block,
+    blocks::{Block, TagColor},
     format::{canonical::PLACEHOLDER, tags},
     model::{Document, Op},
 };
@@ -73,6 +73,59 @@ pub fn change_date(
     }
     .ok()?;
     let after = tags::set(before, name, &date.to_string());
+    (after != before).then(|| Op::SetText {
+        id: block.id(),
+        before: before.to_owned(),
+        after,
+    })
+}
+
+/// A bare tag that a command adds to a block or removes from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Flag {
+    /// `@today`, which puts a block on today's list (FR-TAG-04).
+    Today,
+    /// `@bookmark`, which lists a block in the sidebar (D-11).
+    Bookmark,
+}
+
+/// The op that adds the bare tag `flag` to `block`, or, when it has the tag, removes it with any
+/// value (editing.md §5); `None` when the block is not in `document`.
+#[must_use]
+pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op> {
+    let before = document.get(block.id())?.text();
+    let (name, set) = match flag {
+        Flag::Today => ("today", block.today()),
+        Flag::Bookmark => ("bookmark", block.bookmark()),
+    };
+    let after = if set {
+        kept(tags::remove(before, name))
+    } else {
+        tags::set(before, name, "")
+    };
+    Some(Op::SetText {
+        id: block.id(),
+        before: before.to_owned(),
+        after,
+    })
+}
+
+/// The op that gives `block` the color `color`, or none: every other color tag goes and the
+/// color's own tag stays where it is or is added (FR-TAG-05, D-5). `None` when the line stays as
+/// it is or the block is not in `document`.
+#[must_use]
+pub fn set_color(document: &Document, block: &Block, color: Option<TagColor>) -> Option<Op> {
+    let before = document.get(block.id())?.text();
+    let mut after = TagColor::ALL
+        .into_iter()
+        .filter(|&other| Some(other) != color)
+        .fold(before.to_owned(), |text, other| {
+            tags::remove(&text, other.tag())
+        });
+    if let Some(color) = color {
+        after = tags::set(&after, color.tag(), "");
+    }
+    let after = kept(after);
     (after != before).then(|| Op::SetText {
         id: block.id(),
         before: before.to_owned(),
@@ -310,6 +363,78 @@ mod tests {
             changed("- a", DateTag::Due, DateChange::Tomorrow, Date::MAX),
             None
         );
+    }
+
+    /// The first line's text after the op `make` returns for its block, or `None` without one.
+    #[track_caller]
+    fn edited(text: &str, make: impl Fn(&Document, &Block) -> Option<Op>) -> Option<String> {
+        let mut document = parse(text);
+        let block = blocks::children(&document, document.root())
+            .into_iter()
+            .next()
+            .unwrap();
+        let op = make(&document, &block)?;
+        assert!(
+            matches!(op, Op::SetText { .. }),
+            "only text changes: {op:?}"
+        );
+        let mut transaction = crate::document::Transaction::new(vec![op], (), ());
+        document.apply(&mut transaction).unwrap();
+        Some(document.get(block.id()).unwrap().text().to_owned())
+    }
+
+    // FR-TAG-04, D-11, editing.md §5
+    #[test]
+    fn toggling_a_flag_adds_it_bare_or_removes_it_with_any_value() {
+        let check = |text: &str, flag, expected: &str| {
+            assert_eq!(
+                edited(text, |document, block| toggle_flag(document, block, flag)).as_deref(),
+                Some(expected),
+                "{text:?} {flag:?}"
+            );
+        };
+        check("- a", Flag::Today, "- a @today");
+        check("- a @x", Flag::Bookmark, "- a @x @bookmark");
+        check("P: @today", Flag::Today, "P:");
+        check("- a @today(x) @y @today", Flag::Today, "- a @y");
+        check("- a @bookmark @today", Flag::Bookmark, "- a @today");
+        check("- a @today", Flag::Bookmark, "- a @today @bookmark");
+        check("@bookmark", Flag::Bookmark, PLACEHOLDER);
+    }
+
+    #[test]
+    fn a_flag_of_a_block_not_in_the_document_is_not_toggled() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(toggle_flag(&parse("- a"), &stale, Flag::Today), None);
+    }
+
+    // FR-TAG-05, D-5
+    #[test]
+    fn setting_a_color_replaces_every_other_color() {
+        use TagColor::{Blue, Orange, Red};
+        let check = |text: &str, color, expected: Option<&str>| {
+            assert_eq!(
+                edited(text, |document, block| set_color(document, block, color)).as_deref(),
+                expected,
+                "{text:?} {color:?}"
+            );
+        };
+        check("- a", Some(Red), Some("- a @red"));
+        check("- a @blue @x", Some(Orange), Some("- a @x @orange"));
+        check("- a @red @x @blue", Some(Blue), Some("- a @x @blue"));
+        check("- a @blue @x @red", Some(Blue), Some("- a @blue @x"));
+        check("P: @green @violet @yellow", None, Some("P:"));
+        check("@red", None, Some(PLACEHOLDER));
+        check("- a @red @x", Some(Red), None);
+        check("- a @x", None, None);
+    }
+
+    #[test]
+    fn a_color_of_a_block_not_in_the_document_is_not_set() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(set_color(&parse("- a"), &stale, Some(TagColor::Red)), None);
     }
 
     #[test]

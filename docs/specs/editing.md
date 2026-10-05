@@ -153,9 +153,9 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
 | `start_earlier` / `start_later` / `due_earlier` / `due_later` (D-26) | Move `@start` or `@due` one day back or forward. A block without that date gets yesterday or tomorrow, as if the missing date were today. |
 | `toggle_today` (FR-TAG-04) | Add or remove bare `@today`. |
-| `set_color` (FR-TAG-05) | Picker of the six colors and "none"; removes any existing color tag first (D-5). |
+| `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, opening with the block's color (or "none") highlighted; typing filters it by name. Removes every other color tag; the chosen one stays where it is or is added (D-5). |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
-| `toggle_bookmark` (D-11) | Add or remove `@bookmark`. |
+| `toggle_bookmark` (D-11) | Add or remove `@bookmark`. The status line says which, since bookmarks show only in the sidebar. |
 | `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
 | `details` (D-3) | Popup listing the block's tags, including unsupported ones, read-only. |
 

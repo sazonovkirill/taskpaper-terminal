@@ -45,7 +45,7 @@ const ENTRIES: [MenuEntry; 5] = [
     },
 ];
 
-/// A key of the open type menu, as an intent.
+/// A key of the open type menu or color picker, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuInput {
     /// Typing a character: a shortcut letter right after `/`, else more of the filter.

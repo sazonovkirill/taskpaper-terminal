@@ -7,9 +7,9 @@ pub mod metadata;
 pub mod model;
 pub mod structure;
 
-pub use blocks::{Block, BlockKind};
+pub use blocks::{Block, BlockKind, TagColor};
 pub use format::DecodeError;
-pub use metadata::{DateChange, DateTag};
+pub use metadata::{DateChange, DateTag, Flag};
 pub use model::{
     Document, EditError, FileFormat, IndentUnit, Item, ItemId, ItemKind, LineEnding, Op, Snapshot,
     Transaction,
