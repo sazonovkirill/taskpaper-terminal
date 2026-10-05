@@ -1,10 +1,11 @@
-//! Adding a block next to the focused one to type into, deleting blocks and moving them, each one
-//! step to undo ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
-//! FR-MODE-04, FR-OPS-02, FR-OPS-03, FR-OPS-06).
+//! Adding a block next to the focused one or the selection to type into, and deleting, moving and
+//! grouping the selected blocks, each one step to undo
+//! ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04), FR-MODE-04,
+//! FR-OPS-02, FR-OPS-03, FR-OPS-04, FR-OPS-06).
 
 use super::{Access, Notice, Restore, State};
 use crate::document::{
-    Block, BlockKind, ItemId, Transaction, blocks,
+    Block, BlockKind, ItemId, Op, Transaction, blocks,
     format::Typed,
     structure::{self, Place, Shift},
 };
@@ -28,15 +29,17 @@ pub(super) enum NewBlock {
 
 impl State {
     /// Adds an empty block of type `typed`, or of the type that fits, where `new` says and edits
-    /// it (FR-MODE-04, FR-MODE-06). On the zoom title, which stands for the view's root, the
-    /// block becomes the first one under it, or the last one for [`NewBlock::LastChild`]; in an
-    /// outline without rows it is the first block. A read-only file refuses with a notice.
+    /// it (FR-MODE-04, FR-MODE-06). With blocks selected, a block below goes after the last of
+    /// them and one above or at the top of the list by the first; children go to the focused
+    /// block. On the zoom title, which stands for the view's root, the block becomes the first
+    /// one under it, or the last one for [`NewBlock::LastChild`]; in an outline without rows it
+    /// is the first block. A read-only file refuses with a notice.
     pub(super) fn add_block(&mut self, new: NewBlock, typed: Option<Typed>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
-        let focused = self.focused();
+        let focused = self.creation_reference(new);
         let list = match (&focused, new) {
             (Some((block, false)), NewBlock::Top) => self.siblings(block.id()),
             _ => Vec::new(),
@@ -61,6 +64,27 @@ impl State {
         {
             self.folds.remove(&block.id());
         }
+        self.edit_created(id, ops);
+    }
+
+    /// The block a new block is placed by, and whether it is the title: the focused block, or
+    /// with blocks selected, the last of them for a block below and the first for one above or
+    /// at the top of the list.
+    fn creation_reference(&self, new: NewBlock) -> Option<(Block, bool)> {
+        let roots = self.roots();
+        let selected = match new {
+            NewBlock::Below | NewBlock::Next => roots.last(),
+            NewBlock::Above | NewBlock::Top => roots.first(),
+            NewBlock::FirstChild | NewBlock::LastChild => None,
+        };
+        selected
+            .map(|block| (block.clone(), false))
+            .or_else(|| self.focused())
+    }
+
+    /// Applies `ops`, which make the new line `id`, and edits it with the focus on it; ending the
+    /// edit records them with the typing as one step to undo (FR-MODE-04).
+    fn edit_created(&mut self, id: ItemId, ops: Vec<Op>) {
         let mut transaction = Transaction::new(ops, (), ());
         self.document
             .apply(&mut transaction)
@@ -70,18 +94,43 @@ impl State {
         self.edit_new_block(id, transaction.ops().to_vec(), before);
     }
 
-    /// Deletes the focused block with its subtree and focuses the next visible block, else the
-    /// previous one (FR-OPS-06). The zoom title, which stands for the view's root, stays.
-    pub(super) fn delete_focused(&mut self) {
-        let Some((block, false)) = self.focused() else {
+    /// `gG`: puts the selected blocks, else the focused block, under a new text block where the
+    /// first of them was and edits it, the whole as one step to undo (FR-OPS-04). A read-only
+    /// file refuses with a notice.
+    pub(super) fn group(&mut self) {
+        let roots = self.roots();
+        if roots.is_empty() {
+            return;
+        }
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
+            return;
+        }
+        let (id, ops) = structure::group(&mut self.document, &roots)
+            .expect("the blocks were just found in the document");
+        self.edit_created(id, ops);
+    }
+
+    /// Deletes the selected blocks, else the focused block, with their subtrees and focuses the
+    /// next visible block after the last of them, else the one before it (FR-OPS-06). The zoom
+    /// title, which stands for the view's root, stays.
+    pub(super) fn delete_selected(&mut self) {
+        let roots = self.roots();
+        let Some(last) = roots.last() else {
             return;
         };
         let rows = self.rows();
-        let mut from = rows.iter().skip_while(|row| row.id != block.id());
-        let depth = from.next().map_or(0, |row| row.depth);
-        let next = from.find(|row| row.depth <= depth);
-        let previous = rows.iter().take_while(|row| row.id != block.id()).last();
-        self.delete_block(&block, next.or(previous).map(|row| row.id));
+        let gone = |id: ItemId| {
+            std::iter::successors(blocks::block(self.document(), id), |block| {
+                blocks::parent(self.document(), block.id())
+            })
+            .any(|block| roots.iter().any(|root| root.id() == block.id()))
+        };
+        let at = rows.iter().position(|row| row.id == last.id());
+        let (before, after) = rows.split_at(at.unwrap_or_default());
+        let next = after.iter().find(|row| !gone(row.id));
+        let previous = before.iter().rev().find(|row| !gone(row.id));
+        self.delete_blocks(&roots, next.or(previous).map(|row| row.id));
     }
 
     /// `Backspace` in an empty block: deletes it and edits the previous visible block at its end
@@ -102,29 +151,30 @@ impl State {
         };
         if !self.discard_new_block() {
             self.stop_editing();
-            self.delete_block(&block, Some(previous));
+            self.delete_blocks(&[block], Some(previous));
         }
         self.focus = Some(previous);
         self.start_editing();
     }
 
-    /// Deletes `block` with its subtree as one step to undo that ends with `focus`. A read-only
-    /// file refuses with a notice.
-    fn delete_block(&mut self, block: &Block, focus: Option<ItemId>) {
+    /// Deletes `blocks`, none inside another and in document order, with their subtrees as one
+    /// step to undo that ends with `focus`. A read-only file refuses with a notice.
+    fn delete_blocks(&mut self, blocks: &[Block], focus: Option<ItemId>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
-        let ops = structure::delete(&self.document, block)
-            .into_iter()
+        // Last first, so that taking one out leaves the places of those before it as they are.
+        let ops = blocks
+            .iter()
+            .rev()
+            .filter_map(|block| structure::delete(&self.document, block))
             .collect();
         let mut transaction = Transaction::new(ops, (), ());
         self.document
             .apply(&mut transaction)
-            .expect("the op is built from the document as it is");
-        let before = Restore {
-            focus: Some(block.id()),
-        };
+            .expect("the ops are built from the document as it is");
+        let before = Restore { focus: self.focus };
         self.edits.record(Transaction::new(
             transaction.ops().to_vec(),
             before,
@@ -133,22 +183,23 @@ impl State {
         self.focus = focus;
     }
 
-    /// Moves the focused block with its subtree as `by` says without leaving the zoom, as one
-    /// step to undo, expanding the block it lands under (FR-OPS-02, FR-OPS-03). The zoom title,
-    /// which stands for the view's root, stays.
-    pub(super) fn shift_focused(&mut self, by: Shift) {
-        let Some((block, false)) = self.focused() else {
-            return;
-        };
+    /// Moves the selected blocks, else the focused block, with their subtrees as `by` says
+    /// without leaving the zoom, as one step to undo, expanding the blocks they land under
+    /// (FR-OPS-02, FR-OPS-03, FR-OPS-07). The zoom title, which stands for the view's root, stays.
+    pub(super) fn shift_selected(&mut self, by: Shift) {
+        let roots = self.roots();
         let top = self
             .zoom_block()
             .map_or(self.document.root(), |zoom| zoom.id());
-        let Some(ops) = structure::shift(&self.document, &block, by, top) else {
+        let ops = structure::shift_all(&self.document, &roots, by, top);
+        if ops.is_empty() {
             return;
-        };
+        }
         self.commit(ops);
-        if let Some(parent) = blocks::parent(&self.document, block.id()) {
-            self.folds.remove(&parent.id());
+        for block in &roots {
+            if let Some(parent) = blocks::parent(&self.document, block.id()) {
+                self.folds.remove(&parent.id());
+            }
         }
     }
 }
@@ -176,7 +227,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Mode, TextEdit, Version},
+        app::{Disk, Effect, Message, Mode, SelectionChange, TextEdit, Version},
         document::{Document, Op, format},
     };
 
@@ -900,5 +951,158 @@ mod tests {
         let mut state = State::new(Document::default(), None);
         state.update(Message::Indent);
         assert_eq!(state.document().revision(), 0);
+    }
+
+    /// `text` with the rows at `rows` selected with `v`, the focus left on the last of them.
+    fn picking(text: &str, rows: &[usize]) -> State {
+        let mut state = open(text, 0);
+        for &row in rows {
+            state.update(Message::FocusFirst);
+            for _ in 0..row {
+                state.update(Message::FocusNext);
+            }
+            state.update(Message::Select(SelectionChange::Toggle));
+        }
+        state
+    }
+
+    /// The text of each selected row.
+    fn selected(state: &State) -> Vec<String> {
+        state
+            .rows()
+            .into_iter()
+            .filter(|row| row.selected)
+            .map(|row| row.text)
+            .collect()
+    }
+
+    // FR-OPS-06, FR-OPS-07, FR-OPS-08
+    #[test]
+    fn delete_takes_every_selected_block_in_one_step_and_focuses_the_next() {
+        let mut state = picking("- a\n\t- b\n- c\n- d\n- e", &[3, 0, 1]);
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["- c", "- e"]);
+        assert_eq!(focused(&state), "e");
+        assert_eq!(selected(&state), Vec::<String>::new());
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "\t- b", "- c", "- d", "- e"]);
+        let mut last = picking("- a\n- b\n- c", &[1, 2]);
+        last.update(Message::Delete);
+        assert_eq!(lines(&last), ["- a"]);
+        assert_eq!(focused(&last), "a", "nothing after, so the one before");
+    }
+
+    // FR-OPS-02, FR-OPS-03, FR-OPS-07
+    #[test]
+    fn indent_and_moves_take_every_selected_block_in_one_step() {
+        let mut state = open("- x\n- a\n- b\n- y", 1);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::Indent);
+        assert_eq!(lines(&state), ["- x", "\t- a", "\t- b", "- y"]);
+        assert_eq!(selected(&state), ["a", "b"], "still selected");
+        state.update(Message::Outdent);
+        state.update(Message::MoveUp);
+        assert_eq!(lines(&state), ["- a", "- b", "- x", "- y"]);
+        state.update(Message::MoveDown);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["- x", "- y", "- a", "- b"]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- x", "- a", "- b", "- y"], "one step each");
+    }
+
+    // FR-OPS-02
+    #[test]
+    fn a_collapsed_block_that_takes_selected_blocks_expands() {
+        let mut state = open("- x\n\t- c\n- a\n- b", 0);
+        state.update(Message::Collapse);
+        state.update(Message::FocusNext);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::Indent);
+        assert_eq!(state.rows().len(), 4, "x expanded");
+    }
+
+    // FR-OPS-04, FR-OPS-08, file-format §3.1
+    #[test]
+    fn group_puts_the_selection_under_a_new_text_block_to_type_into() {
+        let mut state = picking("- x\n- a\n- y\n- b", &[1, 3]);
+        state.update(Message::Group);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(shown(&state), "|");
+        assert_eq!(lines(&state), ["- x", "", "\t- a", "\t- b", "- y"]);
+        assert_eq!(selected(&state), Vec::<String>::new());
+        typed(&mut state, "Both");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["- x", "Both", "\t- a", "\t- b", "- y"]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- x", "- a", "- y", "- b"], "one step");
+        assert_eq!(focused(&state), "b");
+        state.update(Message::Redo);
+        state.update(Message::Undo);
+        state.update(Message::FocusFirst);
+        state.update(Message::Group);
+        state.update(Message::StopEditing);
+        assert_eq!(
+            lines(&state),
+            ["…", "\t- x", "- a", "- y", "- b"],
+            "the focused block alone, the empty parent repaired"
+        );
+    }
+
+    // FR-OPS-04, FR-NAV-03, file-io.md §1
+    #[test]
+    fn group_leaves_the_title_and_a_read_only_file_alone() {
+        let mut state = open("P:\n\t- a", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(Message::Group);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(lines(&state), ["P:", "\t- a"]);
+        let mut read_only = State::new(format::parse("- a"), Some(PathBuf::from("/a.taskpaper")))
+            .with_access(Access::ReadOnly);
+        read_only.update(Message::Group);
+        assert_eq!(lines(&read_only), ["- a"]);
+        assert_eq!(read_only.notice(), Some(&Notice::ReadOnly));
+    }
+
+    // FR-MODE-04, FR-MODE-06, FR-OPS-07
+    #[test]
+    fn new_blocks_go_after_the_selection_or_before_it() {
+        let below = |message: Message| {
+            let mut state = picking("- a\n- b\n\t- c\n- d", &[1, 0]);
+            state.update(message);
+            state.update(Message::StopEditing);
+            lines(&state)
+        };
+        assert_eq!(
+            below(Message::NewBelow),
+            ["- a", "- b", "\t- c", "- ", "- d"],
+            "after the last selected one's subtree"
+        );
+        assert_eq!(
+            below(Message::NewTypedBelow(Typed::Project)),
+            ["- a", "- b", "\t- c", ":", "- d"]
+        );
+        assert_eq!(
+            below(Message::NewAbove),
+            ["- ", "- a", "- b", "\t- c", "- d"]
+        );
+        assert_eq!(
+            below(Message::NewTop(Typed::Task)),
+            ["- ", "- a", "- b", "\t- c", "- d"]
+        );
+        assert_eq!(
+            below(Message::NewLastChild),
+            ["- a", "\t- ", "- b", "\t- c", "- d"],
+            "children go to the focused block"
+        );
+    }
+
+    // FR-MODE-01
+    #[test]
+    fn editing_selects_nothing() {
+        let mut state = picking("- a\n- b", &[0, 1]);
+        state.update(Message::EditAtEnd);
+        state.update(Message::StopEditing);
+        assert_eq!(selected(&state), Vec::<String>::new());
     }
 }

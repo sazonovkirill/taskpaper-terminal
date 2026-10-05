@@ -17,6 +17,7 @@ mod open_file;
 mod open_url;
 mod quick_dates;
 mod saving;
+mod selection;
 mod support;
 mod tags;
 mod type_menu;

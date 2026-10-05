@@ -18,6 +18,14 @@ Each row carries: block id, display depth (relative to the zoom block) and wheth
 - If the focused block disappears (collapsed ancestor, hidden as done, deleted, changed in another pane), focus moves to the next visible block, else the previous, else the parent.
 - The UI scrolls each pane to keep the focused block visible, with a margin of 2 rows when space allows. Page up/down messages carry the pane's height in rows.
 
+### 2.1 Selection (FR-OPS-01)
+
+- Besides its focus, each pane has a **selection**: a set of blocks the next command acts on, drawn with a dimmer focus marker ([ui.md §2](ui.md#2-blocks)). Block and structural commands act on the selected blocks, or on the focused block when none is ([editing.md §4–5](editing.md#4-structural-operations-fr-ops)).
+- `extend_down` / `extend_up` move the focus a row and select every row from where the run of extensions began to the focus, on top of what was selected before the run; moving back shrinks the run. A run begins at the focus unless the focus is still where the latest run ended. At the first or last row the focused row is selected.
+- `toggle_selected` adds the focused block to the selection or takes it out. Plain motions move the focus and keep the selection, so blocks far apart can be picked one by one.
+- `select_all` selects every row below the title; `clear_selection` selects nothing.
+- A block no row shows, because it was deleted, folded away or left outside the zoom, leaves the selection. Entering edit mode clears it.
+
 ## 3. Folding (FR-NAV-02)
 
 | Command | Effect |

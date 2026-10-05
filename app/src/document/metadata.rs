@@ -27,6 +27,18 @@ pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Option<Op
     })
 }
 
+/// The ops that complete each of `blocks` that is not done, or, when every one is done, uncomplete
+/// them all (editing.md §5, FR-OPS-07); blocks not in `document` are left out.
+#[must_use]
+pub fn toggle_done_all(document: &Document, blocks: &[Block], today: Date) -> Vec<Op> {
+    let done = blocks.iter().all(Block::done);
+    blocks
+        .iter()
+        .filter(|block| block.done() == done)
+        .filter_map(|block| toggle_done(document, block, today))
+        .collect()
+}
+
 /// Which of a block's dates a command sets (FR-TAG-02).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DateTag {
@@ -114,11 +126,11 @@ pub enum Flag {
 #[must_use]
 pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op> {
     let before = document.get(block.id())?.text();
-    let (name, set) = match flag {
-        Flag::Today => ("today", block.today()),
-        Flag::Bookmark => ("bookmark", block.bookmark()),
+    let name = match flag {
+        Flag::Today => "today",
+        Flag::Bookmark => "bookmark",
     };
-    let after = if set {
+    let after = if flagged(block, flag) {
         kept(tags::remove(before, name))
     } else {
         tags::set(before, name, "")
@@ -128,6 +140,26 @@ pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op>
         before: before.to_owned(),
         after,
     })
+}
+
+/// The ops that add the bare tag `flag` to each of `blocks` without it, or, when every one has
+/// it, remove it from them all (editing.md §5, FR-OPS-07); blocks not in `document` are left out.
+#[must_use]
+pub fn toggle_flag_all(document: &Document, blocks: &[Block], flag: Flag) -> Vec<Op> {
+    let set = blocks.iter().all(|block| flagged(block, flag));
+    blocks
+        .iter()
+        .filter(|block| flagged(block, flag) == set)
+        .filter_map(|block| toggle_flag(document, block, flag))
+        .collect()
+}
+
+/// Whether `block` carries the tag `flag`.
+fn flagged(block: &Block, flag: Flag) -> bool {
+    match flag {
+        Flag::Today => block.today(),
+        Flag::Bookmark => block.bookmark(),
+    }
 }
 
 /// The op that gives `block` the color `color`, or none: every other color tag goes and the
@@ -537,5 +569,61 @@ mod tests {
     fn toggling_twice_restores_an_open_block() {
         let once = toggled("- Milk @due(1)");
         assert_eq!(toggled(&once.join("\n")), ["- Milk @due(1)"]);
+    }
+
+    /// Each line's text after applying the ops `all` makes for every top-level block of `text`.
+    #[track_caller]
+    fn all_edited(text: &str, all: impl Fn(&Document, &[Block]) -> Vec<Op>) -> Vec<String> {
+        let mut document = parse(text);
+        let blocks = blocks::children(&document, document.root());
+        let ops = all(&document, &blocks);
+        let mut transaction = crate::document::Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        document
+            .descendants(document.root())
+            .map(|(id, _)| document.get(id).unwrap().text().to_owned())
+            .collect()
+    }
+
+    // FR-OPS-07, FR-DONE-01, editing.md §5
+    #[test]
+    fn toggling_done_on_many_completes_the_open_ones_unless_all_are_done() {
+        let all = |text: &str| all_edited(text, |d, b| toggle_done_all(d, b, TODAY));
+        assert_eq!(
+            all("- a\n- b @done(1)\n- c"),
+            [
+                "- a @done(2026-10-05)",
+                "- b @done(1)",
+                "- c @done(2026-10-05)"
+            ]
+        );
+        assert_eq!(all("- a @done\n- b @done(1)"), ["- a", "- b"]);
+        assert_eq!(all("- a"), ["- a @done(2026-10-05)"]);
+        assert_eq!(all(""), Vec::<String>::new());
+    }
+
+    // FR-OPS-07, FR-TAG-04, D-11
+    #[test]
+    fn toggling_a_flag_on_many_adds_it_where_missing_unless_all_have_it() {
+        let all = |text: &str, flag| all_edited(text, |d, b| toggle_flag_all(d, b, flag));
+        assert_eq!(
+            all("- a @today\n- b", Flag::Today),
+            ["- a @today", "- b @today"]
+        );
+        assert_eq!(all("- a @today\n- b @today", Flag::Today), ["- a", "- b"]);
+        assert_eq!(
+            all("- a @bookmark\n- b @today", Flag::Bookmark),
+            ["- a @bookmark", "- b @today @bookmark"]
+        );
+        assert_eq!(all("- a @bookmark", Flag::Bookmark), ["- a"]);
+    }
+
+    #[test]
+    fn many_blocks_not_in_the_document_get_no_ops() {
+        let other = parse("- x\n- y");
+        let stale = &blocks::children(&other, other.root())[1..];
+        let document = parse("- a");
+        assert_eq!(toggle_done_all(&document, stale, TODAY), []);
+        assert_eq!(toggle_flag_all(&document, stale, Flag::Today), []);
     }
 }

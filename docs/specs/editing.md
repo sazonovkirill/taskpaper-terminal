@@ -124,19 +124,23 @@ URL is not in the menu: a URL block needs an address, which typing cannot give (
 
 On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child`, which adds its last child; in a pane without blocks the new block is the first one.
 
+With blocks selected, a new block below (`new_below`, `new_*_below`) goes after the last selected block's subtree, and one above or at the top of the list (`new_above`, `new_*_top`) is placed by the first selected block; `new_first_child` and `new_last_child` still add to the focused block. The selection is cleared as the new block opens in edit mode.
+
 The new block's type follows OQ-03 default A: a task next to a task (after it for `new_below`, before it for `new_above`), otherwise text; a new child of a project or task is a task. It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
 
-All act on the selection, or on the focused block when nothing is selected. Each block moves with its subtree. A block is one line, so no operation merges or splits blocks (D-43).
+All act on the selection, or on the focused block when nothing is selected. Each block moves with its subtree, so a selected block inside another selected block moves with it rather than on its own, and the zoom title never moves. A block is one line, so no operation merges or splits blocks (D-43). Each command is one undo step however many blocks it changes.
+
+Selected blocks move one after another in document order, last first for `outdent` and `move_down`, so they keep their order. A block that cannot move stays, and so does a selected block whose move would pass it: with the first of a list and the block after it selected, `indent` moves neither.
 
 | Command | Behavior |
 |---|---|
 | `indent` / `outdent` (FR-OPS-02) | Indent: become the last child of the previous sibling block (expanding it); no-op on the first sibling. Outdent: become the next sibling of the parent; following siblings stay where they are (Workflowy, inferred); no-op at the pane's zoom root level. |
 | `move_up` / `move_down` (FR-OPS-03) | Swap with the adjacent sibling block. At the first/last position, move to the end/start of the previous/next sibling of the parent (expanding it); no-op when there is none. Never leaves the pane's zoom root. |
-| `group` (FR-OPS-04) | Wrap the selection in a new parent block and open it in edit mode. The parent is a text block. |
+| `group` (FR-OPS-04) | Wrap the selection in a new parent block and open it in edit mode. The parent is a text block, placed where the first selected block was; the selected blocks become its children in document order. Creating and naming it is one undo step. |
 | `move_to` (FR-OPS-05) | Fuzzy-pick a destination block (any block, same picker as Go to Symbol); the selection becomes its last children. |
-| `delete` (FR-OPS-06) | Remove the blocks with their subtrees; focus moves to the next visible block, else the previous. |
+| `delete` (FR-OPS-06) | Remove the blocks with their subtrees; focus moves to the next visible block after the last of them, else the previous one. |
 | `duplicate` | Deep copy inserted after the original. |
 | `copy` / `cut` / `paste_below` / `paste_above` | Copy puts TaskPaper text on the clipboard: the selected blocks' lines, tags included, tab-indented relative to the shallowest block, `\n` line endings. Paste parses the clipboard with the TaskPaper parser and inserts the blocks after (or before) the focused block at its depth, keeping relative structure. A single line of plain text pastes as one text block. |
 | `count` (FR-OPS-09) | Status message: number of blocks and words under the focused block (or the pane's zoom root). |
@@ -152,10 +156,10 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date, or of why the input is not a date, in which case `Enter` does nothing; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). The prompt opens with the block's current date typed and selected, so typing replaces it and `Enter` keeps it. Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
 | `start_earlier` / `start_later` / `due_earlier` / `due_later` (D-26) | Move `@start` or `@due` one day back or forward. A block without that date gets yesterday or tomorrow, as if the missing date were today. |
-| `toggle_today` (FR-TAG-04) | Add or remove bare `@today`. |
+| `toggle_today` (FR-TAG-04) | Add bare `@today` to the targets without it; if every target has it, remove it. |
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, opening with the block's color (or "none") highlighted; typing filters it by name. Removes every other color tag; the chosen one stays where it is or is added (D-5). |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
-| `toggle_bookmark` (D-11) | Add or remove `@bookmark`. The status line says which, since bookmarks show only in the sidebar. |
+| `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which, since bookmarks show only in the sidebar. |
 | `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
 | `details` (D-3) | Popup listing the block's tags, including unsupported ones, read-only. |
 

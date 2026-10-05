@@ -250,4 +250,18 @@ mod tests {
             .any(|item| item.tags().iter().any(|tag| tag.name == "hidden"));
         assert!(hidden, "demo lacks a special node");
     }
+
+    // FR-DOC-05, FR-OPS-07
+    #[test]
+    fn demo_has_five_open_tasks_in_a_row_to_select() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        let open_task_run = rows.windows(5).any(|run| {
+            run.iter()
+                .all(|row| row.kind == BlockKind::Task && !row.done && row.depth == run[0].depth)
+        });
+        assert!(
+            open_task_run,
+            "demo lacks five open tasks in a row to select and complete at once"
+        );
+    }
 }

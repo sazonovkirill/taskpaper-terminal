@@ -5,39 +5,40 @@
 use jiff::civil::Date;
 
 use super::{Access, History, Notice, Restore, State};
-use crate::document::{DateChange, DateTag, Document, EditError, Flag, Op, Transaction, metadata};
+use crate::document::{
+    Block, DateChange, DateTag, Document, EditError, Flag, Op, Transaction, metadata,
+};
 
 impl State {
-    /// Completes the focused block, or uncompletes it when it is done (FR-DONE-01).
+    /// Completes the selected blocks, else the focused block, or uncompletes them when all are
+    /// done (FR-DONE-01, FR-OPS-07).
     pub(super) fn toggle_done(&mut self, today: Date) {
-        if let Some((block, _)) = self.focused()
-            && let Some(op) = metadata::toggle_done(self.document(), &block, today)
-        {
-            self.commit(vec![op]);
-        }
+        let ops = metadata::toggle_done_all(self.document(), &self.targets(), today);
+        self.commit_any(ops);
     }
 
-    /// Sets or moves the focused block's `tag` date as `change` says (FR-TAG-06).
+    /// Sets or moves the `tag` date of the selected blocks, else the focused block, as `change`
+    /// says (FR-TAG-06, FR-OPS-07).
     pub(super) fn change_date(&mut self, tag: DateTag, change: DateChange, today: Date) {
-        if let Some((block, _)) = self.focused()
-            && let Some(op) = metadata::change_date(self.document(), &block, tag, change, today)
-        {
-            self.commit(vec![op]);
-        }
+        let ops = self
+            .targets()
+            .iter()
+            .filter_map(|block| metadata::change_date(self.document(), block, tag, change, today))
+            .collect();
+        self.commit_any(ops);
     }
 
-    /// Adds the bare tag `flag` to the focused block, or removes it (FR-TAG-04, D-11).
+    /// Adds the bare tag `flag` to the selected blocks, else the focused block, or removes it when
+    /// all have it (FR-TAG-04, D-11, FR-OPS-07).
     pub(super) fn toggle_flag(&mut self, flag: Flag) {
-        if let Some((block, _)) = self.focused()
-            && let Some(op) = metadata::toggle_flag(self.document(), &block, flag)
-        {
-            if flag == Flag::Bookmark {
-                self.notify(Notice::Bookmark {
-                    added: !block.bookmark(),
-                });
-            }
-            self.commit(vec![op]);
+        let targets = self.targets();
+        let ops = metadata::toggle_flag_all(self.document(), &targets, flag);
+        if flag == Flag::Bookmark && !ops.is_empty() {
+            self.notify(Notice::Bookmark {
+                added: !targets.iter().all(Block::bookmark),
+            });
         }
+        self.commit_any(ops);
     }
 
     /// Reverts the latest step and returns to where the view was before it (FR-OPS-08).
@@ -62,6 +63,14 @@ impl State {
         let transaction = Transaction::new(ops, restore, restore);
         if let Err(error) = self.edits.commit(&mut self.document, transaction) {
             self.edit_failed(&error);
+        }
+    }
+
+    /// Applies `ops` as one undoable step, as [`State::commit`] does, unless there are none: a
+    /// command that changes nothing records no step and is not refused.
+    pub(super) fn commit_any(&mut self, ops: Vec<Op>) {
+        if !ops.is_empty() {
+            self.commit(ops);
         }
     }
 
@@ -93,7 +102,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Origin, Version},
+        app::{Disk, Effect, Message, Origin, SelectionChange, Version},
         document::{ItemId, format},
     };
 
@@ -412,5 +421,66 @@ mod tests {
         assert!(matches!(state.notice(), Some(Notice::EditFailed { .. })));
         state.update(Message::Undo);
         assert_eq!(state.document().revision(), 0, "nothing to undo");
+    }
+
+    /// `text` with the rows at `rows` selected with `v`, the focus left on the last of them.
+    fn picking(text: &str, rows: &[usize]) -> State {
+        let mut state = open(text, 0);
+        for &row in rows {
+            state.update(Message::FocusFirst);
+            for _ in 0..row {
+                state.update(Message::FocusNext);
+            }
+            state.update(Message::Select(SelectionChange::Toggle));
+        }
+        state
+    }
+
+    // FR-OPS-07, FR-DONE-01, FR-OPS-08
+    #[test]
+    fn toggle_done_completes_every_selected_block_in_one_step() {
+        let mut state = picking("- a\n- b @done(1)\n- c\n- d", &[0, 1, 2]);
+        state.update(done());
+        assert_eq!(
+            texts(&state),
+            [
+                "- a @done(2026-10-05)",
+                "- b @done(1)",
+                "- c @done(2026-10-05)",
+                "- d"
+            ]
+        );
+        state.update(done());
+        assert_eq!(texts(&state), ["- a", "- b", "- c", "- d"], "all were done");
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a", "- b @done(1)", "- c", "- d"]);
+    }
+
+    // FR-OPS-07, FR-TAG-06
+    #[test]
+    fn change_date_moves_each_selected_blocks_own_date() {
+        let mut state = picking("- a @due(2026-10-01)\n- b\n- c", &[0, 1]);
+        state.update(quick(DateTag::Due, DateChange::Later));
+        assert_eq!(
+            texts(&state),
+            ["- a @due(2026-10-02)", "- b @due(2026-10-06)", "- c"]
+        );
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @due(2026-10-01)", "- b", "- c"]);
+    }
+
+    // FR-OPS-07, FR-TAG-04, D-11
+    #[test]
+    fn toggle_flag_adds_to_every_selected_block_unless_all_have_it() {
+        let mut state = picking("- a @bookmark\n- b\n- c", &[0, 1]);
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(texts(&state), ["- a @bookmark", "- b @bookmark", "- c"]);
+        assert_eq!(state.notice(), Some(&Notice::Bookmark { added: true }));
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert_eq!(texts(&state), ["- a", "- b", "- c"]);
+        assert_eq!(state.notice(), Some(&Notice::Bookmark { added: false }));
+        state.update(Message::ToggleFlag(Flag::Today));
+        assert_eq!(texts(&state), ["- a @today", "- b @today", "- c"]);
     }
 }

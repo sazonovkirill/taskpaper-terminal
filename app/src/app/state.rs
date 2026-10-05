@@ -10,7 +10,7 @@ use jiff::civil::Date;
 
 use super::{
     History, color_picker::ColorPicker, date_prompt::DatePrompt, edit_mode::Session,
-    external::External, saving::Autosave,
+    external::External, saving::Autosave, selection::Selection,
 };
 use crate::document::{
     Block, BlockKind, Document, Item, ItemId, TagColor, blocks,
@@ -21,8 +21,8 @@ use crate::document::{
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
-/// whether it is saved, the focused row and any edit session on it, the collapsed blocks, the
-/// zoom with its history and the status-line notice.
+/// whether it is saved, the focused row and any edit session on it, the selected blocks, the
+/// collapsed blocks, the zoom with its history and the status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -39,6 +39,8 @@ pub struct State {
     /// The notice the status line shows, and until when.
     notice: Option<(Notice, Duration)>,
     pub(super) focus: Option<ItemId>,
+    /// The selected blocks (FR-OPS-01).
+    pub(super) selection: Selection,
     /// The edit session of the focused block, in edit mode (FR-MODE-01).
     pub(super) edit: Option<Session>,
     /// The color picker over the focused block, while it is open (FR-TAG-05).
@@ -164,6 +166,8 @@ pub struct Row {
     pub today: bool,
     /// The color that tints its text (FR-TAG-05).
     pub color: Option<TagColor>,
+    /// Whether it is selected (FR-OPS-01).
+    pub selected: bool,
 }
 
 impl Row {
@@ -191,6 +195,7 @@ impl State {
             now: Duration::ZERO,
             notice: None,
             focus: None,
+            selection: Selection::default(),
             edit: None,
             color_picker: None,
             date_prompt: None,
@@ -360,6 +365,7 @@ impl State {
             due: block.due(),
             today: block.today(),
             color: block.color(),
+            selected: self.selection.contains(block.id()),
         }
     }
 

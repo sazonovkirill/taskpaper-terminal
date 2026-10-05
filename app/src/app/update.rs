@@ -6,7 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock,
+    DateInput, MenuInput, Mode, SelectionChange, State, TextEdit, Version, saving::Ending,
+    structure::NewBlock,
 };
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, blocks, format::Typed, structure::Shift,
@@ -120,14 +121,14 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
-    /// Complete the focused block, or uncomplete it when it is done, dating it `today`
-    /// (FR-DONE-01).
+    /// Complete the selected blocks, else the focused block, dating them `today`, or uncomplete
+    /// them when all are done (FR-DONE-01, FR-OPS-07).
     ToggleDone {
         /// The frontend's local date.
         today: Date,
     },
-    /// Set or move the focused block's `tag` date as `change` says, `today` being the frontend's
-    /// local date (FR-TAG-06).
+    /// Set or move the `tag` date of the selected blocks, else the focused block, as `change`
+    /// says, `today` being the frontend's local date (FR-TAG-06, FR-OPS-07).
     ChangeDate {
         /// The date to change.
         tag: DateTag,
@@ -136,13 +137,13 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
-    /// Add the bare tag `@today` or `@bookmark` to the focused block, or remove it (FR-TAG-04,
-    /// D-11).
+    /// Add the bare tag `@today` or `@bookmark` to the selected blocks, else the focused block, or
+    /// remove it when all have it (FR-TAG-04, D-11, FR-OPS-07).
     ToggleFlag(Flag),
-    /// Give the focused block the color after its own: none, red, orange, yellow, green, blue,
-    /// violet and back to none (FR-TAG-06, D-26).
+    /// Give the selected blocks, else the focused block, the color after the focused block's own:
+    /// none, red, orange, yellow, green, blue, violet and back to none (FR-TAG-06, D-26).
     CycleColor,
-    /// Open the color picker on the focused block (FR-TAG-05).
+    /// Open the color picker on the focused block, for it or the selected blocks (FR-TAG-05).
     OpenColorPicker,
     /// A key of the open color picker (FR-TAG-05).
     ColorPicker(MenuInput),
@@ -171,9 +172,10 @@ pub enum Message {
     OpenTypeMenu,
     /// A key of the open type menu (D-44).
     TypeMenu(MenuInput),
-    /// Add a block after the focused block's subtree and edit it (FR-MODE-04).
+    /// Add a block after the focused block's subtree, or the last selected one's, and edit it
+    /// (FR-MODE-04).
     NewBelow,
-    /// Add a block before the focused block and edit it (FR-MODE-04).
+    /// Add a block before the focused block, or the first selected one, and edit it (FR-MODE-04).
     NewAbove,
     /// Add a first child to the focused block, expanding it, and edit it (FR-MODE-04).
     NewFirstChild,
@@ -188,24 +190,25 @@ pub enum Message {
     /// Stop editing and edit the next visible block that is not a divider, keeping the caret's
     /// column where it can (editing.md §2).
     EditNext,
-    /// Add a block of this type at the top of the focused block's list, its parent's children,
-    /// and edit it; a section goes before the list's first section (FR-MODE-06).
+    /// Add a block of this type at the top of the focused block's list, or the first selected
+    /// one's, its parent's children, and edit it; a section goes before the list's first section
+    /// (FR-MODE-06).
     NewTop(Typed),
     /// Add a block of this type where [`Message::NewBelow`] would and edit it (FR-MODE-06).
     NewTypedBelow(Typed),
-    /// Delete the focused block with its subtree (FR-OPS-06).
+    /// Delete the selected blocks, else the focused block, with their subtrees (FR-OPS-06).
     Delete,
-    /// Make the focused block the last child of its previous sibling (FR-OPS-02); in edit mode,
-    /// editing goes on.
+    /// Make the selected blocks, else the focused block, the last children of their previous
+    /// siblings (FR-OPS-02); in edit mode, editing goes on.
     Indent,
-    /// Make the focused block the next sibling of its parent (FR-OPS-02); in edit mode, editing
-    /// goes on.
+    /// Make the selected blocks, else the focused block, the next siblings of their parents
+    /// (FR-OPS-02); in edit mode, editing goes on.
     Outdent,
-    /// Move the focused block above its previous sibling, or at the first position into the
-    /// parent's previous sibling (FR-OPS-03).
+    /// Move the selected blocks, else the focused block, above their previous siblings, or at the
+    /// first position into the parent's previous sibling (FR-OPS-03).
     MoveUp,
-    /// Move the focused block below its next sibling, or at the last position into the parent's
-    /// next sibling (FR-OPS-03).
+    /// Move the selected blocks, else the focused block, below their next siblings, or at the
+    /// last position into the parent's next sibling (FR-OPS-03).
     MoveDown,
     /// Open the focused block's URL in the system browser (FR-BLK-06, D-10).
     OpenUrl,
@@ -216,6 +219,11 @@ pub enum Message {
         /// Why, for the status line.
         reason: String,
     },
+    /// Change which blocks are selected (FR-OPS-01).
+    Select(SelectionChange),
+    /// Put the selected blocks, else the focused block, under a new text block where the first
+    /// one was, and edit it (FR-OPS-04).
+    Group,
 }
 
 impl Message {
@@ -291,7 +299,9 @@ impl Message {
             | Self::Delete
             | Self::MoveUp
             | Self::MoveDown
-            | Self::OpenUrl => true,
+            | Self::OpenUrl
+            | Self::Select(_)
+            | Self::Group => true,
         }
     }
 }
@@ -430,15 +440,18 @@ impl State {
             Message::EditNext => self.edit_adjacent(true),
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
-            Message::Delete => self.delete_focused(),
-            Message::Indent => self.shift_focused(Shift::Indent),
-            Message::Outdent => self.shift_focused(Shift::Outdent),
-            Message::MoveUp => self.shift_focused(Shift::Up),
-            Message::MoveDown => self.shift_focused(Shift::Down),
+            Message::Delete => self.delete_selected(),
+            Message::Indent => self.shift_selected(Shift::Indent),
+            Message::Outdent => self.shift_selected(Shift::Outdent),
+            Message::MoveUp => self.shift_selected(Shift::Up),
+            Message::MoveDown => self.shift_selected(Shift::Down),
+            Message::Select(change) => self.change_selection(change),
+            Message::Group => self.group(),
             Message::OpenUrl => effects = self.open_url(),
             Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
         }
         self.repair_focus();
+        self.keep_visible_selection();
         self.expire_notice();
         effects.extend(self.save_if_due());
         effects
@@ -452,7 +465,7 @@ impl State {
 
     /// The focused block unless it is the title, which stands for the view's root: it does not
     /// fold, zoom in or move to its parent or siblings.
-    fn focused_block(&self) -> Option<Block> {
+    pub(super) fn focused_block(&self) -> Option<Block> {
         self.focused()
             .and_then(|(block, title)| (!title).then_some(block))
     }

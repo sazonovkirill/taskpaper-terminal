@@ -205,8 +205,8 @@ impl State {
         })
     }
 
-    /// Starts editing the focused block's text with the caret at its end. A divider, whose text
-    /// is its type, is not edited; a read-only file refuses with a notice.
+    /// Starts editing the focused block's text with the caret at its end, selecting nothing. A
+    /// divider, whose text is its type, is not edited; a read-only file refuses with a notice.
     pub(super) fn start_editing(&mut self) {
         let Some((block, _)) = self.focused() else {
             return;
@@ -219,6 +219,7 @@ impl State {
             return;
         }
         self.edit = self.session(&block);
+        self.clear_selection();
     }
 
     /// A session editing `block` with the caret at the end of its text.
@@ -238,6 +239,7 @@ impl State {
                 before,
                 ..session
             });
+            self.clear_selection();
         }
     }
 

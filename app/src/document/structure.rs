@@ -1,11 +1,11 @@
-//! Adding, deleting and moving blocks as line ops: where a new block goes, which type it takes and
-//! where a moved one lands ([editing.md §3–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
+//! Adding, deleting, moving and grouping blocks as line ops: where a new block goes, which type it
+//! takes and where a moved one lands ([editing.md §3–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
 //! OQ-03, special-nodes.md §1).
 
 use super::{
     blocks::{self, Block, BlockKind},
     format::{LineParts, Typed, canonical},
-    model::{Document, ItemId, Op, Snapshot},
+    model::{Document, ItemId, Op, Snapshot, Transaction},
 };
 
 /// Where a new block goes.
@@ -144,11 +144,11 @@ pub fn shift(document: &Document, block: &Block, shift: Shift, top: ItemId) -> O
         Shift::Outdent => return None,
         Shift::Up => match previous {
             Some(previous) => (parent, Spot::Before(previous.id())),
-            None => (parents_neighbor(document, parent, top, -1)?, Spot::End),
+            None => (neighbor(document, parent, top, -1)?, Spot::End),
         },
         Shift::Down => match next {
             Some(next) => (parent, Spot::After(next.id())),
-            None => (parents_neighbor(document, parent, top, 1)?, Spot::Start),
+            None => (neighbor(document, parent, top, 1)?, Spot::Start),
         },
     };
     let mut ops = repairs(document, to);
@@ -166,14 +166,77 @@ enum Spot {
     After(ItemId),
 }
 
-/// The block `by` places after (or before, when negative) the block `parent`, or `None` when
-/// `parent` is `top` or has no such neighbor.
-fn parents_neighbor(document: &Document, parent: ItemId, top: ItemId, by: isize) -> Option<ItemId> {
-    if parent == top {
+/// The ops that shift each of `blocks`, none inside another and in document order, as [`shift`]
+/// does, one after another so that they keep their order: last first when they move out or down,
+/// and a block stays when the neighbor it would pass is one of them that stayed (FR-OPS-02,
+/// FR-OPS-03, FR-OPS-07). Empty when none of them moves.
+///
+/// # Panics
+///
+/// Never: each block's ops are built from a copy of the document as the ops before them left it.
+#[must_use]
+pub fn shift_all(document: &Document, blocks: &[Block], by: Shift, top: ItemId) -> Vec<Op> {
+    let mut order: Vec<&Block> = blocks.iter().collect();
+    if matches!(by, Shift::Outdent | Shift::Down) {
+        order.reverse();
+    }
+    let passes = match by {
+        Shift::Indent | Shift::Up => Some(-1),
+        Shift::Down => Some(1),
+        Shift::Outdent => None,
+    };
+    let mut moved = document.clone();
+    let mut stayed = Vec::new();
+    let mut ops = Vec::new();
+    for block in order {
+        let blocked = passes
+            .and_then(|by| neighbor(&moved, block.id(), top, by))
+            .is_some_and(|passed| stayed.contains(&passed));
+        match shift(&moved, block, by, top).filter(|_| !blocked) {
+            Some(step) => {
+                moved
+                    .apply(&mut Transaction::new(step.clone(), (), ()))
+                    .expect("the ops are built from the copy as it is");
+                ops.extend(step);
+            }
+            None => stayed.push(block.id()),
+        }
+    }
+    ops
+}
+
+/// A new empty text block where the first of `blocks` is, with `blocks`, none inside another and
+/// in document order, moved under it in that order: its line and the ops that do this, or `None`
+/// when `blocks` is empty or one of them is not in `document` (FR-OPS-04). The new line has
+/// children but no text until the user types one (file-format.md §3.1, rule 2).
+///
+/// # Panics
+///
+/// Never: each op is built from a copy of the document as the ops before it left it.
+#[must_use]
+pub fn group(document: &mut Document, blocks: &[Block]) -> Option<(ItemId, Vec<Op>)> {
+    let (id, mut ops) = new_block(document, Place::Above(blocks.first()?), Some(Typed::Text))?;
+    let mut grouped = document.clone();
+    let mut step = ops.clone();
+    for block in blocks {
+        grouped
+            .apply(&mut Transaction::new(step, (), ()))
+            .expect("the ops are built from the copy as it is");
+        let op = relocate(&grouped, block.id(), id, Spot::End)?;
+        ops.push(op.clone());
+        step = vec![op];
+    }
+    Some((id, ops))
+}
+
+/// The block `by` places after (or before, when negative) the block `line`, or `None` when
+/// `line` is `top` or has no such neighbor.
+fn neighbor(document: &Document, line: ItemId, top: ItemId, by: isize) -> Option<ItemId> {
+    if line == top {
         return None;
     }
-    let siblings = blocks::children(document, document.get(parent)?.parent()?);
-    let at = siblings.iter().position(|sibling| sibling.id() == parent)?;
+    let siblings = blocks::children(document, document.get(line)?.parent()?);
+    let at = siblings.iter().position(|sibling| sibling.id() == line)?;
     Some(siblings.get(at.checked_add_signed(by)?)?.id())
 }
 
@@ -616,5 +679,117 @@ mod tests {
         for by in [Shift::Indent, Shift::Outdent, Shift::Up, Shift::Down] {
             assert_eq!(shift(&document, &stale, by, document.root()), None);
         }
+    }
+
+    /// The lines of `text` once the blocks reading `of` all shift together, with the ops checked
+    /// to undo.
+    #[track_caller]
+    fn all_shifted(text: &str, of: &[&str], by: Shift) -> Vec<String> {
+        let mut document = format::parse(text);
+        let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
+        let ops = shift_all(&document, &blocks, by, document.root());
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after = lines(&document, None);
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        after
+    }
+
+    // FR-OPS-02, FR-OPS-07
+    #[test]
+    fn many_blocks_indent_and_outdent_together_in_order() {
+        let text = "- x\n- a\n- b\n- y\n- c";
+        assert_eq!(
+            all_shifted(text, &["- a", "- b", "- c"], Shift::Indent),
+            ["- x", "\t- a", "\t- b", "- y", "\t- c"]
+        );
+        assert_eq!(
+            all_shifted("- a\n- b\n- c", &["- a", "- b"], Shift::Indent),
+            ["- a", "- b", "- c"],
+            "the first cannot, so the one after it stays beside it"
+        );
+        assert_eq!(
+            all_shifted("P:\n\t- a\n\t- b\n\t- c", &["- a", "- b"], Shift::Outdent),
+            ["P:", "\t- c", "- a", "- b"]
+        );
+    }
+
+    // FR-OPS-03, FR-OPS-07
+    #[test]
+    fn many_blocks_move_up_and_down_together_in_order() {
+        let text = "- x\n- a\n- b\n- y";
+        assert_eq!(
+            all_shifted(text, &["- a", "- b"], Shift::Up),
+            ["- a", "- b", "- x", "- y"]
+        );
+        assert_eq!(
+            all_shifted(text, &["- a", "- b"], Shift::Down),
+            ["- x", "- y", "- a", "- b"]
+        );
+        assert_eq!(
+            all_shifted("- a\n- b\n- c", &["- a", "- b"], Shift::Up),
+            ["- a", "- b", "- c"],
+            "nothing passes the first that stayed"
+        );
+        assert_eq!(
+            all_shifted("- a\n- b\n- c", &["- b", "- c"], Shift::Down),
+            ["- a", "- b", "- c"],
+            "nor the last that stayed"
+        );
+        assert_eq!(
+            all_shifted("P:\n\t- x\nQ:\n\t- a\n\t- b", &["- a", "- b"], Shift::Up),
+            ["P:", "\t- x", "\t- a", "\t- b", "Q:"],
+            "across into the parent's neighbor"
+        );
+        assert_eq!(
+            all_shifted("P:\n\t- a\n\t- b\nQ:\n\t- x", &["- a", "- b"], Shift::Down),
+            ["P:", "Q:", "\t- a", "\t- b", "\t- x"]
+        );
+    }
+
+    #[test]
+    fn no_blocks_shift_without_ops() {
+        let document = format::parse("- a");
+        assert_eq!(shift_all(&document, &[], Shift::Up, document.root()), []);
+    }
+
+    /// The lines of `text` once the blocks reading `of` are grouped, with the new line marked
+    /// and the ops checked to undo; `None` when nothing is grouped.
+    #[track_caller]
+    fn grouped(text: &str, of: &[&str]) -> Option<Vec<String>> {
+        let mut document = format::parse(text);
+        let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
+        let (id, ops) = group(&mut document, &blocks)?;
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after = lines(&document, Some(id));
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        Some(after)
+    }
+
+    // FR-OPS-04
+    #[test]
+    fn group_puts_the_blocks_under_a_new_text_block_where_the_first_was() {
+        assert_eq!(
+            grouped("- x\n- a\n\t- c\n- y\n- b", &["- a", "- b"]).unwrap(),
+            ["- x", ">", "\t- a", "\t\t- c", "\t- b", "- y"]
+        );
+        assert_eq!(
+            grouped("P:\n\t- a\nQ:\n\t- b", &["- a", "- b"]).unwrap(),
+            ["P:", "\t>", "\t\t- a", "\t\t- b", "Q:"],
+            "from different lists, where the first was"
+        );
+        assert_eq!(grouped("- a", &[]), None);
+    }
+
+    #[test]
+    fn a_group_with_a_block_not_in_the_document_is_not_made() {
+        let other = format::parse("- x\n- y\n- z\n- w");
+        let mut document = format::parse("- a");
+        let blocks = [block(&document, "- a"), block(&other, "- w")];
+        assert_eq!(group(&mut document, &blocks[1..]), None);
+        assert_eq!(group(&mut document, &blocks), None);
     }
 }

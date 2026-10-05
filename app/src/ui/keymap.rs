@@ -6,7 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::{
-    app::{DateInput, MenuInput, Message, Mode, Motion, TextEdit},
+    app::{DateInput, MenuInput, Message, Mode, Motion, SelectionChange, TextEdit},
     document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
 };
 
@@ -184,6 +184,20 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(alt 'j')], |_| Message::MoveDown),
     (&[key!(alt Down)], |_| Message::MoveDown),
     (&[key!('g'), key!('x')], |_| Message::OpenUrl),
+    (&[key!('g'), key!('G')], |_| Message::Group),
+    (&[key!('J')], |_| {
+        Message::Select(SelectionChange::ExtendDown)
+    }),
+    (&[key!(shift Down)], |_| {
+        Message::Select(SelectionChange::ExtendDown)
+    }),
+    (&[key!('K')], |_| Message::Select(SelectionChange::ExtendUp)),
+    (&[key!(shift Up)], |_| {
+        Message::Select(SelectionChange::ExtendUp)
+    }),
+    (&[key!('v')], |_| Message::Select(SelectionChange::Toggle)),
+    (&[key!(ctrl 'a')], |_| Message::Select(SelectionChange::All)),
+    (&[key!(Esc)], |_| Message::Select(SelectionChange::Clear)),
 ];
 
 /// Changing the focused block's `tag` date as `change` says, from the local date (FR-TAG-06).
@@ -1080,9 +1094,53 @@ mod tests {
         assert_eq!(keymap.pending(), "");
     }
 
+    // FR-OPS-01, D-42
+    #[test]
+    fn selection_keys_extend_toggle_select_all_and_clear() {
+        let none = KeyModifiers::NONE;
+        let shift = KeyModifiers::SHIFT;
+        let down = Some(&Message::Select(SelectionChange::ExtendDown));
+        let up = Some(&Message::Select(SelectionChange::ExtendUp));
+        check(KeyCode::Char('J'), none, down);
+        check(KeyCode::Char('J'), shift, down);
+        check(KeyCode::Char('j'), shift, down);
+        check(KeyCode::Down, shift, down);
+        check(KeyCode::Char('K'), shift, up);
+        check(KeyCode::Char('k'), shift, up);
+        check(KeyCode::Up, shift, up);
+        check(
+            KeyCode::Char('v'),
+            none,
+            Some(&Message::Select(SelectionChange::Toggle)),
+        );
+        check(
+            KeyCode::Char('a'),
+            KeyModifiers::CONTROL,
+            Some(&Message::Select(SelectionChange::All)),
+        );
+        check(
+            KeyCode::Esc,
+            none,
+            Some(&Message::Select(SelectionChange::Clear)),
+        );
+    }
+
+    // FR-OPS-04
+    #[test]
+    fn g_shift_g_groups() {
+        let mut keymap = Keymap::default();
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&g, ms(0), CONTEXT), None);
+        let shifted = key(KeyCode::Char('G'), KeyModifiers::SHIFT);
+        assert_eq!(
+            keymap.message_for(&shifted, ms(1), CONTEXT),
+            Some(Message::Group)
+        );
+    }
+
     #[test]
     fn shift_only_drops_from_characters() {
-        check(KeyCode::Down, KeyModifiers::SHIFT, None);
+        check(KeyCode::Right, KeyModifiers::SHIFT, None);
         check(KeyCode::Char('x'), KeyModifiers::ALT, None);
     }
 

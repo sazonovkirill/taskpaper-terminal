@@ -13,7 +13,12 @@ use jiff::{
     civil::{Date, DateTime, date},
     tz::TimeZone,
 };
-use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, style::Color};
+use ratatui::{
+    Terminal,
+    backend::TestBackend,
+    buffer::Buffer,
+    style::{Color, Modifier},
+};
 use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
@@ -216,9 +221,23 @@ pub fn outline_line(buffer: &Buffer, y: u16) -> String {
         .to_owned()
 }
 
-/// Whether row `y` carries the focus marker in the gutter.
+/// Whether row `y` carries the focus marker in the gutter, which a selected row carries dimmed.
 pub fn is_focused(buffer: &Buffer, y: u16) -> bool {
-    buffer[(buffer.area.left(), y)].symbol() == "▎"
+    let cell = &buffer[(buffer.area.left(), y)];
+    cell.symbol() == "▎" && !cell.modifier.contains(Modifier::DIM)
+}
+
+/// The text of every row marked as selected but not focused, after the gutter.
+pub fn selected_rows(app: &mut Harness) -> Vec<String> {
+    let buffer = app.render().buffer().clone();
+    let area = buffer.area;
+    (area.top()..area.bottom())
+        .filter(|&y| {
+            let cell = &buffer[(area.left(), y)];
+            cell.symbol() == "▎" && cell.modifier.contains(Modifier::DIM)
+        })
+        .map(|y| outline_line(&buffer, y))
+        .collect()
 }
 
 /// The text of every row marked as focused, after the gutter.

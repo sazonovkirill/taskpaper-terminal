@@ -113,7 +113,7 @@ impl State {
     }
 
     /// Applies `input` to the open color picker, and once a color or none is chosen, gives it to
-    /// the focused block.
+    /// the selected blocks, else the focused block.
     pub(super) fn color_picker_input(&mut self, input: MenuInput) {
         let Some(closed) = self
             .color_picker
@@ -128,16 +128,19 @@ impl State {
         }
     }
 
-    /// Gives the focused block `color`, or none (FR-TAG-05).
+    /// Gives the selected blocks, else the focused block, `color`, or none (FR-TAG-05,
+    /// FR-OPS-07).
     fn set_color(&mut self, color: Option<TagColor>) {
-        if let Some((block, _)) = self.focused()
-            && let Some(op) = metadata::set_color(self.document(), &block, color)
-        {
-            self.commit(vec![op]);
-        }
+        let ops = self
+            .targets()
+            .iter()
+            .filter_map(|block| metadata::set_color(self.document(), block, color))
+            .collect();
+        self.commit_any(ops);
     }
 
-    /// `c`: gives the focused block the color after its own in the cycle (D-26).
+    /// `c`: gives the selected blocks, else the focused block, the color after the focused
+    /// block's own in the cycle (D-26).
     pub(super) fn cycle_color(&mut self) {
         if let Some((block, _)) = self.focused() {
             self.set_color(TagColor::cycle(block.color()));
@@ -151,7 +154,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Access, Message, Notice},
+        app::{Access, Message, Notice, SelectionChange},
         document::{Document, format},
     };
 
@@ -302,5 +305,35 @@ mod tests {
         pick(&mut state, MenuInput::Choose);
         assert_eq!(text(&state), "- a");
         assert_eq!(state.notice(), Some(&Notice::ReadOnly));
+    }
+
+    /// Each line's text.
+    fn texts(state: &State) -> Vec<String> {
+        let document = state.document();
+        document
+            .descendants(document.root())
+            .map(|(id, _)| document.get(id).unwrap().text().to_owned())
+            .collect()
+    }
+
+    // FR-OPS-07, FR-TAG-05, D-26
+    #[test]
+    fn every_selected_block_takes_the_color_after_the_focused_ones_or_the_one_picked() {
+        let mut state = State::new(format::parse("- a @red\n- b @blue\n- c"), None);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::CycleColor);
+        assert_eq!(
+            texts(&state),
+            ["- a @violet", "- b @violet", "- c"],
+            "after the focused b's blue"
+        );
+        state.update(Message::OpenColorPicker);
+        assert_eq!(listed(&state).1, 5, "the focused block's violet");
+        pick(&mut state, MenuInput::Previous);
+        pick(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), ["- a @blue", "- b @blue", "- c"]);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @red", "- b @blue", "- c"]);
     }
 }

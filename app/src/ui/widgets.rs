@@ -25,9 +25,9 @@ use crate::{
     },
 };
 
-/// The outline: a gutter that marks the focused block, whose line gets a brighter background, then
-/// one line per block, 2 columns of indent per level, a marker and the text, with its date chips
-/// at the right edge. A block being edited shows the text as typed instead, without chips.
+/// The outline: a gutter that marks the focused block, whose line gets a brighter background, and
+/// the selected blocks, then one line per block, 2 columns of indent per level, a marker and the
+/// text, with its date chips at the right edge. A block being edited shows the text as typed instead, without chips.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
@@ -100,6 +100,8 @@ impl Widget for OutlineView<'_> {
             chips.render(line_area, buf);
             if focused {
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
+            } else if self.rows.get(index).is_some_and(|row| row.selected) {
+                Span::styled(FOCUS_MARKER, selection_style()).render(gutter_area, buf);
             }
         }
     }
@@ -109,7 +111,7 @@ impl Widget for OutlineView<'_> {
 /// root crumb lines up with top-level blocks (D-35).
 pub const GUTTER_WIDTH: u16 = 2;
 
-/// Marks the focused block in the gutter (D-30).
+/// Marks the focused block in the gutter (D-30), and dimmed, each selected one (ui.md §2).
 const FOCUS_MARKER: &str = "▎";
 
 /// Stands for the document root in the breadcrumbs (D-32).
@@ -761,6 +763,12 @@ fn warning_style() -> Style {
     Style::new().fg(Color::Yellow)
 }
 
+/// The marker of a selected block that is not focused: the focus marker, dimmer (ui.md §2);
+/// themes arrive in step 6.2.
+fn selection_style() -> Style {
+    Style::new().fg(PRIMARY).dim()
+}
+
 /// The band behind every line of the focused block, the full width of the pane, a step brighter
 /// than a dark terminal's background (D-39); themes arrive in step 6.2.
 fn current_line_style() -> Style {
@@ -771,7 +779,7 @@ fn current_line_style() -> Style {
 mod tests {
     use super::*;
     use crate::{
-        app::{Message, State},
+        app::{Message, SelectionChange, State},
         document::format,
     };
 
@@ -1452,6 +1460,24 @@ mod tests {
         expected.set_style(Rect::new(2, 2, 6, 1), current_line_style());
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(2, Some(3), area), expected);
+    }
+
+    // FR-OPS-01, ui.md §2
+    #[test]
+    fn marks_each_selected_row_with_a_dimmer_marker_and_no_band() {
+        let mut state = State::new(format::parse("- a\n- b\n- c"), None);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        let rows = state.rows();
+        let area = Rect::new(0, 0, 5, 3);
+        let mut buf = Buffer::empty(area);
+        OutlineView::new(&rows, TODAY)
+            .focused(Some(1))
+            .render(area, &mut buf);
+        let mut expected = Buffer::with_lines(["▎ - a", "▎ - b", "  - c"]);
+        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
+        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 0, 1, 1), selection_style());
+        assert_eq!(buf, expected);
     }
 
     #[test]
