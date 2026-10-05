@@ -25,9 +25,9 @@ fn shows_the_file_as_an_indented_outline() {
     expected.set_style(Rect::new(2, 0, 34, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 36, 1), Style::new().dark_gray());
     expected.set_style(Rect::new(2, 2, 10, 1), project);
-    expected.set_style(Rect::new(6, 5, 27, 1), Style::new().dim());
+    expected.set_style(Rect::new(6, 5, 27, 1), Style::new().gray());
     expected.set_style(Rect::new(4, 6, 6, 1), project);
-    expected.set_style(Rect::new(2, 8, 21, 1), Style::new().dim());
+    expected.set_style(Rect::new(2, 8, 21, 1), Style::new().gray());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);

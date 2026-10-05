@@ -62,9 +62,11 @@ fn draws_every_block_type_and_hides_special_nodes() {
         Color::LightBlue,
         "projects use the primary color"
     );
+    let note = &buffer[(4, 3)];
+    assert_eq!(note.fg, Color::Gray, "notes are dimmed");
     assert!(
-        buffer[(4, 3)].modifier.contains(Modifier::DIM),
-        "notes are dimmed"
+        !note.modifier.contains(Modifier::DIM),
+        "notes are less dim than done tasks"
     );
     let divider = &buffer[(4, 9)];
     assert_eq!(divider.fg, Color::DarkGray, "dividers use the rule color");

@@ -214,3 +214,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-34 | When zoomed, the title row shows the zoom block styled by its type, in bold (owner, 2026-10-05, M1 review). A project is colored and ends in `:`, a section is colored, a task has its open or done marker, and a note is dimmed. Details in [ui.md §1](specs/ui.md#1-layout). |
 | D-35 | The breadcrumb header starts after the focus gutter, so the root crumb is in the same column as top-level blocks (owner, 2026-10-05, M1 review). The rule under it and the status line stay full width. Details in [ui.md §1](specs/ui.md#1-layout). |
 | D-36 | A done task's `✔` is dimmed like its text, so the whole row recedes (owner, 2026-10-05, M1 review). Details in [ui.md §2](specs/ui.md#2-blocks). |
+| D-37 | Notes are less dim than done tasks (owner, 2026-10-05, M1 review). Until themes arrive, notes use the ANSI gray, and done tasks keep the terminal's dim attribute. Details in [ui.md §2](specs/ui.md#2-blocks). |

@@ -112,7 +112,7 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
         BlockKind::Code => ("", code_style().dim()),
-        BlockKind::Note => ("", Style::new().dim()),
+        BlockKind::Note => ("", Style::new().fg(NOTE)),
         BlockKind::Divider => ("", divider_style()),
     };
     let style = if row.title { style.bold() } else { style };
@@ -184,6 +184,10 @@ fn divider_style() -> Style {
 /// The theme's accent (Textual's `$primary`), for projects; themes arrive in step 6.2.
 const PRIMARY: Color = Color::LightBlue;
 
+/// Note text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
+/// step 6.2.
+const NOTE: Color = Color::Gray;
+
 /// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
 const SECONDARY: Color = Color::LightMagenta;
 
@@ -245,8 +249,8 @@ mod tests {
             "note         ",
         ]);
         expected.set_style(Rect::new(0, 0, 5, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().dim());
-        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().dim());
+        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().fg(NOTE));
+        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().fg(NOTE));
         assert_eq!(
             render("Home:\n\t- Milk\n\t\ton sale\nnote", 13, 4),
             expected
@@ -260,7 +264,7 @@ mod tests {
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
         expected.set_style(Rect::new(0, 2, 2, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().dim());
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(NOTE));
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
@@ -287,7 +291,7 @@ mod tests {
         let dim = Style::new().dim();
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(2, 0, 4, 1), dim);
-        expected.set_style(Rect::new(0, 1, 1, 2), dim);
+        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(NOTE));
         expected.set_style(Rect::new(1, 2, 4, 1), dim);
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().bold().fg(SECONDARY));
         expected.set_style(Rect::new(1, 3, 4, 1), dim);
@@ -321,7 +325,7 @@ mod tests {
             draw(&state.rows(), 6, 3)
         };
         let mut expected = Buffer::with_lines(["n     ", "m     ", "  - t "]);
-        expected.set_style(Rect::new(0, 0, 1, 2), Style::new().bold().dim());
+        expected.set_style(Rect::new(0, 0, 1, 2), Style::new().bold().fg(NOTE));
         assert_eq!(title("P:\n\tn\n\tm\n\t\t- t"), expected, "a note is dim");
         let mut expected = Buffer::with_lines(["Q:    ", "  - t ", "      "]);
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
@@ -359,7 +363,7 @@ mod tests {
             .render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines(["  - a ", "▎ n   ", "▎ m   "]);
         expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(2, 1, 1, 2), Style::new().dim());
+        expected.set_style(Rect::new(2, 1, 1, 2), Style::new().fg(NOTE));
         assert_eq!(buf, expected);
     }
 
