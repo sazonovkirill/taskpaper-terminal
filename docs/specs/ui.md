@@ -59,7 +59,7 @@ Each row: indent (2 columns per level), then text and right-aligned chips. Tasks
 - A theme defines colors for: text, dim text, accent, selection, focus, headers, rule lines, code, links, each of the six tag colors, chips, overdue, errors.
 - The theme picker in Go to Command previews each theme live as it is highlighted; `Enter` keeps it and saves it to the config (OQ-18), `Esc` restores the previous one.
 - `NO_COLOR` set: no colors, only bold, dim, italic, underline, strikethrough and reverse.
-- Unicode markers have ASCII fallbacks (`v`, `>`, `[ ]`, `[x]`, `-`) when the locale is not UTF-8.
+- Unicode markers have ASCII fallbacks (`v`, `>`, `[x]`, `-`) when the locale is not UTF-8.
 - The settings window (§8) previews themes live in the same way.
 
 ## 4. Shortcuts panel (FR-KEY-04)
