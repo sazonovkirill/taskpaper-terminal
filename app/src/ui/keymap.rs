@@ -132,6 +132,11 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl 'y')], |_| Message::Redo),
     (&[key!(Enter)], |_| Message::EditAtEnd),
     (&[key!('i')], |_| Message::EditAtStart),
+    (&[key!('o')], |_| Message::NewBelow),
+    (&[key!('O')], |_| Message::NewAbove),
+    (&[key!(alt 'o')], |_| Message::NewChild),
+    (&[key!('d'), key!('d')], |_| Message::Delete),
+    (&[key!(Delete)], |_| Message::Delete),
 ];
 
 /// What a key does while the conflict prompt is open (file-io.md §3).
@@ -187,8 +192,7 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
 const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
-    // Until creating blocks exists, `Enter` only ends editing.
-    (&[key!(Enter)], |_| Message::StopEditing),
+    (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(Left)], |_| go(Motion::Left, false)),
     (&[key!(Right)], |_| go(Motion::Right, false)),
     (&[key!(ctrl Left)], |_| go(Motion::WordLeft, false)),
@@ -430,6 +434,32 @@ mod tests {
         );
     }
 
+    // FR-MODE-04, FR-OPS-06
+    #[test]
+    fn creating_and_deleting_keys() {
+        let none = KeyModifiers::NONE;
+        check(KeyCode::Char('o'), none, Some(&Message::NewBelow));
+        check(
+            KeyCode::Char('O'),
+            KeyModifiers::SHIFT,
+            Some(&Message::NewAbove),
+        );
+        check(
+            KeyCode::Char('o'),
+            KeyModifiers::ALT,
+            Some(&Message::NewChild),
+        );
+        check(KeyCode::Delete, none, Some(&Message::Delete));
+        let mut keymap = Keymap::default();
+        let d = key(KeyCode::Char('d'), none);
+        assert_eq!(keymap.message_for(&d, ms(0), CONTEXT), None);
+        assert_eq!(keymap.pending(), "d");
+        assert_eq!(
+            keymap.message_for(&d, ms(1), CONTEXT),
+            Some(Message::Delete)
+        );
+    }
+
     /// The message each key sends in edit mode.
     #[track_caller]
     fn check_editing(code: KeyCode, modifiers: KeyModifiers, expected: Option<&Message>) {
@@ -470,12 +500,12 @@ mod tests {
         check_editing(KeyCode::Tab, none, None);
     }
 
-    // FR-MODE-01
+    // FR-MODE-01, FR-MODE-04
     #[test]
-    fn esc_and_enter_stop_editing_and_ctrl_q_quits() {
+    fn esc_stops_editing_enter_adds_the_next_block_and_ctrl_q_quits() {
         let none = KeyModifiers::NONE;
         check_editing(KeyCode::Esc, none, Some(&Message::StopEditing));
-        check_editing(KeyCode::Enter, none, Some(&Message::StopEditing));
+        check_editing(KeyCode::Enter, none, Some(&Message::NewNext));
         check_editing(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,

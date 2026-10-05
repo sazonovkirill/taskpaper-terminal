@@ -8,6 +8,7 @@ pub mod external;
 pub mod history;
 pub mod saving;
 pub mod state;
+mod structure;
 pub mod text_field;
 pub mod update;
 

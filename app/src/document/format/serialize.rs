@@ -23,7 +23,8 @@ pub fn serialize(document: &Document) -> String {
     let last = lines.len().checked_sub(1);
     for (index, (content, &(item, _))) in contents.iter().zip(&lines).enumerate() {
         text.push_str(content);
-        if Some(index) != last || format.trailing_newline {
+        // An empty last line is only read back when a line break ends it (file-format.md §3.1).
+        if Some(index) != last || format.trailing_newline || content.is_empty() {
             text.push_str(line_break(item, format.line_ending));
         }
     }
@@ -448,6 +449,24 @@ mod tests {
         assert_eq!(serialize(&document), "was last\r\nnow last");
     }
 
+    // file-format §3.1, §6
+    #[test]
+    fn a_last_empty_line_ends_with_a_line_break_even_without_a_trailing_newline() {
+        let mut document = parse("P:");
+        let root = document.root();
+        document.push_child(root, String::new(), 0);
+        assert_eq!(serialize(&document), "P:\n\n");
+        let mut document = parse("");
+        let root = document.root();
+        document.push_child(root, String::new(), 0);
+        assert_eq!(serialize(&document), "\n");
+        assert_eq!(
+            serialize(&parse("P:\n  ")),
+            "P:\n  ",
+            "a blank line written as read"
+        );
+    }
+
     #[test]
     fn a_blank_line_is_kept_while_the_next_line_still_gives_it_its_depth() {
         let mut document = Document::default();
@@ -584,11 +603,6 @@ mod tests {
             specs in line_specs(),
             format in formats(),
         ) {
-            let mut format = format;
-            if specs.last().is_some_and(|(_, _, text)| text.is_empty()) {
-                // Without a final line break, a last empty line would not be read back.
-                format.trailing_newline = true;
-            }
             let document = canonical(&specs, format);
             let text = serialize(&document);
             let reparsed = parse_bytes(text.as_bytes()).unwrap();

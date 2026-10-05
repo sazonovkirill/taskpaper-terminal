@@ -180,6 +180,8 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             format!("cannot take the version on disk: {reason}"),
             error_style(),
         ),
+        Notice::NotesMerged => Span::raw("Notes merged"),
+        Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
     }
 }
 
@@ -840,6 +842,11 @@ mod tests {
         let copy = std::path::PathBuf::from("/b/c.taskpaper");
         for (notice, expected) in [
             (Notice::Reloaded, plain("Reloaded (changed on disk)")),
+            (Notice::NotesMerged, plain("Notes merged")),
+            (
+                Notice::BlanksLifted,
+                plain("Empty lines at the end moved to the top level"),
+            ),
             (
                 Notice::KeptMine { copy: copy.clone() },
                 plain("Kept your version; the one on disk is in /b/c.taskpaper"),

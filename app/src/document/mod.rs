@@ -4,6 +4,7 @@ pub mod blocks;
 pub mod format;
 pub mod metadata;
 pub mod model;
+pub mod structure;
 
 pub use blocks::{Block, BlockKind};
 pub use format::DecodeError;

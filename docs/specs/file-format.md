@@ -82,7 +82,7 @@ The model keeps the line text as the single source of truth and derives tags by 
 
 ## 6. Serialization
 
-Each item in document order is written as indent + body; lines are joined with the line ending, and a final line ending is added only when `trailing_newline` is set.
+Each item in document order is written as indent + body; lines are joined with the line ending, and a final line ending is added only when `trailing_newline` is set or the last line is written empty, which would otherwise not be read back.
 
 - **Indent**: `depth` units of the remembered indent unit (OQ-14 default "preserve"). New files use tabs.
 - **Line ending**: the remembered one; `\n` for new files.

@@ -44,6 +44,11 @@ pub struct Editor<'a> {
 pub(super) struct Session {
     /// The block's only line.
     id: ItemId,
+    /// The applied ops that created the block for this session, undone with it as one step; empty
+    /// for a block that was there before.
+    created: Vec<Op>,
+    /// The focus before the session's step.
+    before: Option<ItemId>,
     /// The line's text when the session started.
     original: String,
     /// The parts and text the session started with, which stand for `original` as it was.
@@ -64,6 +69,8 @@ impl Session {
         let (parts, text) = LineParts::split(&original);
         Self {
             id,
+            created: Vec::new(),
+            before: Some(id),
             original,
             field: TextField::new(text.clone(), at_end),
             start: (parts.clone(), text),
@@ -183,12 +190,29 @@ impl State {
         self.edit = Some(Session::new(block.id(), original, at_end));
     }
 
+    /// Starts editing the new line `id`, which the applied `created` ops put in while the focus
+    /// was on `before`, with an empty text (FR-MODE-04).
+    pub(super) fn edit_new_block(&mut self, id: ItemId, created: Vec<Op>, before: Option<ItemId>) {
+        if let Some(original) = self.document.get(id).map(|item| item.text().to_owned()) {
+            self.edit = Some(Session {
+                created,
+                before,
+                ..Session::new(id, original, true)
+            });
+        }
+    }
+
     /// Applies `edit` to the text being edited and writes it to the document, or shows why a
-    /// tag cannot be typed (OQ-25).
+    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead
+    /// (editing.md §2).
     pub(super) fn edit_text(&mut self, edit: TextEdit) {
         let Some(session) = &mut self.edit else {
             return;
         };
+        if edit == TextEdit::DeleteBackward && session.field.text().is_empty() {
+            self.delete_empty_block();
+            return;
+        }
         if session.edit(edit) {
             self.write_line();
         } else {
@@ -213,7 +237,8 @@ impl State {
     }
 
     /// Ends editing: repairs the line where it breaks canonical-outline rule 2 or 4, then records
-    /// the whole session as one step to undo (file-format.md §3.1, FR-OPS-08).
+    /// the whole session, with the block's creation, as one step to undo (file-format.md §3.1,
+    /// FR-OPS-08).
     pub(super) fn stop_editing(&mut self) {
         let only_line = self.only_line();
         let Some((session, repaired)) = self.edit.take().and_then(|session| {
@@ -224,28 +249,75 @@ impl State {
             return;
         };
         self.set_line(session.id, repaired.clone());
+        let mut ops = session.created;
         if repaired != session.original {
-            let restore = Restore {
-                focus: Some(session.id),
-            };
-            let op = Op::SetText {
+            ops.push(Op::SetText {
                 id: session.id,
                 before: session.original,
                 after: repaired,
+            });
+        }
+        let before = Restore {
+            focus: session.before,
+        };
+        let after = Restore {
+            focus: Some(session.id),
+        };
+        self.edits.record(Transaction::new(ops, before, after));
+    }
+
+    /// Records the creation of the block being edited as a step of its own, so that a step
+    /// committed while it is edited, which may count its line, comes after it in the history and
+    /// is undone before it.
+    pub(super) fn record_creation(&mut self) {
+        if let Some(session) = self
+            .edit
+            .as_mut()
+            .filter(|session| !session.created.is_empty())
+        {
+            let before = Restore {
+                focus: session.before.replace(session.id),
             };
-            self.edits
-                .record(Transaction::new(vec![op], restore, restore));
+            let after = Restore {
+                focus: Some(session.id),
+            };
+            let ops = mem::take(&mut session.created);
+            self.edits.record(Transaction::new(ops, before, after));
         }
     }
 
-    /// Whether saving waits because the line being edited breaks rule 2 or 4 for now: typing may
-    /// repair it, and ending the session does (file-format.md §3.1).
+    /// Ends a session that created its block by taking the block out again, leaving no step to
+    /// undo, and returns whether it did. A session on a block that was there before, or whose
+    /// block can no longer be taken out that way, is left going.
+    pub(super) fn discard_new_block(&mut self) -> bool {
+        let Some(session) = self
+            .edit
+            .as_ref()
+            .filter(|session| !session.created.is_empty())
+        else {
+            return false;
+        };
+        let (id, original) = (session.id, session.original.clone());
+        let mut undo = Transaction::new(session.created.clone(), (), ()).inverse();
+        self.set_line(id, original);
+        if self.document.apply(&mut undo).is_err() {
+            return false;
+        }
+        self.edit = None;
+        true
+    }
+
+    /// Whether saving waits because the line being edited breaks rule 2 or 4 for now, or is one
+    /// of the empty lines ending the document that break rule 3: typing may repair it, and ending
+    /// the session or the save after it does (file-format.md §3.1).
     pub(super) fn editing_holds_save(&self) -> bool {
         self.edit
             .as_ref()
-            .and_then(|session| self.document.get(session.id))
-            .is_some_and(|item| {
+            .and_then(|session| Some((session.id, self.document.get(session.id)?)))
+            .is_some_and(|(id, item)| {
                 canonical::needs_repair(item.text(), !item.children().is_empty(), self.only_line())
+                    || item.text().is_empty()
+                        && canonical::trailing_blanks(&self.document).contains(&id)
             })
     }
 

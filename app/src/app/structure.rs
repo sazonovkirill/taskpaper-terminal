@@ -1,0 +1,606 @@
+//! Adding a block next to the focused one to type into, and deleting blocks, each one step to
+//! undo ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
+//! FR-MODE-04, FR-OPS-06, OQ-26).
+
+use super::{Access, Notice, Restore, State};
+use crate::document::{
+    Block, Item, ItemId, Transaction, blocks,
+    structure::{self, Place},
+};
+
+/// Where a new block goes, relative to the focused block (editing.md §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum NewBlock {
+    /// After its subtree, as its next sibling.
+    Below,
+    /// As its previous sibling.
+    Above,
+    /// As its first child.
+    Child,
+    /// As its first child when it shows children, else below it, as `Enter` ends editing.
+    Next,
+}
+
+impl State {
+    /// Adds an empty block where `new` says and edits it (FR-MODE-04). On the zoom title, which
+    /// stands for the view's root, the block becomes the first one under it; in an outline
+    /// without rows it is the first block. A read-only file refuses with a notice.
+    pub(super) fn add_block(&mut self, new: NewBlock) {
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
+            return;
+        }
+        let focused = self.focused();
+        let place = match &focused {
+            None => Place::Start,
+            Some((block, true)) => Place::FirstChild(block),
+            Some((block, false)) => match new {
+                NewBlock::Above => Place::Above(block),
+                NewBlock::Child => Place::FirstChild(block),
+                NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
+                NewBlock::Below | NewBlock::Next => Place::Below(block),
+            },
+        };
+        let (id, ops) = structure::new_block(&mut self.document, place)
+            .expect("the focused block was just found in the document");
+        if let (Place::FirstChild(block), Some((_, false))) = (place, &focused) {
+            self.folds.remove(&block.id());
+        }
+        let mut transaction = Transaction::new(ops, (), ());
+        self.document
+            .apply(&mut transaction)
+            .expect("the ops are built from the document as it is, with a fresh id");
+        let before = self.focus;
+        self.focus = Some(id);
+        self.edit_new_block(id, transaction.ops().to_vec(), before);
+    }
+
+    /// Deletes the focused block with its subtree and focuses the next visible block, else the
+    /// previous one (FR-OPS-06). The zoom title, which stands for the view's root, stays.
+    pub(super) fn delete_focused(&mut self) {
+        let Some((block, false)) = self.focused() else {
+            return;
+        };
+        let rows = self.rows();
+        let mut from = rows.iter().skip_while(|row| row.id != block.id());
+        let depth = from.next().map_or(0, |row| row.depth);
+        let next = from.find(|row| row.depth <= depth);
+        let previous = rows.iter().take_while(|row| row.id != block.id()).last();
+        self.delete_block(&block, next.or(previous).map(|row| row.id));
+    }
+
+    /// `Backspace` in an empty block: deletes it and edits the previous visible block at its end
+    /// (editing.md §2). A block with children, whose subtree a text key should not take, and the
+    /// first row stay. A block made for this session goes without a trace in the history.
+    pub(super) fn delete_empty_block(&mut self) {
+        let Some((block, false)) = self.focused() else {
+            return;
+        };
+        let leaf = self
+            .document
+            .get(block.last_line())
+            .is_some_and(|item| item.children().is_empty());
+        let rows = self.rows();
+        let previous = rows.iter().take_while(|row| row.id != block.id()).last();
+        let Some(previous) = previous.filter(|_| leaf).map(|row| row.id) else {
+            return;
+        };
+        if !self.discard_new_block() {
+            self.stop_editing();
+            self.delete_block(&block, Some(previous));
+        }
+        self.focus = Some(previous);
+        self.start_editing(true);
+    }
+
+    /// Deletes `block` with its subtree as one step to undo that ends with `focus`, saying so
+    /// when the notes on either side of it merge (OQ-26). A read-only file refuses with a notice.
+    fn delete_block(&mut self, block: &Block, focus: Option<ItemId>) {
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
+            return;
+        }
+        let parent = self.document.get(block.id()).and_then(Item::parent);
+        let siblings = |state: &Self| {
+            parent
+                .map(|line| blocks::children(&state.document, line))
+                .unwrap_or_default()
+        };
+        let next = siblings(self)
+            .iter()
+            .skip_while(|sibling| sibling.id() != block.id())
+            .nth(1)
+            .map(Block::id);
+        let mut transaction = Transaction::new(structure::delete(&self.document, block), (), ());
+        self.document
+            .apply(&mut transaction)
+            .expect("the ops are built from the document as it is");
+        let merged = next
+            .filter(|&next| blocks::block(&self.document, next).is_none())
+            .and_then(|next| {
+                let into = siblings(self)
+                    .into_iter()
+                    .find(|sibling| sibling.lines().contains(&next))?;
+                Some((next, into.id()))
+            });
+        let focus = match merged {
+            Some((next, into)) => {
+                self.notify(Notice::NotesMerged);
+                focus.map(|focus| if focus == next { into } else { focus })
+            }
+            None => focus,
+        };
+        let before = Restore {
+            focus: Some(block.id()),
+        };
+        self.edits.record(Transaction::new(
+            transaction.ops().to_vec(),
+            before,
+            Restore { focus },
+        ));
+        self.focus = focus;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        path::{Path, PathBuf},
+        time::Duration,
+    };
+
+    use super::*;
+    use crate::{
+        app::{Disk, Effect, Message, Mode, TextEdit, Version},
+        document::{Document, Op, format},
+    };
+
+    /// Each line as a tab per depth and its text.
+    fn lines(state: &State) -> Vec<String> {
+        let document = state.document();
+        document
+            .descendants(document.root())
+            .map(|(id, depth)| {
+                format!("{}{}", "\t".repeat(depth), document.get(id).unwrap().text())
+            })
+            .collect()
+    }
+
+    /// `text` with focus moved down `index` rows.
+    fn open(text: &str, index: usize) -> State {
+        let mut state = State::new(format::parse(text), None);
+        for _ in 0..index {
+            state.update(Message::FocusNext);
+        }
+        state
+    }
+
+    fn typed(state: &mut State, text: &str) {
+        for c in text.chars() {
+            state.update(Message::Text(TextEdit::Insert(c)));
+        }
+    }
+
+    fn backspace(state: &mut State) {
+        state.update(Message::Text(TextEdit::DeleteBackward));
+    }
+
+    /// The first line of the focused row.
+    fn focused(state: &State) -> String {
+        let rows = state.rows();
+        let row = rows
+            .iter()
+            .find(|row| Some(row.id) == state.focus())
+            .unwrap();
+        row.lines[0].clone()
+    }
+
+    /// The text being edited with `|` at the caret.
+    fn shown(state: &State) -> String {
+        let editor = state.editor().unwrap();
+        let mut text = editor.text.to_owned();
+        text.insert(editor.caret, '|');
+        text
+    }
+
+    // FR-MODE-04, OQ-03
+    #[test]
+    fn o_adds_a_block_below_to_type_into_and_esc_keeps_it() {
+        let mut state = open("- a\n\t- b\n- c", 0);
+        state.update(Message::NewBelow);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(shown(&state), "|");
+        assert_eq!(lines(&state), ["- a", "\t- b", "- ", "- c"]);
+        assert_eq!(state.editor().unwrap().id, state.focus().unwrap());
+        typed(&mut state, "new");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["- a", "\t- b", "- new", "- c"]);
+        assert_eq!(focused(&state), "new");
+    }
+
+    // FR-MODE-04, FR-OPS-08
+    #[test]
+    fn adding_a_block_and_typing_into_it_is_one_undo_step() {
+        let mut state = open("- a\n- c", 1);
+        state.update(Message::NewAbove);
+        typed(&mut state, "b");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["- a", "- b", "- c"]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "- c"]);
+        assert_eq!(focused(&state), "c", "back where the focus was");
+        state.update(Message::Redo);
+        assert_eq!(lines(&state), ["- a", "- b", "- c"]);
+        assert_eq!(focused(&state), "b");
+        state.update(Message::Undo);
+        state.update(Message::NewAbove);
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "- c"], "an empty new block too");
+    }
+
+    // FR-MODE-04
+    #[test]
+    fn alt_o_adds_a_first_child_and_expands_the_block() {
+        let mut state = open("P:\n\t- a\nQ:", 0);
+        state.update(Message::Collapse);
+        state.update(Message::NewChild);
+        assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:"]);
+        assert_eq!(state.rows().len(), 4, "expanded");
+        assert_eq!(state.rows()[1].id, state.focus().unwrap());
+    }
+
+    // editing.md §3
+    #[test]
+    fn enter_ends_editing_and_adds_the_next_block() {
+        let mut state = open("P:\n\t- a\n- b", 2);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "c");
+        state.update(Message::NewNext);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(lines(&state), ["P:", "\t- a", "- bc", "- "]);
+        typed(&mut state, "d");
+        state.update(Message::NewNext);
+        typed(&mut state, "e");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["P:", "\t- a", "- bc", "- d", "- e"]);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- a", "- bc"], "one step per block");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- a", "- b"]);
+    }
+
+    // editing.md §3
+    #[test]
+    fn enter_on_a_block_showing_children_adds_a_first_child() {
+        let mut state = open("P:\n\t- a\nQ:\n\t- b", 0);
+        state.update(Message::EditAtEnd);
+        state.update(Message::NewNext);
+        assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:", "\t- b"]);
+        state.update(Message::StopEditing);
+        state.update(Message::FocusLast);
+        state.update(Message::FocusParent);
+        state.update(Message::Collapse);
+        state.update(Message::EditAtEnd);
+        state.update(Message::NewNext);
+        assert_eq!(
+            lines(&state),
+            ["P:", "\t- ", "\t- a", "Q:", "\t- b", ""],
+            "a collapsed block gets a block below its subtree"
+        );
+    }
+
+    // FR-NAV-03, FR-MODE-04
+    #[test]
+    fn on_the_zoom_title_every_new_block_is_its_first_child() {
+        for new in [Message::NewBelow, Message::NewAbove, Message::NewChild] {
+            let mut state = open("P:\n\t- a\nQ:", 0);
+            state.update(Message::ZoomIn);
+            state.update(Message::FocusFirst);
+            state.update(Message::Collapse);
+            state.update(new.clone());
+            assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:"], "{new:?}");
+            assert_eq!(state.rows()[1].id, state.focus().unwrap());
+        }
+    }
+
+    // FR-MODE-04
+    #[test]
+    fn an_empty_outline_gets_its_first_block() {
+        let mut state = State::new(Document::default(), None);
+        state.update(Message::NewBelow);
+        typed(&mut state, "first");
+        state.update(Message::NewNext);
+        assert_eq!(lines(&state), ["first", "- "], "a note would join the note");
+    }
+
+    // file-io.md §1
+    #[test]
+    fn a_read_only_file_refuses_new_and_deleted_blocks() {
+        for message in [Message::NewBelow, Message::Delete] {
+            let mut state = State::new(format::parse("- a"), Some(PathBuf::from("/a.taskpaper")))
+                .with_access(Access::ReadOnly);
+            state.update(message);
+            assert_eq!(lines(&state), ["- a"]);
+            assert_eq!(state.mode(), Mode::Navigate);
+            assert_eq!(state.notice(), Some(&Notice::ReadOnly));
+        }
+    }
+
+    // editing.md §2
+    #[test]
+    fn backspace_in_a_new_empty_block_takes_it_out_without_a_trace() {
+        let mut state = open("- a @x\n- c", 0);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "b");
+        state.update(Message::NewNext);
+        typed(&mut state, "x");
+        backspace(&mut state);
+        assert_eq!(lines(&state), ["- ab @x", "- ", "- c"]);
+        backspace(&mut state);
+        assert_eq!(lines(&state), ["- ab @x", "- c"]);
+        assert_eq!(shown(&state), "ab|", "editing the block above at its end");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a @x", "- c"], "the earlier session");
+    }
+
+    // editing.md §2, FR-OPS-08
+    #[test]
+    fn backspace_in_an_emptied_block_deletes_it_as_a_step_of_its_own() {
+        let mut state = open("P:\n\t- a", 1);
+        state.update(Message::EditAtEnd);
+        backspace(&mut state);
+        assert_eq!(lines(&state), ["P:", "\t- "]);
+        backspace(&mut state);
+        assert_eq!(lines(&state), ["P:"]);
+        assert_eq!(shown(&state), "P|");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- "]);
+        assert_eq!(focused(&state), "");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- a"]);
+    }
+
+    // editing.md §2
+    #[test]
+    fn backspace_keeps_a_block_with_children_and_the_first_row() {
+        for (text, index) in [("- a\n- \n\t- c", 1), ("- \n- a", 0)] {
+            let mut state = open(text, index);
+            state.update(Message::EditAtEnd);
+            backspace(&mut state);
+            assert_eq!(lines(&state), lines(&open(text, 0)), "{text:?}");
+            assert_eq!(state.mode(), Mode::Edit);
+        }
+    }
+
+    // FR-OPS-06
+    #[test]
+    fn delete_takes_the_block_with_its_subtree_and_focuses_the_next_block() {
+        let mut state = open("- a\n\t- b\n\t\t- c\n\t- d\n- e", 1);
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["- a", "\t- d", "- e"]);
+        assert_eq!(focused(&state), "d");
+        state.update(Message::Delete);
+        assert_eq!(focused(&state), "e", "the next visible block, not a child");
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["- a"]);
+        assert_eq!(focused(&state), "a", "else the previous one");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "- e"]);
+        assert_eq!(focused(&state), "e", "undo focuses the block again");
+        state.update(Message::Redo);
+        assert_eq!(focused(&state), "a");
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), Vec::<String>::new());
+        assert_eq!(state.focus(), None);
+        state.update(Message::Delete);
+        assert_eq!(state.document().revision(), 6, "nothing left to delete");
+    }
+
+    // FR-OPS-06
+    #[test]
+    fn delete_skips_the_rows_of_the_subtree_and_a_collapsed_one() {
+        let mut state = open("- a\n\t- b\n- c", 0);
+        state.update(Message::Delete);
+        assert_eq!(focused(&state), "c");
+        let mut state = open("- a\n\t- b\n- c\n\t- d", 2);
+        state.update(Message::Collapse);
+        state.update(Message::Delete);
+        assert_eq!(focused(&state), "b");
+    }
+
+    // OQ-26
+    #[test]
+    fn deleting_the_block_between_two_notes_merges_them_and_says_so() {
+        let mut state = open("n\n- t\nm\n- u", 1);
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["n", "m", "- u"]);
+        assert_eq!(state.rows()[0].lines, ["n", "m"]);
+        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
+        assert_eq!(
+            state.focus(),
+            Some(state.rows()[0].id),
+            "on the merged block"
+        );
+        state.update(Message::Undo);
+        assert_eq!(state.rows().len(), 4, "undo separates them again");
+        state.update(Message::Redo);
+        assert_eq!(state.focus(), Some(state.rows()[0].id));
+        let mut state = open("- x\nn\n- t\nm", 2);
+        state.update(Message::Delete);
+        assert_eq!(focused(&state), "n", "the merged block, wherever it is");
+    }
+
+    // OQ-26, editing.md §2
+    #[test]
+    fn backspace_on_an_emptied_task_between_notes_merges_them() {
+        let mut state = open("n\n- t\nm", 1);
+        state.update(Message::EditAtEnd);
+        backspace(&mut state);
+        backspace(&mut state);
+        assert_eq!(state.rows()[0].lines, ["n", "m"]);
+        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
+        assert_eq!(
+            state.mode(),
+            Mode::Navigate,
+            "a note of two lines is not edited here"
+        );
+        assert_eq!(state.focus(), Some(state.rows()[0].id));
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn the_zoom_title_is_not_deleted() {
+        let mut state = open("P:\n\t- a", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["P:", "\t- a"]);
+        state.update(Message::FocusNext);
+        state.update(Message::Delete);
+        assert_eq!(lines(&state), ["P:"]);
+        assert_eq!(focused(&state), "P", "the title is the previous row");
+        state.update(Message::EditAtEnd);
+        backspace(&mut state);
+        backspace(&mut state);
+        assert_eq!(lines(&state), [":"], "nor by backspace");
+        assert_eq!(state.mode(), Mode::Edit);
+    }
+
+    #[test]
+    fn a_new_block_that_no_longer_comes_out_cleanly_is_deleted_as_a_step() {
+        let mut state = open("- a", 0);
+        state.update(Message::NewBelow);
+        let root = state.document.root();
+        let id = state.document.new_id();
+        let op = Op::Insert {
+            parent: root,
+            index: 0,
+            subtree: crate::document::Snapshot::line(id, "- z".to_owned()),
+        };
+        state
+            .document
+            .apply(&mut Transaction::new(vec![op], (), ()))
+            .unwrap();
+        backspace(&mut state);
+        assert_eq!(lines(&state), ["- z", "- a"]);
+        assert_eq!(shown(&state), "a|");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- z", "- a", "- "]);
+    }
+
+    /// A file of `text` opened at time 0.
+    fn file(text: &str) -> (State, PathBuf) {
+        let path = PathBuf::from("/notes/todo.taskpaper");
+        let state = State::new(format::parse(text), Some(path.clone()))
+            .with_version(Some(Version::of(text.as_bytes())));
+        (state, path)
+    }
+
+    fn later(state: &mut State, seconds: u64) -> Vec<Effect> {
+        state.update(Message::Tick {
+            now: Duration::from_secs(seconds),
+        })
+    }
+
+    /// A save of `text` over the file holding `on_disk`.
+    fn save(path: &Path, text: &str, on_disk: &str) -> Vec<Effect> {
+        vec![
+            Effect::Disk(Disk::Backup { path: path.into() }),
+            Effect::Disk(Disk::Save {
+                path: path.into(),
+                text: text.to_owned(),
+                expected: Some(Version::of(on_disk.as_bytes())),
+            }),
+        ]
+    }
+
+    // FR-DOC-02
+    #[test]
+    fn a_new_block_is_saved_while_it_is_typed_into() {
+        let (mut state, path) = file("A:\n\t- a\n");
+        state.update(Message::FocusNext);
+        state.update(Message::NewBelow);
+        assert_eq!(
+            later(&mut state, 1),
+            save(&path, "A:\n\t- a\n\t- \n", "A:\n\t- a\n")
+        );
+    }
+
+    // file-format §3.1
+    #[test]
+    fn saving_waits_while_a_new_empty_last_block_is_below_the_top_level() {
+        let (mut state, path) = file("A:\n\tB:\n");
+        state.update(Message::FocusNext);
+        state.update(Message::NewBelow);
+        assert_eq!(state.deadline(), None);
+        assert_eq!(later(&mut state, 5), []);
+        typed(&mut state, "x");
+        assert_eq!(
+            later(&mut state, 6),
+            save(&path, "A:\n\tB:\n\tx\n", "A:\n\tB:\n")
+        );
+        state.update(Message::Saved);
+        backspace(&mut state);
+        assert_eq!(later(&mut state, 10), [], "empty again");
+        assert_eq!(
+            state.update(Message::StopEditing),
+            save(&path, "A:\n\tB:\n\n", "A:\n\tB:\n\tx\n"),
+            "lifted to the top level when saved"
+        );
+        assert_eq!(state.notice(), Some(&Notice::BlanksLifted));
+        assert_eq!(lines(&state), ["A:", "\tB:", ""]);
+        state.update(Message::Saved);
+        state.update(Message::Undo);
+        assert_eq!(
+            lines(&state),
+            ["A:", "\tB:", "\t"],
+            "the lift is a step of its own"
+        );
+    }
+
+    // file-format §3.1
+    #[test]
+    fn a_new_empty_last_block_at_the_top_level_saves_at_once() {
+        let (mut state, path) = file("A:");
+        state.update(Message::NewBelow);
+        assert_eq!(later(&mut state, 1), save(&path, "A:\n\n", "A:"));
+    }
+
+    // file-io.md §2, file-format §3.1
+    #[test]
+    fn quitting_lifts_a_new_empty_last_block_and_saves() {
+        let (mut state, path) = file("A:\n\tB:\n");
+        state.update(Message::FocusNext);
+        state.update(Message::NewBelow);
+        assert_eq!(
+            state.update(Message::Quit),
+            save(&path, "A:\n\tB:\n\n", "A:\n\tB:\n")
+        );
+    }
+
+    // FR-OPS-08, file-format §3.1
+    #[test]
+    fn undo_survives_blanks_lifted_while_a_new_block_is_edited() {
+        let (mut state, _) = file("Work:\n\t- a\n\n\t- b\n");
+        state.update(Message::FocusLast);
+        state.update(Message::Delete);
+        state.update(Message::NewAbove);
+        typed(&mut state, "c");
+        later(&mut state, 2);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- c", ""]);
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- ", ""]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t- ", "\t"]);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["Work:", "\t- a", "\t", "\t- b"]);
+        assert_eq!(state.notice(), Some(&Notice::BlanksLifted));
+    }
+}

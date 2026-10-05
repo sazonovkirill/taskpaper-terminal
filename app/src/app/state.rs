@@ -102,6 +102,11 @@ pub enum Notice {
         /// Why.
         reason: String,
     },
+    /// An edit left two note runs next to each other, which TaskPaper reads as one block (OQ-26).
+    NotesMerged,
+    /// Empty lines ending the outline below the top level were moved to the top level before
+    /// saving, where the file reads them back (file-format.md §3.1, rule 3).
+    BlanksLifted,
 }
 
 /// One visible block of the outline.

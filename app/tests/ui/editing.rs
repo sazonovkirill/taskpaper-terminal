@@ -56,16 +56,16 @@ fn enter_edits_a_task_in_place_and_esc_returns_with_it_renamed_and_saved() {
     assert_eq!(focused_rows(&mut app), ["  - Bread"], "keys navigate again");
 }
 
-// FR-MODE-01
+// FR-MODE-01, FR-MODE-04
 #[test]
-fn i_puts_the_caret_at_the_start_and_enter_also_ends_editing() {
+fn i_puts_the_caret_at_the_start_and_enter_ends_editing_with_a_new_block() {
     let mut app = Harness::open("groceries.taskpaper", 50, 10);
     app.type_keys("ji");
     assert_caret(&mut app, 6, 3);
     app.type_keys("Soy ");
     press(&mut app, KeyCode::Enter, 1);
-    assert!(status_line(&mut app).starts_with("NAVIGATE"));
-    assert_eq!(outline_rows(&mut app)[1], "  - Soy Milk");
+    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert_eq!(outline_rows(&mut app)[1..3], ["  - Soy Milk", "  -"]);
 }
 
 // FR-MODE-03

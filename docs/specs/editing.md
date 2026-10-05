@@ -33,7 +33,7 @@ Edits are applied to the document as the user types (one undo step per edit sess
 | `Shift+Enter` / `Alt+Enter` | Insert line break | Insert line break | — |
 | `Esc` | End editing | End editing | End editing |
 | `Tab` / `Shift+Tab` | Indent / outdent the block, stay in edit mode | same | same |
-| `Backspace` in an empty block | Delete the block, edit the previous visible block at its end | same | same |
+| `Backspace` in an empty block | Delete the block, edit the previous visible block at its end; a block with children and the first row stay. A block created in this session leaves no undo step | same | same |
 
 Ending edit mode applies the canonical-outline repairs for the block ([file-format.md §3.1](file-format.md#31-canonical-outlines)).
 
@@ -94,7 +94,9 @@ Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 
 Typed creation never makes a note, so it never merges notes (OQ-26).
 
-The new block's type follows OQ-03 default A: a task after a task, otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (the note or code run before it, or the note run after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
+On the zoom title, which stands for the view's root, every command adds the title's first child; in a pane without blocks the new block is the first one.
+
+The new block's type follows OQ-03 default A: a task next to a task (after it for `new_below`, before it for `new_above`), otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (the note or code run before it, or the note run after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 
 ## 4. Structural operations (FR-OPS)
 

@@ -2,6 +2,7 @@
 
 mod blocks;
 mod completing;
+mod creating;
 mod editing;
 mod external_changes;
 mod focus_and_scrolling;

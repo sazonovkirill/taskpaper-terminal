@@ -5,7 +5,7 @@ use std::{path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
-use super::{Mode, State, TextEdit, Version, saving::Ending};
+use super::{Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
 use crate::document::{Block, Item, ItemId, blocks};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -135,6 +135,17 @@ pub enum Message {
     Text(TextEdit),
     /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
     StopEditing,
+    /// Add a block after the focused block's subtree and edit it (FR-MODE-04).
+    NewBelow,
+    /// Add a block before the focused block and edit it (FR-MODE-04).
+    NewAbove,
+    /// Add a first child to the focused block, expanding it, and edit it (FR-MODE-04).
+    NewChild,
+    /// Stop editing and add the next block: a first child when the block shows children, else
+    /// a block below it (editing.md §3).
+    NewNext,
+    /// Delete the focused block with its subtree (FR-OPS-06).
+    Delete,
 }
 
 impl Message {
@@ -186,7 +197,12 @@ impl Message {
             | Self::GoHome
             | Self::Back
             | Self::Forward
-            | Self::ToggleDone { .. } => true,
+            | Self::ToggleDone { .. }
+            | Self::NewBelow
+            | Self::NewAbove
+            | Self::NewChild
+            | Self::NewNext
+            | Self::Delete => true,
         }
     }
 }
@@ -312,6 +328,11 @@ impl State {
             Message::EditAtStart => self.start_editing(false),
             Message::Text(edit) => self.edit_text(edit),
             Message::StopEditing => self.stop_editing(),
+            Message::NewBelow => self.add_block(NewBlock::Below),
+            Message::NewAbove => self.add_block(NewBlock::Above),
+            Message::NewChild => self.add_block(NewBlock::Child),
+            Message::NewNext => self.add_block(NewBlock::Next),
+            Message::Delete => self.delete_focused(),
         }
         self.repair_focus();
         self.expire_notice();
@@ -502,7 +523,7 @@ impl State {
     }
 
     /// Whether `block` has children and is not collapsed.
-    fn is_expanded(&self, block: &Block) -> bool {
+    pub(super) fn is_expanded(&self, block: &Block) -> bool {
         !self.folds.contains(&block.id()) && !self.children(block).is_empty()
     }
 

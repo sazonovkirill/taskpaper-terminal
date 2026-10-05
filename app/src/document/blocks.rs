@@ -117,6 +117,36 @@ pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
         .find(|block| block.last_line == line)
 }
 
+/// Whether a blank line without children put at `index` among the children of the line `parent`
+/// would join the note or code run before it or the note run after it, becoming part of that
+/// block (D-2, D-18).
+#[must_use]
+pub fn blank_line_joins_run(document: &Document, parent: ItemId, index: usize) -> bool {
+    let shown = |&id: &ItemId| {
+        document
+            .get(id)
+            .filter(|item| !has_tag(item, "hidden"))
+            .map(|item| (id, item))
+    };
+    let lines = document.get(parent).map(Item::children).unwrap_or_default();
+    let (before, after) = lines.split_at(index.min(lines.len()));
+    let joins_before = before
+        .iter()
+        .rev()
+        .find_map(shown)
+        .is_some_and(|(id, item)| {
+            item.children().is_empty()
+                && children(document, parent).iter().any(|block| {
+                    block.last_line == id && matches!(block.kind, BlockKind::Note | BlockKind::Code)
+                })
+        });
+    joins_before
+        || after
+            .iter()
+            .find_map(shown)
+            .is_some_and(|(_, item)| joins_run(item, false))
+}
+
 /// Whether `item` continues a run: any note line inside code, else a plain note line;
 /// a line carrying `@code` always starts a new run.
 fn joins_run(item: &Item, code: bool) -> bool {
@@ -372,6 +402,71 @@ mod tests {
         assert_eq!(parent(&document, top[1].id()), None);
         assert_eq!(block(&document, document.root()), None);
         assert_eq!(parent(&document, document.root()), None);
+    }
+
+    /// Whether a blank line at `index` under the line reading `parent` (the root when empty)
+    /// joins a run.
+    #[track_caller]
+    fn joins(text: &str, parent: &str, index: usize) -> bool {
+        let document = parse(text);
+        let parent = document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .find(|&id| document.get(id).unwrap().text() == parent)
+            .unwrap_or(document.root());
+        blank_line_joins_run(&document, parent, index)
+    }
+
+    // D-2, OQ-26
+    #[test]
+    fn a_blank_line_joins_the_note_run_before_or_after_it() {
+        assert!(joins("a\n- t", "", 1), "after a note");
+        assert!(joins("- t\na", "", 1), "before a note");
+        assert!(joins("a\nb", "", 1), "inside a run");
+        assert!(
+            joins("P:\n\ta", "P:", 0),
+            "as the first child before a note"
+        );
+        assert!(!joins("- t\n- u", "", 1));
+        assert!(!joins("P:\n- u", "", 1));
+        assert!(!joins("", "", 0), "nothing to join");
+        assert!(!joins("P:", "P:", 0));
+    }
+
+    // D-2, D-18, OQ-26
+    #[test]
+    fn a_blank_line_joins_code_before_it_but_not_after_it() {
+        assert!(
+            joins("f() @code\n---\n- t", "", 2),
+            "code ending in a divider"
+        );
+        assert!(!joins("- t\nf() @code", "", 1), "a @code line starts a run");
+    }
+
+    // D-2
+    #[test]
+    fn a_blank_line_does_not_join_a_note_with_children_or_other_types() {
+        assert!(!joins("a\n\tc\n- t", "", 1), "the run ends after children");
+        assert!(
+            joins("- t\na\n\tc", "", 1),
+            "but a note after it with children"
+        );
+        for other in ["---", "S @section", "L @url(u)"] {
+            assert!(!joins(&format!("{other}\n{other}"), "", 1), "{other}");
+        }
+    }
+
+    // FR-SPC-01
+    #[test]
+    fn a_blank_line_joins_across_special_nodes() {
+        assert!(joins("a\nX @hidden\n- t", "", 2));
+        assert!(joins("- t\nX @hidden\na", "", 1));
+        assert!(!joins("- t\nX @hidden\n- u", "", 2));
+    }
+
+    #[test]
+    fn a_position_past_the_end_counts_as_the_end() {
+        assert!(joins("a", "", 5));
     }
 
     #[test]

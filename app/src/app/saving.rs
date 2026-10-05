@@ -6,7 +6,7 @@
 use std::{path::PathBuf, time::Duration};
 
 use super::{Access, Effect, Notice, Origin, State, update::Disk};
-use crate::document::format;
+use crate::document::format::{self, canonical};
 
 /// How long after the last change a save starts (file-io.md §2, `autosave_delay_ms`).
 pub const DELAY: Duration = Duration::from_secs(1);
@@ -254,6 +254,8 @@ impl State {
             && self.autosave.due(revision, self.now)
             && !self.editing_holds_save()
         {
+            self.lift_trailing_blanks();
+            let revision = self.document().revision();
             self.autosave.start(revision);
             let text = format::serialize(self.document());
             let expected = self.external.start_save(&text);
@@ -268,6 +270,16 @@ impl State {
             return vec![Effect::Quit];
         }
         Vec::new()
+    }
+
+    /// Moves empty lines ending the outline below the top level to the top level, as one step to
+    /// undo with a notice, because the file would read them back there (file-format.md §3.1).
+    fn lift_trailing_blanks(&mut self) {
+        let ops = canonical::lift_trailing_blanks(self.document());
+        if !ops.is_empty() {
+            self.commit(ops);
+            self.notify(Notice::BlanksLifted);
+        }
     }
 
     /// The save under way succeeded.
