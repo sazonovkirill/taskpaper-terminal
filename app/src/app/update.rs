@@ -213,6 +213,9 @@ pub enum Message {
     NewTypedBelow(Typed),
     /// Delete the selected blocks, else the focused block, with their subtrees (FR-OPS-06).
     Delete,
+    /// Put a copy of each of the selected blocks, else the focused block, with its subtree after
+    /// it (FR-OPS-06).
+    Duplicate,
     /// Make the selected blocks, else the focused block, the last children of their previous
     /// siblings (FR-OPS-02); in edit mode, editing goes on.
     Indent,
@@ -317,6 +320,7 @@ impl Message {
             | Self::NewTop(_)
             | Self::NewTypedBelow(_)
             | Self::Delete
+            | Self::Duplicate
             | Self::MoveUp
             | Self::MoveDown
             | Self::OpenUrl
@@ -458,6 +462,7 @@ impl State {
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_selected(),
+            Message::Duplicate => self.duplicate(),
             Message::Indent => self.shift_selected(Shift::Indent),
             Message::Outdent => self.shift_selected(Shift::Outdent),
             Message::MoveUp => self.shift_selected(Shift::Up),

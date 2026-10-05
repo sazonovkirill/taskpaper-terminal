@@ -6,7 +6,7 @@ use jiff::civil::Date;
 
 use super::{Access, History, Notice, Restore, State};
 use crate::document::{
-    Block, DateChange, DateTag, Document, EditError, Flag, Op, Transaction, metadata,
+    Block, DateChange, DateTag, Document, EditError, Flag, ItemId, Op, Transaction, metadata,
 };
 
 impl State {
@@ -54,15 +54,22 @@ impl State {
     /// Applies `ops` as one undoable step that keeps the focus where it is, after what an edit
     /// session has done so far, unless the file is read-only, which only says so.
     pub(super) fn commit(&mut self, ops: Vec<Op>) {
+        self.commit_focusing(ops, self.focus);
+    }
+
+    /// Applies `ops` as one undoable step, as [`State::commit`] does, that ends with the focus on
+    /// `focus`.
+    pub(super) fn commit_focusing(&mut self, ops: Vec<Op>, focus: Option<ItemId>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
         self.record_edit_so_far();
-        let restore = Restore { focus: self.focus };
-        let transaction = Transaction::new(ops, restore, restore);
-        if let Err(error) = self.edits.commit(&mut self.document, transaction) {
-            self.edit_failed(&error);
+        let before = Restore { focus: self.focus };
+        let transaction = Transaction::new(ops, before, Restore { focus });
+        match self.edits.commit(&mut self.document, transaction) {
+            Ok(()) => self.focus = focus,
+            Err(error) => self.edit_failed(&error),
         }
     }
 

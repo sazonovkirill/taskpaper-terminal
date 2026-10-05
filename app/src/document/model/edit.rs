@@ -253,6 +253,38 @@ impl Document {
         })
     }
 
+    /// A copy of `subtree`, which may come from another document, under fresh ids of this one,
+    /// ready for an [`Op::Insert`]. The copied lines were never read from this document's file,
+    /// so they are written in its format rather than as the lines they copy.
+    ///
+    /// # Panics
+    ///
+    /// Never: every parent and child a line of a snapshot names is in the snapshot, apart from
+    /// the top line's parent, which is unset.
+    pub fn fresh_copy(&mut self, subtree: &Snapshot) -> Snapshot {
+        let ids: HashMap<ItemId, ItemId> = subtree
+            .lines()
+            .map(|&(id, _)| (id, self.new_id()))
+            .collect();
+        let fresh = |id: &ItemId| {
+            *ids.get(id)
+                .expect("a snapshot holds every line its lines name")
+        };
+        let copy = |(id, item): &(ItemId, Item)| {
+            let item = Item {
+                parent: item.parent.as_ref().map(fresh),
+                children: item.children.iter().map(fresh).collect(),
+                original: None,
+                ..item.clone()
+            };
+            (fresh(id), item)
+        };
+        Snapshot {
+            top: copy(&subtree.top),
+            below: subtree.below.iter().map(copy).collect(),
+        }
+    }
+
     /// Applies every op of `transaction` in order, then resets the extra indent of each line that
     /// would no longer be read back under its parent and appends those changes to the transaction
     /// ([file-format.md §3.1](../../../../docs/specs/file-format.md#31-canonical-outlines), rule 1).
@@ -1014,5 +1046,34 @@ mod tests {
         let expected: Vec<Op> = ops.iter().rev().cloned().map(Op::inverse).collect();
         assert_eq!(undo.ops(), expected);
         assert_eq!(*undo.inverse().after(), 2);
+    }
+
+    #[test]
+    fn a_fresh_copy_of_another_documents_subtree_goes_in_under_new_ids() {
+        let source = parse("A:\n\t- b\n\t\tc\n\t- d");
+        let mut document = parse("x:\n  - y");
+        let copy = document.fresh_copy(&source.snapshot(id(&source, "A:")).unwrap());
+        let root = document.root();
+        let changed = apply_and_undo(
+            &document,
+            vec![Op::Insert {
+                parent: root,
+                index: 1,
+                subtree: copy,
+            }],
+        );
+        assert_eq!(
+            show(&changed),
+            ["x:", "\t- y", "A:", "\t- b", "\t\tc", "\t- d"]
+        );
+        let a = id(&changed, "A:");
+        let c = id(&changed, "c");
+        assert_eq!(changed.position(id(&changed, "- d")), Some((a, 1)));
+        assert_eq!(changed.position(c), Some((id(&changed, "- b"), 0)));
+        assert_eq!(
+            crate::document::format::serialize(&changed),
+            "x:\n  - y\nA:\n  - b\n    c\n  - d",
+            "written in this document's format, not as the tab-indented lines it copies"
+        );
     }
 }

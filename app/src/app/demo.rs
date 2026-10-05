@@ -298,4 +298,18 @@ mod tests {
             "demo lacks hidden data for the details"
         );
     }
+
+    // FR-DOC-05, FR-OPS-06
+    #[test]
+    fn demo_has_a_template_list_to_duplicate() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        let template = rows
+            .iter()
+            .position(|row| row.kind == BlockKind::Project && row.text.ends_with("template"))
+            .expect("demo lacks a template list to duplicate");
+        assert!(
+            rows.get(template + 1).is_some_and(|row| row.depth == 1),
+            "the template has no blocks"
+        );
+    }
 }

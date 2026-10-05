@@ -110,6 +110,68 @@ pub fn delete(document: &Document, block: &Block) -> Option<Op> {
     })
 }
 
+/// Copies of `blocks`, none inside another and in document order, each with its subtree under
+/// fresh ids right after the original's subtree: the copies' lines in that order and the ops that
+/// put them there, or `None` when one of the blocks is not in `document` (FR-OPS-06).
+#[must_use]
+pub fn duplicate(document: &mut Document, blocks: &[Block]) -> Option<(Vec<ItemId>, Vec<Op>)> {
+    let mut copies = Vec::new();
+    let mut ops = Vec::new();
+    // Last first, so that putting one in leaves the places of those before it as they are.
+    for block in blocks.iter().rev() {
+        let (parent, index) = document.position(block.id())?;
+        let copy = document.fresh_copy(&document.snapshot(block.id())?);
+        copies.push(copy.id());
+        ops.extend(insert(document, parent, index + 1, vec![copy]));
+    }
+    copies.reverse();
+    Some((copies, ops))
+}
+
+/// The ops that put `subtrees` one after another from `index` among the children of `parent`,
+/// with the [`repairs`] that needs, and then the lines put in repaired where they would be read
+/// back elsewhere: a copy of a document's only line, which may start with whitespace, does once
+/// it is no longer the only line (file-format.md §3.1, rules 2 and 4).
+///
+/// # Panics
+///
+/// Never: the ops are built from the document as it is, with ids it made for them.
+fn insert(document: &Document, parent: ItemId, index: usize, subtrees: Vec<Snapshot>) -> Vec<Op> {
+    let tops: Vec<ItemId> = subtrees.iter().map(Snapshot::id).collect();
+    let mut ops = repairs(document, parent);
+    ops.extend(
+        subtrees
+            .into_iter()
+            .zip(index..)
+            .map(|(subtree, index)| Op::Insert {
+                parent,
+                index,
+                subtree,
+            }),
+    );
+    let mut after = document.clone();
+    after
+        .apply(&mut Transaction::new(ops.clone(), (), ()))
+        .expect("the ops are built from the document as it is, with ids it made for them");
+    let only_line = after.descendants(after.root()).nth(1).is_none();
+    let lines = tops
+        .iter()
+        .flat_map(|&top| std::iter::once(top).chain(after.descendants(top).map(|(id, _)| id)));
+    let fixes: Vec<Op> = lines
+        .filter_map(|id| {
+            let item = after.get(id)?;
+            let fixed = canonical::repaired(item.text(), !item.children().is_empty(), only_line);
+            (fixed != item.text()).then(|| Op::SetText {
+                id,
+                before: item.text().to_owned(),
+                after: fixed,
+            })
+        })
+        .collect();
+    ops.extend(fixes);
+    ops
+}
+
 /// Where a block moves among the blocks around it (editing.md §4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shift {
@@ -791,5 +853,95 @@ mod tests {
         let blocks = [block(&document, "- a"), block(&other, "- w")];
         assert_eq!(group(&mut document, &blocks[1..]), None);
         assert_eq!(group(&mut document, &blocks), None);
+    }
+
+    /// The lines of `text` once the blocks reading `of` are duplicated, with the copies marked
+    /// and the ops checked to undo; `None` when one of them is not found.
+    #[track_caller]
+    fn duplicated(text: &str, of: &[&str]) -> Vec<String> {
+        let mut document = format::parse(text);
+        let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
+        let (copies, ops) = duplicate(&mut document, &blocks).unwrap();
+        assert_eq!(copies.len(), blocks.len());
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after: Vec<String> = document
+            .descendants(document.root())
+            .map(|(id, depth)| {
+                let mark = if copies.contains(&id) { ">" } else { "" };
+                let text = document.get(id).unwrap().text();
+                format!("{}{mark}{text}", "\t".repeat(depth))
+            })
+            .collect();
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        after
+    }
+
+    // FR-OPS-06
+    #[test]
+    fn a_duplicate_with_its_subtree_goes_after_the_original() {
+        assert_eq!(
+            duplicated("- x\nP: @a\n\t- b\n\t\tn\n\tC @hidden\n- y", &["P: @a"]),
+            [
+                "- x",
+                "P: @a",
+                "\t- b",
+                "\t\tn",
+                "\tC @hidden",
+                ">P: @a",
+                "\t- b",
+                "\t\tn",
+                "\tC @hidden",
+                "- y",
+            ]
+        );
+    }
+
+    // FR-OPS-06, FR-OPS-07
+    #[test]
+    fn each_of_several_blocks_is_duplicated_after_itself() {
+        assert_eq!(
+            duplicated("- a\n- b\nP:\n\t- c", &["- a", "- b", "- c"]),
+            ["- a", ">- a", "- b", ">- b", "P:", "\t- c", "\t>- c"]
+        );
+    }
+
+    // file-format.md §3.1, rule 4
+    #[test]
+    fn the_copy_of_an_only_line_drops_its_leading_whitespace_with_the_original() {
+        assert_eq!(duplicated("  x", &["  x"]), ["x", ">x"]);
+        assert_eq!(
+            duplicated("a\n\nb", &[""]),
+            ["a", "", ">", "b"],
+            "a blank line stays"
+        );
+    }
+
+    #[test]
+    fn copies_get_ids_of_their_own_and_the_lines_they_copy_stay() {
+        let mut document = format::parse("- a\n\t- b");
+        let a = block(&document, "- a");
+        let (copies, ops) = duplicate(&mut document, std::slice::from_ref(&a)).unwrap();
+        document.apply(&mut Transaction::new(ops, (), ())).unwrap();
+        assert_ne!(copies, [a.id()]);
+        let ids: Vec<ItemId> = document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(ids.len(), 4);
+        assert!(
+            ids.iter()
+                .all(|id| ids.iter().filter(|other| *other == id).count() == 1)
+        );
+        assert_eq!(document.get(a.id()).unwrap().text(), "- a");
+    }
+
+    #[test]
+    fn a_block_not_in_the_document_is_not_duplicated() {
+        let other = format::parse("- x\n- y");
+        let mut document = format::parse("- a");
+        let blocks = [block(&document, "- a"), block(&other, "- y")];
+        assert_eq!(duplicate(&mut document, &blocks), None);
     }
 }

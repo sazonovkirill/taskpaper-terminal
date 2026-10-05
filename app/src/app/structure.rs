@@ -1,9 +1,9 @@
-//! Adding a block next to the focused one or the selection to type into, and deleting, moving and
-//! grouping the selected blocks, each one step to undo
+//! Adding a block next to the focused one or the selection to type into, and deleting,
+//! duplicating, moving and grouping the selected blocks, each one step to undo
 //! ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04), FR-MODE-04,
 //! FR-OPS-02, FR-OPS-03, FR-OPS-04, FR-OPS-06).
 
-use super::{Access, Notice, Restore, State};
+use super::{Access, Notice, State};
 use crate::document::{
     Block, BlockKind, ItemId, Op, Transaction, blocks,
     format::Typed,
@@ -160,27 +160,31 @@ impl State {
     /// Deletes `blocks`, none inside another and in document order, with their subtrees as one
     /// step to undo that ends with `focus`. A read-only file refuses with a notice.
     fn delete_blocks(&mut self, blocks: &[Block], focus: Option<ItemId>) {
-        if self.access() == Access::ReadOnly {
-            self.notify(Notice::ReadOnly);
-            return;
-        }
         // Last first, so that taking one out leaves the places of those before it as they are.
         let ops = blocks
             .iter()
             .rev()
             .filter_map(|block| structure::delete(&self.document, block))
             .collect();
-        let mut transaction = Transaction::new(ops, (), ());
-        self.document
-            .apply(&mut transaction)
-            .expect("the ops are built from the document as it is");
-        let before = Restore { focus: self.focus };
-        self.edits.record(Transaction::new(
-            transaction.ops().to_vec(),
-            before,
-            Restore { focus },
-        ));
-        self.focus = focus;
+        self.commit_focusing(ops, focus);
+    }
+
+    /// `D`: puts a copy of each of the selected blocks, else the focused block, with its subtree
+    /// after it as one step to undo, and focuses the copy of the last of them (FR-OPS-06). The
+    /// zoom title, which stands for the view's root, stays. A read-only file refuses with a
+    /// notice.
+    pub(super) fn duplicate(&mut self) {
+        let roots = self.roots();
+        if roots.is_empty() {
+            return;
+        }
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
+            return;
+        }
+        let (copies, ops) = structure::duplicate(&mut self.document, &roots)
+            .expect("the blocks were just found in the document");
+        self.commit_focusing(ops, copies.last().copied());
     }
 
     /// Moves the selected blocks, else the focused block, with their subtrees as `by` says
@@ -506,6 +510,7 @@ mod tests {
             Message::NewBelow,
             Message::NewTop(Typed::Task),
             Message::Delete,
+            Message::Duplicate,
         ] {
             let mut state = State::new(format::parse("- a"), Some(PathBuf::from("/a.taskpaper")))
                 .with_access(Access::ReadOnly);
@@ -1104,5 +1109,44 @@ mod tests {
         state.update(Message::EditAtEnd);
         state.update(Message::StopEditing);
         assert_eq!(selected(&state), Vec::<String>::new());
+    }
+
+    // FR-OPS-06, FR-OPS-08
+    #[test]
+    fn duplicate_puts_a_copy_after_the_block_and_focuses_it_in_one_step() {
+        let mut state = open("- a\n\t- b\n- c", 0);
+        state.update(Message::Duplicate);
+        assert_eq!(lines(&state), ["- a", "\t- b", "- a", "\t- b", "- c"]);
+        assert_eq!(state.rows()[2].id, state.focus().unwrap(), "the copy");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "\t- b", "- c"]);
+        assert_eq!(state.rows()[0].id, state.focus().unwrap());
+        state.update(Message::Redo);
+        assert_eq!(state.rows()[2].id, state.focus().unwrap());
+    }
+
+    // FR-OPS-06, FR-OPS-07
+    #[test]
+    fn duplicate_copies_every_selected_block_and_focuses_the_last_copy() {
+        let mut state = picking("- a\n\t- b\n- c\n- d", &[2, 0, 1]);
+        state.update(Message::Duplicate);
+        assert_eq!(
+            lines(&state),
+            ["- a", "\t- b", "- a", "\t- b", "- c", "- c", "- d"]
+        );
+        assert_eq!(state.rows()[5].id, state.focus().unwrap());
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "\t- b", "- c", "- d"], "one step");
+    }
+
+    // FR-NAV-03
+    #[test]
+    fn the_zoom_title_is_not_duplicated() {
+        let mut state = open("P:\n\t- a", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(Message::Duplicate);
+        assert_eq!(lines(&state), ["P:", "\t- a"]);
+        assert_eq!(state.document().revision(), 0);
     }
 }

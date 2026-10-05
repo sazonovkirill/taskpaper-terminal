@@ -190,6 +190,7 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('a')], |_| Message::NewTypedBelow(Typed::Task)),
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
+    (&[key!('D')], |_| Message::Duplicate),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
     (&[key!(alt 'k')], |_| Message::MoveUp),
@@ -786,6 +787,11 @@ mod tests {
         );
         check(KeyCode::Char('o'), KeyModifiers::ALT, None);
         check(KeyCode::Delete, none, Some(&Message::Delete));
+        check(
+            KeyCode::Char('D'),
+            KeyModifiers::SHIFT,
+            Some(&Message::Duplicate),
+        );
         let mut keymap = Keymap::default();
         let d = key(KeyCode::Char('d'), none);
         assert_eq!(keymap.message_for(&d, ms(0), CONTEXT), None);
