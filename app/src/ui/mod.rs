@@ -150,12 +150,15 @@ impl Tui {
     }
 
     /// Writes the document to a recovery file with `recovery` when its file lacks some of it, as
-    /// after a crash, and returns where (N-REL-01).
+    /// after a crash, and returns where (N-REL-01). Disk work asked for so far is done first, so
+    /// that no save under way changes the file after it and stops the recovery file from being
+    /// offered (file-io.md §4).
     ///
     /// # Errors
     ///
     /// [`RecoveryError`] when the recovery file could not be written.
     pub fn recover(&self, recovery: &Recovery) -> Result<Option<PathBuf>, RecoveryError> {
+        self.io.flush();
         self.state
             .unsaved_text()
             .map(|text| recovery.write(self.state.path(), &text))

@@ -75,7 +75,8 @@ impl Harness {
         std::fs::write(&path, text).expect("the temporary folder is writable");
         let recovery = dir.path().join("recovery.taskpaper");
         std::fs::write(&recovery, recovered).expect("the temporary folder is writable");
-        let state = effects::recover(&path, &recovery).expect("the files open");
+        let backups = Backups::new(Some(dir.path().join("backups")), || NOW);
+        let state = effects::recover(&path, &recovery, &backups).expect("the files open");
         Self::start(state, dir, width, height)
     }
 

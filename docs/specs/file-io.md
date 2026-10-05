@@ -55,11 +55,11 @@ Saves read the file immediately before renaming; if its version is no longer the
 ## 4. Crash safety
 
 - Install a panic hook that restores the terminal first, then writes the current serialized document to `$XDG_STATE_HOME/taskpaper-terminal/recovery/<name>-<timestamp>.taskpaper` and prints its path (N-REL-01).
-  - Only a document holding changes its file lacks (a save is due or under way, or the last one failed) is written.
+  - Only a document holding changes its file lacks (a save is due or under way, or the last one failed) is written. Disk work already asked for, such as a save under way, finishes first, so that it cannot change the file after the recovery file and stop it from being offered.
   - The folder is under `~/.local/state` when `$XDG_STATE_HOME` is unset, on macOS too.
   - `<name>` is the name of the file's backup folder (§2), `<file name>-<hash>`, so two files with one name never get each other's recovery files; a document without a file is `untitled`. `<timestamp>` is the local time as `YYYYMMDD-HHMMSS`.
   - The recovery file gets the file's permissions. The app never deletes recovery files.
-- On start, if a recovery file newer than the target exists, offer to open it. Before the terminal UI starts, the app names the newest such file and asks `Open the file with these changes? [y/N]`. `y` or `yes` opens the target showing the recovery file's document as unsaved changes, so it is saved over the target like any change, after the daily backup (§2); once the target is saved, the offer stops. Any other answer opens the target as it is. A recovery file written at the same time as the target counts as newer, because file times can be too coarse to tell a save and a crash right after it apart.
+- On start, if a recovery file newer than the target exists, offer to open it. Before the terminal UI starts, the app names the newest such file and asks `Open the file with these changes? [y/N]`. `y` or `yes` first writes the target as it is on disk to a conflict copy (§3), since it may have changed after the document was read from it, and refuses to open when that copy fails; it then opens the target showing the recovery file's document as unsaved changes, so it is saved over the target like any change, after the daily backup (§2); once the target is saved, the offer stops. Any other answer opens the target as it is. A recovery file written at the same time as the target counts as newer, because file times can be too coarse to tell a save and a crash right after it apart.
 
 ## 5. View-state persistence
 

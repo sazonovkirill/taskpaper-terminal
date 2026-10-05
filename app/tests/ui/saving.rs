@@ -151,3 +151,23 @@ fn a_crash_with_every_change_saved_writes_no_recovery_file() {
     assert_eq!(app.tui.recover(&recovery(dir.path())).unwrap(), None);
     assert!(!dir.path().join("recovery").exists());
 }
+
+// N-REL-01, file-io.md §4
+#[test]
+fn a_crash_while_a_save_is_under_way_writes_the_recovery_file_after_it() {
+    let mut app = Harness::with_text("- Milk\n- Eggs\n", 60, 5);
+    app.settle();
+    app.type_keys("x");
+    app.wait(Duration::from_secs(1));
+    app.type_keys("jx");
+    let dir = tempfile::tempdir().unwrap();
+    let recovery = recovery(dir.path());
+    let written = app.tui.recover(&recovery).unwrap().unwrap();
+    let path = app.path.clone().unwrap();
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        "- Milk @done(2026-10-05)\n- Eggs\n",
+        "the save under way is written first"
+    );
+    assert_eq!(recovery.find(&path).unwrap(), Some(written));
+}

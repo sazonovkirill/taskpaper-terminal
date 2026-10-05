@@ -38,6 +38,10 @@ fn main() -> anyhow::Result<()> {
         ui::effects::recovery_folder(std::env::var_os("XDG_STATE_HOME"), home.clone()),
         || jiff::Zoned::now().datetime(),
     );
+    let backups = Backups::new(
+        ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home),
+        || jiff::Zoned::now().datetime(),
+    );
     let state = match path {
         Some(path) => {
             // Opening first reports what is wrong with the path before asking anything.
@@ -46,7 +50,7 @@ fn main() -> anyhow::Result<()> {
                 .offer(&path, &mut io::stdin().lock(), &mut io::stderr())
                 .context("cannot look for recovery files")?
             {
-                Some(recovered) => ui::effects::recover(&path, &recovered)?,
+                Some(recovered) => ui::effects::recover(&path, &recovered, &backups)?,
                 None => opened,
             }
         }
@@ -57,12 +61,8 @@ fn main() -> anyhow::Result<()> {
     };
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
-    let folder = ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home);
     let today = || jiff::Zoned::now().date();
-    let io = Io::start(
-        inputs.clone(),
-        Backups::new(folder, || jiff::Zoned::now().datetime()),
-    );
+    let io = Io::start(inputs.clone(), backups);
     // Without a watcher, the checks on regaining focus and before every save still find changes.
     let _watcher = state
         .path()

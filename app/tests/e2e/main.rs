@@ -284,7 +284,35 @@ fn offers_recovered_changes_on_start_and_saves_them_on_yes() -> TestResult {
         std::fs::read_to_string(dir.path().join("todo.taskpaper"))?,
         "- Recovered\n"
     );
-    assert_eq!(daily_copies(&dir.path().join("data"))?, ["- Saved\n"]);
+    assert_eq!(
+        daily_copies(&dir.path().join("data"))?,
+        ["- Saved\n", "- Saved\n"],
+        "a conflict copy and a daily backup of the file as it was"
+    );
+    Ok(())
+}
+
+// N-REL-01, file-io.md §4
+#[test]
+fn recovered_changes_keep_the_file_they_replace_in_a_copy() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "- Opened earlier today\n")?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", dir.path().join("data"))
+    )?;
+    terminal.wait_until(|screen| screen.contains("- Opened earlier today"))?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    let mut terminal = start_after_a_crash(dir.path(), "y")?;
+    terminal.wait_until(|screen| screen.contains("- Recovered") && screen.alternate_screen())?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    let mut copies = daily_copies(&dir.path().join("data"))?;
+    copies.sort();
+    assert_eq!(copies, ["- Opened earlier today\n", "- Saved\n"]);
     Ok(())
 }
 

@@ -65,6 +65,15 @@ pub enum OpenError {
         #[source]
         source: io::Error,
     },
+    /// The file on disk could not be kept in a conflict copy before recovered changes replace it.
+    #[error("cannot keep a copy of {} before opening it with the recovered changes", path.display())]
+    Copy {
+        /// The file asked for.
+        path: PathBuf,
+        /// Why the copy failed.
+        #[source]
+        source: BackupError,
+    },
     /// The file does not exist and its folder does not either, so it could never be saved.
     #[error("cannot open {}: the folder {} does not exist", path.display(), folder.display())]
     MissingFolder {
@@ -133,19 +142,29 @@ fn create_new(path: &Path, text: &str) -> io::Result<()> {
 }
 
 /// Opens the file at `path` with the document of `recovered`, a recovery file of it, as changes
-/// the file lacks (file-io.md §4).
+/// the file lacks, after writing the file as it is on disk to a conflict copy with `backups`,
+/// since it may have changed after the recovered document was read from it (file-io.md §4).
 ///
 /// # Errors
 ///
-/// [`OpenError`] when the recovery file cannot be read or is not UTF-8.
-pub fn recover(path: &Path, recovered: &Path) -> Result<State, OpenError> {
+/// [`OpenError`] when the recovery file cannot be read or is not UTF-8, or the copy fails.
+pub fn recover(path: &Path, recovered: &Path, backups: &Backups) -> Result<State, OpenError> {
     let bytes = fs::read(recovered).map_err(|source| OpenError::Read {
         path: recovered.to_owned(),
         source,
     })?;
     let document = decode(recovered, &bytes)?;
+    let on_disk = fs::read(path).ok();
+    if let Some(on_disk) = &on_disk {
+        backups
+            .conflict(path, on_disk)
+            .map_err(|source| OpenError::Copy {
+                path: path.to_owned(),
+                source,
+            })?;
+    }
     // The changes are saved over the file as it is now, not reported as a change made elsewhere.
-    let version = fs::read(path).ok().map(|bytes| Version::of(&bytes));
+    let version = on_disk.as_deref().map(Version::of);
     Ok(State::recovered(document, Some(path.to_owned()))
         .with_access(access(path))
         .with_version(version))
@@ -431,6 +450,32 @@ mod tests {
         Ok(())
     }
 
+    fn nine_am() -> DateTime {
+        jiff::civil::date(2026, 10, 5).at(9, 0, 0, 0)
+    }
+
+    /// Backups in `dir/backups`, at 09:00 on 2026-10-05.
+    fn backups(dir: &Path) -> Backups {
+        Backups::new(Some(dir.join("backups")), nine_am)
+    }
+
+    /// The contents of every copy under `dir`'s backups folder.
+    fn copies(dir: &Path) -> io::Result<Vec<String>> {
+        let mut copies = Vec::new();
+        for folder in fs::read_dir(dir.join("backups"))? {
+            for file in fs::read_dir(folder?.path())? {
+                let file = file?.path();
+                if file
+                    .extension()
+                    .is_some_and(|extension| extension == "taskpaper")
+                {
+                    copies.push(fs::read_to_string(file)?);
+                }
+            }
+        }
+        Ok(copies)
+    }
+
     // file-io.md §4
     #[test]
     fn recovering_opens_the_file_with_the_recovery_files_document_unsaved() -> TestResult {
@@ -440,7 +485,12 @@ mod tests {
         fs::write(&path, "- a\n")?;
         let recovered = dir.path().join("recovered.taskpaper");
         fs::write(&recovered, "- a\n- b\n")?;
-        let state = recover(&path, &recovered)?;
+        let state = recover(&path, &recovered, &backups(dir.path()))?;
+        assert_eq!(
+            copies(dir.path())?,
+            ["- a\n"],
+            "the file it replaces is kept"
+        );
         assert_eq!(state.path(), Some(path.as_path()));
         assert_eq!(texts(state.document()), ["- a", "- b"]);
         assert_eq!(state.unsaved_text().as_deref(), Some("- a\n- b\n"));
@@ -458,7 +508,46 @@ mod tests {
             }))
         );
         fs::set_permissions(&path, fs::Permissions::from_mode(0o444))?;
-        assert_eq!(recover(&path, &recovered)?.access(), Access::ReadOnly);
+        assert_eq!(
+            recover(&path, &recovered, &backups(dir.path()))?.access(),
+            Access::ReadOnly
+        );
+        Ok(())
+    }
+
+    // file-io.md §4
+    #[test]
+    fn recovering_a_file_that_is_gone_keeps_no_copy() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        let recovered = dir.path().join("recovered.taskpaper");
+        fs::write(&recovered, "- b\n")?;
+        let state = recover(&path, &recovered, &backups(dir.path()))?;
+        assert_eq!(state.unsaved_text().as_deref(), Some("- b\n"));
+        assert!(!dir.path().join("backups").exists());
+        Ok(())
+    }
+
+    // file-io.md §4
+    #[test]
+    fn recovering_refuses_when_the_file_cannot_be_kept_in_a_copy() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "- a\n")?;
+        let recovered = dir.path().join("recovered.taskpaper");
+        fs::write(&recovered, "- b\n")?;
+        let error = recover(&path, &recovered, &Backups::new(None, nine_am)).err();
+        assert!(
+            matches!(&error, Some(OpenError::Copy { path: p, source: BackupError::NoFolder }) if *p == path),
+            "{error:?}"
+        );
+        assert_eq!(
+            error.map(|error| error.to_string()),
+            Some(format!(
+                "cannot keep a copy of {} before opening it with the recovered changes",
+                path.display()
+            ))
+        );
         Ok(())
     }
 
@@ -468,12 +557,12 @@ mod tests {
         let path = dir.path().join("todo.taskpaper");
         let recovered = dir.path().join("recovered.taskpaper");
         assert!(matches!(
-            recover(&path, &recovered),
+            recover(&path, &recovered, &backups(dir.path())),
             Err(OpenError::Read { path: p, source }) if p == recovered && source.kind() == io::ErrorKind::NotFound
         ));
         fs::write(&recovered, b"caf\xe9")?;
         assert!(matches!(
-            recover(&path, &recovered),
+            recover(&path, &recovered, &backups(dir.path())),
             Err(OpenError::Decode { path: p, .. }) if p == recovered
         ));
         Ok(())
