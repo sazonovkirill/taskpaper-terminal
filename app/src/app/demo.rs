@@ -162,6 +162,11 @@ mod tests {
                 .any(|row| row.kind == BlockKind::Task && row.done),
             "demo lacks a done task"
         );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Task && !row.done),
+            "demo lacks a task to check off"
+        );
         let document = state.document();
         let tagged = document
             .descendants(document.root())

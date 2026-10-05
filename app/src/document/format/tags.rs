@@ -1,4 +1,5 @@
-//! Tag scanning with TaskPaper's grammar ([file-format.md §5](../../../../docs/specs/file-format.md#5-tags)).
+//! Tag scanning and tag edits with TaskPaper's grammar
+//! ([file-format.md §5](../../../../docs/specs/file-format.md#5-tags)).
 
 use std::ops::Range;
 
@@ -59,6 +60,50 @@ pub fn trailing_run_start(text: &str) -> usize {
     } else {
         run_start
     }
+}
+
+/// `text` with the tag `name` set to `value`: the first occurrence's value replaced in place,
+/// else ` @name(value)` appended, without the space when `text` is empty or already ends in
+/// whitespace, so no line starts with whitespace. An empty value writes a bare `@name`.
+#[must_use]
+pub fn set(text: &str, name: &str, value: &str) -> String {
+    let value = value.replace('(', r"\(").replace(')', r"\)");
+    let tag = if value.is_empty() {
+        format!("@{name}")
+    } else {
+        format!("@{name}({value})")
+    };
+    let mut out = text.to_owned();
+    if let Some(found) = scan(text).into_iter().find(|found| found.name == name) {
+        // The span starts with the whitespace before `@`, which stays.
+        let occurrence = text.get(found.span.clone()).unwrap_or_default();
+        let at = found.span.end - occurrence.trim_start_matches(is_whitespace).len();
+        out.replace_range(at..found.span.end, &tag);
+    } else {
+        if !out.is_empty() && !out.ends_with(is_whitespace) {
+            out.push(' ');
+        }
+        out.push_str(&tag);
+    }
+    out
+}
+
+/// `text` without any tag `name`: each occurrence is deleted with its leading whitespace, or with
+/// the whitespace after it at the start of the line, so no line starts with whitespace. Every
+/// occurrence goes, because a later duplicate would take the first one's place.
+#[must_use]
+pub fn remove(text: &str, name: &str) -> String {
+    let mut out = text.to_owned();
+    while let Some(found) = scan(&out).into_iter().find(|found| found.name == name) {
+        let end = if found.span.start == 0 {
+            let after = out.get(found.span.end..).unwrap_or_default();
+            out.len() - after.trim_start_matches(is_whitespace).len()
+        } else {
+            found.span.end
+        };
+        out.replace_range(found.span.start..end, "");
+    }
+    out
 }
 
 /// Parses the tag whose `@` is at byte `at`; returns its end, name and value.
@@ -283,6 +328,93 @@ mod tests {
     #[test]
     fn duplicate_tags_still_count_in_the_trailing_run() {
         assert_eq!(trailing_run_start("x @a @a"), 1);
+    }
+
+    #[track_caller]
+    fn check_set(text: &str, name: &str, value: &str, expected: &str) {
+        assert_eq!(
+            set(text, name, value),
+            expected,
+            "set @{name}({value}) on {text:?}"
+        );
+    }
+
+    #[test]
+    fn set_appends_a_missing_tag() {
+        check_set("- Milk", "done", "2026-10-05", "- Milk @done(2026-10-05)");
+        check_set("- Milk @due(1)", "done", "x", "- Milk @due(1) @done(x)");
+        check_set("Inbox:", "done", "x", "Inbox: @done(x)");
+        check_set("- 日本語", "a", "語", "- 日本語 @a(語)");
+    }
+
+    #[test]
+    fn set_adds_no_space_after_whitespace_or_on_an_empty_line() {
+        check_set("- Milk ", "done", "x", "- Milk @done(x)");
+        check_set("a\t", "done", "x", "a\t@done(x)");
+        check_set("", "done", "x", "@done(x)");
+    }
+
+    #[test]
+    fn set_replaces_the_first_occurrence_in_place() {
+        check_set("- a @due(1) b", "due", "2", "- a @due(2) b");
+        check_set("- a  @due b", "due", "2", "- a  @due(2) b");
+        check_set("@due(1) @due(3)", "due", "2", "@due(2) @due(3)");
+        check_set("- a @x @due(1)", "due", "", "- a @x @due");
+    }
+
+    #[test]
+    fn set_writes_an_empty_value_bare_and_escapes_parentheses() {
+        check_set("a", "today", "", "a @today");
+        check_set("a", "x", "f(1)", r"a @x(f\(1\))");
+        assert_eq!(
+            scan(&set("a", "x", "f(1)"))[0].value.as_deref(),
+            Some("f(1)")
+        );
+    }
+
+    #[test]
+    fn set_ignores_text_that_only_looks_like_the_tag() {
+        check_set("me@done.com", "done", "x", "me@done.com @done(x)");
+        check_set("@done(1)x", "done", "x", "@done(1)x @done(x)");
+    }
+
+    #[track_caller]
+    fn check_remove(text: &str, name: &str, expected: &str) {
+        assert_eq!(remove(text, name), expected, "remove @{name} from {text:?}");
+    }
+
+    #[test]
+    fn remove_deletes_the_tag_with_its_leading_whitespace() {
+        check_remove("- Milk @done(2026-10-05)", "done", "- Milk");
+        check_remove("- a  @done b", "done", "- a b");
+        check_remove("- a @x @done @y", "done", "- a @x @y");
+        check_remove("Inbox: @done", "done", "Inbox:");
+    }
+
+    #[test]
+    fn remove_deletes_every_occurrence() {
+        check_remove("- a @done @done(1) @x @done", "done", "- a @x");
+    }
+
+    #[test]
+    fn remove_at_line_start_deletes_the_whitespace_after_it() {
+        check_remove("@done  note", "done", "note");
+        check_remove("@done", "done", "");
+        check_remove("@done @x", "done", "@x");
+    }
+
+    #[test]
+    fn remove_without_the_tag_keeps_the_text() {
+        for text in [
+            "",
+            "- a",
+            "- a @donex",
+            "me@done.com",
+            "@done(1)x",
+            "- a @x",
+        ] {
+            check_remove(text, "done", text);
+        }
     }
 
     #[test]

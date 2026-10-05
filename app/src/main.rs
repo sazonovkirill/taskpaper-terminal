@@ -39,11 +39,9 @@ fn main() -> anyhow::Result<()> {
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
     let folder =
         ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), std::env::home_dir());
-    let io = Io::start(
-        inputs.clone(),
-        Backups::new(folder, || jiff::Zoned::now().date()),
-    );
-    let mut tui = ui::Tui::new(state, io);
+    let today = || jiff::Zoned::now().date();
+    let io = Io::start(inputs.clone(), Backups::new(folder, today));
+    let mut tui = ui::Tui::new(state, io, today);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
     forward_terminal_events(inputs);
     let result = run(&mut terminal, &mut tui, &received);

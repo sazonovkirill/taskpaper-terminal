@@ -81,7 +81,7 @@ impl Harness {
         Self {
             path: state.path().map(Path::to_owned),
             temporary: state.origin() == Origin::Temporary,
-            tui: Tui::new(state, io),
+            tui: Tui::new(state, io, || TODAY),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
             inputs,

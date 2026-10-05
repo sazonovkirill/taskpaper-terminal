@@ -6,17 +6,20 @@ use std::{
     time::Duration,
 };
 
-use super::saving::Autosave;
+use super::{History, saving::Autosave};
 use crate::document::{Block, BlockKind, Document, Item, ItemId, blocks};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
-/// Everything the app knows: the open document, where it came from and whether it is saved, the
-/// focused row, the collapsed blocks, the zoom with its history and the status-line notice.
+/// Everything the app knows: the open document with its undo history, where it came from and
+/// whether it is saved, the focused row, the collapsed blocks, the zoom with its history and the
+/// status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
+    /// The edits to undo and redo (FR-OPS-08).
+    pub(super) edits: History,
     path: Option<PathBuf>,
     origin: Origin,
     access: Access,
@@ -63,6 +66,13 @@ pub enum Notice {
         /// What the frontend reported.
         reason: String,
     },
+    /// An edit was refused because the file is read-only (file-io.md §1).
+    ReadOnly,
+    /// An edit, undo or redo did not fit the document, for this reason, and changed nothing.
+    EditFailed {
+        /// What did not fit.
+        reason: String,
+    },
 }
 
 /// One visible block of the outline.
@@ -92,6 +102,7 @@ impl State {
         let mut state = Self {
             autosave: Autosave::new(document.revision()),
             document,
+            edits: History::default(),
             path,
             origin: Origin::Chosen,
             access: Access::ReadWrite,

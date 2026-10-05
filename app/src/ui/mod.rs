@@ -9,6 +9,7 @@ pub mod widgets;
 use std::{ops::Range, time::Duration};
 
 use crossterm::event::Event;
+use jiff::civil::Date;
 use ratatui::{
     Frame, Terminal,
     backend::Backend,
@@ -19,7 +20,7 @@ use ratatui::{
 
 use crate::app::{Effect, Message, Origin, State};
 use effects::Io;
-use keymap::Keymap;
+use keymap::{Context, Keymap};
 use widgets::OutlineView;
 
 /// What the event loop waits for.
@@ -36,6 +37,8 @@ pub enum Input {
 pub struct Tui {
     state: State,
     io: Io,
+    /// Reads the local date, which messages that write one carry.
+    today: fn() -> Date,
     keymap: Keymap,
     /// The first outline row on screen.
     scroll: usize,
@@ -47,13 +50,14 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// A frontend showing `state` that carries out disk work with `io`, starting with what the
-    /// core asks for on opening.
+    /// A frontend showing `state` that carries out disk work with `io` and reads the local date
+    /// from `today`, starting with what the core asks for on opening.
     #[must_use]
-    pub fn new(state: State, io: Io) -> Self {
+    pub fn new(state: State, io: Io, today: fn() -> Date) -> Self {
         let mut tui = Self {
             state,
             io,
+            today,
             keymap: Keymap::default(),
             scroll: 0,
             page_rows: 0,
@@ -75,7 +79,11 @@ impl Tui {
     /// Handles one terminal event at time `now` (since the frontend started): maps it to a
     /// message, updates the state and runs the effects.
     fn handle_event(&mut self, event: &Event, now: Duration) {
-        let Some(message) = self.keymap.message_for(event, now, self.page_rows) else {
+        let context = Context {
+            page_rows: self.page_rows,
+            today: (self.today)(),
+        };
+        let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
         };
         let paging = matches!(message, Message::PageDown { .. } | Message::PageUp { .. });

@@ -3,6 +3,8 @@
 
 use std::{path::PathBuf, time::Duration};
 
+use jiff::civil::Date;
+
 use super::{State, saving::Ending};
 use crate::document::{Block, Item, ItemId, blocks};
 
@@ -85,6 +87,16 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
+    /// Complete the focused block, or uncomplete it when it is done, dating it `today`
+    /// (FR-DONE-01).
+    ToggleDone {
+        /// The frontend's local date.
+        today: Date,
+    },
+    /// Revert the latest edit (FR-OPS-08).
+    Undo,
+    /// Replay the latest undone edit (FR-OPS-08).
+    Redo,
 }
 
 /// Work the frontend performs for the core.
@@ -167,6 +179,9 @@ impl State {
             Message::GoHome => self.go_to(None),
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
+            Message::ToggleDone { today } => self.toggle_done(today),
+            Message::Undo => self.undo(),
+            Message::Redo => self.redo(),
         }
         self.repair_focus();
         self.expire_notice();
@@ -175,7 +190,7 @@ impl State {
     }
 
     /// The focused block and whether it is the title row.
-    fn focused(&self) -> Option<(Block, bool)> {
+    pub(super) fn focused(&self) -> Option<(Block, bool)> {
         let id = self.focus?;
         Some((blocks::block(self.document(), id)?, Some(id) == self.zoom))
     }

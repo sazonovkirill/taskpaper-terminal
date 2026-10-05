@@ -2,6 +2,7 @@
 //! the document layer, so the same core can run behind another frontend.
 
 pub mod demo;
+mod editing;
 pub mod history;
 pub mod saving;
 pub mod state;

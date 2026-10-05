@@ -130,15 +130,14 @@ pub fn file_status(
             Style::new().bold(),
         ));
     }
-    match notice {
-        Some(Notice::BackupFailed { reason }) => {
-            spans.push(Span::raw(" · "));
-            spans.push(Span::styled(
-                format!("backup failed: {reason}"),
-                warning_style(),
-            ));
-        }
-        None => {}
+    let notice = notice.map(|notice| match notice {
+        Notice::BackupFailed { reason } => (format!("backup failed: {reason}"), warning_style()),
+        Notice::ReadOnly => ("cannot edit a read-only file".to_owned(), warning_style()),
+        Notice::EditFailed { reason } => (format!("edit failed: {reason}"), error_style()),
+    });
+    if let Some((text, style)) = notice {
+        spans.push(Span::raw(" · "));
+        spans.push(Span::styled(text, style));
     }
     spans
 }
@@ -504,5 +503,28 @@ mod tests {
         );
         assert_eq!(error_style(), Style::new().red().bold());
         assert_eq!(warning_style(), Style::new().yellow());
+    }
+
+    // file-io.md §1, FR-OPS-08
+    #[test]
+    fn the_file_status_shows_a_refused_or_failed_edit() {
+        let rw = Access::ReadWrite;
+        assert_eq!(
+            status(SaveState::Saved, rw, false, Some(&Notice::ReadOnly)),
+            [
+                plain(" · "),
+                ("cannot edit a read-only file".to_owned(), warning_style())
+            ]
+        );
+        let failed = Notice::EditFailed {
+            reason: "it changed".to_owned(),
+        };
+        assert_eq!(
+            status(SaveState::Saved, rw, false, Some(&failed)),
+            [
+                plain(" · "),
+                ("edit failed: it changed".to_owned(), error_style())
+            ]
+        );
     }
 }

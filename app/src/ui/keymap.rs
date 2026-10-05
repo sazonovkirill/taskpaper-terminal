@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
+use jiff::civil::Date;
 
 use crate::app::Message;
 
@@ -15,8 +16,17 @@ pub const SEQUENCE_TIMEOUT: Duration = Duration::from_secs(1);
 /// character already says whether it is shifted.
 type Key = (KeyModifiers, KeyCode);
 
-/// A binding's keys and the message they send, given the rows in a page.
-type Binding = (&'static [Key], fn(usize) -> Message);
+/// A binding's keys and the message they send, given what the frontend knows.
+type Binding = (&'static [Key], fn(&Context) -> Message);
+
+/// What the frontend knows that a message may carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Context {
+    /// The height a page motion moves, in rows.
+    pub page_rows: usize,
+    /// The local date, which completing a block writes.
+    pub today: Date,
+}
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
 /// named key, `key!(ctrl Down)` for a named key with `Ctrl`, and likewise with `alt` and
@@ -58,10 +68,18 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(Home)], |_| Message::FocusFirst),
     (&[key!('G')], |_| Message::FocusLast),
     (&[key!(End)], |_| Message::FocusLast),
-    (&[key!(ctrl 'd')], |rows| Message::PageDown { rows }),
-    (&[key!(PageDown)], |rows| Message::PageDown { rows }),
-    (&[key!(ctrl 'u')], |rows| Message::PageUp { rows }),
-    (&[key!(PageUp)], |rows| Message::PageUp { rows }),
+    (&[key!(ctrl 'd')], |context| Message::PageDown {
+        rows: context.page_rows,
+    }),
+    (&[key!(PageDown)], |context| Message::PageDown {
+        rows: context.page_rows,
+    }),
+    (&[key!(ctrl 'u')], |context| Message::PageUp {
+        rows: context.page_rows,
+    }),
+    (&[key!(PageUp)], |context| Message::PageUp {
+        rows: context.page_rows,
+    }),
     (&[key!('h')], |_| Message::Collapse),
     (&[key!(Left)], |_| Message::Collapse),
     (&[key!('l')], |_| Message::Expand),
@@ -91,6 +109,16 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(alt shift Left)], |_| Message::Back),
     (&[key!('L')], |_| Message::Forward),
     (&[key!(alt shift Right)], |_| Message::Forward),
+    (&[key!('x')], |context| Message::ToggleDone {
+        today: context.today,
+    }),
+    (&[key!(ctrl Enter)], |context| Message::ToggleDone {
+        today: context.today,
+    }),
+    (&[key!('z')], |_| Message::Undo),
+    (&[key!(ctrl 'z')], |_| Message::Undo),
+    (&[key!('Z')], |_| Message::Redo),
+    (&[key!(ctrl 'y')], |_| Message::Redo),
 ];
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
@@ -103,14 +131,14 @@ pub struct Keymap {
 }
 
 impl Keymap {
-    /// The message `event` completes at time `now`, if any. `page_rows` is the height a page
-    /// motion moves. Only key presses count; repeats, releases and other events are ignored. A
+    /// The message `event` completes at time `now`, if any, carrying what it needs of
+    /// `context`. Only key presses count; repeats, releases and other events are ignored. A
     /// key that continues no binding ends the pending sequence and does nothing.
     pub fn message_for(
         &mut self,
         event: &Event,
         now: Duration,
-        page_rows: usize,
+        context: &Context,
     ) -> Option<Message> {
         let key = event.as_key_press_event()?;
         self.expire(now);
@@ -124,7 +152,7 @@ impl Keymap {
         self.pending.push((modifiers, key.code));
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
             self.pending.clear();
-            return Some(message(page_rows));
+            return Some(message(context));
         }
         // No binding equals the pending keys, so any binding they start is longer.
         if !NAVIGATE
@@ -168,6 +196,13 @@ mod tests {
 
     const PAGE: usize = 7;
 
+    const TODAY: Date = jiff::civil::date(2026, 10, 5);
+
+    const CONTEXT: &Context = &Context {
+        page_rows: PAGE,
+        today: TODAY,
+    };
+
     fn key(code: KeyCode, modifiers: KeyModifiers) -> Event {
         Event::Key(KeyEvent::new(code, modifiers))
     }
@@ -182,7 +217,7 @@ mod tests {
         let mut keymap = Keymap::default();
         assert_eq!(
             keymap
-                .message_for(&key(code, modifiers), ms(0), PAGE)
+                .message_for(&key(code, modifiers), ms(0), CONTEXT)
                 .as_ref(),
             expected,
             "{modifiers:?} {code:?}"
@@ -237,6 +272,25 @@ mod tests {
         check(KeyCode::Char('u'), KeyModifiers::CONTROL, up);
     }
 
+    // FR-DONE-01, FR-OPS-08
+    #[test]
+    fn editing_keys_complete_undo_and_redo() {
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        let done = Some(&Message::ToggleDone { today: TODAY });
+        check(KeyCode::Char('x'), none, done);
+        check(KeyCode::Enter, ctrl, done);
+        check(KeyCode::Enter, none, None);
+        check(KeyCode::Char('z'), none, Some(&Message::Undo));
+        check(KeyCode::Char('z'), ctrl, Some(&Message::Undo));
+        check(
+            KeyCode::Char('Z'),
+            KeyModifiers::SHIFT,
+            Some(&Message::Redo),
+        );
+        check(KeyCode::Char('y'), ctrl, Some(&Message::Redo));
+    }
+
     #[test]
     fn shift_only_drops_from_characters() {
         check(KeyCode::Down, KeyModifiers::SHIFT, None);
@@ -247,11 +301,11 @@ mod tests {
     fn g_g_within_the_timeout_focuses_the_first_row() {
         let mut keymap = Keymap::default();
         let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
-        assert_eq!(keymap.message_for(&g, ms(5_000), PAGE), None);
+        assert_eq!(keymap.message_for(&g, ms(5_000), CONTEXT), None);
         assert_eq!(keymap.pending(), "g");
         assert_eq!(keymap.deadline(), Some(ms(6_000)));
         assert_eq!(
-            keymap.message_for(&g, ms(5_999), PAGE),
+            keymap.message_for(&g, ms(5_999), CONTEXT),
             Some(Message::FocusFirst)
         );
         assert_eq!(keymap.pending(), "");
@@ -262,7 +316,7 @@ mod tests {
     fn a_sequence_times_out_after_one_second() {
         let mut keymap = Keymap::default();
         let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
-        keymap.message_for(&g, ms(0), PAGE);
+        keymap.message_for(&g, ms(0), CONTEXT);
         keymap.expire(ms(999));
         assert_eq!(keymap.pending(), "g");
         keymap.expire(ms(1_000));
@@ -274,8 +328,8 @@ mod tests {
     fn a_key_after_the_timeout_starts_a_new_sequence() {
         let mut keymap = Keymap::default();
         let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
-        keymap.message_for(&g, ms(0), PAGE);
-        assert_eq!(keymap.message_for(&g, ms(1_000), PAGE), None);
+        keymap.message_for(&g, ms(0), CONTEXT);
+        assert_eq!(keymap.message_for(&g, ms(1_000), CONTEXT), None);
         assert_eq!(keymap.pending(), "g");
         assert_eq!(keymap.deadline(), Some(ms(2_000)));
     }
@@ -283,14 +337,22 @@ mod tests {
     #[test]
     fn a_key_that_continues_no_sequence_cancels_it_and_does_nothing() {
         let mut keymap = Keymap::default();
-        keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), PAGE);
+        keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), CONTEXT);
         assert_eq!(
-            keymap.message_for(&key(KeyCode::Char('j'), KeyModifiers::NONE), ms(10), PAGE),
+            keymap.message_for(
+                &key(KeyCode::Char('j'), KeyModifiers::NONE),
+                ms(10),
+                CONTEXT
+            ),
             None
         );
         assert_eq!(keymap.pending(), "");
         assert_eq!(
-            keymap.message_for(&key(KeyCode::Char('j'), KeyModifiers::NONE), ms(20), PAGE),
+            keymap.message_for(
+                &key(KeyCode::Char('j'), KeyModifiers::NONE),
+                ms(20),
+                CONTEXT
+            ),
             Some(Message::FocusNext)
         );
     }
@@ -298,7 +360,7 @@ mod tests {
     #[test]
     fn unbound_keys_leave_nothing_pending() {
         let mut keymap = Keymap::default();
-        keymap.message_for(&key(KeyCode::Char('w'), KeyModifiers::NONE), ms(0), PAGE);
+        keymap.message_for(&key(KeyCode::Char('w'), KeyModifiers::NONE), ms(0), CONTEXT);
         assert_eq!(keymap.pending(), "");
         assert_eq!(keymap.deadline(), None);
     }
@@ -316,11 +378,11 @@ mod tests {
             };
             let mut keymap = Keymap::default();
             assert_eq!(
-                keymap.message_for(&event(KeyCode::Char('j')), ms(0), PAGE),
+                keymap.message_for(&event(KeyCode::Char('j')), ms(0), CONTEXT),
                 None
             );
             assert_eq!(
-                keymap.message_for(&event(KeyCode::Char('g')), ms(0), PAGE),
+                keymap.message_for(&event(KeyCode::Char('g')), ms(0), CONTEXT),
                 None
             );
             assert_eq!(keymap.pending(), "");
@@ -331,12 +393,15 @@ mod tests {
     fn non_key_events_are_ignored_and_keep_the_pending_sequence() {
         let mut keymap = Keymap::default();
         assert_eq!(
-            keymap.message_for(&Event::Resize(80, 24), ms(0), PAGE),
+            keymap.message_for(&Event::Resize(80, 24), ms(0), CONTEXT),
             None
         );
-        assert_eq!(keymap.message_for(&Event::FocusGained, ms(0), PAGE), None);
-        keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), PAGE);
-        keymap.message_for(&Event::Resize(80, 24), ms(10), PAGE);
+        assert_eq!(
+            keymap.message_for(&Event::FocusGained, ms(0), CONTEXT),
+            None
+        );
+        keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), CONTEXT);
+        keymap.message_for(&Event::Resize(80, 24), ms(10), CONTEXT);
         assert_eq!(keymap.pending(), "g");
     }
 }
