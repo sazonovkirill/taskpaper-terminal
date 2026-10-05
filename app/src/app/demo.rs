@@ -167,6 +167,12 @@ mod tests {
                 .any(|row| row.kind == BlockKind::Task && !row.done),
             "demo lacks a task to check off"
         );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Project && row.done)
+                && rows.iter().any(|row| row.inside_done && !row.done),
+            "demo lacks a done project with open blocks inside it"
+        );
         let section_after_task = rows.iter().enumerate().any(|(at, row)| {
             row.kind == BlockKind::Section
                 && rows[..at]

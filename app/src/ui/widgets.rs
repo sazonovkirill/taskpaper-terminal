@@ -341,12 +341,12 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         .collect()
 }
 
-/// The marker of a block's first line with its style, and the style of its text, by its type
-/// (ui.md §2).
+/// The marker of a block's first line with its style, and the style of its text, by its type and
+/// whether it is done or inside a done block (ui.md §2).
 fn row_style(row: &Row) -> (&'static str, Style, Style) {
     let (marker, style) = match row.kind {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => ("✔ ", Style::new().dim().crossed_out()),
+        BlockKind::Task if row.done => ("✔ ", Style::new()),
         BlockKind::Task => ("- ", Style::new()),
         BlockKind::Url => ("", Style::new().dim().underlined().cyan()),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
@@ -355,13 +355,15 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Divider => ("", divider_style()),
     };
     let style = if row.title { style.bold() } else { style };
-    // A done task's check mark recedes with its text (D-36).
-    let marker_style = if row.kind == BlockKind::Task && row.done {
-        Style::new().dim()
+    // A done block recedes and is struck through, and everything inside it recedes; markers
+    // recede with their text (D-36, D-40).
+    if row.done {
+        (marker, Style::new().dim(), style.dim().crossed_out())
+    } else if row.inside_done {
+        (marker, Style::new().dim(), style.dim())
     } else {
-        Style::new()
-    };
-    (marker, marker_style, style)
+        (marker, Style::new(), style)
+    }
 }
 
 /// The screen lines of `row` while `editor` edits it, `width` columns wide, and the caret's column
@@ -540,18 +542,77 @@ mod tests {
         );
     }
 
-    // FR-DONE-01
+    // FR-DONE-01, D-40
     #[test]
-    fn done_tasks_are_checked_dimmed_and_struck_through() {
+    fn done_blocks_are_dimmed_and_struck_through_and_done_tasks_checked() {
         let mut expected = Buffer::with_lines(["✔ a ", "- b ", "P:  ", "n   "]);
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(0, 2, 2, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(NOTE));
+        let struck = |style: Style| style.dim().crossed_out();
+        expected.set_style(
+            Rect::new(0, 2, 2, 1),
+            struck(Style::new().bold().fg(PRIMARY)),
+        );
+        expected.set_style(Rect::new(0, 3, 1, 1), struck(Style::new().fg(NOTE)));
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
         );
+        let mut expected = Buffer::with_lines(["S     ", "u     ", "──────", "f()   "]);
+        expected.set_style(
+            Rect::new(0, 0, 1, 1),
+            struck(Style::new().bold().fg(SECONDARY)),
+        );
+        expected.set_style(
+            Rect::new(0, 1, 1, 1),
+            struck(Style::new().underlined().cyan()),
+        );
+        expected.set_style(Rect::new(0, 2, 6, 1), divider_style());
+        expected.set_style(Rect::new(0, 3, 6, 1), code_style());
+        expected.set_style(Rect::new(0, 3, 3, 1), struck(code_style()));
+        assert_eq!(
+            render(
+                "S @section @done\nu @url(x) @done\n--- @done\nf() @code @done",
+                6,
+                4
+            ),
+            expected
+        );
+    }
+
+    // FR-DONE-01, D-40
+    #[test]
+    fn every_block_inside_a_done_block_is_dimmed_but_not_struck_through() {
+        let text = "P: @done\n\t- a\n\t\tn\n\tS @section\n\tu @url(x)\n\t---\n\tf() @code\n- b";
+        let mut expected = Buffer::with_lines([
+            "P:      ",
+            "  - a   ",
+            "    n   ",
+            "  S     ",
+            "  u     ",
+            "  ──────",
+            "  f()   ",
+            "- b     ",
+        ]);
+        let dim = Style::new().dim();
+        expected.set_style(
+            Rect::new(0, 0, 2, 1),
+            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+        );
+        expected.set_style(Rect::new(2, 1, 3, 1), dim);
+        expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(NOTE).dim());
+        expected.set_style(
+            Rect::new(2, 3, 1, 1),
+            Style::new().bold().fg(SECONDARY).dim(),
+        );
+        expected.set_style(
+            Rect::new(2, 4, 1, 1),
+            Style::new().dim().underlined().cyan(),
+        );
+        expected.set_style(Rect::new(2, 5, 6, 1), divider_style());
+        expected.set_style(Rect::new(2, 6, 6, 1), code_style());
+        expected.set_style(Rect::new(2, 6, 3, 1), code_style().dim());
+        assert_eq!(render(text, 8, 8), expected);
     }
 
     // FR-NAV-02

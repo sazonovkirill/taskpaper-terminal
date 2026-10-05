@@ -29,3 +29,7 @@ Reading list:
 		- The Name of the Wind
 		- Piranesi
 	Ask friends for more recommendations.
+Move to the new flat: @done({today-3})
+	- Pack the books
+	- Hand back the old keys @done({today-4})
+	The new address is on the fridge.

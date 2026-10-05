@@ -122,6 +122,9 @@ pub struct Row {
     pub lines: Vec<String>,
     /// Whether the block carries `@done`, with or without a value (D-17).
     pub done: bool,
+    /// Whether a block above it is done, also one above the zoom; its own `@done` is `done`
+    /// (D-40).
+    pub inside_done: bool,
     /// How many child blocks its fold hides; 0 when it is expanded or has none.
     pub hidden_children: usize,
     /// Whether this is the title row of a zoomed view: the zoom block itself, above its children.
@@ -259,22 +262,34 @@ impl State {
 
     /// The visible rows: when zoomed, a title row for the zoom block at depth 0, then its child
     /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
-    /// their children and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-SPC-01).
+    /// their children and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-SPC-01). A row
+    /// inside a done block, also one above the zoom, says so (D-40).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        let title = self.zoom_block().map(|block| self.row(&block, 0, true));
+        let title = self.zoom_block().map(|block| {
+            let inside_done =
+                std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
+                    blocks::parent(&self.document, above.id())
+                })
+                .any(|above| above.done());
+            self.row(&block, 0, true, inside_done)
+        });
         let below = usize::from(title.is_some());
-        title
-            .into_iter()
-            .chain(
-                self.blocks(true)
-                    .into_iter()
-                    .map(|(block, depth)| self.row(&block, depth + below, false)),
-            )
-            .collect()
+        let top_done = title
+            .as_ref()
+            .is_some_and(|row| row.done || row.inside_done);
+        // Whether each block on the path to the current one is done or inside a done block.
+        let mut path: Vec<bool> = Vec::new();
+        let rows = self.blocks(true).into_iter().map(|(block, depth)| {
+            path.truncate(depth);
+            let inside_done = path.last().copied().unwrap_or(top_done);
+            path.push(inside_done || block.done());
+            self.row(&block, depth + below, false, inside_done)
+        });
+        title.into_iter().chain(rows).collect()
     }
 
-    fn row(&self, block: &Block, depth: usize, title: bool) -> Row {
+    fn row(&self, block: &Block, depth: usize, title: bool, inside_done: bool) -> Row {
         Row {
             id: block.id(),
             depth,
@@ -286,6 +301,7 @@ impl State {
                 .map(Item::display_text)
                 .collect(),
             done: block.done(),
+            inside_done,
             hidden_children: if !title && self.folds.contains(&block.id()) {
                 self.children(block).len()
             } else {
@@ -413,6 +429,87 @@ mod tests {
                 ("d".to_owned(), false),
                 ("n|m".to_owned(), true),
             ]
+        );
+    }
+
+    /// Each row's first line, whether it is done and whether it is inside a done block.
+    fn completion(state: &State) -> Vec<(String, bool, bool)> {
+        state
+            .rows()
+            .into_iter()
+            .map(|row| (row.lines[0].clone(), row.done, row.inside_done))
+            .collect()
+    }
+
+    // FR-DONE-01, D-40
+    #[test]
+    fn rows_inside_a_done_block_of_any_type_are_marked_at_any_depth() {
+        let state = State::new(
+            format::parse(
+                "P: @done\n\t- a\n\t\tn\n\t- b @done\nQ:\n\t- c\n\t\tS @section @done\n\t\t\tm\n\t\t\t\t- e\n\t- f\no @done(1)\n\t- g\n- h",
+            ),
+            None,
+        );
+        let row = |text: &str, done, inside| (text.to_owned(), done, inside);
+        assert_eq!(
+            completion(&state),
+            [
+                row("P", true, false),
+                row("a", false, true),
+                row("n", false, true),
+                row("b", true, true),
+                row("Q", false, false),
+                row("c", false, false),
+                row("S", true, false),
+                row("m", false, true),
+                row("e", false, true),
+                row("f", false, false),
+                row("o", true, false),
+                row("g", false, true),
+                row("h", false, false),
+            ]
+        );
+    }
+
+    // FR-DONE-01, FR-NAV-03, D-40
+    #[test]
+    fn a_zoom_inside_or_onto_a_done_block_marks_its_title_and_rows() {
+        let zoomed = |text: &str, down: usize| {
+            let mut state = State::new(format::parse(text), None);
+            for _ in 0..down {
+                state.update(crate::app::Message::FocusNext);
+            }
+            state.update(crate::app::Message::ZoomIn);
+            completion(&state)
+        };
+        let row = |text: &str, done, inside| (text.to_owned(), done, inside);
+        assert_eq!(
+            zoomed("P: @done\n\tQ:\n\t\t- a\n\t\t\t- b", 1),
+            [
+                row("Q", false, true),
+                row("a", false, true),
+                row("b", false, true)
+            ],
+            "a done block above the zoom"
+        );
+        assert_eq!(
+            zoomed("P:\n\tQ: @done\n\t\t- a\n\t\t\t- b", 1),
+            [
+                row("Q", true, false),
+                row("a", false, true),
+                row("b", false, true)
+            ],
+            "a done zoom block"
+        );
+        assert_eq!(
+            zoomed("P:\n\tQ:\n\t\t- a @done\n\t\t\t- b\n\t\t- c", 1),
+            [
+                row("Q", false, false),
+                row("a", true, false),
+                row("b", false, true),
+                row("c", false, false),
+            ],
+            "nothing done above the zoom"
         );
     }
 

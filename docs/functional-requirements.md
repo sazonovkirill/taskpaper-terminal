@@ -117,8 +117,8 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 
 | ID | Requirement | Priority | Workflowy |
 |---|---|---|---|
-| FR-DONE-01 | A command completes or uncompletes the selection by adding `@done(YYYY-MM-DD)` with today's date, or removing `@done` with any value (D-4). Any `@done`, with or without a value, marks a block completed (D-17). | Must | Complete |
-| FR-DONE-02 | A top-level command and key binding show or hide completed blocks, per pane (D-13). | Must | Show completed |
+| FR-DONE-01 | A command completes or uncompletes the selection by adding `@done(YYYY-MM-DD)` with today's date, or removing `@done` with any value (D-4). Any `@done`, with or without a value, marks a block completed (D-17). Any block can be completed, whatever its type; a completed block is shown dimmed and struck through, and every block inside it, at any depth, dimmed (D-40). | Must | Complete |
+| FR-DONE-02 | A top-level command and key binding show or hide completed blocks, each with everything inside it, per pane (D-13, D-40). | Must | Show completed |
 
 ## FR-SPC · Special nodes and comments
 
@@ -217,3 +217,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-37 | Notes are less dim than done tasks (owner, 2026-10-05, M1 review). Until themes arrive, notes use the ANSI gray, and done tasks keep the terminal's dim attribute. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-38 | A URL block has no marker; its underlined, accent-colored title is enough, and it lines up with other blocks at its depth (owner, 2026-10-05, M2 review). Supersedes the URL `↗` of D-31. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-39 | Every line of the focused block gets a slightly brighter background across the pane, in navigate and edit mode, without changing any text color or style; the gutter marker of D-30 stays (owner, 2026-10-05, M2 review). Until themes arrive the band is the 256-color grey 235, chosen for dark terminals. Details in [ui.md §2](specs/ui.md#2-blocks). |
+| D-40 | Any block can be completed, not only tasks: projects, sections, notes and every other type take `@done` the same way (owner, 2026-10-05, M2 feedback). A done block is dimmed and struck through in its type's style, a task also showing `✔`; every block inside it, at any depth, is dimmed too, without being marked done or changed in the file. This holds when zoomed into or below a done block, for the title row too. Hiding completed blocks hides each done block with everything inside it. Details in [ui.md §2](specs/ui.md#2-blocks). |

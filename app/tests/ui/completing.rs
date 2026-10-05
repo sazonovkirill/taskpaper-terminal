@@ -3,8 +3,9 @@
 use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
+use ratatui::{buffer::Buffer, style::Modifier};
 
-use crate::support::{Harness, line, outline_rows};
+use crate::support::{Harness, line, outline_line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -20,6 +21,24 @@ fn saved(app: &mut Harness) -> String {
     app.settle();
     let path = app.path.as_ref().expect("a file was opened");
     fs::read_to_string(path).expect("the file is readable")
+}
+
+/// The modifiers of the first character drawn on screen row `y` after the gutter.
+fn first_cell(buffer: &Buffer, y: u16) -> Modifier {
+    let area = buffer.area;
+    (area.left() + 2..area.right())
+        .map(|x| &buffer[(x, y)])
+        .find(|cell| cell.symbol() != " ")
+        .map_or(Modifier::empty(), |cell| cell.modifier)
+}
+
+/// Whether screen row `y` is dimmed and whether it is struck through.
+fn receded(buffer: &Buffer, y: u16) -> (bool, bool) {
+    let modifier = first_cell(buffer, y);
+    (
+        modifier.contains(Modifier::DIM),
+        modifier.contains(Modifier::CROSSED_OUT),
+    )
 }
 
 // FR-DONE-01, D-4, FR-DOC-02
@@ -124,5 +143,84 @@ fn the_demo_has_a_task_to_check_off() {
     assert!(
         text.contains("\t- Book flights @done(2026-10-05)\n"),
         "{text}"
+    );
+}
+
+// FR-DONE-01, D-40
+#[test]
+fn x_completes_a_project_and_dims_everything_inside_it() {
+    let mut app = Harness::open("groceries.taskpaper", 50, 10);
+    app.settle();
+    app.type_keys("x");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(outline_line(&buffer, 2), "Groceries:");
+    assert_eq!(receded(&buffer, 2), (true, true), "the done project");
+    for y in 3..=7 {
+        assert_eq!(
+            receded(&buffer, y),
+            (true, false),
+            "{:?} is inside the done project",
+            outline_line(&buffer, y)
+        );
+    }
+    assert_eq!(receded(&buffer, 8), (false, false), "the note after it");
+    assert_eq!(
+        saved(&mut app),
+        GROCERIES.replace("Groceries: @home", "Groceries: @home @done(2026-10-05)"),
+        "only the project is marked done"
+    );
+    app.type_keys("x");
+    let buffer = app.render().buffer().clone();
+    for y in 2..=8 {
+        assert!(!receded(&buffer, y).1, "nothing is struck through");
+    }
+    assert_eq!(
+        receded(&buffer, 3),
+        (false, false),
+        "Milk is no longer dimmed"
+    );
+    assert_eq!(saved(&mut app), GROCERIES);
+}
+
+// FR-DONE-01, FR-NAV-03, D-40
+#[test]
+fn a_zoom_inside_a_done_block_is_dimmed_and_its_breadcrumbs_are_not() {
+    let mut app = Harness::open("groceries.taskpaper", 50, 10);
+    app.type_keys("xjjjj.");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(outline_line(&buffer, 0), "⌂ › Groceries › Dairy");
+    assert_eq!(
+        first_cell(&buffer, 0),
+        Modifier::BOLD,
+        "the header stays as it is"
+    );
+    assert_eq!(outline_line(&buffer, 2), "Dairy:");
+    assert_eq!(receded(&buffer, 2), (true, false), "the title row");
+    assert_eq!(outline_line(&buffer, 3), "  - Cheese");
+    assert_eq!(receded(&buffer, 3), (true, false));
+    app.type_keys("ggx");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        receded(&buffer, 2),
+        (true, true),
+        "the title row is done itself"
+    );
+    assert_eq!(receded(&buffer, 3), (true, false));
+}
+
+// FR-DOC-05, FR-DONE-01, D-40
+#[test]
+fn the_demo_has_a_done_project_with_its_children_dimmed() {
+    let mut app = Harness::demo(60, 40);
+    let buffer = app.render().buffer().clone();
+    let project = (2..39)
+        .find(|&y| outline_line(&buffer, y) == "Move to the new flat:")
+        .expect("the demo has a done project");
+    assert_eq!(receded(&buffer, project), (true, true));
+    assert_eq!(outline_line(&buffer, project + 1), "  - Pack the books");
+    assert_eq!(
+        receded(&buffer, project + 1),
+        (true, false),
+        "an open task inside it"
     );
 }
