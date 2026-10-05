@@ -13,9 +13,9 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
         "────────────────────────────────────────",
         "▎ Errands:                              ",
         "    - Call about the lease              ",
-        "    ☑ Post the letter                   ",
-        "    ☑ Buy stamps                        ",
-        "    ☑ Return books                      ",
+        "    ✔ Post the letter                   ",
+        "    ✔ Buy stamps                        ",
+        "    ✔ Return books                      ",
         "    Paid:                               ",
         "    mail me@example.com about Proj:@x   ",
         &app.status(40),
@@ -41,5 +41,5 @@ fn demo_hides_its_tags_and_shows_a_done_task() {
     let mut app = Harness::demo(40, 11);
     let screen = app.render().to_string();
     assert!(!screen.contains('@'), "a tag is visible:\n{screen}");
-    assert!(screen.contains("☑ Passport"), "no done task:\n{screen}");
+    assert!(screen.contains("✔ Passport"), "no done task:\n{screen}");
 }

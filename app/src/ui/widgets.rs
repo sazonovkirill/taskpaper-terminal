@@ -107,7 +107,7 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
     let indent = "  ".repeat(row.depth);
     let (marker, style) = match row.kind {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => ("☑ ", Style::new().dim().crossed_out()),
+        BlockKind::Task if row.done => ("✔ ", Style::new().dim().crossed_out()),
         BlockKind::Task => ("- ", Style::new()),
         BlockKind::Url => ("↗ ", Style::new().dim().underlined().cyan()),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
@@ -250,7 +250,7 @@ mod tests {
     // FR-DONE-01
     #[test]
     fn done_tasks_are_checked_dimmed_and_struck_through() {
-        let mut expected = Buffer::with_lines(["☑ a ", "- b ", "P:  ", "n   "]);
+        let mut expected = Buffer::with_lines(["✔ a ", "- b ", "P:  ", "n   "]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().dim().crossed_out());
         expected.set_style(Rect::new(0, 2, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().dim());

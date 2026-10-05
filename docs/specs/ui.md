@@ -9,7 +9,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 │ ★ Launch plan      │ Work                              │ Ideas                         │
 │ Today          3   │   Launch:                         │ • Terminal outliner           │
 │ Projects           │   - Draft announcement  Fri 8 Oct │ • Plain-text sync             │
-│ ▾ Work             │   ☑ Book venue                    │                               │
+│ ▾ Work             │   ✔ Book venue                    │                               │
 │   ▸ Launch         │   - Budget review  ▸ 3            │                               │
 │ ▸ Ideas            │     Notes about the venue wrap    │                               │
 │                    │     under the text like this.     │                               │
@@ -33,7 +33,7 @@ Each row: indent (2 columns per level), then text and right-aligned chips. Tasks
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
 | Project | none | bold heading in the accent color (Textual's `$primary`), ending in `:` as in the file |
-| Task | `-`, done `☑` | normal; done tasks dimmed and struck through (falls back to dim) |
+| Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim) |
 | Note | none | slightly dimmed, several lines |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
 | Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |

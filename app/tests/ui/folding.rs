@@ -52,7 +52,7 @@ fn a_file_opens_fully_expanded() {
             "    - Draft",
             "      - Outline",
             "  Ideas:",
-            "☑ Loose",
+            "✔ Loose",
         ]
     );
 }
@@ -126,14 +126,14 @@ fn double_quote_toggles_the_whole_subtree() {
     let mut app = app();
     app.type_keys("jjjj");
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "☑ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "✔ Loose"]);
     app.type_keys("l");
     assert_eq!(
         shown(&mut app)[4..],
-        ["Work:", "  - Report ▸ 1", "  Ideas:", "☑ Loose"]
+        ["Work:", "  - Report ▸ 1", "  Ideas:", "✔ Loose"]
     );
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "☑ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "✔ Loose"]);
     app.type_keys("\"");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -143,7 +143,7 @@ fn double_quote_toggles_the_whole_subtree() {
 fn underscore_and_plus_collapse_and_expand_everything() {
     let mut app = app();
     app.type_keys("_");
-    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "☑ Loose"]);
+    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "✔ Loose"]);
     app.type_keys("+");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -164,12 +164,12 @@ fn minus_and_equals_fold_one_level_at_a_time() {
             "Work:",
             "  - Report ▸ 1",
             "  Ideas:",
-            "☑ Loose",
+            "✔ Loose",
         ]
     );
     app.type_keys("-");
     app.type_keys("-");
-    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "☑ Loose"]);
+    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "✔ Loose"]);
     app.type_keys("=");
     assert_eq!(shown(&mut app)[4], "  - Report ▸ 1");
     app.type_keys("=");
@@ -185,7 +185,7 @@ fn focus_hidden_by_a_fold_moves_to_the_next_visible_block() {
     app.type_keys("jjjjjjj");
     assert_focus(&mut app, "      - Outline");
     app.type_keys("_");
-    assert_focus(&mut app, "☑ Loose");
+    assert_focus(&mut app, "✔ Loose");
 }
 
 // FR-NAV-01, navigation §2
@@ -229,9 +229,9 @@ fn ctrl_arrows_move_between_siblings() {
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
     assert_focus(&mut app, "Work:");
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
-    assert_focus(&mut app, "☑ Loose");
+    assert_focus(&mut app, "✔ Loose");
     app.press(KeyCode::Down, KeyModifiers::CONTROL);
-    assert_focus(&mut app, "☑ Loose");
+    assert_focus(&mut app, "✔ Loose");
     app.press(KeyCode::Up, KeyModifiers::CONTROL);
     app.press(KeyCode::Up, KeyModifiers::CONTROL);
     assert_focus(&mut app, "Home:");

@@ -147,7 +147,7 @@ fn a_block_taller_than_the_view_shows_its_start() {
 fn demo_shows_every_block_type() {
     let mut app = Harness::demo(60, 51);
     let text = app.render().to_string();
-    for expected in ["↗ ", "─────", "☑ ", "Trip to Lisbon:"] {
+    for expected in ["↗ ", "─────", "✔ ", "Trip to Lisbon:"] {
         assert!(text.contains(expected), "demo lacks {expected:?}:\n{text}");
     }
     assert!(
