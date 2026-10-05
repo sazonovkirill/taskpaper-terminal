@@ -61,7 +61,7 @@ Inside the panel, focus moves between the comment list and the input with `Tab`;
 | Command | Keys in the panel | Effect |
 |---|---|---|
 | Add | type in the input, `Enter` | Appends a comment stamped with the current local time. `Shift+Enter` or `Alt+Enter` inserts a line break. |
-| Edit | `Enter` or `i` on a comment | Edits its text in place with the same keys as edit mode (FR-MODE-03); the timestamp is kept. |
+| Edit | `Enter` on a comment | Edits its text in place with the same keys as edit mode (FR-MODE-03); the timestamp is kept. |
 | Delete | `dd` or `Delete` on a comment | Removes the comment and its continuation lines; removing the last one removes the node. |
 | Move between comments | `j` / `k`, `↓` / `↑` | |
 | Copy text | `yy` | Copies the comment's text without the timestamp. |

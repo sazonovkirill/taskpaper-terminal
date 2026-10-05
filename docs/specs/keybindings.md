@@ -54,9 +54,9 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 
 | Command | Keys |
 |---|---|
-| Edit focused block (caret at end / at start) | `Enter` / `i` (`a` now adds a task) |
+| Edit focused block (caret at end) | `Enter` (`a` now adds a task) |
 | New block below / above | `o` / `O` |
-| New child | `Alt+o` |
+| New last child / first child, expanding the block | `i` / `I` (`I` was `Alt+o`; D-41) |
 | New project at the top of the list / below the focused block | `P` / `p` |
 | New section at the top of the list, after its tasks / below the focused block | `S` / `s` |
 | New task at the top of the list / below the focused block | `A` / `a` |

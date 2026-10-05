@@ -58,9 +58,11 @@ fn enter_edits_a_task_in_place_and_esc_returns_with_it_renamed_and_saved() {
 
 // FR-MODE-01, FR-MODE-04
 #[test]
-fn i_puts_the_caret_at_the_start_and_enter_ends_editing_with_a_new_block() {
+fn home_moves_the_caret_to_the_start_and_enter_ends_editing_with_a_new_block() {
     let mut app = Harness::open("groceries.taskpaper", 50, 10);
-    app.type_keys("ji");
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Home, 1);
     assert_caret(&mut app, 6, 3);
     app.type_keys("Soy ");
     press(&mut app, KeyCode::Enter, 1);

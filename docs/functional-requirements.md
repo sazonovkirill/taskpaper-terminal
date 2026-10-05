@@ -69,7 +69,7 @@ Each block type, how it is stored and how it looks. Types are mutually exclusive
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-MODE-01 | Navigate mode moves between and selects blocks; edit mode edits one block's text. Enter or `i` enters edit mode, Esc returns (D-1). | Must |
+| FR-MODE-01 | Navigate mode moves between and selects blocks; edit mode edits one block's text. Enter enters edit mode, Esc returns (D-1, D-41). | Must |
 | FR-MODE-02 | Editing happens in place: the editor opens where the block is, keeping indentation, surrounding blocks and scroll position, as in Things 3. | Must |
 | FR-MODE-03 | Edit mode uses standard text-editing keys (arrows, Home/End, word motion, word delete, selection, clipboard), not vim normal mode (D-1). | Must |
 | FR-MODE-04 | Creating a block (new sibling below/above, new child) opens it directly in edit mode. | Must |
@@ -218,3 +218,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-38 | A URL block has no marker; its underlined, accent-colored title is enough, and it lines up with other blocks at its depth (owner, 2026-10-05, M2 review). Supersedes the URL `↗` of D-31. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-39 | Every line of the focused block gets a slightly brighter background across the pane, in navigate and edit mode, without changing any text color or style; the gutter marker of D-30 stays (owner, 2026-10-05, M2 review). Until themes arrive the band is the 256-color grey 235, chosen for dark terminals. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-40 | Any block can be completed, not only tasks: projects, sections, notes and every other type take `@done` the same way (owner, 2026-10-05, M2 feedback). A done block is dimmed and struck through in its type's style, a task also showing `✔`; every block inside it, at any depth, is dimmed too, without being marked done or changed in the file. This holds when zoomed into or below a done block, for the title row too. Hiding completed blocks hides each done block with everything inside it. Details in [ui.md §2](specs/ui.md#2-blocks). |
+| D-41 | `o`/`O` insert neighbors and `i`/`I` insert children, leaving only `Enter` for editing (owner, 2026-10-05, M2 feedback). In navigate mode `i` adds a last child and `I` a first child, each expanding the block and opening the new block in edit mode; on the zoom title they add its last and first child. `i` no longer edits with the caret at the start, and `Alt+o`, the earlier new-child key, is free. Changes D-26's key set and OQ-29's `i`. Details in [keybindings.md §2](specs/keybindings.md#2-navigate-mode) and [editing.md §3](specs/editing.md#3-creating-blocks-fr-mode-04). |

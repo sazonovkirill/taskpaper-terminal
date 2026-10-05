@@ -20,6 +20,8 @@ pub enum Place<'a> {
     Above(&'a Block),
     /// As the block's first child.
     FirstChild(&'a Block),
+    /// As the block's last child, before the special nodes that end its children.
+    LastChild(&'a Block),
     /// As the first top-level block.
     Start,
 }
@@ -68,6 +70,10 @@ pub fn new_block(
         }
         Place::Above(block) => document.position(block.id())?,
         Place::FirstChild(block) => (block.last_line(), 0),
+        Place::LastChild(block) => {
+            let children = document.get(block.last_line())?.children();
+            (block.last_line(), end(document, children))
+        }
         Place::Start => (document.root(), 0),
     };
     let text = typed.map_or_else(
@@ -95,7 +101,9 @@ fn fitting_line(
 ) -> &'static str {
     let task = match place {
         Place::Below(block) | Place::Above(block) => block.kind() == BlockKind::Task,
-        Place::FirstChild(block) => matches!(block.kind(), BlockKind::Project | BlockKind::Task),
+        Place::FirstChild(block) | Place::LastChild(block) => {
+            matches!(block.kind(), BlockKind::Project | BlockKind::Task)
+        }
         Place::Start => false,
     } || blocks::blank_line_joins_run(document, parent, index);
     if task { "- " } else { "" }
@@ -314,8 +322,7 @@ fn parents_neighbor(document: &Document, parent: ItemId, top: ItemId, by: isize)
 }
 
 /// The ops moving `lines`, each with its subtree, to `spot` among the children of the line `to`,
-/// in order, the end being before the special nodes that end the children so that they stay
-/// last (special-nodes.md §1); `None` when a line or the spot is not in `document`.
+/// in order, the end being before the special nodes that end the children; `None` when a line or the spot is not in `document`.
 fn relocate(document: &Document, lines: &[ItemId], to: ItemId, spot: Spot) -> Option<Vec<Op>> {
     let mut children = HashMap::new();
     let mut ops = Vec::new();
@@ -329,14 +336,7 @@ fn relocate(document: &Document, lines: &[ItemId], to: ItemId, spot: Spot) -> Op
         let find = |id: ItemId| targets.iter().position(|&target| target == id);
         let index = match previous.map_or(spot, Spot::After) {
             Spot::Start => 0,
-            Spot::End => targets
-                .iter()
-                .rposition(|&id| {
-                    document
-                        .get(id)
-                        .is_some_and(|item| !blocks::is_special(item))
-                })
-                .map_or(0, |last| last + 1),
+            Spot::End => end(document, targets),
             Spot::Before(id) => find(id)?,
             Spot::After(id) => find(id)? + 1,
         };
@@ -349,6 +349,19 @@ fn relocate(document: &Document, lines: &[ItemId], to: ItemId, spot: Spot) -> Op
         });
     }
     Some(ops)
+}
+
+/// The index after the last of `children` that is not a special node, so that the special nodes
+/// ending them stay last (special-nodes.md §1).
+fn end(document: &Document, children: &[ItemId]) -> usize {
+    children
+        .iter()
+        .rposition(|&id| {
+            document
+                .get(id)
+                .is_some_and(|item| !blocks::is_special(item))
+        })
+        .map_or(0, |last| last + 1)
 }
 
 /// The children of `line` in `children`, which holds them as the ops built so far leave them,
@@ -400,7 +413,8 @@ mod tests {
     enum At {
         Below,
         Above,
-        Child,
+        FirstChild,
+        LastChild,
     }
 
     /// The lines of `text` once a new block is added `at` the block reading `of`, with the
@@ -412,7 +426,8 @@ mod tests {
         let place = match at {
             At::Below => Place::Below(&block),
             At::Above => Place::Above(&block),
-            At::Child => Place::FirstChild(&block),
+            At::FirstChild => Place::FirstChild(&block),
+            At::LastChild => Place::LastChild(&block),
         };
         applied(&mut document, place)
     }
@@ -456,10 +471,24 @@ mod tests {
     #[test]
     fn a_first_child_goes_under_the_last_line() {
         assert_eq!(
-            added("P:\n\t- a", At::Child, "P:"),
+            added("P:\n\t- a", At::FirstChild, "P:"),
             ["P:", "\t>- ", "\t- a"]
         );
-        assert_eq!(added("n\nm", At::Child, "n"), ["n", "m", "\t>"]);
+        assert_eq!(added("n\nm", At::FirstChild, "n"), ["n", "m", "\t>"]);
+    }
+
+    // FR-MODE-04, special-nodes.md §1
+    #[test]
+    fn a_last_child_goes_after_the_children_but_before_special_nodes() {
+        assert_eq!(
+            added("P:\n\t- a\n\t\t- b", At::LastChild, "P:"),
+            ["P:", "\t- a", "\t\t- b", "\t>- "]
+        );
+        assert_eq!(
+            added("- t\n\t- a\n\tC @hidden @comments", At::LastChild, "- t"),
+            ["- t", "\t- a", "\t>- ", "\tC @hidden @comments"]
+        );
+        assert_eq!(added("n\nm", At::LastChild, "n"), ["n", "m", "\t>"]);
     }
 
     // OQ-03
@@ -477,10 +506,10 @@ mod tests {
     // OQ-03
     #[test]
     fn a_child_of_a_project_or_task_is_a_task_else_a_note() {
-        assert_eq!(added("P:", At::Child, "P:"), ["P:", "\t>- "]);
-        assert_eq!(added("- a", At::Child, "- a"), ["- a", "\t>- "]);
-        assert_eq!(added("---", At::Child, "---"), ["---", "\t>"]);
-        assert_eq!(added("n", At::Child, "n"), ["n", "\t>"]);
+        assert_eq!(added("P:", At::FirstChild, "P:"), ["P:", "\t>- "]);
+        assert_eq!(added("- a", At::FirstChild, "- a"), ["- a", "\t>- "]);
+        assert_eq!(added("---", At::FirstChild, "---"), ["---", "\t>"]);
+        assert_eq!(added("n", At::FirstChild, "n"), ["n", "\t>"]);
     }
 
     // OQ-26
@@ -488,11 +517,19 @@ mod tests {
     fn a_note_that_would_join_a_note_run_is_a_task_instead() {
         assert_eq!(added("n", At::Below, "n"), ["n", ">- "]);
         assert_eq!(added("P:\nn", At::Below, "P:"), ["P:", ">- ", "n"]);
-        assert_eq!(added("n\n\tm", At::Child, "n"), ["n", "\t>- ", "\tm"]);
+        assert_eq!(added("n\n\tm", At::FirstChild, "n"), ["n", "\t>- ", "\tm"]);
         assert_eq!(
-            added("---\nn", At::Child, "---"),
+            added("---\nn", At::FirstChild, "---"),
             ["---", "\t>", "n"],
             "a child does not join its parent's siblings"
+        );
+        assert_eq!(
+            added("---\n\tm", At::LastChild, "---"),
+            ["---", "\tm", "\t>- "]
+        );
+        assert_eq!(
+            added("---\n\tm\n\t- t", At::LastChild, "---"),
+            ["---", "\tm", "\t- t", "\t>"]
         );
     }
 
@@ -520,6 +557,7 @@ mod tests {
                 Place::Below(&note),
                 Place::Above(&task),
                 Place::FirstChild(&note),
+                Place::LastChild(&note),
                 Place::Start,
             ] {
                 let (id, ops) = new_block(&mut document, place, Some(typed)).unwrap();
@@ -569,7 +607,10 @@ mod tests {
     // file-format §3.1
     #[test]
     fn an_empty_parent_gets_the_placeholder() {
-        assert_eq!(added("a\n\n- t", At::Child, "a"), ["a", "…", "\t>", "- t"]);
+        assert_eq!(
+            added("a\n\n- t", At::FirstChild, "a"),
+            ["a", "…", "\t>", "- t"]
+        );
     }
 
     // file-format §2, §3.1
@@ -577,7 +618,7 @@ mod tests {
     fn an_only_line_loses_its_leading_whitespace_once_it_has_company() {
         assert_eq!(added("  - a", At::Below, "  - a"), ["- a", ">- "]);
         assert_eq!(
-            added("  - a", At::Child, "  - a"),
+            added("  - a", At::FirstChild, "  - a"),
             ["- a", "\t>"],
             "it was a note, which the whitespace made it"
         );
@@ -598,6 +639,10 @@ mod tests {
         let mut document = format::parse("- a");
         assert_eq!(new_block(&mut document, Place::Below(&stale), None), None);
         assert_eq!(new_block(&mut document, Place::Above(&stale), None), None);
+        assert_eq!(
+            new_block(&mut document, Place::LastChild(&stale), None),
+            None
+        );
     }
 
     /// The lines of `text` once the block reading `of` is deleted, with the ops checked to undo.

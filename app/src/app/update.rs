@@ -132,8 +132,6 @@ pub enum Message {
     Redo,
     /// Edit the focused block's text with the caret at its end (FR-MODE-01).
     EditAtEnd,
-    /// Edit the focused block's text with the caret at its start (FR-MODE-01).
-    EditAtStart,
     /// Change the text being edited (FR-MODE-03).
     Text(TextEdit),
     /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
@@ -143,7 +141,9 @@ pub enum Message {
     /// Add a block before the focused block and edit it (FR-MODE-04).
     NewAbove,
     /// Add a first child to the focused block, expanding it, and edit it (FR-MODE-04).
-    NewChild,
+    NewFirstChild,
+    /// Add a last child to the focused block, expanding it, and edit it (FR-MODE-04).
+    NewLastChild,
     /// Stop editing and add the next block: a first child when the block shows children, else
     /// a block below it (editing.md §3). In a code block being edited, break the line instead
     /// (OQ-23).
@@ -188,7 +188,6 @@ impl Message {
             | Self::Undo
             | Self::Redo
             | Self::EditAtEnd
-            | Self::EditAtStart
             | Self::Text(_)
             | Self::StopEditing
             | Self::NewNext
@@ -224,7 +223,8 @@ impl Message {
             | Self::ToggleDone { .. }
             | Self::NewBelow
             | Self::NewAbove
-            | Self::NewChild
+            | Self::NewFirstChild
+            | Self::NewLastChild
             | Self::NewTop(_)
             | Self::NewTypedBelow(_)
             | Self::Delete
@@ -351,13 +351,13 @@ impl State {
                 Mode::Navigate => self.redo(),
                 Mode::Edit => self.redo_typing(),
             },
-            Message::EditAtEnd => self.start_editing(true),
-            Message::EditAtStart => self.start_editing(false),
+            Message::EditAtEnd => self.start_editing(),
             Message::Text(edit) => self.edit_text(edit),
             Message::StopEditing => self.stop_editing(),
             Message::NewBelow => self.add_block(NewBlock::Below, None),
             Message::NewAbove => self.add_block(NewBlock::Above, None),
-            Message::NewChild => self.add_block(NewBlock::Child, None),
+            Message::NewFirstChild => self.add_block(NewBlock::FirstChild, None),
+            Message::NewLastChild => self.add_block(NewBlock::LastChild, None),
             Message::NewNext => self.new_next(),
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),

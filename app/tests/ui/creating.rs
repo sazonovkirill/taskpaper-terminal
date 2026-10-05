@@ -61,29 +61,51 @@ fn a_new_list_is_written_from_scratch_with_o_enter_and_backspace() {
 
 // FR-MODE-04, OQ-03
 #[test]
-fn shift_o_adds_a_block_above_and_alt_o_a_first_child() {
-    let mut app = Harness::open("groceries.taskpaper", 50, 12);
+fn shift_o_adds_a_block_above_i_a_last_child_and_shift_i_a_first_child() {
+    let mut app = Harness::open("groceries.taskpaper", 50, 16);
     app.type_keys("jj");
     app.press(KeyCode::Char('O'), KeyModifiers::SHIFT);
     app.type_keys("Eggs");
     press(&mut app, KeyCode::Esc, 1);
-    app.press(KeyCode::Char('o'), KeyModifiers::ALT);
+    app.type_keys("i");
     assert_caret(&mut app, 8, 5);
     app.type_keys("Free range");
     press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("ggi");
+    assert!(status_line(&mut app).starts_with("EDIT · "));
+    app.type_keys("Rice");
+    press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("gg");
+    app.press(KeyCode::Char('I'), KeyModifiers::SHIFT);
+    app.type_keys("Apples");
+    press(&mut app, KeyCode::Esc, 1);
+    app.press(KeyCode::Char('o'), KeyModifiers::ALT);
+    assert!(
+        !status_line(&mut app).starts_with("EDIT · "),
+        "Alt+o is free"
+    );
     assert_eq!(
-        outline_rows(&mut app)[..5],
+        outline_rows(&mut app)[..11],
         [
             "Groceries:",
+            "  - Apples",
             "  - Milk",
             "  - Eggs",
             "    - Free range",
-            "  - Bread"
+            "  - Bread",
+            "    Wholegrain if they have it.",
+            "  Dairy:",
+            "    - Cheese",
+            "  - Rice",
+            "Notes about the week."
         ]
     );
     assert_eq!(
         saved(&mut app),
-        GROCERIES.replace("\t- Bread", "\t- Eggs\n\t\t- Free range\n\t- Bread")
+        GROCERIES
+            .replace("\t- Milk", "\t- Apples\n\t- Milk")
+            .replace("\t- Bread", "\t- Eggs\n\t\t- Free range\n\t- Bread")
+            .replace("\t\t- Cheese\n", "\t\t- Cheese\n\t- Rice\n")
     );
 }
 

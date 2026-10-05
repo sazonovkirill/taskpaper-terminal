@@ -31,7 +31,7 @@ The owner's bindings (D-26) take keys that earlier drafts used: `c` (comments), 
 **Proposed default:**
 - Comments `C`; the metadata prefix becomes `m` (`mt` today, `ms`/`md` date prompts, `mc` color picker, `mb` bookmark, `my` convert, `mi` details), and Move to moves from `m` to `gm`.
 - Copy and cut are `Ctrl+C`/`Ctrl+X` only; duplicate is `D`; paste is `Ctrl+V` below and `Alt+V` above.
-- `Enter` edits with the caret at the end and `i` at the start.
+- `Enter` edits with the caret at the end and `i` at the start (superseded by D-41: `Enter` alone edits, and `i`/`I` add children).
 - Sibling motion keeps `Ctrl+↑`/`Ctrl+↓`; indent and outdent keep `Tab`/`Shift+Tab`.
 - Folding drops the `z` prefix: `'` and `Space` toggle, `"` toggles the subtree, `=`/`-` expand and collapse by level, `+`/`_` expand and collapse all. Quit is `Ctrl+Q` only; `u` and `Ctrl+R` are no longer undo and redo.
 - `Ctrl+P` is Go to Symbol (with `gs`), `Ctrl+K` Go to Command (with `:`), and inserting a link (Later) is typing `[[` only.

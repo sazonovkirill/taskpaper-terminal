@@ -16,7 +16,9 @@ pub(super) enum NewBlock {
     /// As its previous sibling.
     Above,
     /// As its first child.
-    Child,
+    FirstChild,
+    /// As its last child.
+    LastChild,
     /// As its first child when it shows children, else below it, as `Enter` ends editing.
     Next,
     /// At the top of its list, its parent's children (FR-MODE-06).
@@ -26,8 +28,8 @@ pub(super) enum NewBlock {
 impl State {
     /// Adds an empty block of type `typed`, or of the type that fits, where `new` says and edits
     /// it (FR-MODE-04, FR-MODE-06). On the zoom title, which stands for the view's root, the
-    /// block becomes the first one under it; in an outline without rows it is the first block. A
-    /// read-only file refuses with a notice.
+    /// block becomes the first one under it, or the last one for [`NewBlock::LastChild`]; in an
+    /// outline without rows it is the first block. A read-only file refuses with a notice.
     pub(super) fn add_block(&mut self, new: NewBlock, typed: Option<Typed>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
@@ -40,10 +42,12 @@ impl State {
         };
         let place = match &focused {
             None => Place::Start,
+            Some((block, true)) if new == NewBlock::LastChild => Place::LastChild(block),
             Some((block, true)) => Place::FirstChild(block),
             Some((block, false)) => match new {
                 NewBlock::Above => Place::Above(block),
-                NewBlock::Child => Place::FirstChild(block),
+                NewBlock::FirstChild => Place::FirstChild(block),
+                NewBlock::LastChild => Place::LastChild(block),
                 NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
                 NewBlock::Below | NewBlock::Next => Place::Below(block),
                 NewBlock::Top => top_of(&list, typed).expect("the focused block is in its list"),
@@ -51,7 +55,9 @@ impl State {
         };
         let (id, ops) = structure::new_block(&mut self.document, place, typed)
             .expect("the focused block was just found in the document");
-        if let (Place::FirstChild(block), Some((_, false))) = (place, &focused) {
+        if let (Place::FirstChild(block) | Place::LastChild(block), Some((_, false))) =
+            (place, &focused)
+        {
             self.folds.remove(&block.id());
         }
         let mut transaction = Transaction::new(ops, (), ());
@@ -98,7 +104,7 @@ impl State {
             self.delete_block(&block, Some(previous));
         }
         self.focus = Some(previous);
-        self.start_editing(true);
+        self.start_editing();
     }
 
     /// Deletes `block` with its subtree as one step to undo that ends with `focus`, saying so
@@ -133,7 +139,7 @@ impl State {
     pub(super) fn shift_focused(&mut self, by: Shift) {
         if self.editor().is_some_and(|editor| editor.splits) {
             self.stop_editing();
-            self.start_editing(true);
+            self.start_editing();
         }
         let Some((block, false)) = self.focused() else {
             return;
@@ -287,13 +293,26 @@ mod tests {
 
     // FR-MODE-04
     #[test]
-    fn alt_o_adds_a_first_child_and_expands_the_block() {
+    fn i_and_shift_i_add_a_last_and_a_first_child_and_expand_the_block() {
         let mut state = open("P:\n\t- a\nQ:", 0);
         state.update(Message::Collapse);
-        state.update(Message::NewChild);
+        state.update(Message::NewFirstChild);
+        assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:"]);
         assert_eq!(state.rows().len(), 4, "expanded");
         assert_eq!(state.rows()[1].id, state.focus().unwrap());
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        state.update(Message::Collapse);
+        state.update(Message::NewLastChild);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(lines(&state), ["P:", "\t- a", "\t- ", "Q:"]);
+        assert_eq!(state.rows().len(), 4, "expanded");
+        assert_eq!(state.rows()[2].id, state.focus().unwrap());
+        typed(&mut state, "b");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- a", "Q:"], "one step");
     }
 
     // editing.md §3
@@ -339,8 +358,8 @@ mod tests {
 
     // FR-NAV-03, FR-MODE-04
     #[test]
-    fn on_the_zoom_title_every_new_block_is_its_first_child() {
-        for new in [Message::NewBelow, Message::NewAbove, Message::NewChild] {
+    fn on_the_zoom_title_every_new_block_is_its_first_child_but_i_adds_its_last() {
+        for new in [Message::NewBelow, Message::NewAbove, Message::NewFirstChild] {
             let mut state = open("P:\n\t- a\nQ:", 0);
             state.update(Message::ZoomIn);
             state.update(Message::FocusFirst);
@@ -349,6 +368,12 @@ mod tests {
             assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:"], "{new:?}");
             assert_eq!(state.rows()[1].id, state.focus().unwrap());
         }
+        let mut state = open("P:\n\t- a\nQ:", 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(Message::NewLastChild);
+        assert_eq!(lines(&state), ["P:", "\t- a", "\t- ", "Q:"]);
+        assert_eq!(state.rows()[2].id, state.focus().unwrap());
     }
 
     // FR-MODE-04

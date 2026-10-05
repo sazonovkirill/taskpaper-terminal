@@ -7,7 +7,7 @@ Covers FR-MODE (typed shortcuts included), FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and
 Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 
 - **Navigate mode** (default): keys move the focus between blocks, select blocks and run block commands.
-- **Edit mode**: one block's text is edited in place (FR-MODE-02). `Enter` or `i` on the focused block enters edit mode with the caret at the end (`i`: at the start); `Esc` returns to navigate mode with the same block focused.
+- **Edit mode**: one block's text is edited in place (FR-MODE-02). `Enter` on the focused block enters edit mode with the caret at the end, and is the only key that does (D-41); `Esc` returns to navigate mode with the same block focused.
 - Only the focused pane can be in edit mode; switching panes ends edit mode.
 
 ## 2. Edit mode
@@ -81,7 +81,8 @@ Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 |---|---|
 | `new_below` | New block after the focused block's subtree, as its next sibling. |
 | `new_above` | New block as the focused block's previous sibling. |
-| `new_child` | New block as the focused block's first child (expanding it). |
+| `new_last_child` | New block as the focused block's last child (expanding it), before the special nodes that end its children ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)). |
+| `new_first_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 
 **Typed creation** (D-26) adds a block of a chosen type in one key, opened in edit mode with empty text. "The list" is the focused block's siblings; in an empty pane it is the zoom block's children ([OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go) default).
@@ -94,7 +95,7 @@ Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 
 Typed creation never makes a note, so it never merges notes (OQ-26). A new section right after a code block without children would join the code run as a note line does (D-18, [data-model.md §3](data-model.md#3-blocks)), so it is written with a project's `:` (`Name: @section`), which ends the run and is still a section.
 
-On the zoom title, which stands for the view's root, every command adds the title's first child; in a pane without blocks the new block is the first one.
+On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child`, which adds its last child; in a pane without blocks the new block is the first one.
 
 The new block's type follows OQ-03 default A: a task next to a task (after it for `new_below`, before it for `new_above`), otherwise a single-line note; a new child of a project or task is a task. One exception comes from D-2 and D-18: if a new note line would join an adjacent run under the grouping rules in [data-model.md §3](data-model.md#3-blocks) (the note or code run before it, or the note run after it), the new block is a task instead (OQ-26). It opens in edit mode with empty text.
 

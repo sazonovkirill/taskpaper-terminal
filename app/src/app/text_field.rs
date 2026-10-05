@@ -65,13 +65,12 @@ pub struct TextField {
 }
 
 impl TextField {
-    /// `text` with the caret at its start, or at its end with `at_end`.
+    /// `text` with the caret at its end.
     #[must_use]
-    pub fn new(text: String, at_end: bool) -> Self {
-        let caret = if at_end { text.len() } else { 0 };
+    pub fn new(text: String) -> Self {
         Self {
+            caret: text.len(),
             text,
-            caret,
             anchor: None,
         }
     }
@@ -290,12 +289,11 @@ mod tests {
     }
 
     #[test]
-    fn starts_with_the_caret_at_either_end() {
-        assert_eq!(marked(&TextField::new("ab".into(), true)), "ab|");
-        assert_eq!(marked(&TextField::new("ab".into(), false)), "|ab");
+    fn starts_with_the_caret_at_the_end_or_where_asked() {
+        assert_eq!(marked(&TextField::new("ab".into())), "ab|");
         assert_eq!(marked(&TextField::with_caret("ab".into(), 1)), "a|b");
         assert_eq!(marked(&TextField::with_caret("ab".into(), 9)), "ab|");
-        assert_eq!(TextField::new("ab".into(), true).text(), "ab");
+        assert_eq!(TextField::new("ab".into()).text(), "ab");
     }
 
     // FR-MODE-03

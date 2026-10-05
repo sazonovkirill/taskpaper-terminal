@@ -82,9 +82,8 @@ pub(super) struct Session {
 }
 
 impl Session {
-    /// A session editing `block` of `document` with the caret at the end of its text, or at its
-    /// start without `at_end`.
-    fn new(document: &Document, block: &Block, at_end: bool) -> Self {
+    /// A session editing `block` of `document` with the caret at the end of its text.
+    fn new(document: &Document, block: &Block) -> Self {
         let originals = block.lines().to_vec();
         let (lines, text) = BlockLines::split(
             originals
@@ -104,7 +103,7 @@ impl Session {
             originals,
             added: Vec::new(),
             applied: Vec::new(),
-            field: TextField::new(text, at_end),
+            field: TextField::new(text),
             undo: Vec::new(),
             redo: Vec::new(),
             typing: false,
@@ -201,10 +200,9 @@ impl State {
         })
     }
 
-    /// Starts editing the focused block's text with the caret at its end, or at its start
-    /// without `at_end`. A divider, whose text is its type, is not edited; a read-only file
-    /// refuses with a notice.
-    pub(super) fn start_editing(&mut self, at_end: bool) {
+    /// Starts editing the focused block's text with the caret at its end. A divider, whose text
+    /// is its type, is not edited; a read-only file refuses with a notice.
+    pub(super) fn start_editing(&mut self) {
         let Some((block, _)) = self.focused() else {
             return;
         };
@@ -215,7 +213,7 @@ impl State {
             self.notify(Notice::ReadOnly);
             return;
         }
-        self.edit = Some(Session::new(&self.document, &block, at_end));
+        self.edit = Some(Session::new(&self.document, &block));
     }
 
     /// Starts editing the new line `id`, which the applied `created` ops put in while the focus
@@ -225,7 +223,7 @@ impl State {
             self.edit = Some(Session {
                 created,
                 before,
-                ..Session::new(&self.document, &block, true)
+                ..Session::new(&self.document, &block)
             });
         }
     }
@@ -327,7 +325,7 @@ impl State {
         };
         let ops = session.created.into_iter().chain(session.applied).collect();
         self.edits.record(Transaction::new(ops, before, after));
-        let mut merged = Session::new(&self.document, &block, true);
+        let mut merged = Session::new(&self.document, &block);
         // The caret keeps its line and column: the merged text shows each line without the
         // spaces before its tags, so the session's byte offsets do not carry over.
         let before_caret = session
@@ -574,9 +572,7 @@ mod tests {
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(shown(&state), "bc|", "tags are not edited");
         assert_eq!(state.editor().unwrap().id, state.focus().unwrap());
-        state.update(Message::StopEditing);
-        state.update(Message::EditAtStart);
-        assert_eq!(shown(&state), "|bc");
+        go(&mut state, Motion::Start);
         state.update(Message::EditAtEnd);
         assert_eq!(shown(&state), "|bc", "already editing");
     }
@@ -683,7 +679,7 @@ mod tests {
     #[test]
     fn a_project_keeps_its_colon_after_the_text_until_it_becomes_a_task() {
         let mut state = open("Inbox:", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         assert_eq!(state.editor().unwrap().suffix, ":");
         typed(&mut state, "My ");
         assert_eq!(texts(&state), ["My Inbox:"]);
@@ -771,7 +767,7 @@ mod tests {
     #[test]
     fn undo_in_edit_mode_takes_back_a_type_change() {
         let mut state = open("a", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         typed(&mut state, "- ");
         assert_eq!(texts(&state), ["- a"]);
         state.update(Message::Undo);
@@ -795,7 +791,7 @@ mod tests {
         state.update(Message::StopEditing);
         assert_eq!(texts(&state), ["…", "- b", "c"]);
         state.update(Message::FocusLast);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         typed(&mut state, "  ");
         assert_eq!(texts(&state), ["…", "- b", "  c"]);
         state.update(Message::StopEditing);
@@ -1023,6 +1019,15 @@ mod tests {
             .collect()
     }
 
+    /// Edits the focused block with the caret at the start of its text.
+    fn edit_from_start(state: &mut State) {
+        state.update(Message::EditAtEnd);
+        for _ in 0..state.editor().unwrap().text.matches('\n').count() {
+            go(state, Motion::Up);
+        }
+        go(state, Motion::Start);
+    }
+
     fn go(state: &mut State, motion: Motion) {
         state.update(Message::Text(TextEdit::Move {
             motion,
@@ -1066,7 +1071,7 @@ mod tests {
             assert_eq!(state.document().revision(), 0, "{text:?}");
         }
         let mut state = open("note", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         typed(&mut state, "- ");
         line_break(&mut state);
         assert_eq!(shown(&state), "|note", "a note that became a task");
@@ -1091,7 +1096,7 @@ mod tests {
     #[test]
     fn a_block_of_several_lines_is_edited_as_one_text() {
         let mut state = open("one @a\ntwo\n- t", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         assert_eq!(shown(&state), "|one\ntwo");
         go(&mut state, Motion::Down);
         go(&mut state, Motion::End);
@@ -1201,7 +1206,7 @@ mod tests {
     #[test]
     fn a_first_line_that_becomes_a_project_splits_off_too() {
         let mut state = open("Questions\nwhy", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         go(&mut state, Motion::End);
         typed(&mut state, ":");
         assert!(state.editor().unwrap().splits);
@@ -1227,7 +1232,7 @@ mod tests {
     #[test]
     fn tab_on_a_block_that_splits_splits_it_and_moves_the_block_with_the_caret() {
         let mut state = open("- a\nnote\nmore", 1);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         go(&mut state, Motion::Down);
         typed(&mut state, "- ");
         state.update(Message::Indent);
@@ -1249,7 +1254,7 @@ mod tests {
     #[test]
     fn a_block_split_off_by_tab_that_joins_a_note_is_edited_whole() {
         let mut state = open("- a\n\tn1\nx\ny", 2);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         go(&mut state, Motion::Down);
         typed(&mut state, "- ");
         go(&mut state, Motion::Up);
@@ -1311,7 +1316,7 @@ mod tests {
     #[test]
     fn ending_the_session_repairs_every_line() {
         let mut state = open("a\nb\n\t- c", 0);
-        state.update(Message::EditAtStart);
+        edit_from_start(&mut state);
         go(&mut state, Motion::Down);
         typed(&mut state, " ");
         go(&mut state, Motion::End);

@@ -134,10 +134,10 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
     (&[key!(Enter)], |_| Message::EditAtEnd),
-    (&[key!('i')], |_| Message::EditAtStart),
     (&[key!('o')], |_| Message::NewBelow),
     (&[key!('O')], |_| Message::NewAbove),
-    (&[key!(alt 'o')], |_| Message::NewChild),
+    (&[key!('i')], |_| Message::NewLastChild),
+    (&[key!('I')], |_| Message::NewFirstChild),
     (&[key!('P')], |_| Message::NewTop(Typed::Project)),
     (&[key!('p')], |_| Message::NewTypedBelow(Typed::Project)),
     (&[key!('S')], |_| Message::NewTop(Typed::Section)),
@@ -444,16 +444,11 @@ mod tests {
 
     // FR-MODE-01
     #[test]
-    fn enter_and_i_start_editing() {
+    fn enter_alone_starts_editing() {
         check(
             KeyCode::Enter,
             KeyModifiers::NONE,
             Some(&Message::EditAtEnd),
-        );
-        check(
-            KeyCode::Char('i'),
-            KeyModifiers::NONE,
-            Some(&Message::EditAtStart),
         );
     }
 
@@ -467,11 +462,13 @@ mod tests {
             KeyModifiers::SHIFT,
             Some(&Message::NewAbove),
         );
+        check(KeyCode::Char('i'), none, Some(&Message::NewLastChild));
         check(
-            KeyCode::Char('o'),
-            KeyModifiers::ALT,
-            Some(&Message::NewChild),
+            KeyCode::Char('I'),
+            KeyModifiers::SHIFT,
+            Some(&Message::NewFirstChild),
         );
+        check(KeyCode::Char('o'), KeyModifiers::ALT, None);
         check(KeyCode::Delete, none, Some(&Message::Delete));
         let mut keymap = Keymap::default();
         let d = key(KeyCode::Char('d'), none);
