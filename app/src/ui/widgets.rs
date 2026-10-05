@@ -14,9 +14,13 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    app::{Access, ColorPickerView, DiffLine, Editor, Notice, Row, SaveState, TypeMenuView},
+    app::{
+        Access, ColorPickerView, DatePromptView, DiffLine, Editor, Notice, Row, SaveState,
+        TypeMenuView,
+    },
     document::{
-        BlockKind, TagColor,
+        BlockKind, DateTag, TagColor,
+        dates::DateError,
         inline::{self, Format},
     },
 };
@@ -373,6 +377,102 @@ impl Widget for MenuPopup {
             buf.set_style(row, line.style);
             line.render(row, buf);
         }
+    }
+}
+
+/// The date prompt ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), ui.md §1):
+/// a box over the middle of the screen titled with the date it sets, holding the text as typed
+/// with the selection reversed and, below it, what `Enter` does: set the date the text resolves
+/// to, remove the date, or nothing, saying why the text is not a date.
+#[derive(Debug)]
+pub struct DatePromptPopup<'a> {
+    prompt: &'a DatePromptView<'a>,
+}
+
+impl<'a> DatePromptPopup<'a> {
+    /// The box's width and height, the border included.
+    const SIZE: (u16, u16) = (40, 4);
+
+    /// The popup showing `prompt`.
+    #[must_use]
+    pub fn new(prompt: &'a DatePromptView<'a>) -> Self {
+        Self { prompt }
+    }
+
+    /// Where the box goes over `area`: in its middle, and no larger than it.
+    #[must_use]
+    pub fn area(area: Rect) -> Rect {
+        area.centered(
+            Constraint::Length(Self::SIZE.0),
+            Constraint::Length(Self::SIZE.1),
+        )
+    }
+
+    /// The caret's cell when the box is drawn over `area`, on the text's line, the first inside
+    /// the border.
+    #[must_use]
+    pub fn caret(&self, area: Rect) -> (u16, u16) {
+        let inner = Block::bordered().inner(area);
+        let (_, column) = self.input(inner.width);
+        let x = u16::try_from(column)
+            .unwrap_or(u16::MAX)
+            .min(inner.width.saturating_sub(1));
+        (inner.x.saturating_add(x), inner.y)
+    }
+
+    /// The text after a space, `width` columns wide, and the caret's column on it.
+    fn input(&self, width: u16) -> (Line<'a>, usize) {
+        let field = Field {
+            text: self.prompt.text,
+            caret: self.prompt.caret,
+            selection: self.prompt.selection.clone(),
+        };
+        let (spans, column) = field.spans(Style::new(), 1, usize::from(width));
+        let mut line = Line::from(" ");
+        line.spans.extend(spans);
+        (line, column)
+    }
+
+    /// What `Enter` does with the text: set the date, remove it, or nothing, quoting where the
+    /// text stops being a date.
+    fn preview(&self) -> Line<'static> {
+        let from = |offset: usize| self.prompt.text.get(offset..).unwrap_or_default();
+        let error = |why: String| Line::styled(format!(" {why}"), error_style());
+        match self.prompt.date {
+            Ok(Some(date)) => Line::from(format!(" {}", date.strftime("%a %-d %b %Y"))),
+            Ok(None) | Err(DateError::Empty) => {
+                Line::styled(" No date: Enter removes it", Style::new().dim())
+            }
+            Err(DateError::Unexpected { offset }) if from(offset).is_empty() => {
+                error("Not a date: something is missing".to_owned())
+            }
+            Err(DateError::Unexpected { offset }) => {
+                error(format!("Not a date from “{}”", from(offset)))
+            }
+            Err(DateError::NoSuchDay { offset }) => {
+                error(format!("No such day: “{}”", from(offset)))
+            }
+            Err(DateError::OutOfRange { .. }) => error("Out of range".to_owned()),
+        }
+    }
+}
+
+impl Widget for DatePromptPopup<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Clear.render(area, buf);
+        let title = match self.prompt.tag {
+            DateTag::Start => " Start date ",
+            DateTag::Due => " Due date ",
+        };
+        let frame = Block::bordered().title(title);
+        let inner = frame.inner(area);
+        frame.render(area, buf);
+        let [input, preview] = inner.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ]));
+        self.input(input.width).0.render(input, buf);
+        self.preview().render(preview, buf);
     }
 }
 
@@ -777,6 +877,73 @@ mod tests {
         expected.set_style(Rect::new(2, 5, 6, 1), divider_style());
         expected.set_style(Rect::new(2, 6, 3, 1), Style::new().fg(TEXT).dim());
         assert_eq!(render(text, 8, 8), expected);
+    }
+
+    /// The date prompt showing `text`, selected, with `date` as what it resolves to, drawn over
+    /// 30 × 6 cells.
+    fn date_prompt(text: &str, date: Result<Option<Date>, DateError>) -> Buffer {
+        let view = DatePromptView {
+            tag: DateTag::Start,
+            text,
+            caret: text.len(),
+            selection: Some(0..text.len()),
+            date,
+        };
+        let popup = DatePromptPopup::new(&view);
+        let area = Rect::new(0, 0, 30, 6);
+        let mut buf = Buffer::empty(area);
+        assert_eq!(
+            popup.caret(DatePromptPopup::area(area)),
+            (2 + text_width(text), 2)
+        );
+        popup.render(DatePromptPopup::area(area), &mut buf);
+        buf
+    }
+
+    fn text_width(text: &str) -> u16 {
+        u16::try_from(text.len()).unwrap()
+    }
+
+    // FR-TAG-03, ui.md §1: as wide as the area allows and in its middle.
+    #[test]
+    fn the_date_prompt_shows_the_text_selected_and_the_date_it_resolves_to() {
+        let mut expected = Buffer::with_lines([
+            "",
+            "┌ Start date ────────────────┐",
+            "│ fri                        │",
+            "│ Fri 9 Oct 2026             │",
+            "└────────────────────────────┘",
+            "",
+        ]);
+        expected.set_style(Rect::new(2, 2, 3, 1), Style::new().reversed());
+        assert_eq!(
+            date_prompt("fri", Ok(Some(jiff::civil::date(2026, 10, 9)))),
+            expected
+        );
+    }
+
+    // FR-TAG-03, search.md §4
+    #[test]
+    fn the_date_prompt_says_why_a_text_is_no_date() {
+        let preview = |text: &str, date| {
+            let buf = date_prompt(text, date);
+            (0..30)
+                .map(|x| buf[(x, 3)].symbol().to_owned())
+                .collect::<String>()
+        };
+        assert_eq!(
+            preview("", Err(DateError::Empty)),
+            "│ No date: Enter removes it  │",
+            "a blank text removes the date"
+        );
+        assert_eq!(
+            preview("9999-12-31 +1d", Err(DateError::OutOfRange { offset: 11 })),
+            "│ Out of range               │"
+        );
+        assert_eq!(
+            preview("next xyz", Err(DateError::Unexpected { offset: 5 })),
+            "│ Not a date from “xyz”      │"
+        );
     }
 
     /// The type menu of a session on `a` after `keys`, drawn at its size.

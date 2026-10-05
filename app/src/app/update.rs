@@ -5,7 +5,9 @@ use std::{path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
-use super::{MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
+use super::{
+    DateInput, MenuInput, Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock,
+};
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, blocks, format::Typed, structure::Shift,
 };
@@ -144,6 +146,16 @@ pub enum Message {
     OpenColorPicker,
     /// A key of the open color picker (FR-TAG-05).
     ColorPicker(MenuInput),
+    /// Open the prompt for the focused block's `tag` date, resolving what is typed against
+    /// `today`, the frontend's local date (FR-TAG-03).
+    OpenDatePrompt {
+        /// The date to set.
+        tag: DateTag,
+        /// The frontend's local date.
+        today: Date,
+    },
+    /// A key of the open date prompt (FR-TAG-03).
+    DatePrompt(DateInput),
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -230,6 +242,7 @@ impl Message {
             | Self::StopEditing
             | Self::OpenTypeMenu
             | Self::TypeMenu(_)
+            | Self::DatePrompt(_)
             | Self::NewNext
             | Self::EditPrevious
             | Self::EditNext
@@ -268,6 +281,7 @@ impl Message {
             | Self::CycleColor
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
+            | Self::OpenDatePrompt { .. }
             | Self::NewBelow
             | Self::NewAbove
             | Self::NewFirstChild
@@ -371,15 +385,8 @@ impl State {
             Message::ToggleSubtree => self.toggle_subtree(),
             Message::ExpandLevel => self.expand_level(),
             Message::CollapseLevel => self.collapse_level(),
-            Message::ExpandAll => {
-                for (block, _) in self.blocks(false) {
-                    self.folds.remove(&block.id());
-                }
-            }
-            Message::CollapseAll => {
-                let all = self.blocks(false).into_iter().map(|(block, _)| block);
-                self.fold(all);
-            }
+            Message::ExpandAll => self.expand_all(),
+            Message::CollapseAll => self.collapse_all(),
             Message::ZoomIn => {
                 if let Some(block) = self.focused_block() {
                     self.go_to(Some(block.id()));
@@ -399,6 +406,8 @@ impl State {
             Message::CycleColor => self.cycle_color(),
             Message::OpenColorPicker => self.open_color_picker(),
             Message::ColorPicker(input) => self.color_picker_input(input),
+            Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
+            Message::DatePrompt(input) => self.date_prompt_input(input),
             Message::Undo => match self.mode() {
                 Mode::Navigate => self.undo(),
                 Mode::Edit => self.undo_typing(),
@@ -619,6 +628,17 @@ impl State {
             .filter(|&(_, d)| d == depth)
             .map(|(block, _)| block);
         self.fold(deepest);
+    }
+
+    fn expand_all(&mut self) {
+        for (block, _) in self.blocks(false) {
+            self.folds.remove(&block.id());
+        }
+    }
+
+    fn collapse_all(&mut self) {
+        let all = self.blocks(false).into_iter().map(|(block, _)| block);
+        self.fold(all);
     }
 
     /// Whether `block` has children and is not collapsed.

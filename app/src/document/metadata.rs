@@ -60,10 +60,9 @@ pub fn change_date(
     change: DateChange,
     today: Date,
 ) -> Option<Op> {
-    let before = document.get(block.id())?.text();
-    let (name, current) = match tag {
-        DateTag::Start => ("start", block.start()),
-        DateTag::Due => ("due", block.due()),
+    let current = match tag {
+        DateTag::Start => block.start(),
+        DateTag::Due => block.due(),
     };
     let date = match change {
         DateChange::Today => Ok(today),
@@ -72,7 +71,28 @@ pub fn change_date(
         DateChange::Later => current.unwrap_or(today).tomorrow(),
     }
     .ok()?;
-    let after = tags::set(before, name, &date.to_string());
+    set_date(document, block, tag, Some(date))
+}
+
+/// The op that sets the `tag` date of `block` to `date` as `YYYY-MM-DD` (D-6), or removes the
+/// tag with any value when `date` is `None` (editing.md §5). `None` when the line stays as it is
+/// or the block is not in `document`.
+#[must_use]
+pub fn set_date(
+    document: &Document,
+    block: &Block,
+    tag: DateTag,
+    date: Option<Date>,
+) -> Option<Op> {
+    let before = document.get(block.id())?.text();
+    let name = match tag {
+        DateTag::Start => "start",
+        DateTag::Due => "due",
+    };
+    let after = match date {
+        Some(date) => tags::set(before, name, &date.to_string()),
+        None => kept(tags::remove(before, name)),
+    };
     (after != before).then(|| Op::SetText {
         id: block.id(),
         before: before.to_owned(),
@@ -451,6 +471,66 @@ mod tests {
             ),
             None
         );
+    }
+
+    /// The first line's text after setting its `tag` date to `date`, or `None` when nothing
+    /// changes.
+    #[track_caller]
+    fn set(text: &str, tag: DateTag, date: Option<Date>) -> Option<String> {
+        let mut document = parse(text);
+        let block = blocks::children(&document, document.root())
+            .into_iter()
+            .next()
+            .unwrap();
+        let op = set_date(&document, &block, tag, date)?;
+        let mut transaction = crate::document::Transaction::new(vec![op], (), ());
+        document.apply(&mut transaction).unwrap();
+        Some(document.get(block.id()).unwrap().text().to_owned())
+    }
+
+    // FR-TAG-03, D-6
+    #[test]
+    fn set_date_writes_the_date_in_place_or_adds_it() {
+        let friday = Some(date(2026, 10, 9));
+        assert_eq!(
+            set("- a", DateTag::Due, friday).as_deref(),
+            Some("- a @due(2026-10-09)")
+        );
+        assert_eq!(
+            set("- a @start(2026-01-01) @x", DateTag::Start, friday).as_deref(),
+            Some("- a @start(2026-10-09) @x")
+        );
+        assert_eq!(
+            set("- a @due(soon)", DateTag::Due, friday).as_deref(),
+            Some("- a @due(2026-10-09)")
+        );
+        assert_eq!(set("- a @due(2026-10-09)", DateTag::Due, friday), None);
+    }
+
+    // FR-TAG-03, editing.md §5
+    #[test]
+    fn set_date_without_a_date_removes_the_tag_with_any_value() {
+        assert_eq!(
+            set("- a @start(2026-10-01) @due(x) @y", DateTag::Due, None).as_deref(),
+            Some("- a @start(2026-10-01) @y")
+        );
+        assert_eq!(
+            set("- a @start @due(2026-10-01)", DateTag::Start, None).as_deref(),
+            Some("- a @due(2026-10-01)")
+        );
+        assert_eq!(set("- a @due(2026-10-01)", DateTag::Start, None), None);
+        assert_eq!(
+            set("@due(2026-10-01)", DateTag::Due, None).as_deref(),
+            Some("…"),
+            "a line left empty gets the placeholder"
+        );
+    }
+
+    #[test]
+    fn set_date_of_a_block_not_in_the_document_changes_nothing() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(set_date(&parse("- a"), &stale, DateTag::Due, None), None);
     }
 
     #[test]

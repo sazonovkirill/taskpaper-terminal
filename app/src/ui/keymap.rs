@@ -6,7 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::{
-    app::{MenuInput, Message, Mode, Motion, TextEdit},
+    app::{DateInput, MenuInput, Message, Mode, Motion, TextEdit},
     document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
 };
 
@@ -35,6 +35,8 @@ pub struct Context {
     pub type_menu: bool,
     /// Whether the color picker is open, which takes the keys of navigate mode (FR-TAG-05).
     pub color_picker: bool,
+    /// Whether the date prompt is open, which takes the keys of navigate mode (FR-TAG-03).
+    pub date_prompt: bool,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -155,6 +157,8 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('m'), key!('b')], |_| {
         Message::ToggleFlag(Flag::Bookmark)
     }),
+    (&[key!('m'), key!('s')], |c| date_prompt(DateTag::Start, c)),
+    (&[key!('m'), key!('d')], |c| date_prompt(DateTag::Due, c)),
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
@@ -187,6 +191,15 @@ fn date(tag: DateTag, change: DateChange, context: &Context) -> Message {
     Message::ChangeDate {
         tag,
         change,
+        today: context.today,
+    }
+}
+
+/// Opening the prompt for the focused block's `tag` date, resolved against the local date
+/// (FR-TAG-03).
+fn date_prompt(tag: DateTag, context: &Context) -> Message {
+    Message::OpenDatePrompt {
+        tag,
         today: context.today,
     }
 }
@@ -330,6 +343,29 @@ fn menu_message(key: Key, to: fn(MenuInput) -> Message) -> Option<Message> {
     typed_char(key).map(|c| to(MenuInput::Type(c)))
 }
 
+/// Bindings of the open date prompt ([keybindings.md §3]) besides the [`TEXT`] keys; characters
+/// without other bindings are typed, and other keys do nothing.
+///
+/// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
+const DATE_PROMPT: &[(Key, DateInput)] = &[
+    (key!(Enter), DateInput::Apply),
+    (key!(Esc), DateInput::Cancel),
+];
+
+/// The date-prompt message for `key`: `Ctrl+Q` quits, a prompt binding, else the change to the
+/// text it asks for.
+fn date_prompt_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    let input = DATE_PROMPT
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| input)
+        .or_else(|| text_edit(key).map(DateInput::Edit))?;
+    Some(Message::DatePrompt(input))
+}
+
 /// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
 /// terminals report for `AltGr`.
 fn typed_char((modifiers, code): Key) -> Option<char> {
@@ -394,6 +430,10 @@ impl Keymap {
             ),
             code => (key.modifiers, code),
         };
+        if context.date_prompt {
+            self.pending.clear();
+            return date_prompt_message(pressed);
+        }
         if context.mode == Mode::Edit {
             self.pending.clear();
             return if context.type_menu {
@@ -461,6 +501,7 @@ mod tests {
         mode: Mode::Navigate,
         type_menu: false,
         color_picker: false,
+        date_prompt: false,
     };
 
     const EDITING: &Context = &Context {
@@ -593,6 +634,87 @@ mod tests {
                 today: TODAY,
             }),
         );
+    }
+
+    // FR-TAG-03, D-42: plain letters, which both key reportings send alike.
+    #[test]
+    fn m_s_and_m_d_open_the_date_prompt() {
+        for (second, tag) in [('s', DateTag::Start), ('d', DateTag::Due)] {
+            let mut keymap = Keymap::default();
+            let m = key(KeyCode::Char('m'), KeyModifiers::NONE);
+            assert_eq!(keymap.message_for(&m, ms(0), CONTEXT), None);
+            assert_eq!(keymap.pending(), "m");
+            assert_eq!(
+                keymap.message_for(
+                    &key(KeyCode::Char(second), KeyModifiers::NONE),
+                    ms(1),
+                    CONTEXT
+                ),
+                Some(Message::OpenDatePrompt { tag, today: TODAY })
+            );
+        }
+    }
+
+    const IN_DATE_PROMPT: &Context = &Context {
+        date_prompt: true,
+        ..*CONTEXT
+    };
+
+    // FR-TAG-03, keybindings.md §3: prompts take the standard text keys, `Enter` and `Esc`.
+    #[test]
+    fn the_date_prompt_takes_text_keys_enter_and_esc() {
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        let input = |input| Some(Message::DatePrompt(input));
+        for (code, modifiers, expected) in [
+            (KeyCode::Enter, none, input(DateInput::Apply)),
+            (KeyCode::Esc, none, input(DateInput::Cancel)),
+            (
+                KeyCode::Char('j'),
+                none,
+                input(DateInput::Edit(TextEdit::Insert('j'))),
+            ),
+            (
+                KeyCode::Char('+'),
+                none,
+                input(DateInput::Edit(TextEdit::Insert('+'))),
+            ),
+            (
+                KeyCode::Left,
+                none,
+                input(DateInput::Edit(go!(Left, false))),
+            ),
+            (
+                KeyCode::Home,
+                KeyModifiers::SHIFT,
+                input(DateInput::Edit(go!(Start, true))),
+            ),
+            (
+                KeyCode::Backspace,
+                none,
+                input(DateInput::Edit(TextEdit::DeleteBackward)),
+            ),
+            (
+                KeyCode::Char('w'),
+                ctrl,
+                input(DateInput::Edit(TextEdit::DeleteWordBackward)),
+            ),
+            (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
+            (KeyCode::Tab, none, None),
+            (KeyCode::Up, none, None),
+            (KeyCode::Char('z'), ctrl, None),
+        ] {
+            let mut keymap = Keymap::default();
+            assert_eq!(
+                keymap.message_for(&key(code, modifiers), ms(0), IN_DATE_PROMPT),
+                expected,
+                "{modifiers:?} {code:?}"
+            );
+        }
+        let mut keymap = Keymap::default();
+        keymap.message_for(&key(KeyCode::Char('g'), none), ms(0), CONTEXT);
+        keymap.message_for(&key(KeyCode::Char('g'), none), ms(1), IN_DATE_PROMPT);
+        assert_eq!(keymap.pending(), "", "the prompt ends a pending sequence");
     }
 
     // D-42: the kitty protocol sends `Ctrl+Shift+Z` as `z` with `Shift`, other reportings as `Z`.

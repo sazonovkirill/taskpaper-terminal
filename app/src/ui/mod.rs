@@ -21,7 +21,7 @@ use ratatui::{
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, PromptKey};
-use widgets::{ConflictPrompt, MenuPopup, OutlineView};
+use widgets::{ConflictPrompt, DatePromptPopup, MenuPopup, OutlineView};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,6 +108,7 @@ impl Tui {
             mode: self.state.mode(),
             type_menu: self.state.type_menu().is_some(),
             color_picker: self.state.color_picker().is_some(),
+            date_prompt: self.state.date_prompt().is_some(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
@@ -301,6 +302,15 @@ impl Tui {
             frame.render_widget(popup, area);
         }
         self.draw_status(frame, status);
+        if let Some(prompt) = self.state.date_prompt() {
+            let popup = DatePromptPopup::new(&prompt);
+            let area = DatePromptPopup::area(pane);
+            // The conflict prompt covers the date prompt with its caret.
+            if !self.state.in_conflict() {
+                frame.set_cursor_position(popup.caret(area));
+            }
+            frame.render_widget(popup, area);
+        }
         if self.state.in_conflict() {
             let diff = self.state.diff();
             self.diff_rows = ConflictPrompt::diff_rows(pane);

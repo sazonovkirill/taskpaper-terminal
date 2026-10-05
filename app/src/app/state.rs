@@ -9,7 +9,8 @@ use std::{
 use jiff::civil::Date;
 
 use super::{
-    History, color_picker::ColorPicker, edit_mode::Session, external::External, saving::Autosave,
+    History, color_picker::ColorPicker, date_prompt::DatePrompt, edit_mode::Session,
+    external::External, saving::Autosave,
 };
 use crate::document::{Block, BlockKind, Document, Item, ItemId, TagColor, blocks};
 
@@ -39,6 +40,8 @@ pub struct State {
     pub(super) edit: Option<Session>,
     /// The color picker over the focused block, while it is open (FR-TAG-05).
     pub(super) color_picker: Option<ColorPicker>,
+    /// The prompt for a block's start or due date, while it is open (FR-TAG-03).
+    pub(super) date_prompt: Option<DatePrompt>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
@@ -187,6 +190,7 @@ impl State {
             focus: None,
             edit: None,
             color_picker: None,
+            date_prompt: None,
             folds: HashSet::new(),
             zoom: None,
             history: vec![None],

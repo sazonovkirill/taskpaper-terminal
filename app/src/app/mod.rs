@@ -2,6 +2,7 @@
 //! the document layer, so the same core can run behind another frontend.
 
 mod color_picker;
+mod date_prompt;
 pub mod demo;
 mod edit_mode;
 mod editing;
@@ -15,6 +16,7 @@ pub mod text_field;
 pub mod update;
 
 pub use color_picker::ColorPickerView;
+pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{Editor, MenuEntry, MenuInput, Mode, TypeMenuView};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};

@@ -281,9 +281,10 @@ impl State {
 
     /// Replaces the document with `document`, keeping the zoom, the focus, the history and the
     /// collapsed blocks on the blocks they were on. An edit session ends with the document it
-    /// edited, whose text is saved or in a conflict copy.
+    /// edited, whose text is saved or in a conflict copy, and the date prompt closes with it.
     fn reload(&mut self, document: Document) {
         self.edit = None;
+        self.date_prompt = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
         self.zoom = self.zoom.and_then(nearest);
@@ -669,6 +670,19 @@ mod tests {
             })
         );
         assert_eq!(state.update(Message::Tick { now: ms(9000) }), []);
+    }
+
+    // file-io.md §3, FR-TAG-03
+    #[test]
+    fn a_reload_closes_the_date_prompt() {
+        let mut state = opened("- a\n");
+        state.update(Message::OpenDatePrompt {
+            tag: crate::document::DateTag::Due,
+            today: jiff::civil::date(2026, 10, 5),
+        });
+        assert!(state.date_prompt().is_some());
+        state.update(found("- b\n"));
+        assert_eq!(state.date_prompt(), None);
     }
 
     // file-io.md §3, FR-OPS-08

@@ -26,6 +26,7 @@ Reading list:
 	Novels:
 		- The Name of the Wind
 		- Piranesi @green
+		- Return Piranesi to the library @due({today+12})
 	Ask friends for more recommendations.
 Move to the new flat: @done({today-3})
 	- Pack the books
