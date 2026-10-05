@@ -167,6 +167,18 @@ mod tests {
                 .any(|row| row.kind == BlockKind::Task && !row.done),
             "demo lacks a task to check off"
         );
+        let section_after_task = rows.iter().enumerate().any(|(at, row)| {
+            row.kind == BlockKind::Section
+                && rows[..at]
+                    .iter()
+                    .rev()
+                    .find(|above| above.depth <= row.depth)
+                    .is_some_and(|above| above.depth == row.depth && above.kind == BlockKind::Task)
+        });
+        assert!(
+            section_after_task,
+            "demo lacks a list with tasks above a section, where `S` adds one"
+        );
         let document = state.document();
         let tagged = document
             .descendants(document.root())

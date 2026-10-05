@@ -92,7 +92,7 @@ Note blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It
 | `new_section_top` / `new_section_below` | A section placed before the first section of the list, so it comes after the tasks above it, or at the end of the list when it has none / as `new_below` would place it. |
 | `new_task_top` / `new_task_below` | A task as the first block of the list / as `new_below` would place it. |
 
-Typed creation never makes a note, so it never merges notes (OQ-26).
+Typed creation never makes a note, so it never merges notes (OQ-26). A new section right after a code block without children would join the code run as a note line does (D-18, [data-model.md §3](data-model.md#3-blocks)), so it is written with a project's `:` (`Name: @section`), which ends the run and is still a section.
 
 On the zoom title, which stands for the view's root, every command adds the title's first child; in a pane without blocks the new block is the first one.
 

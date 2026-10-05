@@ -122,6 +122,33 @@ pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
 /// block (D-2, D-18).
 #[must_use]
 pub fn blank_line_joins_run(document: &Document, parent: ItemId, index: usize) -> bool {
+    let (before, after) = shown_neighbors(document, parent, index);
+    ends_run(
+        document,
+        parent,
+        before,
+        &[BlockKind::Note, BlockKind::Code],
+    ) || after.is_some_and(|(_, item)| joins_run(item, false))
+}
+
+/// Whether a note line without children, such as a section, put at `index` among the children
+/// of the line `parent` would join the code run before it, which keeps every note line (D-18).
+#[must_use]
+pub fn note_line_joins_code(document: &Document, parent: ItemId, index: usize) -> bool {
+    let (before, _) = shown_neighbors(document, parent, index);
+    ends_run(document, parent, before, &[BlockKind::Code])
+}
+
+/// A line of the document with its id.
+type Line<'a> = (ItemId, &'a Item);
+
+/// The lines that are not special nodes nearest before and after `index` among the children of
+/// the line `parent`.
+fn shown_neighbors(
+    document: &Document,
+    parent: ItemId,
+    index: usize,
+) -> (Option<Line<'_>>, Option<Line<'_>>) {
     let shown = |&id: &ItemId| {
         document
             .get(id)
@@ -130,21 +157,26 @@ pub fn blank_line_joins_run(document: &Document, parent: ItemId, index: usize) -
     };
     let lines = document.get(parent).map(Item::children).unwrap_or_default();
     let (before, after) = lines.split_at(index.min(lines.len()));
-    let joins_before = before
-        .iter()
-        .rev()
-        .find_map(shown)
-        .is_some_and(|(id, item)| {
-            item.children().is_empty()
-                && children(document, parent).iter().any(|block| {
-                    block.last_line == id && matches!(block.kind, BlockKind::Note | BlockKind::Code)
-                })
-        });
-    joins_before
-        || after
-            .iter()
-            .find_map(shown)
-            .is_some_and(|(_, item)| joins_run(item, false))
+    (
+        before.iter().rev().find_map(shown),
+        after.iter().find_map(shown),
+    )
+}
+
+/// Whether `line`, a child of the line `parent`, ends a run of one of `kinds` that a line put
+/// right after it would continue: it has no children and is the last line of such a block.
+fn ends_run(
+    document: &Document,
+    parent: ItemId,
+    line: Option<Line<'_>>,
+    kinds: &[BlockKind],
+) -> bool {
+    line.is_some_and(|(id, item)| {
+        item.children().is_empty()
+            && children(document, parent)
+                .iter()
+                .any(|block| block.last_line == id && kinds.contains(&block.kind))
+    })
 }
 
 /// Whether `item` continues a run: any note line inside code, else a plain note line;
@@ -454,6 +486,26 @@ mod tests {
         for other in ["---", "S @section", "L @url(u)"] {
             assert!(!joins(&format!("{other}\n{other}"), "", 1), "{other}");
         }
+    }
+
+    // D-18
+    #[test]
+    fn a_note_line_joins_only_the_code_run_before_it() {
+        let joins_code = |text: &str, index| {
+            let document = parse(text);
+            note_line_joins_code(&document, document.root(), index)
+        };
+        assert!(joins_code("f() @code\nx", 2));
+        assert!(
+            joins_code("f() @code\nX @hidden", 2),
+            "across special nodes"
+        );
+        assert!(
+            !joins_code("f() @code\n\tx", 1),
+            "the run ends after children"
+        );
+        assert!(!joins_code("a\n- t", 1), "a plain note run");
+        assert!(!joins_code("- t\nf() @code", 1), "nor the code after it");
     }
 
     // FR-SPC-01

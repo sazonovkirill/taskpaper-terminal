@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
-use crate::document::{Block, Item, ItemId, blocks};
+use crate::document::{Block, Item, ItemId, blocks, structure::Typed};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,6 +144,11 @@ pub enum Message {
     /// Stop editing and add the next block: a first child when the block shows children, else
     /// a block below it (editing.md §3).
     NewNext,
+    /// Add a block of this type at the top of the focused block's list, its parent's children,
+    /// and edit it; a section goes before the list's first section (FR-MODE-06).
+    NewTop(Typed),
+    /// Add a block of this type where [`Message::NewBelow`] would and edit it (FR-MODE-06).
+    NewTypedBelow(Typed),
     /// Delete the focused block with its subtree (FR-OPS-06).
     Delete,
 }
@@ -202,6 +207,8 @@ impl Message {
             | Self::NewAbove
             | Self::NewChild
             | Self::NewNext
+            | Self::NewTop(_)
+            | Self::NewTypedBelow(_)
             | Self::Delete => true,
         }
     }
@@ -328,10 +335,12 @@ impl State {
             Message::EditAtStart => self.start_editing(false),
             Message::Text(edit) => self.edit_text(edit),
             Message::StopEditing => self.stop_editing(),
-            Message::NewBelow => self.add_block(NewBlock::Below),
-            Message::NewAbove => self.add_block(NewBlock::Above),
-            Message::NewChild => self.add_block(NewBlock::Child),
-            Message::NewNext => self.add_block(NewBlock::Next),
+            Message::NewBelow => self.add_block(NewBlock::Below, None),
+            Message::NewAbove => self.add_block(NewBlock::Above, None),
+            Message::NewChild => self.add_block(NewBlock::Child, None),
+            Message::NewNext => self.add_block(NewBlock::Next, None),
+            Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
+            Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_focused(),
         }
         self.repair_focus();
@@ -351,6 +360,15 @@ impl State {
     fn focused_block(&self) -> Option<Block> {
         self.focused()
             .and_then(|(block, title)| (!title).then_some(block))
+    }
+
+    /// The blocks in the list of the block `id`: its parent's children, itself included.
+    pub(super) fn siblings(&self, id: ItemId) -> Vec<Block> {
+        self.document()
+            .get(id)
+            .and_then(Item::parent)
+            .map(|line| blocks::children(self.document(), line))
+            .unwrap_or_default()
     }
 
     /// Zooms to `zoom`, a new entry in the history that drops any forward entries.
@@ -405,12 +423,7 @@ impl State {
         let Some(id) = self.focused_block().map(|block| block.id()) else {
             return;
         };
-        let siblings = self
-            .document()
-            .get(id)
-            .and_then(Item::parent)
-            .map(|line| blocks::children(self.document(), line))
-            .unwrap_or_default();
+        let siblings = self.siblings(id);
         if let Some(at) = siblings.iter().position(|block| block.id() == id)
             && let Some(sibling) = to(at).and_then(|index| siblings.get(index))
         {

@@ -4,8 +4,8 @@
 
 use super::{Access, Notice, Restore, State};
 use crate::document::{
-    Block, Item, ItemId, Transaction, blocks,
-    structure::{self, Place},
+    Block, BlockKind, Item, ItemId, Transaction, blocks,
+    structure::{self, Place, Typed},
 };
 
 /// Where a new block goes, relative to the focused block (editing.md §3).
@@ -19,18 +19,25 @@ pub(super) enum NewBlock {
     Child,
     /// As its first child when it shows children, else below it, as `Enter` ends editing.
     Next,
+    /// At the top of its list, its parent's children (FR-MODE-06).
+    Top,
 }
 
 impl State {
-    /// Adds an empty block where `new` says and edits it (FR-MODE-04). On the zoom title, which
-    /// stands for the view's root, the block becomes the first one under it; in an outline
-    /// without rows it is the first block. A read-only file refuses with a notice.
-    pub(super) fn add_block(&mut self, new: NewBlock) {
+    /// Adds an empty block of type `typed`, or of the type that fits, where `new` says and edits
+    /// it (FR-MODE-04, FR-MODE-06). On the zoom title, which stands for the view's root, the
+    /// block becomes the first one under it; in an outline without rows it is the first block. A
+    /// read-only file refuses with a notice.
+    pub(super) fn add_block(&mut self, new: NewBlock, typed: Option<Typed>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
         let focused = self.focused();
+        let list = match (&focused, new) {
+            (Some((block, false)), NewBlock::Top) => self.siblings(block.id()),
+            _ => Vec::new(),
+        };
         let place = match &focused {
             None => Place::Start,
             Some((block, true)) => Place::FirstChild(block),
@@ -39,9 +46,10 @@ impl State {
                 NewBlock::Child => Place::FirstChild(block),
                 NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
                 NewBlock::Below | NewBlock::Next => Place::Below(block),
+                NewBlock::Top => top_of(&list, typed).expect("the focused block is in its list"),
             },
         };
-        let (id, ops) = structure::new_block(&mut self.document, place)
+        let (id, ops) = structure::new_block(&mut self.document, place, typed)
             .expect("the focused block was just found in the document");
         if let (Place::FirstChild(block), Some((_, false))) = (place, &focused) {
             self.folds.remove(&block.id());
@@ -139,6 +147,20 @@ impl State {
             Restore { focus },
         ));
         self.focus = focus;
+    }
+}
+
+/// Where a block of type `typed` goes at the top of `list`: before its first block, except that
+/// a section goes before its first section, after the tasks above it, or at its end when it has
+/// none (editing.md §3, OQ-29). `None` for an empty list.
+fn top_of(list: &[Block], typed: Option<Typed>) -> Option<Place<'_>> {
+    if typed == Some(Typed::Section) {
+        list.iter()
+            .find(|block| block.kind() == BlockKind::Section)
+            .map(Place::Above)
+            .or_else(|| list.last().map(Place::Below))
+    } else {
+        list.first().map(Place::Above)
     }
 }
 
@@ -315,10 +337,115 @@ mod tests {
         assert_eq!(lines(&state), ["first", "- "], "a note would join the note");
     }
 
+    // FR-MODE-06, OQ-29
+    #[test]
+    fn upper_case_adds_a_typed_block_at_the_top_of_the_list() {
+        let text = "P:\n\t- a\n\tn\n\tS @section\n\t\t- b\n\tT @section\nQ:";
+        let mut state = open(text, 2);
+        state.update(Message::NewTop(Typed::Project));
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(shown(&state), "|");
+        typed(&mut state, "Sub");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state)[..3], ["P:", "\tSub:", "\t- a"]);
+        assert_eq!(focused(&state), "Sub");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), lines(&open(text, 0)), "one step");
+        assert_eq!(focused(&state), "n");
+        state.update(Message::NewTop(Typed::Task));
+        assert_eq!(lines(&state)[..3], ["P:", "\t- ", "\t- a"]);
+        state.update(Message::StopEditing);
+        state.update(Message::FocusLast);
+        state.update(Message::NewTop(Typed::Task));
+        assert_eq!(
+            lines(&state)[..2],
+            ["- ", "P:"],
+            "the top level is a list too"
+        );
+    }
+
+    // FR-MODE-06, OQ-29
+    #[test]
+    fn upper_case_s_adds_a_section_before_the_first_section_or_at_the_end() {
+        let mut state = open("P:\n\t- a\n\tS @section\n\t\t- b\n\t- c\n\tT @section", 5);
+        state.update(Message::NewTop(Typed::Section));
+        typed(&mut state, "New");
+        state.update(Message::StopEditing);
+        assert_eq!(
+            lines(&state),
+            [
+                "P:",
+                "\t- a",
+                "\tNew @section",
+                "\tS @section",
+                "\t\t- b",
+                "\t- c",
+                "\tT @section"
+            ]
+        );
+        let mut state = open("P:\n\t- a\n\t\t- b\n\t- c\n\t\tn", 1);
+        state.update(Message::NewTop(Typed::Section));
+        assert_eq!(
+            lines(&state),
+            ["P:", "\t- a", "\t\t- b", "\t- c", "\t\tn", "\t@section"],
+            "after the last block's subtree"
+        );
+    }
+
+    // FR-MODE-06, OQ-26
+    #[test]
+    fn lower_case_adds_a_typed_block_below_without_joining_notes() {
+        for (typed, line) in [
+            (Typed::Project, ":"),
+            (Typed::Section, "@section"),
+            (Typed::Task, "- "),
+        ] {
+            let mut state = open("n\n\t- a\nm", 0);
+            state.update(Message::Collapse);
+            state.update(Message::NewTypedBelow(typed));
+            assert_eq!(lines(&state), ["n", "\t- a", line, "m"], "{typed:?}");
+            assert_eq!(state.mode(), Mode::Edit);
+        }
+    }
+
+    // FR-MODE-06, D-18
+    #[test]
+    fn a_section_below_code_stays_a_section_as_it_is_typed() {
+        let mut state = open("f() @code\nx", 0);
+        state.update(Message::NewTypedBelow(Typed::Section));
+        typed(&mut state, "Run");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["f() @code", "x", "Run: @section"]);
+        assert_eq!(state.rows()[1].kind, BlockKind::Section);
+        assert_eq!(state.rows()[1].lines, ["Run"]);
+    }
+
+    // FR-NAV-03, FR-MODE-06
+    #[test]
+    fn typed_blocks_on_the_zoom_title_and_in_an_empty_outline_come_first() {
+        for (new, line) in [
+            (Message::NewTop(Typed::Section), "@section"),
+            (Message::NewTypedBelow(Typed::Project), ":"),
+        ] {
+            let mut state = open("P:\n\t- a\n\tS @section", 0);
+            state.update(Message::ZoomIn);
+            state.update(Message::FocusFirst);
+            state.update(new.clone());
+            assert_eq!(lines(&state)[..2], ["P:".to_owned(), format!("\t{line}")]);
+            let mut state = State::new(Document::default(), None);
+            state.update(new);
+            assert_eq!(lines(&state), [line]);
+        }
+    }
+
     // file-io.md §1
     #[test]
     fn a_read_only_file_refuses_new_and_deleted_blocks() {
-        for message in [Message::NewBelow, Message::Delete] {
+        for message in [
+            Message::NewBelow,
+            Message::NewTop(Typed::Task),
+            Message::Delete,
+        ] {
             let mut state = State::new(format::parse("- a"), Some(PathBuf::from("/a.taskpaper")))
                 .with_access(Access::ReadOnly);
             state.update(message);

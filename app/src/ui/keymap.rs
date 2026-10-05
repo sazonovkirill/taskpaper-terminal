@@ -5,7 +5,10 @@ use std::time::Duration;
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
-use crate::app::{Message, Mode, Motion, TextEdit};
+use crate::{
+    app::{Message, Mode, Motion, TextEdit},
+    document::structure::Typed,
+};
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
 ///
@@ -135,6 +138,12 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('o')], |_| Message::NewBelow),
     (&[key!('O')], |_| Message::NewAbove),
     (&[key!(alt 'o')], |_| Message::NewChild),
+    (&[key!('P')], |_| Message::NewTop(Typed::Project)),
+    (&[key!('p')], |_| Message::NewTypedBelow(Typed::Project)),
+    (&[key!('S')], |_| Message::NewTop(Typed::Section)),
+    (&[key!('s')], |_| Message::NewTypedBelow(Typed::Section)),
+    (&[key!('A')], |_| Message::NewTop(Typed::Task)),
+    (&[key!('a')], |_| Message::NewTypedBelow(Typed::Task)),
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
 ];
@@ -458,6 +467,23 @@ mod tests {
             keymap.message_for(&d, ms(1), CONTEXT),
             Some(Message::Delete)
         );
+    }
+
+    // FR-MODE-06, D-26
+    #[test]
+    fn typed_creation_keys() {
+        for (lower, typed) in [
+            ('p', Typed::Project),
+            ('s', Typed::Section),
+            ('a', Typed::Task),
+        ] {
+            let upper = lower.to_ascii_uppercase();
+            let top = Message::NewTop(typed);
+            check(KeyCode::Char(upper), KeyModifiers::SHIFT, Some(&top));
+            check(KeyCode::Char(upper), KeyModifiers::NONE, Some(&top));
+            let below = Message::NewTypedBelow(typed);
+            check(KeyCode::Char(lower), KeyModifiers::NONE, Some(&below));
+        }
     }
 
     /// The message each key sends in edit mode.

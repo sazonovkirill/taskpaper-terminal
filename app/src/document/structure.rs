@@ -21,15 +21,43 @@ pub enum Place<'a> {
     Start,
 }
 
+/// A type the user picks for a new block (FR-MODE-06, D-26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Typed {
+    /// A project.
+    Project,
+    /// A section.
+    Section,
+    /// A task.
+    Task,
+}
+
+impl Typed {
+    /// The line of an empty block of this type that is the `index`th child of the line `parent`.
+    /// A section that would join the code run before it, as a note line does, is written as a
+    /// project, which ends the run and is still a section (D-18, data-model.md §3).
+    fn empty_line(self, document: &Document, parent: ItemId, index: usize) -> &'static str {
+        match self {
+            Self::Project => ":",
+            Self::Section if blocks::note_line_joins_code(document, parent, index) => ": @section",
+            Self::Section => "@section",
+            Self::Task => "- ",
+        }
+    }
+}
+
 /// An empty block at `place` that the user is about to type into: its line and the ops that put
 /// it there, or `None` when `place` names a block that is not in `document`.
 ///
-/// It is a task after or before a task and under a project or task, otherwise a note, unless a
-/// note would join the note run next to it, which no other block type does (OQ-03, OQ-26). A
-/// line that now has children but no text gets the placeholder, and so does a line that loses
-/// the leading whitespace an only line keeps (file-format.md §3.1, rules 2 and 4).
+/// It has the type `typed` when one is given, else the type that fits where it goes. A line that
+/// now has children but no text gets the placeholder, and so does a line that loses the leading
+/// whitespace an only line keeps (file-format.md §3.1, rules 2 and 4).
 #[must_use]
-pub fn new_block(document: &mut Document, place: Place<'_>) -> Option<(ItemId, Vec<Op>)> {
+pub fn new_block(
+    document: &mut Document,
+    place: Place<'_>,
+    typed: Option<Typed>,
+) -> Option<(ItemId, Vec<Op>)> {
     let (parent, index) = match place {
         Place::Below(block) => {
             let (parent, index) = document.position(block.last_line())?;
@@ -39,20 +67,35 @@ pub fn new_block(document: &mut Document, place: Place<'_>) -> Option<(ItemId, V
         Place::FirstChild(block) => (block.last_line(), 0),
         Place::Start => (document.root(), 0),
     };
-    let task = match place {
-        Place::Below(block) | Place::Above(block) => block.kind() == BlockKind::Task,
-        Place::FirstChild(block) => matches!(block.kind(), BlockKind::Project | BlockKind::Task),
-        Place::Start => false,
-    } || blocks::blank_line_joins_run(document, parent, index);
+    let text = typed.map_or_else(
+        || fitting_line(document, place, parent, index),
+        |typed| typed.empty_line(document, parent, index),
+    );
     let mut ops = repairs(document, parent);
     let id = document.new_id();
-    let text = if task { "- " } else { "" };
     ops.push(Op::Insert {
         parent,
         index,
         subtree: Snapshot::line(id, text.to_owned()),
     });
     Some((id, ops))
+}
+
+/// The line of an empty block at `place`, the `index`th child of the line `parent`, whose type
+/// the user did not pick: a task after or before a task and under a project or task, else a
+/// note, unless a note would join the note run next to it (OQ-03, OQ-26).
+fn fitting_line(
+    document: &Document,
+    place: Place<'_>,
+    parent: ItemId,
+    index: usize,
+) -> &'static str {
+    let task = match place {
+        Place::Below(block) | Place::Above(block) => block.kind() == BlockKind::Task,
+        Place::FirstChild(block) => matches!(block.kind(), BlockKind::Project | BlockKind::Task),
+        Place::Start => false,
+    } || blocks::blank_line_joins_run(document, parent, index);
+    if task { "- " } else { "" }
 }
 
 /// The ops repairing what a new line under `parent` breaks: an empty parent would be read back
@@ -149,8 +192,13 @@ mod tests {
 
     #[track_caller]
     fn applied(document: &mut Document, place: Place<'_>) -> Vec<String> {
+        applied_as(document, place, None)
+    }
+
+    #[track_caller]
+    fn applied_as(document: &mut Document, place: Place<'_>, typed: Option<Typed>) -> Vec<String> {
         let before = lines(document, None);
-        let (id, ops) = new_block(document, place).unwrap();
+        let (id, ops) = new_block(document, place, typed).unwrap();
         let mut transaction = Transaction::new(ops, (), ());
         document.apply(&mut transaction).unwrap();
         let after = lines(document, Some(id));
@@ -230,6 +278,67 @@ mod tests {
         assert_eq!(applied(&mut document, Place::Start), [">- ", "n"]);
     }
 
+    // FR-MODE-06, OQ-26
+    #[test]
+    fn a_typed_block_has_its_type_wherever_it_goes() {
+        let mut document = format::parse("n\n\tm\n- t");
+        let note = block(&document, "n");
+        let task = block(&document, "- t");
+        for (typed, line, kind) in [
+            (Typed::Project, ":", BlockKind::Project),
+            (Typed::Section, "@section", BlockKind::Section),
+            (Typed::Task, "- ", BlockKind::Task),
+        ] {
+            for place in [
+                Place::Below(&note),
+                Place::Above(&task),
+                Place::FirstChild(&note),
+                Place::Start,
+            ] {
+                let (id, ops) = new_block(&mut document, place, Some(typed)).unwrap();
+                let mut transaction = Transaction::new(ops, (), ());
+                document.apply(&mut transaction).unwrap();
+                assert_eq!(document.get(id).unwrap().text(), line, "{place:?}");
+                assert_eq!(blocks::block(&document, id).unwrap().kind(), kind);
+                document.apply(&mut transaction.inverse()).unwrap();
+            }
+        }
+    }
+
+    // FR-MODE-06, D-18
+    #[test]
+    fn a_section_after_code_is_written_as_a_project_to_stay_a_section() {
+        let mut document = format::parse("f() @code\nx\n- t");
+        let code = block(&document, "f() @code");
+        assert_eq!(
+            applied_as(&mut document, Place::Below(&code), Some(Typed::Section)),
+            ["f() @code", "x", ">: @section", "- t"]
+        );
+        let (id, ops) =
+            new_block(&mut document, Place::Below(&code), Some(Typed::Section)).unwrap();
+        document.apply(&mut Transaction::new(ops, (), ())).unwrap();
+        assert_eq!(
+            blocks::block(&document, id).unwrap().kind(),
+            BlockKind::Section
+        );
+        assert_eq!(
+            block(&document, "f() @code").lines().len(),
+            2,
+            "the code stays as it was"
+        );
+    }
+
+    // file-format §3.1
+    #[test]
+    fn a_typed_block_repairs_its_parent_too() {
+        let mut document = format::parse("a\n\n- t");
+        let run = block(&document, "a");
+        assert_eq!(
+            applied_as(&mut document, Place::FirstChild(&run), Some(Typed::Section)),
+            ["a", "…", "\t>@section", "- t"]
+        );
+    }
+
     // file-format §3.1
     #[test]
     fn an_empty_parent_gets_the_placeholder() {
@@ -260,8 +369,8 @@ mod tests {
         let other = format::parse("- x\n- y");
         let stale = block(&other, "- y");
         let mut document = format::parse("- a");
-        assert_eq!(new_block(&mut document, Place::Below(&stale)), None);
-        assert_eq!(new_block(&mut document, Place::Above(&stale)), None);
+        assert_eq!(new_block(&mut document, Place::Below(&stale), None), None);
+        assert_eq!(new_block(&mut document, Place::Above(&stale), None), None);
     }
 
     /// The lines of `text` once the block reading `of` is deleted, with the ops checked to undo.
