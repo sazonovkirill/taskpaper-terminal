@@ -210,3 +210,4 @@ The owner's answers of 2026-10-04 to the clarifying questions.
 | D-30 | The focused block is not shown inverted; a current-line marker in a gutter left of the outline shows it instead, like an editor (owner, 2026-10-04, M1 review). Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-31 | Outline rows indent as in TaskPaper (owner, 2026-10-05, M1 review): an open task is marked `-` and a done task `☑`; only tasks and URLs carry a marker, so each child, a task's note included, starts one level in from its parent and lines up with a task parent's text. Details in [ui.md §2](specs/ui.md#2-blocks). |
 | D-32 | The breadcrumbs start with a house icon instead of the word `Home` (owner, 2026-10-05, M1 review). Details in [ui.md §1](specs/ui.md#1-layout). |
+| D-33 | Dividers are dimmer still than in D-29: the rule-lines color with the dim attribute, fainter than the header rule (owner, 2026-10-05, M1 review). Details in [ui.md §2](specs/ui.md#2-blocks). |

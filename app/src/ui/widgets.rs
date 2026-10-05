@@ -119,7 +119,7 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
         BlockKind::Code => ("", code_style().dim()),
         BlockKind::Note => ("", Style::new().dim()),
-        BlockKind::Divider => ("", rule_style()),
+        BlockKind::Divider => ("", divider_style()),
     };
     let count_style = if row.kind == BlockKind::Code {
         code_style()
@@ -168,7 +168,16 @@ fn row_lines(row: &Row, width: usize) -> Vec<Line<'_>> {
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
 fn rule(line: &Line, width: usize) -> Span<'static> {
-    Span::styled("─".repeat(width.saturating_sub(line.width())), rule_style())
+    Span::styled(
+        "─".repeat(width.saturating_sub(line.width())),
+        divider_style(),
+    )
+}
+
+/// Divider blocks: the rule-lines color, dimmed further so they recede behind the header rule
+/// (D-33).
+fn divider_style() -> Style {
+    rule_style().dim()
 }
 
 /// The theme's accent (Textual's `$primary`), for projects; themes arrive in step 6.2.
@@ -281,7 +290,7 @@ mod tests {
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().bold().fg(SECONDARY));
         expected.set_style(Rect::new(1, 3, 4, 1), dim);
         expected.set_style(Rect::new(0, 4, 4, 1), dim);
-        expected.set_style(Rect::new(5, 4, 9, 1), rule_style());
+        expected.set_style(Rect::new(5, 4, 9, 1), divider_style());
         expected.set_style(Rect::new(0, 5, 14, 1), code_style());
         expected.set_style(Rect::new(0, 5, 7, 1), code_style().dim());
         assert_eq!(buf, expected);

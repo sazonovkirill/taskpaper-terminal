@@ -66,7 +66,12 @@ fn draws_every_block_type_and_hides_special_nodes() {
         buffer[(4, 3)].modifier.contains(Modifier::DIM),
         "notes are dimmed"
     );
-    assert_eq!(buffer[(4, 9)].fg, Color::DarkGray, "dividers are very dim");
+    let divider = &buffer[(4, 9)];
+    assert_eq!(divider.fg, Color::DarkGray, "dividers use the rule color");
+    assert!(
+        divider.modifier.contains(Modifier::DIM),
+        "dividers are dimmer than the header rule"
+    );
     let link = &buffer[(6, 8)];
     assert!(
         link.modifier.contains(Modifier::UNDERLINED),

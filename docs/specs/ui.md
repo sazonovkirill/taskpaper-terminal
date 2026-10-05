@@ -38,7 +38,7 @@ Each row: indent (2 columns per level), then text and right-aligned chips. Tasks
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
 | Code | none | monospace-styled background band, slightly dimmed text, no inline formatting |
 | URL | `↗` | title styled as a link (underlined, accent color), slightly dimmed |
-| Divider | none | a horizontal rule across the pane in the rule-lines color, very dim |
+| Divider | none | a horizontal rule across the pane in the rule-lines color, dimmed further so it is fainter than the header rule (D-33) |
 
 - Tasks (normal text), projects and sections (their own colors) stand out; every other block type is dimmed (D-29).
 - No fold marker is shown on expanded blocks, since any block can be folded. A block that has children and is collapsed shows `▸ n` (hidden child count) after its text, projects included (D-29).
