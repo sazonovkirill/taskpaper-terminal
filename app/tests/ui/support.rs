@@ -8,7 +8,7 @@ use std::{
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use jiff::civil::{Date, DateTime, date};
-use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
+use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, style::Color};
 use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
@@ -23,6 +23,9 @@ pub const TODAY: Date = date(2026, 10, 5);
 
 /// The local time every test runs at.
 pub const NOW: DateTime = TODAY.at(9, 30, 0, 0);
+
+/// The background of every line of the focused block (D-39).
+pub const CURRENT_LINE: Color = Color::Indexed(235);
 
 /// A running app with its terminal, the temporary folder holding its file and its backups
 /// folder, and a clock that only moves when the test says so.

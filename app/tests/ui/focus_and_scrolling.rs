@@ -4,9 +4,13 @@
 use std::{fmt::Write as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use ratatui::{buffer::Buffer, layout::Rect, style::Style};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{CURRENT_LINE, Harness, focused_rows, line, outline_rows};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -47,6 +51,7 @@ fn focus_starts_on_the_first_row_with_a_gutter_marker() {
     ]);
     expected.set_style(Rect::new(2, 0, 10, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 12, 1), Style::new().dark_gray());
+    expected.set_style(Rect::new(0, 2, 12, 1), Style::new().bg(CURRENT_LINE));
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(2, 2, 2, 1), Style::new().bold().light_blue());
     expected.set_style(Rect::new(0, 4, 8, 1), Style::new().bold());
@@ -262,4 +267,36 @@ fn a_two_row_terminal_scrolls_one_row_at_a_time() {
     assert_focus(&mut app, "- Task 03");
     app.press(KeyCode::PageUp, NONE);
     assert_focus(&mut app, "- Task 02");
+}
+
+// D-30, D-39
+#[test]
+fn every_line_of_the_focused_block_gets_a_brighter_band_that_keeps_its_colors() {
+    let mut app = Harness::with_text("- a\nfirst\nsecond\n- b\n", 16, 7);
+    let unfocused = app.render().buffer().clone();
+    app.type_keys("j");
+    let navigate = app.render().buffer().clone();
+    app.press(KeyCode::Enter, NONE);
+    let edit = app.render().buffer().clone();
+    for buffer in [&navigate, &edit] {
+        assert_eq!([line(buffer, 3), line(buffer, 4)], ["▎ first", "▎ second"]);
+        for y in 2..6 {
+            let band = if (3..5).contains(&y) {
+                CURRENT_LINE
+            } else {
+                Color::Reset
+            };
+            for x in 0..16 {
+                let (cell, before) = (&buffer[(x, y)], &unfocused[(x, y)]);
+                assert_eq!(cell.bg, band, "column {x}, row {y}");
+                if x >= 2 {
+                    assert_eq!(
+                        (cell.fg, cell.modifier),
+                        (before.fg, before.modifier),
+                        "column {x}, row {y}"
+                    );
+                }
+            }
+        }
+    }
 }

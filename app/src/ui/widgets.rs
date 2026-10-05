@@ -15,7 +15,7 @@ use crate::{
     document::BlockKind,
 };
 
-/// The outline: a gutter that marks the focused block, then one row per block, 2 columns of
+/// The outline: a gutter that marks the focused block, whose lines get a brighter background, then one row per block, 2 columns of
 /// indent per level, a marker and the text; a block with several lines takes several screen
 /// lines. A block being edited shows the text as typed instead.
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl<'a> OutlineView<'a> {
         Self { offset, ..self }
     }
 
-    /// Marks every line of row `index` in the gutter (ui.md §2).
+    /// Marks every line of row `index` in the gutter and gives it the current-line band (ui.md §2).
     #[must_use]
     pub fn focused(self, index: Option<usize>) -> Self {
         Self {
@@ -77,8 +77,14 @@ impl Widget for OutlineView<'_> {
         for ((index, line), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
+            let focused = Some(index) == self.focused;
+            // The line patches its own styles over the band, so a code band and every
+            // foreground color and modifier survive on the focused row.
+            if focused {
+                buf.set_style(gutter_area.union(line_area), current_line_style());
+            }
             line.render(line_area, buf);
-            if Some(index) == self.focused {
+            if focused {
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
             }
         }
@@ -468,6 +474,12 @@ fn warning_style() -> Style {
     Style::new().fg(Color::Yellow)
 }
 
+/// The band behind every line of the focused block, the full width of the pane, a step brighter
+/// than a dark terminal's background (D-39); themes arrive in step 6.2.
+fn current_line_style() -> Style {
+    Style::new().bg(Color::Indexed(235))
+}
+
 /// The background band of code blocks; themes arrive in step 6.2.
 fn code_style() -> Style {
     Style::new().bg(Color::DarkGray)
@@ -758,10 +770,11 @@ mod tests {
         assert_eq!(render("- abcdef\n- d\n- e", 5, 2), expected);
     }
 
-    // D-30
+    // D-30, D-39
     #[test]
-    fn marks_the_focused_row_in_the_gutter_without_highlighting_it() {
+    fn marks_the_focused_row_in_the_gutter_on_a_band_without_changing_its_text() {
         let mut expected = Buffer::with_lines(["  - a", "▎ - b", "  - c"]);
+        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
         expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
@@ -775,9 +788,42 @@ mod tests {
             .focused(Some(1))
             .render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines(["  - a ", "▎ n   ", "▎ m   "]);
+        expected.set_style(Rect::new(0, 1, 6, 2), current_line_style());
         expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(PRIMARY));
         expected.set_style(Rect::new(2, 1, 1, 2), Style::new().fg(NOTE));
         assert_eq!(buf, expected);
+    }
+
+    // D-39
+    #[test]
+    fn the_band_keeps_every_text_style_and_the_code_band_of_each_block_kind() {
+        let rows = State::new(
+            format::parse("P:\n- a @done\nn\nS @section\n---\nf() @code\nhttps://x.y @url"),
+            None,
+        )
+        .rows();
+        let area = Rect::new(0, 0, 12, 7);
+        let mut plain = Buffer::empty(area);
+        OutlineView::new(&rows).render(area, &mut plain);
+        for index in 0..rows.len() {
+            let mut focused = Buffer::empty(area);
+            OutlineView::new(&rows)
+                .focused(Some(index))
+                .render(area, &mut focused);
+            let y = u16::try_from(index).unwrap();
+            for x in GUTTER_WIDTH..area.width {
+                let (cell, before) = (&focused[(x, y)], &plain[(x, y)]);
+                let bg = match before.bg {
+                    Color::Reset => Color::Indexed(235),
+                    code => code,
+                };
+                assert_eq!(
+                    (cell.symbol(), cell.fg, cell.modifier, cell.bg),
+                    (before.symbol(), before.fg, before.modifier, bg),
+                    "row {index}, column {x}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -785,6 +831,7 @@ mod tests {
         let area = Rect::new(2, 1, 6, 2);
         let mut expected = Buffer::with_lines(["  - c ", "▎ - d "]);
         expected.area = area;
+        expected.set_style(Rect::new(2, 2, 6, 1), current_line_style());
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(2, Some(3), area), expected);
     }
