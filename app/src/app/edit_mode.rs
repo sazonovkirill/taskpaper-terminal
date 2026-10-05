@@ -328,17 +328,31 @@ impl State {
         let ops = session.created.into_iter().chain(session.applied).collect();
         self.edits.record(Transaction::new(ops, before, after));
         let mut merged = Session::new(&self.document, &block, true);
-        let above: usize = block
+        // The caret keeps its line and column: the merged text shows each line without the
+        // spaces before its tags, so the session's byte offsets do not carry over.
+        let before_caret = session
+            .field
+            .text()
+            .get(..session.field.caret())
+            .unwrap_or_default();
+        let row = block
             .lines()
             .iter()
             .take_while(|&&line| line != session.id)
-            .filter_map(|&line| self.document.get(line))
-            .map(|item| item.display_text().len() + 1)
-            .sum();
-        merged.field = TextField::with_caret(
-            merged.field.text().to_owned(),
-            above + session.field.caret(),
-        );
+            .count()
+            + before_caret.matches('\n').count();
+        let column = before_caret.rsplit('\n').next().map_or(0, str::len);
+        let text = merged.field.text().to_owned();
+        let caret = text
+            .split('\n')
+            .scan(0, |start, line| {
+                let line_start = *start;
+                *start += line.len() + 1;
+                Some(line_start + line.floor_char_boundary(column))
+            })
+            .nth(row)
+            .unwrap_or(text.len());
+        merged.field = TextField::with_caret(text, caret);
         self.focus = Some(block.id());
         self.edit = Some(merged);
     }

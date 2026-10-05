@@ -972,6 +972,29 @@ mod tests {
 
     // OQ-26, editing.md §2
     #[test]
+    fn the_caret_stays_on_its_line_when_spaces_before_tags_are_dropped_by_merging() {
+        for next in ["é", "n"] {
+            let mut state = open(&format!("P:\n\tm @x\n{next}"), 1);
+            state.update(Message::EditAtEnd);
+            typed(&mut state, "  ");
+            state.update(Message::Outdent);
+            typed(&mut state, "z");
+            assert_eq!(shown(&state), format!("mz|\n{next}"));
+        }
+    }
+
+    // OQ-26, editing.md §2
+    #[test]
+    fn the_caret_on_a_later_line_of_a_merging_note_stays_on_that_line() {
+        let mut state = open("P:\n\tn\nm\no", 2);
+        state.update(Message::EditAtEnd);
+        state.update(Message::Indent);
+        typed(&mut state, "!");
+        assert_eq!(shown(&state), "n\nm\no!|");
+    }
+
+    // OQ-26, editing.md §2
+    #[test]
     fn a_block_being_edited_that_a_note_joins_goes_on_being_edited_whole() {
         let mut state = open("P:\n\tm\nn", 1);
         state.update(Message::EditAtEnd);
