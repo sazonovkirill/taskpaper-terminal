@@ -1,8 +1,10 @@
-//! The color picker that `mc` opens: its entries, the filter typed into it, the highlighted
-//! entry, and what each key does to them
+//! The color picker that `mc` opens: its entries and what choosing one does to the focused block
 //! ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), FR-TAG-05).
 
-use super::{MenuInput, State};
+use super::{
+    MenuInput, State,
+    picker::{Picked, Picker, PickerView},
+};
 use crate::document::{TagColor, metadata};
 
 /// Every entry of the picker with its name, in the order it lists them: the six colors, then
@@ -17,98 +19,17 @@ const ENTRIES: [(Option<TagColor>, &str); 7] = [
     (None, "None"),
 ];
 
-/// The open picker as a frontend shows it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ColorPickerView<'a> {
-    /// What was typed to filter the entries.
-    pub filter: &'a str,
-    /// The entries whose name the filter matches, in order, each a color or none with its name.
-    pub entries: Vec<(Option<TagColor>, &'static str)>,
-    /// The position of the highlighted entry in `entries`.
-    pub selected: usize,
-}
-
-/// The open picker: the filter and the highlighted entry.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(super) struct ColorPicker {
-    filter: String,
-    selected: usize,
-}
-
-/// How an input closed the picker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Closed {
-    /// The block takes this color, or none.
-    Chosen(Option<TagColor>),
-    /// The block keeps its color.
-    Cancelled,
-}
-
-impl ColorPicker {
-    /// A picker with every entry listed and `current`, the block's color, highlighted.
-    fn new(current: Option<TagColor>) -> Self {
-        Self {
-            filter: String::new(),
-            selected: ENTRIES
-                .iter()
-                .position(|&(color, _)| color == current)
-                .unwrap_or_default(),
-        }
-    }
-
-    /// The entries whose name holds the filter, ignoring case.
-    fn entries(&self) -> Vec<(Option<TagColor>, &'static str)> {
-        let filter = self.filter.to_lowercase();
-        ENTRIES
-            .into_iter()
-            .filter(|(_, name)| name.to_lowercase().contains(&filter))
-            .collect()
-    }
-
-    /// Applies `input`, and returns how it closed the picker, or `None` while it stays open.
-    fn input(&mut self, input: MenuInput) -> Option<Closed> {
-        match input {
-            MenuInput::Type(c) => {
-                self.filter.push(c);
-                self.selected = 0;
-            }
-            MenuInput::Erase => {
-                if self.filter.pop().is_some() {
-                    self.selected = 0;
-                }
-            }
-            MenuInput::Previous => self.selected = self.selected.saturating_sub(1),
-            MenuInput::Next => {
-                self.selected = (self.selected + 1).min(self.entries().len().saturating_sub(1));
-            }
-            MenuInput::Choose => {
-                return self
-                    .entries()
-                    .get(self.selected)
-                    .map(|&(color, _)| Closed::Chosen(color));
-            }
-            MenuInput::Dismiss => return Some(Closed::Cancelled),
-        }
-        None
-    }
-}
-
 impl State {
     /// The color picker, while it is open.
     #[must_use]
-    pub fn color_picker(&self) -> Option<ColorPickerView<'_>> {
-        let picker = self.color_picker.as_ref()?;
-        Some(ColorPickerView {
-            filter: &picker.filter,
-            entries: picker.entries(),
-            selected: picker.selected,
-        })
+    pub fn color_picker(&self) -> Option<PickerView<'_, Option<TagColor>>> {
+        self.color_picker.as_ref().map(Picker::view)
     }
 
     /// `mc`: opens the color picker on the focused block, its color highlighted (FR-TAG-05).
     pub(super) fn open_color_picker(&mut self) {
         if let Some((block, _)) = self.focused() {
-            self.color_picker = Some(ColorPicker::new(block.color()));
+            self.color_picker = Some(Picker::new(&ENTRIES, block.color()));
         }
     }
 
@@ -123,7 +44,7 @@ impl State {
             return;
         };
         self.color_picker = None;
-        if let Closed::Chosen(color) = closed {
+        if let Picked::Chosen(color) = closed {
             self.set_color(color);
         }
     }

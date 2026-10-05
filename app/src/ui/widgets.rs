@@ -15,8 +15,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     app::{
-        Access, ColorPickerView, DatePromptView, DiffLine, Editor, Notice, Row, SaveState,
-        TypeMenuView,
+        Access, DatePromptView, DiffLine, Editor, Notice, PickerView, Row, SaveState, TypeMenuView,
     },
     document::{
         BlockKind, DateTag, TagColor,
@@ -316,7 +315,7 @@ impl MenuPopup {
 
     /// The color picker, titled "Color:", each color's name in its tint.
     #[must_use]
-    pub fn colors(picker: &ColorPickerView) -> Self {
+    pub fn colors(picker: &PickerView<Option<TagColor>>) -> Self {
         let names = picker
             .entries
             .iter()
