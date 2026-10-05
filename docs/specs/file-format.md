@@ -87,7 +87,8 @@ Each item in document order is written as indent + body; lines are joined with t
 - **Indent**: `depth` units of the remembered indent unit (OQ-14 default "preserve"). New files use tabs.
 - **Line ending**: the remembered one; `\n` for new files.
 - **BOM** and **trailing newline**: as remembered; new files get no BOM and a trailing newline.
-- Items whose text and absolute depth did not change are written from their original line bytes, so an unedited file round-trips byte-for-byte even if it mixed line endings or had leftover spaces (F-FILE-03).
+- Items whose text and absolute depth did not change are written from their original line bytes, so an unedited file round-trips byte-for-byte even if it mixed line endings or had leftover spaces (F-FILE-03). "Did not change" means that the original line, read again where the item now is, gives the same text and depth: a blank line also needs the line after it to give it the same depth (§3). An item keeps the line break that followed its original line; new lines, and a former last line that had none, get the remembered line ending.
+- In a space-indented file the original lines' depths were read with the file's smallest run of leading spaces (§2). If the lines to be written would have a different smallest run, for example because the only line with the shortest run was deleted, every line is re-indented with the remembered unit instead.
 
 If OQ-14 is decided as "normalize", indent becomes tabs and line endings `\n`; nothing else changes.
 

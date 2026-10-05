@@ -1,0 +1,21 @@
+---
+source: src/document/format/serialize.rs
+expression: item_tree(&document)
+---
+0 0 "Welcome:" Project []
+1 0 "TaskPaper lines are projects, tasks or notes." Note []
+1 0 "- A task for today @today" Task [@today]
+1 0 "- A finished task @done(2026-10-01)" Task [@done(2026-10-01)]
+1 0 "Nested project:" Project []
+2 0 "- Sub task @due(2026-10-10) @priority(1)" Task [@due(2026-10-10) @priority(1)]
+2 0 "- Another @note(value with \\(parens\\))" Task [@note(value with (parens))]
+0 0 "" Note []
+0 0 "Errands: @home" Project [@home]
+1 0 "- Buy milk" Task []
+1 0 "- Call Alice @waiting" Task [@waiting]
+0 0 "" Note []
+0 0 "Searches:" Project []
+1 0 "Today @search(@today and not @done)" Note [@search(@today and not @done)]
+1 0 "Mine @search(\\(a or b\\) and not @done)" Note [@search((a or b) and not @done)]
+0 0 "Archive:" Project []
+1 0 "- Old task @done(2026-09-01) @project(Welcome / Nested project)" Task [@done(2026-09-01) @project(Welcome / Nested project)]

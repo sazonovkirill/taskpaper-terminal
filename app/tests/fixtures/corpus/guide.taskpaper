@@ -1,0 +1,17 @@
+Welcome:
+	TaskPaper lines are projects, tasks or notes.
+	- A task for today @today
+	- A finished task @done(2026-10-01)
+	Nested project:
+		- Sub task @due(2026-10-10) @priority(1)
+		- Another @note(value with \(parens\))
+
+Errands: @home
+	- Buy milk
+	- Call Alice @waiting
+
+Searches:
+	Today @search(@today and not @done)
+	Mine @search(\(a or b\) and not @done)
+Archive:
+	- Old task @done(2026-09-01) @project(Welcome / Nested project)

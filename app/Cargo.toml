@@ -29,5 +29,7 @@ indexing_slicing = "warn"
 cognitive_complexity = "warn"
 
 [dev-dependencies]
+insta = "1.49.0"
+proptest = "1.11.0"
 tempfile = "3.27.0"
 termlens = "0.11.4"

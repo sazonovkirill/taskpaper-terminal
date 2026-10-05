@@ -1,0 +1,5 @@
+Searches:
+    Not Done @search(not @done)
+    Due Soon @search(@due <=[d] 7 days)
+    Projects:
+        Active @search(project *)

@@ -167,6 +167,7 @@ impl Snapshot {
                     children: Vec::new(),
                     text,
                     extra_indent: 0,
+                    original: None,
                 },
             ),
             below: Vec::new(),

@@ -1,14 +1,31 @@
-//! Parsing `.taskpaper` text into a [`Document`] ([file-format.md §1–4](../../../docs/specs/file-format.md)).
-//! Pure: it takes bytes or strings and never touches files.
+//! The `.taskpaper` syntax: parsing text into a [`Document`] and writing it back
+//! ([file-format.md](../../../docs/specs/file-format.md)). Pure: it takes and returns text and never touches files.
 
+mod serialize;
 pub mod tags;
 
 use thiserror::Error;
 
 use super::model::{Document, FileFormat, IndentUnit, ItemId, ItemKind, LineEnding};
+pub use serialize::serialize;
 use tags::is_whitespace;
 
 const BOM: &str = "\u{FEFF}";
+
+/// The line an item was read from, kept so an unedited line is written back byte for byte
+/// ([file-format.md §6](../../../docs/specs/file-format.md#6-serialization)). It is never cleared:
+/// the serializer reuses it only while re-reading it in place would give the item's text and depth.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LineOrigin {
+    /// The line as read, indentation included, without its line break.
+    line: String,
+    /// Where the item's text starts in `line`.
+    text_start: usize,
+    /// The depth the line's own indentation gave, before blank lines took the next line's depth.
+    depth: usize,
+    /// The line break that followed it; empty for a last line without one.
+    line_break: &'static str,
+}
 
 /// Why bytes could not be read as a document.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -52,7 +69,7 @@ pub fn parse(text: &str) -> Document {
 
 fn parse_text(text: &str, bom: bool) -> Document {
     let (mut lines, line_ending) = split_lines(text);
-    let trailing_newline = lines.last() == Some(&"") && lines.len() > 1;
+    let trailing_newline = lines.last().is_some_and(|line| line.text.is_empty()) && lines.len() > 1;
     if trailing_newline || text.is_empty() {
         lines.pop();
     }
@@ -138,34 +155,48 @@ fn content(text: &str) -> &str {
     text.get(..tags::trailing_run_start(text)).unwrap_or(text)
 }
 
+/// A line of the text and the break that ended it.
+struct RawLine<'a> {
+    text: &'a str,
+    line_break: &'static str,
+}
+
 /// Splits on every TaskPaper paragraph break and finds the dominant line ending.
-fn split_lines(text: &str) -> (Vec<&str>, LineEnding) {
+fn split_lines(text: &str) -> (Vec<RawLine<'_>>, LineEnding) {
     let mut lines = Vec::new();
     let (mut lf, mut crlf, mut cr) = (0, 0, 0);
     let mut start = 0;
     let mut chars = text.char_indices().peekable();
     while let Some((index, c)) = chars.next() {
-        let end = match c {
+        let line_break = match c {
             '\r' if chars.peek().is_some_and(|&(_, next)| next == '\n') => {
                 chars.next();
                 crlf += 1;
-                index + 2
+                "\r\n"
             }
             '\r' => {
                 cr += 1;
-                index + 1
+                "\r"
             }
             '\n' => {
                 lf += 1;
-                index + 1
+                "\n"
             }
-            '\u{C}' | '\u{2029}' | '\u{2B7F}' => index + c.len_utf8(),
+            '\u{C}' => "\u{C}",
+            '\u{2029}' => "\u{2029}",
+            '\u{2B7F}' => "\u{2B7F}",
             _ => continue,
         };
-        lines.push(text.get(start..index).unwrap_or_default());
-        start = end;
+        lines.push(RawLine {
+            text: text.get(start..index).unwrap_or_default(),
+            line_break,
+        });
+        start = index + line_break.len();
     }
-    lines.push(text.get(start..).unwrap_or_default());
+    lines.push(RawLine {
+        text: text.get(start..).unwrap_or_default(),
+        line_break: "",
+    });
     let line_ending = if crlf > lf && crlf >= cr {
         LineEnding::CrLf
     } else if cr > lf {
@@ -176,24 +207,38 @@ fn split_lines(text: &str) -> (Vec<&str>, LineEnding) {
     (lines, line_ending)
 }
 
-/// A line split into its absolute depth and its body.
+/// A line split into its absolute depth and its body, with what it was read from.
 struct Line<'a> {
     depth: usize,
     body: &'a str,
+    /// The depth its own indentation gave; blank lines may take a deeper one.
+    own_depth: usize,
+    raw: &'a RawLine<'a>,
 }
 
 /// Turns leading whitespace into depths, normalizing space indentation in multi-line input.
-fn indent_lines<'a>(lines: &[&'a str]) -> (Vec<Line<'a>>, IndentUnit) {
+fn indent_lines<'a>(lines: &'a [RawLine<'a>]) -> (Vec<Line<'a>>, IndentUnit) {
     let spaces_per_level = (lines.len() > 1)
-        .then(|| lines.iter().flat_map(|line| leading_space_runs(line)).min())
+        .then(|| {
+            lines
+                .iter()
+                .flat_map(|line| leading_space_runs(line.text))
+                .min()
+        })
         .flatten();
     let indented = lines
         .iter()
-        .map(|line| {
-            if lines.len() > 1 {
-                normalize(line, spaces_per_level)
+        .map(|raw| {
+            let (depth, body) = if lines.len() > 1 {
+                normalize(raw.text, spaces_per_level)
             } else {
-                tabs_only(line)
+                tabs_only(raw.text)
+            };
+            Line {
+                depth,
+                body,
+                own_depth: depth,
+                raw,
             }
         })
         .collect();
@@ -213,7 +258,7 @@ fn leading_space_runs(line: &str) -> impl Iterator<Item = usize> + '_ {
 
 /// Converts leading groups of `per_level` spaces to levels, then drops leftover leading whitespace
 /// from the first space on, as TaskPaper does.
-fn normalize(line: &str, spaces_per_level: Option<usize>) -> Line<'_> {
+fn normalize(line: &str, spaces_per_level: Option<usize>) -> (usize, &str) {
     let leading_spaces = line.len() - line.trim_start_matches(' ').len();
     let (groups, grouped) = spaces_per_level.map_or((0, 0), |per_level| {
         let groups = leading_spaces / per_level;
@@ -221,19 +266,13 @@ fn normalize(line: &str, spaces_per_level: Option<usize>) -> Line<'_> {
     });
     let after_groups = line.get(grouped..).unwrap_or_default();
     let tabs = after_groups.len() - after_groups.trim_start_matches('\t').len();
-    Line {
-        depth: groups + tabs,
-        body: line.trim_start_matches([' ', '\t']),
-    }
+    (groups + tabs, line.trim_start_matches([' ', '\t']))
 }
 
 /// Single-line input is not normalized: only leading tabs indent, other whitespace is text.
-fn tabs_only(line: &str) -> Line<'_> {
+fn tabs_only(line: &str) -> (usize, &str) {
     let body = line.trim_start_matches('\t');
-    Line {
-        depth: line.len() - body.len(),
-        body,
-    }
+    (line.len() - body.len(), body)
 }
 
 /// Blank lines take the depth of the next non-blank line when it is deeper; trailing ones are top-level.
@@ -264,6 +303,15 @@ fn build_tree(document: &mut Document, lines: &[Line<'_>]) {
             .last()
             .map_or((document.root(), 0), |&(id, depth)| (id, depth + 1));
         let id = document.push_child(parent, line.body.to_owned(), line.depth - expected);
+        document.set_original(
+            id,
+            LineOrigin {
+                line: line.raw.text.to_owned(),
+                text_start: line.raw.text.len() - line.body.len(),
+                depth: line.own_depth,
+                line_break: line.raw.line_break,
+            },
+        );
         ancestors.push((id, line.depth));
     }
 }
@@ -273,7 +321,7 @@ mod tests {
     use super::*;
 
     /// Each item as `depth extra_indent "text"`, in document order.
-    fn outline(document: &Document) -> Vec<String> {
+    pub(super) fn outline(document: &Document) -> Vec<String> {
         document
             .descendants(document.root())
             .map(|(id, depth)| {

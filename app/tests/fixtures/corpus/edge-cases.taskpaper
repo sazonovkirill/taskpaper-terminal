@@ -1,0 +1,23 @@
+Edge cases:
+	* star bullet is a note
+	+ plus bullet is a note
+	- foo: tasks win over projects
+	Project:@tag is a note
+	Inbox: @a
+	lone @ is not a tag
+	@2 @-x @.x digit, dash and dot names
+	end of sentence @tag.
+	@tag, followed by text
+	- duplicate @a(1) @a(2)
+	@id @text @type(x) are reserved
+	@a() and @b
+	escaped @v(\(x\) and \\ backslash)
+	mail a@b.com and @b.com
+	soft break
+Jumps:
+			three tabs under a top-level project
+		two tabs
+	one tab
+
+	blank line above is inside Jumps
+Last

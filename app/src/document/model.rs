@@ -4,7 +4,7 @@ mod edit;
 
 use slotmap::{SlotMap, new_key_type};
 
-use super::format;
+use super::format::{self, LineOrigin};
 
 pub use edit::{EditError, Op, Snapshot, Transaction};
 
@@ -31,6 +31,7 @@ pub struct Item {
     children: Vec<ItemId>,
     text: String,
     extra_indent: usize,
+    original: Option<LineOrigin>,
 }
 
 /// TaskPaper's line type ([file-format.md §4](../../../docs/specs/file-format.md#4-item-type)).
@@ -105,6 +106,7 @@ impl Document {
             children: Vec::new(),
             text: String::new(),
             extra_indent: 0,
+            original: None,
         }));
         Self {
             items,
@@ -170,11 +172,19 @@ impl Document {
             children: Vec::new(),
             text,
             extra_indent,
+            original: None,
         }));
         if let Some(Some(parent)) = self.items.get_mut(parent) {
             parent.children.push(id);
         }
         id
+    }
+
+    /// Records the line `id` was read from; used while parsing.
+    pub(crate) fn set_original(&mut self, id: ItemId, original: LineOrigin) {
+        if let Some(Some(item)) = self.items.get_mut(id) {
+            item.original = Some(original);
+        }
     }
 
     fn children_of(&self, id: ItemId) -> &[ItemId] {
@@ -205,6 +215,11 @@ impl Item {
     #[must_use]
     pub fn extra_indent(&self) -> usize {
         self.extra_indent
+    }
+
+    /// The line this item was read from, if it was read from a file.
+    pub(crate) fn original(&self) -> Option<&LineOrigin> {
+        self.original.as_ref()
     }
 
     /// The TaskPaper type of this line.

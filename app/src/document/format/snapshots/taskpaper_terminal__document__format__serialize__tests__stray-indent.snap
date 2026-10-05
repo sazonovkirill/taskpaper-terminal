@@ -1,0 +1,9 @@
+---
+source: src/document/format/serialize.rs
+expression: item_tree(&document)
+---
+0 0 "Project:" Project []
+1 1 "- four spaces" Task []
+1 0 "- two spaces" Task []
+2 2 "- eight spaces" Task []
+1 0 "- three spaces" Task []

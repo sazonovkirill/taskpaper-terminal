@@ -1,0 +1,5 @@
+---
+source: src/document/format/serialize.rs
+expression: item_tree(&document)
+---
+0 0 "  - Milk" Note []

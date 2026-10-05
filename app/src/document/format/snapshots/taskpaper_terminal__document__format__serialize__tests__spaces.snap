@@ -1,0 +1,9 @@
+---
+source: src/document/format/serialize.rs
+expression: item_tree(&document)
+---
+0 0 "Searches:" Project []
+1 0 "Not Done @search(not @done)" Note [@search(not @done)]
+1 0 "Due Soon @search(@due <=[d] 7 days)" Note [@search(@due <=[d] 7 days)]
+1 0 "Projects:" Project []
+2 0 "Active @search(project *)" Note [@search(project *)]

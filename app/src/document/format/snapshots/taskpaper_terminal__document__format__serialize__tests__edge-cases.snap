@@ -1,0 +1,27 @@
+---
+source: src/document/format/serialize.rs
+expression: item_tree(&document)
+---
+0 0 "Edge cases:" Project []
+1 0 "* star bullet is a note" Note []
+1 0 "+ plus bullet is a note" Note []
+1 0 "- foo: tasks win over projects" Task []
+1 0 "Project:@tag is a note" Note []
+1 0 "Inbox: @a" Project [@a]
+1 0 "lone @ is not a tag" Note []
+1 0 "@2 @-x @.x digit, dash and dot names" Note [@2 @-x @.x]
+1 0 "end of sentence @tag." Note [@tag.]
+1 0 "@tag, followed by text" Note []
+1 0 "- duplicate @a(1) @a(2)" Task [@a(1)]
+1 0 "@id @text @type(x) are reserved" Note []
+1 0 "@a() and @b" Note [@a() @b]
+1 0 "escaped @v(\\(x\\) and \\\\ backslash)" Note [@v((x) and \\ backslash)]
+1 0 "mail a@b.com and @b.com" Note [@b.com]
+1 0 "soft\u{2028}break" Note []
+0 0 "Jumps:" Project []
+1 2 "three tabs under a top-level project" Note []
+1 1 "two tabs" Note []
+1 0 "one tab" Note []
+1 0 "" Note []
+1 0 "blank line above is inside Jumps" Note []
+0 0 "Last" Note []
