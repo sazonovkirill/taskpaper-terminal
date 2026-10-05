@@ -6,7 +6,7 @@ pub mod keymap;
 pub mod layout;
 pub mod widgets;
 
-use std::{ops::Range, time::Duration};
+use std::{ops::Range, path::PathBuf, time::Duration};
 
 use crossterm::event::Event;
 use jiff::civil::Date;
@@ -19,7 +19,7 @@ use ratatui::{
 };
 
 use crate::app::{Effect, Message, Origin, State};
-use effects::Io;
+use effects::{Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap};
 use widgets::OutlineView;
 
@@ -115,6 +115,19 @@ impl Tui {
             .into_iter()
             .chain(self.state.deadline())
             .min()
+    }
+
+    /// Writes the document to a recovery file with `recovery` when its file lacks some of it, as
+    /// after a crash, and returns where (N-REL-01).
+    ///
+    /// # Errors
+    ///
+    /// [`RecoveryError`] when the recovery file could not be written.
+    pub fn recover(&self, recovery: &Recovery) -> Result<Option<PathBuf>, RecoveryError> {
+        self.state
+            .unsaved_text()
+            .map(|text| recovery.write(self.state.path(), &text))
+            .transpose()
     }
 
     /// Waits until the disk work asked for so far is done; its results are inputs to handle.

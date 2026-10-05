@@ -1,8 +1,12 @@
-//! Step 2.3: backups on opening, read-only files, and ending the session.
+//! Steps 2.3 and 2.12: backups on opening, read-only files, ending the session and crashes.
 
-use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
+use std::{fs, os::unix::fs::PermissionsExt as _, path::Path, time::Duration};
 
-use taskpaper_terminal::{app::Message, ui::Input};
+use jiff::civil::date;
+use taskpaper_terminal::{
+    app::Message,
+    ui::{Input, effects::Recovery},
+};
 
 use crate::support::{Harness, line, outline_rows};
 
@@ -73,4 +77,77 @@ fn a_termination_signal_ends_the_session() {
     let mut app = Harness::open("groceries.taskpaper", 40, 6);
     app.send(Input::Core(Message::Terminate));
     assert!(app.tui.should_quit());
+}
+
+/// Recovery files in `dir/recovery`.
+fn recovery(dir: &Path) -> Recovery {
+    Recovery::new(Some(dir.join("recovery")), || {
+        date(2026, 10, 5).at(9, 0, 0, 0)
+    })
+}
+
+// N-REL-01, file-io.md §4
+#[test]
+fn a_file_opened_with_its_recovered_changes_saves_them_after_a_backup() {
+    let mut app = Harness::recovered("- Milk\n", "- Milk\n- Eggs\n", 60, 5);
+    assert_eq!(outline_rows(&mut app), ["- Milk", "- Eggs"]);
+    assert_eq!(
+        status_line(&mut app),
+        format!("{} ●", app.status(60).trim_end())
+    );
+    app.wait(Duration::from_secs(1));
+    app.settle();
+    let path = app.path.clone().unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "- Milk\n- Eggs\n");
+    assert_eq!(status_line(&mut app), app.status(60).trim_end());
+    let folder = fs::read_dir(&app.backups)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    assert_eq!(
+        fs::read_to_string(folder.join("2026-10-05.taskpaper")).unwrap(),
+        "- Milk\n",
+        "the file as it was before the recovery"
+    );
+}
+
+// N-REL-01
+#[test]
+fn a_crash_writes_the_unsaved_changes_to_a_recovery_file() {
+    let app = Harness::recovered("- Milk\n", "- Milk\n- Eggs\n", 60, 5);
+    let dir = tempfile::tempdir().unwrap();
+    let written = app.tui.recover(&recovery(dir.path())).unwrap().unwrap();
+    assert_eq!(
+        written.parent(),
+        Some(dir.path().join("recovery").as_path())
+    );
+    assert_eq!(fs::read_to_string(written).unwrap(), "- Milk\n- Eggs\n");
+}
+
+// N-REL-01
+#[test]
+fn a_crash_before_an_edit_is_saved_writes_it_to_a_recovery_file() {
+    let mut app = Harness::with_text("- Milk\n", 60, 5);
+    app.type_keys("x");
+    let dir = tempfile::tempdir().unwrap();
+    let written = app.tui.recover(&recovery(dir.path())).unwrap().unwrap();
+    assert_eq!(
+        fs::read_to_string(written).unwrap(),
+        "- Milk @done(2026-10-05)\n"
+    );
+    assert_eq!(
+        fs::read_to_string(app.path.as_ref().unwrap()).unwrap(),
+        "- Milk\n"
+    );
+}
+
+// N-REL-01
+#[test]
+fn a_crash_with_every_change_saved_writes_no_recovery_file() {
+    let app = Harness::open("groceries.taskpaper", 40, 6);
+    let dir = tempfile::tempdir().unwrap();
+    assert_eq!(app.tui.recover(&recovery(dir.path())).unwrap(), None);
+    assert!(!dir.path().join("recovery").exists());
 }

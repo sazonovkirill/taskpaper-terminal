@@ -64,6 +64,18 @@ impl Harness {
         Self::start(state, dir, width, height)
     }
 
+    /// Starts on `text` as a file in a temporary folder, opened with `recovered`, the text of a
+    /// recovery file of it.
+    pub fn recovered(text: &str, recovered: &str, width: u16, height: u16) -> Self {
+        let dir = tempfile::tempdir().expect("a temporary folder");
+        let path = dir.path().join("outline.taskpaper");
+        std::fs::write(&path, text).expect("the temporary folder is writable");
+        let recovery = dir.path().join("recovery.taskpaper");
+        std::fs::write(&recovery, recovered).expect("the temporary folder is writable");
+        let state = effects::recover(&path, &recovery).expect("the files open");
+        Self::start(state, dir, width, height)
+    }
+
     /// Starts without a path at 12:30 on [`TODAY`]: on the demo outline, written to a new file
     /// in a temporary folder that stands for `/tmp`.
     pub fn demo(width: u16, height: u16) -> Self {

@@ -118,6 +118,16 @@ impl State {
         state
     }
 
+    /// State for a document recovered after a crash for the file at `path`, which lacks it, so
+    /// it is saved like a change (file-io.md §4).
+    #[must_use]
+    pub fn recovered(document: Document, path: Option<PathBuf>) -> Self {
+        Self {
+            autosave: Autosave::unsaved(document.revision()),
+            ..Self::new(document, path)
+        }
+    }
+
     /// The open document.
     #[must_use]
     pub fn document(&self) -> &Document {

@@ -66,6 +66,25 @@ fn refuses_a_file_in_a_missing_folder() -> TestResult {
 }
 
 #[test]
+fn refuses_a_file_in_a_missing_folder_when_recovery_files_exist() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let state = dir.path().join("state");
+    std::fs::create_dir_all(state.join("taskpaper-terminal/recovery"))?;
+    let path = dir.path().join("nowhere/todo.taskpaper");
+    let output = Command::new(env!("CARGO_BIN_EXE_tpt"))
+        .arg(&path)
+        .env("XDG_STATE_HOME", &state)
+        .output()?;
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("does not exist"),
+        "{}",
+        stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn refuses_more_than_one_path() -> TestResult {
     let output = tpt(&["a".as_ref(), "b".as_ref()])?;
     assert_eq!(output.status.code(), Some(1));
@@ -218,5 +237,68 @@ fn sigterm_and_sighup_end_the_session_and_restore_the_terminal() -> TestResult {
         assert!(!terminal.screen().alternate_screen(), "{signal:?}");
         assert_eq!(std::fs::read_to_string(&path)?, "- Water the plants\n");
     }
+    Ok(())
+}
+
+/// Starts `tpt` on `todo.taskpaper` in `dir`, which holds `- Saved`, after a crash left
+/// `- Recovered` in a recovery file, and answers the offer to open the file with it with `answer`.
+fn start_after_a_crash(
+    dir: &std::path::Path,
+    answer: &str,
+) -> termlens::Result<termlens::Terminal> {
+    let path = dir.join("todo.taskpaper");
+    std::fs::write(&path, "- Saved\n")?;
+    std::fs::File::options()
+        .append(true)
+        .open(&path)?
+        .set_modified(std::time::SystemTime::UNIX_EPOCH)?;
+    let state = dir.join("state");
+    let recovery = taskpaper_terminal::ui::effects::Recovery::new(
+        Some(state.join("taskpaper-terminal/recovery")),
+        || jiff::civil::date(2026, 10, 5).at(9, 0, 0, 0),
+    );
+    recovery
+        .write(Some(&path), "- Recovered\n")
+        .expect("the recovery folder is writable");
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_STATE_HOME", &state),
+        env("XDG_DATA_HOME", dir.join("data"))
+    )?;
+    terminal.wait_until(|screen| screen.contains("Open the file with these changes? [y/N]"))?;
+    terminal.send_str(answer)?;
+    terminal.send(termlens::Key::Enter)?;
+    Ok(terminal)
+}
+
+// N-REL-01, file-io.md §4
+#[test]
+fn offers_recovered_changes_on_start_and_saves_them_on_yes() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let mut terminal = start_after_a_crash(dir.path(), "y")?;
+    terminal.wait_until(|screen| screen.contains("- Recovered") && screen.alternate_screen())?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("todo.taskpaper"))?,
+        "- Recovered\n"
+    );
+    assert_eq!(daily_copies(&dir.path().join("data"))?, ["- Saved\n"]);
+    Ok(())
+}
+
+// file-io.md §4
+#[test]
+fn opens_the_file_as_saved_when_the_recovered_changes_are_declined() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let mut terminal = start_after_a_crash(dir.path(), "n")?;
+    terminal.wait_until(|screen| screen.contains("- Saved") && screen.alternate_screen())?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("todo.taskpaper"))?,
+        "- Saved\n"
+    );
     Ok(())
 }

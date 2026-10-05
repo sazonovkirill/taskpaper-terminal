@@ -111,7 +111,7 @@ fn daily(file: &Path, backups: &Path, today: Date) -> io::Result<()> {
 }
 
 /// `<file name>-<hash>`, where the hash of the canonical path tells apart files with one name.
-fn folder_name(source: &Path) -> OsString {
+pub(super) fn folder_name(source: &Path) -> OsString {
     let mut name = source.file_name().unwrap_or_default().to_os_string();
     name.push(format!(
         "-{:016x}",

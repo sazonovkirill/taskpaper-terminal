@@ -46,8 +46,8 @@ struct Failure {
 /// The saving policy's memory of the document's revisions ([`crate::document::Document::revision`]).
 #[derive(Debug, Clone)]
 pub(super) struct Autosave {
-    /// The revision the file on disk holds.
-    saved: u64,
+    /// The revision the file on disk holds, or `None` when it holds none of them.
+    saved: Option<u64>,
     /// The latest revision seen, and when it was first seen.
     seen: u64,
     changed_at: Duration,
@@ -65,7 +65,16 @@ impl Autosave {
     /// The policy for a document opened at `revision`, which the file holds.
     pub(super) fn new(revision: u64) -> Self {
         Self {
-            saved: revision,
+            saved: Some(revision),
+            ..Self::unsaved(revision)
+        }
+    }
+
+    /// The policy for a document at `revision` that the file does not hold: it is due for a
+    /// save from the start.
+    pub(super) fn unsaved(revision: u64) -> Self {
+        Self {
+            saved: None,
             seen: revision,
             changed_at: Duration::ZERO,
             writing: None,
@@ -89,7 +98,7 @@ impl Autosave {
     /// a failed revision once; otherwise a failed revision waits for the next change.
     fn due(&self, revision: u64, now: Duration) -> bool {
         self.writing.is_none()
-            && revision != self.saved
+            && Some(revision) != self.saved
             && match self.ending {
                 Some(Ending::Quit | Ending::Terminate) => true,
                 Some(Ending::Discard) => false,
@@ -107,7 +116,7 @@ impl Autosave {
     fn deadline(&self) -> Option<Duration> {
         (self.ending.is_none()
             && self.writing.is_none()
-            && self.seen != self.saved
+            && Some(self.seen) != self.saved
             && !self.failed_at(self.seen))
         .then(|| self.changed_at.saturating_add(DELAY))
     }
@@ -118,7 +127,7 @@ impl Autosave {
             None => false,
             Some(Ending::Discard) => true,
             // A save under way is of a revision newer than the saved one, so this waits for it.
-            Some(Ending::Quit | Ending::Terminate) => !saveable || revision == self.saved,
+            Some(Ending::Quit | Ending::Terminate) => !saveable || Some(revision) == self.saved,
         }
     }
 
@@ -136,7 +145,7 @@ impl Autosave {
     /// The save under way succeeded.
     pub(super) fn saved(&mut self) {
         if let Some(revision) = self.writing.take() {
-            self.saved = revision;
+            self.saved = Some(revision);
             self.failure = None;
             self.confirm_quit = false;
         }
@@ -227,9 +236,16 @@ impl State {
             Some(failure) => SaveState::Failed {
                 reason: &failure.reason,
             },
-            None if self.document().revision() != self.autosave.saved => SaveState::Unsaved,
+            None if Some(self.document().revision()) != self.autosave.saved => SaveState::Unsaved,
             None => SaveState::Saved,
         }
+    }
+
+    /// The serialized document while the file lacks some of it: a save is due or under way, or
+    /// the last one failed. A crash must not lose it (N-REL-01).
+    #[must_use]
+    pub fn unsaved_text(&self) -> Option<String> {
+        (self.save_state() != SaveState::Saved).then(|| format::serialize(self.document()))
     }
 
     /// Whether quitting was refused because its save failed, so quitting again ends without
@@ -488,6 +504,48 @@ mod tests {
             assert_eq!(tick(&mut state, ms(5000)), []);
             assert_eq!(state.update(Message::Quit), [Effect::Quit]);
         }
+    }
+
+    // N-REL-01
+    #[test]
+    fn the_text_to_recover_is_the_document_while_the_file_lacks_changes() {
+        let mut state = opened();
+        assert_eq!(state.unsaved_text(), None);
+        edit(&mut state, "b", ms(0));
+        assert_eq!(state.unsaved_text().as_deref(), Some("b\n"));
+        tick(&mut state, ms(1000));
+        assert_eq!(
+            state.unsaved_text().as_deref(),
+            Some("b\n"),
+            "the save may never finish"
+        );
+        state.update(failed("disk full"));
+        assert_eq!(state.unsaved_text().as_deref(), Some("b\n"));
+        edit(&mut state, "c", ms(2000));
+        tick(&mut state, ms(3000));
+        state.update(Message::Saved);
+        assert_eq!(state.unsaved_text(), None);
+        let mut unnamed = State::new(format::parse("a\n"), None);
+        edit(&mut unnamed, "d", ms(0));
+        assert_eq!(unnamed.unsaved_text().as_deref(), Some("d\n"));
+    }
+
+    // N-REL-01, file-io.md §4
+    #[test]
+    fn a_recovered_document_is_saved_like_a_change() {
+        let recovered = || State::recovered(format::parse("b\n"), Some(PathBuf::from(FILE)));
+        let mut state = recovered();
+        assert_eq!(state.save_state(), SaveState::Unsaved);
+        assert_eq!(state.unsaved_text().as_deref(), Some("b\n"));
+        assert_eq!(state.deadline(), Some(DELAY));
+        assert_eq!(tick(&mut state, ms(999)), []);
+        assert_eq!(tick(&mut state, ms(1000)), save("b\n"));
+        state.update(Message::Saved);
+        assert_eq!(state.save_state(), SaveState::Saved);
+        assert_eq!(state.unsaved_text(), None);
+        let mut state = recovered();
+        assert_eq!(state.update(Message::Quit), save("b\n"));
+        assert_eq!(state.update(Message::Saved), [Effect::Quit]);
     }
 
     // FR-DOC-07

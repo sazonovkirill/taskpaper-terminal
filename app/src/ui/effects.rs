@@ -1,8 +1,9 @@
 //! Carries out the core's I/O at the edge ([file-io.md](../../../docs/specs/file-io.md)):
-//! opening files, and saving and backing them up on the disk worker.
+//! opening files, saving and backing them up on the disk worker, and recovery files.
 
 mod atomic;
 mod backup;
+mod recovery;
 mod worker;
 
 use std::{
@@ -17,6 +18,7 @@ use jiff::civil::DateTime;
 use thiserror::Error;
 
 pub use backup::{BackupError, Backups, folder as backups_folder};
+pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
 pub use worker::Io;
 
 use crate::{
@@ -125,6 +127,21 @@ fn create_new(path: &Path, text: &str) -> io::Result<()> {
         .write_all(text.as_bytes())
 }
 
+/// Opens the file at `path` with the document of `recovered`, a recovery file of it, as changes
+/// the file lacks (file-io.md §4).
+///
+/// # Errors
+///
+/// [`OpenError`] when the recovery file cannot be read or is not UTF-8.
+pub fn recover(path: &Path, recovered: &Path) -> Result<State, OpenError> {
+    let bytes = fs::read(recovered).map_err(|source| OpenError::Read {
+        path: recovered.to_owned(),
+        source,
+    })?;
+    let document = decode(recovered, &bytes)?;
+    Ok(State::recovered(document, Some(path.to_owned())).with_access(access(path)))
+}
+
 /// Read-only when the file has no write permission or the system refuses to open it for
 /// writing; a file that does not exist yet will be created.
 fn access(path: &Path) -> Access {
@@ -167,10 +184,7 @@ fn app_folder(
 /// document, created on the first save (F-FILE-01).
 fn read_document(path: &Path) -> Result<Document, OpenError> {
     match std::fs::read(path) {
-        Ok(bytes) => format::parse_bytes(&bytes).map_err(|source| OpenError::Decode {
-            path: path.to_owned(),
-            source,
-        }),
+        Ok(bytes) => decode(path, &bytes),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             let folder = std::path::absolute(path)
                 .ok()
@@ -192,6 +206,14 @@ fn read_document(path: &Path) -> Result<Document, OpenError> {
             source,
         }),
     }
+}
+
+/// Parses `bytes`, read from the file at `path`.
+fn decode(path: &Path, bytes: &[u8]) -> Result<Document, OpenError> {
+    format::parse_bytes(bytes).map_err(|source| OpenError::Decode {
+        path: path.to_owned(),
+        source,
+    })
 }
 
 #[cfg(test)]
@@ -386,6 +408,42 @@ mod tests {
         assert!(matches!(
             open(&dir.path().join("missing/x.taskpaper")),
             Err(OpenError::MissingFolder { .. })
+        ));
+        Ok(())
+    }
+
+    // file-io.md §4
+    #[test]
+    fn recovering_opens_the_file_with_the_recovery_files_document_unsaved() -> TestResult {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "- a\n")?;
+        let recovered = dir.path().join("recovered.taskpaper");
+        fs::write(&recovered, "- a\n- b\n")?;
+        let state = recover(&path, &recovered)?;
+        assert_eq!(state.path(), Some(path.as_path()));
+        assert_eq!(texts(state.document()), ["- a", "- b"]);
+        assert_eq!(state.unsaved_text().as_deref(), Some("- a\n- b\n"));
+        assert_eq!(state.access(), Access::ReadWrite);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o444))?;
+        assert_eq!(recover(&path, &recovered)?.access(), Access::ReadOnly);
+        Ok(())
+    }
+
+    #[test]
+    fn recovering_refuses_a_recovery_file_that_is_gone_or_not_utf8() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        let recovered = dir.path().join("recovered.taskpaper");
+        assert!(matches!(
+            recover(&path, &recovered),
+            Err(OpenError::Read { path: p, source }) if p == recovered && source.kind() == io::ErrorKind::NotFound
+        ));
+        fs::write(&recovered, b"caf\xe9")?;
+        assert!(matches!(
+            recover(&path, &recovered),
+            Err(OpenError::Decode { path: p, .. }) if p == recovered
         ));
         Ok(())
     }
