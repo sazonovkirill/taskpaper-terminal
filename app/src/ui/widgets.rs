@@ -1,5 +1,7 @@
 //! Widgets that draw the core's view state ([ui.md §2](../../../docs/specs/ui.md#2-blocks)).
 
+use std::ops::Range;
+
 use jiff::civil::Date;
 use ratatui::{
     buffer::Buffer,
@@ -531,35 +533,57 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
 #[must_use]
 pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
     let (marker, marker_style, style) = row_style(row);
-    let text = editor.text;
-    let selection = editor
-        .selection
-        .clone()
-        .unwrap_or(editor.caret..editor.caret);
     let mut line = Line::from(vec![
         Span::raw("  ".repeat(row.depth)),
         Span::styled(marker, marker_style),
     ]);
-    let before_caret = text.get(..editor.caret).unwrap_or_default();
-    let column = line.width() + Span::raw(before_caret).width();
-    // The caret takes a column of its own after the text before it.
-    let overflow = (column + 1).saturating_sub(width);
-    let (mut from, mut scrolled) = (0, 0);
-    for (at, grapheme) in text.grapheme_indices(true) {
-        if scrolled >= overflow || at >= before_caret.len() {
-            break;
-        }
-        from = at + grapheme.len();
-        scrolled += Span::raw(grapheme).width();
-    }
-    let local = |at: usize| at.min(text.len()).max(from);
-    let selected = local(selection.start)..local(selection.end);
-    let piece = |range: std::ops::Range<usize>| text.get(range).unwrap_or_default();
-    line.push_span(Span::styled(piece(from..selected.start), style));
-    line.push_span(Span::styled(piece(selected.clone()), style.reversed()));
-    line.push_span(Span::styled(piece(selected.end..text.len()), style));
+    let field = Field {
+        text: editor.text,
+        caret: editor.caret,
+        selection: editor.selection.clone(),
+    };
+    let (spans, column) = field.spans(style, line.width(), width);
+    line.spans.extend(spans);
     line.push_span(Span::styled(editor.suffix, style));
-    (line, column - scrolled)
+    (line, column)
+}
+
+/// A text being typed, with its caret and selection as byte offsets.
+struct Field<'a> {
+    text: &'a str,
+    caret: usize,
+    selection: Option<Range<usize>>,
+}
+
+impl<'a> Field<'a> {
+    /// The text styled `style` with the selection reversed, for a line `width` columns wide on
+    /// which it starts at column `start`, and the caret's column on that line. When the caret
+    /// would be past the right edge, the text scrolls left by whole graphemes to keep it in view.
+    fn spans(&self, style: Style, start: usize, width: usize) -> (Vec<Span<'a>>, usize) {
+        let text = self.text;
+        let selection = self.selection.clone().unwrap_or(self.caret..self.caret);
+        let before_caret = text.get(..self.caret).unwrap_or_default();
+        let column = start + Span::raw(before_caret).width();
+        // The caret takes a column of its own after the text before it.
+        let overflow = (column + 1).saturating_sub(width);
+        let (mut from, mut scrolled) = (0, 0);
+        for (at, grapheme) in text.grapheme_indices(true) {
+            if scrolled >= overflow || at >= before_caret.len() {
+                break;
+            }
+            from = at + grapheme.len();
+            scrolled += Span::raw(grapheme).width();
+        }
+        let local = |at: usize| at.min(text.len()).max(from);
+        let selected = local(selection.start)..local(selection.end);
+        let piece = |range: Range<usize>| text.get(range).unwrap_or_default();
+        let spans = vec![
+            Span::styled(piece(from..selected.start), style),
+            Span::styled(piece(selected.clone()), style.reversed()),
+            Span::styled(piece(selected.end..text.len()), style),
+        ];
+        (spans, column - scrolled)
+    }
 }
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
@@ -1016,7 +1040,7 @@ mod tests {
         (buf, caret)
     }
 
-    fn editor(text: &str, caret: usize, selection: Option<std::ops::Range<usize>>) -> Editor<'_> {
+    fn editor(text: &str, caret: usize, selection: Option<Range<usize>>) -> Editor<'_> {
         Editor {
             id: crate::document::ItemId::default(),
             text,

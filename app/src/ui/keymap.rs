@@ -236,8 +236,8 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
         .map(|(_, action)| action(rows))
 }
 
-/// Edit-mode bindings ([keybindings.md §3], [editing.md §2]); characters without other bindings
-/// are typed.
+/// Edit-mode bindings ([keybindings.md §3], [editing.md §2]); the [`TEXT`] keys change the text,
+/// and characters without other bindings are typed.
 ///
 /// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
 /// [editing.md §2]: ../../../docs/specs/editing.md#2-edit-mode
@@ -248,35 +248,8 @@ const EDIT: &[Binding] = &[
     (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
-    (&[key!(Left)], |_| go(Motion::Left, false)),
-    (&[key!(Right)], |_| go(Motion::Right, false)),
-    (&[key!(ctrl Left)], |_| go(Motion::WordLeft, false)),
-    (&[key!(ctrl Right)], |_| go(Motion::WordRight, false)),
-    (&[key!(alt 'b')], |_| go(Motion::WordLeft, false)),
-    (&[key!(alt 'f')], |_| go(Motion::WordRight, false)),
-    (&[key!(Home)], |_| go(Motion::Start, false)),
-    (&[key!(End)], |_| go(Motion::End, false)),
     (&[key!(Up)], |_| Message::EditPrevious),
     (&[key!(Down)], |_| Message::EditNext),
-    (&[key!(shift Left)], |_| go(Motion::Left, true)),
-    (&[key!(shift Right)], |_| go(Motion::Right, true)),
-    (&[key!(ctrl shift Left)], |_| go(Motion::WordLeft, true)),
-    (&[key!(ctrl shift Right)], |_| go(Motion::WordRight, true)),
-    (&[key!(shift Home)], |_| go(Motion::Start, true)),
-    (&[key!(shift End)], |_| go(Motion::End, true)),
-    (&[key!(shift Up)], |_| go(Motion::Start, true)),
-    (&[key!(shift Down)], |_| go(Motion::End, true)),
-    (&[key!(Backspace)], |_| {
-        Message::Text(TextEdit::DeleteBackward)
-    }),
-    (&[key!(Delete)], |_| Message::Text(TextEdit::DeleteForward)),
-    (&[key!(ctrl 'w')], |_| {
-        Message::Text(TextEdit::DeleteWordBackward)
-    }),
-    (&[key!(alt Backspace)], |_| {
-        Message::Text(TextEdit::DeleteWordBackward)
-    }),
-    (&[key!(ctrl 'a')], |_| Message::Text(TextEdit::SelectAll)),
     (&[key!(ctrl 'b')], |_| {
         Message::Text(TextEdit::Toggle(Marker::Bold))
     }),
@@ -292,10 +265,43 @@ const EDIT: &[Binding] = &[
     (&[key!(ctrl 'y')], |_| Message::Redo),
 ];
 
-/// Moving the caret by `motion`, extending the selection with `select`.
-fn go(motion: Motion, select: bool) -> Message {
-    Message::Text(TextEdit::Move { motion, select })
+/// Moving the caret by a [`Motion`], extending the selection when the second argument is `true`.
+macro_rules! go {
+    ($motion:ident, $select:literal) => {
+        TextEdit::Move {
+            motion: Motion::$motion,
+            select: $select,
+        }
+    };
 }
+
+/// The standard text keys of every text field: caret motions, selection and deletion
+/// ([editing.md §2]).
+///
+/// [editing.md §2]: ../../../docs/specs/editing.md#2-edit-mode
+const TEXT: &[(Key, TextEdit)] = &[
+    (key!(Left), go!(Left, false)),
+    (key!(Right), go!(Right, false)),
+    (key!(ctrl Left), go!(WordLeft, false)),
+    (key!(ctrl Right), go!(WordRight, false)),
+    (key!(alt 'b'), go!(WordLeft, false)),
+    (key!(alt 'f'), go!(WordRight, false)),
+    (key!(Home), go!(Start, false)),
+    (key!(End), go!(End, false)),
+    (key!(shift Left), go!(Left, true)),
+    (key!(shift Right), go!(Right, true)),
+    (key!(ctrl shift Left), go!(WordLeft, true)),
+    (key!(ctrl shift Right), go!(WordRight, true)),
+    (key!(shift Home), go!(Start, true)),
+    (key!(shift End), go!(End, true)),
+    (key!(shift Up), go!(Start, true)),
+    (key!(shift Down), go!(End, true)),
+    (key!(Backspace), TextEdit::DeleteBackward),
+    (key!(Delete), TextEdit::DeleteForward),
+    (key!(ctrl 'w'), TextEdit::DeleteWordBackward),
+    (key!(alt Backspace), TextEdit::DeleteWordBackward),
+    (key!(ctrl 'a'), TextEdit::SelectAll),
+];
 
 /// Bindings of the open type menu and color picker ([keybindings.md §3–4], [editing.md §2.3]);
 /// characters without other bindings filter them, and other keys do nothing.
@@ -334,12 +340,21 @@ fn typed_char((modifiers, code): Key) -> Option<char> {
     }
 }
 
-/// The edit-mode message for `key`: its binding, else typing the character it is.
+/// The change to a text field `key` asks for: its [`TEXT`] binding, else typing the character it
+/// is.
+fn text_edit(key: Key) -> Option<TextEdit> {
+    TEXT.iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, edit)| edit)
+        .or_else(|| typed_char(key).map(TextEdit::Insert))
+}
+
+/// The edit-mode message for `key`: its binding, else the change to the text it asks for.
 fn edit_message(key: Key, context: &Context) -> Option<Message> {
     if let Some((_, message)) = EDIT.iter().find(|(keys, _)| *keys == [key]) {
         return Some(message(context));
     }
-    typed_char(key).map(|c| Message::Text(TextEdit::Insert(c)))
+    text_edit(key).map(Message::Text)
 }
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
