@@ -16,7 +16,7 @@ fn saved(app: &mut Harness) -> String {
     fs::read_to_string(path).expect("the file is readable")
 }
 
-// FR-FMT-01, D-10
+// FR-FMT-01, D-45
 #[test]
 fn navigate_mode_draws_bold_code_and_urls_without_delimiters_and_edit_mode_shows_them() {
     let mut app = Harness::with_text("- Buy **milk** at `Shop` https://shop.example\n", 50, 5);
@@ -31,6 +31,11 @@ fn navigate_mode_draws_bold_code_and_urls_without_delimiters_and_edit_mode_shows
     assert!(
         buffer[(22, 2)].modifier.contains(Modifier::UNDERLINED),
         "a bare URL is underlined"
+    );
+    assert_eq!(
+        buffer[(22, 2)].fg,
+        Color::Cyan,
+        "in the link color in a task too"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(

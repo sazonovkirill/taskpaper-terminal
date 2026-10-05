@@ -164,7 +164,6 @@ mod tests {
             BlockKind::Task,
             BlockKind::Text,
             BlockKind::Section,
-            BlockKind::Url,
             BlockKind::Divider,
         ] {
             assert!(
@@ -221,8 +220,7 @@ mod tests {
         assert!(colors.count() >= 2, "demo lacks color tags");
         for (syntax, what) in [("**", "bold"), ("`", "code"), ("https://", "a bare URL")] {
             assert!(
-                rows.iter()
-                    .any(|row| row.kind != BlockKind::Url && row.text.contains(syntax)),
+                rows.iter().any(|row| !row.url && row.text.contains(syntax)),
                 "demo lacks {what} in a block's text"
             );
         }
@@ -265,18 +263,18 @@ mod tests {
         );
     }
 
-    // FR-BLK-08, OQ-30
+    // FR-BLK-06, FR-FMT-03, D-45
     #[test]
-    fn demo_has_a_text_block_with_a_url_to_make_a_url_block_of() {
-        let state = State::new(format::parse(&text(TODAY)), None);
-        assert!(state.rows().iter().any(|row| {
-            row.kind == BlockKind::Text
-                && !crate::document::inline::urls(
-                    &row.text,
-                    crate::document::inline::Syntax::of(row.kind),
-                )
-                .is_empty()
-        }));
+    fn demo_has_links_in_a_task_and_a_text_block_and_a_line_with_a_url() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        for kind in [BlockKind::Task, BlockKind::Text] {
+            assert!(
+                rows.iter()
+                    .any(|row| { row.kind == kind && !row.url && row.text.contains("](") }),
+                "demo lacks a Markdown link in a {kind:?}"
+            );
+        }
+        assert!(rows.iter().any(|row| row.url), "demo lacks an @url line");
     }
 
     // D-3

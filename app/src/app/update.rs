@@ -218,7 +218,7 @@ pub enum Message {
     /// Move the selected blocks, else the focused block, below their next siblings, or at the
     /// last position into the parent's next sibling (FR-OPS-03).
     MoveDown,
-    /// Open the focused block's URL in the system browser (FR-BLK-06, D-10).
+    /// Open the focused block's link in the system browser (FR-BLK-06, D-45).
     OpenUrl,
     /// The [`Effect::OpenUrl`] could not start the browser.
     OpenUrlFailed {
@@ -1032,7 +1032,7 @@ mod tests {
             .unwrap_or_else(|| "Home".to_owned())
     }
 
-    // FR-NAV-03, FR-FMT-01, FR-FMT-03
+    // FR-NAV-03, FR-FMT-01, FR-FMT-03, D-45
     #[test]
     fn breadcrumbs_show_each_block_without_its_formatting_delimiters() {
         let mut state = open(
@@ -1040,10 +1040,7 @@ mod tests {
             2,
         );
         state.update(Message::ZoomIn);
-        assert_eq!(
-            state.breadcrumbs(),
-            ["Work x", "Notes", "[c](https://d.e) f"]
-        );
+        assert_eq!(state.breadcrumbs(), ["Work x", "Notes", "c f"]);
     }
 
     // FR-NAV-03

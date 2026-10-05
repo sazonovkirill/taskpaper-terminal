@@ -42,9 +42,9 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
             "         │ Section  │",
             "         │ Note     │",
             "         │ Task     │",
-            "         │ URL      │",
             "         │ Divider  │",
             "         └──────────┘",
+            "",
         ]
     );
     app.type_keys("sec");
@@ -59,23 +59,20 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
     assert_eq!(saved(&mut app), "Groceries @x\n\t- Milk\n");
 }
 
-// FR-BLK-08, FR-BLK-06, OQ-30
+// FR-BLK-08, FR-BLK-06, D-45
 #[test]
-fn a_block_with_a_url_in_its_text_becomes_a_url_block_and_one_without_says_why_not() {
-    let mut app = Harness::with_text("Docs https://a.b\n- Milk\n", 100, 14);
-    app.type_keys("myurl");
+fn a_line_with_a_url_keeps_it_under_its_new_type() {
+    let mut app = Harness::with_text("Docs @url(https://a.b)\n- Milk\n", 100, 14);
+    app.type_keys("mytask");
     press(&mut app, KeyCode::Enter);
-    assert_eq!(saved(&mut app), "Docs @url(https://a.b)\n- Milk\n");
-    assert_eq!(screen(&mut app)[2], "▎ Docs");
-    app.type_keys("jmyurl");
-    press(&mut app, KeyCode::Enter);
-    let rows = screen(&mut app);
-    assert!(
-        rows.last()
-            .is_some_and(|status| status.ends_with(" · Add a URL to the text to make a URL block")),
-        "{rows:#?}"
+    assert_eq!(saved(&mut app), "- Docs @url(https://a.b)\n- Milk\n");
+    assert_eq!(screen(&mut app)[2], "▎ - Docs");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        buffer[(4, 2)].fg,
+        ratatui::style::Color::Cyan,
+        "still a link"
     );
-    assert_eq!(saved(&mut app), "Docs @url(https://a.b)\n- Milk\n");
 }
 
 // FR-BLK-08, FR-BLK-07, D-44

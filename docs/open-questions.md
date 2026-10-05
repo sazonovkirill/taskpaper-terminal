@@ -7,7 +7,11 @@ Product choices not settled by [functional-requirements.md](functional-requireme
 
 ## Open
 
-### OQ-30 · Where does a URL block's address come from?
+None.
+
+## Superseded
+
+### OQ-30 · Where does a URL block's address come from? — superseded
 
 FR-BLK-08 converts blocks to URL blocks (`Title @url(…)`, D-10), and editing.md §5 first said the converter prompts for the address. Tags are never typed (OQ-25), so the converter is the only way to make one. Step 3.7 had to choose; the M3 implementer chose the proposed default below, which the specs now follow.
 
@@ -15,6 +19,7 @@ FR-BLK-08 converts blocks to URL blocks (`Title @url(…)`, D-10), and editing.m
 - **B. Take the first link in the text** as the address: a bare URL (D-10) or, in a text block, a Markdown link (FR-FMT-03). The rest of the text, with a `[title](url)` link's title in its place, becomes the title, or the address when nothing else is left; a block without a link keeps its type and the status line says to add one. Typing a link into a block and converting it is enough, and the converter needs no prompt.
 
 **Proposed default:** B.
+**Decision (2026-10-05):** superseded by D-45. The owner dropped the URL block type, so no conversion needs an address; a line's existing `@url` stays, and any block can hold links in its text.
 **Affects:** [specs/editing.md](specs/editing.md#5-block-commands), [specs/keybindings.md](specs/keybindings.md#4-other-contexts).
 
 ## Decided with the proposed defaults
@@ -198,7 +203,7 @@ The type is hidden while editing, but TaskPaper derives it from the text: a note
 | OQ-10 | Trash | Won't (D-14). |
 | OQ-11 | Starred pages | Bookmarks via a hidden `@bookmark` tag (D-11). |
 | OQ-12 | Mirrors and internal links | Mirrors Won't; internal links Later (D-14). |
-| OQ-13 | Inline formatting | `**bold**` and `` `code` `` (FR-FMT-01); notes add headings, links and fenced code (FR-FMT-03, D-25). |
+| OQ-13 | Inline formatting | `**bold**` and `` `code` `` (FR-FMT-01); notes add headings, links and fenced code (FR-FMT-03, D-25); since D-45 links work in every block but a divider. |
 | OQ-15 | Save model | Autosave (D-15, FR-DOC-02). |
 | OQ-19 | Mouse support | Must, secondary to the keyboard (D-16). |
 | OQ-20 | Archive @done | No archive command (FR-DOC-04). |

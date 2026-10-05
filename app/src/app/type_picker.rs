@@ -1,21 +1,19 @@
-//! The type picker that `my` opens: the six block types and what choosing one does to the
+//! The type picker that `my` opens: the five block types and what choosing one does to the
 //! selected or focused blocks
 //! ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), FR-BLK-08).
 
 use super::{
-    MenuInput, Notice, State,
+    MenuInput, State,
     picker::{Picked, Picker, PickerView},
 };
-use crate::document::{BlockKind, ConvertError, metadata};
+use crate::document::{BlockKind, metadata};
 
-/// Every entry of the picker with its name, in the order it lists them: the type menu's (D-44),
-/// with URL before Divider.
-const ENTRIES: [(BlockKind, &str); 6] = [
+/// Every entry of the picker with its name, in the order it lists them: the type menu's (D-44).
+const ENTRIES: [(BlockKind, &str); 5] = [
     (BlockKind::Project, "Project"),
     (BlockKind::Section, "Section"),
     (BlockKind::Text, "Note"),
     (BlockKind::Task, "Task"),
-    (BlockKind::Url, "URL"),
     (BlockKind::Divider, "Divider"),
 ];
 
@@ -49,25 +47,14 @@ impl State {
         }
     }
 
-    /// Gives the selected blocks, else the focused block, the type `kind` as one step, and says
-    /// when a block cannot take it (FR-BLK-08, FR-OPS-07).
+    /// Gives the selected blocks, else the focused block, the type `kind` as one step
+    /// (FR-BLK-08, FR-OPS-07).
     fn convert_type(&mut self, kind: BlockKind) {
-        let mut no_address = false;
         let ops = self
             .targets()
             .iter()
-            .filter_map(|block| {
-                metadata::convert_type(self.document(), block, kind).unwrap_or_else(
-                    |ConvertError::NoAddress| {
-                        no_address = true;
-                        None
-                    },
-                )
-            })
+            .filter_map(|block| metadata::convert_type(self.document(), block, kind))
             .collect();
-        if no_address {
-            self.notify(Notice::NoAddress);
-        }
         self.commit_any(ops);
     }
 }
@@ -78,7 +65,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Access, Message, SelectionChange},
+        app::{Access, Message, Notice, SelectionChange},
         document::{Document, format},
     };
 
@@ -111,10 +98,7 @@ mod tests {
         state.update(Message::OpenTypePicker);
         assert_eq!(
             listed(&state),
-            (
-                vec!["Project", "Section", "Note", "Task", "URL", "Divider"],
-                3
-            )
+            (vec!["Project", "Section", "Note", "Task", "Divider"], 3)
         );
         pick(&mut state, MenuInput::Previous);
         pick(&mut state, MenuInput::Choose);
@@ -135,23 +119,16 @@ mod tests {
         assert_eq!(state.rows()[1].kind, BlockKind::Section);
     }
 
-    // FR-BLK-08, OQ-30
+    // FR-BLK-08, D-45
     #[test]
-    fn a_url_block_needs_a_url_in_the_text() {
-        let mut state = State::new(format::parse("Docs https://a.b\n- none"), None);
+    fn a_linked_block_keeps_its_url_under_any_type() {
+        let mut state = State::new(format::parse("Docs @url(https://a.b)"), None);
         state.update(Message::OpenTypePicker);
-        pick(&mut state, MenuInput::Type('u'));
-        pick(&mut state, MenuInput::Type('r'));
+        pick(&mut state, MenuInput::Type('t'));
+        pick(&mut state, MenuInput::Type('a'));
         pick(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["Docs @url(https://a.b)", "- none"]);
-        assert_eq!(state.rows()[0].kind, BlockKind::Url);
-        state.update(Message::FocusNext);
-        state.update(Message::OpenTypePicker);
-        pick(&mut state, MenuInput::Type('U'));
-        pick(&mut state, MenuInput::Choose);
-        assert_eq!(state.notice(), Some(&Notice::NoAddress));
-        assert_eq!(texts(&state), ["Docs @url(https://a.b)", "- none"]);
-        assert_eq!(state.document().revision(), 1);
+        assert_eq!(texts(&state), ["- Docs @url(https://a.b)"]);
+        assert!(state.rows()[0].url);
     }
 
     // FR-BLK-08
@@ -189,7 +166,7 @@ mod tests {
         assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
 
-    // FR-BLK-08, FR-OPS-07, OQ-30
+    // FR-BLK-08, FR-OPS-07
     #[test]
     fn every_selected_block_takes_the_type_as_one_step() {
         let mut state = State::new(
@@ -206,21 +183,12 @@ P:
         }
         state.update(Message::OpenTypePicker);
         assert_eq!(listed(&state).1, 0, "the focused block's Project");
-        pick(&mut state, MenuInput::Type('u'));
+        for _ in 0..3 {
+            pick(&mut state, MenuInput::Next);
+        }
         pick(&mut state, MenuInput::Choose);
-        assert_eq!(
-            texts(&state),
-            ["- a", "b @url(https://b.c)", "P:", "- d"],
-            "the blocks without a URL keep their type"
-        );
-        assert_eq!(state.notice(), Some(&Notice::NoAddress));
-        state.update(Message::OpenTypePicker);
-        pick(&mut state, MenuInput::Next);
-        pick(&mut state, MenuInput::Next);
-        pick(&mut state, MenuInput::Next);
-        pick(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["- a", "- b", "- P", "- d"]);
+        assert_eq!(texts(&state), ["- a", "- b https://b.c", "- P", "- d"]);
         state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a", "b @url(https://b.c)", "P:", "- d"]);
+        assert_eq!(texts(&state), ["- a", "b https://b.c", "P:", "- d"]);
     }
 }

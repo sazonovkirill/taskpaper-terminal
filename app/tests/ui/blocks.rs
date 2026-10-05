@@ -77,7 +77,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
     let link = &buffer[(4, 8)];
     assert!(
         link.modifier.contains(Modifier::UNDERLINED),
-        "URL title is underlined"
+        "a line with @url is drawn as a link"
     );
     assert_eq!(link.fg, Color::Cyan);
     for (x, y) in [(4, 10), (39, 10), (4, 11)] {

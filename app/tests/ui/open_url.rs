@@ -1,4 +1,4 @@
-//! Step 3.9: `gx` opens the focused block's URL in the system browser.
+//! Step 3.9: `gx` opens the focused block's link in the system browser (D-45).
 
 use std::time::Duration;
 
@@ -27,9 +27,9 @@ fn failed(url: &str) -> String {
     format!(" · cannot open {url}: No such file or directory (os error 2)")
 }
 
-// FR-BLK-06, D-10
+// FR-BLK-06, D-45
 #[test]
-fn g_x_opens_a_url_blocks_address_or_a_bare_url_in_the_text() {
+fn g_x_opens_a_lines_url_address_or_a_bare_url_in_the_text() {
     let mut app = Harness::with_text(
         "Guide @url(https://a.b/c)\n- Read https://x.y today\n- No link\n",
         120,
@@ -44,11 +44,11 @@ fn g_x_opens_a_url_blocks_address_or_a_bare_url_in_the_text() {
     assert_eq!(notice(&mut app), "", "a block without a URL opens nothing");
 }
 
-// FR-FMT-03
+// FR-FMT-03, D-45
 #[test]
-fn g_x_opens_the_first_markdown_link_with_a_url_in_a_text_block() {
+fn g_x_opens_the_first_markdown_link_with_a_url_in_any_block() {
     let mut app = Harness::with_text(
-        "See [the guide](https://a.b) or https://c.d\n[notes](notes.txt) <mailto:x@y.z>\n",
+        "See [the guide](https://a.b) or https://c.d\n- [notes](notes.txt) <mailto:x@y.z>\n",
         120,
         6,
     );
@@ -56,6 +56,14 @@ fn g_x_opens_the_first_markdown_link_with_a_url_in_a_text_block() {
     assert_eq!(notice(&mut app), failed("https://a.b"));
     app.type_keys("jgx");
     assert_eq!(notice(&mut app), failed("mailto:x@y.z"));
+}
+
+// FR-BLK-06, FR-OPS-01
+#[test]
+fn g_x_opens_the_link_of_the_focused_block_of_a_selection() {
+    let mut app = Harness::with_text("- https://a.b\n- [c](https://c.d)\n", 120, 6);
+    app.type_keys("Jgx");
+    assert_eq!(notice(&mut app), failed("https://c.d"));
 }
 
 // FR-BLK-06

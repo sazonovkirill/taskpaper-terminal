@@ -1,6 +1,6 @@
-//! Opening the focused block's address in the system browser: which address a block has and
+//! Opening the focused block's link in the system browser: which address a block has and
 //! which the frontend may hand to an opener ([editing.md §5](../../../docs/specs/editing.md#5-block-commands),
-//! FR-BLK-06, D-10).
+//! FR-BLK-06, D-45).
 
 use super::{Effect, Notice, State};
 use crate::document::{
@@ -9,7 +9,8 @@ use crate::document::{
 };
 
 impl State {
-    /// Asks the frontend to open the focused block's address, if it has one (FR-BLK-06).
+    /// Asks the frontend to open the focused block's link, if it has one, also while blocks are
+    /// selected (FR-BLK-06).
     pub(super) fn open_url(&self) -> Vec<Effect> {
         self.focus
             .and_then(|id| {
@@ -28,7 +29,7 @@ impl State {
 }
 
 /// The address of the line `item`, whose text has `syntax`: its `@url` value when that is a URL,
-/// else the first link in its text whose address is a URL (D-10, FR-FMT-03). A block with several
+/// else the first link in its text whose address is a URL (D-45, FR-FMT-03). A block with several
 /// opens the first until a picker can offer them all (editing.md §2.2).
 fn address(item: &Item, syntax: Syntax) -> Option<String> {
     item.tags()
@@ -49,7 +50,7 @@ fn address(item: &Item, syntax: Syntax) -> Option<String> {
 mod tests {
     use super::*;
     use crate::{
-        app::{Message, Mode, Notice},
+        app::{Message, Mode, Notice, SelectionChange},
         document::format,
     };
 
@@ -63,18 +64,20 @@ mod tests {
         vec![Effect::OpenUrl(url.to_owned())]
     }
 
-    // FR-BLK-06
+    // FR-BLK-06, D-45
     #[test]
-    fn opens_a_url_blocks_address() {
+    fn opens_the_address_of_a_lines_url_tag_first() {
         assert_eq!(opened("Guide @url(https://a.b/c)"), open("https://a.b/c"));
         assert_eq!(opened("Mail @url( mailto:x@y.z )"), open("mailto:x@y.z"));
         assert_eq!(
             opened("See https://t.x @url(https://a.b)"),
             open("https://a.b")
         );
+        assert_eq!(opened("- Task @url(https://a.b)"), open("https://a.b"));
+        assert_eq!(opened("P: @url(https://a.b)"), open("https://a.b"));
     }
 
-    // D-10
+    // D-45
     #[test]
     fn opens_the_first_bare_url_in_any_blocks_text() {
         assert_eq!(opened("- Read https://a.b."), open("https://a.b"));
@@ -86,9 +89,9 @@ mod tests {
         assert_eq!(opened("P https://a.b:"), open("https://a.b"));
     }
 
-    // FR-FMT-03
+    // FR-FMT-03, D-45
     #[test]
-    fn opens_the_first_markdown_link_with_a_url_in_a_text_block() {
+    fn opens_the_first_markdown_link_with_a_url_in_any_block() {
         assert_eq!(
             opened("See [the guide](https://a.b/c) or https://x.y"),
             open("https://a.b/c")
@@ -100,11 +103,24 @@ mod tests {
         );
         assert_eq!(opened("[local](notes.txt)"), []);
         assert_eq!(
-            opened("- Read [it](https://a.b/c)"),
-            open("https://a.b/c"),
-            "a task's bare URL, as Markdown links are text blocks' only"
+            opened("- Read [it](https://a.b/c) or https://x.y"),
+            open("https://a.b/c")
         );
-        assert_eq!(opened("- <mailto:x@y.z>"), []);
+        assert_eq!(opened("- <mailto:x@y.z>"), open("mailto:x@y.z"));
+        assert_eq!(opened("P [it](https://a.b):"), open("https://a.b"));
+        assert_eq!(opened("S [it](https://a.b) @section"), open("https://a.b"));
+    }
+
+    // FR-BLK-06, FR-OPS-01
+    #[test]
+    fn opens_the_link_of_the_focused_block_of_a_selection() {
+        let mut state = State::new(format::parse("- https://a.b\n- https://c.d"), None);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        assert_eq!(state.update(Message::OpenUrl), open("https://c.d"));
+        assert!(
+            state.rows().iter().all(|row| row.selected),
+            "the selection stays"
+        );
     }
 
     // FR-BLK-06

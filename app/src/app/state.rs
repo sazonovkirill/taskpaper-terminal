@@ -123,8 +123,6 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
-    /// A block could not become a URL block because its text holds no URL to link to (OQ-30).
-    NoAddress,
     /// A bookmark was added to the focused block, or removed when `added` is false; bookmarks
     /// show only in the sidebar (D-11).
     Bookmark {
@@ -172,6 +170,8 @@ pub struct Row {
     pub today: bool,
     /// The color that tints its text (FR-TAG-05).
     pub color: Option<TagColor>,
+    /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
+    pub url: bool,
     /// Whether it is selected (FR-OPS-01).
     pub selected: bool,
 }
@@ -373,6 +373,7 @@ impl State {
             due: block.due(),
             today: block.today(),
             color: block.color(),
+            url: block.url(),
             selected: self.selection.contains(block.id()),
         }
     }

@@ -3,13 +3,11 @@
 //! [editing.md §5](../../../docs/specs/editing.md#5-block-commands)).
 
 use jiff::civil::Date;
-use thiserror::Error;
 
 use super::{
     blocks::{Block, BlockKind, TagColor},
     format::{LineParts, Typed, canonical::PLACEHOLDER, tags},
-    inline::{self, Syntax},
-    model::{Document, Item, Op},
+    model::{Document, Op},
 };
 
 /// The op that completes `block` with `@done(today)`, or, when it is done already, removes
@@ -187,33 +185,13 @@ pub fn set_color(document: &Document, block: &Block, color: Option<TagColor>) ->
     })
 }
 
-/// Why a block cannot take the type it was given.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
-pub enum ConvertError {
-    /// A URL block needs an address, and the block's text holds no link to take it from
-    /// (OQ-30).
-    #[error("no URL in the text")]
-    NoAddress,
-}
-
 /// The op that gives `block` the type `to`, as the type menu of edit mode does: the old type's
-/// syntax and the type tags `@section` and `@url` go, other tags stay and the new type's syntax
-/// comes (editing.md §5, D-44). A divider's `---` gives way to the placeholder. A URL block takes
-/// the first link of the text as its address, and the rest of the text with a Markdown link's
-/// title in its place, or the address when nothing else is left, as its title (OQ-30). `None` when the line stays as it is or the block
-/// is not in `document`.
-///
-/// # Errors
-///
-/// [`ConvertError::NoAddress`] when `to` is a URL block and the text holds no link.
-pub fn convert_type(
-    document: &Document,
-    block: &Block,
-    to: BlockKind,
-) -> Result<Option<Op>, ConvertError> {
-    let Some(before) = document.get(block.id()).map(Item::text) else {
-        return Ok(None);
-    };
+/// syntax and the type tag `@section` go, other tags stay and the new type's syntax comes
+/// (editing.md §5, D-44, D-45). A divider's `---` gives way to the placeholder. `None` when the
+/// line stays as it is or the block is not in `document`.
+#[must_use]
+pub fn convert_type(document: &Document, block: &Block, to: BlockKind) -> Option<Op> {
+    let before = document.get(block.id())?.text();
     let (parts, text) = LineParts::split(before);
     // A divider's dashes are its type, not text it could keep under another type.
     let text = if block.kind() == BlockKind::Divider {
@@ -227,33 +205,9 @@ pub fn convert_type(
         BlockKind::Task => Typed::Task,
         BlockKind::Text => Typed::Text,
         BlockKind::Divider => Typed::Divider,
-        BlockKind::Url if block.kind() == BlockKind::Url => return Ok(None),
-        BlockKind::Url => {
-            let (parts, text) = parts.retyped(Typed::Text, &text);
-            let link = inline::first_link(&text, Syntax::of(block.kind()))
-                .ok_or(ConvertError::NoAddress)?;
-            let title = [
-                text.get(..link.span.start),
-                Some(link.title),
-                text.get(link.span.end..),
-            ]
-            .into_iter()
-            .flatten()
-            .map(|piece| piece.trim_matches(tags::is_whitespace))
-            .filter(|piece| !piece.is_empty())
-            .collect::<Vec<_>>()
-            .join(" ");
-            let title = if title.is_empty() {
-                link.address
-            } else {
-                &title
-            };
-            let after = tags::set(&parts.line(title), "url", link.address);
-            return Ok(changed(before, after, block));
-        }
     };
     let (parts, text) = parts.retyped(typed, &text);
-    Ok(changed(before, kept(parts.line(&text)), block))
+    changed(before, kept(parts.line(&text)), block)
 }
 
 /// The op that writes `after` over the line `before` of `block`, or `None` when they are the
@@ -573,9 +527,7 @@ mod tests {
     /// The first line of `text` given the type `to`, or `None` when it stays as it is.
     #[track_caller]
     fn converted(text: &str, to: BlockKind) -> Option<String> {
-        edited(text, |document, block| {
-            convert_type(document, block, to).unwrap()
-        })
+        edited(text, |document, block| convert_type(document, block, to))
     }
 
     // FR-BLK-08, editing.md §5, D-44
@@ -589,7 +541,11 @@ mod tests {
         check("P: @x", Task, Some("- P @x"));
         check("- t @done", Section, Some("t @done @section"));
         check("S @section @x", Text, Some("S @x"));
-        check("Guide @url(https://a.b) @x", Task, Some("- Guide @x"));
+        check(
+            "Guide @url(https://a.b) @x",
+            Task,
+            Some("- Guide @url(https://a.b) @x"),
+        );
         check("- t @x", Divider, Some("--- @x"));
         check("@section", Text, Some(PLACEHOLDER));
         check("- t", Task, None);
@@ -599,7 +555,7 @@ mod tests {
     // FR-BLK-08, FR-BLK-07
     #[test]
     fn a_divider_gives_up_its_dashes_for_the_placeholder() {
-        use BlockKind::{Project, Section, Task, Text, Url};
+        use BlockKind::{Project, Section, Task, Text};
         let check = |text: &str, to, expected: &str| {
             assert_eq!(
                 converted(text, to).as_deref(),
@@ -611,60 +567,13 @@ mod tests {
         check("--- @red", Section, "… @red @section");
         check("---", Task, "- …");
         check("---", Project, "…:");
-        let document = parse("---");
-        let divider = blocks::children(&document, document.root())[0].clone();
-        assert_eq!(
-            convert_type(&document, &divider, Url),
-            Err(ConvertError::NoAddress)
-        );
     }
 
-    // FR-BLK-08, FR-BLK-06, D-10, OQ-30
     #[test]
-    fn a_url_block_takes_the_first_link_of_the_text_as_its_address() {
-        let check = |text: &str, expected: &str| {
-            assert_eq!(
-                converted(text, BlockKind::Url).as_deref(),
-                Some(expected),
-                "{text:?}"
-            );
-        };
-        check(
-            "Rust docs https://doc.rust-lang.org @x",
-            "Rust docs @x @url(https://doc.rust-lang.org)",
-        );
-        check(
-            "- see https://a.b now or http://c.d",
-            "see now or http://c.d @url(https://a.b)",
-        );
-        check("https://a.b", "https://a.b @url(https://a.b)");
-        check("Links https://a.b: @section", "Links @url(https://a.b)");
-        check(
-            "Read [the guide](https://a.b/(c)) first",
-            r"Read the guide first @url(https://a.b/\(c\))",
-        );
-        check("<https://a.b> @x", "https://a.b @x @url(https://a.b)");
-    }
-
-    // OQ-30
-    #[test]
-    fn a_url_block_needs_a_url_in_the_text() {
-        let document = parse("- no address @x\nGuide @url(https://a.b)\n- y");
-        let top = blocks::children(&document, document.root());
-        assert_eq!(
-            convert_type(&document, &top[0], BlockKind::Url),
-            Err(ConvertError::NoAddress)
-        );
-        assert_eq!(
-            convert_type(&document, &top[1], BlockKind::Url),
-            Ok(None),
-            "already a URL block"
-        );
-        assert_eq!(
-            convert_type(&parse("- a"), &top[2], BlockKind::Task),
-            Ok(None),
-            "not in the document"
-        );
+    fn a_block_not_in_the_document_is_not_converted() {
+        let other = parse("- x\n- y");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(convert_type(&parse("- a"), &stale, BlockKind::Text), None);
     }
 
     #[test]

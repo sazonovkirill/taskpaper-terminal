@@ -8,7 +8,7 @@ use super::{
     model::{Document, Item, ItemId, ItemKind},
 };
 
-/// The type of a block (FR-BLK-01–04, FR-BLK-06–07).
+/// The type of a block (FR-BLK-01–04, FR-BLK-07).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
     /// A project line.
@@ -19,8 +19,6 @@ pub enum BlockKind {
     Text,
     /// A line tagged `@section`.
     Section,
-    /// A line tagged `@url`.
-    Url,
     /// A text line reading `---`.
     Divider,
 }
@@ -83,6 +81,10 @@ impl TagColor {
 
 /// One block: a line of the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts read from a line's tags, not states of one machine"
+)]
 pub struct Block {
     id: ItemId,
     kind: BlockKind,
@@ -92,6 +94,7 @@ pub struct Block {
     today: bool,
     bookmark: bool,
     color: Option<TagColor>,
+    url: bool,
 }
 
 impl Block {
@@ -106,6 +109,7 @@ impl Block {
             today: has_tag(item, "today"),
             bookmark: has_tag(item, "bookmark"),
             color: color(item),
+            url: has_tag(item, "url"),
         }
     }
 
@@ -155,6 +159,12 @@ impl Block {
     #[must_use]
     pub fn color(&self) -> Option<TagColor> {
         self.color
+    }
+
+    /// Whether its line carries `@url`, the address its title links to (FR-BLK-06, D-45).
+    #[must_use]
+    pub fn url(&self) -> bool {
+        self.url
     }
 }
 
@@ -258,8 +268,6 @@ fn kind(item: &Item) -> BlockKind {
         BlockKind::Divider
     } else if has_tag(item, "section") {
         BlockKind::Section
-    } else if has_tag(item, "url") {
-        BlockKind::Url
     } else {
         match item.kind() {
             ItemKind::Task => BlockKind::Task,
@@ -314,16 +322,15 @@ mod tests {
         assert_eq!(outline(&parse(text)), expected, "blocks of {text:?}");
     }
 
-    // FR-BLK-01, FR-BLK-02, FR-BLK-03, FR-BLK-04, FR-BLK-06, FR-BLK-07
+    // FR-BLK-01, FR-BLK-02, FR-BLK-03, FR-BLK-04, FR-BLK-07
     #[test]
     fn every_line_is_a_block_of_its_type() {
         check(
-            "P:\n\t- t\n\tS @section\n\tL @url(https://x.y)\n\t---\n\tn",
+            "P:\n\t- t\n\tS @section\n\t---\n\tn",
             &[
                 r#"0 Project "P:""#,
                 r#"1 Task "- t""#,
                 r#"1 Section "S @section""#,
-                r#"1 Url "L @url(https://x.y)""#,
                 r#"1 Divider "---""#,
                 r#"1 Text "n""#,
             ],
@@ -366,14 +373,30 @@ mod tests {
     }
 
     #[test]
-    fn section_and_url_tags_win_over_task_and_project() {
+    fn the_section_tag_wins_over_task_and_project() {
         check(
-            "- t @section\nP: @url(u)\nS @section @url(u)",
-            &[
-                r#"0 Section "- t @section""#,
-                r#"0 Url "P: @url(u)""#,
-                r#"0 Section "S @section @url(u)""#,
-            ],
+            "- t @section\nP: @section",
+            &[r#"0 Section "- t @section""#, r#"0 Section "P: @section""#],
+        );
+    }
+
+    // FR-BLK-06, D-45
+    #[test]
+    fn a_url_tag_links_a_block_of_any_type_without_changing_it() {
+        let document = parse("L @url(https://x.y)\n- t @url(u)\nP: @url\nS @section @url(u)\n- n");
+        let linked: Vec<(BlockKind, bool)> = children(&document, document.root())
+            .iter()
+            .map(|block| (block.kind(), block.url()))
+            .collect();
+        assert_eq!(
+            linked,
+            [
+                (BlockKind::Text, true),
+                (BlockKind::Task, true),
+                (BlockKind::Project, true),
+                (BlockKind::Section, true),
+                (BlockKind::Task, false),
+            ]
         );
     }
 

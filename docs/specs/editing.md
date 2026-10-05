@@ -17,7 +17,7 @@ The block's editor opens where the block is drawn, keeping its indentation, mark
 **What is edited** is the block's visible text:
 - without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed, while a `:` typed in text stays text. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider's text is its type, so a divider is not edited;
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message;
-- with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01), and in text blocks the raw Markdown of §2.2: `#` heading markers and link syntax (FR-FMT-03).
+- with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01) and the raw link syntax of §2.2, and in text blocks the `#` heading markers (FR-FMT-03, D-45).
 
 Edits are applied to the document as the user types (one undo step per edit session) and written back as: type syntax + edited text + the line's tags appended after the text in their original order (OQ-24 default A). A line whose text and type are as they were is written as it was, so its mid-line tags stay where they are.
 
@@ -49,7 +49,7 @@ Typing one of these prefixes followed by a space converts the block (FR-MODE-05,
 
 Rules:
 
-- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret and that the block has no children (FR-BLK-07); otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project, section or URL block, are ordinary text.
+- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret and that the block has no children (FR-BLK-07); otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project or section, are ordinary text.
 - Shortcuts fire only on a typed space. Pasted text is never converted.
 - The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
 - The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode.
@@ -60,19 +60,19 @@ The code-block shortcut ```` ``` ```` was dropped with code blocks (D-43).
 
 ### 2.2 Markdown in text
 
-Text blocks support this Markdown in addition to FR-FMT-01 (FR-FMT-03, D-25). It is derived from the line's text for display only; the text is stored unchanged, so the file stays plain TaskPaper.
+Every block but a divider supports these links, and text blocks also headings, in addition to FR-FMT-01 (FR-FMT-03, D-25, D-45). They are derived from the line's text for display only; the text is stored unchanged, so the file stays plain TaskPaper.
 
 | Syntax | Meaning |
 |---|---|
-| `#` to `######`, a space, then text, at the start of the line | Heading of level 1 to 6. A line ending in `:` is a project, not a heading (OQ-27). |
+| `#` to `######`, a space, then text, at the start of the line | Heading of level 1 to 6, in text blocks only. A line ending in `:` is a project, not a heading (OQ-27). |
 | `[title](url)` | Link showing `title`, which may hold bold and code but no other link. The address has no spaces, and its parentheses pair up. |
-| `<url>` and bare `http(s)://` URLs | Link showing the URL (bare URLs as in D-10). Between `<` and `>` it starts with a scheme such as `https:` or `mailto:`. |
+| `<url>` and bare `http(s)://` URLs | Link showing the URL. A bare URL is not preceded by a letter or digit and ends before whitespace, `` ` ``, `<`, `>`, `"`, trailing punctuation or an unmatched `)`. Between `<` and `>` it starts with a scheme such as `https:` or `mailto:`. |
 | `` `code` `` | Code span (FR-FMT-01). |
 
 - In navigate mode the markers are hidden and the result is rendered ([ui.md §2](ui.md#2-blocks)). In edit mode the raw text is shown and edited (FR-MODE-02).
 - Anything else, including italic, lists, quotes, tables and fenced code, is ordinary text (D-14, D-43).
-- `open_url` (§5) opens the link of a text block: the one under the caret in edit mode, the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)). Until the picker of step 4.2, it opens the first link whose address has a scheme, so `[notes](notes.txt)` is skipped.
-- Markdown in task, project and section text stays limited to FR-FMT-01 and bare URLs.
+- A hidden `@url(…)` tag on a line of any type is a link too: the block's whole title is drawn as one, and `open_url` opens its address before any link in the text (FR-BLK-06, D-45).
+- `open_url` (§5) opens the link of a block: the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)). Until the picker of step 4.2, it opens the `@url` address, else the first link in the text whose address has a scheme, so `[notes](notes.txt)` is skipped.
 
 ### 2.3 Type menu
 
@@ -100,9 +100,7 @@ Divider
 
 A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text. Other keys do nothing while the menu is open.
 
-Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and the type tags `@section` and `@url` go, other tags stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, `@section` for a section, nothing for text. The caret stays where it was. A divider replaces the text with `---`, keeping the other tags, without confirmation, and ends editing, because a divider's text is its type (§2). The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
-
-URL is not in the menu: a URL block needs an address, which typing cannot give (OQ-25); it is made by `convert_type` from a link in the text (§5, OQ-30).
+Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and the type tag `@section` go, other tags, `@url` included, stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, `@section` for a section, nothing for text. The caret stays where it was. A divider replaces the text with `---`, keeping the other tags, without confirmation, and ends editing, because a divider's text is its type (§2). The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
 
 ## 3. Creating blocks (FR-MODE-04)
 
@@ -151,7 +149,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 
 | Command | Behavior |
 |---|---|
-| `convert_type` (FR-BLK-08) | In edit mode, the type menu of §2.3 does this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Section, Note (text), Task, URL and Divider, opening with the focused block's type highlighted; typing filters it by name. The chosen type goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). Rewrites the block's syntax as the type menu does: removes `- `/`:` and the type tags `@section`, `@url`, then applies the new type's syntax (`- `, `:`, `@section`); other tags stay. A URL block takes the first link of the text as its `@url(…)` address: a bare URL (D-10) or, in a text block, a Markdown link (§2.2). It keeps the rest of the text as its title, with a `[title](url)` link's title in the link's place, or the address when nothing else is left; a block whose text holds no link keeps its type, while the other targets still convert, and the status line says so (OQ-30). Converting to a divider replaces the text with `---`, keeping the other tags, without confirmation, since undo restores it (as D-44). Converting a divider to another type replaces its `---`, which is its type rather than text, with the placeholder `…`. Choosing the block's own type changes nothing. |
+| `convert_type` (FR-BLK-08) | In edit mode, the type menu of §2.3 does this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Section, Note (text), Task and Divider, opening with the focused block's type highlighted; typing filters it by name. The chosen type goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). Rewrites the block's syntax as the type menu does: removes `- `/`:` and the type tag `@section`, then applies the new type's syntax (`- `, `:`, `@section`); other tags stay, `@url` included, since a link is not a type (D-45). Converting to a divider replaces the text with `---`, keeping the other tags, without confirmation, since undo restores it (as D-44). Converting a divider to another type replaces its `---`, which is its type rather than text, with the placeholder `…`. Choosing the block's own type changes nothing. |
 | `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date, or of why the input is not a date, in which case `Enter` does nothing; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). The prompt opens with the block's current date typed and selected, so typing replaces it and `Enter` keeps it. Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
@@ -160,7 +158,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, opening with the block's color (or "none") highlighted; typing filters it by name. Removes every other color tag; the chosen one stays where it is or is added (D-5). |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
 | `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which, since bookmarks show only in the sidebar. |
-| `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
+| `open_url` (FR-BLK-06) | Open the focused block's link in the system browser (`open`, `xdg-open`, `start`): its `@url` address first, else the first link in its text (§2.2, D-45). It acts on the focused block also while blocks are selected. |
 | `details` (D-3) | Read-only popup titled "Details:" listing the focused block's tags as written, in order, each unsupported one marked "unsupported" (FR-TAG-02), then each special node the block owns as hidden data with its tags and line count ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)); "No tags" when there is nothing to list. Any key closes it. |
 
 All block commands apply to every selected block (FR-OPS-07). Tags are written with the rules in [file-format.md §5](file-format.md#5-tags).

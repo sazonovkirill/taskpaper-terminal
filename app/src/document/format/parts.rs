@@ -21,8 +21,9 @@ pub enum Typed {
     Divider,
 }
 
-/// The tags that give a line its type, which a type change takes off (editing.md §5).
-const TYPE_TAGS: [&str; 2] = ["section", "url"];
+/// The tag that gives a line its type, which a type change takes off unless it makes a section
+/// (editing.md §5, D-45).
+const SECTION: &str = "section";
 
 /// A line's type syntax and tags, which stay while the text between them is edited. The default
 /// is a note's: no syntax and no tags.
@@ -108,25 +109,21 @@ impl LineParts {
 
 impl LineParts {
     /// The parts and text that give the line holding `text` the type `typed`: the old type's
-    /// syntax and type tags go, the new type's come and every other tag stays (editing.md §5). A
-    /// divider's text is `---` (D-44).
+    /// syntax and `@section` go, the new type's come and every other tag, `@url` included, stays
+    /// (editing.md §5, D-45). A divider's text is `---` (D-44).
     #[must_use]
     pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
-        let kept = (typed == Typed::Section).then_some("section");
+        let section = typed == Typed::Section;
         let mut tags: Vec<String> = self
             .tags
             .iter()
-            .filter(|tag| {
-                tags::scan(tag).iter().all(|found| {
-                    !TYPE_TAGS.contains(&found.name.as_str()) || Some(found.name.as_str()) == kept
-                })
-            })
+            .filter(|tag| section || tags::scan(tag).iter().all(|found| found.name != SECTION))
             .cloned()
             .collect();
         let sectioned = tags
             .iter()
-            .any(|tag| tags::scan(tag).iter().any(|found| found.name == "section"));
-        if typed == Typed::Section && !sectioned {
+            .any(|tag| tags::scan(tag).iter().any(|found| found.name == SECTION));
+        if section && !sectioned {
             tags.push("@section".to_owned());
         }
         let prefix = match typed {
@@ -260,9 +257,20 @@ mod tests {
     fn a_type_change_swaps_the_type_syntax_and_keeps_other_tags() {
         let types = [Typed::Project, Typed::Task, Typed::Text, Typed::Section];
         let lines = ["P: @x", "- P @x", "P @x", "P @x @section"];
-        for from in lines.into_iter().chain(["P @url(https://a.b) @x"]) {
+        for from in lines {
             for (typed, to) in types.into_iter().zip(lines) {
                 assert_eq!(retyped(from, typed), to, "{from:?} to {typed:?}");
+            }
+        }
+        let linked = [
+            "P: @url(u) @x",
+            "- P @url(u) @x",
+            "P @url(u) @x",
+            "P @url(u) @x @section",
+        ];
+        for from in linked {
+            for (typed, to) in types.into_iter().zip(linked) {
+                assert_eq!(retyped(from, typed), to, "{from:?} keeps @url as {typed:?}");
             }
         }
         assert_eq!(retyped("-\ta", Typed::Task), "-\ta", "kept as it is");

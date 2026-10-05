@@ -28,7 +28,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 
 ## 2. Blocks
 
-Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text, and a URL block shows only its underlined title (D-38). So a task's text node, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
+Each row: indent, then the marker (if the type has one) and a space, then text and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text. So a task's text node, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|
@@ -36,7 +36,6 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 | Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim), their `✔` dimmed too (D-36) |
 | Text | none | slightly dimmed; less dim than done tasks and the other dimmed blocks (D-37). A line carrying `@code` is text like any other (D-43) |
 | Section | none | bold label in the headers color (Textual's `$secondary`), no rule; children indented below |
-| URL | none | title styled as a link (underlined, accent color), slightly dimmed |
 | Divider | none | a horizontal rule across the pane in the rule-lines color, dimmed further so it is fainter than the header rule (D-33) |
 
 - Tasks (normal text), projects and sections (their own colors) stand out; every other block type is dimmed (D-29).
@@ -45,10 +44,8 @@ Each row: indent, then the marker (if the type has one) and a space, then text a
 - **Tags are never shown** (FR-TAG-01). Their effects are: dates as compact chips (`Fri 8 Oct`; overdue `@due` in the error color, FR-TAG-03), `@today` as a `★` marker chip, the first chip of the row, dimmed with a done block like the date chips (FR-TAG-04), a color tag tints the block's text but not a task's marker, keeping the text's other styles (FR-TAG-05), bookmarks as a marker in the sidebar only. Comments show as a count chip ([special-nodes.md §2.2](special-nodes.md#22-display)).
 - **Date chips** (FR-TAG-03): right-aligned at the end of the row, the start date before the due date, each labelled until icons arrive (`start Fri 8 Oct`, `due Fri 8 Oct`) and with the year when it is not the current one. A due date before today's local date is overdue, unless the block is done or inside a done block, whose chips are dimmed with it. A tag whose value is not a date shows no chip. The block being edited shows none, and chips are drawn over text that reaches them. Overdue state follows the local date: the screen is redrawn at local midnight while a due date is shown.
 - **Inline formatting** (FR-FMT-01): `**bold**` renders bold and `` `code` `` in the code style with the markers hidden in navigate mode; edit mode shows the markers.
-- **Bare URLs** in text are underlined (D-10).
-- **Markdown in text** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-text)), navigate mode only; edit mode shows the raw text:
-  - Headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold; a color tag's tint replaces the heading's color. Heading rows keep the block's indentation and get no rule, so they never look like a section.
-  - Links, bare URLs included, show their title (or URL) in the link style (underlined, in the links color of URL blocks) and hide `[`, `](url)`, `<` and `>`.
+- **Links** (FR-BLK-06, FR-FMT-03, D-45), in every block but a divider and in navigate mode only; edit mode shows the raw text: bare `http(s)://` URLs, `<url>` and `[title](url)` show their title (or URL) in the link style, underlined in the links color over the block's own style, a color tag's tint included, and hide `[`, `](url)`, `<` and `>`. A line carrying `@url(…)` draws its whole title in the link style, its tag hidden like any other.
+- **Markdown headings in text blocks** (FR-FMT-03, [editing.md §2.2](editing.md#22-markdown-in-text)), navigate mode only; edit mode shows the raw text: headings hide their `#` markers. Level 1 is bold in the accent color, level 2 bold in the headers color, levels 3 to 6 bold; a color tag's tint replaces the heading's color. Heading rows keep the block's indentation and get no rule, so they never look like a section.
 - **Focus and selection**: the focused block is marked by a `▎` in the accent color in a 2-column gutter left of the outline, on its line (D-30). That line, gutter included and across the pane's full width, also gets the current-line background, a step brighter than the normal one, in navigate and edit mode alike; it changes no text color or style, so dimmed, done and colored blocks look the same as unfocused (D-39). Until themes arrive it is the 256-color grey 235, chosen for dark terminals. Selected blocks get a dimmer marker.
 - **Edit mode**: the focused block's text becomes a one-line inline editor at the same position, with a visible caret and the markers shown (FR-MODE-02). Text wider than the pane scrolls to keep the caret in view.
 - **Wrap** (FR-UI-05): on, long text wraps under its start column; off, every block takes one row and overflowing text ends in `…`. Widths use `unicode-width`; graphemes are never split.

@@ -1,7 +1,8 @@
-//! Inline Markdown in a line's text: `**bold**`, `` `code` `` and bare `http(s)://` URLs in every
-//! block, and headings and links in text blocks, derived for display while the text stays as typed
-//! (FR-FMT-01, FR-FMT-03, D-10, [ui.md §2](../../../docs/specs/ui.md#2-blocks)). Hides the inline
-//! syntax: which delimiters pair up, where a URL ends, and how a marker is added or removed.
+//! Inline Markdown in a line's text: `**bold**`, `` `code` `` and links (bare `http(s)://` URLs,
+//! `<url>` and `[title](url)`) in every block, and headings in text blocks, derived for display
+//! while the text stays as typed (FR-FMT-01, FR-FMT-03, D-45,
+//! [ui.md §2](../../../docs/specs/ui.md#2-blocks)). Hides the inline syntax: which delimiters pair
+//! up, where a URL ends, and how a marker is added or removed.
 
 use std::ops::Range;
 
@@ -10,23 +11,21 @@ use super::BlockKind;
 /// Which inline syntax a line's text has ([editing.md §2.2](../../../docs/specs/editing.md#22-markdown-in-text)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Syntax {
-    /// Bold, code and bare URLs (FR-FMT-01, D-10).
+    /// Bold, code and links: bare URLs, `<url>` and `[title](url)` (FR-FMT-01, FR-FMT-03, D-45).
     Inline,
-    /// Those, headings, `[title](url)` and `<url>` links (FR-FMT-03).
+    /// Those and headings (FR-FMT-03).
     Markdown,
 }
 
 impl Syntax {
-    /// The syntax of the text of a block of type `kind`: Markdown in text blocks only.
+    /// The syntax of the text of a block of type `kind`: headings in text blocks only.
     #[must_use]
     pub fn of(kind: BlockKind) -> Self {
         match kind {
             BlockKind::Text => Self::Markdown,
-            BlockKind::Project
-            | BlockKind::Task
-            | BlockKind::Section
-            | BlockKind::Url
-            | BlockKind::Divider => Self::Inline,
+            BlockKind::Project | BlockKind::Task | BlockKind::Section | BlockKind::Divider => {
+                Self::Inline
+            }
         }
     }
 }
@@ -95,11 +94,10 @@ struct Element {
     inner: Range<usize>,
 }
 
-/// What a scan may find besides code spans: bold except inside bold, links except inside a
-/// link's title, and Markdown links only in Markdown.
+/// What a scan may find besides code spans: bold except inside bold, and links except inside a
+/// link's title.
 #[derive(Debug, Clone, Copy)]
 struct Scope {
-    markdown: bool,
     bold: bool,
     links: bool,
 }
@@ -147,8 +145,8 @@ pub fn runs(text: &str, syntax: Syntax) -> Vec<Run<'_>> {
     runs
 }
 
-/// The addresses of the links in `text`, in order: bare URLs (D-10) and, in Markdown, the
-/// addresses of `[title](url)` and `<url>` links (FR-FMT-03).
+/// The addresses of the links in `text`, in order: bare URLs and the addresses of `[title](url)`
+/// and `<url>` links (FR-FMT-03, D-45).
 #[must_use]
 pub fn urls(text: &str, syntax: Syntax) -> Vec<&str> {
     elements(text, syntax)
@@ -159,34 +157,6 @@ pub fn urls(text: &str, syntax: Syntax) -> Vec<&str> {
             Kind::Link(address) => text.get(address),
         })
         .collect()
-}
-
-/// A link in a text: where it is, where it goes and the title it shows.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Link<'a> {
-    /// The bytes of the link with its delimiters.
-    pub span: Range<usize>,
-    /// Its address.
-    pub address: &'a str,
-    /// The title of a `[title](url)` link; empty for a URL, which shows its address.
-    pub title: &'a str,
-}
-
-/// The first link in `text`, as [`urls`] finds them.
-#[must_use]
-pub fn first_link(text: &str, syntax: Syntax) -> Option<Link<'_>> {
-    elements(text, syntax).into_iter().find_map(|e| {
-        let (address, title) = match e.kind {
-            Kind::Marker(_) => return None,
-            Kind::Url => (e.inner, ""),
-            Kind::Link(address) => (address, text.get(e.inner)?),
-        };
-        Some(Link {
-            span: e.outer,
-            address: text.get(address)?,
-            title,
-        })
-    })
 }
 
 /// Whether `address` starts with a URL scheme, such as `https:` or `mailto:`, so that an opener
@@ -262,7 +232,6 @@ pub fn toggle(text: &str, range: Range<usize>, marker: Marker) -> (String, Range
 fn elements(text: &str, syntax: Syntax) -> Vec<Element> {
     let body = heading(text, syntax).map_or(0, |(_, body)| body);
     let scope = Scope {
-        markdown: syntax == Syntax::Markdown,
         bold: true,
         links: true,
     };
@@ -276,11 +245,10 @@ fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>)
     let mut at = range.start;
     while let Some(next) = text.get(at..range.end).and_then(|rest| rest.chars().next()) {
         let end = range.end;
-        let markdown = scope.links && scope.markdown;
         let element = code_at(text, at, end)
             .or_else(|| scope.bold.then(|| bold_at(text, at, end)).flatten())
-            .or_else(|| markdown.then(|| link_at(text, at, end)).flatten())
-            .or_else(|| markdown.then(|| autolink_at(text, at, end)).flatten())
+            .or_else(|| scope.links.then(|| link_at(text, at, end)).flatten())
+            .or_else(|| scope.links.then(|| autolink_at(text, at, end)).flatten())
             .or_else(|| scope.links.then(|| url_at(text, at, end)).flatten());
         let Some(element) = element else {
             at += next.len_utf8();
@@ -559,7 +527,7 @@ mod tests {
         check("**a `b** c", &[("a `b", BOLD), (" c", PLAIN)]);
     }
 
-    // D-10
+    // D-45
     #[test]
     fn bare_urls_are_links_without_trailing_punctuation() {
         check(
@@ -581,10 +549,6 @@ mod tests {
                 },
             )],
         );
-        check(
-            "<https://a.b>",
-            &[("<", PLAIN), ("https://a.b", LINK), (">", PLAIN)],
-        );
         for text in [
             "https://",
             "https://.",
@@ -596,7 +560,7 @@ mod tests {
         }
     }
 
-    // D-10
+    // D-45
     #[test]
     fn lists_the_bare_urls_in_order() {
         assert_eq!(
@@ -607,34 +571,6 @@ mod tests {
             ["https://x.y", "http://b.c/d"]
         );
         assert_eq!(urls("none", Syntax::Inline), Vec::<&str>::new());
-    }
-
-    // D-10, FR-FMT-03
-    #[test]
-    fn finds_the_first_link_with_its_span_address_and_title() {
-        let link = |span, address, title| {
-            Some(Link {
-                span,
-                address,
-                title,
-            })
-        };
-        assert_eq!(
-            first_link("é **https://x.y** and http://b.c", Syntax::Inline),
-            link(5..16, "https://x.y", "")
-        );
-        assert_eq!(
-            first_link(
-                "See [the docs](https://a.b) or <https://c.d>",
-                Syntax::Markdown
-            ),
-            link(4..27, "https://a.b", "the docs")
-        );
-        assert_eq!(
-            first_link("<https://c.d> https://e.f", Syntax::Markdown),
-            link(0..13, "https://c.d", "")
-        );
-        assert_eq!(first_link("`https://no.t` none", Syntax::Inline), None);
     }
 
     /// The text and range after toggling `marker` on the bytes `[`…`]` mark in `before`, written
@@ -686,7 +622,6 @@ mod tests {
             BlockKind::Project,
             BlockKind::Task,
             BlockKind::Section,
-            BlockKind::Url,
             BlockKind::Divider,
         ] {
             assert_eq!(Syntax::of(kind), Syntax::Inline, "{kind:?}");
@@ -746,9 +681,18 @@ mod tests {
         check("# Title", &[("# Title", PLAIN)]);
     }
 
-    // FR-FMT-03
+    // FR-FMT-03, D-45
     #[test]
-    fn markdown_links_show_their_title_or_address() {
+    fn markdown_links_show_their_title_or_address_in_every_syntax() {
+        check(
+            "See [the site](https://a.b/c) or <https://d.e>",
+            &[
+                ("See ", PLAIN),
+                ("the site", LINK),
+                (" or ", PLAIN),
+                ("https://d.e", LINK),
+            ],
+        );
         let markdown =
             |text, expected: &[(&str, Format)]| check_in(Syntax::Markdown, text, expected);
         markdown(
@@ -805,29 +749,24 @@ mod tests {
             check_in(Syntax::Markdown, text, &[(text, PLAIN)]);
         }
         check(
-            "[a](https://u.v)",
-            &[("[a](", PLAIN), ("https://u.v", LINK), (")", PLAIN)],
+            "[a](https://u.v w)",
+            &[("[a](", PLAIN), ("https://u.v", LINK), (" w)", PLAIN)],
         );
     }
 
-    // FR-FMT-03, D-10
+    // FR-FMT-03, D-45
     #[test]
     fn lists_markdown_link_addresses_with_the_bare_urls_in_order() {
-        assert_eq!(
-            urls(
-                "[a](rel) <mailto:x@y.z> https://b.c **[d](https://e.f)** `[g](h)`",
-                Syntax::Markdown
-            ),
-            ["rel", "mailto:x@y.z", "https://b.c", "https://e.f"]
-        );
-        assert_eq!(
-            urls("[https://a.b](https://c.d)", Syntax::Markdown),
-            ["https://c.d"]
-        );
-        assert_eq!(
-            urls("[a](https://c.d) <https://e.f>", Syntax::Inline),
-            ["https://c.d", "https://e.f"]
-        );
+        for syntax in [Syntax::Inline, Syntax::Markdown] {
+            assert_eq!(
+                urls(
+                    "[a](rel) <mailto:x@y.z> https://b.c **[d](https://e.f)** `[g](h)`",
+                    syntax
+                ),
+                ["rel", "mailto:x@y.z", "https://b.c", "https://e.f"]
+            );
+            assert_eq!(urls("[https://a.b](https://c.d)", syntax), ["https://c.d"]);
+        }
     }
 
     #[test]

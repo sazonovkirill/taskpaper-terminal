@@ -54,6 +54,8 @@ Computed from the body with the trailing tag run removed (`content`):
 
 `* ` and `+ ` lines are notes (the current app dropped them as task markers).
 
+Tags never change the item type. The app's block types build on it ([data-model.md §3](data-model.md#3-blocks)): only `@section` adds one, while `@url(…)`, which other TaskPaper apps may write, leaves a line whatever its item type makes it and is preserved byte for byte; the app draws such a line's title as a link (D-45).
+
 Display text: the body without the `- ` prefix, without the project `:` and without every tag, as [data-model.md §2](data-model.md#2-derived-line-attributes) defines it (FR-TAG-01). TaskPaper's own `content_text` drops only the trailing tag run.
 
 ## 5. Tags

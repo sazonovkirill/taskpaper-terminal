@@ -113,7 +113,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Convert block type | `my` |
 | Details (all tags) | `mi` |
 | Comments panel (FR-SPC-02) | `C` (was `c`) |
-| Open URL | `gx` |
+| Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
 
 ### View, panes and panels
 

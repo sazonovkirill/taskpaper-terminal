@@ -15,8 +15,7 @@ pub struct MenuEntry {
     pub shortcut: Option<char>,
 }
 
-/// Every entry, in the order the menu lists them. A URL block is made by its tag, not from the
-/// menu (D-44).
+/// Every entry, in the order the menu lists them (D-44).
 const ENTRIES: [MenuEntry; 5] = [
     MenuEntry {
         typed: Typed::Project,

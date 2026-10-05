@@ -202,7 +202,6 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             error_style(),
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
-        Notice::NoAddress => Span::raw("Add a URL to the text to make a URL block"),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::OpenUrlFailed { url, reason } => {
@@ -547,40 +546,38 @@ fn mine_style() -> Style {
 
 /// The spans of `row`'s text in `style` with its formatting applied over it, the delimiters
 /// hidden: a heading bold, level 1 in the accent and level 2 in the headers color unless a color
-/// tag tints the row; bold; code in the code color; and links underlined, in a text block also in
-/// the link color (FR-FMT-01, FR-FMT-03, D-10).
+/// tag tints the row; bold; code in the code color; and links, the whole text of a row with
+/// `@url`, underlined in the link color (FR-FMT-01, FR-FMT-03, D-45).
 fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
-    let syntax = Syntax::of(row.kind);
-    inline::runs(&row.text, syntax).into_iter().map(move |run| {
-        let Format {
-            bold,
-            code,
-            link,
-            heading,
-        } = run.format;
-        let mut style = style;
-        if let Some(level) = heading {
-            style = style.bold();
-            match (level, row.color) {
-                (1, None) => style = style.fg(PRIMARY),
-                (2, None) => style = style.fg(SECONDARY),
-                _ => {}
+    inline::runs(&row.text, Syntax::of(row.kind))
+        .into_iter()
+        .map(move |run| {
+            let Format {
+                bold,
+                code,
+                link,
+                heading,
+            } = run.format;
+            let mut style = style;
+            if let Some(level) = heading {
+                style = style.bold();
+                match (level, row.color) {
+                    (1, None) => style = style.fg(PRIMARY),
+                    (2, None) => style = style.fg(SECONDARY),
+                    _ => {}
+                }
             }
-        }
-        if bold {
-            style = style.bold();
-        }
-        if code {
-            style = style.fg(CODE);
-        }
-        if link {
-            style = style.underlined();
-        }
-        if link && syntax == Syntax::Markdown {
-            style = style.fg(LINK);
-        }
-        Span::styled(run.text, style)
-    })
+            if bold {
+                style = style.bold();
+            }
+            if code {
+                style = style.fg(CODE);
+            }
+            if link || row.url {
+                style = style.underlined().fg(LINK);
+            }
+            Span::styled(run.text, style)
+        })
 }
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
@@ -669,7 +666,6 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("✔ ", Style::new()),
         BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Url => ("", Style::new().dim().underlined().fg(LINK)),
         BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
         BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
@@ -783,8 +779,7 @@ const PRIMARY: Color = Color::LightBlue;
 /// step 6.2.
 const TEXT: Color = Color::Gray;
 
-/// The theme's link color, for URL blocks and links in text blocks (ui.md §2); themes arrive in
-/// step 6.2.
+/// The theme's link color, for every link (ui.md §2, D-45); themes arrive in step 6.2.
 const LINK: Color = Color::Cyan;
 
 /// Inline code (FR-FMT-01); themes arrive in step 6.2.
@@ -1064,12 +1059,12 @@ mod tests {
 
     // FR-BLK-08, keybindings.md §4
     #[test]
-    fn the_type_picker_lists_the_six_types_under_the_type_menus_title() {
+    fn the_type_picker_lists_the_five_types_under_the_type_menus_title() {
         let mut state = State::new(format::parse("a"), None);
         state.update(Message::OpenTypePicker);
         let popup = Popup::block_types(&state.type_picker().unwrap());
-        assert_eq!(popup.size(), (12, 8));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 8));
+        assert_eq!(popup.size(), (12, 7));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 7));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
             "┌Node type:┐",
@@ -1077,16 +1072,15 @@ mod tests {
             "│ Section  │",
             "│ Note     │",
             "│ Task     │",
-            "│ URL      │",
             "│ Divider  │",
             "└──────────┘",
         ]);
         expected.set_style(Rect::new(1, 3, 10, 1), Style::new().reversed());
         assert_eq!(buf, expected);
-        state.update(Message::TypePicker(crate::app::MenuInput::Type('u')));
+        state.update(Message::TypePicker(crate::app::MenuInput::Type('d')));
         let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
         Popup::block_types(&state.type_picker().unwrap()).render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["┌Node type:┐", "│ URL      │", "└u─────────┘"]);
+        let mut expected = Buffer::with_lines(["┌Node type:┐", "│ Divider  │", "└d─────────┘"]);
         expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
         assert_eq!(buf, expected);
     }
@@ -1193,11 +1187,12 @@ mod tests {
             expected
         );
         let mut expected = Buffer::with_lines(["u     "]);
-        expected.set_style(
-            Rect::new(0, 0, 1, 1),
-            Style::new().dim().underlined().fg(Color::Magenta),
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().underlined().fg(LINK));
+        assert_eq!(
+            render("u @url(x) @violet", 6, 1),
+            expected,
+            "a link keeps the link color"
         );
-        assert_eq!(render("u @url(x) @violet", 6, 1), expected);
     }
 
     // FR-TAG-04, ui.md §2
@@ -1260,7 +1255,7 @@ mod tests {
         assert_eq!(buf, expected);
     }
 
-    // FR-FMT-01, D-10
+    // FR-FMT-01, D-45
     #[test]
     fn inline_formatting_is_drawn_over_the_block_style_with_its_delimiters_hidden() {
         let mut expected = Buffer::with_lines([
@@ -1271,7 +1266,7 @@ mod tests {
         ]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
         expected.set_style(Rect::new(4, 0, 1, 1), Style::new().fg(CODE));
-        expected.set_style(Rect::new(8, 0, 11, 1), Style::new().underlined());
+        expected.set_style(Rect::new(8, 0, 11, 1), Style::new().underlined().fg(LINK));
         let project = Style::new().bold().fg(PRIMARY);
         expected.set_style(Rect::new(0, 1, 4, 1), project);
         expected.set_style(Rect::new(2, 1, 1, 1), project.fg(CODE));
@@ -1291,7 +1286,7 @@ mod tests {
         );
     }
 
-    // FR-FMT-03
+    // FR-FMT-03, D-45
     #[test]
     fn text_blocks_draw_headings_and_links_with_their_markers_hidden() {
         let mut expected = Buffer::with_lines([
@@ -1300,7 +1295,7 @@ mod tests {
             "C d         ",
             "e f https://",
             "H mailto:g  ",
-            "- [i](j)    ",
+            "- # i       ",
         ]);
         let text = Style::new().fg(TEXT);
         expected.set_style(Rect::new(0, 0, 1, 1), text.bold().fg(PRIMARY));
@@ -1313,11 +1308,42 @@ mod tests {
         expected.set_style(Rect::new(4, 3, 8, 1), link);
         expected.set_style(Rect::new(0, 4, 10, 1), Style::new().fg(Color::Red).bold());
         expected.set_style(Rect::new(2, 4, 8, 1), Style::new().fg(LINK).underlined());
+        expected.set_style(Rect::new(4, 5, 1, 1), Style::new().fg(LINK).underlined());
         assert_eq!(
             render(
-                "# A\n## B\n### C `d`\n[e](f) f <https://g.h>\n# H <mailto:g> @red\n- [i](j)",
+                "# A\n## B\n### C `d`\n[e](f) f <https://g.h>\n# H <mailto:g> @red\n- # [i](j)",
                 12,
                 6
+            ),
+            expected
+        );
+    }
+
+    // FR-BLK-06, FR-FMT-03, D-45
+    #[test]
+    fn every_block_draws_its_links_and_a_line_with_a_url_as_a_link() {
+        let mut expected = Buffer::with_lines([
+            "P a:        ",
+            "S https://b ",
+            "- c d       ",
+            "- e         ",
+            "f           ",
+        ]);
+        let link = Style::new().underlined().fg(LINK);
+        let project = Style::new().bold().fg(PRIMARY);
+        expected.set_style(Rect::new(0, 0, 4, 1), project);
+        expected.set_style(Rect::new(2, 0, 1, 1), project.patch(link));
+        let section = Style::new().bold().fg(SECONDARY);
+        expected.set_style(Rect::new(0, 1, 11, 1), section);
+        expected.set_style(Rect::new(2, 1, 9, 1), section.patch(link));
+        expected.set_style(Rect::new(4, 2, 1, 1), link);
+        expected.set_style(Rect::new(2, 3, 1, 1), link);
+        expected.set_style(Rect::new(0, 4, 1, 1), Style::new().fg(TEXT).patch(link));
+        assert_eq!(
+            render(
+                "P [a](https://x.y):\nS <https://b> @section\n- c [d](u)\n- e @url(https://x.y)\nf @url",
+                12,
+                5
             ),
             expected
         );
@@ -1730,10 +1756,6 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
-            (
-                Notice::NoAddress,
-                plain("Add a URL to the text to make a URL block"),
-            ),
             (
                 Notice::KeptMine { copy: copy.clone() },
                 plain("Kept your version; the one on disk is in /b/c.taskpaper"),
