@@ -6,7 +6,10 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{Mode, State, TextEdit, Version, saving::Ending, structure::NewBlock};
-use crate::document::{Block, Item, ItemId, blocks, structure::Typed};
+use crate::document::{
+    Block, Item, ItemId, blocks,
+    structure::{Shift, Typed},
+};
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,6 +154,18 @@ pub enum Message {
     NewTypedBelow(Typed),
     /// Delete the focused block with its subtree (FR-OPS-06).
     Delete,
+    /// Make the focused block the last child of its previous sibling (FR-OPS-02); in edit mode,
+    /// editing goes on.
+    Indent,
+    /// Make the focused block the next sibling of its parent (FR-OPS-02); in edit mode, editing
+    /// goes on.
+    Outdent,
+    /// Move the focused block above its previous sibling, or at the first position into the
+    /// parent's previous sibling (FR-OPS-03).
+    MoveUp,
+    /// Move the focused block below its next sibling, or at the last position into the parent's
+    /// next sibling (FR-OPS-03).
+    MoveDown,
 }
 
 impl Message {
@@ -174,7 +189,9 @@ impl Message {
             | Self::EditAtEnd
             | Self::EditAtStart
             | Self::Text(_)
-            | Self::StopEditing => false,
+            | Self::StopEditing
+            | Self::Indent
+            | Self::Outdent => false,
             Self::Quit
             | Self::Terminate
             | Self::KeepMine
@@ -209,7 +226,9 @@ impl Message {
             | Self::NewNext
             | Self::NewTop(_)
             | Self::NewTypedBelow(_)
-            | Self::Delete => true,
+            | Self::Delete
+            | Self::MoveUp
+            | Self::MoveDown => true,
         }
     }
 }
@@ -342,6 +361,10 @@ impl State {
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_focused(),
+            Message::Indent => self.shift_focused(Shift::Indent),
+            Message::Outdent => self.shift_focused(Shift::Outdent),
+            Message::MoveUp => self.shift_focused(Shift::Up),
+            Message::MoveDown => self.shift_focused(Shift::Down),
         }
         self.repair_focus();
         self.expire_notice();
@@ -549,11 +572,14 @@ impl State {
         }
     }
 
-    /// Moves focus off a block a fold hid: to the next visible block in document order, else
-    /// the previous one (navigation §2). A hidden block always has a visible ancestor before
-    /// it, so one of the two exists.
+    /// Moves focus from a line that joined the note run before it to that run's block (OQ-26),
+    /// and off a block a fold hid: to the next visible block in document order, else the
+    /// previous one (navigation §2). A hidden block always has a visible ancestor before it, so
+    /// one of the two exists.
     fn repair_focus(&mut self) {
         let Some(focus) = self.focus else { return };
+        let focus = blocks::holding(self.document(), focus).map_or(focus, |block| block.id());
+        self.focus = Some(focus);
         let visible: Vec<_> = self.rows().into_iter().map(|row| row.id).collect();
         if visible.contains(&focus) {
             return;

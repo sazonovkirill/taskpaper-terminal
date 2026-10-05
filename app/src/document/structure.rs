@@ -1,6 +1,8 @@
-//! Adding and deleting blocks as line ops: where a new block goes, which type it takes, and
-//! which lines a deleted block takes with it ([editing.md §3–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
-//! OQ-03, OQ-26).
+//! Adding, deleting and moving blocks as line ops: where a new block goes, which type it takes,
+//! which lines a deleted block takes with it and where a moved one lands
+//! ([editing.md §3–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04), OQ-03, OQ-26).
+
+use std::collections::HashMap;
 
 use super::{
     blocks::{self, Block, BlockKind},
@@ -137,6 +139,129 @@ pub fn delete(document: &Document, block: &Block) -> Vec<Op> {
             })
         })
         .collect()
+}
+
+/// Where a block moves among the blocks around it (editing.md §4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shift {
+    /// To the end of the previous sibling's children (FR-OPS-02).
+    Indent,
+    /// To just after its parent, leaving the siblings after it where they are (FR-OPS-02).
+    Outdent,
+    /// Before the previous sibling, or at the first position to the end of the children of the
+    /// parent's previous sibling (FR-OPS-03).
+    Up,
+    /// After the next sibling, or at the last position to the start of the children of the
+    /// parent's next sibling (FR-OPS-03).
+    Down,
+}
+
+/// The ops that move `block` with its subtree as `shift` says without leaving the children of
+/// the line `top`, the root or the zoom block's last line; `None` when it has nowhere to go
+/// there or is not in `document`. A line that gets children but has no text gets the
+/// placeholder (file-format.md §3.1, rule 2).
+#[must_use]
+pub fn shift(document: &Document, block: &Block, shift: Shift, top: ItemId) -> Option<Vec<Op>> {
+    let parent = document.get(block.id())?.parent()?;
+    let siblings = blocks::children(document, parent);
+    let at = siblings
+        .iter()
+        .position(|sibling| sibling.id() == block.id())?;
+    let previous = at.checked_sub(1).and_then(|at| siblings.get(at));
+    let next = siblings.get(at + 1);
+    let (to, spot) = match shift {
+        Shift::Indent => (previous?.last_line(), Spot::End),
+        Shift::Outdent if parent != top => (document.get(parent)?.parent()?, Spot::After(parent)),
+        Shift::Outdent => return None,
+        Shift::Up => match previous {
+            Some(previous) => (parent, Spot::Before(previous.id())),
+            None => (parents_neighbor(document, parent, top, -1)?, Spot::End),
+        },
+        Shift::Down => match next {
+            Some(next) => (parent, Spot::After(next.last_line())),
+            None => (parents_neighbor(document, parent, top, 1)?, Spot::Start),
+        },
+    };
+    let mut ops = repairs(document, to);
+    ops.extend(relocate(document, block.lines(), to, spot)?);
+    Some(ops)
+}
+
+/// Where among a line's children moved lines go.
+#[derive(Debug, Clone, Copy)]
+enum Spot {
+    Start,
+    /// After the last child that is not a special node.
+    End,
+    Before(ItemId),
+    After(ItemId),
+}
+
+/// The last line of the block `by` places after (or before, when negative) the block whose
+/// children are those of the line `parent`, or `None` when `parent` is `top` or that block has
+/// no such neighbor.
+fn parents_neighbor(document: &Document, parent: ItemId, top: ItemId, by: isize) -> Option<ItemId> {
+    if parent == top {
+        return None;
+    }
+    let siblings = blocks::children(document, document.get(parent)?.parent()?);
+    let at = siblings
+        .iter()
+        .position(|sibling| sibling.last_line() == parent)?;
+    Some(siblings.get(at.checked_add_signed(by)?)?.last_line())
+}
+
+/// The ops moving `lines`, each with its subtree, to `spot` among the children of the line `to`,
+/// in order, the end being before the special nodes that end the children so that they stay
+/// last (special-nodes.md §1); `None` when a line or the spot is not in `document`.
+fn relocate(document: &Document, lines: &[ItemId], to: ItemId, spot: Spot) -> Option<Vec<Op>> {
+    let mut children = HashMap::new();
+    let mut ops = Vec::new();
+    let mut previous = None;
+    for &line in lines {
+        let from = document.get(line)?.parent()?;
+        let siblings = children_of(&mut children, document, from);
+        let from_index = siblings.iter().position(|&id| id == line)?;
+        siblings.remove(from_index);
+        let targets = children_of(&mut children, document, to);
+        let find = |id: ItemId| targets.iter().position(|&target| target == id);
+        let index = match previous.map_or(spot, Spot::After) {
+            Spot::Start => 0,
+            Spot::End => targets
+                .iter()
+                .rposition(|&id| {
+                    document
+                        .get(id)
+                        .is_some_and(|item| !blocks::is_special(item))
+                })
+                .map_or(0, |last| last + 1),
+            Spot::Before(id) => find(id)?,
+            Spot::After(id) => find(id)? + 1,
+        };
+        targets.insert(index, line);
+        previous = Some(line);
+        ops.push(Op::Move {
+            id: line,
+            from: (from, from_index),
+            to: (to, index),
+        });
+    }
+    Some(ops)
+}
+
+/// The children of `line` in `children`, which holds them as the ops built so far leave them,
+/// taken from `document` the first time.
+fn children_of<'a>(
+    children: &'a mut HashMap<ItemId, Vec<ItemId>>,
+    document: &Document,
+    line: ItemId,
+) -> &'a mut Vec<ItemId> {
+    children.entry(line).or_insert_with(|| {
+        document
+            .get(line)
+            .map(|item| item.children().to_vec())
+            .unwrap_or_default()
+    })
 }
 
 #[cfg(test)]
@@ -411,5 +536,165 @@ mod tests {
         let other = format::parse("- x\n- y");
         let stale = block(&other, "- y");
         assert_eq!(delete(&format::parse("- a"), &stale), []);
+    }
+
+    /// The lines of `text` once the block reading `of` shifts below the line reading `top`
+    /// (the root when `None`), with the ops checked to undo; `None` when it does not move.
+    #[track_caller]
+    fn shifted_below(text: &str, of: &str, by: Shift, top: Option<&str>) -> Option<Vec<String>> {
+        let mut document = format::parse(text);
+        let top = top.map_or(document.root(), |top| block(&document, top).last_line());
+        let ops = shift(&document, &block(&document, of), by, top)?;
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after = lines(&document, None);
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        Some(after)
+    }
+
+    #[track_caller]
+    fn shifted(text: &str, of: &str, by: Shift) -> Option<Vec<String>> {
+        shifted_below(text, of, by, None)
+    }
+
+    // FR-OPS-02
+    #[test]
+    fn indent_makes_the_block_the_last_child_of_the_previous_sibling() {
+        assert_eq!(
+            shifted("- a\n\t- x\n- b\n\t- c\n- d", "- b", Shift::Indent).unwrap(),
+            ["- a", "\t- x", "\t- b", "\t\t- c", "- d"]
+        );
+        assert_eq!(
+            shifted("- a\nn\nm\n- d", "n", Shift::Indent).unwrap(),
+            ["- a", "\tn", "\tm", "- d"],
+            "every line of a note"
+        );
+        assert_eq!(
+            shifted("n\nm\n- t", "- t", Shift::Indent).unwrap(),
+            ["n", "m", "\t- t"],
+            "under the last line of a note"
+        );
+        assert_eq!(shifted("- a\n- b", "- a", Shift::Indent), None, "first");
+    }
+
+    // FR-OPS-02, file-format §3.1
+    #[test]
+    fn a_blank_line_that_gets_children_gets_the_placeholder() {
+        assert_eq!(
+            shifted("n\n\n- t", "- t", Shift::Indent).unwrap(),
+            ["n", "…", "\t- t"]
+        );
+    }
+
+    // FR-OPS-02
+    #[test]
+    fn outdent_puts_the_block_after_its_parent_and_leaves_the_siblings_after_it() {
+        assert_eq!(
+            shifted(
+                "P:\n\t- a\n\t- b\n\t\t- c\n\t- d\nQ:",
+                "- b",
+                Shift::Outdent
+            )
+            .unwrap(),
+            ["P:", "\t- a", "\t- d", "- b", "\t- c", "Q:"]
+        );
+        assert_eq!(
+            shifted("n\nm\n\t- a", "- a", Shift::Outdent).unwrap(),
+            ["n", "m", "- a"],
+            "after the last line of a note"
+        );
+        assert_eq!(shifted("- a\n\t- b", "- a", Shift::Outdent), None);
+        assert_eq!(
+            shifted_below("P:\n\t- a", "- a", Shift::Outdent, Some("P:")),
+            None,
+            "not out of the zoom"
+        );
+    }
+
+    // FR-OPS-03
+    #[test]
+    fn up_and_down_swap_the_block_with_its_neighbor() {
+        let text = "- a\n- b\n\t- c\n- d";
+        assert_eq!(
+            shifted(text, "- b", Shift::Up).unwrap(),
+            ["- b", "\t- c", "- a", "- d"]
+        );
+        assert_eq!(
+            shifted(text, "- b", Shift::Down).unwrap(),
+            ["- a", "- d", "- b", "\t- c"]
+        );
+        assert_eq!(
+            shifted("- a\nn\nm\n- d", "n", Shift::Down).unwrap(),
+            ["- a", "- d", "n", "m"],
+            "every line of a note"
+        );
+        assert_eq!(
+            shifted("- a\nn\nm\n- d", "- d", Shift::Up).unwrap(),
+            ["- a", "- d", "n", "m"],
+            "past every line of a note"
+        );
+        assert_eq!(shifted("- a\n- b", "- a", Shift::Up), None);
+        assert_eq!(shifted("- a\n- b", "- b", Shift::Down), None);
+    }
+
+    // FR-OPS-03
+    #[test]
+    fn at_the_edge_the_block_crosses_into_the_parents_neighbor() {
+        let text = "P:\n\t- a\nQ:\n\t- b\n\t- c";
+        assert_eq!(
+            shifted(text, "- b", Shift::Up).unwrap(),
+            ["P:", "\t- a", "\t- b", "Q:", "\t- c"],
+            "to the end of the previous one"
+        );
+        assert_eq!(
+            shifted(text, "- a", Shift::Down).unwrap(),
+            ["P:", "Q:", "\t- a", "\t- b", "\t- c"],
+            "to the start of the next one"
+        );
+        assert_eq!(shifted(text, "- c", Shift::Down), None, "no next one");
+        assert_eq!(shifted("P:\n\t- a", "- a", Shift::Up), None);
+        assert_eq!(
+            shifted_below(text, "- b", Shift::Up, Some("Q:")),
+            None,
+            "not out of the zoom"
+        );
+    }
+
+    // FR-SPC-01, special-nodes.md §1
+    #[test]
+    fn special_nodes_stay_where_they_are_and_last() {
+        assert_eq!(
+            shifted("- a\nh @hidden\n- b", "- b", Shift::Up).unwrap(),
+            ["- b", "- a", "h @hidden"]
+        );
+        assert_eq!(
+            shifted("- a\n\th @hidden\n- b", "- b", Shift::Indent).unwrap(),
+            ["- a", "\t- b", "\th @hidden"],
+            "the last child before the trailing ones"
+        );
+        assert_eq!(
+            shifted("P:\n\t- a\n\th @hidden\nQ:\n\t- b", "- b", Shift::Up).unwrap(),
+            ["P:", "\t- a", "\t- b", "\th @hidden", "Q:"]
+        );
+        assert_eq!(
+            shifted("P:\n\th @hidden\n- b", "- b", Shift::Indent).unwrap(),
+            ["P:", "\t- b", "\th @hidden"]
+        );
+        assert_eq!(
+            shifted("P:\n\tg @hidden\n\t- a\nQ:\n\t- b", "- b", Shift::Up).unwrap(),
+            ["P:", "\tg @hidden", "\t- a", "\t- b", "Q:"],
+            "one placed elsewhere is left there"
+        );
+    }
+
+    #[test]
+    fn a_block_not_in_the_document_does_not_shift() {
+        let other = format::parse("- x\n- y");
+        let stale = block(&other, "- y");
+        let document = format::parse("- a");
+        for by in [Shift::Indent, Shift::Outdent, Shift::Up, Shift::Down] {
+            assert_eq!(shift(&document, &stale, by, document.root()), None);
+        }
     }
 }

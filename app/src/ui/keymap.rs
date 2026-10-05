@@ -146,6 +146,12 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('a')], |_| Message::NewTypedBelow(Typed::Task)),
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
+    (&[key!(Tab)], |_| Message::Indent),
+    (&[key!(shift BackTab)], |_| Message::Outdent),
+    (&[key!(alt 'k')], |_| Message::MoveUp),
+    (&[key!(alt Up)], |_| Message::MoveUp),
+    (&[key!(alt 'j')], |_| Message::MoveDown),
+    (&[key!(alt Down)], |_| Message::MoveDown),
 ];
 
 /// What a key does while the conflict prompt is open (file-io.md §3).
@@ -202,6 +208,8 @@ const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
     (&[key!(Enter)], |_| Message::NewNext),
+    (&[key!(Tab)], |_| Message::Indent),
+    (&[key!(shift BackTab)], |_| Message::Outdent),
     (&[key!(Left)], |_| go(Motion::Left, false)),
     (&[key!(Right)], |_| go(Motion::Right, false)),
     (&[key!(ctrl Left)], |_| go(Motion::WordLeft, false)),
@@ -486,6 +494,24 @@ mod tests {
         }
     }
 
+    // FR-OPS-02, FR-OPS-03
+    #[test]
+    fn structure_keys_indent_outdent_and_move() {
+        let alt = KeyModifiers::ALT;
+        let up = Some(&Message::MoveUp);
+        let down = Some(&Message::MoveDown);
+        check(KeyCode::Tab, KeyModifiers::NONE, Some(&Message::Indent));
+        check(
+            KeyCode::BackTab,
+            KeyModifiers::SHIFT,
+            Some(&Message::Outdent),
+        );
+        check(KeyCode::Char('k'), alt, up);
+        check(KeyCode::Up, alt, up);
+        check(KeyCode::Char('j'), alt, down);
+        check(KeyCode::Down, alt, down);
+    }
+
     /// The message each key sends in edit mode.
     #[track_caller]
     fn check_editing(code: KeyCode, modifiers: KeyModifiers, expected: Option<&Message>) {
@@ -523,13 +549,20 @@ mod tests {
         check_editing(KeyCode::Char('k'), KeyModifiers::CONTROL, None);
         check_editing(KeyCode::Char('x'), KeyModifiers::ALT, None);
         check_editing(KeyCode::Down, none, None);
-        check_editing(KeyCode::Tab, none, None);
+        check_editing(KeyCode::F(1), none, None);
     }
 
-    // FR-MODE-01, FR-MODE-04
+    // FR-MODE-01, FR-MODE-04, FR-OPS-02
     #[test]
-    fn esc_stops_editing_enter_adds_the_next_block_and_ctrl_q_quits() {
+    fn esc_stops_editing_enter_adds_the_next_block_tab_indents_and_ctrl_q_quits() {
         let none = KeyModifiers::NONE;
+        check_editing(KeyCode::Tab, none, Some(&Message::Indent));
+        check_editing(
+            KeyCode::BackTab,
+            KeyModifiers::SHIFT,
+            Some(&Message::Outdent),
+        );
+        check_editing(KeyCode::Char('j'), KeyModifiers::ALT, None);
         check_editing(KeyCode::Esc, none, Some(&Message::StopEditing));
         check_editing(KeyCode::Enter, none, Some(&Message::NewNext));
         check_editing(
@@ -588,7 +621,7 @@ mod tests {
     #[test]
     fn shift_only_drops_from_characters() {
         check(KeyCode::Down, KeyModifiers::SHIFT, None);
-        check(KeyCode::Char('j'), KeyModifiers::ALT, None);
+        check(KeyCode::Char('x'), KeyModifiers::ALT, None);
     }
 
     #[test]

@@ -74,7 +74,7 @@ pub fn children(document: &Document, parent: ItemId) -> Vec<Block> {
         .unwrap_or_default()
         .iter()
         .filter_map(|&id| Some((id, document.get(id)?)))
-        .filter(|(_, item)| !has_tag(item, "hidden"))
+        .filter(|(_, item)| !is_special(item))
         .collect();
     let mut blocks = Vec::new();
     let mut rest = lines.as_slice();
@@ -105,6 +105,15 @@ pub fn block(document: &Document, id: ItemId) -> Option<Block> {
     children(document, parent)
         .into_iter()
         .find(|block| block.id == id)
+}
+
+/// The block that has the line `id` among its lines, or `None` when no block does.
+#[must_use]
+pub fn holding(document: &Document, id: ItemId) -> Option<Block> {
+    let parent = document.get(id)?.parent()?;
+    children(document, parent)
+        .into_iter()
+        .find(|block| block.lines.contains(&id))
 }
 
 /// The block whose children include the block `id`, or `None` at the top level.
@@ -152,7 +161,7 @@ fn shown_neighbors(
     let shown = |&id: &ItemId| {
         document
             .get(id)
-            .filter(|item| !has_tag(item, "hidden"))
+            .filter(|item| !is_special(item))
             .map(|item| (id, item))
     };
     let lines = document.get(parent).map(Item::children).unwrap_or_default();
@@ -177,6 +186,12 @@ fn ends_run(
                 .iter()
                 .any(|block| block.last_line == id && kinds.contains(&block.kind))
     })
+}
+
+/// Whether `item` starts a special node, which with its subtree forms no block (FR-SPC-01).
+#[must_use]
+pub fn is_special(item: &Item) -> bool {
+    has_tag(item, "hidden")
 }
 
 /// Whether `item` continues a run: any note line inside code, else a plain note line;
@@ -434,6 +449,30 @@ mod tests {
         assert_eq!(parent(&document, top[1].id()), None);
         assert_eq!(block(&document, document.root()), None);
         assert_eq!(parent(&document, document.root()), None);
+    }
+
+    // FR-SPC-01
+    #[test]
+    fn a_line_tagged_hidden_is_special() {
+        let document = parse("a @hidden\nb @hidden(x)\nc @hide\nd hidden\n- e @x @hidden");
+        let special: Vec<bool> = document
+            .descendants(document.root())
+            .map(|(id, _)| is_special(document.get(id).unwrap()))
+            .collect();
+        assert_eq!(special, [true, true, false, false, true]);
+    }
+
+    #[test]
+    fn finds_the_block_holding_any_of_its_lines() {
+        let document = parse("P:\n\ta\n\tb\n\th @hidden\n- u");
+        let top = children(&document, document.root());
+        let notes = &children(&document, top[0].last_line())[0];
+        assert_eq!(holding(&document, notes.id()).as_ref(), Some(notes));
+        assert_eq!(holding(&document, notes.last_line()).as_ref(), Some(notes));
+        assert_eq!(holding(&document, top[1].id()).as_ref(), Some(&top[1]));
+        let hidden = document.get(top[0].last_line()).unwrap().children()[2];
+        assert_eq!(holding(&document, hidden), None, "a special node");
+        assert_eq!(holding(&document, document.root()), None);
     }
 
     /// Whether a blank line at `index` under the line reading `parent` (the root when empty)

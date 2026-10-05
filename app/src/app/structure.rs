@@ -1,11 +1,11 @@
-//! Adding a block next to the focused one to type into, and deleting blocks, each one step to
-//! undo ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
-//! FR-MODE-04, FR-OPS-06, OQ-26).
+//! Adding a block next to the focused one to type into, deleting blocks and moving them, each one
+//! step to undo ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04),
+//! FR-MODE-04, FR-OPS-02, FR-OPS-03, FR-OPS-06, OQ-26).
 
 use super::{Access, Notice, Restore, State};
 use crate::document::{
-    Block, BlockKind, Item, ItemId, Transaction, blocks,
-    structure::{self, Place, Typed},
+    Block, BlockKind, ItemId, Transaction, blocks,
+    structure::{self, Place, Shift, Typed},
 };
 
 /// Where a new block goes, relative to the focused block (editing.md §3).
@@ -108,36 +108,12 @@ impl State {
             self.notify(Notice::ReadOnly);
             return;
         }
-        let parent = self.document.get(block.id()).and_then(Item::parent);
-        let siblings = |state: &Self| {
-            parent
-                .map(|line| blocks::children(&state.document, line))
-                .unwrap_or_default()
-        };
-        let next = siblings(self)
-            .iter()
-            .skip_while(|sibling| sibling.id() != block.id())
-            .nth(1)
-            .map(Block::id);
+        let starts = self.block_starts();
         let mut transaction = Transaction::new(structure::delete(&self.document, block), (), ());
         self.document
             .apply(&mut transaction)
             .expect("the ops are built from the document as it is");
-        let merged = next
-            .filter(|&next| blocks::block(&self.document, next).is_none())
-            .and_then(|next| {
-                let into = siblings(self)
-                    .into_iter()
-                    .find(|sibling| sibling.lines().contains(&next))?;
-                Some((next, into.id()))
-            });
-        let focus = match merged {
-            Some((next, into)) => {
-                self.notify(Notice::NotesMerged);
-                focus.map(|focus| if focus == next { into } else { focus })
-            }
-            None => focus,
-        };
+        self.report_merged(&starts);
         let before = Restore {
             focus: Some(block.id()),
         };
@@ -147,6 +123,48 @@ impl State {
             Restore { focus },
         ));
         self.focus = focus;
+    }
+
+    /// Moves the focused block with its subtree as `by` says without leaving the zoom, as one
+    /// step to undo, expanding the block it lands under and saying so when notes merge
+    /// (FR-OPS-02, FR-OPS-03, OQ-26). The zoom title, which stands for the view's root, stays.
+    pub(super) fn shift_focused(&mut self, by: Shift) {
+        let Some((block, false)) = self.focused() else {
+            return;
+        };
+        let top = self
+            .zoom_block()
+            .map_or(self.document.root(), |zoom| zoom.last_line());
+        let Some(ops) = structure::shift(&self.document, &block, by, top) else {
+            return;
+        };
+        let starts = self.block_starts();
+        self.commit(ops);
+        if let Some(parent) = blocks::parent(&self.document, block.id()) {
+            self.folds.remove(&parent.id());
+        }
+        self.report_merged(&starts);
+        self.stop_editing_merged();
+    }
+
+    /// The first line of every block below the zoom, for telling after an edit which blocks it
+    /// merged.
+    fn block_starts(&self) -> Vec<ItemId> {
+        self.blocks(false)
+            .into_iter()
+            .map(|(block, _)| block.id())
+            .collect()
+    }
+
+    /// Says so when a line of `starts`, each the first line of a block before an edit, is still
+    /// in the document but no longer starts a block, because the edit put it after a note run
+    /// that it joined (OQ-26).
+    fn report_merged(&mut self, starts: &[ItemId]) {
+        if starts.iter().any(|&id| {
+            self.document.get(id).is_some() && blocks::block(&self.document, id).is_none()
+        }) {
+            self.notify(Notice::NotesMerged);
+        }
     }
 }
 
@@ -729,5 +747,218 @@ mod tests {
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["Work:", "\t- a", "\t", "\t- b"]);
         assert_eq!(state.notice(), Some(&Notice::BlanksLifted));
+    }
+
+    // FR-OPS-02, FR-OPS-08
+    #[test]
+    fn tab_indents_under_the_previous_sibling_and_expands_it_as_one_step() {
+        let mut state = open("- a\n\t- x\n- b\n\t- c\n- d", 0);
+        state.update(Message::Collapse);
+        state.update(Message::FocusNext);
+        state.update(Message::Indent);
+        assert_eq!(lines(&state), ["- a", "\t- x", "\t- b", "\t\t- c", "- d"]);
+        assert_eq!(focused(&state), "b");
+        assert_eq!(state.rows().len(), 5, "a is expanded");
+        state.update(Message::FocusFirst);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "\t- x", "- b", "\t- c", "- d"]);
+        assert_eq!(focused(&state), "b");
+        state.update(Message::Redo);
+        assert_eq!(lines(&state), ["- a", "\t- x", "\t- b", "\t\t- c", "- d"]);
+        state.update(Message::Outdent);
+        assert_eq!(lines(&state), ["- a", "\t- x", "- b", "\t- c", "- d"]);
+        assert_eq!(focused(&state), "b");
+    }
+
+    // FR-OPS-02
+    #[test]
+    fn outdent_leaves_the_siblings_after_the_block_where_they_are() {
+        let mut state = open("P:\n\t- a\n\t- b\n\t- c", 2);
+        state.update(Message::Outdent);
+        assert_eq!(lines(&state), ["P:", "\t- a", "\t- c", "- b"]);
+        assert_eq!(focused(&state), "b");
+        let revision = state.document().revision();
+        state.update(Message::Outdent);
+        state.update(Message::FocusFirst);
+        state.update(Message::Indent);
+        assert_eq!(state.document().revision(), revision, "nowhere to go");
+    }
+
+    // FR-OPS-03
+    #[test]
+    fn alt_j_and_alt_k_move_the_block_and_cross_into_the_parents_neighbors() {
+        let mut state = open("P:\n\t- a\n\t- b\nQ:\n\t- c", 1);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["P:", "\t- b", "\t- a", "Q:", "\t- c"]);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["P:", "\t- b", "Q:", "\t- a", "\t- c"]);
+        assert_eq!(focused(&state), "a");
+        state.update(Message::MoveUp);
+        state.update(Message::MoveUp);
+        assert_eq!(lines(&state), ["P:", "\t- a", "\t- b", "Q:", "\t- c"]);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\t- b", "\t- a", "Q:", "\t- c"]);
+        assert_eq!(focused(&state), "a", "one step per move");
+    }
+
+    // FR-OPS-03
+    #[test]
+    fn a_block_crossing_into_a_collapsed_block_expands_it() {
+        let mut state = open("P:\n\t- a\nQ:\n\t- b", 2);
+        state.update(Message::Collapse);
+        state.update(Message::FocusPrevious);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["P:", "Q:", "\t- a", "\t- b"]);
+        assert_eq!(state.rows().len(), 4);
+        assert_eq!(focused(&state), "a");
+    }
+
+    // FR-NAV-03, FR-OPS-02, FR-OPS-03
+    #[test]
+    fn moves_stay_below_the_zoom_and_leave_its_title() {
+        let mut state = open("P:\n\t- a\n\t\t- b\nQ:", 0);
+        state.update(Message::ZoomIn);
+        for message in [
+            Message::Indent,
+            Message::Outdent,
+            Message::MoveUp,
+            Message::MoveDown,
+        ] {
+            state.update(Message::FocusFirst);
+            state.update(message.clone());
+            state.update(Message::FocusNext);
+            state.update(message.clone());
+            assert_eq!(
+                lines(&state),
+                ["P:", "\t- a", "\t\t- b", "Q:"],
+                "{message:?}"
+            );
+        }
+        state.update(Message::FocusLast);
+        state.update(Message::MoveDown);
+        assert_eq!(
+            lines(&state),
+            ["P:", "\t- a", "\t\t- b", "Q:"],
+            "no neighbor of its parent below the zoom"
+        );
+    }
+
+    // OQ-26
+    #[test]
+    fn a_move_that_puts_notes_together_merges_them_and_says_so() {
+        let mut state = open("n\n- t\nm\n- u", 2);
+        state.update(Message::MoveUp);
+        assert_eq!(lines(&state), ["n", "m", "- t", "- u"]);
+        assert_eq!(state.rows()[0].lines, ["n", "m"]);
+        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
+        assert_eq!(
+            state.focus(),
+            Some(state.rows()[0].id),
+            "on the merged block"
+        );
+        state.update(Message::Undo);
+        assert_eq!(state.rows().len(), 4, "undo separates them again");
+        state.update(Message::Redo);
+        assert_eq!(state.focus(), Some(state.rows()[0].id));
+        let mut state = open("- t\nn\n- u", 1);
+        state.update(Message::MoveDown);
+        assert_eq!(state.notice(), None, "nothing merged");
+    }
+
+    // FR-OPS-02, editing.md §2
+    #[test]
+    fn tab_and_shift_tab_keep_editing_as_one_session() {
+        let mut state = open("- a\n- b", 1);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "c");
+        state.update(Message::Indent);
+        assert_eq!(state.mode(), Mode::Edit);
+        typed(&mut state, "d");
+        assert_eq!(lines(&state), ["- a", "\t- bcd"]);
+        state.update(Message::Outdent);
+        state.update(Message::Indent);
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "\t- b"], "the typing");
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "- b"]);
+    }
+
+    // FR-MODE-04, FR-OPS-02
+    #[test]
+    fn a_new_block_indented_while_typed_into_undoes_in_steps() {
+        let mut state = open("- a", 0);
+        state.update(Message::NewBelow);
+        state.update(Message::Indent);
+        typed(&mut state, "b");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["- a", "\t- b"]);
+        state.update(Message::Undo);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a", "- "]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["- a"]);
+    }
+
+    // OQ-26, editing.md §2
+    #[test]
+    fn a_block_being_edited_that_merges_into_a_note_ends_editing() {
+        let mut state = open("P:\n\tn\nm", 2);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "!");
+        state.update(Message::Indent);
+        assert_eq!(lines(&state), ["P:", "\tn", "\tm!"]);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
+        assert_eq!(state.focus(), Some(state.rows()[1].id));
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\tn", "\tm"]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\tn", "m"]);
+    }
+
+    // OQ-26, editing.md §2
+    #[test]
+    fn a_block_being_edited_that_a_note_joins_ends_editing() {
+        let mut state = open("P:\n\tm\nn", 1);
+        state.update(Message::EditAtEnd);
+        state.update(Message::Outdent);
+        assert_eq!(state.rows()[1].lines, ["m", "n"]);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.notice(), Some(&Notice::NotesMerged));
+    }
+
+    // FR-OPS-03
+    #[test]
+    fn alt_j_in_edit_mode_ends_editing_first() {
+        let mut state = open("- a\n- b", 0);
+        state.update(Message::EditAtEnd);
+        state.update(Message::MoveDown);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(lines(&state), ["- b", "- a"]);
+    }
+
+    // file-io.md §1
+    #[test]
+    fn a_read_only_file_refuses_moves() {
+        let mut state = State::new(
+            format::parse("- a\n- b"),
+            Some(PathBuf::from("/a.taskpaper")),
+        )
+        .with_access(Access::ReadOnly);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["- a", "- b"]);
+        assert_eq!(state.notice(), Some(&Notice::ReadOnly));
+    }
+
+    #[test]
+    fn an_empty_outline_moves_nothing() {
+        let mut state = State::new(Document::default(), None);
+        state.update(Message::Indent);
+        assert_eq!(state.document().revision(), 0);
     }
 }

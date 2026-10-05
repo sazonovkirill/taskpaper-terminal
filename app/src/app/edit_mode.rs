@@ -10,7 +10,7 @@ use super::{
     text_field::{TextEdit, TextField},
 };
 use crate::document::{
-    BlockKind, ItemId, Op, Transaction,
+    BlockKind, ItemId, Op, Transaction, blocks,
     format::{self, LineParts, canonical, tags},
 };
 
@@ -264,6 +264,16 @@ impl State {
             focus: Some(session.id),
         };
         self.edits.record(Transaction::new(ops, before, after));
+    }
+
+    /// Ends editing when the block being edited has joined other note lines, since blocks of
+    /// several lines are not edited here (OQ-26).
+    pub(super) fn stop_editing_merged(&mut self) {
+        if let Some(session) = &self.edit
+            && blocks::block(&self.document, session.id).is_none_or(|block| block.lines().len() > 1)
+        {
+            self.stop_editing();
+        }
     }
 
     /// Records the creation of the block being edited as a step of its own, so that a step
