@@ -3,7 +3,10 @@
 
 use jiff::civil::Date;
 
-use super::model::{Document, Item, ItemId, ItemKind};
+use super::{
+    format::tags,
+    model::{Document, Item, ItemId, ItemKind},
+};
 
 /// The type of a block (FR-BLK-01–04, FR-BLK-06–07).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -183,6 +186,64 @@ pub fn block(document: &Document, id: ItemId) -> Option<Block> {
 #[must_use]
 pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
     block(document, document.get(id)?.parent()?)
+}
+
+/// What a block's details list: every tag on its line and the special nodes it owns (D-3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Details {
+    /// Each tag on the line as written, such as `@due(2026-10-08)`, in order, duplicates
+    /// included, with whether the app supports it (FR-TAG-02).
+    pub tags: Vec<(String, bool)>,
+    /// The special nodes among the line's children, which no feature of the app shows yet
+    /// (special-nodes.md §1).
+    pub hidden: Vec<HiddenData>,
+}
+
+/// A special node as a block's details list it: preserved data the app does not show.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HiddenData {
+    /// The tags on its first line as written, in order.
+    pub tags: Vec<String>,
+    /// How many lines it has, its first line included.
+    pub lines: usize,
+}
+
+/// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and listed in the
+/// details as unsupported (D-3).
+const SUPPORTED: [&str; 13] = [
+    "start", "due", "today", "red", "orange", "yellow", "green", "blue", "violet", "section",
+    "url", "done", "bookmark",
+];
+
+/// The details of the block `id`, or `None` when it is no block of `document`.
+#[must_use]
+pub fn details(document: &Document, id: ItemId) -> Option<Details> {
+    let item = document.get(id)?;
+    block(document, id)?;
+    let hidden = item
+        .children()
+        .iter()
+        .filter_map(|&child| Some((child, document.get(child)?)))
+        .filter(|(_, child)| is_special(child))
+        .map(|(child, line)| HiddenData {
+            tags: written_tags(line.text()).map(|(tag, _)| tag).collect(),
+            lines: document.descendants(child).count() + 1,
+        })
+        .collect();
+    Some(Details {
+        tags: written_tags(item.text())
+            .map(|(tag, name)| (tag, SUPPORTED.contains(&name.as_str())))
+            .collect(),
+        hidden,
+    })
+}
+
+/// Each tag of `text` as written, without the whitespace before it, with its name.
+fn written_tags(text: &str) -> impl Iterator<Item = (String, String)> + '_ {
+    tags::scan(text).into_iter().filter_map(|tag| {
+        let written = text.get(tag.span)?.trim_start_matches(tags::is_whitespace);
+        Some((written.to_owned(), tag.name))
+    })
 }
 
 /// Whether `item` starts a special node, which with its subtree forms no block (FR-SPC-01).
@@ -483,5 +544,72 @@ P: @blue @red
             .map(|(id, _)| is_special(document.get(id).unwrap()))
             .collect();
         assert_eq!(special, [true, true, false, false, true]);
+    }
+
+    // D-3, FR-TAG-01, FR-TAG-02
+    #[test]
+    fn details_list_every_tag_as_written_and_mark_the_unsupported_ones() {
+        let document = parse("- a @due(2026-10-08) @estimate(2 h) @red @code @x(a\\)b) @x\n- b");
+        let top = children(&document, document.root());
+        let tag = |written: &str, supported| (written.to_owned(), supported);
+        assert_eq!(
+            details(&document, top[0].id()),
+            Some(Details {
+                tags: vec![
+                    tag("@due(2026-10-08)", true),
+                    tag("@estimate(2 h)", false),
+                    tag("@red", true),
+                    tag("@code", false),
+                    tag("@x(a\\)b)", false),
+                    tag("@x", false),
+                ],
+                hidden: Vec::new(),
+            })
+        );
+        assert_eq!(
+            details(&document, top[1].id()),
+            Some(Details {
+                tags: Vec::new(),
+                hidden: Vec::new()
+            })
+        );
+        let every = parse(&format!("- a @{}", SUPPORTED.join(" @")));
+        let first = children(&every, every.root())[0].id();
+        let supported = details(&every, first).unwrap().tags;
+        assert_eq!(supported.len(), 13);
+        assert!(supported.iter().all(|&(_, supported)| supported));
+    }
+
+    // FR-SPC-01, special-nodes.md §1
+    #[test]
+    fn details_list_the_special_nodes_a_block_owns_with_their_tags_and_lines() {
+        let document = parse(
+            "P:\n\t- t\n\tLOG @hidden @log(x)\n\t\tone\n\t\t\ttwo\n\tX @hidden\n\t- u\n\t\tY @hidden",
+        );
+        let project = children(&document, document.root())[0].id();
+        assert_eq!(
+            details(&document, project).unwrap().hidden,
+            [
+                HiddenData {
+                    tags: vec!["@hidden".to_owned(), "@log(x)".to_owned()],
+                    lines: 3,
+                },
+                HiddenData {
+                    tags: vec!["@hidden".to_owned()],
+                    lines: 1,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn only_blocks_have_details() {
+        let document = parse("a\n\tX @hidden");
+        let hidden = document
+            .get(children(&document, document.root())[0].id())
+            .unwrap()
+            .children()[0];
+        assert_eq!(details(&document, hidden), None);
+        assert_eq!(details(&document, document.root()), None);
     }
 }

@@ -161,6 +161,6 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
 | `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which, since bookmarks show only in the sidebar. |
 | `open_url` (FR-BLK-06) | Open the URL block's address, or a bare URL under the caret or in the focused block (D-10), in the system browser (`open`, `xdg-open`, `start`). |
-| `details` (D-3) | Popup listing the block's tags, including unsupported ones, read-only. |
+| `details` (D-3) | Read-only popup titled "Details:" listing the focused block's tags as written, in order, each unsupported one marked "unsupported" (FR-TAG-02), then each special node the block owns as hidden data with its tags and line count ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)); "No tags" when there is nothing to list. Any key closes it. |
 
 All block commands apply to every selected block (FR-OPS-07). Tags are written with the rules in [file-format.md §5](file-format.md#5-tags).

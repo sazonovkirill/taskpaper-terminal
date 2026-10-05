@@ -18,7 +18,7 @@ use crate::{
         Access, DatePromptView, DiffLine, Editor, Notice, PickerView, Row, SaveState, TypeMenuView,
     },
     document::{
-        BlockKind, DateTag, TagColor,
+        BlockKind, DateTag, Details, TagColor,
         dates::DateError,
         inline::{self, Format, Syntax},
     },
@@ -286,18 +286,18 @@ impl Widget for ConflictPrompt<'_> {
     }
 }
 
-/// A menu over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
-/// box with a title listing the entries the filter matches, the highlighted one reversed, with
-/// the filter at the bottom once one is typed. It shows the type menu (D-44) and the color picker
-/// (FR-TAG-05).
+/// A popup over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
+/// box with a title listing lines, for a menu the entries the filter matches with the highlighted
+/// one reversed and the filter at the bottom once one is typed. It shows the type menu (D-44),
+/// the color picker (FR-TAG-05) and a block's details (D-3).
 #[derive(Debug)]
-pub struct MenuPopup {
+pub struct Popup {
     title: &'static str,
     entries: Vec<Line<'static>>,
     filter: String,
 }
 
-impl MenuPopup {
+impl Popup {
     /// The type menu, titled "Node type:", with `/` before its filter.
     #[must_use]
     pub fn types(menu: &TypeMenuView) -> Self {
@@ -324,6 +324,38 @@ impl MenuPopup {
             title: "Color:",
             entries: entries(names, picker.selected),
             filter: picker.filter.to_owned(),
+        }
+    }
+
+    /// A block's details, titled "Details:": each tag as written, the unsupported ones marked,
+    /// then each special node it owns as hidden data with its tags and line count (D-3).
+    #[must_use]
+    pub fn details(details: &Details) -> Self {
+        let tags = details.tags.iter().map(|(tag, supported)| {
+            let mut line = Line::from(format!(" {tag} "));
+            if !supported {
+                line.push_span(Span::styled("unsupported ", Style::new().dim()));
+            }
+            line
+        });
+        let hidden = details.hidden.iter().map(|node| {
+            let lines = match node.lines {
+                1 => "1 line".to_owned(),
+                n => format!("{n} lines"),
+            };
+            Line::from(vec![
+                Span::styled(" Hidden data ", Style::new().dim()),
+                Span::raw(format!("{} · {lines} ", node.tags.join(" "))),
+            ])
+        });
+        let mut entries: Vec<Line<'static>> = tags.chain(hidden).collect();
+        if entries.is_empty() {
+            entries.push(Line::from(" No tags ").dim());
+        }
+        Self {
+            title: "Details:",
+            entries,
+            filter: String::new(),
         }
     }
 
@@ -365,7 +397,7 @@ fn entries<'a>(
         .collect()
 }
 
-impl Widget for MenuPopup {
+impl Widget for Popup {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let frame = Block::bordered()
@@ -978,7 +1010,7 @@ mod tests {
             state.update(Message::TypeMenu(*key));
         }
         let menu = state.type_menu().unwrap();
-        let popup = MenuPopup::types(&menu);
+        let popup = Popup::types(&menu);
         let (width, height) = popup.size();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
         popup.render(buf.area, &mut buf);
@@ -1015,13 +1047,52 @@ mod tests {
         assert_eq!(type_menu(&[Type('e'), Type('c'), Type('t')]), expected);
     }
 
+    /// The details popup of the first block of `text`, drawn at its size.
+    fn details(text: &str) -> Buffer {
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::OpenDetails);
+        let popup = Popup::details(&state.details().unwrap());
+        let (width, height) = popup.size();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        popup.render(buf.area, &mut buf);
+        buf
+    }
+
+    // D-3, FR-SPC-01
+    #[test]
+    fn the_details_list_tags_marking_the_unsupported_and_hidden_data() {
+        let mut expected = Buffer::with_lines([
+            "┌Details:────────────────────────────┐",
+            "│ @due(2026-10-08)                   │",
+            "│ @estimate(2h) unsupported          │",
+            "│ Hidden data @hidden @log · 2 lines │",
+            "│ Hidden data @hidden · 1 line       │",
+            "└────────────────────────────────────┘",
+        ]);
+        expected.set_style(Rect::new(16, 2, 12, 1), Style::new().dim());
+        expected.set_style(Rect::new(1, 3, 13, 1), Style::new().dim());
+        expected.set_style(Rect::new(1, 4, 13, 1), Style::new().dim());
+        assert_eq!(
+            details("- a @due(2026-10-08) @estimate(2h)\n\tL @hidden @log\n\t\tx\n\tY @hidden"),
+            expected
+        );
+    }
+
+    // D-3
+    #[test]
+    fn the_details_of_a_block_without_tags_say_so() {
+        let mut expected = Buffer::with_lines(["┌Details:─┐", "│ No tags │", "└─────────┘"]);
+        expected.set_style(Rect::new(1, 1, 9, 1), Style::new().dim());
+        assert_eq!(details("a"), expected);
+    }
+
     // FR-TAG-05, keybindings.md §4
     #[test]
     fn the_color_picker_names_each_color_in_its_tint() {
         let mut state = State::new(format::parse("- a @blue"), None);
         state.update(Message::OpenColorPicker);
         let picker = state.color_picker().unwrap();
-        let popup = MenuPopup::colors(&picker);
+        let popup = Popup::colors(&picker);
         assert_eq!(popup.size(), (10, 9));
         let mut buf = Buffer::empty(Rect::new(0, 0, 10, 9));
         popup.render(buf.area, &mut buf);
@@ -1044,7 +1115,7 @@ mod tests {
         state.update(Message::ColorPicker(crate::app::MenuInput::Type('v')));
         let picker = state.color_picker().unwrap();
         let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
-        MenuPopup::colors(&picker).render(buf.area, &mut buf);
+        Popup::colors(&picker).render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines(["┌Color:──┐", "│ Violet │", "└v───────┘"]);
         expected.set_style(
             Rect::new(1, 1, 8, 1),

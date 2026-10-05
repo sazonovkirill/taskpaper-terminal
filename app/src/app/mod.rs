@@ -4,6 +4,7 @@
 mod color_picker;
 mod date_prompt;
 pub mod demo;
+mod details;
 mod edit_mode;
 mod editing;
 pub mod external;

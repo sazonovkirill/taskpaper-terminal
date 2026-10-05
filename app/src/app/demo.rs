@@ -264,4 +264,26 @@ mod tests {
             "demo lacks five open tasks in a row to select and complete at once"
         );
     }
+
+    // D-3
+    #[test]
+    fn demo_has_unsupported_tags_and_hidden_data_for_the_details() {
+        let state = State::new(format::parse(&text(TODAY)), None);
+        let document = state.document();
+        let details: Vec<_> = state
+            .rows()
+            .iter()
+            .filter_map(|row| crate::document::blocks::details(document, row.id))
+            .collect();
+        assert!(
+            details
+                .iter()
+                .any(|details| details.tags.iter().any(|&(_, supported)| !supported)),
+            "demo lacks an unsupported tag for the details"
+        );
+        assert!(
+            details.iter().any(|details| !details.hidden.is_empty()),
+            "demo lacks hidden data for the details"
+        );
+    }
 }

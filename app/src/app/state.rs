@@ -47,6 +47,8 @@ pub struct State {
     pub(super) color_picker: Option<Picker<Option<TagColor>>>,
     /// The prompt for a block's start or due date, while it is open (FR-TAG-03).
     pub(super) date_prompt: Option<DatePrompt>,
+    /// Whether the details popup is open over the focused block (D-3).
+    pub(super) details: bool,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
@@ -199,6 +201,7 @@ impl State {
             edit: None,
             color_picker: None,
             date_prompt: None,
+            details: false,
             folds: HashSet::new(),
             zoom: None,
             history: vec![None],

@@ -20,8 +20,8 @@ use ratatui::{
 
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Io, Recovery, RecoveryError};
-use keymap::{Context, Keymap, PromptKey};
-use widgets::{ConflictPrompt, DatePromptPopup, MenuPopup, OutlineView};
+use keymap::{Context, Keymap, Overlay, PromptKey};
+use widgets::{ConflictPrompt, DatePromptPopup, OutlineView, Popup};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,8 +107,7 @@ impl Tui {
             today: (self.clock)().date(),
             mode: self.state.mode(),
             type_menu: self.state.type_menu().is_some(),
-            color_picker: self.state.color_picker().is_some(),
-            date_prompt: self.state.date_prompt().is_some(),
+            overlay: self.overlay(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
             return;
@@ -290,13 +289,17 @@ impl Tui {
             );
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.type_menu() {
-                let popup = MenuPopup::types(&menu);
+                let popup = Popup::types(&menu);
                 let area = layout::anchored(outline, caret, popup.size());
                 frame.render_widget(popup, area);
             }
         }
-        if let Some(picker) = self.state.color_picker() {
-            let popup = MenuPopup::colors(&picker);
+        let centered = self
+            .state
+            .color_picker()
+            .map(|picker| Popup::colors(&picker))
+            .or_else(|| self.state.details().map(|details| Popup::details(&details)));
+        if let Some(popup) = centered {
             let (width, height) = popup.size();
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
             frame.render_widget(popup, area);
@@ -347,6 +350,17 @@ impl Tui {
         let pending = self.keymap.pending();
         if !pending.is_empty() {
             frame.render_widget(Line::from(format!(" {pending}")).right_aligned(), area);
+        }
+    }
+
+    /// The popup over the outline that takes the keys of navigate mode, if one is open.
+    fn overlay(&self) -> Option<Overlay> {
+        if self.state.date_prompt().is_some() {
+            Some(Overlay::DatePrompt)
+        } else if self.state.color_picker().is_some() {
+            Some(Overlay::ColorPicker)
+        } else {
+            self.state.details().map(|_| Overlay::Details)
         }
     }
 

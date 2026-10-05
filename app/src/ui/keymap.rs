@@ -33,10 +33,19 @@ pub struct Context {
     pub mode: Mode,
     /// Whether the type menu is open, which takes the keys of edit mode (D-44).
     pub type_menu: bool,
-    /// Whether the color picker is open, which takes the keys of navigate mode (FR-TAG-05).
-    pub color_picker: bool,
-    /// Whether the date prompt is open, which takes the keys of navigate mode (FR-TAG-03).
-    pub date_prompt: bool,
+    /// The popup over the outline that takes the keys of navigate mode, if one is open.
+    pub overlay: Option<Overlay>,
+}
+
+/// A popup over the outline in navigate mode, which takes its keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Overlay {
+    /// The color picker (FR-TAG-05).
+    ColorPicker,
+    /// The date prompt (FR-TAG-03).
+    DatePrompt,
+    /// The details popup, which any key closes (D-3).
+    Details,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -159,6 +168,7 @@ const NAVIGATE: &[Binding] = &[
     }),
     (&[key!('m'), key!('s')], |c| date_prompt(DateTag::Start, c)),
     (&[key!('m'), key!('d')], |c| date_prompt(DateTag::Due, c)),
+    (&[key!('m'), key!('i')], |_| Message::OpenDetails),
     (&[key!('z')], |_| Message::Undo),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!('Z')], |_| Message::Redo),
@@ -444,9 +454,14 @@ impl Keymap {
             ),
             code => (key.modifiers, code),
         };
-        if context.date_prompt {
+        if let Some(overlay) = context.overlay {
             self.pending.clear();
-            return date_prompt_message(pressed);
+            return match overlay {
+                Overlay::DatePrompt => date_prompt_message(pressed),
+                Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
+                Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
+                Overlay::Details => Some(Message::CloseDetails),
+            };
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
@@ -455,10 +470,6 @@ impl Keymap {
             } else {
                 edit_message(pressed, context)
             };
-        }
-        if context.color_picker {
-            self.pending.clear();
-            return menu_message(pressed, Message::ColorPicker);
         }
         self.pending.push(pressed);
         if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
@@ -514,8 +525,7 @@ mod tests {
         today: TODAY,
         mode: Mode::Navigate,
         type_menu: false,
-        color_picker: false,
-        date_prompt: false,
+        overlay: None,
     };
 
     const EDITING: &Context = &Context {
@@ -670,7 +680,7 @@ mod tests {
     }
 
     const IN_DATE_PROMPT: &Context = &Context {
-        date_prompt: true,
+        overlay: Some(Overlay::DatePrompt),
         ..*CONTEXT
     };
 
@@ -1033,7 +1043,7 @@ mod tests {
     }
 
     const IN_PICKER: &Context = &Context {
-        color_picker: true,
+        overlay: Some(Overlay::ColorPicker),
         ..*CONTEXT
     };
 
@@ -1078,6 +1088,32 @@ mod tests {
         assert_eq!(press(KeyCode::Tab, none, IN_PICKER), None);
         assert_eq!(
             press(KeyCode::Char('q'), KeyModifiers::CONTROL, IN_PICKER),
+            Some(Message::Quit)
+        );
+        assert_eq!(keymap.pending(), "");
+    }
+
+    // D-3, D-42: plain characters, which both key reportings send alike.
+    #[test]
+    fn m_i_opens_the_details_and_any_key_closes_them() {
+        assert_eq!(messages("mi", CONTEXT), [None, Some(Message::OpenDetails)]);
+        let open = &Context {
+            overlay: Some(Overlay::Details),
+            ..*CONTEXT
+        };
+        let mut keymap = Keymap::default();
+        let mut press = |code, modifiers| keymap.message_for(&key(code, modifiers), ms(0), open);
+        let none = KeyModifiers::NONE;
+        for code in [
+            KeyCode::Esc,
+            KeyCode::Char('j'),
+            KeyCode::Char('g'),
+            KeyCode::Enter,
+        ] {
+            assert_eq!(press(code, none), Some(Message::CloseDetails), "{code:?}");
+        }
+        assert_eq!(
+            press(KeyCode::Char('q'), KeyModifiers::CONTROL),
             Some(Message::Quit)
         );
         assert_eq!(keymap.pending(), "");

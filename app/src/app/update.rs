@@ -157,6 +157,10 @@ pub enum Message {
     },
     /// A key of the open date prompt (FR-TAG-03).
     DatePrompt(DateInput),
+    /// Open the details popup on the focused block (D-3).
+    OpenDetails,
+    /// Close the details popup.
+    CloseDetails,
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -290,6 +294,8 @@ impl Message {
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
+            | Self::OpenDetails
+            | Self::CloseDetails
             | Self::NewBelow
             | Self::NewAbove
             | Self::NewFirstChild
@@ -418,6 +424,8 @@ impl State {
             Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
             Message::DatePrompt(input) => self.date_prompt_input(input),
+            Message::OpenDetails => self.open_details(),
+            Message::CloseDetails => self.close_details(),
             Message::Undo => match self.mode() {
                 Mode::Navigate => self.undo(),
                 Mode::Edit => self.undo_typing(),

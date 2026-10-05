@@ -8,7 +8,7 @@ pub mod metadata;
 pub mod model;
 pub mod structure;
 
-pub use blocks::{Block, BlockKind, TagColor};
+pub use blocks::{Block, BlockKind, Details, HiddenData, TagColor};
 pub use format::DecodeError;
 pub use metadata::{DateChange, DateTag, Flag};
 pub use model::{
