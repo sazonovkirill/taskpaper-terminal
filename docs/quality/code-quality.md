@@ -15,6 +15,10 @@ These are the owner's requirements. Everything else in this document serves them
 6. **Brief doc comments on every public item,** enforced by `missing_docs`.
 7. **Reproducible tooling.** The Rust toolchain is pinned in `rust-toolchain.toml`, and `cargo-deny` checks licenses, advisories and duplicate dependencies as part of validation.
 8. **UI-independent core.** All core functions of the app, the data model and the business logic, are independent of the UI. The terminal UI is one frontend; it must be feasible to run the same core behind a different UI later, such as a web or desktop app, without changing the core.
+9. **SOLID design.** The code follows the SOLID principles, applied the Rust way as [Design principles](#design-principles) describes. This is the owner's main code quality requirement (owner, 2026-10-04).
+10. **Clear abstractions and interfaces, clean boundaries.** Every component hides its internals behind a small, documented interface, and components meet only at those interfaces.
+11. **One clear responsibility per component.** Every module, type and function has one responsibility that can be stated in a sentence.
+12. **Modular code.** Features live in cohesive modules that can be understood, tested and changed on their own.
 
 ## Architecture
 
@@ -43,6 +47,42 @@ Document and App together are the core. Every behavior of the app, including edi
 - **No terminal assumptions.** The core has no global or static mutable state, no direct access to the environment, the terminal or the process, and no dependency that only works in a terminal.
 - **Test the core without the UI.** Unit tests cover every core behavior by sending messages to the core and checking its queries and effects, so the same contract holds for any future frontend. UI tests check the key bindings and what is drawn on top of it.
 
+## Design principles
+
+Requirements 9 to 12 apply at every level, from functions to layers. Rust has no classes or inheritance, so SOLID is applied through modules, visibility, enums, plain functions and, where they earn their place, traits. These principles do not override [AGENTS.md](../../AGENTS.md#3-design-before-implementation): no speculative abstraction, no trait with one implementation, rule of three. Good design here means simple, well-separated code, not more layers.
+
+### SOLID in this codebase
+
+- **Single responsibility.** Each module, type and function has one reason to change, stated in its doc comment. A module's `//!` comment says in one sentence what it is responsible for and which decision it hides, such as the `.taskpaper` syntax or the key bindings. If that sentence needs "and" to join unrelated jobs, split the module. Parsing, editing operations, application state, key mapping and rendering are separate responsibilities, and so are policy (what should happen) and mechanism (how it is done).
+- **Open/closed.** Adding a feature adds code in the place that owns it instead of editing unrelated code. A closed set of variants, such as block kinds, modes or messages, is an enum handled with exhaustive `match`, so adding a variant makes the compiler list every site that needs a decision. Avoid `_` arms on the project's own enums where a new variant would need its own handling. Shared hubs such as `app::update` and `ui::keymap` dispatch to per-feature functions or modules and do not grow feature logic inline. A trait is the extension point only when two or more implementations exist or a real seam needs one.
+- **Liskov substitution.** Every trait implementation honors the contract the trait documents, including its errors and edge cases, so callers never check which implementation they hold. When a trait has several implementations, the same contract tests run against each of them ([testing strategy](testing-strategy.md)).
+- **Interface segregation.** Interfaces are small and specific. A function takes the narrowest input it needs, such as `&Document` or a node identifier instead of the whole `State`, and a trait has only the methods all of its callers use. Do not hand a component data it should not touch.
+- **Dependency inversion.** Policy does not depend on mechanism. The core reaches files, the clock and the terminal only through messages and effects-as-data ([UI-independent core](#ui-independent-core)), and inner layers define the types that outer layers adapt to. Inside the core, dependencies are passed in as parameters, never reached through globals, statics or the environment.
+
+### Interfaces and boundaries
+
+- **Deep modules.** A module's interface is much simpler than what it does: a few well-named functions and types that hide a design decision, such as the tree representation or the file format. Avoid shallow modules whose interface is as complex as their implementation, pass-through functions that only forward to another call, and wrappers that add a name but no abstraction.
+- **Minimal public surface.** Start private and widen visibility only when another module needs it: `pub(crate)` for use inside the crate, `pub` only for what another layer or the integration tests use. A module's root file (`mod.rs` or `<name>.rs`) declares its interface, re-exporting the types and functions callers use, so callers do not reach into its submodules.
+- **No leaked representation.** An interface exposes operations and read-only queries, not internal collections or fields to mutate. Callers change state only through operations that keep its invariants, so a representation can change without touching them.
+- **Data crosses boundaries as the inner layer's types.** Messages, effects, view queries and errors are defined by the layer that owns them. An outer layer converts its own types, such as key events or Ratatui widgets, at its edge.
+- **No cycles.** Dependencies between sibling modules point one way, like the layers. When two modules need each other, the shared part moves into a third module, or one of them was not a separate responsibility.
+- **Cohesive modules.** Code that changes together lives together. Organize modules by responsibility and feature, such as folding or tags, not by kind of code, such as a module of all helpers or all constants. No `utils` or `misc` dumping grounds.
+- **Small, clear functions.** A function does one thing at one level of abstraction, and its name says what. Prefer early returns and `?` to deep nesting. Clippy's `too_many_lines`, `too_many_arguments` and `cognitive_complexity` lints flag functions to split ([Static analysis](#static-analysis)).
+
+### Agent failure modes
+
+Studies of AI-written code find more duplication, less reuse of existing code and more churn than in human-written code ([GitClear](https://arc.dev/developer-blog/impact-of-ai-on-code/), [LeadDev](https://leaddev.com/ai/code-maintainability-plummets-in-the-ai-coding-era)), and a reviewer asked to find gaps tends to push toward extra layers and defensive code ([Claude Code best practices](https://code.claude.com/docs/en/best-practices)). Implementers check their own diff for these before review, and reviewers look for them:
+
+- A new helper, type or module that duplicates one that already exists, or a near copy of existing code with small changes
+- A new pattern for something the codebase already does one way, such as error handling, naming or test layout
+- Abstraction with no second use: a trait, generic parameter, builder, configuration option or layer for a single case
+- Defensive checks for states the types already rule out, and fallbacks that hide failures
+- Feature logic added inline to a hub or a long function instead of to the module that owns it
+- Code that works around a design that no longer fits instead of first refactoring it ([AGENTS.md](../../AGENTS.md#4-minimal-focused-diffs))
+- Dead code, commented-out code and comments that narrate the change
+
+Code written before these rules is brought into line where a task changes that code, through a preparatory refactoring. Reviewers raise an existing violation only where the diff touches it.
+
 ## Types and state
 
 - Make invalid states unrepresentable. Use enums for node kinds, modes and outcomes, and newtypes for identifiers and validated values (such as a tag name), instead of strings, booleans or bare integers whose meaning depends on context.
@@ -69,7 +109,7 @@ Document and App together are the core. Every behavior of the app, including edi
 ## Naming and size
 
 - Follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/naming.html) for naming and conversions (`as_`, `to_`, `into_`, `try_`, `iter`). Use the TaskPaper and Workflowy vocabulary the specs use: project, task, note, tag, outline, zoom, fold.
-- Keep modules, types and functions cohesive with one responsibility. Clippy's pedantic `too_many_lines` (100 lines) and argument-count limits flag functions to split; split them rather than allow the lint.
+- Keep modules, types and functions cohesive with one responsibility ([Design principles](#design-principles)). Clippy's `too_many_lines` (100 lines), `too_many_arguments` and `cognitive_complexity` lints flag functions to split; split them rather than allow the lint. `cognitive_complexity` is an approximation: when splitting would make a function harder to read, `#[expect]` it with a reason.
 - File length is a review signal, not a hard limit: a file that mixes responsibilities is split by responsibility, not by line count.
 
 ## Static analysis
@@ -88,6 +128,7 @@ panic = "warn"
 todo = "warn"
 unimplemented = "warn"
 indexing_slicing = "warn"
+cognitive_complexity = "warn"
 ```
 
 - `validate.sh` runs Clippy with `-D warnings`, so every warning fails validation and the baseline stays at zero warnings. Tests may use `unwrap`, `panic!` and indexing through Clippy's `allow-unwrap-in-tests`, `allow-panic-in-tests` and `allow-indexing-slicing-in-tests` settings in `app/clippy.toml`.
@@ -109,6 +150,7 @@ indexing_slicing = "warn"
 Beyond correctness and the [testing strategy](testing-strategy.md), reviewers check:
 
 - Layer boundaries and dependency direction, and that no logic leaked into `main.rs` or the view
+- The [design principles](#design-principles): one responsibility per component, small interfaces, no leaked representation, no cycles, and none of the agent failure modes. A design finding is P1 only when it breaks a rule written in this document, with the proof the [severity rules](agent-workflow.md#severity) require; a view that a different design would be cleaner is P2
 - That `.taskpaper` content the change does not understand survives a save
 - Typed errors, no new panic paths, and no silently discarded errors
 - Lint suppressions: each one narrow, justified and unavoidable
@@ -125,3 +167,8 @@ Beyond correctness and the [testing strategy](testing-strategy.md), reviewers ch
 - cargo-deny: https://embarkstudios.github.io/cargo-deny/
 - thiserror and anyhow: https://docs.rs/thiserror/latest/thiserror/, https://docs.rs/anyhow/latest/anyhow/
 - Ratatui, the Elm Architecture: https://ratatui.rs/concepts/application-patterns/the-elm-architecture/
+- SOLID: Robert C. Martin, *Agile Software Development: Principles, Patterns, and Practices* (2002)
+- Deep modules and information hiding: John Ousterhout, *A Philosophy of Software Design*, 2nd ed. (2021)
+- Preparatory refactoring ("make the change easy, then make the easy change"): Martin Fowler, *Refactoring*, 2nd ed. (2018)
+- Claude Code best practices: https://code.claude.com/docs/en/best-practices
+- Maintainability of AI-written code: https://arc.dev/developer-blog/impact-of-ai-on-code/, https://leaddev.com/ai/code-maintainability-plummets-in-the-ai-coding-era

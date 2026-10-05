@@ -26,6 +26,7 @@ panic = "warn"
 todo = "warn"
 unimplemented = "warn"
 indexing_slicing = "warn"
+cognitive_complexity = "warn"
 
 [dev-dependencies]
 tempfile = "3.27.0"

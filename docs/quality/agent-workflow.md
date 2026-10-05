@@ -76,7 +76,7 @@ Verified P0/P1 findings are fixed through the commit gate above, in the cloud, b
 
 ### Severity
 
-- **P0/P1 (critical/major):** a functional bug, data loss, security flaw, explicit violation of the task's acceptance criteria or governing documents, or a logical contradiction. Admissible only with a proof: an execution trace or test case naming concrete inputs, expected result and actual result, or for documents, the conflicting rules quoted with a concrete scenario in which an agent following them fails. A P0/P1 without a proof is demoted to P3 without follow-up questions.
+- **P0/P1 (critical/major):** a functional bug, data loss, security flaw, explicit violation of the task's acceptance criteria or governing documents, or a logical contradiction. Admissible only with a proof: an execution trace or test case naming concrete inputs, expected result and actual result, for documents, the conflicting rules quoted with a concrete scenario in which an agent following them fails, or for a written rule about code structure, such as a layer boundary or a design principle, the rule quoted with the code that breaks it. A P0/P1 without a proof is demoted to P3 without follow-up questions.
 - **P2/P3 (minor/nitpick):** style, naming, wording, readability, optional hardening and anything outside the diff's scope. These never block a commit or start another round and are not debated. Record them on the task; turn worthwhile ones into follow-ups.
 
 ### Modern Rust

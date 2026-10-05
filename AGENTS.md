@@ -41,6 +41,7 @@ Passing tests is necessary, not sufficient. The goal is code a senior reviewer w
 For any change touching more than one module, adding a public interface or introducing a new abstraction:
 
 - First write a short plan covering which components change, where the new code lives and why, the proposed interfaces and rejected alternatives. Record the plan on the task and proceed autonomously when it stays within the task and accepted design. Ask the owner when a material product decision or change to accepted constraints cannot be resolved from existing instructions; pause only the dependent work.
+- Follow SOLID, the owner's main code quality requirement, as the [design principles](docs/quality/code-quality.md#design-principles) apply it: every component has one stated responsibility, a small interface that hides its internals and clean boundaries with its neighbors. The plan names each new or changed component's responsibility and interface.
 - Keep every core function (the data model and business logic) independent of the UI, so the same core could later run behind a web or desktop frontend ([code quality](docs/quality/code-quality.md#ui-independent-core)).
 - Respect existing module boundaries and dependency direction. If the task seems to require breaking them, flag it instead of doing so silently.
 - Prefer extending an existing abstraction to creating a parallel one.
@@ -56,6 +57,7 @@ The best change is the smallest one that fully solves the problem.
 - Before finishing, reread the diff and remove anything not required, including dead code, unused imports, debug output, speculative helpers and comments that restate the code.
 - Comments explain why, never what. Do not narrate changes in comments.
 - Prefer a solution that deletes more code than it adds when both approaches fully solve the problem.
+- When a change does not fit the current design, first refactor so that it does, as its own reviewed commit within the task, then make the change. A refactor the task needs is not a drive-by refactor; do not bolt a feature onto a design that no longer fits it.
 - If the diff is growing large, reassess scope and split coherent work into atomic commits. Escalate when completing the task requires an unapproved scope or design change.
 
 ### Definition of done
@@ -64,6 +66,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 
 - [ ] Follows the patterns of surrounding code; no duplicated helpers
 - [ ] Builds on the existing design without speculative abstractions
+- [ ] Each new or changed component has one responsibility and a small interface, and none of the [agent failure modes](docs/quality/code-quality.md#agent-failure-modes) appear
 - [ ] Handles edge cases at the correct layer without defensive clutter
 - [ ] Behavior changes include unit and integration tests as the [testing strategy](docs/quality/testing-strategy.md) requires, covering behavior rather than implementation details
 - [ ] `bash app/scripts/validate.sh all` and `bash app/scripts/validate.sh mutants` pass on the committed contents; no tests weakened
