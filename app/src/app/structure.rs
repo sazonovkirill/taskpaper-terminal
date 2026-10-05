@@ -714,12 +714,49 @@ mod tests {
         );
     }
 
+    // FR-OPS-08, file-format §3.1
+    #[test]
+    fn undoing_the_lift_of_a_trailing_blank_lets_the_next_undo_reach_the_block() {
+        let (mut state, _) = file("A:\n\tB:\n");
+        state.update(Message::FocusNext);
+        state.update(Message::NewBelow);
+        state.update(Message::StopEditing);
+        later(&mut state, 1);
+        assert_eq!(lines(&state), ["A:", "\tB:", ""]);
+        state.update(Message::Saved);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["A:", "\tB:", "\t"]);
+        assert_eq!(state.save_deadline(), None);
+        assert_eq!(later(&mut state, 5), [], "no save lifts it again");
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["A:", "\tB:"]);
+        state.update(Message::Redo);
+        state.update(Message::Redo);
+        assert_eq!(lines(&state), ["A:", "\tB:", ""], "both steps redone");
+    }
+
     // file-format §3.1
     #[test]
     fn a_new_empty_last_block_at_the_top_level_saves_at_once() {
         let (mut state, path) = file("A:");
         state.update(Message::NewBelow);
         assert_eq!(later(&mut state, 1), save(&path, "A:\n\n", "A:"));
+    }
+
+    // file-io.md §2, file-format §3.1
+    #[test]
+    fn quitting_after_undoing_a_lift_lifts_again_and_saves() {
+        let (mut state, path) = file("A:\n\tB:\n");
+        state.update(Message::FocusNext);
+        state.update(Message::NewBelow);
+        state.update(Message::StopEditing);
+        later(&mut state, 1);
+        state.update(Message::Saved);
+        state.update(Message::Undo);
+        assert_eq!(
+            state.update(Message::Quit),
+            save(&path, "A:\n\tB:\n\n", "A:\n\tB:\n\n")
+        );
     }
 
     // file-io.md §2, file-format §3.1

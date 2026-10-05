@@ -65,6 +65,12 @@ impl History {
     pub fn redo(&mut self, document: &mut Document) -> Result<Option<Restore>, EditError> {
         step(&mut self.redo, &mut self.undo, document)
     }
+
+    /// Whether there is an undone step to redo.
+    #[must_use]
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
 }
 
 /// Applies the latest transaction of `from` and moves its inverse onto `to`.

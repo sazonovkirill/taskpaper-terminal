@@ -252,7 +252,7 @@ impl State {
         let path = self.saveable_path();
         if let Some(path) = &path
             && self.autosave.due(revision, self.now)
-            && !self.editing_holds_save()
+            && !self.holds_save()
         {
             self.lift_trailing_blanks();
             let revision = self.document().revision();
@@ -314,7 +314,19 @@ impl State {
         self.saveable_path()
             .filter(|_| !self.external.in_conflict())
             .and(self.autosave.deadline())
-            .filter(|_| !self.editing_holds_save())
+            .filter(|_| !self.holds_save())
+    }
+
+    /// Whether autosave waits on a shape it would repair: one the edit session holds, or empty
+    /// lines to lift while steps can be redone, because the lift would drop them and redo an
+    /// undone lift at once, so that undo could never get past it (file-format.md §3.1). Ending
+    /// the session and keeping the local version over the disk's do not wait.
+    fn holds_save(&self) -> bool {
+        self.editing_holds_save()
+            || self.autosave.ending.is_none()
+                && !self.autosave.urgent
+                && self.edits.can_redo()
+                && !canonical::trailing_blanks(self.document()).is_empty()
     }
 
     /// Whether the file holds every change, and whether the last save failed.
