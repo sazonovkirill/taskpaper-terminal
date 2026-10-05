@@ -23,7 +23,7 @@ Edits are applied to the document as the user types (one undo step per edit sess
 
 **Text keys** are standard (FR-MODE-03): `←`/`→`, `Home`/`End` to the ends of the text, `Ctrl+←/→` and `Alt+B/F` by word, `Backspace`/`Delete`, `Ctrl+W`/`Alt+Backspace` delete word, `Shift`+motion selects (`Shift+↑`/`Shift+↓` select to the start and end of the text), `Ctrl+A` selects all, `Ctrl+C`/`Ctrl+X`/`Ctrl+V` clipboard. Motion is by grapheme (`unicode-segmentation`). Characters the parser splits lines on ([file-format.md §1](file-format.md#1-input-decoding)) are never typed into a line, and no key breaks a line (D-43).
 
-**Formatting** (FR-FMT-02): `Ctrl+B` wraps the selection (or the word at the caret) in `**`, or removes them; `` Alt+` `` does the same with backticks.
+**Formatting** (FR-FMT-02): `Ctrl+B` wraps the selection (or the word at the caret, or nothing at the caret) in `**`, or removes them when the selection or caret is inside bold text or between the markers; `` Alt+` `` and `Ctrl+E` do the same with backticks.
 
 **Enter, arrows and leaving** (OQ-23, D-43):
 

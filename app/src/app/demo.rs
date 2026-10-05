@@ -198,6 +198,13 @@ mod tests {
         assert!(rows.iter().any(|row| row.today), "demo lacks @today");
         let colors = rows.iter().filter_map(|row| row.color);
         assert!(colors.count() >= 2, "demo lacks color tags");
+        for (syntax, what) in [("**", "bold"), ("`", "code"), ("https://", "a bare URL")] {
+            assert!(
+                rows.iter()
+                    .any(|row| row.kind != BlockKind::Url && row.text.contains(syntax)),
+                "demo lacks {what} in a block's text"
+            );
+        }
         let document = state.document();
         assert!(
             document

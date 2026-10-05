@@ -7,6 +7,7 @@ mod editing;
 mod external_changes;
 mod focus_and_scrolling;
 mod folding;
+mod formatting;
 mod hang_up;
 mod marks;
 mod moving;

@@ -13,7 +13,10 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     app::{Access, ColorPickerView, DiffLine, Editor, Notice, Row, SaveState, TypeMenuView},
-    document::{BlockKind, TagColor},
+    document::{
+        BlockKind, TagColor,
+        inline::{self, Format},
+    },
 };
 
 /// The outline: a gutter that marks the focused block, whose line gets a brighter background, then
@@ -111,8 +114,9 @@ const HOME_ICON: &str = "⌂";
 /// one is left (navigation §4). Bold, as the focused pane's header (ui.md §1).
 #[must_use]
 pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
+    let shown: Vec<String> = crumbs.iter().map(|crumb| shown_text(crumb)).collect();
     let path: Vec<&str> = std::iter::once(HOME_ICON)
-        .chain(crumbs.iter().map(String::as_str))
+        .chain(shown.iter().map(String::as_str))
         .collect();
     let mut line = Line::from(path.join(" › "));
     for start in 1..path.len() {
@@ -389,8 +393,34 @@ fn mine_style() -> Style {
     Style::new().fg(Color::Green)
 }
 
+/// `text` as navigate mode shows it, without the delimiters of its inline formatting
+/// (FR-FMT-01).
+fn shown_text(text: &str) -> String {
+    inline::runs(text).iter().map(|run| run.text).collect()
+}
+
+/// The spans of `text` in `style` with its inline formatting applied over it: bold, code in the
+/// code color and URLs underlined, with the delimiters hidden (FR-FMT-01, D-10).
+fn formatted(text: &str, style: Style) -> impl Iterator<Item = Span<'_>> {
+    inline::runs(text).into_iter().map(move |run| {
+        let Format { bold, code, link } = run.format;
+        let mut style = style;
+        if bold {
+            style = style.bold();
+        }
+        if code {
+            style = style.fg(CODE);
+        }
+        if link {
+            style = style.underlined();
+        }
+        Span::styled(run.text, style)
+    })
+}
+
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
-/// whatever its type, then the marker of a task, then the text (D-31). A collapsed block
+/// whatever its type, then the marker of a task, then the text with its inline formatting
+/// (D-31, FR-FMT-01). A collapsed block
 /// with children shows `▸ n` after its text (ui.md §2). The zoom title is drawn like its block,
 /// in bold (D-34).
 fn row_line(row: &Row, width: usize) -> Line<'_> {
@@ -402,8 +432,11 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
     match row.kind {
         BlockKind::Divider => {}
         // TaskPaper marks a project with a trailing colon, which the display text drops.
-        BlockKind::Project => line.push_span(Span::styled(format!("{}:", row.text), style)),
-        _ => line.push_span(Span::styled(row.text.as_str(), style)),
+        BlockKind::Project => {
+            line.extend(formatted(&row.text, style));
+            line.push_span(Span::styled(":", style));
+        }
+        _ => line.extend(formatted(&row.text, style)),
     }
     if row.hidden_children > 0 {
         line.push_span(Span::styled(
@@ -562,6 +595,9 @@ const PRIMARY: Color = Color::LightBlue;
 /// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
 /// step 6.2.
 const TEXT: Color = Color::Gray;
+
+/// Inline code (FR-FMT-01); themes arrive in step 6.2.
+const CODE: Color = Color::LightYellow;
 
 /// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
 const SECONDARY: Color = Color::LightMagenta;
@@ -890,6 +926,44 @@ mod tests {
         expected.set_style(Rect::new(0, 5, 3, 1), Style::new().fg(TEXT));
         expected.set_style(Rect::new(3, 5, 4, 1), dim);
         assert_eq!(buf, expected);
+    }
+
+    // FR-FMT-01, D-10
+    #[test]
+    fn inline_formatting_is_drawn_over_the_block_style_with_its_delimiters_hidden() {
+        let mut expected = Buffer::with_lines([
+            "- a b c https://x.y ",
+            "P q:                ",
+            "✔ d                 ",
+            "n `                 ",
+        ]);
+        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
+        expected.set_style(Rect::new(4, 0, 1, 1), Style::new().fg(CODE));
+        expected.set_style(Rect::new(8, 0, 11, 1), Style::new().underlined());
+        let project = Style::new().bold().fg(PRIMARY);
+        expected.set_style(Rect::new(0, 1, 4, 1), project);
+        expected.set_style(Rect::new(2, 1, 1, 1), project.fg(CODE));
+        expected.set_style(Rect::new(0, 2, 2, 1), Style::new().dim());
+        expected.set_style(
+            Rect::new(2, 2, 1, 1),
+            Style::new().dim().crossed_out().bold(),
+        );
+        expected.set_style(Rect::new(0, 3, 3, 1), Style::new().fg(TEXT));
+        assert_eq!(
+            render(
+                "- **a** `b` c https://x.y\nP `q`:\n- **d** @done\nn `",
+                20,
+                4
+            ),
+            expected
+        );
+    }
+
+    // FR-FMT-01, FR-NAV-03
+    #[test]
+    fn breadcrumbs_hide_the_delimiters_of_inline_formatting() {
+        let crumbs = ["**Work**".to_owned(), "`x` y".to_owned()];
+        assert_eq!(breadcrumbs(&crumbs, 40).to_string(), "⌂ › Work › x y");
     }
 
     // FR-NAV-03

@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use crate::{
     app::{MenuInput, Message, Mode, Motion, TextEdit},
-    document::{DateChange, DateTag, Flag, format::Typed},
+    document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -276,6 +276,16 @@ const EDIT: &[Binding] = &[
         Message::Text(TextEdit::DeleteWordBackward)
     }),
     (&[key!(ctrl 'a')], |_| Message::Text(TextEdit::SelectAll)),
+    (&[key!(ctrl 'b')], |_| {
+        Message::Text(TextEdit::Toggle(Marker::Bold))
+    }),
+    (&[key!(alt '`')], |_| {
+        Message::Text(TextEdit::Toggle(Marker::Code))
+    }),
+    // `Alt` needs a setting on macOS, so inline code also has a key without it (keybindings.md §1).
+    (&[key!(ctrl 'e')], |_| {
+        Message::Text(TextEdit::Toggle(Marker::Code))
+    }),
     (&[key!(ctrl 'z')], |_| Message::Undo),
     (&[key!(ctrl 'Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
@@ -752,6 +762,18 @@ mod tests {
         ] {
             check_editing(code, modifiers, Some(&expected));
         }
+    }
+
+    // FR-FMT-02
+    #[test]
+    fn formatting_keys_toggle_bold_and_inline_code_in_edit_mode() {
+        let bold = text(TextEdit::Toggle(Marker::Bold));
+        let code = text(TextEdit::Toggle(Marker::Code));
+        check_editing(KeyCode::Char('b'), KeyModifiers::CONTROL, Some(&bold));
+        check_editing(KeyCode::Char('`'), KeyModifiers::ALT, Some(&code));
+        check_editing(KeyCode::Char('e'), KeyModifiers::CONTROL, Some(&code));
+        check(KeyCode::Char('b'), KeyModifiers::CONTROL, None);
+        check(KeyCode::Char('`'), KeyModifiers::ALT, None);
     }
 
     const IN_MENU: &Context = &Context {

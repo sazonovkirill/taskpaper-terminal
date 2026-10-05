@@ -151,7 +151,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
 | Open the type menu (D-44, [editing.md §2.3](editing.md#23-type-menu)) | `/` |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
-| Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` `` |
+| Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
 | Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
@@ -174,7 +174,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 "x" = "none"              # unbind
 
 [keymap.edit]
-"ctrl+e" = "inline_code"
+"ctrl+g" = "inline_code"
 ```
 
 - Keys are written as `mod+mod+key` in lower case (`ctrl`, `alt`, `shift`), or as a sequence separated by spaces (`"g g"`).

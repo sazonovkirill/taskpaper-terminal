@@ -7,6 +7,8 @@ use std::ops::Range;
 
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::document::inline::{self, Marker};
+
 /// A change to a [`TextField`], as a text key asks for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextEdit {
@@ -27,6 +29,9 @@ pub enum TextEdit {
     DeleteWordBackward,
     /// Select the whole text.
     SelectAll,
+    /// Put the marker around the selection, or the word at the caret, or take it off when it is
+    /// there already (FR-FMT-02).
+    Toggle(Marker),
 }
 
 /// Where a caret motion goes.
@@ -131,7 +136,42 @@ impl TextField {
                 caret: self.text.len(),
                 anchor: Some(0),
             },
+            TextEdit::Toggle(marker) => self.toggled(marker),
         }
+    }
+
+    /// The field with `marker` toggled on the selection, which stays on the same text, or on
+    /// the word at the caret, or else at the caret, which stays in the same place in the text.
+    fn toggled(&self, marker: Marker) -> Self {
+        let selection = self.selection();
+        let target = selection.clone().unwrap_or_else(|| self.word_at_caret());
+        let (text, range) = inline::toggle(&self.text, target.clone(), marker);
+        let anchor = selection.map(|selection| {
+            if self.caret == selection.end {
+                range.start
+            } else {
+                range.end
+            }
+        });
+        let caret = match anchor {
+            Some(anchor) if anchor == range.start => range.end,
+            Some(_) => range.start,
+            None => range.start + (self.caret - target.start),
+        };
+        Self {
+            text,
+            caret,
+            anchor,
+        }
+    }
+
+    /// The word the caret is in or touches, or the empty range at the caret.
+    fn word_at_caret(&self) -> Range<usize> {
+        self.text
+            .unicode_word_indices()
+            .map(|(at, word)| at..at + word.len())
+            .find(|word| word.start <= self.caret && self.caret <= word.end)
+            .unwrap_or(self.caret..self.caret)
     }
 
     /// The selection, or the bytes between the caret and `to` when nothing is selected.
@@ -357,6 +397,30 @@ mod tests {
         check("one two  |x", TextEdit::DeleteWordBackward, "one |x");
         check("|one", TextEdit::DeleteWordBackward, "|one");
         check("on[e tw|o", TextEdit::DeleteWordBackward, "on|o");
+    }
+
+    // FR-FMT-02
+    #[test]
+    fn toggling_a_marker_acts_on_the_selection_keeping_it() {
+        let bold = TextEdit::Toggle(Marker::Bold);
+        check("a [bc| d", bold, "a **[bc|** d");
+        check("a |bc[ d", bold, "a **|bc[** d");
+        check("a **[bc|** d", bold, "a [bc| d");
+        check("[**bc**|", bold, "[bc|");
+    }
+
+    // FR-FMT-02
+    #[test]
+    fn toggling_a_marker_without_a_selection_acts_on_the_word_at_the_caret() {
+        let code = TextEdit::Toggle(Marker::Code);
+        check("one tw|o three", code, "one `tw|o` three");
+        check("one two| three", code, "one `two|` three");
+        check("one |two", code, "one `|two`");
+        check("one `tw|o`", code, "one tw|o");
+        check("one |", code, "one `|`");
+        check("one `|`", code, "one |");
+        check("|", TextEdit::Toggle(Marker::Bold), "**|**");
+        check("**a b|**", TextEdit::Toggle(Marker::Bold), "a b|");
     }
 
     #[test]

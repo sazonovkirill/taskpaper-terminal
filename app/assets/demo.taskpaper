@@ -19,6 +19,7 @@ Website release 2.0:
 		- Announce it on the blog @today @blue
 	---
 	Ship once every checklist item is done.
+	Run `make deploy` only when **all** tests pass; status at https://status.example.com
 Reading list:
 	- The Pragmatic Programmer
 	- Thinking, Fast and Slow @start({today})

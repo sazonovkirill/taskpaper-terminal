@@ -3,6 +3,7 @@
 pub mod blocks;
 pub mod dates;
 pub mod format;
+pub mod inline;
 pub mod metadata;
 pub mod model;
 pub mod structure;
