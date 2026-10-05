@@ -279,9 +279,10 @@ impl State {
         }
     }
 
-    /// Replaces the document with `document`, keeping the zoom, the focus, the history and the
-    /// collapsed blocks on the blocks they were on. An edit session ends with the document it
-    /// edited, whose text is saved or in a conflict copy, and the date prompt closes with it.
+    /// Replaces the document with `document`, keeping the zoom, the focus, the history, the
+    /// selection and the collapsed blocks on the blocks they were on. An edit session ends with
+    /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
+    /// closes with it.
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
@@ -294,12 +295,15 @@ impl State {
             .map(|zoom| zoom.and_then(nearest))
             .collect();
         self.focus = self.focus.and_then(nearest);
+        let exact = |id: ItemId| {
+            rematch(&old, &self.document, id).and_then(|(id, exact)| exact.then_some(id))
+        };
         self.folds = self
             .folds
             .iter()
-            .filter_map(|&id| rematch(&old, &self.document, id))
-            .filter_map(|(id, exact)| exact.then_some(id))
+            .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
+        self.selection = self.selection.mapped(exact);
         if self.focus.is_none() {
             self.focus = self.rows().first().map(|row| row.id);
         }
@@ -405,7 +409,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, state::NOTICE_TIME},
+        app::{Message, SelectionChange, state::NOTICE_TIME},
         document::{Op, Transaction},
     };
 
@@ -944,5 +948,23 @@ mod tests {
         let mut state = opened("a\n");
         state.update(found("b\n"));
         assert_eq!(state.deadline(), Some(NOTICE_TIME));
+    }
+
+    // FR-OPS-01, F-FILE-06
+    #[test]
+    fn a_reload_keeps_the_selection_on_the_blocks_it_was_on() {
+        let mut state = opened("- a\n- b\n- c\n");
+        state.update(Message::FocusNext);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(found("- z\n- a\n- b\n- c\n"));
+        let selected: Vec<String> = state
+            .rows()
+            .into_iter()
+            .filter(|row| row.selected)
+            .map(|row| row.text)
+            .collect();
+        assert_eq!(selected, ["b"]);
+        state.update(Message::Delete);
+        assert_eq!(texts(&state), ["z", "a", "c"]);
     }
 }

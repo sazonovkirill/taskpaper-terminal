@@ -43,6 +43,15 @@ impl Selection {
     pub(super) fn contains(&self, id: ItemId) -> bool {
         self.picked.contains(&id)
     }
+
+    /// This selection with each block replaced by the one `to` finds for it, or dropped when it
+    /// finds none, and no run, as when the document is replaced.
+    pub(super) fn mapped(&self, to: impl Fn(ItemId) -> Option<ItemId>) -> Self {
+        Self {
+            picked: self.picked.iter().filter_map(|&id| to(id)).collect(),
+            run: None,
+        }
+    }
 }
 
 impl State {
