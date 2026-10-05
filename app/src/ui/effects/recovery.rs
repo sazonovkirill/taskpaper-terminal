@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use jiff::civil::DateTime;
+use jiff::{SignedDuration, civil::DateTime};
 use thiserror::Error;
 
 use super::{atomic, backup};
@@ -54,9 +54,9 @@ impl Recovery {
     }
 
     /// Writes `text`, the document opened from `file` or from no file, to a new recovery file
-    /// `<name>-<YYYYMMDD-HHMMSS>.taskpaper` and returns its path. `<name>` is the name of the
-    /// file's backup folder, which tells apart files with one name, or `untitled`. The recovery
-    /// file is as private as the file.
+    /// `<name>-<YYYYMMDD-HHMMSS>.taskpaper`, a later second when that name is taken, and returns
+    /// its path. `<name>` is the name of the file's backup folder, which tells apart files with
+    /// one name, or `untitled`. The recovery file is as private as the file.
     ///
     /// # Errors
     ///
@@ -68,12 +68,22 @@ impl Recovery {
             None => OsString::from(UNTITLED),
         };
         fs::create_dir_all(folder)?;
-        let path = folder.join(file_name(&name, (self.now)()));
         let permissions = file
             .and_then(|file| fs::metadata(file).ok())
             .map(|metadata| metadata.permissions());
-        atomic::replace(&path, text.as_bytes(), permissions)?;
-        Ok(path)
+        let mut time = (self.now)();
+        loop {
+            let path = folder.join(file_name(&name, time));
+            let Err(error) = atomic::create(&path, text.as_bytes(), permissions.clone()) else {
+                return Ok(path);
+            };
+            match error.kind() {
+                io::ErrorKind::AlreadyExists => {
+                    time = time.saturating_add(SignedDuration::from_secs(1));
+                }
+                _ => return Err(error.into()),
+            }
+        }
     }
 
     /// The newest recovery file of `file` written no earlier than `file` last changed, or the
@@ -263,6 +273,33 @@ mod tests {
         Ok(())
     }
 
+    // file-io.md §4
+    #[test]
+    fn a_second_recovery_in_one_second_takes_the_next_one_and_keeps_the_first() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let file = dir.path().join("todo.taskpaper");
+        fs::write(&file, "- on disk\n")?;
+        touch(&file, 1000)?;
+        let recovery = recovery(dir.path());
+        let first = recovery.write(Some(&file), "- first\n")?;
+        let second = recovery.write(Some(&file), "- second\n")?;
+        let third = recovery.write(Some(&file), "- third\n")?;
+        let name = name(&file)?.to_string_lossy().into_owned();
+        for (written, stamp, text) in [
+            (&first, "090703", "- first\n"),
+            (&second, "090704", "- second\n"),
+            (&third, "090705", "- third\n"),
+        ] {
+            assert_eq!(
+                written.file_name(),
+                Some(OsStr::new(&format!("{name}-20261005-{stamp}.taskpaper")))
+            );
+            assert_eq!(fs::read_to_string(written)?, text);
+        }
+        assert_eq!(recovery.find(&file)?, Some(third));
+        Ok(())
+    }
+
     #[test]
     fn a_document_without_a_file_or_with_a_new_one_is_recovered_too() -> TestResult {
         let dir = tempfile::tempdir()?;
@@ -299,6 +336,16 @@ mod tests {
             recovery(dir.path()).write(Some(&inside_a_file), "x"),
             Err(RecoveryError::Io(_))
         ));
+        let dir = tempfile::tempdir()?;
+        let folder = dir.path().join("recovery");
+        fs::create_dir(&folder)?;
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o500))?;
+        let written = recovery(dir.path()).write(None, "x");
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o700))?;
+        assert!(
+            matches!(written, Err(RecoveryError::Io(ref error)) if error.kind() == io::ErrorKind::PermissionDenied),
+            "{written:?}"
+        );
         assert!(
             RecoveryError::NoFolder
                 .to_string()

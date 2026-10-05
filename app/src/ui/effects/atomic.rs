@@ -71,6 +71,23 @@ pub fn replace(target: &Path, contents: &[u8], permissions: Option<Permissions>)
     Prepared { temp, target }.commit()
 }
 
+/// Creates the file at `target`, which is not a link, with `contents` and the given
+/// permissions, or the default ones, unless a file is there already, even one another process
+/// creates meanwhile.
+///
+/// # Errors
+///
+/// [`io::ErrorKind::AlreadyExists`] when `target` exists, or the I/O error of the step that
+/// failed; nothing is created then.
+pub fn create(target: &Path, contents: &[u8], permissions: Option<Permissions>) -> io::Result<()> {
+    let target = std::path::absolute(target)?;
+    write_beside(&target, contents, permissions)?.persist_noclobber(&target)?;
+    // A folder that refuses to sync is no failure, as in `Prepared::commit`.
+    let folder = target.parent().unwrap_or(&target);
+    let _ = File::open(folder).and_then(|folder| folder.sync_all());
+    Ok(())
+}
+
 /// A temporary file beside `target`, an absolute path, holding `contents` with the given
 /// permissions, or the default ones, synced to disk.
 fn write_beside(
@@ -162,6 +179,24 @@ mod tests {
             mode(&path)? & 0o044,
             0,
             "readable by others unless the umask forbids it, not 0600 like a temporary file"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn creates_a_file_only_where_none_is() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("new.taskpaper");
+        create(&path, b"- a\n", Some(Permissions::from_mode(0o600)))?;
+        assert_eq!(fs::read_to_string(&path)?, "- a\n");
+        assert_eq!(mode(&path)?, 0o600);
+        let error = create(&path, b"- b\n", None).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(fs::read_to_string(&path)?, "- a\n");
+        assert_eq!(
+            names(dir.path())?,
+            ["new.taskpaper"],
+            "no temporary file is left"
         );
         Ok(())
     }
