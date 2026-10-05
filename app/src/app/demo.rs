@@ -197,6 +197,11 @@ mod tests {
                 .any(|row| row.kind == BlockKind::Note && row.lines.len() > 1),
             "demo lacks a multi-line note"
         );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Code && row.lines.len() > 1),
+            "demo lacks a code block of several lines"
+        );
         let hidden = document
             .descendants(document.root())
             .filter_map(|(id, _)| document.get(id))

@@ -245,11 +245,11 @@ impl Tui {
             && let Some(start) = self.focused_lines().map(|lines| lines.start)
         {
             let text_width = outline.width.saturating_sub(widgets::GUTTER_WIDTH);
-            let (_, caret) = widgets::editor_line(row, editor, usize::from(text_width));
-            let x = u16::try_from(caret)
+            let (_, (column, line)) = widgets::editor_lines(row, editor, usize::from(text_width));
+            let x = u16::try_from(column)
                 .unwrap_or(u16::MAX)
                 .min(text_width.saturating_sub(1));
-            let y = u16::try_from(start.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
+            let y = u16::try_from((start + line).saturating_sub(self.scroll)).unwrap_or(u16::MAX);
             frame.set_cursor_position((
                 outline.x.saturating_add(widgets::GUTTER_WIDTH + x),
                 outline.y.saturating_add(y),
@@ -286,6 +286,10 @@ impl Tui {
             self.state.confirming_quit(),
             self.state.notice(),
         ));
+        if self.state.editor().is_some_and(|editor| editor.splits) {
+            spans.push(" · ".into());
+            spans.push(widgets::split_hint());
+        }
         frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a
         // long path rather than the other way round.

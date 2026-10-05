@@ -1,5 +1,5 @@
-//! One line of text being edited with the standard text keys: a caret and a selection that move
-//! by grapheme and by word, insertion and deletion (FR-MODE-03,
+//! A text of one or more lines being edited with the standard text keys: a caret and a selection
+//! that move by grapheme, by word and by line, insertion, line breaks and deletion (FR-MODE-03,
 //! [editing.md §2](../../../docs/specs/editing.md#2-edit-mode)). Hides grapheme and word
 //! segmentation.
 
@@ -12,6 +12,8 @@ use unicode_segmentation::UnicodeSegmentation;
 pub enum TextEdit {
     /// Type a character in place of the selection, or at the caret.
     Insert(char),
+    /// Break the line in place of the selection, or at the caret (OQ-23).
+    LineBreak,
     /// Move the caret; with `select`, extend the selection to it.
     Move {
         /// Where to.
@@ -40,13 +42,19 @@ pub enum Motion {
     WordLeft,
     /// To the end of the word after the caret.
     WordRight,
-    /// To the start of the text.
+    /// To the start of the caret's line.
     Start,
-    /// To the end of the text.
+    /// To the end of the caret's line.
     End,
+    /// To the line above, as many graphemes from its start as the caret is from the start of its
+    /// own line, or to its end when it is shorter.
+    Up,
+    /// To the line below, as [`Motion::Up`] goes to the line above.
+    Down,
 }
 
-/// A text with a caret and an optional selection, both at grapheme boundaries.
+/// A text with a caret and an optional selection, both at grapheme boundaries; `\n` separates its
+/// lines.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextField {
     text: String,
@@ -104,6 +112,7 @@ impl TextField {
     pub fn edited(&self, edit: TextEdit) -> Self {
         match edit {
             TextEdit::Insert(c) => self.replaced(self.selection_or(self.caret), &String::from(c)),
+            TextEdit::LineBreak => self.replaced(self.selection_or(self.caret), "\n"),
             TextEdit::Move { motion, select } => self.moved(motion, select),
             TextEdit::DeleteBackward => self.replaced(self.selection_or(self.left()), ""),
             TextEdit::DeleteForward => self.replaced(self.selection_or(self.right()), ""),
@@ -142,14 +151,51 @@ impl TextField {
             (Motion::Right, None) => self.right(),
             (Motion::WordLeft, _) => self.word_left(),
             (Motion::WordRight, _) => self.word_right(),
-            (Motion::Start, _) => 0,
-            (Motion::End, _) => self.text.len(),
+            (Motion::Start, _) => self.line_start(self.caret),
+            (Motion::End, _) => self.line_end(self.caret),
+            (Motion::Up, _) => self.vertical(self.line_start(self.caret).checked_sub(1)),
+            (Motion::Down, _) => self
+                .vertical(Some(self.line_end(self.caret) + 1).filter(|&at| at <= self.text.len())),
         };
         Self {
             text: self.text.clone(),
             caret,
             anchor: select.then(|| self.anchor.unwrap_or(self.caret)),
         }
+    }
+
+    /// The start of the line holding byte `at`.
+    fn line_start(&self, at: usize) -> usize {
+        self.text
+            .get(..at)
+            .and_then(|before| before.rfind('\n'))
+            .map_or(0, |line_break| line_break + 1)
+    }
+
+    /// The end of the line holding byte `at`, before its line break.
+    fn line_end(&self, at: usize) -> usize {
+        self.text
+            .get(at..)
+            .and_then(|after| after.find('\n'))
+            .map_or(self.text.len(), |line_break| at + line_break)
+    }
+
+    /// The caret moved to the line holding byte `to`, as many graphemes from its start as the
+    /// caret is from the start of its own line; the caret itself when there is no such line.
+    fn vertical(&self, to: Option<usize>) -> usize {
+        let Some(to) = to else {
+            return self.caret;
+        };
+        let start = self.line_start(self.caret);
+        let column = self
+            .text
+            .get(start..self.caret)
+            .map_or(0, |before| before.graphemes(true).count());
+        let (start, end) = (self.line_start(to), self.line_end(to));
+        let line = self.text.get(start..end).unwrap_or_default();
+        line.grapheme_indices(true)
+            .nth(column)
+            .map_or(end, |(at, _)| start + at)
     }
 
     /// The start of the grapheme before the caret, or the caret at the start.
@@ -340,5 +386,38 @@ mod tests {
         check("one two  |x", TextEdit::DeleteWordBackward, "one |x");
         check("|one", TextEdit::DeleteWordBackward, "|one");
         check("on[e tw|o", TextEdit::DeleteWordBackward, "on|o");
+    }
+
+    // OQ-23
+    #[test]
+    fn a_line_break_goes_in_place_of_the_selection_or_at_the_caret() {
+        check("a|b", TextEdit::LineBreak, "a\n|b");
+        check("a[bc|d", TextEdit::LineBreak, "a\n|d");
+    }
+
+    // FR-MODE-03
+    #[test]
+    fn home_and_end_go_to_the_ends_of_the_caret_line() {
+        check("ab\nc|d\nef", go(Motion::Start), "ab\n|cd\nef");
+        check("ab\nc|d\nef", go(Motion::End), "ab\ncd|\nef");
+        check("ab\nc|d", select(Motion::Start), "ab\n|c[d");
+    }
+
+    // FR-MODE-03
+    #[test]
+    fn up_and_down_keep_the_column_by_grapheme() {
+        check("a😀b\nxy|z", go(Motion::Up), "a😀|b\nxyz");
+        check("ab|c\nx", go(Motion::Down), "abc\nx|");
+        check("abc\n|x", go(Motion::Up), "|abc\nx");
+        check("a\n\nab|c", go(Motion::Up), "a\n|\nabc");
+        check("a|b\ncd", select(Motion::Down), "a[b\nc|d");
+    }
+
+    // FR-MODE-03
+    #[test]
+    fn up_on_the_first_line_and_down_on_the_last_stay() {
+        check("a|b\ncd", go(Motion::Up), "a|b\ncd");
+        check("ab\nc|d", go(Motion::Down), "ab\nc|d");
+        check("a|b", go(Motion::Down), "a|b");
     }
 }

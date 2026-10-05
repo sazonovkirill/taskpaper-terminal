@@ -26,14 +26,14 @@ impl State {
         self.step(History::redo);
     }
 
-    /// Applies `ops` as one undoable step that keeps the focus where it is, after the creation of
-    /// a block being edited, unless the file is read-only, which only says so.
+    /// Applies `ops` as one undoable step that keeps the focus where it is, after what an edit
+    /// session has done so far, unless the file is read-only, which only says so.
     pub(super) fn commit(&mut self, ops: Vec<Op>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
-        self.record_creation();
+        self.record_edit_so_far();
         let restore = Restore { focus: self.focus };
         let transaction = Transaction::new(ops, restore, restore);
         if let Err(error) = self.edits.commit(&mut self.document, transaction) {

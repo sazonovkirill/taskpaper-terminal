@@ -128,7 +128,13 @@ impl State {
     /// Moves the focused block with its subtree as `by` says without leaving the zoom, as one
     /// step to undo, expanding the block it lands under and saying so when notes merge
     /// (FR-OPS-02, FR-OPS-03, OQ-26). The zoom title, which stands for the view's root, stays.
+    /// An edited block whose lines read as several blocks splits first, and the block with the
+    /// caret moves and is edited on from its end (OQ-27).
     pub(super) fn shift_focused(&mut self, by: Shift) {
+        if self.editor().is_some_and(|editor| editor.splits) {
+            self.stop_editing();
+            self.start_editing(true);
+        }
         let Some((block, false)) = self.focused() else {
             return;
         };
@@ -144,7 +150,7 @@ impl State {
             self.folds.remove(&parent.id());
         }
         self.report_merged(&starts);
-        self.stop_editing_merged();
+        self.edit_merged();
     }
 
     /// The first line of every block below the zoom, for telling after an edit which blocks it
@@ -589,9 +595,9 @@ mod tests {
         assert_eq!(state.rows()[0].lines, ["n", "m"]);
         assert_eq!(state.notice(), Some(&Notice::NotesMerged));
         assert_eq!(
-            state.mode(),
-            Mode::Navigate,
-            "a note of two lines is not edited here"
+            shown(&state),
+            "n\nm|",
+            "the merged note is edited at its end"
         );
         assert_eq!(state.focus(), Some(state.rows()[0].id));
     }
@@ -906,15 +912,21 @@ mod tests {
 
     // OQ-26, editing.md §2
     #[test]
-    fn a_block_being_edited_that_merges_into_a_note_ends_editing() {
+    fn a_block_being_edited_that_merges_into_a_note_goes_on_being_edited_whole() {
         let mut state = open("P:\n\tn\nm", 2);
         state.update(Message::EditAtEnd);
         typed(&mut state, "!");
         state.update(Message::Indent);
         assert_eq!(lines(&state), ["P:", "\tn", "\tm!"]);
-        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(shown(&state), "n\nm!|");
         assert_eq!(state.notice(), Some(&Notice::NotesMerged));
         assert_eq!(state.focus(), Some(state.rows()[1].id));
+        typed(&mut state, "?");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["P:", "\tn", "\tm!?"]);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["P:", "\tn", "\tm!"]);
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["P:", "\tn", "\tm"]);
         state.update(Message::Undo);
@@ -923,12 +935,12 @@ mod tests {
 
     // OQ-26, editing.md §2
     #[test]
-    fn a_block_being_edited_that_a_note_joins_ends_editing() {
+    fn a_block_being_edited_that_a_note_joins_goes_on_being_edited_whole() {
         let mut state = open("P:\n\tm\nn", 1);
         state.update(Message::EditAtEnd);
         state.update(Message::Outdent);
         assert_eq!(state.rows()[1].lines, ["m", "n"]);
-        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(shown(&state), "m|\nn");
         assert_eq!(state.notice(), Some(&Notice::NotesMerged));
     }
 

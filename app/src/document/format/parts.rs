@@ -1,11 +1,13 @@
-//! A line split into the text the user edits and what edit mode keeps around it: the type syntax
-//! and the tags ([editing.md §2](../../../../docs/specs/editing.md#2-edit-mode), OQ-24, OQ-27).
+//! A line, or a block's lines, split into the text the user edits and what edit mode keeps around
+//! it: the type syntax and the tags ([editing.md §2](../../../../docs/specs/editing.md#2-edit-mode),
+//! OQ-24, OQ-27).
 
 use super::{canonical::PLACEHOLDER, display_text, kind, tags};
 use crate::document::ItemKind;
 
-/// A line's type syntax and tags, which stay while the text between them is edited.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// A line's type syntax and tags, which stay while the text between them is edited. The default
+/// is a note's: no syntax and no tags.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LineParts {
     /// A task's dash and the whitespace after it; empty for other types.
     prefix: String,
@@ -82,6 +84,104 @@ impl LineParts {
             tags: self.tags.clone(),
         };
         Some((parts, format!("{rest}{}", self.suffix())))
+    }
+}
+
+/// The lines of a block as edit mode edits them: one text with a line break between the lines'
+/// display texts, each line keeping its own type syntax and tags (editing.md §2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockLines {
+    /// Each line as written, with its parts and display text.
+    lines: Vec<(String, LineParts, String)>,
+}
+
+impl BlockLines {
+    /// The block made of `lines`, and the text edit mode edits: their display texts joined by
+    /// line breaks.
+    #[must_use]
+    pub fn split<'a>(lines: impl IntoIterator<Item = &'a str>) -> (Self, String) {
+        let lines: Vec<(String, LineParts, String)> = lines
+            .into_iter()
+            .map(|line| {
+                let (parts, text) = LineParts::split(line);
+                (line.to_owned(), parts, text)
+            })
+            .collect();
+        let text = lines
+            .iter()
+            .map(|(_, _, text)| text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        (Self { lines }, text)
+    }
+
+    /// The first line's parts, which edit mode may change as the text gives the line a type
+    /// (OQ-27).
+    #[must_use]
+    pub fn first(&self) -> LineParts {
+        self.lines
+            .first()
+            .map(|(_, parts, _)| parts.clone())
+            .unwrap_or_default()
+    }
+
+    /// The lines that `text` gives, with `first` as the first line's parts: each with the index
+    /// of the line it rewrites, or `None` for an added line. The unchanged lines at either end of
+    /// the text keep their own lines, and the changed lines between them rewrite the lines they
+    /// replace in order, so a line keeps its tags while its text is edited and the first line
+    /// always rewrites the first line. The tags of the lines that are gone move to the end of the
+    /// first line, so none is lost (FR-DOC-03). A line whose text and parts are as they were is
+    /// written as it was, so its mid-line tags stay where they are.
+    #[must_use]
+    pub fn lines(&self, first: &LineParts, text: &str) -> Vec<(Option<usize>, String)> {
+        let new: Vec<&str> = text.split('\n').collect();
+        let old: Vec<&str> = self
+            .lines
+            .iter()
+            .map(|(_, _, text)| text.as_str())
+            .collect();
+        let prefix = old.iter().zip(&new).take_while(|(a, b)| a == b).count();
+        let room = old.len().min(new.len()).saturating_sub(prefix.max(1));
+        let suffix = old
+            .iter()
+            .rev()
+            .zip(new.iter().rev())
+            .take(room)
+            .take_while(|(a, b)| a == b)
+            .count();
+        let origin = |index: usize| {
+            if index >= new.len() - suffix {
+                Some(old.len() - (new.len() - index))
+            } else {
+                Some(index).filter(|&index| index < old.len() - suffix)
+            }
+        };
+        let gone = new.len().min(old.len()) - suffix..old.len() - suffix;
+        let mut first = first.clone();
+        first.tags.extend(
+            self.lines
+                .get(gone)
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|(_, parts, _)| parts.tags.iter().cloned()),
+        );
+        let new_line = LineParts::default();
+        new.iter()
+            .enumerate()
+            .map(|(index, text)| {
+                let from = origin(index);
+                let parts = match from {
+                    Some(0) => &first,
+                    Some(at) => self.lines.get(at).map_or(&new_line, |(_, parts, _)| parts),
+                    None => &new_line,
+                };
+                let line = match from.and_then(|at| self.lines.get(at)) {
+                    Some((line, was, old)) if old == text && was == parts => line.clone(),
+                    _ => parts.line(text),
+                };
+                (from, line)
+            })
+            .collect()
     }
 }
 
@@ -186,5 +286,100 @@ mod tests {
         assert_eq!(note.as_task("- "), None, "a dash before tags is a note");
         let (task, _) = LineParts::split("- a");
         assert_eq!(task.as_task("- b"), None, "already a task");
+    }
+
+    /// The lines `text` gives the block of `lines`, with its first line's parts as they were.
+    #[track_caller]
+    fn relined(lines: &[&str], text: &str) -> Vec<(Option<usize>, String)> {
+        let (block, _) = BlockLines::split(lines.iter().copied());
+        block.lines(&block.first(), text)
+    }
+
+    #[test]
+    fn a_block_edits_its_display_texts_joined_by_line_breaks() {
+        let (block, text) = BlockLines::split(["a @x", "", "- b"]);
+        assert_eq!(text, "a\n\nb");
+        assert_eq!(block.first(), LineParts::split("a @x").0);
+        let (none, text) = BlockLines::split([]);
+        assert_eq!((none.first(), text), (LineParts::default(), String::new()));
+    }
+
+    // editing.md §2
+    #[test]
+    fn unchanged_lines_are_written_as_they_were() {
+        assert_eq!(
+            relined(&["a @x b", "c @y d"], "a b\nc d"),
+            [(Some(0), "a @x b".into()), (Some(1), "c @y d".into())]
+        );
+    }
+
+    // editing.md §2, OQ-24
+    #[test]
+    fn a_changed_line_keeps_its_own_tags() {
+        assert_eq!(
+            relined(&["a @x", "b @y", "c @z"], "a\nB\nc"),
+            [
+                (Some(0), "a @x".into()),
+                (Some(1), "B @y".into()),
+                (Some(2), "c @z".into())
+            ]
+        );
+    }
+
+    // editing.md §2
+    #[test]
+    fn added_lines_are_new_notes_between_the_lines_around_them() {
+        assert_eq!(
+            relined(&["a @x", "b @y"], "a1\na2\nb"),
+            [
+                (Some(0), "a1 @x".into()),
+                (None, "a2".into()),
+                (Some(1), "b @y".into())
+            ]
+        );
+        assert_eq!(
+            relined(&["a"], "a\n"),
+            [(Some(0), "a".into()), (None, String::new())]
+        );
+        assert_eq!(
+            relined(&["a", "a"], "a\na\na"),
+            [
+                (Some(0), "a".into()),
+                (Some(1), "a".into()),
+                (None, "a".into())
+            ]
+        );
+    }
+
+    // editing.md §2, FR-DOC-03
+    #[test]
+    fn the_tags_of_removed_lines_move_to_the_first_line() {
+        assert_eq!(
+            relined(&["a @x", "b @y", "c @z"], "a\nbc"),
+            [(Some(0), "a @x @z".into()), (Some(1), "bc @y".into())]
+        );
+        assert_eq!(
+            relined(&["a @x", "b @y"], "b"),
+            [(Some(0), "b @x @y".into())],
+            "the first line stays the first"
+        );
+        assert_eq!(relined(&["a", "b", "c"], "c"), [(Some(0), "c".into())]);
+        assert_eq!(
+            relined(&["a", "b @y", "c @z", "d"], "a\nd"),
+            [(Some(0), "a @y @z".into()), (Some(3), "d".into())]
+        );
+    }
+
+    // OQ-27
+    #[test]
+    fn the_first_lines_parts_are_the_ones_given() {
+        let (block, _) = BlockLines::split(["a @x"]);
+        let (task, text) = block.first().as_task("- b").unwrap();
+        assert_eq!(block.lines(&task, &text), [(Some(0), "- b @x".into())]);
+        assert_eq!(
+            relined(&["a", "b"], "a\n- b"),
+            [(Some(0), "a".into()), (Some(1), "- b".into())],
+            "a later line reads as typed"
+        );
     }
 }

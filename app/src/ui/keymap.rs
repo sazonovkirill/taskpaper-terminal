@@ -208,6 +208,8 @@ const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
     (&[key!(Enter)], |_| Message::NewNext),
+    (&[key!(shift Enter)], |_| Message::Text(TextEdit::LineBreak)),
+    (&[key!(alt Enter)], |_| Message::Text(TextEdit::LineBreak)),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
     (&[key!(Left)], |_| go(Motion::Left, false)),
@@ -218,12 +220,16 @@ const EDIT: &[Binding] = &[
     (&[key!(alt 'f')], |_| go(Motion::WordRight, false)),
     (&[key!(Home)], |_| go(Motion::Start, false)),
     (&[key!(End)], |_| go(Motion::End, false)),
+    (&[key!(Up)], |_| go(Motion::Up, false)),
+    (&[key!(Down)], |_| go(Motion::Down, false)),
     (&[key!(shift Left)], |_| go(Motion::Left, true)),
     (&[key!(shift Right)], |_| go(Motion::Right, true)),
     (&[key!(ctrl shift Left)], |_| go(Motion::WordLeft, true)),
     (&[key!(ctrl shift Right)], |_| go(Motion::WordRight, true)),
     (&[key!(shift Home)], |_| go(Motion::Start, true)),
     (&[key!(shift End)], |_| go(Motion::End, true)),
+    (&[key!(shift Up)], |_| go(Motion::Up, true)),
+    (&[key!(shift Down)], |_| go(Motion::Down, true)),
     (&[key!(Backspace)], |_| {
         Message::Text(TextEdit::DeleteBackward)
     }),
@@ -548,13 +554,13 @@ mod tests {
         );
         check_editing(KeyCode::Char('k'), KeyModifiers::CONTROL, None);
         check_editing(KeyCode::Char('x'), KeyModifiers::ALT, None);
-        check_editing(KeyCode::Down, none, None);
         check_editing(KeyCode::F(1), none, None);
     }
 
-    // FR-MODE-01, FR-MODE-04, FR-OPS-02
+    // FR-MODE-01, FR-MODE-04, FR-OPS-02, OQ-23
     #[test]
-    fn esc_stops_editing_enter_adds_the_next_block_tab_indents_and_ctrl_q_quits() {
+    fn esc_stops_editing_enter_adds_the_next_block_or_breaks_the_line_tab_indents_and_ctrl_q_quits()
+    {
         let none = KeyModifiers::NONE;
         check_editing(KeyCode::Tab, none, Some(&Message::Indent));
         check_editing(
@@ -565,6 +571,9 @@ mod tests {
         check_editing(KeyCode::Char('j'), KeyModifiers::ALT, None);
         check_editing(KeyCode::Esc, none, Some(&Message::StopEditing));
         check_editing(KeyCode::Enter, none, Some(&Message::NewNext));
+        for modifiers in [KeyModifiers::SHIFT, KeyModifiers::ALT] {
+            check_editing(KeyCode::Enter, modifiers, Some(&text(TextEdit::LineBreak)));
+        }
         check_editing(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,
@@ -595,6 +604,10 @@ mod tests {
             (KeyCode::Right, ctrl | shift, to(Motion::WordRight, true)),
             (KeyCode::Home, shift, to(Motion::Start, true)),
             (KeyCode::End, shift, to(Motion::End, true)),
+            (KeyCode::Up, none, to(Motion::Up, false)),
+            (KeyCode::Down, none, to(Motion::Down, false)),
+            (KeyCode::Up, shift, to(Motion::Up, true)),
+            (KeyCode::Down, shift, to(Motion::Down, true)),
             (KeyCode::Backspace, none, text(TextEdit::DeleteBackward)),
             (KeyCode::Delete, none, text(TextEdit::DeleteForward)),
             (KeyCode::Char('w'), ctrl, text(TextEdit::DeleteWordBackward)),

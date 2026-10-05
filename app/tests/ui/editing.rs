@@ -1,4 +1,4 @@
-//! Step 2.5: editing a one-line block's text in place.
+//! Steps 2.5 and 2.8: editing a block's text in place, one line or several.
 
 use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
@@ -221,4 +221,95 @@ fn the_demo_has_a_task_to_rename() {
     press(&mut app, KeyCode::Esc, 1);
     assert_eq!(outline_rows(&mut app)[1], "  - Book flights to Lisbon");
     assert!(saved(&mut app).contains("\t- Book flights to Lisbon\n"));
+}
+
+// FR-BLK-03, OQ-23, FR-DOC-02
+#[test]
+fn shift_enter_and_alt_enter_write_a_three_line_note() {
+    let mut app = Harness::with_text("Ideas\n- t\n", 40, 8);
+    press(&mut app, KeyCode::Enter, 1);
+    app.press(KeyCode::Enter, KeyModifiers::SHIFT);
+    app.type_keys("second");
+    app.press(KeyCode::Enter, KeyModifiers::ALT);
+    app.type_keys("third");
+    assert_eq!(
+        outline_rows(&mut app)[..4],
+        ["Ideas", "second", "third", "- t"]
+    );
+    assert_caret(&mut app, 7, 4);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(focused_rows(&mut app), ["Ideas", "second", "third"]);
+    assert_eq!(saved(&mut app), "Ideas\nsecond\nthird\n- t\n");
+}
+
+// FR-MODE-03, FR-BLK-03
+#[test]
+fn up_and_down_move_the_caret_between_lines() {
+    let mut app = Harness::with_text("one\ntwo\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Up, 1);
+    assert_caret(&mut app, 5, 2);
+    app.type_keys("!");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("?");
+    assert_eq!(outline_rows(&mut app)[..2], ["one!?", ""]);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(saved(&mut app), "one!?\n");
+}
+
+// FR-BLK-05, OQ-23
+#[test]
+fn enter_in_a_code_block_breaks_the_line_and_esc_ends_editing() {
+    let mut app = Harness::with_text("./build.sh @code\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 2);
+    app.type_keys("./test.sh");
+    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert_eq!(outline_rows(&mut app)[..2], ["./build.sh", "./test.sh"]);
+    press(&mut app, KeyCode::Esc, 1);
+    assert!(status_line(&mut app).starts_with("NAVIGATE"));
+    assert_eq!(saved(&mut app), "./build.sh @code\n./test.sh\n");
+}
+
+// OQ-27, special-nodes.md §1
+#[test]
+fn a_task_line_typed_in_a_note_splits_it_when_editing_ends() {
+    let mut app = Harness::with_text("Plan\nbuy milk\n\tC @hidden @comments\n", 90, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Home, 1);
+    app.type_keys("- ");
+    assert!(
+        status_line(&mut app).ends_with(" · Splits into blocks when editing ends"),
+        "{}",
+        status_line(&mut app)
+    );
+    assert_eq!(
+        focused_rows(&mut app),
+        ["Plan", "- buy milk"],
+        "one edit area"
+    );
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(
+        focused_rows(&mut app),
+        ["- buy milk"],
+        "the task holds the caret"
+    );
+    assert_eq!(saved(&mut app), "Plan\n- buy milk\n\tC @hidden @comments\n");
+}
+
+// FR-DOC-05, FR-BLK-03, FR-BLK-05
+#[test]
+fn the_demo_has_a_note_and_a_code_block_to_add_lines_to() {
+    let mut app = Harness::demo(60, 30);
+    app.type_keys(&"j".repeat(18));
+    press(&mut app, KeyCode::Enter, 1);
+    app.press(KeyCode::Enter, KeyModifiers::ALT);
+    app.type_keys("Then tell the team.");
+    press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 2);
+    app.type_keys("echo done");
+    press(&mut app, KeyCode::Esc, 1);
+    let text = saved(&mut app);
+    assert!(text.contains("\tShip once every checklist item is done.\n\tThen tell the team.\n"));
+    assert!(text.contains("\t./notify.sh \"Release 2.0 is live\"\n\techo done\n"));
 }

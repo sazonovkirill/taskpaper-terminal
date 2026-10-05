@@ -283,7 +283,13 @@ impl Document {
         Ok(())
     }
 
-    fn apply_op(&mut self, op: &Op) -> Result<(), EditError> {
+    /// Applies one op without the placement repairs [`Document::apply`] makes after a whole
+    /// transaction, so that a copy of the document can stand for it partway through one.
+    ///
+    /// # Errors
+    ///
+    /// The [`EditError`] when the op does not fit; then nothing changes.
+    pub(crate) fn apply_op(&mut self, op: &Op) -> Result<(), EditError> {
         match op {
             Op::SetText { id, before, after } => {
                 let item = self.line_mut(*id)?;

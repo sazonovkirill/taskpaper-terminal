@@ -297,7 +297,7 @@ impl State {
 
     /// The zoom block, or `None` at home.
     pub(super) fn zoom_block(&self) -> Option<Block> {
-        blocks::block(&self.document, self.zoom?)
+        blocks::block(&self.document, self.zoom?).and_then(|block| self.shown_block(block))
     }
 
     /// Every block below the zoom in order with its depth; with `folded`, only those not hidden
@@ -312,7 +312,10 @@ impl State {
     }
 
     fn push_blocks(&self, line: ItemId, depth: usize, folded: bool, out: &mut Vec<(Block, usize)>) {
-        for block in blocks::children(&self.document, line) {
+        for block in blocks::children(&self.document, line)
+            .into_iter()
+            .filter_map(|block| self.shown_block(block))
+        {
             let last_line = block.last_line();
             let open = !(folded && self.folds.contains(&block.id()));
             out.push((block, depth));

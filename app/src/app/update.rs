@@ -145,7 +145,8 @@ pub enum Message {
     /// Add a first child to the focused block, expanding it, and edit it (FR-MODE-04).
     NewChild,
     /// Stop editing and add the next block: a first child when the block shows children, else
-    /// a block below it (editing.md §3).
+    /// a block below it (editing.md §3). In a code block being edited, break the line instead
+    /// (OQ-23).
     NewNext,
     /// Add a block of this type at the top of the focused block's list, its parent's children,
     /// and edit it; a section goes before the list's first section (FR-MODE-06).
@@ -190,6 +191,7 @@ impl Message {
             | Self::EditAtStart
             | Self::Text(_)
             | Self::StopEditing
+            | Self::NewNext
             | Self::Indent
             | Self::Outdent => false,
             Self::Quit
@@ -223,7 +225,6 @@ impl Message {
             | Self::NewBelow
             | Self::NewAbove
             | Self::NewChild
-            | Self::NewNext
             | Self::NewTop(_)
             | Self::NewTypedBelow(_)
             | Self::Delete
@@ -357,7 +358,7 @@ impl State {
             Message::NewBelow => self.add_block(NewBlock::Below, None),
             Message::NewAbove => self.add_block(NewBlock::Above, None),
             Message::NewChild => self.add_block(NewBlock::Child, None),
-            Message::NewNext => self.add_block(NewBlock::Next, None),
+            Message::NewNext => self.new_next(),
             Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
             Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_focused(),

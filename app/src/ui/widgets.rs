@@ -69,7 +69,7 @@ impl Widget for OutlineView<'_> {
         let width = usize::from(text.width);
         let lines = self.rows.iter().enumerate().flat_map(|(index, row)| {
             let lines = match self.editor.filter(|editor| editor.id == row.id) {
-                Some(editor) => vec![editor_line(row, editor, width).0],
+                Some(editor) => editor_lines(row, editor, width).0,
                 None => row_lines(row, width),
             };
             lines.into_iter().map(move |line| (index, line))
@@ -358,44 +358,74 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
     (marker, marker_style, style)
 }
 
-/// The screen line of the one-line block `row` while `editor` edits it, `width` columns wide,
-/// and the caret's column in it: the row's indent and marker, the text as typed with the
-/// selection reversed, then a project's `:`, all styled as the row (FR-MODE-02). When the caret
-/// would be past the right edge, the text scrolls left by whole graphemes to keep it in view.
+/// The screen lines of `row` while `editor` edits it, `width` columns wide, and the caret's column
+/// and line among them: one per line of the text, after the row's indent and, on the first, its
+/// marker, with the selection reversed and a project's `:` after the text, all styled as the row
+/// (FR-MODE-02). When the caret would be past the right edge, its line scrolls left by whole
+/// graphemes to keep it in view.
 #[must_use]
-pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
+pub fn editor_lines<'a>(
+    row: &Row,
+    editor: &'a Editor,
+    width: usize,
+) -> (Vec<Line<'a>>, (usize, usize)) {
     let (marker, marker_style, style) = row_style(row);
-    let mut line = Line::from(vec![
-        Span::raw("  ".repeat(row.depth)),
-        Span::styled(marker, marker_style),
-    ]);
-    let before_caret = editor.text.get(..editor.caret).unwrap_or_default();
-    let caret = line.width() + Span::raw(before_caret).width();
-    // The caret takes a column of its own after the text before it.
-    let overflow = (caret + 1).saturating_sub(width);
-    let (mut start, mut scrolled) = (0, 0);
-    for (at, grapheme) in editor.text.grapheme_indices(true) {
-        if scrolled >= overflow || at >= editor.caret {
-            break;
-        }
-        start = at + grapheme.len();
-        scrolled += Span::raw(grapheme).width();
-    }
     let selection = editor
         .selection
         .clone()
-        .map(|selection| selection.start.max(start)..selection.end.max(start))
-        .unwrap_or(start..start);
-    let piece = |range: std::ops::Range<usize>| editor.text.get(range).unwrap_or_default();
-    line.push_span(Span::styled(piece(start..selection.start), style));
-    line.push_span(Span::styled(piece(selection.clone()), style.reversed()));
-    line.push_span(Span::styled(piece(selection.end..editor.text.len()), style));
-    line.push_span(Span::styled(editor.suffix, style));
-    if row.kind == BlockKind::Code {
-        let fill = width.saturating_sub(line.width());
-        line.push_span(Span::styled(" ".repeat(fill), code_style()));
+        .unwrap_or(editor.caret..editor.caret);
+    let (mut lines, mut caret, mut start) = (Vec::new(), (0, 0), 0);
+    let count = editor.text.split('\n').count();
+    for (index, text) in editor.text.split('\n').enumerate() {
+        let end = start + text.len();
+        let marker = if index == 0 {
+            Span::styled(marker, marker_style)
+        } else {
+            Span::raw(" ".repeat(marker.chars().count()))
+        };
+        let mut line = Line::from(vec![Span::raw("  ".repeat(row.depth)), marker]);
+        let at_caret = (start..=end)
+            .contains(&editor.caret)
+            .then(|| editor.caret - start);
+        let before_caret = text.get(..at_caret.unwrap_or_default()).unwrap_or_default();
+        let column = line.width() + Span::raw(before_caret).width();
+        // The caret takes a column of its own after the text before it.
+        let overflow = at_caret.map_or(0, |_| (column + 1).saturating_sub(width));
+        let (mut from, mut scrolled) = (0, 0);
+        for (at, grapheme) in text.grapheme_indices(true) {
+            if scrolled >= overflow || at >= before_caret.len() {
+                break;
+            }
+            from = at + grapheme.len();
+            scrolled += Span::raw(grapheme).width();
+        }
+        if at_caret.is_some() {
+            caret = (column - scrolled, index);
+        }
+        let local = |at: usize| (at.clamp(start, end) - start).max(from);
+        let selected = local(selection.start)..local(selection.end);
+        let piece = |range: std::ops::Range<usize>| text.get(range).unwrap_or_default();
+        line.push_span(Span::styled(piece(from..selected.start), style));
+        line.push_span(Span::styled(piece(selected.clone()), style.reversed()));
+        line.push_span(Span::styled(piece(selected.end..text.len()), style));
+        if index + 1 == count {
+            line.push_span(Span::styled(editor.suffix, style));
+        }
+        if row.kind == BlockKind::Code {
+            let fill = width.saturating_sub(line.width());
+            line.push_span(Span::styled(" ".repeat(fill), code_style()));
+        }
+        lines.push(line);
+        start = end + 1;
     }
-    (line, caret - scrolled)
+    (lines, caret)
+}
+
+/// The hint edit mode shows while a line of the text would split the block when editing ends
+/// (OQ-27).
+#[must_use]
+pub fn split_hint() -> Span<'static> {
+    Span::styled("Splits into blocks when editing ends", warning_style())
 }
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
@@ -585,8 +615,9 @@ mod tests {
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
         let rows = State::new(format::parse(text), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
-        let (line, caret) = editor_line(&rows[0], editor, usize::from(width));
-        line.render(buf.area, &mut buf);
+        let (lines, (caret, line)) = editor_lines(&rows[0], editor, usize::from(width));
+        assert_eq!(line, 0, "one line");
+        (&lines[0]).render(buf.area, &mut buf);
         (buf, caret)
     }
 
@@ -597,6 +628,7 @@ mod tests {
             caret,
             selection,
             suffix: "",
+            splits: false,
         }
     }
 
@@ -655,6 +687,51 @@ mod tests {
         expected.set_style(Rect::new(0, 0, 5, 1), code_style());
         expected.set_style(Rect::new(0, 0, 3, 1), code_style().dim());
         assert_eq!(buf, expected);
+    }
+
+    /// The first row of `text` drawn as `editor` edits it, `width` columns wide and as many lines
+    /// as it takes, with the caret's column and line.
+    fn edited_lines(text: &str, editor: &Editor, width: u16) -> (Buffer, (usize, usize)) {
+        let rows = State::new(format::parse(text), None).rows();
+        let (lines, caret) = editor_lines(&rows[0], editor, usize::from(width));
+        let height = u16::try_from(lines.len()).unwrap();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        for (line, area) in lines.iter().zip(buf.area.rows()) {
+            line.render(area, &mut buf);
+        }
+        (buf, caret)
+    }
+
+    // FR-BLK-03, FR-MODE-02
+    #[test]
+    fn the_editor_draws_each_line_with_the_selection_across_them() {
+        let (buf, caret) = edited_lines("- a", &editor("ab\ncd\nef", 4, Some(1..4)), 5);
+        let mut expected = Buffer::with_lines(["- ab ", "  cd ", "  ef "]);
+        expected.set_style(Rect::new(3, 0, 1, 1), Style::new().reversed());
+        expected.set_style(Rect::new(2, 1, 1, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+        assert_eq!(caret, (3, 1));
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn only_the_caret_line_scrolls_and_the_suffix_follows_the_last_line() {
+        let mut two = editor("abcdef\nxy", 6, None);
+        two.suffix = ":";
+        let (buf, caret) = edited_lines("- a", &two, 5);
+        assert_eq!(buf, Buffer::with_lines(["- ef ", "  xy:"]));
+        assert_eq!(caret, (4, 0));
+    }
+
+    // FR-BLK-05, FR-MODE-02
+    #[test]
+    fn every_line_of_a_code_editor_fills_its_band() {
+        let (buf, caret) = edited_lines("f() @code", &editor("f()\n", 4, None), 4);
+        let mut expected = Buffer::with_lines(["f() ", "    "]);
+        expected.set_style(Rect::new(0, 0, 4, 2), code_style());
+        expected.set_style(Rect::new(0, 0, 3, 1), code_style().dim());
+        assert_eq!(buf, expected);
+        assert_eq!(caret, (0, 1));
     }
 
     // FR-MODE-02

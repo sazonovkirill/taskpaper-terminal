@@ -116,6 +116,23 @@ pub fn holding(document: &Document, id: ItemId) -> Option<Block> {
         .find(|block| block.lines.contains(&id))
 }
 
+/// The block of type `kind` that `lines`, consecutive sibling lines, make when they are kept
+/// together as one run, as edit mode keeps a block's lines until editing ends (OQ-27); `None`
+/// without lines.
+#[must_use]
+pub fn joined(document: &Document, lines: &[ItemId], kind: BlockKind) -> Option<Block> {
+    Some(Block {
+        id: *lines.first()?,
+        last_line: *lines.last()?,
+        lines: lines.to_vec(),
+        kind,
+        done: lines
+            .iter()
+            .filter_map(|&id| document.get(id))
+            .any(|item| has_tag(item, "done")),
+    })
+}
+
 /// The block whose children include the block `id`, or `None` at the top level.
 #[must_use]
 pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
@@ -570,5 +587,23 @@ mod tests {
         assert_eq!(blocks[0].last_line(), root_lines[1]);
         assert_eq!(blocks[1].id(), root_lines[2]);
         assert_eq!(blocks[1].last_line(), root_lines[2]);
+    }
+
+    // OQ-27
+    #[test]
+    fn lines_joined_into_one_block() {
+        let document = parse("a\n- b @done\nc");
+        let lines = document.get(document.root()).unwrap().children().to_vec();
+        let block = joined(&document, &lines, BlockKind::Note).unwrap();
+        assert_eq!((block.id(), block.last_line()), (lines[0], lines[2]));
+        assert_eq!(block.lines(), &lines[..]);
+        assert_eq!(block.kind(), BlockKind::Note);
+        assert!(block.done());
+        assert!(
+            !joined(&document, &lines[..1], BlockKind::Code)
+                .unwrap()
+                .done()
+        );
+        assert_eq!(joined(&document, &[], BlockKind::Note), None);
     }
 }
