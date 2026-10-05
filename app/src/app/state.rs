@@ -117,6 +117,13 @@ pub enum Notice {
         /// Whether the block is bookmarked now.
         added: bool,
     },
+    /// The browser could not be started on a URL (FR-BLK-06).
+    OpenUrlFailed {
+        /// The URL.
+        url: String,
+        /// What the frontend reported.
+        reason: String,
+    },
 }
 
 /// One visible block of the outline.

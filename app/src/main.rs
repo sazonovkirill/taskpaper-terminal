@@ -26,7 +26,7 @@ use taskpaper_terminal::{
     app::Message,
     ui::{
         self, Input,
-        effects::{Backups, Io, Recovery},
+        effects::{Backups, Browser, Io, Recovery},
     },
 };
 
@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     let _watcher = state
         .path()
         .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
-    let mut tui = ui::Tui::new(state, io, jiff::Zoned::now);
+    let mut tui = ui::Tui::new(state, io, Browser::system(), jiff::Zoned::now);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
     // Terminals that cannot report focus or the kitty keyboard protocol ignore the requests, so
     // keys arrive as legacy reporting sends them (keybindings.md §1).

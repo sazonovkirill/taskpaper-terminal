@@ -18,7 +18,7 @@ use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
         Input, Tui,
-        effects::{self, Backups, Io},
+        effects::{self, Backups, Browser, Io},
     },
 };
 use tempfile::TempDir;
@@ -40,6 +40,10 @@ fn local(time: DateTime) -> Zoned {
     time.to_zoned(TimeZone::UTC)
         .expect("a date jiff can place in UTC")
 }
+
+/// The program the app opens URLs with: one that does not exist, so that the error it shows
+/// names the URL `gx` chose.
+pub const OPENER: &str = "tpt-test-no-such-opener";
 
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
@@ -118,7 +122,9 @@ impl Harness {
         Self {
             path: state.path().map(Path::to_owned),
             temporary: state.origin() == Origin::Temporary,
-            tui: Tui::new(state, io, || CLOCK.with_borrow(Zoned::clone)),
+            tui: Tui::new(state, io, Browser::new(OPENER), || {
+                CLOCK.with_borrow(Zoned::clone)
+            }),
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
             inputs,

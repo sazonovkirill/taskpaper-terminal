@@ -7,6 +7,7 @@ mod edit_mode;
 mod editing;
 pub mod external;
 pub mod history;
+mod links;
 pub mod saving;
 pub mod state;
 mod structure;

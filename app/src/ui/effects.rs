@@ -4,6 +4,7 @@
 
 mod atomic;
 mod backup;
+mod browser;
 mod recovery;
 mod watch;
 mod worker;
@@ -20,6 +21,7 @@ use jiff::civil::DateTime;
 use thiserror::Error;
 
 pub use backup::{BackupError, Backups, folder as backups_folder};
+pub use browser::Browser;
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
 pub use watch::{Watcher, watch};
 pub use worker::Io;

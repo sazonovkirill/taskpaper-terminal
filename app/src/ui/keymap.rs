@@ -179,6 +179,7 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(alt Up)], |_| Message::MoveUp),
     (&[key!(alt 'j')], |_| Message::MoveDown),
     (&[key!(alt Down)], |_| Message::MoveDown),
+    (&[key!('g'), key!('x')], |_| Message::OpenUrl),
 ];
 
 /// Changing the focused block's `tag` date as `change` says, from the local date (FR-TAG-06).
@@ -660,6 +661,18 @@ mod tests {
         check(KeyCode::Up, alt, up);
         check(KeyCode::Char('j'), alt, down);
         check(KeyCode::Down, alt, down);
+    }
+
+    // FR-BLK-06
+    #[test]
+    fn g_x_opens_the_url() {
+        let mut keymap = Keymap::default();
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&press('g'), ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.message_for(&press('x'), ms(1), CONTEXT),
+            Some(Message::OpenUrl)
+        );
     }
 
     /// The message each key sends in edit mode.

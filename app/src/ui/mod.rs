@@ -19,7 +19,7 @@ use ratatui::{
 };
 
 use crate::app::{Effect, Message, Mode, Origin, State};
-use effects::{Io, Recovery, RecoveryError};
+use effects::{Browser, Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, PromptKey};
 use widgets::{ConflictPrompt, MenuPopup, OutlineView};
 
@@ -37,6 +37,8 @@ pub enum Input {
 pub struct Tui {
     state: State,
     io: Io,
+    /// Shows URLs the core asks to open.
+    browser: Browser,
     /// Reads the local time, whose date messages that write one carry and chips are drawn on.
     clock: fn() -> Zoned,
     /// When the local date next changes while the outline shows a due date, which may then become
@@ -57,13 +59,15 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// A frontend showing `state` that carries out disk work with `io` and reads the local time
-    /// from `clock`, starting with what the core asks for on opening.
+    /// A frontend showing `state` that carries out disk work with `io`, opens URLs with
+    /// `browser` and reads the local time from `clock`, starting with what the core asks for on
+    /// opening.
     #[must_use]
-    pub fn new(state: State, io: Io, clock: fn() -> Zoned) -> Self {
+    pub fn new(state: State, io: Io, browser: Browser, clock: fn() -> Zoned) -> Self {
         let mut tui = Self {
             state,
             io,
+            browser,
             clock,
             midnight: None,
             keymap: Keymap::default(),
@@ -204,6 +208,13 @@ impl Tui {
             match effect {
                 Effect::Quit => self.quit = true,
                 Effect::Disk(disk) => self.io.submit(disk),
+                Effect::OpenUrl(url) => {
+                    if let Err(error) = self.browser.open(&url) {
+                        let reason = error.to_string();
+                        let effects = self.state.update(Message::OpenUrlFailed { url, reason });
+                        self.run(effects);
+                    }
+                }
             }
         }
     }

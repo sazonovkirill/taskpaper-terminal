@@ -198,6 +198,9 @@ fn notice_span(notice: &Notice) -> Span<'static> {
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
+        Notice::OpenUrlFailed { url, reason } => {
+            Span::styled(format!("cannot open {url}: {reason}"), error_style())
+        }
     }
 }
 
@@ -1368,6 +1371,16 @@ mod tests {
                     reason: "disk full".to_owned(),
                 },
                 ("conflict copy failed: disk full".to_owned(), error_style()),
+            ),
+            (
+                Notice::OpenUrlFailed {
+                    url: "https://a.b".to_owned(),
+                    reason: "not found".to_owned(),
+                },
+                (
+                    "cannot open https://a.b: not found".to_owned(),
+                    error_style(),
+                ),
             ),
             (
                 Notice::CannotTakeTheirs {

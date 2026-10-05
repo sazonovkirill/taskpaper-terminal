@@ -12,6 +12,7 @@ mod hang_up;
 mod marks;
 mod moving;
 mod open_file;
+mod open_url;
 mod quick_dates;
 mod saving;
 mod support;

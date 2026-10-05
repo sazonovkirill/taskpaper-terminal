@@ -195,6 +195,15 @@ pub enum Message {
     /// Move the focused block below its next sibling, or at the last position into the parent's
     /// next sibling (FR-OPS-03).
     MoveDown,
+    /// Open the focused block's URL in the system browser (FR-BLK-06, D-10).
+    OpenUrl,
+    /// The [`Effect::OpenUrl`] could not start the browser.
+    OpenUrlFailed {
+        /// The URL.
+        url: String,
+        /// Why, for the status line.
+        reason: String,
+    },
 }
 
 impl Message {
@@ -213,6 +222,7 @@ impl Message {
             | Self::ConflictCopied { .. }
             | Self::ConflictCopyFailed { .. }
             | Self::BackupFailed { .. }
+            | Self::OpenUrlFailed { .. }
             | Self::Undo
             | Self::Redo
             | Self::EditAtEnd
@@ -266,7 +276,8 @@ impl Message {
             | Self::NewTypedBelow(_)
             | Self::Delete
             | Self::MoveUp
-            | Self::MoveDown => true,
+            | Self::MoveDown
+            | Self::OpenUrl => true,
         }
     }
 }
@@ -278,6 +289,9 @@ pub enum Effect {
     Quit,
     /// Disk work, carried out in order and away from the frontend's event handling (N-UX-01).
     Disk(Disk),
+    /// Show this URL in the system browser; a failure comes back as [`Message::OpenUrlFailed`]
+    /// (FR-BLK-06).
+    OpenUrl(String),
 }
 
 /// Disk work for the frontend; each kind reports its result back as a [`Message`].
@@ -412,6 +426,8 @@ impl State {
             Message::Outdent => self.shift_focused(Shift::Outdent),
             Message::MoveUp => self.shift_focused(Shift::Up),
             Message::MoveDown => self.shift_focused(Shift::Down),
+            Message::OpenUrl => effects = self.open_url(),
+            Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
         }
         self.repair_focus();
         self.expire_notice();
