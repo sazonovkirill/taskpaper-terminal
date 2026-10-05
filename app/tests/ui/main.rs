@@ -3,6 +3,7 @@
 mod blocks;
 mod focus_and_scrolling;
 mod folding;
+mod hang_up;
 mod open_file;
 mod saving;
 mod support;

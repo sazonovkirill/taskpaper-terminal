@@ -10,7 +10,8 @@ use std::{ops::Range, time::Duration};
 
 use crossterm::event::Event;
 use ratatui::{
-    Frame,
+    Frame, Terminal,
+    backend::Backend,
     layout::{Constraint, Layout},
     style::Stylize,
     text::Line,
@@ -40,6 +41,8 @@ pub struct Tui {
     scroll: usize,
     /// The outline's height at the last draw, which a page motion moves.
     page_rows: usize,
+    /// Whether the process was told to end, so only saving is left.
+    ending: bool,
     quit: bool,
 }
 
@@ -54,6 +57,7 @@ impl Tui {
             keymap: Keymap::default(),
             scroll: 0,
             page_rows: 0,
+            ending: false,
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -112,6 +116,9 @@ impl Tui {
 
     /// Tells the core the time, then sends it `message`, and carries out the effects.
     fn send(&mut self, message: Message, now: Duration) {
+        if message == Message::Terminate {
+            self.ending = true;
+        }
         let mut effects = self.state.update(Message::Tick { now });
         effects.extend(self.state.update(message));
         self.run(effects);
@@ -123,6 +130,15 @@ impl Tui {
                 Effect::Quit => self.quit = true,
                 Effect::Disk(disk) => self.io.submit(disk),
             }
+        }
+    }
+
+    /// Draws the screen on `terminal` at time `now`, unless the session is ending, when the
+    /// terminal may be gone. A terminal that cannot be drawn on is gone, as after `SIGHUP`, so
+    /// the session ends as on [`Message::Terminate`], saving first.
+    pub fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>, now: Duration) {
+        if !self.ending && terminal.draw(|frame| self.draw(frame)).is_err() {
+            self.send(Message::Terminate, now);
         }
     }
 

@@ -84,12 +84,8 @@ fn run(
     received: &Receiver<Input>,
 ) -> anyhow::Result<()> {
     let start = Instant::now();
-    // Once told to end, the terminal may be gone, so the loop only finishes saving.
-    let mut ending = false;
     while !tui.should_quit() {
-        if !ending {
-            terminal.draw(|frame| tui.draw(frame))?;
-        }
+        tui.render(terminal, start.elapsed());
         let input = match tui.deadline() {
             None => Some(received.recv()?),
             Some(deadline) => {
@@ -101,12 +97,7 @@ fn run(
             }
         };
         match input {
-            Some(input) => {
-                if input == Input::Core(Message::Terminate) {
-                    ending = true;
-                }
-                tui.handle(input, start.elapsed());
-            }
+            Some(input) => tui.handle(input, start.elapsed()),
             None => tui.tick(start.elapsed()),
         }
     }
