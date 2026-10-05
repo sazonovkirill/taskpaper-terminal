@@ -49,10 +49,10 @@ Typing one of these prefixes followed by a space converts the block (FR-MODE-05,
 
 Rules:
 
-- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret and that the block has no children (FR-BLK-07); otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project or section, are ordinary text.
+- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret, that the block has no children (FR-BLK-07) and that it is not the zoom title, whose next block would be its child; otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project or section, are ordinary text.
 - Shortcuts fire only on a typed space. Pasted text is never converted.
 - The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
-- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode.
+- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode. `Backspace` in the still empty block below deletes only that block (§2), leaving the divider as its own step.
 - A conversion is part of the edit session's undo step (§2) and follows the rules of `convert_type` (§5).
 - `- ` and a trailing `:` need no shortcut: TaskPaper already reads them as a task and a project, and the marker updates live (OQ-27). `# ` stays text and starts a Markdown heading in a text block (§2.2, OQ-28).
 

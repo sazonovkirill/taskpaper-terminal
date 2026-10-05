@@ -285,6 +285,9 @@ const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
     (&[key!('/')], |_| Message::OpenTypeMenu),
+    (&[key!(' ')], |context| Message::TypeSpace {
+        today: context.today,
+    }),
     (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
@@ -861,7 +864,7 @@ mod tests {
     #[test]
     fn characters_are_typed_in_edit_mode() {
         let none = KeyModifiers::NONE;
-        for c in ['j', 'x', 'g', 'z', 'i', ' ', '@', 'é'] {
+        for c in ['j', 'x', 'g', 'z', 'i', '@', 'é'] {
             check_editing(KeyCode::Char(c), none, Some(&text(TextEdit::Insert(c))));
         }
         check_editing(
@@ -967,6 +970,21 @@ mod tests {
             keymap.message_for(&key(code, modifiers), ms(0), IN_MENU),
             expected.map(Message::TypeMenu),
             "{modifiers:?} {code:?}"
+        );
+    }
+
+    // FR-MODE-05, editing.md §2.1
+    #[test]
+    fn space_in_edit_mode_is_typed_dated_for_a_shortcut() {
+        check_editing(
+            KeyCode::Char(' '),
+            KeyModifiers::NONE,
+            Some(&Message::TypeSpace { today: TODAY }),
+        );
+        check_editing(
+            KeyCode::Char(' '),
+            KeyModifiers::SHIFT,
+            Some(&Message::TypeSpace { today: TODAY }),
         );
     }
 

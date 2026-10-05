@@ -24,4 +24,5 @@ mod support;
 mod tags;
 mod type_menu;
 mod typed_creation;
+mod typed_shortcuts;
 mod zoom;

@@ -1,9 +1,10 @@
 //! Edit mode: the focused block's text edited in place with the text keys, written to the
 //! document as it is typed, refused where it would type a tag, undone as one step and repaired
-//! when editing ends, with the type menu that `/` opens
-//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, OQ-24, OQ-25,
-//! OQ-27, D-44).
+//! when editing ends, with the type menu that `/` opens and the typed shortcuts
+//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, FR-MODE-05,
+//! OQ-24, OQ-25, OQ-27, D-44).
 
+mod shortcut;
 mod type_menu;
 
 use std::{mem, ops::Range};
@@ -71,6 +72,12 @@ pub(super) struct Session {
     typing: bool,
     /// The type menu, while `/` has it open (D-44).
     menu: Option<TypeMenu>,
+    /// The parts and text as typed, prefix and space included, while the latest change is a
+    /// typed shortcut that the very next `Backspace` or `Ctrl+Z` takes back (editing.md §2.1).
+    shortcut: Option<(LineParts, TextField)>,
+    /// Whether the session's step joins the step before it: the divider a typed `--- ` made of
+    /// the block above (editing.md §2.1).
+    joins: bool,
 }
 
 impl Session {
@@ -90,6 +97,8 @@ impl Session {
             redo: Vec::new(),
             typing: false,
             menu: None,
+            shortcut: None,
+            joins: false,
         }
     }
 
@@ -98,6 +107,7 @@ impl Session {
     /// when the file is read back. Text that makes the line a task takes the task's syntax, so
     /// that its dash shows as the marker (OQ-27).
     fn edit(&mut self, edit: TextEdit) -> bool {
+        self.shortcut = None;
         if let TextEdit::Insert(c) = edit
             && format::breaks_line(c)
         {
@@ -133,6 +143,7 @@ impl Session {
     /// Takes the text back to before its latest change, or with `undo` false, replays the
     /// latest change undone.
     fn step(&mut self, undo: bool) {
+        self.shortcut = None;
         let (from, to) = if undo {
             (&mut self.undo, &mut self.redo)
         } else {
@@ -150,12 +161,19 @@ impl Session {
     /// Gives the text the type `typed` as one change to undo, keeping the caret where it was
     /// (editing.md §2.3).
     fn retype(&mut self, typed: Typed) {
-        self.undo.push((self.parts.clone(), self.field.clone()));
+        let (parts, text) = self.parts.retyped(typed, self.field.text());
+        let field = TextField::with_caret(text, self.field.caret());
+        self.change(parts, field);
+    }
+
+    /// Makes `parts` and `field` the session's as one change to undo.
+    fn change(&mut self, parts: LineParts, field: TextField) {
+        self.undo.push((
+            mem::replace(&mut self.parts, parts),
+            mem::replace(&mut self.field, field),
+        ));
         self.redo.clear();
         self.typing = false;
-        let (parts, text) = self.parts.retyped(typed, self.field.text());
-        self.field = TextField::with_caret(text, self.field.caret());
-        self.parts = parts;
     }
 
     /// The line the text and parts make: the line as it was while they are as they were.
@@ -244,12 +262,16 @@ impl State {
     }
 
     /// Applies `edit` to the text being edited and writes it to the document, or shows why a
-    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead
-    /// (editing.md §2).
+    /// tag cannot be typed (OQ-25). `Backspace` right after a typed shortcut takes it back, and
+    /// in an empty text deletes the block instead (editing.md §2, §2.1).
     pub(super) fn edit_text(&mut self, edit: TextEdit) {
         let Some(session) = &mut self.edit else {
             return;
         };
+        if edit == TextEdit::DeleteBackward && session.revert_shortcut() {
+            self.write(false);
+            return;
+        }
         if edit == TextEdit::DeleteBackward && session.field.text().is_empty() {
             self.delete_empty_block();
             return;
@@ -270,6 +292,7 @@ impl State {
     /// `/` in edit mode: opens the type menu (editing.md §2.3).
     pub(super) fn open_type_menu(&mut self) {
         if let Some(session) = &mut self.edit {
+            session.shortcut = None;
             session.menu = Some(TypeMenu::default());
         }
     }
@@ -336,9 +359,12 @@ impl State {
         }
     }
 
-    /// Takes the text being edited back to before its latest change.
+    /// Takes the text being edited back to before its latest change, or to the text as typed
+    /// right after a typed shortcut (editing.md §2.1).
     pub(super) fn undo_typing(&mut self) {
-        if let Some(session) = &mut self.edit {
+        if let Some(session) = &mut self.edit
+            && !session.revert_shortcut()
+        {
             session.step(true);
         }
         self.write(false);
@@ -353,8 +379,8 @@ impl State {
     }
 
     /// Ends editing: writes the line repaired where it breaks canonical-outline rule 2 or 4 and
-    /// records the whole session, with the block's creation, as one step to undo
-    /// (file-format.md §3.1, FR-OPS-08).
+    /// records the whole session, with the block's creation, as one step to undo, or as part of
+    /// the step before it when the session joins it (file-format.md §3.1, FR-OPS-08).
     pub(super) fn stop_editing(&mut self) {
         self.write(true);
         let Some(session) = self.edit.take() else {
@@ -372,17 +398,19 @@ impl State {
             .cloned()
             .chain(session.applied())
             .collect();
-        self.edits.record(Transaction::new(ops, before, after));
+        self.record_session(session.joins, Transaction::new(ops, before, after));
         self.focus = Some(session.id);
     }
 
     /// Records the creation of the block being edited as a step of its own, so that a step
     /// committed while it is edited, which may move it, comes after it in the history and is
-    /// undone before it. The text is recorded when editing ends.
+    /// undone before it. The text is recorded when editing ends. A typed shortcut can no longer
+    /// be taken back on its own after such a step.
     pub(super) fn record_edit_so_far(&mut self) {
         let Some(session) = self.edit.as_mut() else {
             return;
         };
+        session.shortcut = None;
         let ops = mem::take(&mut session.created);
         if !ops.is_empty() {
             let before = Restore {
@@ -391,7 +419,18 @@ impl State {
             let after = Restore {
                 focus: Some(session.id),
             };
-            self.edits.record(Transaction::new(ops, before, after));
+            let joins = mem::take(&mut session.joins);
+            self.record_session(joins, Transaction::new(ops, before, after));
+        }
+    }
+
+    /// Records `step`, which a session applied, as the next step to undo, or with `joins` as part
+    /// of the latest one.
+    fn record_session(&mut self, joins: bool, step: Transaction<Restore>) {
+        if joins {
+            self.edits.join(step);
+        } else {
+            self.edits.record(step);
         }
     }
 

@@ -139,6 +139,21 @@ impl LineParts {
         };
         (parts, text.to_owned())
     }
+
+    /// These parts with the tag `name` set to `value` as [`tags::set`] sets it on a line: the
+    /// first occurrence's value replaced, else the tag added after the others.
+    #[must_use]
+    pub fn tagged(mut self, name: &str, value: &str) -> Self {
+        let found = self
+            .tags
+            .iter_mut()
+            .find(|tag| tags::scan(tag).iter().any(|found| found.name == name));
+        match found {
+            Some(tag) => *tag = tags::set(tag, name, value),
+            None => self.tags.push(tags::set("", name, value)),
+        }
+        self
+    }
 }
 
 #[cfg(test)]
@@ -301,5 +316,23 @@ mod tests {
         ] {
             assert_eq!(retyped("", typed), line, "{typed:?}");
         }
+    }
+
+    // FR-MODE-05, FR-DONE-01
+    #[test]
+    fn a_tag_set_on_the_parts_replaces_its_value_or_comes_last() {
+        let tagged = |line: &str| {
+            let (parts, text) = LineParts::split(line);
+            parts.tagged("done", "2026-10-05").line(&text)
+        };
+        assert_eq!(tagged("- a @x"), "- a @x @done(2026-10-05)");
+        assert_eq!(tagged("- a @done @x"), "- a @done(2026-10-05) @x");
+        let (task, _) = LineParts::split("- a");
+        assert_eq!(
+            task.tagged("done", "2026-10-05").line(""),
+            "- \u{2026} @done(2026-10-05)",
+            "an empty task keeps the placeholder"
+        );
+        assert_eq!(tagged(""), "@done(2026-10-05)");
     }
 }

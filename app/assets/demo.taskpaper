@@ -41,3 +41,4 @@ Weekend errands:
 	- Bakery
 	- Hardware store
 	Select several with J, K or v, then x completes them all and gG groups them.
+	While editing, start a line with [] for a task, [x] for a done task or --- for a divider, then a space.

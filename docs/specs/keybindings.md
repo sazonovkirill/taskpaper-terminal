@@ -150,6 +150,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | End editing and edit the previous / next visible block that is not a divider, at the same column (D-43) | `↑` / `↓` |
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
 | Open the type menu (D-44, [editing.md §2.3](editing.md#23-type-menu)) | `/` |
+| Typed shortcuts: a divider, a task, a completed task (FR-MODE-05, [editing.md §2.1](editing.md#21-typed-shortcuts)); `Backspace` or `Ctrl+Z` right after takes one back | `--- `, `[] ` or `[ ] `, `[x] ` at the start of the text |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
