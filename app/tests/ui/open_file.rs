@@ -10,7 +10,7 @@ use crate::support::Harness;
 fn shows_the_file_as_an_indented_outline() {
     let mut app = Harness::open("groceries.taskpaper", 36, 10);
     let mut expected = Buffer::with_lines([
-        "Home                                ",
+        "⌂                                   ",
         "────────────────────────────────────",
         "▎ Groceries:                        ",
         "    - Milk                          ",
@@ -38,7 +38,7 @@ fn shows_the_file_as_an_indented_outline() {
 fn shows_the_demo_outline_without_a_path() {
     let mut app = Harness::demo(40, 6);
     let mut expected = Buffer::with_lines([
-        "Home                                    ",
+        "⌂                                       ",
         "────────────────────────────────────────",
         "▎ Trip to Lisbon:                       ",
         "    - Book flights                      ",

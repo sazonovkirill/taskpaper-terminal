@@ -42,7 +42,7 @@ fn assert_focus(app: &mut Harness, expected: &str) {
 #[test]
 fn the_header_shows_home_until_zoomed() {
     let mut app = app(30);
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
     assert!(
         app.render().buffer()[(0, 0)]
             .modifier
@@ -57,7 +57,7 @@ fn the_header_shows_home_until_zoomed() {
 fn zooming_in_shows_the_block_as_a_title_over_its_children() {
     let mut app = app(30);
     app.type_keys(".");
-    assert_eq!(header(&mut app), "Home › Shop");
+    assert_eq!(header(&mut app), "⌂ › Shop");
     assert_eq!(shown(&mut app), ["Shop", "- Milk", "  organic", "- Eggs"]);
     assert_focus(&mut app, "- Milk");
     let title = app.render().buffer()[(2, 2)].clone();
@@ -70,11 +70,11 @@ fn every_zoom_key_zooms_in_and_breadcrumbs_show_the_path() {
     let mut app = app(30);
     app.type_keys("jjjj");
     app.press(KeyCode::Char('l'), KeyModifiers::ALT);
-    assert_eq!(header(&mut app), "Home › Work");
+    assert_eq!(header(&mut app), "⌂ › Work");
     app.press(KeyCode::Right, KeyModifiers::ALT);
-    assert_eq!(header(&mut app), "Home › Work › Report");
+    assert_eq!(header(&mut app), "⌂ › Work › Report");
     app.type_keys("gz");
-    assert_eq!(header(&mut app), "Home › Work › Report › Draft");
+    assert_eq!(header(&mut app), "⌂ › Work › Report › Draft");
     assert_eq!(shown(&mut app), ["Draft"]);
     assert_focus(&mut app, "Draft");
 }
@@ -87,7 +87,7 @@ fn zooming_into_a_leaf_focuses_the_title_and_zooming_on_it_does_nothing() {
     assert_eq!(shown(&mut app), ["Eggs"]);
     assert_focus(&mut app, "Eggs");
     app.type_keys(".");
-    assert_eq!(header(&mut app), "Home › Shop › Eggs");
+    assert_eq!(header(&mut app), "⌂ › Shop › Eggs");
 }
 
 // FR-NAV-03
@@ -95,18 +95,18 @@ fn zooming_into_a_leaf_focuses_the_title_and_zooming_on_it_does_nothing() {
 fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
     let mut app = app(30);
     app.type_keys("jjjj...");
-    assert_eq!(header(&mut app), "Home › Work › Report › Draft");
+    assert_eq!(header(&mut app), "⌂ › Work › Report › Draft");
     app.type_keys(">");
-    assert_eq!(header(&mut app), "Home › Work › Report");
+    assert_eq!(header(&mut app), "⌂ › Work › Report");
     assert_focus(&mut app, "- Draft");
     app.press(KeyCode::Char('h'), KeyModifiers::ALT);
-    assert_eq!(header(&mut app), "Home › Work");
+    assert_eq!(header(&mut app), "⌂ › Work");
     assert_focus(&mut app, "- Report");
     app.press(KeyCode::Left, KeyModifiers::ALT);
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
     assert_focus(&mut app, "Work:");
     app.type_keys("gu");
-    assert_eq!(header(&mut app), "Home", "home has no parent");
+    assert_eq!(header(&mut app), "⌂", "home has no parent");
     app.type_keys(".gu");
     assert_focus(&mut app, "Work:");
 }
@@ -117,11 +117,11 @@ fn g_h_and_ctrl_quote_go_home() {
     let mut app = app(30);
     app.type_keys("jjjj..");
     app.type_keys("gh");
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
     assert_focus(&mut app, "  - Report");
     app.type_keys("jj.");
     app.press(KeyCode::Char('\''), KeyModifiers::CONTROL);
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
 }
 
 // FR-NAV-04
@@ -130,28 +130,28 @@ fn back_and_forward_walk_the_zoom_history() {
     let mut app = app(30);
     app.type_keys("jjjj..");
     app.type_keys("H");
-    assert_eq!(header(&mut app), "Home › Work");
+    assert_eq!(header(&mut app), "⌂ › Work");
     app.type_keys("H");
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
     app.type_keys("H");
-    assert_eq!(header(&mut app), "Home", "nothing before the start");
+    assert_eq!(header(&mut app), "⌂", "nothing before the start");
     app.type_keys("L");
-    assert_eq!(header(&mut app), "Home › Work");
+    assert_eq!(header(&mut app), "⌂ › Work");
     app.press(KeyCode::Right, KeyModifiers::ALT | KeyModifiers::SHIFT);
-    assert_eq!(header(&mut app), "Home › Work › Report");
+    assert_eq!(header(&mut app), "⌂ › Work › Report");
     app.type_keys("L");
     assert_eq!(
         header(&mut app),
-        "Home › Work › Report",
+        "⌂ › Work › Report",
         "nothing after the end"
     );
     app.press(KeyCode::Left, KeyModifiers::ALT | KeyModifiers::SHIFT);
-    assert_eq!(header(&mut app), "Home › Work");
+    assert_eq!(header(&mut app), "⌂ › Work");
     app.type_keys("gh");
     app.type_keys("L");
     assert_eq!(
         header(&mut app),
-        "Home",
+        "⌂",
         "a new zoom drops the forward history"
     );
 }
@@ -218,6 +218,6 @@ fn zooming_resets_nothing_in_an_empty_document() {
     for keys in [".", ">", "gh", "H", "L"] {
         app.type_keys(keys);
     }
-    assert_eq!(header(&mut app), "Home");
+    assert_eq!(header(&mut app), "⌂");
     assert_eq!(focused_rows(&mut app), Vec::<String>::new());
 }

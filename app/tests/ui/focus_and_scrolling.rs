@@ -39,7 +39,7 @@ fn top_row(app: &mut Harness) -> String {
 fn focus_starts_on_the_first_row_with_a_gutter_marker() {
     let mut app = Harness::with_text("A:\n\t- b\n", 12, 5);
     let mut expected = Buffer::with_lines([
-        "Home        ",
+        "⌂           ",
         "────────────",
         "▎ A:        ",
         "    - b     ",

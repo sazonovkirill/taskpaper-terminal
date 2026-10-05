@@ -5,7 +5,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ## 1. Layout
 
 ```
-┌ Bookmarks ─────────┬ Home › Work ──────────────────────┬ Home › Ideas ─────────────────┐
+┌ Bookmarks ─────────┬ ⌂ › Work ─────────────────────────┬ ⌂ › Ideas ────────────────────┐
 │ ★ Launch plan      │ Work                              │ Ideas                         │
 │ Today          3   │   Launch:                         │ • Terminal outliner           │
 │ Projects           │   - Draft announcement  Fri 8 Oct │ • Plain-text sync             │
@@ -20,7 +20,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ```
 
 - **Sidebar** (FR-UI-01) on the left, 24–32 columns.
-- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, `Home` followed by the path to the zoom block) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row. The focused pane's header is highlighted.
+- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, a house icon `⌂` for the document root followed by the path to the zoom block, D-32) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row. The focused pane's header is highlighted.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
 - **Secondary sidebar** on the right, 32–40 columns, shown only while it holds the `?` shortcuts panel (§4) or the comments panel (FR-SPC-02, [special-nodes.md §2.2](special-nodes.md#22-display)), one at a time; opening one replaces the other (D-28). It takes its width from the panes, which keep their minimum and scroll horizontally as in [navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13). Below 80 columns it is drawn over the right part of the focused pane.
 - **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, dates, Save As) are centered overlays at most 80×20.
@@ -59,7 +59,7 @@ Each row: indent (2 columns per level), then text and right-aligned chips. Tasks
 - A theme defines colors for: text, dim text, accent, selection, focus, headers, rule lines, code, links, each of the six tag colors, chips, overdue, errors.
 - The theme picker in Go to Command previews each theme live as it is highlighted; `Enter` keeps it and saves it to the config (OQ-18), `Esc` restores the previous one.
 - `NO_COLOR` set: no colors, only bold, dim, italic, underline, strikethrough and reverse.
-- Unicode markers have ASCII fallbacks (`v`, `>`, `[x]`, `-`) when the locale is not UTF-8.
+- Unicode markers have ASCII fallbacks (`v`, `>`, `[x]`, `-`, `~` for `⌂`) when the locale is not UTF-8.
 - The settings window (§8) previews themes live in the same way.
 
 ## 4. Shortcuts panel (FR-KEY-04)
@@ -83,7 +83,7 @@ A popup anchored at the focused element (or at the pointer for right-click) list
 
 - `icons = "nerd"` (default) draws Nerd Font glyphs; `icons = "none"` draws the Unicode markers of §2. When the locale is not UTF-8, both settings draw the ASCII fallbacks of §3.
 - Every icon has exactly one fallback, defined next to it in one table in `ui::theme`, so the two sets cannot drift. Icons are drawn only by the UI; the core reports types and states, never glyphs.
-- Icons cover: project fold state, task and done task, URL block, collapsed-children count, date chips (start, due, overdue), `@today`, bookmarks and the Today view in the sidebar, the status line's mode and save state, and the entries of pickers, the context menu and the settings window.
+- Icons cover: the breadcrumb root (`⌂`), project fold state, task and done task, URL block, collapsed-children count, date chips (start, due, overdue), `@today`, bookmarks and the Today view in the sidebar, the status line's mode and save state, and the entries of pickers, the context menu and the settings window.
 - Nerd Font glyphs are taken from the Nerd Fonts v3 code points (not the retired v2 Material Design range) and must be one cell wide in the terminals of N-PORT-01, so layout and alignment are identical with icons on and off; widths come from the same `unicode-width` measurement as text, and a glyph that measures two cells is not used.
 - The app cannot detect whether the terminal font has the glyphs. The `?` panel and the settings window's icon entry say how to turn icons off, and the settings window's own labels are plain text, so it stays usable when glyphs render as boxes.
 

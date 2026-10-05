@@ -76,12 +76,15 @@ const GUTTER_WIDTH: u16 = 2;
 /// Marks each line of the focused block in the gutter (D-30).
 const FOCUS_MARKER: &str = "▎";
 
-/// The breadcrumb header for a view zoomed into the last of `crumbs`: `Home`, then each crumb,
+/// Stands for the document root in the breadcrumbs (D-32).
+const HOME_ICON: &str = "⌂";
+
+/// The breadcrumb header for a view zoomed into the last of `crumbs`: `⌂`, then each crumb,
 /// dropping crumbs from the left behind `…` until it fits in `width` columns or only the last
 /// one is left (navigation §4). Bold, as the focused pane's header (ui.md §1).
 #[must_use]
 pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
-    let path: Vec<&str> = std::iter::once("Home")
+    let path: Vec<&str> = std::iter::once(HOME_ICON)
         .chain(crumbs.iter().map(String::as_str))
         .collect();
     let mut line = Line::from(path.join(" › "));
@@ -289,12 +292,12 @@ mod tests {
     fn breadcrumbs_start_at_home_and_drop_crumbs_from_the_left_to_fit() {
         let crumbs = ["Work".to_owned(), "Report".to_owned(), "Draft".to_owned()];
         let text = |width| breadcrumbs(&crumbs, width).to_string();
-        assert_eq!(breadcrumbs(&[], 0).to_string(), "Home");
-        assert_eq!(text(28), "Home › Work › Report › Draft");
-        assert_eq!(text(27), "… › Work › Report › Draft");
+        assert_eq!(breadcrumbs(&[], 0).to_string(), "⌂");
+        assert_eq!(text(25), "⌂ › Work › Report › Draft");
         assert_eq!(text(24), "… › Report › Draft");
+        assert_eq!(text(17), "… › Draft");
         assert_eq!(text(3), "… › Draft", "the last crumb always stays");
-        assert_eq!(breadcrumbs(&crumbs, 28).style, Style::new().bold());
+        assert_eq!(breadcrumbs(&crumbs, 25).style, Style::new().bold());
     }
 
     // FR-NAV-03

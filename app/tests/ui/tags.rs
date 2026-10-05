@@ -9,7 +9,7 @@ use crate::support::Harness;
 fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     let mut app = Harness::open("tags.taskpaper", 40, 10);
     let mut expected = Buffer::with_lines([
-        "Home                                    ",
+        "⌂                                       ",
         "────────────────────────────────────────",
         "▎ Errands:                              ",
         "    - Call about the lease              ",
