@@ -17,6 +17,7 @@ mod go_to_symbol;
 mod hang_up;
 mod markdown;
 mod marks;
+mod move_to;
 mod moving;
 mod open_file;
 mod open_url;

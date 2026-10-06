@@ -237,6 +237,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::MoveUp, Mode::Navigate, &["alt+k", "alt+up"]),
     entry!(Command::MoveDown, Mode::Navigate, &["alt+j", "alt+down"]),
     entry!(Command::Group, Mode::Navigate, &["g G"]),
+    entry!(Command::MoveTo, Mode::Navigate, &["g m"]),
     entry!(Command::Delete, Mode::Navigate, &["d d", "delete"]),
     entry!(Command::Duplicate, Mode::Navigate, &["D"]),
     entry!(Command::Copy, Mode::Navigate, &["y", "ctrl+c"]),

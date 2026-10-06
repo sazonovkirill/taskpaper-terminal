@@ -62,6 +62,8 @@ pub struct State {
     pub(super) details: bool,
     /// Go to Symbol, while it is open (FR-NAV-05).
     pub(super) symbols: Option<Finder<ItemId>>,
+    /// Move to, while it is open (FR-OPS-05).
+    pub(super) destinations: Option<Finder<ItemId>>,
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -238,6 +240,7 @@ impl State {
             type_picker: None,
             details: false,
             symbols: None,
+            destinations: None,
             resume: None,
             folds: HashSet::new(),
             show_done: true,

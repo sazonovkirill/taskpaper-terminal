@@ -71,6 +71,8 @@ pub enum Overlay {
     Details,
     /// Go to Symbol (FR-NAV-05).
     GoToSymbol,
+    /// Move to (FR-OPS-05).
+    MoveTo,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -519,6 +521,7 @@ impl Keymap {
                 Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
                 Overlay::GoToSymbol => menu_message(pressed, Message::GoToSymbol),
+                Overlay::MoveTo => menu_message(pressed, Message::MoveTo),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -1937,6 +1940,30 @@ mod tests {
         assert_eq!(
             keymap.message_for(&char('g'), ms(3), finding),
             Some(Message::GoToSymbol(MenuInput::Type('g')))
+        );
+    }
+
+    // FR-OPS-05, keybindings.md §2 and §4
+    #[test]
+    fn g_m_opens_move_to_which_takes_the_keys_of_pickers() {
+        let mut keymap = Keymap::default();
+        let char = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&char('g'), ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.message_for(&char('m'), ms(1), CONTEXT),
+            Some(Message::OpenMoveTo)
+        );
+        let moving = &Context {
+            overlay: Some(Overlay::MoveTo),
+            ..*CONTEXT
+        };
+        assert_eq!(
+            keymap.message_for(&key(KeyCode::Enter, KeyModifiers::NONE), ms(2), moving),
+            Some(Message::MoveTo(MenuInput::Choose))
+        );
+        assert_eq!(
+            keymap.message_for(&char('g'), ms(3), moving),
+            Some(Message::MoveTo(MenuInput::Type('g')))
         );
     }
 }

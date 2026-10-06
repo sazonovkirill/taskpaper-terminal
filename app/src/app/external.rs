@@ -282,12 +282,13 @@ impl State {
     /// Replaces the document with `document`, keeping the zoom, the focus, the history, the
     /// selection and the collapsed blocks and project entries on the blocks they were on. An edit session ends with
     /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
-    /// closes with it, as does an edit a command of the command menu would resume (D-50) and Go
-    /// to Symbol, whose candidates name blocks of the old document.
+    /// closes with it, as does an edit a command of the command menu would resume (D-50), and so
+    /// do Go to Symbol and Move to, whose candidates name blocks of the old document.
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
         self.symbols = None;
+        self.destinations = None;
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
@@ -742,6 +743,18 @@ mod tests {
             Some(state.rows()[1].id),
             "still on A, not moved to B"
         );
+    }
+
+    // file-io.md §3, FR-OPS-05
+    #[test]
+    fn a_reload_closes_move_to() {
+        let mut state = opened("A\nB\nC\n");
+        state.update(Message::OpenMoveTo);
+        state.update(Message::MoveTo(crate::app::MenuInput::Type('c')));
+        state.update(found("X\nA\nB\nC\n"));
+        assert_eq!(state.move_to(), None);
+        state.update(Message::MoveTo(crate::app::MenuInput::Choose));
+        assert_eq!(format::serialize(state.document()), "X\nA\nB\nC\n");
     }
 
     // file-io.md §3, D-50

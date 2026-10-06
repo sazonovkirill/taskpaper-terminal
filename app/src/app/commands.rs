@@ -106,6 +106,8 @@ pub enum Command {
     OpenDetails,
     /// Find a block by name and go to it.
     GoToSymbol,
+    /// Find a block by name and move the selection under it.
+    MoveTo,
     /// Undo.
     Undo,
     /// Redo.
@@ -224,6 +226,7 @@ impl Command {
             Self::Retype(Typed::Text) => "Note".into(),
             Self::OpenDetails => "Show Details".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
+            Self::MoveTo => "Move to…".into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -307,6 +310,7 @@ impl Command {
             Self::Retype(_) | Self::ToggleWrap => return None,
             Self::OpenDetails => Message::OpenDetails,
             Self::GoToSymbol => Message::OpenGoToSymbol,
+            Self::MoveTo => Message::OpenMoveTo,
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,

@@ -373,12 +373,13 @@ impl Tui {
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
             frame.render_widget(popup, area);
         }
-        if let Some(view) = self
+        let finder = self
             .state
             .go_to_symbol()
-            .filter(|_| !self.state.in_conflict())
-        {
-            let finder = FinderPopup::new("Go to Symbol", &view);
+            .map(|view| ("Go to Symbol", view))
+            .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
+        if let Some((title, view)) = finder.filter(|_| !self.state.in_conflict()) {
+            let finder = FinderPopup::new(title, &view);
             frame.set_cursor_position(finder.caret(outline));
             frame.render_widget(finder, outline);
         }
@@ -536,6 +537,8 @@ impl Tui {
             Some(Overlay::TypePicker)
         } else if self.state.go_to_symbol().is_some() {
             Some(Overlay::GoToSymbol)
+        } else if self.state.move_to().is_some() {
+            Some(Overlay::MoveTo)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }

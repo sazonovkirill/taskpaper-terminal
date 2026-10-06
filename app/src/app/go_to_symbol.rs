@@ -28,19 +28,26 @@ impl State {
         self.symbols.as_ref().map(Finder::view)
     }
 
-    /// `Ctrl+P`: opens Go to Symbol over every block in document order but dividers, which have
-    /// no name, each with the path of the blocks above it.
+    /// `Ctrl+P`: opens Go to Symbol over every block in document order but dividers.
     pub(super) fn open_go_to_symbol(&mut self) {
-        let mut candidates = Vec::new();
-        self.push_symbols(self.document.root(), &mut candidates);
-        self.symbols = Some(Finder::new(candidates));
+        self.symbols = Some(Finder::new(self.block_candidates(&[])));
     }
 
-    /// Appends a candidate for each block below `line`, depth first, but not for completed
-    /// blocks and what they hold while those are hidden (FR-DONE-02).
-    fn push_symbols(&self, line: ItemId, out: &mut Vec<Candidate<ItemId>>) {
+    /// A candidate for each block in document order, with the path of the blocks above it and
+    /// ranked bookmarks first, then projects and sections, but none for dividers, which have no
+    /// name, nor for `excluded` blocks and completed blocks while those are hidden (FR-DONE-02),
+    /// nor what they hold (navigation.md §8, FR-OPS-05).
+    pub(super) fn block_candidates(&self, excluded: &[Block]) -> Vec<Candidate<ItemId>> {
+        let mut candidates = Vec::new();
+        self.push_candidates(self.document.root(), excluded, &mut candidates);
+        candidates
+    }
+
+    /// Appends a candidate for each block below `line`, depth first, as
+    /// [`State::block_candidates`] lists them.
+    fn push_candidates(&self, line: ItemId, excluded: &[Block], out: &mut Vec<Candidate<ItemId>>) {
         for block in blocks::children(&self.document, line) {
-            if !self.shows(&block) {
+            if !self.shows(&block) || excluded.iter().any(|gone| gone.id() == block.id()) {
                 continue;
             }
             if !block.divider() {
@@ -53,7 +60,7 @@ impl State {
                     tier: tier(&block),
                 });
             }
-            self.push_symbols(block.id(), out);
+            self.push_candidates(block.id(), excluded, out);
         }
     }
 

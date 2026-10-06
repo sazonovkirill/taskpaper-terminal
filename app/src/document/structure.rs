@@ -306,18 +306,44 @@ pub fn shift_all(document: &Document, blocks: &[Block], by: Shift, top: ItemId) 
 /// Never: each op is built from a copy of the document as the ops before it left it.
 #[must_use]
 pub fn group(document: &mut Document, blocks: &[Block]) -> Option<(ItemId, Vec<Op>)> {
-    let (id, mut ops) = new_block(document, Place::Above(blocks.first()?), Some(Typed::Text))?;
-    let mut grouped = document.clone();
+    let (id, ops) = new_block(document, Place::Above(blocks.first()?), Some(Typed::Text))?;
+    Some((id, append(document, ops, blocks, id)?))
+}
+
+/// The ops that move `blocks`, none inside another and in document order, with their subtrees
+/// to the end of the children of the block `to`, before the special nodes that end them, in that
+/// order (FR-OPS-05); `None` when `to` is one of them or inside one, or a block is not in
+/// `document`. A line that gets children but has no text gets the placeholder
+/// (file-format.md §3.1, rule 2).
+#[must_use]
+pub fn move_to(document: &Document, blocks: &[Block], to: &Block) -> Option<Vec<Op>> {
+    document.get(to.id())?;
+    let mut above = std::iter::successors(Some(to.id()), |&line| document.get(line)?.parent());
+    if above.any(|line| blocks.iter().any(|block| block.id() == line)) {
+        return None;
+    }
+    append(document, repairs(document, to.id()), blocks, to.id())
+}
+
+/// `ops`, then the ops that move each of `blocks` in turn with its subtree to the end of the
+/// children of the line `to` as `ops` leave `document`; `None` when a block is not in it.
+///
+/// # Panics
+///
+/// Never: each op is built from a copy of the document as the ops before it left it, and `to`
+/// is in no block's subtree.
+fn append(document: &Document, mut ops: Vec<Op>, blocks: &[Block], to: ItemId) -> Option<Vec<Op>> {
+    let mut moved = document.clone();
     let mut step = ops.clone();
     for block in blocks {
-        grouped
+        moved
             .apply(&mut Transaction::new(step, (), ()))
             .expect("the ops are built from the copy as it is");
-        let op = relocate(&grouped, block.id(), id, Spot::End)?;
+        let op = relocate(&moved, block.id(), to, Spot::End)?;
         ops.push(op.clone());
         step = vec![op];
     }
-    Some((id, ops))
+    Some(ops)
 }
 
 /// The block `by` places after (or before, when negative) the block `line`, or `None` when
@@ -884,6 +910,131 @@ mod tests {
         let blocks = [block(&document, "- a"), block(&other, "- w")];
         assert_eq!(group(&mut document, &blocks[1..]), None);
         assert_eq!(group(&mut document, &blocks), None);
+    }
+
+    /// The lines of `text` once the blocks reading `of` move under the block reading `to`, with
+    /// the ops checked to undo; `None` when nothing moves.
+    #[track_caller]
+    fn moved_to(text: &str, of: &[&str], to: &str) -> Option<Vec<String>> {
+        let mut document = format::parse(text);
+        let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
+        let ops = move_to(&document, &blocks, &block(&document, to))?;
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let after = lines(&document, None);
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None), lines(&format::parse(text), None));
+        Some(after)
+    }
+
+    // FR-OPS-05, FR-OPS-07
+    #[test]
+    fn move_to_makes_the_blocks_the_last_children_of_the_destination_in_order() {
+        assert_eq!(
+            moved_to(
+                "- a
+	- c
+P:
+	- x
+- b",
+                &["- a", "- b"],
+                "P:"
+            )
+            .unwrap(),
+            ["P:", "	- x", "	- a", "		- c", "	- b"]
+        );
+        assert_eq!(
+            moved_to(
+                "P:
+	- a
+		- c
+	- x
+Q:
+	- b",
+                &["- a", "- b"],
+                "- x"
+            )
+            .unwrap(),
+            ["P:", "	- x", "		- a", "			- c", "		- b", "Q:"],
+            "from different lists and depths"
+        );
+        assert_eq!(
+            moved_to(
+                "P:
+	- a
+	- x",
+                &["- a"],
+                "P:"
+            )
+            .unwrap(),
+            ["P:", "	- x", "	- a"],
+            "to the end of its own list"
+        );
+    }
+
+    // FR-OPS-05, special-nodes.md §1
+    #[test]
+    fn moved_blocks_go_before_the_special_nodes_ending_the_children() {
+        assert_eq!(
+            moved_to(
+                "P:
+	- x
+	h @hidden
+- a",
+                &["- a"],
+                "P:"
+            )
+            .unwrap(),
+            ["P:", "	- x", "	- a", "	h @hidden"]
+        );
+    }
+
+    // file-format.md §3.1
+    #[test]
+    fn a_blank_destination_gets_the_placeholder() {
+        assert_eq!(
+            moved_to(
+                "n
+
+- t",
+                &["- t"],
+                ""
+            )
+            .unwrap(),
+            ["n", "…", "	- t"]
+        );
+    }
+
+    #[test]
+    fn nothing_moves_into_itself_or_a_block_it_holds() {
+        let text = "- a
+	- c
+		- d
+- b";
+        assert_eq!(moved_to(text, &["- a"], "- a"), None);
+        assert_eq!(moved_to(text, &["- b", "- a"], "- d"), None);
+        assert_eq!(moved_to(text, &["- a"], "- b").unwrap().len(), 4);
+    }
+
+    #[test]
+    fn nothing_moves_to_or_from_a_block_not_in_the_document() {
+        let other = format::parse(
+            "- x
+- y
+- z
+- w",
+        );
+        let document = format::parse(
+            "- a
+- b",
+        );
+        let (a, b, w) = (
+            block(&document, "- a"),
+            block(&document, "- b"),
+            block(&other, "- w"),
+        );
+        assert_eq!(move_to(&document, std::slice::from_ref(&a), &w), None);
+        assert_eq!(move_to(&document, &[a, w], &b), None);
     }
 
     /// The lines of `text` once the blocks reading `of` are duplicated, with the copies marked
