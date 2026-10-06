@@ -110,22 +110,24 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 6.4 | **Settings window.** `g,` and the palette; groups, live preview, reset, immediate writes that keep comments. | FR-SET-02, FR-SET-03, FR-SET-04, ui §8 | 6.2, 6.3 | Change the autosave delay |
 | 6.5 | **Mouse.** Clicks, fold markers, crumbs, the sidebar, pane headers, Alt+click, right-click menus, the wheel. | FR-KEY-05, ui §6 | 4.9, 5.1 | Click around |
 
-## M7 · Comments
+## M7 · Polish and release readiness
 
 | # | Step | Covers | After | Try it |
 |---|---|---|---|---|
-| 7.1 | **Special-node placement.** Operations that insert at the end keep special nodes last; copy, move and delete carry them. Until this step, hand-written special nodes are preserved but may stop being the last child. | FR-SPC-01, special-nodes §1 | 3.6 | (tests with hand-made files) |
-| 7.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the comments panel and its key (`C` went to removing a color, D-48) with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 7.1, 4.8, 4.9, 6.5 | Comment on a task |
+| 7.1 | **Core animations.** The tachyonfx effect manager, synchronized output, the landing flash, change highlight, refusal flash and spinner; the `animations` setting with the SSH default. | FR-UI-11, UI-ANIM-01–03 and 08, ui §9 | 6.4 | Press `G` and see where focus landed |
+| 7.2 | **Remaining animations** (Should). | UI-ANIM-04–07 and 09 | 7.1 | Complete a task |
+| 7.3 | **Performance.** A 100k-line fixture; open under 300 ms, keystrokes under 16 ms, idle CPU near zero; fix what fails. | N-PERF-01–03 | 5.2 | (benchmarks) |
+| 7.4 | **Terminal support.** Kitty variants and classic fallbacks for the keys added since D-42 checked, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
+| 7.5 | **Keymap validation** (owner, by hand). Every binding in the terminals of N-PORT-01, with and without the kitty protocol and inside tmux; swallowed keys get new bindings. | keybindings §6 | 7.4 | — |
 
-## M8 · Polish and release readiness
+## M8 · Comments
+
+The owner moved Comments to the end on 2026-10-06 to think more about it; no Polish step needs it.
 
 | # | Step | Covers | After | Try it |
 |---|---|---|---|---|
-| 8.1 | **Core animations.** The tachyonfx effect manager, synchronized output, the landing flash, change highlight, refusal flash and spinner; the `animations` setting with the SSH default. | FR-UI-11, UI-ANIM-01–03 and 08, ui §9 | 6.4 | Press `G` and see where focus landed |
-| 8.2 | **Remaining animations** (Should). | UI-ANIM-04–07 and 09 | 8.1 | Complete a task |
-| 8.3 | **Performance.** A 100k-line fixture; open under 300 ms, keystrokes under 16 ms, idle CPU near zero; fix what fails. | N-PERF-01–03 | 5.2 | (benchmarks) |
-| 8.4 | **Terminal support.** Kitty variants and classic fallbacks for the keys added since D-42 checked, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
-| 8.5 | **Keymap validation** (owner, by hand). Every binding in the terminals of N-PORT-01, with and without the kitty protocol and inside tmux; swallowed keys get new bindings. | keybindings §6 | 8.4 | — |
+| 8.1 | **Special-node placement.** Operations that insert at the end keep special nodes last; copy, move and delete carry them. Until this step, hand-written special nodes are preserved but may stop being the last child. | FR-SPC-01, special-nodes §1 | 3.6 | (tests with hand-made files) |
+| 8.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the comments panel and its key (`C` went to removing a color, D-48) with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 8.1, 4.8, 4.9, 6.5 | Comment on a task |
 
 Cross-cutting Musts (FR-KEY-01, FR-KEY-02, FR-UI-07, FR-DOC-04) are checked in every step's review rather than owned by one step.
 
@@ -145,6 +147,7 @@ Parallel work stays inside the current milestone; a step of a later milestone wa
 - **M2:** 2.1 and 2.2 together; then 2.3; then 2.10, 2.11 and 2.12 together; then 2.4, 2.5 and 2.6 in order; then 2.7 and 2.9 together.
 - **M3:** 3.1, 3.2 and 3.9 together; then 3.3, 3.4 and 3.10; then 3.5 and 3.7; then 3.6 and 3.8.
 - **M4:** 4.1 and 4.5 together; then 4.2 and 4.6; then 4.3, 4.4, 4.7 and 4.8; then 4.9.
-- **M5** and **M7:** in order.
+- **M5:** in order.
 - **M6:** 6.1 and 6.5 together; then 6.2 and 6.3; then 6.4.
-- **M8:** 8.1, 8.3 and 8.4 together; then 8.2 and 8.5.
+- **M7:** 7.1, 7.3 and 7.4 together; then 7.2 and 7.5.
+- **M8:** in order.

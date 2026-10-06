@@ -114,7 +114,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Convert block type | `my` |
 | Make the selected text blocks sections / plain text again (D-52) | `S` / `s` (were new section at the top / below) |
 | Details (all tags) | `mi` |
-| Comments panel (FR-SPC-02) | chosen with step 7.2 (`C` now removes the color, D-48) |
+| Comments panel (FR-SPC-02) | chosen with step 8.2 (`C` now removes the color, D-48) |
 | Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
 
 ### View, panes and panels
