@@ -102,6 +102,73 @@ pub fn scroll_offset(offset: usize, focus: Range<usize>, height: usize, len: usi
         .min(len.saturating_sub(height))
 }
 
+/// Where an outline view starts drawing: a row and how many of its screen lines are scrolled
+/// past.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Scroll {
+    /// The first row on screen, whole or in part.
+    pub row: usize,
+    /// The screen lines of that row above the view.
+    pub line: usize,
+}
+
+/// Where a view `height` lines tall over `rows` rows starts, as [`scroll_offset`] places it from
+/// `scroll` to show the row `focus`, one of the `rows` (the first line when there is none), or
+/// with the focus `anchor` lines from the top, as after a page motion; returns it with the screen
+/// line the focus starts on. `row_height` gives a row's screen lines; it is asked only for the
+/// rows near the focus and at the end, so the cost does not grow with the outline.
+pub fn scroll_rows(
+    scroll: Scroll,
+    focus: Option<usize>,
+    anchor: Option<usize>,
+    height: usize,
+    rows: usize,
+    mut row_height: impl FnMut(usize) -> usize,
+) -> (Scroll, usize) {
+    let height = height.max(1);
+    let at = focus.unwrap_or_default();
+    // A window of whole rows from far enough above the focus to hold any start the scroll can
+    // end at, measured in lines from its first row.
+    let reach = height.max(anchor.unwrap_or_default());
+    let mut first = at;
+    let mut before = 0;
+    while first > 0 && before < reach {
+        first -= 1;
+        before += row_height(first);
+    }
+    let focus_lines = focus.map_or(1, &mut row_height);
+    let offset = match anchor {
+        Some(line) => before.saturating_sub(line),
+        // A start above the window is at least `height` lines above the focus, so it scrolls to
+        // the focus as any start there would; one below the focus scrolls up to it.
+        None if scroll.row < first => 0,
+        None if scroll.row > at => usize::MAX,
+        None => (first..scroll.row).map(&mut row_height).sum::<usize>() + scroll.line,
+    };
+    // The lines from the window's start to the end, counted far enough past the focus that the
+    // end only limits the scroll when it is that near.
+    let mut len = before;
+    let mut row = at;
+    while row < rows && len < before + height {
+        len += row_height(row);
+        row += 1;
+    }
+    let start = scroll_offset(offset, before..before + focus_lines, height, len);
+    let mut scroll = Scroll {
+        row: first,
+        line: start,
+    };
+    while scroll.row < at {
+        let lines = row_height(scroll.row);
+        if scroll.line < lines {
+            break;
+        }
+        scroll.line -= lines;
+        scroll.row += 1;
+    }
+    (scroll, before - start)
+}
+
 /// Where a popup of `size` (width, height) anchored at the caret at `caret` goes inside `area`:
 /// from the caret's column on the line below it, or above the caret's line when there is no room
 /// below, moved left or up as far as it must to stay inside `area` (ui.md §5).
@@ -386,5 +453,88 @@ mod tests {
     fn a_view_without_rows_starts_at_the_focus() {
         check(0, 3, 0, 100, 3);
         check(0, 0, 0, 0, 0);
+    }
+
+    /// Where the view starts as a line counted over all `heights`, after placing it as the
+    /// outline did before it measured only the rows near the focus.
+    fn scroll_over_all_rows(
+        offset: usize,
+        focus: Option<usize>,
+        anchor: Option<usize>,
+        height: usize,
+        heights: &[usize],
+    ) -> usize {
+        let start = |index: usize| heights.iter().take(index).sum::<usize>();
+        let focus = focus.map_or(0..1, |index| start(index)..start(index + 1));
+        let offset = anchor.map_or(offset, |line| focus.start.saturating_sub(line));
+        scroll_offset(offset, focus, height, start(heights.len()))
+    }
+
+    // N-PERF-02
+    #[test]
+    fn a_view_scrolls_by_whole_rows_and_the_lines_of_its_first_one() {
+        let heights = [1, 3, 1, 2, 1, 1, 1, 1];
+        let scroll = |scroll, focus, anchor| {
+            scroll_rows(scroll, focus, anchor, 4, heights.len(), |row| heights[row])
+        };
+        let top = Scroll::default();
+        assert_eq!(scroll(top, Some(1), None), (top, 1), "in view");
+        assert_eq!(
+            scroll(top, Some(2), None),
+            (Scroll { row: 1, line: 1 }, 2),
+            "inside a wrapped row, a line below the focus"
+        );
+        assert_eq!(
+            scroll(top, Some(5), Some(2)),
+            (Scroll { row: 3, line: 1 }, 2),
+            "the focus on the anchor line"
+        );
+        assert_eq!(scroll(top, None, None), (top, 0), "without a focus");
+        let inside = Scroll { row: 0, line: 5 };
+        assert_eq!(
+            scroll_rows(inside, Some(1), None, 4, 6, |row| [6, 1, 1, 1, 1, 1][row]),
+            (inside, 1),
+            "a start inside a tall row stays while the focus is in view"
+        );
+        let heights = [6, 6, 1, 1, 1, 1, 1];
+        assert_eq!(
+            scroll_rows(inside, Some(2), None, 4, heights.len(), |row| heights[row]),
+            (Scroll { row: 1, line: 4 }, 2),
+            "a start far above the focus scrolls down to it"
+        );
+    }
+
+    proptest::proptest! {
+        /// Measuring only the rows near the focus scrolls exactly as measuring every row did,
+        /// and asks for a number of rows that does not grow with the outline.
+        #[test]
+        fn scrolling_by_rows_matches_scrolling_over_every_line(
+            heights in proptest::collection::vec(1..=12usize, 1..80),
+            focus in proptest::option::of(0..80usize),
+            anchor in proptest::option::of(0..20usize),
+            height in 0..24usize,
+            offset in 0..400usize,
+        ) {
+            let focus = focus.map(|at| at % heights.len());
+            let start = |index: usize| heights.iter().take(index).sum::<usize>();
+            let offset = offset % start(heights.len());
+            let row = (0..heights.len()).take_while(|&row| start(row + 1) <= offset).count();
+            let scroll = Scroll { row, line: offset - start(row) };
+            let mut asked = 0;
+            let (placed, focus_line) =
+                scroll_rows(scroll, focus, anchor, height, heights.len(), |row| {
+                    asked += 1;
+                    heights[row]
+                });
+            let expected = scroll_over_all_rows(offset, focus, anchor, height, &heights);
+            proptest::prop_assert_eq!(start(placed.row) + placed.line, expected);
+            proptest::prop_assert!(placed.line < heights[placed.row], "{placed:?}");
+            proptest::prop_assert_eq!(
+                focus_line,
+                focus.map_or(0, start) - expected,
+            );
+            let reach = height.max(anchor.unwrap_or_default()).max(1);
+            proptest::prop_assert!(asked <= 3 * reach + height + 2, "asked {asked} rows");
+        }
     }
 }

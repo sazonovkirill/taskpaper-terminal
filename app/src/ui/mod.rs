@@ -27,6 +27,7 @@ use crate::app::{
 };
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
+use layout::Scroll;
 use widgets::{
     ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
     ShortcutsPanel, SidebarPanel,
@@ -63,8 +64,9 @@ pub struct Tui {
     keymap: Keymap,
     /// Whether text too long for its line wraps, or ends in `…` (FR-UI-05).
     wrap: bool,
-    /// The first outline line on screen of each pane.
-    scrolls: HashMap<PaneId, usize>,
+    /// Where each pane's outline starts on screen: its top row stays put when rows above it
+    /// change height.
+    scrolls: HashMap<PaneId, Scroll>,
     /// How many columns of the strip of panes are scrolled past on its left (navigation.md §5).
     strip_scroll: u16,
     /// The focused pane's width at the last draw, which narrowing and widening change.
@@ -657,38 +659,42 @@ impl Tui {
             .and_then(|focus| rows.iter().position(|row| row.id == focus));
         let editor = self.state.editor().filter(|_| pane.focused);
         let view = OutlineView::new(rows, (self.clock)().date())
-            .focused(focused.filter(|_| pane.focused))
             .editor(editor.as_ref())
             .wrap(self.wrap);
-        // The first screen line of each row, and the line after the last.
-        let starts: Vec<usize> = std::iter::once(0)
-            .chain(
-                view.heights(area.width)
-                    .into_iter()
-                    .scan(0, |line, height| {
-                        *line += height;
-                        Some(*line)
-                    }),
-            )
-            .collect();
-        let start = |index: usize| starts.get(index).copied().unwrap_or_default();
-        let focus = focused.map_or(0..1, |index| start(index)..start(index + 1));
-        let mut scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
-        if pane.focused {
-            if let Some(line) = self.page_anchor.take() {
-                scroll = focus.start.saturating_sub(line);
-            }
+        let scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
+        let anchor = if pane.focused {
             self.page_rows = usize::from(area.height);
-        }
-        let lines = starts.last().copied().unwrap_or_default();
-        scroll = layout::scroll_offset(scroll, focus.clone(), usize::from(area.height), lines);
+            self.page_anchor.take()
+        } else {
+            None
+        };
+        // Only the rows near the focus are measured, so drawing does not grow with the outline.
+        let (scroll, focus_line) = layout::scroll_rows(
+            scroll,
+            focused,
+            anchor,
+            usize::from(area.height),
+            rows.len(),
+            |index| {
+                rows.get(index..=index)
+                    .map_or(1, |row| view.rows(row).heights(area.width).iter().sum())
+            },
+        );
         self.scrolls.insert(pane.id, scroll);
-        view.offset(scroll).render(area, buf);
+        let shown = rows.get(scroll.row..).unwrap_or_default();
+        view.rows(shown)
+            .focused(
+                focused
+                    .filter(|_| pane.focused)
+                    .map(|index| index - scroll.row),
+            )
+            .offset(scroll.line)
+            .render(area, buf);
         if !pane.focused {
             return FocusedPane::default();
         }
-        self.focus_line = focused.map(|_| focus.start.saturating_sub(scroll));
-        let line = u16::try_from(focus.start.saturating_sub(scroll)).unwrap_or(u16::MAX);
+        self.focus_line = focused.map(|_| focus_line);
+        let line = u16::try_from(focus_line).unwrap_or(u16::MAX);
         let row = focused.and_then(|index| rows.get(index));
         let caret = editor
             .as_ref()

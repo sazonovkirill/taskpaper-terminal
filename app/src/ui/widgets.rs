@@ -46,7 +46,7 @@ pub use sidebar::SidebarPanel;
 /// under where it starts, or with wrap off ends in `…` on the one line (FR-UI-05); it stops
 /// before the chips. A block being edited shows the text as typed instead, without chips, on one
 /// line.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
     today: Date,
@@ -69,6 +69,12 @@ impl<'a> OutlineView<'a> {
             editor: None,
             wrap: false,
         }
+    }
+
+    /// The same view of `rows` instead, such as the rows from the first one on screen.
+    #[must_use]
+    pub fn rows(self, rows: &'a [Row]) -> Self {
+        Self { rows, ..self }
     }
 
     /// Starts drawing at screen line `offset` of the outline instead of its first line.

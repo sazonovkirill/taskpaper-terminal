@@ -45,7 +45,7 @@ impl<'a> SidebarPanel<'a> {
     /// to keep the focused entry visible and never past the last line.
     #[must_use]
     pub fn scroll(&self, offset: usize, height: usize) -> usize {
-        let lines = self.lines().len();
+        let lines = self.lines().count();
         match self.focused_line() {
             Some(focused) => layout::scroll_offset(offset, focused..focused + 1, height, lines),
             None => offset.min(lines.saturating_sub(height)),
@@ -55,14 +55,15 @@ impl<'a> SidebarPanel<'a> {
     /// The line of the focused entry, counted from the first, while the sidebar has the keys.
     #[must_use]
     pub fn focused_line(&self) -> Option<usize> {
-        self.lines().iter().position(|&(_, focused)| focused)
+        self.lines().position(|(_, focused)| focused)
     }
 
-    /// Each line with whether it shows the focused entry.
-    fn lines(&self) -> Vec<(Line<'a>, bool)> {
-        let entries = &self.view.entries;
-        let mut lines = Vec::new();
-        for (index, entry) in entries.iter().enumerate() {
+    /// Each line with whether it shows the focused entry, built only when drawn since a large
+    /// outline has many more than fit.
+    fn lines(&self) -> impl Iterator<Item = (SidebarLine<'a>, bool)> {
+        let entries = &self.view.entries[..];
+        let focused = self.view.focused;
+        entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
             let heading = match entry {
                 SidebarEntry::Bookmark { .. } if previous.is_none() => Some("Bookmarks"),
@@ -73,15 +74,36 @@ impl<'a> SidebarPanel<'a> {
                 | SidebarEntry::Today
                 | SidebarEntry::Project { .. } => None,
             };
-            if let Some(heading) = heading {
-                if matches!(entry, SidebarEntry::Project { .. }) {
-                    lines.push((Line::default(), false));
-                }
-                lines.push((Line::styled(heading, heading_style()), false));
-            }
-            lines.push((entry_line(entry), Some(index) == self.view.focused));
+            let blank = heading.filter(|_| matches!(entry, SidebarEntry::Project { .. }));
+            blank
+                .map(|_| SidebarLine::Blank)
+                .into_iter()
+                .chain(heading.map(SidebarLine::Heading))
+                .map(|line| (line, false))
+                .chain([(SidebarLine::Entry(entry), Some(index) == focused)])
+        })
+    }
+}
+
+/// A line of the sidebar before it is drawn.
+#[derive(Debug, Clone, Copy)]
+enum SidebarLine<'a> {
+    /// The blank line above the projects' heading.
+    Blank,
+    /// A section heading.
+    Heading(&'static str),
+    /// An entry.
+    Entry(&'a SidebarEntry),
+}
+
+impl<'a> SidebarLine<'a> {
+    /// The line as drawn.
+    fn line(self) -> Line<'a> {
+        match self {
+            Self::Blank => Line::default(),
+            Self::Heading(heading) => Line::styled(heading, heading_style()),
+            Self::Entry(entry) => entry_line(entry),
         }
-        lines
     }
 }
 
@@ -131,7 +153,6 @@ impl Widget for SidebarPanel<'_> {
         ]));
         for ((line, focused), (gutter_area, line_area)) in self
             .lines()
-            .into_iter()
             .skip(self.offset)
             .zip(gutter.rows().zip(text.rows()))
         {
@@ -139,7 +160,7 @@ impl Widget for SidebarPanel<'_> {
                 buf.set_style(gutter_area.union(line_area), current_line_style());
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
             }
-            line.render(line_area, buf);
+            line.line().render(line_area, buf);
         }
     }
 }
