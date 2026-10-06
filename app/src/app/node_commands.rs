@@ -17,9 +17,9 @@ pub(super) struct NodeCommand {
     pub(super) action: Action,
 }
 
-/// What running a [`NodeCommand`] does.
+/// What running a command of the menu does, which also tells a frontend which command it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Action {
+pub enum Action {
     /// Give the block being edited this type, as a change of the edit session (D-44).
     Retype(Typed),
     /// Send this message, which acts on the focused block.

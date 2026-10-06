@@ -5,7 +5,13 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{DUE, Harness, STAR, START, focused_rows, line, outline_rows};
+
+/// The command menu's icons for project, task, note and complete entries (D-54).
+const PROJECT: &str = "\u{f0256}";
+const TASK: &str = "\u{f0131}";
+const NOTE: &str = "\u{f09a8}";
+const COMPLETE: &str = "\u{f05e1}";
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -33,7 +39,7 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// D-50, ui.md §5
+// D-50, D-54, ui.md §5
 #[test]
 fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
     let mut app = Harness::with_text("- Buy milk\n- Call Ana\n", 34, 12);
@@ -43,15 +49,15 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
     assert_eq!(
         screen(&mut app)[2..11],
         [
-            "▌ - Buy milk",
-            "  - Call Ana┌Commands:───────┐",
-            "            │ Project        │",
-            "            │ Task           │",
-            "            │ Note           │",
-            "            │────────────────│",
-            "            │ Complete       │",
-            "            │ Toggle Today   │",
-            "            └────────────────┘",
+            "▌ - Buy milk".to_owned(),
+            "  - Call Ana┌Commands:───────────┐".to_owned(),
+            format!("            │  {PROJECT} Project         │"),
+            format!("            │  {TASK} Task            │"),
+            format!("            │  {NOTE} Note            │"),
+            "            │────────────────────│".to_owned(),
+            format!("            │  {COMPLETE} Complete        │"),
+            format!("            │  {STAR} Toggle Today    │"),
+            "            └────────────────────┘".to_owned(),
         ],
         "as tall as the room below the caret"
     );
@@ -61,12 +67,12 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
     assert_eq!(
         screen(&mut app)[4..10],
         [
-            "            │ Set Due Date   │",
-            "            │ Start Today    │",
-            "            │ Start Tomorrow │",
-            "            │ Due Today      │",
-            "            │ Due Tomorrow   │",
-            "            │────────────────│",
+            format!("            │  {DUE} Set Due Date    │"),
+            format!("            │  {START} Start Today     │"),
+            format!("            │  {START} Start Tomorrow  │"),
+            format!("            │  {DUE} Due Today       │"),
+            format!("            │  {DUE} Due Tomorrow    │"),
+            "            │────────────────────│".to_owned(),
         ],
         "the highlight stays in view, skipping the lines between groups"
     );
@@ -86,11 +92,11 @@ fn typing_filters_by_word_and_enter_runs_the_first_match() {
     assert_eq!(
         screen(&mut app)[2..7],
         [
-            "▌ Plan",
-            "      ┌Commands:───────┐",
-            "      │ Set Start Date │",
-            "      │ Set Due Date   │",
-            "      └/date───────────┘",
+            "▌ Plan".to_owned(),
+            "      ┌Commands:───────────┐".to_owned(),
+            format!("      │  {START} Set Start Date  │"),
+            format!("      │  {DUE} Set Due Date    │"),
+            "      └/date───────────────┘".to_owned(),
         ]
     );
     app.type_keys(" ");

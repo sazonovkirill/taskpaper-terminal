@@ -1267,7 +1267,7 @@ Site @url(https://x.y)",
         let rows = state.command_menu().unwrap().rows;
         rows.into_iter()
             .map(|row| match row {
-                MenuRow::Command(label) => label,
+                MenuRow::Command { label, .. } => label,
                 MenuRow::Divider => "|",
             })
             .collect()

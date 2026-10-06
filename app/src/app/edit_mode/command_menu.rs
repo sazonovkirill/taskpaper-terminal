@@ -27,16 +27,21 @@ pub struct CommandMenuView<'a> {
     /// What was typed after `/`.
     pub filter: &'a str,
     /// The commands the filter matches, in order, with a divider between groups; never empty.
-    pub rows: Vec<MenuRow>,
+    pub rows: Vec<MenuRow<'a>>,
     /// The position of the highlighted command in `rows`, which is never a divider.
     pub selected: usize,
 }
 
 /// A row of the open menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MenuRow {
-    /// A command, by its label.
-    Command(&'static str),
+pub enum MenuRow<'a> {
+    /// A command: its label and what it does.
+    Command {
+        /// What the menu shows, which its filter matches.
+        label: &'static str,
+        /// What choosing it does.
+        action: &'a Action,
+    },
     /// A line between two groups of commands, which cannot be highlighted.
     Divider,
 }
@@ -102,7 +107,10 @@ impl CommandMenu {
                 if rows.iter().filter(|row| **row != MenuRow::Divider).count() == self.selected {
                     selected = rows.len();
                 }
-                rows.push(MenuRow::Command(command.label));
+                rows.push(MenuRow::Command {
+                    label: command.label,
+                    action: &command.action,
+                });
             }
         }
         CommandMenuView {
@@ -220,7 +228,7 @@ mod tests {
             .rows
             .into_iter()
             .map(|row| match row {
-                MenuRow::Command(label) => label,
+                MenuRow::Command { label, .. } => label,
                 MenuRow::Divider => "|",
             })
             .collect()

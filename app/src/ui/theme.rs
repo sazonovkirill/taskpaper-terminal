@@ -4,16 +4,38 @@
 /// Something the UI marks with an icon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Icon {
-    /// A start date chip.
+    /// A start date chip, and the command menu's start date entries.
     Start,
-    /// A due date chip that is not overdue.
+    /// A due date chip that is not overdue, and the command menu's due date entries.
     Due,
     /// An overdue due date chip.
     Overdue,
-    /// A block with `@today`, after its text.
+    /// A block with `@today`, after its text, and the command menu's Toggle Today.
     Today,
-    /// A bookmarked block, after its text.
+    /// A bookmarked block, after its text, and the command menu's bookmark entries.
     Bookmark,
+    /// The command menu's entry that makes a block a project.
+    Project,
+    /// The command menu's entry that makes a block a task.
+    Task,
+    /// The command menu's entries that make a block plain text.
+    Note,
+    /// The command menu's entry that makes a block a section.
+    Section,
+    /// The command menu's entry that completes or uncompletes a block.
+    Complete,
+    /// The command menu's color entries.
+    Color,
+    /// The command menu's entry that shows a block's details.
+    Details,
+    /// The command menu's entry that opens a block's link.
+    Link,
+    /// The command menu's entry that duplicates a block.
+    Duplicate,
+    /// The command menu's entry that deletes a block.
+    Delete,
+    /// A command menu entry without an icon of its own.
+    Command,
 }
 
 /// An icon's Nerd Font glyph and the Unicode fallback drawn when icons are off.
@@ -46,6 +68,28 @@ impl Icon {
             Self::Today => ("\u{f04ce}", "★"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑"),
+            // nf-md-folder_outline
+            Self::Project => ("\u{f0256}", "▸"),
+            // nf-md-checkbox_blank_outline
+            Self::Task => ("\u{f0131}", "☐"),
+            // nf-md-text
+            Self::Note => ("\u{f09a8}", "¶"),
+            // nf-md-format_section
+            Self::Section => ("\u{f069f}", "§"),
+            // nf-md-check_circle_outline
+            Self::Complete => ("\u{f05e1}", "✓"),
+            // nf-md-palette
+            Self::Color => ("\u{f03d8}", "●"),
+            // nf-md-information_outline
+            Self::Details => ("\u{f02fd}", "i"),
+            // nf-md-link
+            Self::Link => ("\u{f0337}", "↗"),
+            // nf-md-content_copy
+            Self::Duplicate => ("\u{f018f}", "⧉"),
+            // nf-md-delete_outline
+            Self::Delete => ("\u{f09e7}", "✕"),
+            // nf-md-chevron_right
+            Self::Command => ("\u{f0142}", "›"),
         };
         Glyphs { nerd, unicode }
     }
@@ -57,12 +101,23 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 5] = [
+    const ICONS: [Icon; 16] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
         Icon::Today,
         Icon::Bookmark,
+        Icon::Project,
+        Icon::Task,
+        Icon::Note,
+        Icon::Section,
+        Icon::Complete,
+        Icon::Color,
+        Icon::Details,
+        Icon::Link,
+        Icon::Duplicate,
+        Icon::Delete,
+        Icon::Command,
     ];
 
     #[test]

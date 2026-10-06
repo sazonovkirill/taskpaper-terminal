@@ -16,12 +16,13 @@ use unicode_segmentation::UnicodeSegmentation;
 use super::{layout, theme::Icon};
 use crate::{
     app::{
-        Access, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow, Notice,
-        PickerView, Row, SaveState,
+        Access, Action, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
+        Message, Notice, PickerView, Row, SaveState,
     },
     document::{
-        BlockKind, DateTag, Details, TagColor,
+        BlockKind, DateTag, Details, Flag, TagColor,
         dates::{self, DateError},
+        format::Typed,
         inline::{self, Format, Syntax},
     },
 };
@@ -316,22 +317,42 @@ impl Widget for ConflictPrompt<'_> {
 #[derive(Debug)]
 pub struct Popup {
     title: &'static str,
+    /// The style of the border and title.
+    frame: Style,
     entries: Vec<Line<'static>>,
     selected: usize,
     filter: String,
 }
 
 impl Popup {
-    /// The command menu, titled "Commands:", with a line across it between groups and `/`
-    /// before its filter (D-50).
+    /// The command menu, titled "Commands:" in the accent color like its border, each entry
+    /// after its icon and padded by 2 columns on each side, with a line across it between groups
+    /// and `/` before its filter (D-50, D-54).
     #[must_use]
     pub fn commands(menu: &CommandMenuView) -> Self {
+        const PAD: &str = "  ";
         let title = "Commands:";
-        let names = menu.rows.iter().map(|row| match row {
-            MenuRow::Command(label) => (*label, Style::new()),
-            MenuRow::Divider => ("", Style::new()),
-        });
-        let mut entries = entries(names, menu.selected);
+        let mut entries: Vec<Line<'static>> = menu
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(index, row)| match row {
+                MenuRow::Command { label, action } => {
+                    let (icon, style) = command_icon(action);
+                    let line = Line::from(vec![
+                        Span::raw(PAD),
+                        Span::styled(icon.glyph(), style),
+                        Span::raw(format!(" {label}{PAD}")),
+                    ]);
+                    if index == menu.selected {
+                        line.reversed()
+                    } else {
+                        line
+                    }
+                }
+                MenuRow::Divider => Line::default(),
+            })
+            .collect();
         let width = entries
             .iter()
             .map(Line::width)
@@ -345,6 +366,7 @@ impl Popup {
         }
         Self {
             title,
+            frame: Style::new().fg(ACCENT),
             entries,
             selected: menu.selected,
             filter: if menu.filter.is_empty() {
@@ -373,6 +395,7 @@ impl Popup {
         let names = names.iter().map(|(name, style)| (name.as_str(), *style));
         Self {
             title: "Color:",
+            frame: Style::new(),
             entries: entries(names, picker.selected),
             selected: picker.selected,
             filter: picker.filter.to_owned(),
@@ -385,6 +408,7 @@ impl Popup {
         let names = picker.entries.iter().map(|&(_, name)| (name, Style::new()));
         Self {
             title: "Node type:",
+            frame: Style::new(),
             entries: entries(names, picker.selected),
             selected: picker.selected,
             filter: picker.filter.to_owned(),
@@ -418,6 +442,7 @@ impl Popup {
         }
         Self {
             title: "Details:",
+            frame: Style::new(),
             entries,
             selected: 0,
             filter: String::new(),
@@ -440,6 +465,40 @@ impl Popup {
             .unwrap_or(u16::MAX)
             .saturating_add(2);
         (width, height)
+    }
+}
+
+/// The icon of the command menu's entry that does `action`, in its style: the colors of the
+/// matching chips and icons of the outline (D-46, D-47), a color entry in its color, and a command
+/// without an icon of its own the generic one (D-54).
+fn command_icon(action: &Action) -> (Icon, Style) {
+    let plain = |icon| (icon, Style::new());
+    let date = |tag| match tag {
+        DateTag::Start => (Icon::Start, start_style()),
+        DateTag::Due => (Icon::Due, due_style()),
+    };
+    match action {
+        Action::Retype(Typed::Project) => plain(Icon::Project),
+        Action::Retype(Typed::Task) => plain(Icon::Task),
+        Action::Retype(Typed::Text) => plain(Icon::Note),
+        Action::Retype(Typed::Section) => plain(Icon::Section),
+        Action::Run(Message::ToggleFlag(Flag::Today)) => (Icon::Today, today_style()),
+        Action::Run(Message::ToggleFlag(Flag::Bookmark)) => (Icon::Bookmark, bookmark_style()),
+        Action::Run(
+            Message::OpenDatePrompt { tag, .. }
+            | Message::ChangeDate { tag, .. }
+            | Message::ClearDate(tag),
+        ) => date(*tag),
+        Action::Run(Message::ToggleDone { .. }) => plain(Icon::Complete),
+        Action::Run(Message::SetColor(Some(color))) => {
+            (Icon::Color, Style::new().fg(tag_color(*color)))
+        }
+        Action::Run(Message::SetColor(None)) => plain(Icon::Color),
+        Action::Run(Message::OpenDetails) => plain(Icon::Details),
+        Action::Run(Message::OpenUrl) => plain(Icon::Link),
+        Action::Run(Message::Duplicate) => plain(Icon::Duplicate),
+        Action::Run(Message::Delete) => plain(Icon::Delete),
+        Action::Run(_) => plain(Icon::Command),
     }
 }
 
@@ -466,6 +525,8 @@ impl Widget for Popup {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let frame = Block::bordered()
+            .border_style(self.frame)
+            .title_style(self.frame)
             .title(self.title)
             .title_bottom(self.filter);
         let inner = frame.inner(area);
@@ -1137,45 +1198,128 @@ mod tests {
         buf
     }
 
-    // D-50, ui.md §5
+    /// `expected` with the border and title of a `width` × `height` popup in the accent color.
+    fn accent_frame(expected: &mut Buffer, width: u16, height: u16) {
+        let accent = Style::new().fg(ACCENT);
+        expected.set_style(Rect::new(0, 0, width, 1), accent);
+        expected.set_style(Rect::new(0, height - 1, width, 1), accent);
+        expected.set_style(Rect::new(0, 1, 1, height - 2), accent);
+        expected.set_style(Rect::new(width - 1, 1, 1, height - 2), accent);
+    }
+
+    // D-50, D-54, ui.md §5
     #[test]
     fn the_command_menu_shows_the_matches_under_its_title_and_the_filter_at_the_bottom() {
         use crate::app::MenuInput::{Next, Type};
+        let due = Icon::Due.glyph();
         let mut expected = Buffer::with_lines([
-            "┌Commands:─────┐",
-            "│ Set Due Date │",
-            "│ Due Today    │",
-            "│ Due Tomorrow │",
-            "└/due──────────┘",
+            "┌Commands:─────────┐".to_owned(),
+            format!("│  {due} Set Due Date  │"),
+            format!("│  {due} Due Today     │"),
+            format!("│  {due} Due Tomorrow  │"),
+            "└/due──────────────┘".to_owned(),
         ]);
-        expected.set_style(Rect::new(1, 2, 14, 1), Style::new().reversed());
+        accent_frame(&mut expected, 20, 5);
+        expected.set_style(Rect::new(1, 2, 18, 1), Style::new().reversed());
+        for y in 1..4 {
+            expected.set_style(Rect::new(3, y, 1, 1), due_style());
+        }
         assert_eq!(
             command_menu(&[Type('d'), Type('u'), Type('e'), Next], 20),
             expected
         );
     }
 
-    // D-50, ui.md §5
+    // D-50, D-54, ui.md §5
     #[test]
     fn a_command_menu_taller_than_its_room_scrolls_to_keep_the_highlight_in_view() {
+        let [complete, today, bookmark] =
+            [Icon::Complete, Icon::Today, Icon::Bookmark].map(Icon::glyph);
         let mut expected = Buffer::with_lines([
-            "┌Commands:───────┐",
-            "│────────────────│",
-            "│ Complete       │",
-            "│ Toggle Today   │",
-            "│ Bookmark       │",
-            "│────────────────│",
-            "└────────────────┘",
+            "┌Commands:───────────┐".to_owned(),
+            "│────────────────────│".to_owned(),
+            format!("│  {complete} Complete        │"),
+            format!("│  {today} Toggle Today    │"),
+            format!("│  {bookmark} Bookmark        │"),
+            "│────────────────────│".to_owned(),
+            "└────────────────────┘".to_owned(),
         ]);
+        accent_frame(&mut expected, 22, 7);
         for y in [1, 5] {
-            expected.set_style(Rect::new(1, y, 16, 1), Style::new().dim());
+            expected.set_style(Rect::new(1, y, 20, 1), Style::new().dim());
         }
-        expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 3, 20, 1), Style::new().reversed());
+        expected.set_style(Rect::new(3, 3, 1, 1), today_style());
+        expected.set_style(Rect::new(3, 4, 1, 1), bookmark_style());
         assert_eq!(
             command_menu(&[crate::app::MenuInput::Next; 4], 7),
             expected,
             "groups apart, the highlight on Toggle Today"
         );
+    }
+
+    // D-54: every entry has its icon, a color entry in its color.
+    #[test]
+    fn each_command_has_its_icon() {
+        let today = jiff::civil::date(2026, 10, 6);
+        let run = Action::Run;
+        let cases = [
+            (Action::Retype(Typed::Project), Icon::Project, Style::new()),
+            (Action::Retype(Typed::Task), Icon::Task, Style::new()),
+            (Action::Retype(Typed::Text), Icon::Note, Style::new()),
+            (Action::Retype(Typed::Section), Icon::Section, Style::new()),
+            (
+                run(Message::ToggleDone { today }),
+                Icon::Complete,
+                Style::new(),
+            ),
+            (
+                run(Message::ToggleFlag(Flag::Today)),
+                Icon::Today,
+                today_style(),
+            ),
+            (
+                run(Message::ToggleFlag(Flag::Bookmark)),
+                Icon::Bookmark,
+                bookmark_style(),
+            ),
+            (
+                run(Message::OpenDatePrompt {
+                    tag: DateTag::Start,
+                    today,
+                }),
+                Icon::Start,
+                start_style(),
+            ),
+            (
+                run(Message::ChangeDate {
+                    tag: DateTag::Due,
+                    change: crate::document::DateChange::Today,
+                    today,
+                }),
+                Icon::Due,
+                due_style(),
+            ),
+            (
+                run(Message::ClearDate(DateTag::Start)),
+                Icon::Start,
+                start_style(),
+            ),
+            (
+                run(Message::SetColor(Some(TagColor::Blue))),
+                Icon::Color,
+                Style::new().fg(Color::Blue),
+            ),
+            (run(Message::SetColor(None)), Icon::Color, Style::new()),
+            (run(Message::OpenDetails), Icon::Details, Style::new()),
+            (run(Message::OpenUrl), Icon::Link, Style::new()),
+            (run(Message::Duplicate), Icon::Duplicate, Style::new()),
+            (run(Message::Delete), Icon::Delete, Style::new()),
+            (run(Message::Undo), Icon::Command, Style::new()),
+        ];
+        for (action, icon, style) in cases {
+            assert_eq!(command_icon(&action), (icon, style), "{action:?}");
+        }
     }
 
     // FR-BLK-08, keybindings.md §4

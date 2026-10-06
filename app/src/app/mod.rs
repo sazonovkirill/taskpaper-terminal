@@ -26,6 +26,7 @@ pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{CommandMenuView, Editor, MenuInput, MenuRow, Mode};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};
+pub use node_commands::Action;
 pub use picker::PickerView;
 pub use saving::SaveState;
 pub use selection::SelectionChange;
