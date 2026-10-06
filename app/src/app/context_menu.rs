@@ -181,6 +181,10 @@ mod tests {
         }
         assert_eq!(shown[..4], ["Edit", "Copy", "Cut", "Duplicate"]);
         assert!(shown.contains(&"Move to…".to_owned()));
+        assert!(
+            shown.contains(&"Move Up".to_owned()),
+            "reorders entries (D-57)"
+        );
     }
 
     // FR-KEY-06

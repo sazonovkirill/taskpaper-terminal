@@ -20,6 +20,7 @@ use super::{
     save_as,
     saving::Autosave,
     sidebar::Sidebar,
+    today_order::TodayOrder,
     type_picker::Conversion,
 };
 use crate::document::{
@@ -87,6 +88,8 @@ pub struct State {
     pub(super) shortcuts: bool,
     /// The navigation sidebar (FR-UI-01).
     pub(super) sidebar: Sidebar,
+    /// The order the user gave the Today view's entries (D-57).
+    pub(super) today_order: TodayOrder,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -296,6 +299,7 @@ impl State {
             folds: HashSet::new(),
             shortcuts: false,
             sidebar: Sidebar::default(),
+            today_order: TodayOrder::default(),
         };
         state.pane.focus = state.rows().first().map(|row| row.id);
         state

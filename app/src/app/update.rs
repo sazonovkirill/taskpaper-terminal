@@ -264,10 +264,12 @@ pub enum Message {
     /// (FR-OPS-02); in edit mode, editing goes on.
     Outdent,
     /// Move the selected blocks, else the focused block, above their previous siblings, or at the
-    /// first position into the parent's previous sibling (FR-OPS-03).
+    /// first position into the parent's previous sibling (FR-OPS-03); in the Today view, up its
+    /// list without changing the document (D-57).
     MoveUp,
     /// Move the selected blocks, else the focused block, below their next siblings, or at the
-    /// last position into the parent's next sibling (FR-OPS-03).
+    /// last position into the parent's next sibling (FR-OPS-03); in the Today view, down its list
+    /// without changing the document (D-57).
     MoveDown,
     /// Open the focused block's link in the system browser (FR-BLK-06, D-45).
     OpenUrl,
@@ -607,8 +609,8 @@ impl State {
             Message::Pasted { text, at } => self.pasted(&text, at),
             Message::Indent => self.shift_selected(Shift::Indent),
             Message::Outdent => self.shift_selected(Shift::Outdent),
-            Message::MoveUp => self.shift_selected(Shift::Up),
-            Message::MoveDown => self.shift_selected(Shift::Down),
+            Message::MoveUp => self.move_blocks(false),
+            Message::MoveDown => self.move_blocks(true),
             Message::Select(change) => self.change_selection(change),
             Message::Group => self.group(),
             Message::OpenUrl => effects = self.open_url(),
@@ -665,6 +667,15 @@ impl State {
         match self.pane.location {
             Location::Outline(_) => self.go_to(Location::Outline(Some(block.id()))),
             Location::Today => self.go_to_entry(&block),
+        }
+    }
+
+    /// Moves the selected blocks, else the focused block, a step up or down with `down`: in the
+    /// outline with their subtrees (FR-OPS-03), in the Today view only in its order (D-57).
+    fn move_blocks(&mut self, down: bool) {
+        match self.pane.location {
+            Location::Outline(_) => self.shift_selected(if down { Shift::Down } else { Shift::Up }),
+            Location::Today => self.reorder_entries(down),
         }
     }
 

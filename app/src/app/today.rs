@@ -19,12 +19,14 @@ fn for_today(block: &Block, today: Date) -> bool {
 }
 
 impl State {
-    /// The Today view's entries in `pane` in document order, each at depth 0 with the path of the blocks
-    /// above it. Completed blocks, each with everything inside it, are left out while hidden, as
-    /// in the outline (FR-DONE-02); special nodes never show (FR-SPC-01).
+    /// The Today view's entries in `pane`, each at depth 0 with the path of the blocks above it,
+    /// in the order the user gave them, else in document order (D-57). Completed blocks, each
+    /// with everything inside it, are left out while hidden, as in the outline (FR-DONE-02);
+    /// special nodes never show (FR-SPC-01).
     pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut rows = Vec::new();
         self.push_today_rows(pane, self.document.root(), false, &mut rows);
+        self.today_order.arrange(&mut rows, |row| row.id);
         rows
     }
 
@@ -50,7 +52,7 @@ impl State {
 
     /// `message` as the pane takes it where it is: in the Today view an intent that needs the
     /// outline's tree around the focused block, such as folding, moving to a parent, child or
-    /// sibling, or adding, pasting, indenting or moving blocks, is `None`, as is a paste outside
+    /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
     /// edit mode, and ending an edit with `Enter` only stops editing (navigation.md §7).
     pub(super) fn as_located(&self, message: Message) -> Option<Message> {
         if self.pane.location != Location::Today {
@@ -74,9 +76,7 @@ impl State {
             | Message::New(..)
             | Message::Group
             | Message::Indent
-            | Message::Outdent
-            | Message::MoveUp
-            | Message::MoveDown => None,
+            | Message::Outdent => None,
             Message::Started
             | Message::Tick { .. }
             | Message::Saved
@@ -144,6 +144,8 @@ impl State {
             | Message::Paste(_)
             | Message::Pasted { .. }
             | Message::Duplicate
+            | Message::MoveUp
+            | Message::MoveDown
             | Message::OpenUrl
             | Message::OpenUrlFailed { .. }
             | Message::Select(_)
@@ -374,8 +376,6 @@ Work: @done
             Message::Group,
             Message::Indent,
             Message::Outdent,
-            Message::MoveUp,
-            Message::MoveDown,
             Message::Paste(Paste::Below),
             Message::Pasted {
                 text: "- x @today".to_owned(),

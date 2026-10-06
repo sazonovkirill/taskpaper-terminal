@@ -163,8 +163,56 @@ fn keys_for_the_outlines_tree_do_nothing_on_an_entry() {
         assert_eq!(focused_rows(&mut app), [before[0].clone()], "{keys}");
     }
     app.press(KeyCode::Tab, KeyModifiers::NONE);
-    app.press(KeyCode::Char('j'), KeyModifiers::ALT);
     assert_eq!(shown(&mut app), before);
+}
+
+// D-57, navigation §7: the classic and kitty variants of D-42
+#[test]
+fn alt_k_and_alt_j_reorder_the_entries_and_leave_the_file_as_it_is() {
+    for (up, down) in [
+        (KeyCode::Char('k'), KeyCode::Char('j')),
+        (KeyCode::Up, KeyCode::Down),
+    ] {
+        let mut app = today(OUTLINE);
+        let entries = shown(&mut app);
+        app.type_keys("G");
+        app.press(up, KeyModifiers::ALT);
+        app.press(up, KeyModifiers::ALT);
+        let reordered = [entries[2].clone(), entries[0].clone(), entries[1].clone()];
+        assert_eq!(shown(&mut app), reordered, "{up:?}");
+        assert_eq!(focused_rows(&mut app), [entries[2].clone()], "{up:?}");
+        app.press(down, KeyModifiers::ALT);
+        assert_eq!(
+            shown(&mut app),
+            [entries[0].clone(), entries[2].clone(), entries[1].clone()],
+            "{down:?}"
+        );
+        app.wait(Duration::from_secs(5));
+        app.settle();
+        let path = app.path.clone().expect("a file");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("the file"),
+            OUTLINE,
+            "the file is not written"
+        );
+    }
+}
+
+// D-57, FR-UI-04, file-io.md §5
+#[test]
+fn the_order_of_the_entries_comes_back_on_the_next_launch() {
+    let mut app = today(OUTLINE);
+    app.type_keys("G");
+    app.press(KeyCode::Char('k'), KeyModifiers::ALT);
+    let expected = shown(&mut app);
+    let mut app = app.reopen(80, 10);
+    assert_eq!(
+        shown(&mut app),
+        expected,
+        "the Today view without the sidebar"
+    );
+    let path = app.path.clone().expect("a file");
+    assert_eq!(std::fs::read_to_string(&path).expect("the file"), OUTLINE);
 }
 
 // D-7, FR-TAG-04

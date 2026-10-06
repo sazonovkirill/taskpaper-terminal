@@ -84,7 +84,7 @@ The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for 
 | Command | Keys |
 |---|---|
 | Indent / outdent | `Tab` / `Shift+Tab` (`>` now zooms out) |
-| Move up / down | `Alt+k` / `Alt+j`, `Alt+↑` / `Alt+↓` |
+| Move up / down | `Alt+k` / `Alt+j`, `Alt+↑` / `Alt+↓`; in the Today view they reorder its entries (D-57) |
 | Group | `gG` |
 | Move to… | `gm` (was `m`) |
 | Delete | `dd`, `Delete` |

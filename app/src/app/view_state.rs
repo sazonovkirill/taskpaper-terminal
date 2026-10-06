@@ -1,6 +1,7 @@
 //! A file's layout as it is kept between sessions: its panes in order, each with its location
 //! and history, focused block, width and show-completed setting, which pane has the keys and
-//! whether the sidebar shows, with blocks named by their text paths, which outlive the ids of one
+//! whether the sidebar shows, and the order the user gave the Today view's entries (D-57), with
+//! blocks named by their text paths, which outlive the ids of one
 //! session; restoring it drops what no longer matches. Folds are not kept (D-26)
 //! ([file-io.md §5](../../../docs/specs/file-io.md#5-view-state-persistence), FR-UI-04, OQ-05).
 
@@ -10,6 +11,7 @@ use super::{
     Location, Origin, State,
     pane::{Pane, landing},
     text_path::TextPath,
+    today_order::TodayOrder,
 };
 use crate::document::{Document, ItemId};
 
@@ -22,6 +24,9 @@ pub struct ViewState {
     focused: usize,
     /// Whether the sidebar shows.
     sidebar: bool,
+    /// The blocks placed in the Today view's order, in that order; left out while there are none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    today: Vec<TextPath>,
 }
 
 /// One pane of a [`ViewState`].
@@ -86,6 +91,12 @@ impl State {
                 .collect(),
             focused: self.pane_at,
             sidebar: self.sidebar.shown(),
+            today: self
+                .today_order
+                .placed()
+                .iter()
+                .filter_map(|&id| TextPath::of(&self.document, id))
+                .collect(),
         })
     }
 
@@ -114,14 +125,17 @@ impl State {
     /// a zoom or focused block that is not found is dropped, a pane whose location is dropped
     /// shows home, and a pane whose focus is dropped focuses where it lands; a focus that does not
     /// show moves on the next message, as after any change (file-io.md §5, navigation.md §2).
-    /// Without any pane the panes stay as they are.
+    /// Without any pane the panes stay as they are. The Today view's order keeps the blocks found.
     #[must_use]
     pub fn with_view_state(mut self, view: ViewState) -> Self {
         let ViewState {
             panes,
             focused,
             sidebar,
+            today,
         } = view;
+        self.today_order =
+            TodayOrder::new(today.iter().filter_map(|path| exact(path, &self.document)));
         let panes = panes.iter().map(|saved| self.restored(saved)).collect();
         self.set_panes(panes, focused);
         self.sidebar.show(sidebar);
@@ -388,6 +402,29 @@ mod tests {
             visited.push(crumb(&restored));
         }
         assert_eq!(visited, ["⌂", "Later", "⌂", "⌂"]);
+    }
+
+    // FR-UI-04, D-57, file-io.md §5
+    #[test]
+    fn a_new_launch_restores_the_today_views_order_as_far_as_it_matches() {
+        let text = "Errands:\n\t- Post office @today\n\t- Bank @today\n- Dentist @today\n- Plan\n";
+        let mut state = open(text);
+        state.go_to(Location::Today);
+        state.update(Message::FocusLast);
+        state.update(Message::MoveUp);
+        state.update(Message::MoveUp);
+        assert_eq!(rows(&state, 0), ["Dentist", "Post office", "Bank"]);
+        let mut restored = reopened(&state, text);
+        restored.go_to(Location::Today);
+        assert_eq!(rows(&restored, 0), ["Dentist", "Post office", "Bank"]);
+        let changed = "- Plan @today\n- Dentist @today\nErrands:\n\t- Bank @today\n";
+        let mut restored = reopened(&state, changed);
+        restored.go_to(Location::Today);
+        assert_eq!(
+            rows(&restored, 0),
+            ["Dentist", "Bank", "Plan"],
+            "a block that is gone is dropped and a new entry comes last"
+        );
     }
 
     // file-io.md §5

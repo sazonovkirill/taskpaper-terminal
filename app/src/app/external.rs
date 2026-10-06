@@ -302,12 +302,12 @@ impl State {
     }
 
     /// Replaces the document with `document`, keeping each pane's zoom, focus, history and
-    /// selection and the collapsed blocks and project entries on the blocks they were on; a
-    /// focus that finds no block moves as after any change. An edit session ends with
-    /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
-    /// closes with it, as does an edit a command of the command menu would resume (D-50), and so
-    /// do Go to Symbol and Move to, whose candidates name blocks of the old document, and the
-    /// context menu, whose labels tell the old blocks' state.
+    /// selection, the collapsed blocks and project entries and the Today view's order on the
+    /// blocks they were on; a focus that finds no block moves as after any change. An edit
+    /// session ends with the document it edited, whose text is saved or in a conflict copy, and
+    /// the date prompt closes with it, as does an edit a command of the command menu would resume
+    /// (D-50), and so do Go to Symbol and Move to, whose candidates name blocks of the old
+    /// document, and the context menu, whose labels tell the old blocks' state.
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
@@ -328,6 +328,7 @@ impl State {
             .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
         self.sidebar.rematch_folds(exact);
+        self.today_order.rematch(exact);
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
     }
@@ -585,6 +586,18 @@ mod tests {
             Some("b"),
             "the history is kept"
         );
+    }
+
+    // F-FILE-06, D-57
+    #[test]
+    fn a_reload_keeps_the_today_views_order() {
+        let mut state = opened("- a @today\n- b @today\n");
+        state.go_to(crate::app::Location::Today);
+        state.update(Message::FocusLast);
+        state.update(Message::MoveUp);
+        assert_eq!(texts(&state), ["b", "a"]);
+        state.update(found("- new @today\n- a @today\n- b @today @x\n"));
+        assert_eq!(texts(&state), ["b", "a", "new"]);
     }
 
     /// Each project entry of the sidebar with its fold.
