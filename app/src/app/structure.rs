@@ -422,7 +422,7 @@ mod tests {
         let mut state = open(text, 2);
         state.update(Message::New(NewBlock::Start, Some(Typed::Project)));
         assert_eq!(state.mode(), Mode::Edit);
-        assert_eq!(shown(&state), "|");
+        assert_eq!(shown(&state), "|:");
         typed(&mut state, "Sub");
         state.update(Message::StopEditing);
         assert_eq!(lines(&state)[..3], ["P:", "\tSub:", "\t- a"]);
@@ -536,6 +536,8 @@ mod tests {
         backspace(&mut state);
         assert_eq!(lines(&state), ["- ab @x", "- ", "- c"]);
         backspace(&mut state);
+        assert_eq!(lines(&state), ["- ab @x", "", "- c"], "the dash goes first");
+        backspace(&mut state);
         assert_eq!(lines(&state), ["- ab @x", "- c"]);
         assert_eq!(shown(&state), "ab|", "editing the block above at its end");
         state.update(Message::StopEditing);
@@ -551,11 +553,13 @@ mod tests {
         backspace(&mut state);
         assert_eq!(lines(&state), ["P:", "\t- "]);
         backspace(&mut state);
+        assert_eq!(lines(&state), ["P:", "\t"]);
+        backspace(&mut state);
         assert_eq!(lines(&state), ["P:"]);
-        assert_eq!(shown(&state), "P|");
+        assert_eq!(shown(&state), "P|:");
         state.update(Message::StopEditing);
         state.update(Message::Undo);
-        assert_eq!(lines(&state), ["P:", "\t- "]);
+        assert_eq!(lines(&state), ["P:", "\t"]);
         assert_eq!(focused(&state), "");
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["P:", "\t- a"]);
@@ -564,11 +568,15 @@ mod tests {
     // editing.md §2
     #[test]
     fn backspace_keeps_a_block_with_children_and_the_first_row() {
-        for (text, index) in [("- a\n- \n\t- c", 1), ("- \n- a", 0)] {
+        for (text, index, kept) in [
+            ("- a\n- \n\t- c", 1, ["- a", "", "\t- c"].as_slice()),
+            ("- \n- a", 0, ["", "- a"].as_slice()),
+        ] {
             let mut state = open(text, index);
             state.update(Message::EditAtEnd);
             backspace(&mut state);
-            assert_eq!(lines(&state), lines(&open(text, 0)), "{text:?}");
+            backspace(&mut state);
+            assert_eq!(lines(&state), kept, "{text:?}: only the dash goes");
             assert_eq!(state.mode(), Mode::Edit);
         }
     }
@@ -644,11 +652,12 @@ mod tests {
             .apply(&mut Transaction::new(vec![op], (), ()))
             .unwrap();
         backspace(&mut state);
+        backspace(&mut state);
         assert_eq!(lines(&state), ["- z", "- a"]);
         assert_eq!(shown(&state), "a|");
         state.update(Message::StopEditing);
         state.update(Message::Undo);
-        assert_eq!(lines(&state), ["- z", "- a", "- "]);
+        assert_eq!(lines(&state), ["- z", "- a", ""]);
     }
 
     /// A file of `text` opened at time 0.

@@ -823,8 +823,8 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
 }
 
 /// The screen line of `row` while `editor` edits it, `width` columns wide, and the caret's column
-/// on it: the row's indent and marker, then the text with the selection reversed and a project's
-/// `:` after it, all styled as the row (FR-MODE-02). When the caret would be past the right edge,
+/// on it: the row's indent and marker, then the text with the selection reversed, styled as the
+/// row (FR-MODE-02). When the caret would be past the right edge,
 /// the text scrolls left by whole graphemes to keep it in view.
 #[must_use]
 pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
@@ -840,7 +840,6 @@ pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>
     };
     let (spans, column) = field.spans(style, line.width(), width);
     line.spans.extend(spans);
-    line.push_span(Span::styled(editor.suffix, style));
     (line, column)
 }
 
@@ -1736,7 +1735,6 @@ mod tests {
             text,
             caret,
             selection,
-            suffix: "",
         }
     }
 
@@ -1761,10 +1759,8 @@ mod tests {
 
     // FR-MODE-02
     #[test]
-    fn the_editor_shows_a_projects_colon_after_the_text() {
-        let mut project = editor("Inbox", 5, None);
-        project.suffix = ":";
-        let (buf, caret) = edited("Inbox:", &project, 8);
+    fn the_editor_shows_a_projects_colon_as_text_styled_as_the_project() {
+        let (buf, caret) = edited("Inbox:", &editor("Inbox:", 5, None), 8);
         let mut expected = Buffer::with_lines(["Inbox:  "]);
         expected.set_style(Rect::new(0, 0, 6, 1), Style::new().bold().fg(PRIMARY));
         assert_eq!(buf, expected);

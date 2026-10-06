@@ -53,7 +53,7 @@ fn a_new_list_is_written_from_scratch_with_o_enter_and_backspace() {
     press(&mut app, KeyCode::Enter, 1);
     app.type_keys("Pack");
     press(&mut app, KeyCode::Enter, 1);
-    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Backspace, 2);
     assert_caret(&mut app, 8, 4);
     press(&mut app, KeyCode::Esc, 1);
     assert_eq!(

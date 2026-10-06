@@ -328,3 +328,81 @@ fn the_demo_has_a_text_line_under_a_task_to_edit_up_from() {
     press(&mut app, KeyCode::Esc, 1);
     assert!(saved(&mut app).contains("\t- Reserve a hotel near Alfama! @priority(1)\n"));
 }
+
+// OQ-27, editing.md §2
+#[test]
+fn backspace_in_an_empty_task_takes_off_the_dash_before_deleting_the_block() {
+    let mut app = Harness::with_text("Inbox:\n\t- \n", 40, 6);
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(
+        saved(&mut app),
+        "Inbox:\n\n",
+        "the task became an empty text block"
+    );
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(saved(&mut app), "Inbox:\n", "a second Backspace deletes it");
+}
+
+// OQ-27, editing.md §2
+#[test]
+fn backspace_after_the_dash_of_a_task_reached_with_left_takes_the_dash_off() {
+    let mut app = Harness::with_text("Inbox:\n\t- Milk\n", 40, 6);
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Left, 4);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(saved(&mut app), "Inbox:\n\tMilk\n");
+}
+
+// OQ-27, editing.md §2
+#[test]
+fn backspace_after_a_projects_colon_makes_it_text() {
+    let mut app = Harness::with_text("Inbox: @home\n\t- Milk\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    assert_caret(&mut app, 7, 2);
+    press(&mut app, KeyCode::End, 1);
+    assert_caret(&mut app, 8, 2);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(outline_rows(&mut app)[0], "Inbox");
+    assert_eq!(saved(&mut app), "Inbox @home\n\t- Milk\n");
+}
+
+// OQ-27, editing.md §2
+#[test]
+fn typing_as_editing_starts_on_a_project_adds_to_its_name() {
+    let mut app = Harness::with_text("Inbox: @home\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    app.type_keys("es");
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(outline_rows(&mut app)[0], "Inboxes:");
+    assert_eq!(saved(&mut app), "Inboxes: @home\n");
+}
+
+// D-50, editing.md §2.4
+#[test]
+fn ctrl_t_on_a_project_being_edited_leaves_no_colon_behind() {
+    let mut app = Harness::with_text("Inbox: @home\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(
+        saved(&mut app),
+        "Inbox: @home\n",
+        "round the cycle and back"
+    );
+    press(&mut app, KeyCode::Enter, 1);
+    app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(outline_rows(&mut app)[0], "Inbox");
+    assert_eq!(saved(&mut app), "Inbox @home @section\n");
+}

@@ -1,4 +1,4 @@
-//! A line split into the text the user edits and what edit mode keeps around it: the type syntax
+//! A line split into the text the user edits and what edit mode keeps around it: a task's dash
 //! and the tags ([editing.md §2](../../../../docs/specs/editing.md#2-edit-mode),
 //! OQ-24, OQ-27).
 
@@ -23,20 +23,20 @@ pub enum Typed {
 /// (editing.md §5, D-45).
 const SECTION: &str = "section";
 
-/// A line's type syntax and tags, which stay while the text between them is edited. The default
-/// is a note's: no syntax and no tags.
+/// A line's task dash and tags, which stay while the text between them is edited; a project's `:`
+/// is part of the text, so that it is typed and deleted like any character (OQ-27). The default
+/// is a note's: no dash and no tags.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LineParts {
     /// A task's dash and the whitespace after it; empty for other types.
     prefix: String,
-    /// Whether a project's `:` follows the text.
-    project: bool,
     /// Every tag occurrence as written, without the whitespace before it, in order.
     tags: Vec<String>,
 }
 
 impl LineParts {
-    /// The parts of `line`, and its display text, which is what edit mode edits.
+    /// The parts of `line`, and the text edit mode edits: its display text, with the `:` of a
+    /// project.
     #[must_use]
     pub fn split(line: &str) -> (Self, String) {
         let prefix = match kind(line) {
@@ -48,21 +48,14 @@ impl LineParts {
             .filter_map(|tag| line.get(tag.span))
             .map(|tag| tag.trim_start_matches(tags::is_whitespace).to_owned())
             .collect();
-        let parts = Self {
-            prefix,
-            project: kind(line) == ItemKind::Project,
-            tags,
-        };
-        (parts, display_text(line))
+        let mut text = display_text(line);
+        if kind(line) == ItemKind::Project {
+            text.push(':');
+        }
+        (Self { prefix, tags }, text)
     }
 
-    /// What follows the text on screen as part of the type: a project's `:`, else nothing.
-    #[must_use]
-    pub fn suffix(&self) -> &'static str {
-        if self.project { ":" } else { "" }
-    }
-
-    /// The line holding `text`: the type syntax around it and the tags after it in their
+    /// The line holding `text`: a task's dash before it and the tags after it in their
     /// original order, so tags from the middle of the line move to its end (OQ-24). The text of a
     /// task that would stop being one, because only whitespace stands before its tags, becomes
     /// the placeholder.
@@ -76,7 +69,7 @@ impl LineParts {
     }
 
     fn compose(&self, text: &str) -> String {
-        let mut line = format!("{}{text}{}", self.prefix, self.suffix());
+        let mut line = format!("{}{text}", self.prefix);
         for tag in &self.tags {
             if !line.is_empty() && !line.ends_with(tags::is_whitespace) {
                 line.push(' ');
@@ -98,22 +91,16 @@ impl LineParts {
         let (prefix, rest) = text.split_at(split);
         let parts = Self {
             prefix: prefix.to_owned(),
-            project: false,
             tags: self.tags.clone(),
         };
-        Some((parts, format!("{rest}{}", self.suffix())))
+        Some((parts, rest.to_owned()))
     }
 
-    /// When these parts hold a task's dash, or with `end` a project's `:`: the parts and text of
-    /// the line `text` makes without it, which takes the type it then parses as (OQ-27).
+    /// When these parts hold a task's dash: the parts and text of the line `text` makes without
+    /// it, which takes the type it then parses as (OQ-27).
     #[must_use]
-    pub fn unmarked(&self, text: &str, end: bool) -> Option<(Self, String)> {
-        let marked = if end {
-            self.project
-        } else {
-            !self.prefix.is_empty()
-        };
-        marked.then(|| {
+    pub fn unmarked(&self, text: &str) -> Option<(Self, String)> {
+        (!self.prefix.is_empty()).then(|| {
             let parts = Self {
                 tags: self.tags.clone(),
                 ..Self::default()
@@ -129,6 +116,11 @@ impl LineParts {
     /// (editing.md §5, D-45).
     #[must_use]
     pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
+        let name = match kind(&self.compose(text)) {
+            ItemKind::Project => text.trim_end_matches(tags::is_whitespace).strip_suffix(':'),
+            ItemKind::Task | ItemKind::Note => None,
+        }
+        .unwrap_or(text);
         let section = typed == Typed::Section;
         let mut tags: Vec<String> = self
             .tags
@@ -147,12 +139,12 @@ impl LineParts {
             Typed::Task => self.prefix.clone(),
             _ => String::new(),
         };
-        let parts = Self {
-            prefix,
-            project: typed == Typed::Project,
-            tags,
+        let text = if typed == Typed::Project {
+            format!("{name}:")
+        } else {
+            name.to_owned()
         };
-        (parts, text.to_owned())
+        (Self { prefix, tags }, text)
     }
 }
 
@@ -167,10 +159,12 @@ mod tests {
     }
 
     #[test]
-    fn splits_off_the_display_text() {
+    fn splits_off_the_display_text_with_a_projects_colon() {
         for (line, text) in [
             ("- Buy milk @due(1)", "Buy milk"),
-            ("Inbox: @a", "Inbox"),
+            ("Inbox: @a", "Inbox:"),
+            ("Inbox @a later: @b", "Inbox later:"),
+            ("- Inbox:", "Inbox:"),
             ("note @x more", "note more"),
             ("", ""),
         ] {
@@ -200,32 +194,28 @@ mod tests {
     #[test]
     fn edited_text_keeps_the_type_syntax_and_appends_the_tags_in_order() {
         assert_eq!(edited("- a @due(1) b @x", "c"), "- c @due(1) @x");
-        assert_eq!(edited("Inbox @a later: @b", "Mail"), "Mail: @a @b");
+        assert_eq!(edited("Inbox @a later: @b", "Mail:"), "Mail: @a @b");
         assert_eq!(edited("@today note", "text"), "text @today");
         assert_eq!(edited("- a @x", "b "), "- b @x", "no second space");
         assert_eq!(edited("a @x", ""), "@x");
         assert_eq!(edited("- a @x @x", "b"), "- b @x @x", "duplicates are kept");
         assert_eq!(edited("a @id", "b @id"), "b @id", "reserved names are text");
         assert_eq!(edited("- a", ""), "- ");
-        assert_eq!(edited("P:", ""), ":");
+        assert_eq!(edited("P: @x", "P"), "P @x", "the colon is text");
     }
 
     // OQ-27
     #[test]
     fn unmarked_parts_take_the_type_their_line_then_parses_as() {
-        let unmarked = |line: &str, end: bool| {
+        let unmarked = |line: &str| {
             let (parts, text) = LineParts::split(line);
-            parts
-                .unmarked(&text, end)
-                .map(|(parts, text)| parts.line(&text))
+            parts.unmarked(&text).map(|(parts, text)| parts.line(&text))
         };
-        assert_eq!(unmarked("- a @x", false).as_deref(), Some("a @x"));
-        assert_eq!(unmarked("- a:", false).as_deref(), Some("a:"));
-        assert_eq!(unmarked("- - a", false).as_deref(), Some("- a"));
-        assert_eq!(unmarked("A: @x", true).as_deref(), Some("A @x"));
-        assert_eq!(unmarked("- a", true), None);
-        assert_eq!(unmarked("A:", false), None);
-        assert_eq!(unmarked("a @section", false), None);
+        assert_eq!(unmarked("- a @x").as_deref(), Some("a @x"));
+        assert_eq!(unmarked("- a:").as_deref(), Some("a:"));
+        assert_eq!(unmarked("- - a").as_deref(), Some("- a"));
+        assert_eq!(unmarked("A:"), None);
+        assert_eq!(unmarked("a @section"), None);
     }
 
     // OQ-27
@@ -245,13 +235,6 @@ mod tests {
         assert_eq!(edited("- a", "  "), "-   ", "without tags it stays a task");
     }
 
-    #[test]
-    fn the_suffix_is_a_projects_colon() {
-        assert_eq!(LineParts::split("P: @x").0.suffix(), ":");
-        assert_eq!(LineParts::split("- P:").0.suffix(), "");
-        assert_eq!(LineParts::split("P").0.suffix(), "");
-    }
-
     // OQ-27
     #[test]
     fn text_starting_a_task_turns_into_the_tasks_parts() {
@@ -261,10 +244,9 @@ mod tests {
         assert_eq!(task.line(&text), note.line("- b"));
         assert_eq!(task.line(&text), "- b @x");
         let (project, _) = LineParts::split("P:");
-        let (task, text) = project.as_task("-\u{3000}P").unwrap();
-        assert_eq!(text, "P:", "the project's colon becomes text");
+        let (task, text) = project.as_task("-\u{3000}P:").unwrap();
+        assert_eq!(text, "P:", "the project's colon stays text");
         assert_eq!(task.line(&text), "-\u{3000}P:");
-        assert_eq!(task.suffix(), "");
     }
 
     #[test]
@@ -313,6 +295,18 @@ mod tests {
             "the tag keeps its place"
         );
         assert_eq!(retyped("f() @code", Typed::Task), "- f() @code");
+        let (project, _) = LineParts::split("P: @x");
+        let (parts, text) = project.retyped(Typed::Text, "P: ");
+        assert_eq!(
+            parts.line(&text),
+            "P @x",
+            "whitespace typed after the colon goes"
+        );
+        assert_eq!(
+            retyped("- P:", Typed::Project),
+            "P::",
+            "a task's colon is text"
+        );
     }
 
     // FR-MODE-06

@@ -19,7 +19,7 @@ use super::{
     text_field::{TextEdit, TextField},
 };
 use crate::document::{
-    Block, BlockKind, Document, ItemId, Op, Transaction, blocks,
+    Block, BlockKind, Document, ItemId, ItemKind, Op, Transaction, blocks,
     format::{self, LineParts, Typed, canonical, tags},
 };
 
@@ -37,14 +37,12 @@ pub enum Mode {
 pub struct Editor<'a> {
     /// The block being edited, which is the focused block.
     pub id: ItemId,
-    /// The text as typed so far: the block's text without its type syntax and tags.
+    /// The text as typed so far: the block's text without a task's dash and the tags.
     pub text: &'a str,
     /// The caret's byte offset into `text`.
     pub caret: usize,
     /// The selected bytes of `text`, if any.
     pub selection: Option<Range<usize>>,
-    /// What follows the text as part of the block's type and cannot be edited: a project's `:`.
-    pub suffix: &'static str,
 }
 
 /// Where editing resumes after a command of the command menu: the block and the caret's column.
@@ -84,9 +82,10 @@ pub(super) struct Session {
 
 impl Session {
     /// A session editing the line `id`, which reads `line`, with the caret at the end of its
-    /// text.
+    /// text, before a project's `:` so that typing there adds to the name.
     fn new(id: ItemId, line: &str) -> Self {
         let (parts, text) = LineParts::split(line);
+        let caret = text.len() - usize::from(format::kind(line) == ItemKind::Project);
         Self {
             id,
             created: Vec::new(),
@@ -94,7 +93,7 @@ impl Session {
             original: line.to_owned(),
             written: None,
             parts,
-            field: TextField::new(text),
+            field: TextField::with_caret(text, caret),
             undo: Vec::new(),
             redo: Vec::new(),
             typing: false,
@@ -105,12 +104,8 @@ impl Session {
     /// Applies `edit` to the text, or returns `false` and changes nothing when it would type a
     /// tag (OQ-25). A character that breaks a line is not typed, since it would split the line
     /// when the file is read back. Text that makes the line a task takes the task's syntax, so
-    /// that its dash shows as the marker, and deleting the marker or a project's `:` takes it
-    /// off again (OQ-27).
+    /// that its dash shows as the marker (OQ-27).
     fn edit(&mut self, edit: TextEdit) -> bool {
-        if self.unmark(edit) {
-            return true;
-        }
         if let TextEdit::Insert(c) = edit
             && format::breaks_line(c)
         {
@@ -133,8 +128,7 @@ impl Session {
         self.typing = typing;
         self.field = match self.parts.as_task(field.text()) {
             Some((parts, text)) => {
-                let cut =
-                    (field.text().len() + self.parts.suffix().len()).saturating_sub(text.len());
+                let cut = field.text().len() - text.len();
                 self.parts = parts;
                 TextField::with_caret(text, field.caret().saturating_sub(cut))
             }
@@ -143,26 +137,28 @@ impl Session {
         true
     }
 
-    /// Takes off the task's dash that `Backspace` at the start of the text deletes, or the
-    /// project's `:` that `Delete` at its end deletes, as one change to undo, and returns
-    /// whether it did (OQ-27).
-    fn unmark(&mut self, edit: TextEdit) -> bool {
-        let end = match edit {
-            TextEdit::DeleteBackward => false,
-            TextEdit::DeleteForward => true,
-            _ => return false,
-        };
-        let text = self.field.text();
-        let at = if end { text.len() } else { 0 };
-        if self.field.selection().is_some() || self.field.caret() != at {
+    /// Whether `Backspace` meets nothing but the start of the text, nothing selected.
+    fn at_start(&self) -> bool {
+        self.field.caret() == 0 && self.field.selection().is_none()
+    }
+
+    /// Takes off the task's dash that `Backspace` at the start of the text deletes, as one change
+    /// to undo, and returns whether it did (OQ-27).
+    fn unmark(&mut self) -> bool {
+        if !self.at_start() {
             return false;
         }
-        let Some((parts, text)) = self.parts.unmarked(text, end) else {
+        let Some((parts, text)) = self.parts.unmarked(self.field.text()) else {
             return false;
         };
-        let caret = if end { text.len() } else { 0 };
-        self.change(parts, TextField::with_caret(text, caret));
+        self.change(parts, TextField::with_caret(text, 0));
         true
+    }
+
+    /// Whether the block has no name for `Backspace` at the start of the text to keep: its text
+    /// is empty, or a project's lone `:`.
+    fn nameless(&self) -> bool {
+        self.at_start() && matches!(self.field.text(), "" | ":")
     }
 
     /// Puts `line`, which holds no line break, in place of the selection or at the caret as one
@@ -258,7 +254,6 @@ impl State {
             text: session.field.text(),
             caret: session.field.caret(),
             selection: session.field.selection(),
-            suffix: session.parts.suffix(),
         })
     }
 
@@ -301,17 +296,18 @@ impl State {
     }
 
     /// Applies `edit` to the text being edited and writes it to the document, or shows why a
-    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead
-    /// (editing.md §2).
+    /// tag cannot be typed (OQ-25). `Backspace` at the start of the text takes a task's dash off,
+    /// and in a block without a name deletes the block instead (editing.md §2, OQ-27).
     pub(super) fn edit_text(&mut self, edit: TextEdit) {
         let Some(session) = &mut self.edit else {
             return;
         };
-        if edit == TextEdit::DeleteBackward && session.field.text().is_empty() {
+        let backspace = edit == TextEdit::DeleteBackward;
+        if backspace && session.unmark() {
+            self.write(false);
+        } else if backspace && session.nameless() {
             self.delete_empty_block();
-            return;
-        }
-        if session.edit(edit) {
+        } else if session.edit(edit) {
             self.write(false);
         } else {
             self.notify(Notice::TypedTag);
@@ -441,8 +437,8 @@ impl State {
     }
 
     /// `↑`/`↓` in edit mode: ends editing and edits the visible block above or below, with the
-    /// caret as many graphemes from the start as it was, or at the end of a shorter text; nothing
-    /// happens without such a block (editing.md §2, D-43).
+    /// caret as many graphemes from the start as it was, or where editing starts on a shorter
+    /// text, before a project's `:`; nothing happens without such a block (editing.md §2, D-43).
     pub(super) fn edit_adjacent(&mut self, down: bool) {
         let Some(session) = &self.edit else {
             return;
@@ -463,6 +459,7 @@ impl State {
         self.focus = Some(target);
         self.start_editing();
         if let Some(session) = &mut self.edit {
+            let column = column.min(session.field.column());
             session.field = TextField::at_column(session.field.text().to_owned(), column);
         }
     }
@@ -751,7 +748,6 @@ mod tests {
         typed(&mut state, ":");
         assert_eq!(state.rows()[0].kind, BlockKind::Project);
         assert_eq!(shown(&state), "Questions:|", "the colon stays text");
-        assert_eq!(state.editor().unwrap().suffix, "");
         typed(&mut state, " why");
         assert_eq!(state.rows()[0].kind, BlockKind::Text);
         state.update(Message::Text(TextEdit::SelectAll));
@@ -763,19 +759,22 @@ mod tests {
 
     // OQ-27
     #[test]
-    fn a_project_keeps_its_colon_after_the_text_until_it_becomes_a_task() {
+    fn a_projects_colon_is_text_with_the_caret_starting_before_it() {
+        let mut state = open("Inbox: @x", 0);
+        state.update(Message::EditAtEnd);
+        assert_eq!(shown(&state), "Inbox|:");
+        typed(&mut state, "es");
+        assert_eq!(texts(&state), ["Inboxes: @x"]);
+        go(&mut state, Motion::End);
+        typed(&mut state, ":");
+        assert_eq!(texts(&state), ["Inboxes:: @x"], "a colon typed is text");
         let mut state = open("Inbox:", 0);
         edit_from_start(&mut state);
-        assert_eq!(state.editor().unwrap().suffix, ":");
         typed(&mut state, "My ");
         assert_eq!(texts(&state), ["My Inbox:"]);
-        state.update(Message::Text(TextEdit::Move {
-            motion: Motion::Start,
-            select: false,
-        }));
+        go(&mut state, Motion::Start);
         typed(&mut state, "- ");
         assert_eq!(shown(&state), "|My Inbox:");
-        assert_eq!(state.editor().unwrap().suffix, "");
         assert_eq!(state.rows()[0].kind, BlockKind::Task);
         assert_eq!(texts(&state), ["- My Inbox:"]);
     }
@@ -794,23 +793,69 @@ mod tests {
         let mut state = open("Inbox: @x", 0);
         state.update(Message::EditAtEnd);
         press(&mut state, TextEdit::DeleteForward, 1);
-        assert_eq!(texts(&state), ["Inbox @x"]);
-        assert_eq!(state.editor().unwrap().suffix, "");
+        assert_eq!(texts(&state), ["Inbox @x"], "the colon is text");
+        assert_eq!(state.rows()[0].kind, BlockKind::Text);
         assert_eq!(shown(&state), "Inbox|");
         let mut state = open("- Inbox:", 0);
         edit_from_start(&mut state);
         press(&mut state, TextEdit::DeleteBackward, 1);
         assert_eq!(state.rows()[0].kind, BlockKind::Project, "the text decides");
-        assert_eq!(shown(&state), "|Inbox");
+        assert_eq!(shown(&state), "|Inbox:");
+    }
+
+    // OQ-27, editing.md §2
+    #[test]
+    fn backspace_in_an_empty_task_takes_the_dash_off_before_deleting_the_block() {
+        let mut state = open(
+            "- a
+- ", 1,
+        );
+        state.update(Message::EditAtEnd);
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["- a", ""]);
+        assert_eq!(state.rows()[1].kind, BlockKind::Text);
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["- a"]);
+        assert_eq!(shown(&state), "a|", "the block above is edited");
+    }
+
+    // editing.md §2
+    #[test]
+    fn backspace_before_the_lone_colon_of_a_project_deletes_the_block() {
+        let mut state = open(
+            "- a
+:", 1,
+        );
+        state.update(Message::EditAtEnd);
+        assert_eq!(shown(&state), "|:");
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["- a"]);
+        let mut state = open(
+            "- a
+:", 1,
+        );
+        state.update(Message::EditAtEnd);
+        go(&mut state, Motion::End);
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["- a", ""], "after it, the colon is deleted");
+        let mut state = open(
+            "- a
+:", 1,
+        );
+        state.update(Message::EditAtEnd);
+        state.update(Message::Text(TextEdit::SelectAll));
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["- a", ""], "a selection is deleted");
     }
 
     // OQ-27
     #[test]
-    fn only_a_delete_at_the_marker_with_nothing_selected_takes_it_off() {
+    fn only_a_backspace_at_the_dash_with_nothing_selected_takes_it_off() {
         for (line, edit, expected) in [
             ("- ab", TextEdit::DeleteBackward, "- a"),
             ("- ab", TextEdit::DeleteForward, "- ab"),
             ("Ab:", TextEdit::DeleteBackward, "A:"),
+            ("Ab:", TextEdit::DeleteForward, "Ab"),
             ("ab", TextEdit::DeleteForward, "ab"),
         ] {
             let mut state = open(line, 0);
@@ -828,18 +873,6 @@ mod tests {
         assert_eq!(
             state.rows()[0].kind,
             BlockKind::Task,
-            "a selection is deleted"
-        );
-        let mut state = open("Ab:", 0);
-        edit_from_start(&mut state);
-        state.update(Message::Text(TextEdit::Move {
-            motion: Motion::End,
-            select: true,
-        }));
-        press(&mut state, TextEdit::DeleteForward, 1);
-        assert_eq!(
-            state.rows()[0].kind,
-            BlockKind::Project,
             "a selection is deleted"
         );
     }
@@ -1211,7 +1244,7 @@ P:
         state.update(Message::EditPrevious);
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(state.focus(), Some(state.rows()[1].id));
-        assert_eq!(shown(&state), "P|", "at the end of a shorter text");
+        assert_eq!(shown(&state), "P|:", "at the end of a shorter name");
         state.update(Message::EditPrevious);
         assert_eq!(shown(&state), "a|bcdef", "the column it had on P");
         state.update(Message::EditNext);
@@ -1355,10 +1388,10 @@ Site @url(https://x.y)",
     // D-44, D-50, editing.md §2.3
     #[test]
     fn a_type_chosen_after_the_slash_gives_the_block_its_type_with_the_caret_kept() {
-        for (keys, line, kind) in [
-            ("p", "Call Ana: @x", BlockKind::Project),
-            ("n", "Call Ana @x", BlockKind::Text),
-            ("t", "- Call Ana @x", BlockKind::Task),
+        for (keys, line, kind, text) in [
+            ("p", "Call Ana: @x", BlockKind::Project, "Call |Ana:"),
+            ("n", "Call Ana @x", BlockKind::Text, "Call |Ana"),
+            ("t", "- Call Ana @x", BlockKind::Task, "Call |Ana"),
         ] {
             let mut state = editing_before_last_word("- Call Ana @x\n- t");
             slash(&mut state, keys);
@@ -1368,7 +1401,7 @@ Site @url(https://x.y)",
             assert_eq!(state.command_menu(), None, "{keys}");
             assert_eq!(texts(&state)[0], line, "{keys}");
             assert_eq!(state.rows()[0].kind, kind, "{keys}");
-            assert_eq!(shown(&state), "Call |Ana", "{keys}");
+            assert_eq!(shown(&state), text, "{keys}");
             assert_eq!(state.mode(), Mode::Edit);
         }
     }
@@ -1534,7 +1567,11 @@ Site @url(https://x.y)",
         slash(&mut state, "p");
         menu(&mut state, MenuInput::Choose);
         assert_eq!(texts(&state), ["notes:", "- t"]);
-        assert_eq!(state.editor().unwrap().suffix, ":");
+        assert_eq!(
+            shown(&state),
+            "notes|:",
+            "the colon is text after the caret"
+        );
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["notes", "- t"]);
         state.update(Message::Redo);
@@ -1584,16 +1621,40 @@ Site @url(https://x.y)",
         for _ in 0..4 {
             state.update(Message::CycleType);
             let row = &state.rows()[0];
-            seen.push((texts(&state)[0].clone(), row.kind, row.section));
-            assert_eq!(shown(&state), "Call |Ana");
+            seen.push((
+                texts(&state)[0].clone(),
+                row.kind,
+                row.section,
+                shown(&state),
+            ));
         }
         assert_eq!(
             seen,
             [
-                ("Call Ana: @x".to_owned(), BlockKind::Project, false),
-                ("Call Ana @x @section".to_owned(), BlockKind::Text, true),
-                ("- Call Ana @x".to_owned(), BlockKind::Task, false),
-                ("Call Ana @x".to_owned(), BlockKind::Text, false),
+                (
+                    "Call Ana: @x".to_owned(),
+                    BlockKind::Project,
+                    false,
+                    "Call |Ana:".to_owned()
+                ),
+                (
+                    "Call Ana @x @section".to_owned(),
+                    BlockKind::Text,
+                    true,
+                    "Call |Ana".to_owned()
+                ),
+                (
+                    "- Call Ana @x".to_owned(),
+                    BlockKind::Task,
+                    false,
+                    "Call |Ana".to_owned()
+                ),
+                (
+                    "Call Ana @x".to_owned(),
+                    BlockKind::Text,
+                    false,
+                    "Call |Ana".to_owned()
+                ),
             ]
         );
         state.update(Message::Undo);
