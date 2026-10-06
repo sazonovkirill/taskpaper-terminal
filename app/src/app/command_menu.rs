@@ -1,15 +1,17 @@
-//! The command menu that `/` opens in edit mode: the commands it offers for the edited block, the
-//! filter typed after `/`, the highlighted command, and what each key does to them
-//! ([editing.md §2.3](../../../../docs/specs/editing.md#23-command-menu), D-44, D-50).
+//! A menu of commands in groups, as the command menu of edit mode and the context menu list them:
+//! the filter typed into it, which matches the starts of the labels' words, the highlighted
+//! command, and what each key does to them
+//! ([editing.md §2.3](../../../docs/specs/editing.md#23-command-menu),
+//! [ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06), D-50, FR-KEY-06).
 
-use super::super::commands::{Command, NodeCommand};
+use super::commands::{Command, NodeCommand};
 
-/// A key of the open command menu or a picker, as an intent.
+/// A key of an open menu or picker, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuInput {
     /// Typing a character of the filter.
     Type(char),
-    /// Erasing the filter's last character, or closing the menu when the filter is empty.
+    /// Erasing the filter's last character.
     Erase,
     /// Highlighting the entry above.
     Previous,
@@ -17,14 +19,14 @@ pub enum MenuInput {
     Next,
     /// Choosing the highlighted entry.
     Choose,
-    /// Closing the menu and typing what it took as text.
+    /// Closing the menu.
     Dismiss,
 }
 
 /// The open menu as a frontend shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandMenuView<'a> {
-    /// What was typed after `/`.
+    /// What was typed into it.
     pub filter: &'a str,
     /// The commands the filter matches, in order, with a divider between groups; never empty.
     pub rows: Vec<MenuRow<'a>>,
@@ -46,8 +48,8 @@ pub enum MenuRow<'a> {
     Divider,
 }
 
-/// The open menu: the commands it offers in groups, the filter and the highlighted command,
-/// counted among those the filter matches.
+/// The open menu: the commands it offers in groups, the filter, which always matches one of them,
+/// and the highlighted command, counted among those the filter matches.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct CommandMenu {
     groups: Vec<Vec<NodeCommand>>,
@@ -55,15 +57,17 @@ pub(super) struct CommandMenu {
     selected: usize,
 }
 
-/// How an input closed the menu.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Closed {
-    /// The chosen command runs.
+/// What an input did that the menu's owner decides on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Outcome {
+    /// The highlighted command was chosen.
     Run(Command),
-    /// This text is typed, the `/` and the filter that chose nothing.
-    Literal(String),
-    /// Nothing is typed: the `/` was erased.
+    /// This character was typed, and not added to the filter, since no command would match it.
+    Unmatched(char),
+    /// Erasing found the filter empty.
     Erased,
+    /// The menu was dismissed.
+    Dismissed,
 }
 
 impl CommandMenu {
@@ -76,15 +80,22 @@ impl CommandMenu {
         }
     }
 
-    /// The groups with the commands whose label the filter matches, leaving out groups with
-    /// none.
-    fn matching_groups(&self) -> impl Iterator<Item = Vec<&NodeCommand>> {
+    /// What was typed into the menu.
+    pub(super) fn filter(&self) -> &str {
+        &self.filter
+    }
+
+    /// The groups with the commands whose label `filter` matches, leaving out groups with none.
+    fn matching_groups<'a>(
+        &'a self,
+        filter: &'a str,
+    ) -> impl Iterator<Item = Vec<&'a NodeCommand>> {
         self.groups
             .iter()
-            .map(|group| {
+            .map(move |group| {
                 group
                     .iter()
-                    .filter(|command| matches(&command.label, &self.filter))
+                    .filter(|command| matches(&command.label, filter))
                     .collect::<Vec<_>>()
             })
             .filter(|group| !group.is_empty())
@@ -92,14 +103,14 @@ impl CommandMenu {
 
     /// The commands whose label the filter matches.
     fn matching(&self) -> impl Iterator<Item = &NodeCommand> {
-        self.matching_groups().flatten()
+        self.matching_groups(&self.filter).flatten()
     }
 
     /// The menu as a frontend shows it.
     pub(super) fn view(&self) -> CommandMenuView<'_> {
         let mut rows = Vec::new();
         let mut selected = 0;
-        for (index, group) in self.matching_groups().enumerate() {
+        for (index, group) in self.matching_groups(&self.filter).enumerate() {
             if index > 0 {
                 rows.push(MenuRow::Divider);
             }
@@ -120,27 +131,22 @@ impl CommandMenu {
         }
     }
 
-    /// The `/` and the filter, as typed.
-    fn literal(&self) -> String {
-        format!("/{}", self.filter)
-    }
-
-    /// Applies `input`, and returns how it closed the menu, or `None` while it stays open. A
-    /// filter that matches no command closes the menu, so that `/` followed by text, as in a
-    /// path, stays text.
-    pub(super) fn input(&mut self, input: MenuInput) -> Option<Closed> {
+    /// Applies `input`, and returns what it did that the menu's owner decides on, or `None` when
+    /// it only changed the filter or the highlight.
+    pub(super) fn input(&mut self, input: MenuInput) -> Option<Outcome> {
         match input {
             MenuInput::Type(c) => {
-                self.filter.push(c);
+                let filter = format!("{}{c}", self.filter);
+                if self.matching_groups(&filter).next().is_none() {
+                    return Some(Outcome::Unmatched(c));
+                }
+                self.filter = filter;
                 self.selected = 0;
-                self.matching()
-                    .next()
-                    .is_none()
-                    .then(|| Closed::Literal(self.literal()))
+                None
             }
             MenuInput::Erase => {
                 self.selected = 0;
-                self.filter.pop().is_none().then_some(Closed::Erased)
+                self.filter.pop().is_none().then_some(Outcome::Erased)
             }
             MenuInput::Previous => {
                 self.selected = self.selected.saturating_sub(1);
@@ -154,8 +160,8 @@ impl CommandMenu {
             MenuInput::Choose => self
                 .matching()
                 .nth(self.selected)
-                .map(|command| Closed::Run(command.command)),
-            MenuInput::Dismiss => Some(Closed::Literal(self.literal())),
+                .map(|command| Outcome::Run(command.command)),
+            MenuInput::Dismiss => Some(Outcome::Dismissed),
         }
     }
 }
@@ -224,7 +230,7 @@ mod tests {
         "Delete",
     ];
 
-    fn typed(menu: &mut CommandMenu, text: &str) -> Option<Closed> {
+    fn typed(menu: &mut CommandMenu, text: &str) -> Option<Outcome> {
         text.chars()
             .map(|c| menu.input(MenuInput::Type(c)))
             .last()
@@ -303,31 +309,28 @@ mod tests {
     #[test]
     fn words_match_only_in_order_and_from_their_start() {
         let mut menu = offering(&LABELS);
-        assert_eq!(
-            typed(&mut menu, "date s"),
-            Some(Closed::Literal("/date s".to_owned()))
-        );
+        assert_eq!(typed(&mut menu, "date s"), Some(Outcome::Unmatched('s')));
+        assert_eq!(menu.filter(), "date ");
         let mut menu = offering(&LABELS);
-        assert_eq!(
-            typed(&mut menu, "ate"),
-            Some(Closed::Literal("/ate".to_owned()))
-        );
+        assert_eq!(typed(&mut menu, "a"), Some(Outcome::Unmatched('a')));
+        assert_eq!(menu.filter(), "");
     }
 
-    // D-44, D-50
+    // D-44, D-50, FR-KEY-06
     #[test]
-    fn a_filter_that_matches_nothing_closes_the_menu_as_text() {
+    fn a_character_that_would_match_nothing_is_not_added_to_the_filter() {
         let mut menu = offering(&LABELS);
-        assert_eq!(
-            typed(&mut menu, "h"),
-            Some(Closed::Literal("/h".to_owned()))
-        );
+        assert_eq!(typed(&mut menu, "c"), None);
+        assert_eq!(typed(&mut menu, "h"), Some(Outcome::Unmatched('h')));
+        assert_eq!(menu.filter(), "c");
+        assert_eq!(shown(&menu), ["Clear Due Date", "|", "Color: Red"]);
         let mut menu = offering(&LABELS);
         assert_eq!(
             menu.input(MenuInput::Type(' ')),
-            Some(Closed::Literal("/ ".to_owned())),
+            Some(Outcome::Unmatched(' ')),
             "a slash between words"
         );
+        assert_eq!(menu.filter(), "");
     }
 
     // D-50
@@ -343,7 +346,7 @@ mod tests {
         menu.input(MenuInput::Next);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(COMMANDS[4])),
+            Some(Outcome::Run(COMMANDS[4])),
             "Due Today"
         );
     }
@@ -363,7 +366,7 @@ mod tests {
         ]]);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(Command::Retype(Typed::Project)))
+            Some(Outcome::Run(Command::Retype(Typed::Project)))
         );
     }
 
@@ -384,7 +387,7 @@ mod tests {
         assert_eq!(menu.view().selected, 3);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(COMMANDS[5]))
+            Some(Outcome::Run(COMMANDS[5]))
         );
     }
 
@@ -402,7 +405,7 @@ mod tests {
         menu.input(MenuInput::Previous);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(COMMANDS[2]))
+            Some(Outcome::Run(COMMANDS[2]))
         );
     }
 
@@ -415,22 +418,15 @@ mod tests {
         assert_eq!(menu.input(MenuInput::Erase), None);
         assert_eq!((menu.view().filter, menu.view().selected), ("", 0));
         assert_eq!(shown(&menu).len(), LABELS.len() + 2);
-        assert_eq!(menu.input(MenuInput::Erase), Some(Closed::Erased));
+        assert_eq!(menu.input(MenuInput::Erase), Some(Outcome::Erased));
     }
 
     // D-44
     #[test]
-    fn dismissing_types_the_slash_and_the_filter() {
-        let mut menu = offering(&LABELS);
-        assert_eq!(
-            menu.input(MenuInput::Dismiss),
-            Some(Closed::Literal("/".to_owned()))
-        );
+    fn dismissing_keeps_the_filter() {
         let mut menu = offering(&LABELS);
         typed(&mut menu, "de");
-        assert_eq!(
-            menu.input(MenuInput::Dismiss),
-            Some(Closed::Literal("/de".to_owned()))
-        );
+        assert_eq!(menu.input(MenuInput::Dismiss), Some(Outcome::Dismissed));
+        assert_eq!(menu.filter(), "de");
     }
 }

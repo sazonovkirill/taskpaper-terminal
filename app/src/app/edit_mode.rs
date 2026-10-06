@@ -4,16 +4,13 @@
 //! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, OQ-24, OQ-25,
 //! OQ-27, D-44, D-50).
 
-mod command_menu;
-
 use std::{mem, ops::Range};
 
-use command_menu::{Closed, CommandMenu};
-pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
 use jiff::civil::Date;
 
 use super::{
-    Access, Effect, Notice, Restore, State,
+    Access, CommandMenuView, Effect, MenuInput, Notice, Restore, State,
+    command_menu::{CommandMenu, Outcome},
     commands::{Command, Inputs, node_commands},
     structure::NewBlock,
     text_field::{TextEdit, TextField},
@@ -352,28 +349,28 @@ impl State {
     }
 
     /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
-    /// types what the menu took as text. A type change is a change of the session. Any other
-    /// command ends the session, runs as a
+    /// types what the menu took as text: the `/` and the filter, when dismissed or with a
+    /// character that matches nothing, so that `/` followed by text, as in a path, stays text. A
+    /// type change is a change of the session. Any other command ends the session, runs as a
     /// step of its own and editing resumes on the block at the caret's column, once a prompt or
     /// popup it opened closes (editing.md §2.3).
     pub(super) fn command_menu_input(&mut self, input: MenuInput) -> Vec<Effect> {
         let Some(session) = &mut self.edit else {
             return Vec::new();
         };
-        let Some((closed, today)) = session
-            .menu
-            .as_mut()
-            .and_then(|(menu, today)| Some((menu.input(input)?, *today)))
-        else {
+        let Some((outcome, literal, today)) = session.menu.as_mut().and_then(|(menu, today)| {
+            let outcome = menu.input(input)?;
+            Some((outcome, format!("/{}", menu.filter()), *today))
+        }) else {
             return Vec::new();
         };
         session.menu = None;
-        match closed {
-            Closed::Run(Command::Retype(typed)) => {
+        match outcome {
+            Outcome::Run(Command::Retype(typed)) => {
                 session.retype(typed);
                 self.write(false);
             }
-            Closed::Run(command) => {
+            Outcome::Run(command) => {
                 // No command of the menu pages, so a page needs no height.
                 let inputs = Inputs {
                     today,
@@ -387,12 +384,17 @@ impl State {
                 self.resume_editing();
                 return effects;
             }
-            Closed::Literal(literal) => {
-                for c in literal.chars() {
+            Outcome::Unmatched(_) | Outcome::Dismissed => {
+                let unmatched = if let Outcome::Unmatched(c) = outcome {
+                    Some(c)
+                } else {
+                    None
+                };
+                for c in literal.chars().chain(unmatched) {
                     self.edit_text(TextEdit::Insert(c));
                 }
             }
-            Closed::Erased => {}
+            Outcome::Erased => {}
         }
         Vec::new()
     }
@@ -621,7 +623,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{DateInput, Disk, Effect, Menu, Message, Motion, Version},
+        app::{DateInput, Disk, Effect, Menu, MenuRow, Message, Motion, Version},
         document::format,
     };
 

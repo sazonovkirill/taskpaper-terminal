@@ -3,6 +3,7 @@
 
 mod clipboard;
 mod color_picker;
+mod command_menu;
 pub mod commands;
 mod count;
 mod date_prompt;
@@ -30,9 +31,10 @@ mod type_picker;
 pub mod update;
 
 pub use clipboard::Paste;
+pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
 pub use commands::{Command, Inputs};
 pub use date_prompt::{DateInput, DatePromptView};
-pub use edit_mode::{CommandMenuView, Editor, MenuInput, MenuRow, Mode};
+pub use edit_mode::{Editor, Mode};
 pub use external::{DiffLine, Version};
 pub use finder::{Candidate, FinderView};
 pub use history::{History, Restore};
