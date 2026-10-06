@@ -31,6 +31,7 @@ pub use picker::PickerView;
 pub use saving::SaveState;
 pub use selection::SelectionChange;
 pub use state::{Access, Notice, Origin, Row, State};
+pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};
 pub use type_picker::Conversion;
 pub use update::{Disk, Effect, Message};

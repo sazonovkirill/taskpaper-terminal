@@ -6,7 +6,9 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::{
-    app::{DateInput, MenuInput, Message, Mode, Motion, Paste, SelectionChange, TextEdit},
+    app::{
+        DateInput, MenuInput, Message, Mode, Motion, NewBlock, Paste, SelectionChange, TextEdit,
+    },
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -197,16 +199,24 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl 'Z')], |_| Message::Redo),
     (&[key!(ctrl 'y')], |_| Message::Redo),
     (&[key!(Enter)], |_| Message::EditAtEnd),
-    (&[key!('o')], |_| Message::NewBelow),
-    (&[key!('O')], |_| Message::NewAbove),
-    (&[key!('i')], |_| Message::NewLastChild),
-    (&[key!('I')], |_| Message::NewFirstChild),
-    (&[key!('P')], |_| Message::NewTop(Typed::Project)),
-    (&[key!('p')], |_| Message::NewTypedBelow(Typed::Project)),
+    (&[key!('o')], |_| Message::New(NewBlock::Below, None)),
+    (&[key!('O')], |_| Message::New(NewBlock::Above, None)),
+    (&[key!('i')], |_| Message::New(NewBlock::LastChild, None)),
+    (&[key!('I')], |_| Message::New(NewBlock::FirstChild, None)),
+    (&[key!('P')], |_| {
+        Message::New(NewBlock::Start, Some(Typed::Project))
+    }),
+    (&[key!('p')], |_| {
+        Message::New(NewBlock::Below, Some(Typed::Project))
+    }),
     (&[key!('S')], |_| Message::SetSection(true)),
     (&[key!('s')], |_| Message::SetSection(false)),
-    (&[key!('A')], |_| Message::NewTop(Typed::Task)),
-    (&[key!('a')], |_| Message::NewTypedBelow(Typed::Task)),
+    (&[key!('A')], |_| {
+        Message::New(NewBlock::Start, Some(Typed::Task))
+    }),
+    (&[key!('a')], |_| {
+        Message::New(NewBlock::Below, Some(Typed::Task))
+    }),
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
     (&[key!('D')], |_| Message::Duplicate),
@@ -810,17 +820,25 @@ mod tests {
     #[test]
     fn creating_and_deleting_keys() {
         let none = KeyModifiers::NONE;
-        check(KeyCode::Char('o'), none, Some(&Message::NewBelow));
+        check(
+            KeyCode::Char('o'),
+            none,
+            Some(&Message::New(NewBlock::Below, None)),
+        );
         check(
             KeyCode::Char('O'),
             KeyModifiers::SHIFT,
-            Some(&Message::NewAbove),
+            Some(&Message::New(NewBlock::Above, None)),
         );
-        check(KeyCode::Char('i'), none, Some(&Message::NewLastChild));
+        check(
+            KeyCode::Char('i'),
+            none,
+            Some(&Message::New(NewBlock::LastChild, None)),
+        );
         check(
             KeyCode::Char('I'),
             KeyModifiers::SHIFT,
-            Some(&Message::NewFirstChild),
+            Some(&Message::New(NewBlock::FirstChild, None)),
         );
         check(KeyCode::Char('o'), KeyModifiers::ALT, None);
         check(KeyCode::Delete, none, Some(&Message::Delete));
@@ -844,10 +862,10 @@ mod tests {
     fn typed_creation_keys() {
         for (lower, typed) in [('p', Typed::Project), ('a', Typed::Task)] {
             let upper = lower.to_ascii_uppercase();
-            let top = Message::NewTop(typed);
+            let top = Message::New(NewBlock::Start, Some(typed));
             check(KeyCode::Char(upper), KeyModifiers::SHIFT, Some(&top));
             check(KeyCode::Char(upper), KeyModifiers::NONE, Some(&top));
-            let below = Message::NewTypedBelow(typed);
+            let below = Message::New(NewBlock::Below, Some(typed));
             check(KeyCode::Char(lower), KeyModifiers::NONE, Some(&below));
         }
     }

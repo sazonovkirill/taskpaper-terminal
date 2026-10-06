@@ -1213,7 +1213,7 @@ P:
     #[test]
     fn a_step_committed_while_a_new_block_is_edited_comes_after_its_creation() {
         let mut state = open("n\n- t", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         typed(&mut state, "m");
         let task = state.rows()[2].id;
         state.commit(vec![Op::SetText {
@@ -1538,7 +1538,7 @@ Site @url(https://x.y)",
     #[test]
     fn ctrl_t_after_a_typed_shortcut_leaves_backspace_to_the_text() {
         let mut state = open("a", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         typed(&mut state, "[]");
         state.update(Message::TypeSpace { today: TODAY });
         assert_eq!(texts(&state), ["a", "- "]);

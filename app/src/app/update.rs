@@ -204,15 +204,9 @@ pub enum Message {
     /// Give the block being edited the next type of project, section, task and note, as `Ctrl+T`
     /// does (D-50).
     CycleType,
-    /// Add a block after the focused block's subtree, or the last selected one's, and edit it
-    /// (FR-MODE-04).
-    NewBelow,
-    /// Add a block before the focused block, or the first selected one, and edit it (FR-MODE-04).
-    NewAbove,
-    /// Add a first child to the focused block, expanding it, and edit it (FR-MODE-04).
-    NewFirstChild,
-    /// Add a last child to the focused block, expanding it, and edit it (FR-MODE-04).
-    NewLastChild,
+    /// Add a block where this says, relative to the focused block or the selection, of this type
+    /// or, with `None`, of the type that fits there, and edit it (FR-MODE-04, FR-MODE-06).
+    New(NewBlock, Option<Typed>),
     /// Stop editing and add the next block: a first child when the block shows children, else
     /// a block below it (editing.md §3).
     NewNext,
@@ -222,11 +216,6 @@ pub enum Message {
     /// Stop editing and edit the next visible block, keeping the caret's column where it can
     /// (editing.md §2).
     EditNext,
-    /// Add a block of this type at the top of the focused block's list, or the first selected
-    /// one's, its parent's children, and edit it (FR-MODE-06).
-    NewTop(Typed),
-    /// Add a block of this type where [`Message::NewBelow`] would and edit it (FR-MODE-06).
-    NewTypedBelow(Typed),
     /// Delete the selected blocks, else the focused block, with their subtrees (FR-OPS-06).
     Delete,
     /// Copy the selected text in edit mode, else the selected blocks, else the focused block, to
@@ -352,12 +341,7 @@ impl Message {
             | Self::TypePicker(_)
             | Self::OpenDetails
             | Self::CloseDetails
-            | Self::NewBelow
-            | Self::NewAbove
-            | Self::NewFirstChild
-            | Self::NewLastChild
-            | Self::NewTop(_)
-            | Self::NewTypedBelow(_)
+            | Self::New(..)
             | Self::Delete
             | Self::Duplicate
             | Self::MoveUp
@@ -494,15 +478,10 @@ impl State {
             Message::OpenCommandMenu { today } => self.open_command_menu(today),
             Message::CommandMenu(input) => effects = self.command_menu_input(input),
             Message::CycleType => self.cycle_type(),
-            Message::NewBelow => self.add_block(NewBlock::Below, None),
-            Message::NewAbove => self.add_block(NewBlock::Above, None),
-            Message::NewFirstChild => self.add_block(NewBlock::FirstChild, None),
-            Message::NewLastChild => self.add_block(NewBlock::LastChild, None),
+            Message::New(at, typed) => self.add_block(at, typed),
             Message::NewNext => self.new_next(),
             Message::EditPrevious => self.edit_adjacent(false),
             Message::EditNext => self.edit_adjacent(true),
-            Message::NewTop(typed) => self.add_block(NewBlock::Top, Some(typed)),
-            Message::NewTypedBelow(typed) => self.add_block(NewBlock::Below, Some(typed)),
             Message::Delete => self.delete_selected(),
             Message::Duplicate => self.duplicate(),
             Message::Copy => effects = self.copy(),

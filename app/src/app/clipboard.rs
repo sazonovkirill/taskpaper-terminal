@@ -343,7 +343,7 @@ mod tests {
     #[test]
     fn several_lines_pasted_into_an_empty_block_replace_it() {
         let mut state = open("- a\n- c", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(crate::app::NewBlock::Below, None));
         paste(&mut state, "- x\n- y", Paste::Below);
         assert_eq!(lines(&state), ["- a", "- x", "- y", "- c"]);
         state.update(Message::Undo);

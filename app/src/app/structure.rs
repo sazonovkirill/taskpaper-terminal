@@ -12,7 +12,7 @@ use crate::document::{
 
 /// Where a new block goes, relative to the focused block (editing.md §3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum NewBlock {
+pub enum NewBlock {
     /// After its subtree, as its next sibling.
     Below,
     /// As its previous sibling.
@@ -23,8 +23,8 @@ pub(super) enum NewBlock {
     LastChild,
     /// As its first child when it shows children, else below it, as `Enter` ends editing.
     Next,
-    /// At the top of its list, its parent's children (FR-MODE-06).
-    Top,
+    /// At the start of its list, its parent's children (FR-MODE-06).
+    Start,
 }
 
 impl State {
@@ -41,7 +41,7 @@ impl State {
         }
         let focused = self.creation_reference(new);
         let list = match (&focused, new) {
-            (Some((block, false)), NewBlock::Top) => self.siblings(block.id()),
+            (Some((block, false)), NewBlock::Start) => self.siblings(block.id()),
             _ => Vec::new(),
         };
         let place = match &focused {
@@ -54,7 +54,7 @@ impl State {
                 NewBlock::LastChild => Place::LastChild(block),
                 NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
                 NewBlock::Below | NewBlock::Next => Place::Below(block),
-                NewBlock::Top => list
+                NewBlock::Start => list
                     .first()
                     .map(Place::Above)
                     .expect("the focused block is in its list"),
@@ -77,7 +77,7 @@ impl State {
         let roots = self.roots();
         let selected = match new {
             NewBlock::Below | NewBlock::Next => roots.last(),
-            NewBlock::Above | NewBlock::Top => roots.first(),
+            NewBlock::Above | NewBlock::Start => roots.first(),
             NewBlock::FirstChild | NewBlock::LastChild => None,
         };
         selected
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn o_adds_a_block_below_to_type_into_and_esc_keeps_it() {
         let mut state = open("- a\n\t- b\n- c", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(shown(&state), "|");
         assert_eq!(lines(&state), ["- a", "\t- b", "- ", "- c"]);
@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn adding_a_block_and_typing_into_it_is_one_undo_step() {
         let mut state = open("- a\n- c", 1);
-        state.update(Message::NewAbove);
+        state.update(Message::New(NewBlock::Above, None));
         typed(&mut state, "b");
         state.update(Message::StopEditing);
         assert_eq!(lines(&state), ["- a", "- b", "- c"]);
@@ -302,7 +302,7 @@ mod tests {
         assert_eq!(lines(&state), ["- a", "- b", "- c"]);
         assert_eq!(focused(&state), "b");
         state.update(Message::Undo);
-        state.update(Message::NewAbove);
+        state.update(Message::New(NewBlock::Above, None));
         state.update(Message::StopEditing);
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["- a", "- c"], "an empty new block too");
@@ -313,7 +313,7 @@ mod tests {
     fn i_and_shift_i_add_a_last_and_a_first_child_and_expand_the_block() {
         let mut state = open("P:\n\t- a\nQ:", 0);
         state.update(Message::Collapse);
-        state.update(Message::NewFirstChild);
+        state.update(Message::New(NewBlock::FirstChild, None));
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(lines(&state), ["P:", "\t- ", "\t- a", "Q:"]);
         assert_eq!(state.rows().len(), 4, "expanded");
@@ -321,7 +321,7 @@ mod tests {
         state.update(Message::StopEditing);
         state.update(Message::Undo);
         state.update(Message::Collapse);
-        state.update(Message::NewLastChild);
+        state.update(Message::New(NewBlock::LastChild, None));
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(lines(&state), ["P:", "\t- a", "\t- ", "Q:"]);
         assert_eq!(state.rows().len(), 4, "expanded");
@@ -376,7 +376,11 @@ mod tests {
     // FR-NAV-03, FR-MODE-04
     #[test]
     fn on_the_zoom_title_every_new_block_is_its_first_child_but_i_adds_its_last() {
-        for new in [Message::NewBelow, Message::NewAbove, Message::NewFirstChild] {
+        for new in [
+            Message::New(NewBlock::Below, None),
+            Message::New(NewBlock::Above, None),
+            Message::New(NewBlock::FirstChild, None),
+        ] {
             let mut state = open("P:\n\t- a\nQ:", 0);
             state.update(Message::ZoomIn);
             state.update(Message::FocusFirst);
@@ -388,7 +392,7 @@ mod tests {
         let mut state = open("P:\n\t- a\nQ:", 0);
         state.update(Message::ZoomIn);
         state.update(Message::FocusFirst);
-        state.update(Message::NewLastChild);
+        state.update(Message::New(NewBlock::LastChild, None));
         assert_eq!(lines(&state), ["P:", "\t- a", "\t- ", "Q:"]);
         assert_eq!(state.rows()[2].id, state.focus().unwrap());
     }
@@ -397,7 +401,7 @@ mod tests {
     #[test]
     fn an_empty_outline_gets_its_first_block() {
         let mut state = State::new(Document::default(), None);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         typed(&mut state, "first");
         state.update(Message::NewNext);
         assert_eq!(lines(&state), ["first", ""], "text after text");
@@ -408,7 +412,7 @@ mod tests {
     fn upper_case_adds_a_typed_block_at_the_top_of_the_list() {
         let text = "P:\n\t- a\n\tn\n\tS @section\n\t\t- b\n\tT @section\nQ:";
         let mut state = open(text, 2);
-        state.update(Message::NewTop(Typed::Project));
+        state.update(Message::New(NewBlock::Start, Some(Typed::Project)));
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(shown(&state), "|");
         typed(&mut state, "Sub");
@@ -418,11 +422,11 @@ mod tests {
         state.update(Message::Undo);
         assert_eq!(lines(&state), lines(&open(text, 0)), "one step");
         assert_eq!(focused(&state), "n");
-        state.update(Message::NewTop(Typed::Task));
+        state.update(Message::New(NewBlock::Start, Some(Typed::Task)));
         assert_eq!(lines(&state)[..3], ["P:", "\t- ", "\t- a"]);
         state.update(Message::StopEditing);
         state.update(Message::FocusLast);
-        state.update(Message::NewTop(Typed::Task));
+        state.update(Message::New(NewBlock::Start, Some(Typed::Task)));
         assert_eq!(
             lines(&state)[..2],
             ["- ", "P:"],
@@ -440,7 +444,7 @@ mod tests {
         ] {
             let mut state = open("n\n\t- a\nm", 0);
             state.update(Message::Collapse);
-            state.update(Message::NewTypedBelow(typed));
+            state.update(Message::New(NewBlock::Below, Some(typed)));
             assert_eq!(lines(&state), ["n", "\t- a", line, "m"], "{typed:?}");
             assert_eq!(state.mode(), Mode::Edit);
         }
@@ -450,8 +454,8 @@ mod tests {
     #[test]
     fn typed_blocks_on_the_zoom_title_and_in_an_empty_outline_come_first() {
         for (new, line) in [
-            (Message::NewTop(Typed::Task), "- "),
-            (Message::NewTypedBelow(Typed::Project), ":"),
+            (Message::New(NewBlock::Start, Some(Typed::Task)), "- "),
+            (Message::New(NewBlock::Below, Some(Typed::Project)), ":"),
         ] {
             let mut state = open("P:\n\t- a\n\tS @section", 0);
             state.update(Message::ZoomIn);
@@ -468,8 +472,8 @@ mod tests {
     #[test]
     fn a_read_only_file_refuses_new_and_deleted_blocks() {
         for message in [
-            Message::NewBelow,
-            Message::NewTop(Typed::Task),
+            Message::New(NewBlock::Below, None),
+            Message::New(NewBlock::Start, Some(Typed::Task)),
             Message::Delete,
             Message::Duplicate,
         ] {
@@ -588,7 +592,7 @@ mod tests {
     #[test]
     fn a_new_block_that_no_longer_comes_out_cleanly_is_deleted_as_a_step() {
         let mut state = open("- a", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         let root = state.document.root();
         let id = state.document.new_id();
         let op = Op::Insert {
@@ -639,7 +643,7 @@ mod tests {
     fn a_new_block_is_saved_while_it_is_typed_into() {
         let (mut state, path) = file("A:\n\t- a\n");
         state.update(Message::FocusNext);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         assert_eq!(
             later(&mut state, 1),
             save(&path, "A:\n\t- a\n\t- \n", "A:\n\t- a\n")
@@ -651,7 +655,7 @@ mod tests {
     fn saving_waits_while_a_new_empty_last_block_is_below_the_top_level() {
         let (mut state, path) = file("A:\n\tB:\n");
         state.update(Message::FocusNext);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         assert_eq!(state.deadline(), None);
         assert_eq!(later(&mut state, 5), []);
         typed(&mut state, "x");
@@ -683,7 +687,7 @@ mod tests {
     fn undoing_the_lift_of_a_trailing_blank_lets_the_next_undo_reach_the_block() {
         let (mut state, _) = file("A:\n\tB:\n");
         state.update(Message::FocusNext);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         state.update(Message::StopEditing);
         later(&mut state, 1);
         assert_eq!(lines(&state), ["A:", "\tB:", ""]);
@@ -703,7 +707,7 @@ mod tests {
     #[test]
     fn a_new_empty_last_block_at_the_top_level_saves_at_once() {
         let (mut state, path) = file("A:");
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         assert_eq!(later(&mut state, 1), save(&path, "A:\n\n", "A:"));
     }
 
@@ -712,7 +716,7 @@ mod tests {
     fn quitting_after_undoing_a_lift_lifts_again_and_saves() {
         let (mut state, path) = file("A:\n\tB:\n");
         state.update(Message::FocusNext);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         state.update(Message::StopEditing);
         later(&mut state, 1);
         state.update(Message::Saved);
@@ -728,7 +732,7 @@ mod tests {
     fn quitting_lifts_a_new_empty_last_block_and_saves() {
         let (mut state, path) = file("A:\n\tB:\n");
         state.update(Message::FocusNext);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         assert_eq!(
             state.update(Message::Quit),
             save(&path, "A:\n\tB:\n\n", "A:\n\tB:\n")
@@ -741,7 +745,7 @@ mod tests {
         let (mut state, _) = file("Work:\n\t- a\n\n\t- b\n");
         state.update(Message::FocusLast);
         state.update(Message::Delete);
-        state.update(Message::NewAbove);
+        state.update(Message::New(NewBlock::Above, None));
         typed(&mut state, "c");
         later(&mut state, 2);
         assert_eq!(lines(&state), ["Work:", "\t- a", "\tc", ""]);
@@ -877,7 +881,7 @@ mod tests {
     #[test]
     fn a_new_block_indented_while_typed_into_undoes_in_steps() {
         let mut state = open("- a", 0);
-        state.update(Message::NewBelow);
+        state.update(Message::New(NewBlock::Below, None));
         state.update(Message::Indent);
         typed(&mut state, "b");
         state.update(Message::StopEditing);
@@ -1040,24 +1044,24 @@ mod tests {
             lines(&state)
         };
         assert_eq!(
-            below(Message::NewBelow),
+            below(Message::New(NewBlock::Below, None)),
             ["- a", "- b", "\t- c", "- ", "- d"],
             "after the last selected one's subtree"
         );
         assert_eq!(
-            below(Message::NewTypedBelow(Typed::Project)),
+            below(Message::New(NewBlock::Below, Some(Typed::Project))),
             ["- a", "- b", "\t- c", ":", "- d"]
         );
         assert_eq!(
-            below(Message::NewAbove),
+            below(Message::New(NewBlock::Above, None)),
             ["- ", "- a", "- b", "\t- c", "- d"]
         );
         assert_eq!(
-            below(Message::NewTop(Typed::Task)),
+            below(Message::New(NewBlock::Start, Some(Typed::Task))),
             ["- ", "- a", "- b", "\t- c", "- d"]
         );
         assert_eq!(
-            below(Message::NewLastChild),
+            below(Message::New(NewBlock::LastChild, None)),
             ["- a", "\t- ", "- b", "\t- c", "- d"],
             "children go to the focused block"
         );
