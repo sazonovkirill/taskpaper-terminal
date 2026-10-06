@@ -583,9 +583,9 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01). A collapsed block
-/// with children shows `▸ n` after its text (ui.md §2). The zoom title is drawn like its block,
-/// in bold (D-34).
+/// (D-31, FR-FMT-01), then the `@today` star and the bookmark icon, each after a space (D-47),
+/// dimmed with a done block or one inside it. A collapsed block with children shows `▸ n` after
+/// them (ui.md §2). The zoom title is drawn like its block, in bold (D-34).
 fn row_line(row: &Row, width: usize) -> Line<'_> {
     let (marker, marker_style, style) = row_style(row);
     let mut line = Line::from(vec![
@@ -601,25 +601,41 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
         }
         _ => line.extend(formatted(row, style)),
     }
+    let recede = |style: Style| {
+        if row.done || row.inside_done {
+            style.dim()
+        } else {
+            style
+        }
+    };
+    for (marked, icon, style) in [
+        (row.today, Icon::Today, today_style()),
+        (row.bookmark, Icon::Bookmark, bookmark_style()),
+    ] {
+        if marked {
+            line.push_span(" ");
+            line.push_span(Span::styled(icon.glyph(), recede(style)));
+        }
+    }
     if row.hidden_children > 0 {
         line.push_span(Span::styled(
             format!(" ▸ {}", row.hidden_children),
             Style::new().dim(),
         ));
-        if row.kind == BlockKind::Divider {
-            line.push_span(" ");
-        }
     }
     if row.kind == BlockKind::Divider {
+        if row.today || row.bookmark || row.hidden_children > 0 {
+            line.push_span(" ");
+        }
         line.push_span(rule(&line, width));
     }
     line
 }
 
-/// The chips of `row` on `today`, right-aligned, each after a space: `★` when it has `@today`
-/// (FR-TAG-04), then its start date in green and its due date in red, each as its icon and the
-/// date named relative to `today`, such as `tomorrow` (D-46); an overdue date has its own icon and
-/// is reversed. All are dimmed with a done block or one inside it (ui.md §2, FR-TAG-03).
+/// The date chips of `row` on `today`, right-aligned, each after a space: its start date in green
+/// and its due date in red, each as its icon and the date named relative to `today`, such as
+/// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
+/// block or one inside it (ui.md §2, FR-TAG-03).
 fn chips(row: &Row, today: Date) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
@@ -640,12 +656,6 @@ fn chips(row: &Row, today: Date) -> Line<'static> {
         }
     };
     let spans: Vec<Span> = [
-        row.today.then(|| {
-            [
-                Span::raw(" "),
-                Span::styled(TODAY_MARKER, recede(today_style())),
-            ]
-        }),
         row.start.map(|date| chip(Icon::Start, date, start_style())),
         row.due.map(due),
     ]
@@ -656,12 +666,14 @@ fn chips(row: &Row, today: Date) -> Line<'static> {
     Line::from(spans).right_aligned()
 }
 
-/// Marks a block that has `@today` (ui.md §2).
-const TODAY_MARKER: &str = "★";
-
-/// The `@today` marker chip; themes arrive in step 6.2.
+/// The `@today` star (FR-TAG-04); themes arrive in step 6.2.
 fn today_style() -> Style {
     Style::new().fg(Color::Yellow)
+}
+
+/// The bookmark icon (D-47), in the accent; themes arrive in step 6.2.
+fn bookmark_style() -> Style {
+    Style::new().fg(PRIMARY)
 }
 
 /// Start date chips, always green (D-46); themes arrive in step 6.2.
@@ -1226,33 +1238,51 @@ mod tests {
         );
     }
 
-    // FR-TAG-04, ui.md §2
+    // FR-TAG-04, D-47, ui.md §2
     #[test]
-    fn today_shows_as_a_star_chip_before_the_dates() {
+    fn today_and_bookmark_icons_follow_the_text() {
+        let star = Icon::Today.glyph();
+        let bookmark = Icon::Bookmark.glyph();
         let mut expected = Buffer::with_lines([
-            at_right("- a", &format!("★ {}", chip(Icon::Due, "Fri")), 20),
-            "- b                ★".to_owned(),
-            "P:                 ★".to_owned(),
-            "  - c              ★".to_owned(),
+            at_right(&format!("- a {star}"), &chip(Icon::Due, "Fri"), 20),
+            format!("{:<20}", format!("- b {star} {bookmark}")),
+            format!("{:<20}", format!("P: {star}")),
+            format!("{:<20}", format!("  - c {bookmark}")),
+            format!(" {bookmark} {}", "─".repeat(17)),
         ]);
-        expected.set_style(Rect::new(13, 0, 1, 1), today_style());
+        expected.set_style(Rect::new(4, 0, 1, 1), today_style());
         expected.set_style(Rect::new(15, 0, 5, 1), due_style());
-        expected.set_style(Rect::new(19, 1, 1, 1), today_style());
+        expected.set_style(Rect::new(4, 1, 1, 1), today_style());
+        expected.set_style(Rect::new(6, 1, 1, 1), bookmark_style());
         expected.set_style(
             Rect::new(0, 2, 2, 1),
             Style::new().bold().fg(PRIMARY).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(19, 2, 1, 1), today_style().dim());
+        expected.set_style(Rect::new(3, 2, 1, 1), today_style().dim());
         expected.set_style(Rect::new(2, 3, 3, 1), Style::new().dim());
-        expected.set_style(Rect::new(19, 3, 1, 1), today_style().dim());
+        expected.set_style(Rect::new(6, 3, 1, 1), bookmark_style().dim());
+        expected.set_style(Rect::new(1, 4, 1, 1), bookmark_style());
+        expected.set_style(Rect::new(3, 4, 17, 1), divider_style());
         assert_eq!(
             render(
-                "- a @due(2026-10-09) @today\n- b @today(x)\nP: @today @done\n\t- c @today",
+                "- a @due(2026-10-09) @today\n- b @bookmark @today(x)\nP: @today @done\n\t- c @bookmark\n--- @bookmark",
                 20,
-                4
+                5
             ),
             expected
         );
+    }
+
+    // D-47, ui.md §2
+    #[test]
+    fn a_collapsed_blocks_count_follows_its_icons() {
+        let mut state = State::new(format::parse("Q: @bookmark\n\t- d"), None);
+        state.update(Message::CollapseAll);
+        let mut expected = Buffer::with_lines([format!("Q: {} ▸ 1  ", Icon::Bookmark.glyph())]);
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style());
+        expected.set_style(Rect::new(4, 0, 4, 1), Style::new().dim());
+        assert_eq!(draw(&state.rows(), 10, 1), expected);
     }
 
     // FR-NAV-02
@@ -1565,11 +1595,11 @@ mod tests {
         assert_eq!(buf, expected);
     }
 
-    // FR-TAG-03, FR-MODE-02
+    // FR-TAG-03, FR-MODE-02, D-47
     #[test]
-    fn the_edited_block_shows_no_chips() {
+    fn the_edited_block_shows_no_chips_or_icons() {
         let mut state = State::new(
-            format::parse("- a @due(2026-10-05)\n- b @due(2026-10-05)"),
+            format::parse("- a @due(2026-10-05) @today @bookmark\n- b @due(2026-10-05)"),
             None,
         );
         state.update(Message::EditAtEnd);

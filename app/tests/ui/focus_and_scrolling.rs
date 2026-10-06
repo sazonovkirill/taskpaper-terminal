@@ -10,7 +10,7 @@ use ratatui::{
     style::{Color, Style},
 };
 
-use crate::support::{CURRENT_LINE, Harness, focused_rows, line, outline_rows};
+use crate::support::{BOOKMARK, CURRENT_LINE, Harness, focused_rows, line, outline_rows};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -198,7 +198,7 @@ fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
     assert_eq!(status_line(&mut app), format!("{status} g"));
     app.type_keys("g");
     assert_eq!(status_line(&mut app), app.status(40).trim_end());
-    assert_focus(&mut app, "Trip to Lisbon:");
+    assert_focus(&mut app, &format!("Trip to Lisbon: {BOOKMARK}"));
 }
 
 #[test]

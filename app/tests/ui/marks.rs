@@ -6,7 +6,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Color};
 
-use crate::support::{DUE, Harness, line, outline_line, outline_rows};
+use crate::support::{BOOKMARK, DUE, Harness, STAR, line, outline_line, outline_rows};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -106,17 +106,17 @@ fn typing_in_the_picker_filters_it_and_esc_closes_it_unchanged() {
     assert_eq!(saved(&mut app), "- Milk\n");
 }
 
-// FR-TAG-04, ui.md §2
+// FR-TAG-04, D-47, ui.md §2
 #[test]
-fn m_t_marks_the_focused_block_for_today_with_a_star_chip() {
+fn m_t_marks_the_focused_block_for_today_with_a_star_after_its_text() {
     let mut app = Harness::with_text("- Milk @due(2026-10-09)\n", 40, 4);
     app.type_keys("mt");
     assert_eq!(
         outline_rows(&mut app)[0],
-        format!("{:<31}★ {DUE} Fri", "- Milk")
+        format!("- Milk {STAR}{:>30}", format!("{DUE} Fri"))
     );
     let buffer = app.render().buffer().clone();
-    assert_eq!(buffer[(33, 2)].fg, Color::Yellow);
+    assert_eq!(buffer[(9, 2)].fg, Color::Yellow);
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09) @today\n");
     app.type_keys("mt");
     assert_eq!(
@@ -126,7 +126,7 @@ fn m_t_marks_the_focused_block_for_today_with_a_star_chip() {
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09)\n");
 }
 
-// D-11
+// D-11, D-47
 #[test]
 fn m_b_bookmarks_the_focused_block_and_says_so() {
     let mut app = Harness::with_text("Plans:\n", 80, 4);
@@ -135,17 +135,18 @@ fn m_b_bookmarks_the_focused_block_and_says_so() {
     assert!(status.ends_with("· Bookmarked"), "{status}");
     assert_eq!(
         outline_rows(&mut app)[0],
-        "Plans:",
-        "no mark in the outline"
+        format!("Plans: {BOOKMARK}"),
+        "the bookmark icon follows the text (D-47)"
     );
     assert_eq!(saved(&mut app), "Plans: @bookmark\n");
     app.type_keys("mb");
     let status = line(app.render().buffer(), 3);
     assert!(status.ends_with("· Bookmark removed"), "{status}");
     assert_eq!(saved(&mut app), "Plans:\n");
+    assert_eq!(outline_rows(&mut app)[0], "Plans:");
 }
 
-// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11
+// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11, D-47
 #[test]
 fn the_demo_shows_today_and_colors() {
     let mut app = Harness::demo(70, 40);
@@ -155,7 +156,14 @@ fn the_demo_shows_today_and_colors() {
             .find(|&y| outline_line(&buffer, y).starts_with(text))
             .unwrap_or_else(|| panic!("the demo has {text:?}"))
     };
-    assert!(outline_line(&buffer, row("    - Phone charger")).ends_with('★'));
+    assert_eq!(
+        outline_line(&buffer, row("    - Phone charger")),
+        format!("    - Phone charger {STAR}")
+    );
+    assert_eq!(
+        outline_line(&buffer, row("Trip to Lisbon:")),
+        format!("Trip to Lisbon: {BOOKMARK}")
+    );
     assert_eq!(
         text_color(&buffer, row("  - Fix the broken contact form"), 4),
         Color::Red

@@ -10,6 +10,10 @@ pub enum Icon {
     Due,
     /// An overdue due date chip.
     Overdue,
+    /// A block with `@today`, after its text.
+    Today,
+    /// A bookmarked block, after its text.
+    Bookmark,
 }
 
 /// An icon's Nerd Font glyph and the Unicode fallback drawn when icons are off.
@@ -38,6 +42,10 @@ impl Icon {
             Self::Due => ("\u{f166c}", "⇥"),
             // nf-md-calendar_alert
             Self::Overdue => ("\u{f0a31}", "!"),
+            // nf-md-star
+            Self::Today => ("\u{f04ce}", "★"),
+            // nf-md-bookmark
+            Self::Bookmark => ("\u{f00c0}", "⚑"),
         };
         Glyphs { nerd, unicode }
     }
@@ -49,7 +57,13 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 3] = [Icon::Start, Icon::Due, Icon::Overdue];
+    const ICONS: [Icon; 5] = [
+        Icon::Start,
+        Icon::Due,
+        Icon::Overdue,
+        Icon::Today,
+        Icon::Bookmark,
+    ];
 
     #[test]
     fn every_icon_and_its_fallback_is_one_cell_wide() {

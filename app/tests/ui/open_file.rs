@@ -7,7 +7,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 use taskpaper_terminal::app::demo;
 
-use crate::support::{CURRENT_LINE, Harness, TODAY, line};
+use crate::support::{BOOKMARK, CURRENT_LINE, Harness, TODAY, line};
 
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
@@ -45,7 +45,7 @@ fn shows_the_demo_outline_without_a_path() {
     let mut expected = Buffer::with_lines([
         "  ⌂                                     ",
         "────────────────────────────────────────",
-        "▎ Trip to Lisbon:                       ",
+        &format!("{:<40}", format!("▎ Trip to Lisbon: {BOOKMARK}")),
         "    - Book flights                      ",
         "    - Reserve a hotel near Alfama       ",
         &app.status(40),
@@ -54,6 +54,7 @@ fn shows_the_demo_outline_without_a_path() {
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
     expected.set_style(Rect::new(0, 2, 40, 1), Style::new().bg(CURRENT_LINE));
     expected.set_style(Rect::new(2, 2, 15, 1), Style::new().bold().light_blue());
+    expected.set_style(Rect::new(18, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 5, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);

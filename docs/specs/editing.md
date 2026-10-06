@@ -157,7 +157,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `toggle_today` (FR-TAG-04) | Add bare `@today` to the targets without it; if every target has it, remove it. |
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, opening with the block's color (or "none") highlighted; typing filters it by name. Removes every other color tag; the chosen one stays where it is or is added (D-5). |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
-| `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which, since bookmarks show only in the sidebar. |
+| `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which; a bookmarked block shows a bookmark icon after its text (D-47). |
 | `open_url` (FR-BLK-06) | Open the focused block's link in the system browser (`open` on macOS, `xdg-open` on Linux; N-PORT-01): its `@url` address first, else the first link in its text (§2.2, D-45). It acts on the focused block also while blocks are selected. |
 | `details` (D-3) | Read-only popup titled "Details:" listing the focused block's tags as written, in order, each unsupported one marked "unsupported" (FR-TAG-02), then each special node the block owns as hidden data with its tags and line count ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)); "No tags" when there is nothing to list. Any key closes it. |
 

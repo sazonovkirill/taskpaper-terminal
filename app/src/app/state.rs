@@ -123,8 +123,7 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
-    /// A bookmark was added to the focused block, or removed when `added` is false; bookmarks
-    /// show only in the sidebar (D-11).
+    /// A bookmark was added to the focused block, or removed when `added` is false (D-11).
     Bookmark {
         /// Whether the block is bookmarked now.
         added: bool,
@@ -168,6 +167,8 @@ pub struct Row {
     pub due: Option<Date>,
     /// Whether it carries `@today` (FR-TAG-04).
     pub today: bool,
+    /// Whether it carries `@bookmark` (D-11).
+    pub bookmark: bool,
     /// The color that tints its text (FR-TAG-05).
     pub color: Option<TagColor>,
     /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
@@ -372,6 +373,7 @@ impl State {
             start: block.start(),
             due: block.due(),
             today: block.today(),
+            bookmark: block.bookmark(),
             color: block.color(),
             url: block.url(),
             selected: self.selection.contains(block.id()),

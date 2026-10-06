@@ -106,6 +106,10 @@ pub const START: &str = "\u{f166d}";
 pub const DUE: &str = "\u{f166c}";
 pub const OVERDUE: &str = "\u{f0a31}";
 
+/// The icons after the text of a block with `@today` and of a bookmarked one (D-47).
+pub const STAR: &str = "\u{f04ce}";
+pub const BOOKMARK: &str = "\u{f00c0}";
+
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
 
