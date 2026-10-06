@@ -5,7 +5,7 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, STAR, focused_rows, line, outline_rows};
+use crate::support::{Harness, focused_rows, line, outline_rows};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -46,16 +46,16 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
             "▌ - Buy milk",
             "  - Call Ana┌Commands:───────┐",
             "            │ Project        │",
-            "            │ Section        │",
-            "            │ Note           │",
             "            │ Task           │",
-            "            │ Divider        │",
+            "            │ Note           │",
             "            │────────────────│",
+            "            │ Complete       │",
+            "            │ Toggle Today   │",
             "            └────────────────┘",
         ],
         "as tall as the room below the caret"
     );
-    for _ in 0..12 {
+    for _ in 0..10 {
         app.press(KeyCode::Char('n'), KeyModifiers::CONTROL);
     }
     assert_eq!(
@@ -154,19 +154,32 @@ fn a_date_prompt_from_the_menu_returns_to_editing() {
     assert_eq!(saved(&mut app), "- Call Ana! @due(2026-10-09)\n");
 }
 
-// D-44
+// D-52
 #[test]
-fn slash_div_makes_a_divider_that_keeps_the_tags() {
-    let mut app = Harness::with_text("- Later @today\n- Next\n", 30, 8);
+fn slash_make_section_makes_a_text_block_a_section_and_back() {
+    let mut app = Harness::with_text("Later @today\n- Next\n", 30, 8);
     app.settle();
     press(&mut app, KeyCode::Enter);
-    app.type_keys("/div");
+    app.type_keys("/make");
     press(&mut app, KeyCode::Enter);
-    assert!(status_line(&mut app).starts_with("NAV"));
-    assert_eq!(saved(&mut app), "--- @today\n- Next\n");
-    app.type_keys("z");
-    assert_eq!(outline_rows(&mut app)[0], format!("- Later {STAR}"));
-    assert_eq!(saved(&mut app), "- Later @today\n- Next\n");
+    assert!(status_line(&mut app).starts_with("EDIT"));
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(saved(&mut app), "Later @today @section\n- Next\n");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("/remove");
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(saved(&mut app), "Later @today\n- Next\n");
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("/sec");
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "Later @today\n- Next/sec\n",
+        "a task has no section entry"
+    );
 }
 
 // D-44, D-50

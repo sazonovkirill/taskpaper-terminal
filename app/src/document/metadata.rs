@@ -186,28 +186,33 @@ pub fn set_color(document: &Document, block: &Block, color: Option<TagColor>) ->
 }
 
 /// The op that gives `block` the type `to`, as the command menu of edit mode does: the old type's
-/// syntax and the type tag `@section` go, other tags stay and the new type's syntax comes
-/// (editing.md §5, D-44, D-45). A divider's `---` gives way to the placeholder. `None` when the
-/// line stays as it is or the block is not in `document`.
+/// syntax and the tag `@section` go, other tags stay and the new type's syntax comes
+/// (editing.md §5, D-44, D-45). `None` when the line stays as it is or the block is not in
+/// `document`.
 #[must_use]
-pub fn convert_type(document: &Document, block: &Block, to: BlockKind) -> Option<Op> {
+pub fn convert_type(document: &Document, block: &Block, to: Typed) -> Option<Op> {
     let before = document.get(block.id())?.text();
     let (parts, text) = LineParts::split(before);
-    // A divider's dashes are its type, not text it could keep under another type.
-    let text = if block.kind() == BlockKind::Divider {
-        PLACEHOLDER.to_owned()
-    } else {
-        text
-    };
-    let typed = match to {
-        BlockKind::Project => Typed::Project,
-        BlockKind::Section => Typed::Section,
-        BlockKind::Task => Typed::Task,
-        BlockKind::Text => Typed::Text,
-        BlockKind::Divider => Typed::Divider,
-    };
-    let (parts, text) = parts.retyped(typed, &text);
+    let (parts, text) = parts.retyped(to, &text);
     changed(before, kept(parts.line(&text)), block)
+}
+
+/// The op that makes the text block `block` a section by adding the bare tag `@section`, or with
+/// `on` false, plain text by removing the tag with any value (FR-BLK-04, D-52). `None` when it
+/// already is what `on` asks, is a task or project, which a section cannot be, or is not in
+/// `document`.
+#[must_use]
+pub fn set_section(document: &Document, block: &Block, on: bool) -> Option<Op> {
+    if block.kind() != BlockKind::Text || block.section() == on {
+        return None;
+    }
+    let before = document.get(block.id())?.text();
+    let after = if on {
+        tags::set(before, SECTION, "")
+    } else {
+        kept(tags::remove(before, SECTION))
+    };
+    changed(before, after, block)
 }
 
 /// The op that writes `after` over the line `before` of `block`, or `None` when they are the
@@ -222,6 +227,9 @@ fn changed(before: &str, after: String, block: &Block) -> Option<Op> {
 
 /// The tag that marks a block completed.
 const DONE: &str = "done";
+
+/// The tag that makes a text block a section (D-52).
+const SECTION: &str = "section";
 
 /// `after`, or the placeholder when the edit emptied the line, because an empty line would be
 /// read back elsewhere when it has children or ends the file below the top level.
@@ -526,14 +534,14 @@ mod tests {
 
     /// The first line of `text` given the type `to`, or `None` when it stays as it is.
     #[track_caller]
-    fn converted(text: &str, to: BlockKind) -> Option<String> {
+    fn converted(text: &str, to: Typed) -> Option<String> {
         edited(text, |document, block| convert_type(document, block, to))
     }
 
-    // FR-BLK-08, editing.md §5, D-44
+    // FR-BLK-08, editing.md §5, D-44, D-52
     #[test]
     fn converting_swaps_the_type_syntax_and_keeps_other_tags() {
-        use BlockKind::{Divider, Project, Section, Task, Text};
+        use Typed::{Project, Section, Task, Text};
         let check = |text: &str, to, expected: Option<&str>| {
             assert_eq!(converted(text, to).as_deref(), expected, "{text:?} {to:?}");
         };
@@ -546,34 +554,57 @@ mod tests {
             Task,
             Some("- Guide @url(https://a.b) @x"),
         );
-        check("- t @x", Divider, Some("--- @x"));
         check("@section", Text, Some(PLACEHOLDER));
         check("- t", Task, None);
-        check("---", Divider, None);
-    }
-
-    // FR-BLK-08, FR-BLK-07
-    #[test]
-    fn a_divider_gives_up_its_dashes_for_the_placeholder() {
-        use BlockKind::{Project, Section, Task, Text};
-        let check = |text: &str, to, expected: &str| {
-            assert_eq!(
-                converted(text, to).as_deref(),
-                Some(expected),
-                "{text:?} {to:?}"
-            );
-        };
-        check("---", Text, PLACEHOLDER);
-        check("--- @red", Section, "… @red @section");
-        check("---", Task, "- …");
-        check("---", Project, "…:");
+        check("--- @red", Task, Some("- --- @red"));
+        check("---", Text, None);
     }
 
     #[test]
     fn a_block_not_in_the_document_is_not_converted() {
         let other = parse("- x\n- y");
         let stale = blocks::children(&other, other.root())[1].clone();
-        assert_eq!(convert_type(&parse("- a"), &stale, BlockKind::Text), None);
+        assert_eq!(convert_type(&parse("- a"), &stale, Typed::Text), None);
+    }
+
+    /// The first line of `text` with `@section` set as `on` says, or `None` when it stays as it
+    /// is.
+    #[track_caller]
+    fn sectioned(text: &str, on: bool) -> Option<String> {
+        edited(text, |document, block| set_section(document, block, on))
+    }
+
+    // FR-BLK-04, D-52
+    #[test]
+    fn a_text_block_becomes_a_section_and_back() {
+        assert_eq!(sectioned("a @x", true).as_deref(), Some("a @x @section"));
+        assert_eq!(
+            sectioned("--- @x", true).as_deref(),
+            Some("--- @x @section")
+        );
+        assert_eq!(
+            sectioned("a @section(1) @x", false).as_deref(),
+            Some("a @x")
+        );
+        assert_eq!(sectioned("@section", false).as_deref(), Some(PLACEHOLDER));
+        assert_eq!(sectioned("a @section", true), None, "already a section");
+        assert_eq!(sectioned("a", false), None, "no section to remove");
+    }
+
+    // FR-BLK-04, D-52
+    #[test]
+    fn a_task_or_project_never_takes_or_loses_the_section_tag() {
+        for (text, on) in [
+            ("- t", true),
+            ("P:", true),
+            ("- t @section", false),
+            ("P: @section", false),
+        ] {
+            assert_eq!(sectioned(text, on), None, "{text:?}");
+        }
+        let other = parse("- x\nb");
+        let stale = blocks::children(&other, other.root())[1].clone();
+        assert_eq!(set_section(&parse("- a"), &stale, true), None);
     }
 
     #[test]

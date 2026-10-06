@@ -33,12 +33,12 @@ impl Shortcut {
     }
 
     /// Whether it converts a block of type `kind`: a text block takes every shortcut, a task
-    /// only the divider. A text block whose text is `---` reads as a divider while it is typed.
+    /// only the divider.
     fn converts(self, kind: BlockKind) -> bool {
         match kind {
-            BlockKind::Text | BlockKind::Divider => true,
+            BlockKind::Text => true,
             BlockKind::Task => self == Self::Divider,
-            _ => false,
+            BlockKind::Project => false,
         }
     }
 }
@@ -68,7 +68,7 @@ impl State {
             return;
         };
         if shortcut == Shortcut::Divider {
-            session.retype(Typed::Divider);
+            session.retype(Typed::Text);
             self.write(false);
             self.stop_editing();
             let typed = if kind == BlockKind::Task {
@@ -299,7 +299,8 @@ mod tests {
         state.update(Message::NewNext);
         typed(&mut state, "--- x");
         assert_eq!(texts(&state), ["- a", "---", "- x", "b"]);
-        assert_eq!(state.rows()[1].kind, BlockKind::Divider);
+        assert_eq!(state.rows()[1].kind, BlockKind::Text);
+        assert!(state.rows()[1].divider);
         assert_eq!(state.mode(), Mode::Edit);
         assert_eq!(shown(&state), "x|", "a task after a task");
         let mut state = editing("b @x");
@@ -313,7 +314,11 @@ mod tests {
             ["--- @x"],
             "Backspace takes out only the new block"
         );
-        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(
+            shown(&state),
+            "---|",
+            "and edits the divider, which is text"
+        );
     }
 
     // FR-BLK-07, editing.md §2.1
@@ -368,6 +373,7 @@ mod tests {
         state.update(Message::Text(TextEdit::SelectAll));
         typed(&mut state, "--- ");
         backspace(&mut state);
+        state.update(Message::StopEditing);
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["note"], "the divider stays a step");
     }

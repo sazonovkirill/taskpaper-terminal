@@ -8,19 +8,15 @@ use super::{
     model::{Document, Item, ItemId, ItemKind},
 };
 
-/// The type of a block (FR-BLK-01–04, FR-BLK-07).
+/// The type of a block, as TaskPaper's (FR-BLK-01–03, D-52).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
     /// A project line.
     Project,
     /// A task line.
     Task,
-    /// A line of any other text, blank lines included.
+    /// A line of any other text, blank lines included, sections and dividers among them.
     Text,
-    /// A line tagged `@section`.
-    Section,
-    /// A text line reading `---`.
-    Divider,
 }
 
 /// A color tag, which tints a block's background (FR-TAG-05, D-48).
@@ -109,14 +105,18 @@ pub struct Block {
     bookmark: bool,
     color: Option<TagColor>,
     url: bool,
+    section: bool,
+    divider: bool,
 }
 
 impl Block {
     /// The block of the line `item`, whose id is `id`.
     fn of(id: ItemId, item: &Item) -> Self {
+        let kind = kind(item);
+        let text = kind == BlockKind::Text;
         Self {
             id,
-            kind: kind(item),
+            kind,
             done: has_tag(item, "done"),
             start: date_tag(item, "start"),
             due: date_tag(item, "due"),
@@ -124,6 +124,8 @@ impl Block {
             bookmark: has_tag(item, "bookmark"),
             color: color(item),
             url: has_tag(item, "url"),
+            section: text && has_tag(item, "section"),
+            divider: text && item.display_text().trim() == "---",
         }
     }
 
@@ -180,6 +182,19 @@ impl Block {
     pub fn url(&self) -> bool {
         self.url
     }
+
+    /// Whether it is a section: a text block carrying `@section`, which a task or project
+    /// carries without effect (FR-BLK-04, D-52).
+    #[must_use]
+    pub fn section(&self) -> bool {
+        self.section
+    }
+
+    /// Whether it is a divider: a text block whose text, tags aside, is `---` (FR-BLK-07, D-52).
+    #[must_use]
+    pub fn divider(&self) -> bool {
+        self.divider
+    }
 }
 
 /// The blocks formed by the children of the line `parent` (or the root), in order. Special nodes
@@ -233,7 +248,7 @@ pub struct HiddenData {
 }
 
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and listed in the
-/// details as unsupported (D-3).
+/// details as unsupported (D-3), as `@section` is on a task or project (D-52).
 const SUPPORTED: [&str; 13] = [
     "start", "due", "today", "red", "orange", "yellow", "green", "blue", "violet", "section",
     "url", "done", "bookmark",
@@ -243,7 +258,7 @@ const SUPPORTED: [&str; 13] = [
 #[must_use]
 pub fn details(document: &Document, id: ItemId) -> Option<Details> {
     let item = document.get(id)?;
-    block(document, id)?;
+    let text = block(document, id)?.kind() == BlockKind::Text;
     let hidden = item
         .children()
         .iter()
@@ -256,7 +271,10 @@ pub fn details(document: &Document, id: ItemId) -> Option<Details> {
         .collect();
     Some(Details {
         tags: written_tags(item.text())
-            .map(|(tag, name)| (tag, SUPPORTED.contains(&name.as_str())))
+            .map(|(tag, name)| {
+                let supported = SUPPORTED.contains(&name.as_str()) && (text || name != "section");
+                (tag, supported)
+            })
             .collect(),
         hidden,
     })
@@ -276,18 +294,12 @@ pub fn is_special(item: &Item) -> bool {
     has_tag(item, "hidden")
 }
 
-/// The type of the line `item`, checked in data-model §3's order.
+/// The type of the line `item` (data-model §3).
 fn kind(item: &Item) -> BlockKind {
-    if item.kind() == ItemKind::Note && item.display_text() == "---" {
-        BlockKind::Divider
-    } else if has_tag(item, "section") {
-        BlockKind::Section
-    } else {
-        match item.kind() {
-            ItemKind::Task => BlockKind::Task,
-            ItemKind::Project => BlockKind::Project,
-            ItemKind::Note => BlockKind::Text,
-        }
+    match item.kind() {
+        ItemKind::Task => BlockKind::Task,
+        ItemKind::Project => BlockKind::Project,
+        ItemKind::Note => BlockKind::Text,
     }
 }
 
@@ -316,13 +328,21 @@ mod tests {
     use super::*;
     use crate::document::format::parse;
 
-    /// Each block below `parent`, recursively, as `depth kind text` plus ` done` when done.
+    /// Each block below `parent`, recursively, as `depth kind text` plus ` section`, ` divider`
+    /// and ` done` when it is one.
     fn outline(document: &Document) -> Vec<String> {
         fn walk(document: &Document, parent: ItemId, depth: usize, out: &mut Vec<String>) {
             for block in children(document, parent) {
                 let text = document.get(block.id()).unwrap().text();
-                let done = if block.done() { " done" } else { "" };
-                out.push(format!("{depth} {:?} {text:?}{done}", block.kind()));
+                let flags: String = [
+                    (block.section(), " section"),
+                    (block.divider(), " divider"),
+                    (block.done(), " done"),
+                ]
+                .into_iter()
+                .filter_map(|(on, flag)| on.then_some(flag))
+                .collect();
+                out.push(format!("{depth} {:?} {text:?}{flags}", block.kind()));
                 walk(document, block.id(), depth + 1, out);
             }
         }
@@ -336,16 +356,16 @@ mod tests {
         assert_eq!(outline(&parse(text)), expected, "blocks of {text:?}");
     }
 
-    // FR-BLK-01, FR-BLK-02, FR-BLK-03, FR-BLK-04, FR-BLK-07
+    // FR-BLK-01, FR-BLK-02, FR-BLK-03, FR-BLK-04, FR-BLK-07, D-52
     #[test]
-    fn every_line_is_a_block_of_its_type() {
+    fn every_line_is_a_block_of_its_type_and_sections_and_dividers_are_text() {
         check(
             "P:\n\t- t\n\tS @section\n\t---\n\tn",
             &[
                 r#"0 Project "P:""#,
                 r#"1 Task "- t""#,
-                r#"1 Section "S @section""#,
-                r#"1 Divider "---""#,
+                r#"1 Text "S @section" section"#,
+                r#"1 Text "---" divider"#,
                 r#"1 Text "n""#,
             ],
         );
@@ -374,23 +394,30 @@ mod tests {
             &[
                 r#"0 Text "f() @code""#,
                 r#"0 Task "- t @code""#,
-                r#"0 Divider "--- @code""#,
+                r#"0 Text "--- @code" divider"#,
             ],
         );
     }
 
+    // FR-BLK-07, D-52
     #[test]
-    fn divider_ignores_tags_but_not_other_text() {
-        check("--- @red", &[r#"0 Divider "--- @red""#]);
+    fn divider_ignores_tags_and_surrounding_spaces_but_not_other_text() {
+        check("--- @red", &[r#"0 Text "--- @red" divider"#]);
+        check("---  ", &[r#"0 Text "---  " divider"#]);
+        check(
+            "--- @section",
+            &[r#"0 Text "--- @section" section divider"#],
+        );
         check("----", &[r#"0 Text "----""#]);
         check("- ---", &[r#"0 Task "- ---""#]);
     }
 
+    // FR-BLK-04, D-52
     #[test]
-    fn the_section_tag_wins_over_task_and_project() {
+    fn the_section_tag_makes_no_section_of_a_task_or_project() {
         check(
             "- t @section\nP: @section",
-            &[r#"0 Section "- t @section""#, r#"0 Section "P: @section""#],
+            &[r#"0 Task "- t @section""#, r#"0 Project "P: @section""#],
         );
     }
 
@@ -398,18 +425,18 @@ mod tests {
     #[test]
     fn a_url_tag_links_a_block_of_any_type_without_changing_it() {
         let document = parse("L @url(https://x.y)\n- t @url(u)\nP: @url\nS @section @url(u)\n- n");
-        let linked: Vec<(BlockKind, bool)> = children(&document, document.root())
+        let linked: Vec<(BlockKind, bool, bool)> = children(&document, document.root())
             .iter()
-            .map(|block| (block.kind(), block.url()))
+            .map(|block| (block.kind(), block.section(), block.url()))
             .collect();
         assert_eq!(
             linked,
             [
-                (BlockKind::Text, true),
-                (BlockKind::Task, true),
-                (BlockKind::Project, true),
-                (BlockKind::Section, true),
-                (BlockKind::Task, false),
+                (BlockKind::Text, false, true),
+                (BlockKind::Task, false, true),
+                (BlockKind::Project, false, true),
+                (BlockKind::Text, true, true),
+                (BlockKind::Task, false, false),
             ]
         );
     }
@@ -617,11 +644,30 @@ P: @blue @red
                 hidden: Vec::new()
             })
         );
-        let every = parse(&format!("- a @{}", SUPPORTED.join(" @")));
+        let every = parse(&format!("a @{}", SUPPORTED.join(" @")));
         let first = children(&every, every.root())[0].id();
         let supported = details(&every, first).unwrap().tags;
         assert_eq!(supported.len(), 13);
         assert!(supported.iter().all(|&(_, supported)| supported));
+    }
+
+    // D-52
+    #[test]
+    fn a_section_tag_on_a_task_or_project_is_listed_as_unsupported() {
+        let document = parse("- a @section @red\nP: @section\nn @section");
+        let listed: Vec<Vec<(String, bool)>> = children(&document, document.root())
+            .iter()
+            .map(|block| details(&document, block.id()).unwrap().tags)
+            .collect();
+        let tag = |written: &str, supported| (written.to_owned(), supported);
+        assert_eq!(
+            listed,
+            [
+                vec![tag("@section", false), tag("@red", true)],
+                vec![tag("@section", false)],
+                vec![tag("@section", true)],
+            ]
+        );
     }
 
     // FR-SPC-01, special-nodes.md §1

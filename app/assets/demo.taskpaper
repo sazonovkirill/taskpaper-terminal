@@ -41,6 +41,7 @@ Weekend errands:
 	- Bakery @yellow
 	- Hardware store
 	Select several with J, K or v, then x completes them all and gG groups them.
+	Make a line of text a section with S, and plain text again with s.
 	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with [] for a task, [x] for a done task or --- for a divider, then a space.
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.

@@ -159,18 +159,14 @@ mod tests {
         let state = State::new(format::parse(&text(TODAY)), None);
         assert_canonical(state.document());
         let rows = state.rows();
-        for kind in [
-            BlockKind::Project,
-            BlockKind::Task,
-            BlockKind::Text,
-            BlockKind::Section,
-            BlockKind::Divider,
-        ] {
+        for kind in [BlockKind::Project, BlockKind::Task, BlockKind::Text] {
             assert!(
                 rows.iter().any(|row| row.kind == kind),
                 "demo lacks a {kind:?}"
             );
         }
+        assert!(rows.iter().any(|row| row.section), "demo lacks a section");
+        assert!(rows.iter().any(|row| row.divider), "demo lacks a divider");
         assert!(rows.iter().any(|row| row.depth >= 2), "demo lacks nesting");
         assert_eq!(
             rows.first().map(|row| row.text.as_str()),
@@ -191,18 +187,6 @@ mod tests {
                 .any(|row| row.kind == BlockKind::Project && row.done)
                 && rows.iter().any(|row| row.inside_done && !row.done),
             "demo lacks a done project with open blocks inside it"
-        );
-        let section_after_task = rows.iter().enumerate().any(|(at, row)| {
-            row.kind == BlockKind::Section
-                && rows[..at]
-                    .iter()
-                    .rev()
-                    .find(|above| above.depth <= row.depth)
-                    .is_some_and(|above| above.depth == row.depth && above.kind == BlockKind::Task)
-        });
-        assert!(
-            section_after_task,
-            "demo lacks a list with tasks above a section, where `S` adds one"
         );
         let starts = rows.iter().filter(|row| row.start.is_some()).count();
         assert!(starts >= 2, "demo lacks start dates");
@@ -315,6 +299,18 @@ mod tests {
         assert!(
             rows.get(template + 1).is_some_and(|row| row.depth == 1),
             "the template has no blocks"
+        );
+    }
+
+    // FR-DOC-05, D-52
+    #[test]
+    fn demo_has_a_text_line_that_points_to_the_section_keys() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        assert!(
+            rows.iter().any(|row| row.kind == BlockKind::Text
+                && !row.section
+                && row.text.contains("section with S")),
+            "demo lacks a hint at the section keys"
         );
     }
 

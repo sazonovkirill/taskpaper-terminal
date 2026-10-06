@@ -18,14 +18,13 @@ pub enum Syntax {
 }
 
 impl Syntax {
-    /// The syntax of the text of a block of type `kind`: headings in text blocks only.
+    /// The syntax of the text of a block of type `kind`: headings in text blocks only, sections
+    /// and dividers among them (D-52).
     #[must_use]
     pub fn of(kind: BlockKind) -> Self {
         match kind {
             BlockKind::Text => Self::Markdown,
-            BlockKind::Project | BlockKind::Task | BlockKind::Section | BlockKind::Divider => {
-                Self::Inline
-            }
+            BlockKind::Project | BlockKind::Task => Self::Inline,
         }
     }
 }
@@ -618,12 +617,7 @@ mod tests {
     #[test]
     fn markdown_is_the_syntax_of_text_blocks_only() {
         assert_eq!(Syntax::of(BlockKind::Text), Syntax::Markdown);
-        for kind in [
-            BlockKind::Project,
-            BlockKind::Task,
-            BlockKind::Section,
-            BlockKind::Divider,
-        ] {
+        for kind in [BlockKind::Project, BlockKind::Task] {
             assert_eq!(Syntax::of(kind), Syntax::Inline, "{kind:?}");
         }
     }

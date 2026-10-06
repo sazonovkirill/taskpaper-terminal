@@ -229,7 +229,7 @@ fn the_demo_has_a_task_to_rename() {
     assert!(saved(&mut app).contains("\t- Book flights to Lisbon\n"));
 }
 
-// FR-MODE-03, D-43, FR-DOC-02
+// FR-MODE-03, D-43, FR-DOC-02, D-52
 #[test]
 fn up_and_down_edit_the_block_above_and_below_at_the_caret_column() {
     let mut app = Harness::with_text("one\n- two\n---\nthree\n", 40, 8);
@@ -239,14 +239,21 @@ fn up_and_down_edit_the_block_above_and_below_at_the_caret_column() {
     assert_caret(&mut app, 7, 3);
     app.type_keys("!");
     press(&mut app, KeyCode::Down, 1);
-    assert_eq!(focused_rows(&mut app), ["three"], "past the divider");
-    assert_caret(&mut app, 6, 5);
+    assert_eq!(
+        focused_rows(&mut app),
+        ["---"],
+        "a divider is text, edited raw"
+    );
+    assert_caret(&mut app, 5, 4);
+    press(&mut app, KeyCode::Down, 1);
+    assert_eq!(focused_rows(&mut app), ["three"]);
+    assert_caret(&mut app, 5, 5);
     app.type_keys("?");
-    press(&mut app, KeyCode::Up, 2);
+    press(&mut app, KeyCode::Up, 3);
     assert!(status_line(&mut app).starts_with("EDIT"));
     assert_caret(&mut app, 5, 2);
     press(&mut app, KeyCode::Esc, 1);
-    assert_eq!(saved(&mut app), "one\n- two!\n---\nthre?e\n");
+    assert_eq!(saved(&mut app), "one\n- two!\n---\nthr?ee\n");
     app.type_keys("z");
     assert_eq!(outline_rows(&mut app)[3], "three", "each block one step");
     assert_eq!(outline_rows(&mut app)[1], "- two!");

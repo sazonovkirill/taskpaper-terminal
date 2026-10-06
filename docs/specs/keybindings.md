@@ -66,10 +66,9 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | New block below / above | `o` / `O` |
 | New last child / first child, expanding the block | `i` / `I` (`I` was `Alt+o`; D-41) |
 | New project at the top of the list / below the focused block | `P` / `p` |
-| New section at the top of the list, after its tasks / below the focused block | `S` / `s` |
 | New task at the top of the list / below the focused block | `A` / `a` |
 
-The six typed creation commands are in [editing.md §3](editing.md#3-creating-blocks-fr-mode-04).
+The four typed creation commands are in [editing.md §3](editing.md#3-creating-blocks-fr-mode-04). A section is a text block with `@section`, made with `S` (D-52, below).
 
 ### Selection (FR-OPS-01)
 
@@ -113,6 +112,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Toggle today | `mt` |
 | Toggle bookmark | `mb` |
 | Convert block type | `my` |
+| Make the selected text blocks sections / plain text again (D-52) | `S` / `s` (were new section at the top / below) |
 | Details (all tags) | `mi` |
 | Comments panel (FR-SPC-02) | chosen with step 7.2 (`C` now removes the color, D-48) |
 | Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
@@ -149,7 +149,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 |---|---|
 | End editing | `Esc` |
 | End editing and create the next block | `Enter` |
-| End editing and edit the previous / next visible block that is not a divider, at the same column (D-43) | `↑` / `↓` |
+| End editing and edit the previous / next visible block, at the same column (D-43) | `↑` / `↓` |
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
 | Open the command menu of the block's commands (D-50, [editing.md §2.3](editing.md#23-command-menu)) | `/` |
 | Cycle the block's type: project, section, task, note (D-50, [editing.md §2.4](editing.md#24-cycling-the-type)) | `Ctrl+T` |
@@ -164,7 +164,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 - **Command menu** ([editing.md §2.3](editing.md#23-command-menu)): characters filter by the starts of the labels' words, in order (`/date`, `/due`, `/color r`); `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, skipping the lines between groups, `Enter` runs the highlighted entry (the first by default), `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. There are no instant letters (D-50): `/p` then `Enter` makes a project. The menu shows the labels only.
 - **Color picker** (`mc`, [editing.md §5](editing.md#5-block-commands)): a picker as below that lists each color with its number; typing `1` to `6` chooses that color at once (D-48), and other characters filter by name.
-- **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `sec` and `Enter` makes a section.
+- **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.

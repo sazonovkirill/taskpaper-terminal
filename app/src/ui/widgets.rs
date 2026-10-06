@@ -16,8 +16,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use super::{layout, theme::Icon};
 use crate::{
     app::{
-        Access, CommandMenuView, DatePromptView, DiffLine, Editor, MenuRow, Notice, PickerView,
-        Row, SaveState,
+        Access, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow, Notice,
+        PickerView, Row, SaveState,
     },
     document::{
         BlockKind, DateTag, Details, TagColor,
@@ -220,6 +220,10 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             error_style(),
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
+        Notice::NotSections { skipped } => Span::styled(
+            format!("Only text can be a section: {skipped} skipped"),
+            warning_style(),
+        ),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::OpenUrlFailed { url, reason } => {
@@ -377,7 +381,7 @@ impl Popup {
 
     /// The type picker, titled "Node type:" (FR-BLK-08).
     #[must_use]
-    pub fn block_types(picker: &PickerView<BlockKind>) -> Self {
+    pub fn block_types(picker: &PickerView<Conversion>) -> Self {
         let names = picker.entries.iter().map(|&(_, name)| (name, Style::new()));
         Self {
             title: "Node type:",
@@ -640,13 +644,13 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
         Span::styled(marker, marker_style),
     ]);
     match row.kind {
-        BlockKind::Divider => {}
+        _ if row.divider => {}
         // TaskPaper marks a project with a trailing colon, which the display text drops.
         BlockKind::Project => {
             line.extend(formatted(row, style));
             line.push_span(Span::styled(":", style));
         }
-        _ => line.extend(formatted(row, style)),
+        BlockKind::Task | BlockKind::Text => line.extend(formatted(row, style)),
     }
     let recede = |style: Style| {
         if row.done || row.inside_done {
@@ -670,7 +674,7 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
             Style::new().dim(),
         ));
     }
-    if row.kind == BlockKind::Divider {
+    if row.divider {
         if row.today || row.bookmark || row.hidden_children > 0 {
             line.push_span(" ");
         }
@@ -746,9 +750,8 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("✔ ", Style::new()),
         BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Section => ("", Style::new().bold().italic().fg(SECONDARY)),
+        BlockKind::Text if row.section => ("", Style::new().bold().italic().fg(SECONDARY)),
         BlockKind::Text => ("", Style::new().fg(TEXT)),
-        BlockKind::Divider => ("", divider_style()),
     };
     let style = if row.title { style.bold() } else { style };
     // A done block recedes and is struck through, and everything inside it recedes; markers
@@ -1173,7 +1176,7 @@ mod tests {
         }
         expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
         assert_eq!(
-            command_menu(&[crate::app::MenuInput::Next; 6], 7),
+            command_menu(&[crate::app::MenuInput::Next; 4], 7),
             expected,
             "groups apart, the highlight on Toggle Today"
         );
@@ -1181,29 +1184,35 @@ mod tests {
 
     // FR-BLK-08, keybindings.md §4
     #[test]
-    fn the_type_picker_lists_the_five_types() {
+    fn the_type_picker_lists_the_types_and_the_section_entries() {
         let mut state = State::new(format::parse("a"), None);
         state.update(Message::OpenTypePicker);
         let popup = Popup::block_types(&state.type_picker().unwrap());
-        assert_eq!(popup.size(), (12, 7));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 7));
+        assert_eq!(popup.size(), (18, 7));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 18, 7));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "┌Node type:┐",
-            "│ Project  │",
-            "│ Section  │",
-            "│ Note     │",
-            "│ Task     │",
-            "│ Divider  │",
-            "└──────────┘",
+            "┌Node type:──────┐",
+            "│ Project        │",
+            "│ Task           │",
+            "│ Note           │",
+            "│ Make Section   │",
+            "│ Remove Section │",
+            "└────────────────┘",
         ]);
-        expected.set_style(Rect::new(1, 3, 10, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
         assert_eq!(buf, expected);
-        state.update(Message::TypePicker(crate::app::MenuInput::Type('d')));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
+        for c in "rem".chars() {
+            state.update(Message::TypePicker(crate::app::MenuInput::Type(c)));
+        }
+        let mut buf = Buffer::empty(Rect::new(0, 0, 18, 3));
         Popup::block_types(&state.type_picker().unwrap()).render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["┌Node type:┐", "│ Divider  │", "└d─────────┘"]);
-        expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
+        let mut expected = Buffer::with_lines([
+            "┌Node type:──────┐",
+            "│ Remove Section │",
+            "└rem─────────────┘",
+        ]);
+        expected.set_style(Rect::new(1, 1, 16, 1), Style::new().reversed());
         assert_eq!(buf, expected);
     }
 
@@ -1600,6 +1609,15 @@ mod tests {
         assert_eq!(caret, 5, "after the marker and the text before the caret");
     }
 
+    // FR-BLK-07, D-52
+    #[test]
+    fn the_editor_shows_a_dividers_dashes_as_text() {
+        let (buf, _) = edited("--- @x", &editor("---", 3, None), 5);
+        let mut expected = Buffer::with_lines(["---  "]);
+        expected.set_style(Rect::new(0, 0, 3, 1), Style::new().fg(TEXT));
+        assert_eq!(buf, expected);
+    }
+
     // FR-MODE-02
     #[test]
     fn the_editor_shows_a_projects_colon_after_the_text() {
@@ -1958,6 +1976,13 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
+            (
+                Notice::NotSections { skipped: 2 },
+                (
+                    "Only text can be a section: 2 skipped".to_owned(),
+                    warning_style(),
+                ),
+            ),
             (
                 Notice::KeptMine { copy: copy.clone() },
                 plain("Kept your version; the one on disk is in /b/c.taskpaper"),

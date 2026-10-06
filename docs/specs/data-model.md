@@ -42,21 +42,24 @@ A block is what the user navigates, selects and edits (FR-BLK). Every line of th
 
 **Special nodes** (FR-SPC-01): a line tagged `@hidden` and its whole subtree form no block, and their tags are not block metadata ([special-nodes.md](special-nodes.md)).
 
-**Type** (FR-BLK-01–04, FR-BLK-07), checked in this order:
+**Type** (FR-BLK-01–03, D-52): TaskPaper's three, and nothing else:
 
 | Type | Rule |
 |---|---|
-| Divider | TaskPaper note line whose text without tags is exactly `---`, so metadata commands on a divider don't change its type |
-| Section | line with `@section` |
 | Task | TaskPaper task line |
 | Project | TaskPaper project line |
 | Text | anything else, blank lines included |
 
+Two kinds of text block are drawn differently, as attributes rather than types (D-52):
+
+- **Section** (FR-BLK-04): a text block carrying `@section`. On a task or project the tag has no effect: it is preserved, hidden and listed by the details as unsupported, and the file is never rewritten to move it.
+- **Divider** (FR-BLK-07): a text block whose text, tags aside and trimmed, is exactly `---`, so metadata commands on a divider don't change what it is.
+
 `@code` has no meaning for the type: a line carrying it is whatever the rules above make it, usually text, and the tag stays hidden and preserved like any unsupported tag (D-43). Nor has `@url(...)`: a line carrying it keeps its type, and the tag, hidden and preserved, makes the block's title a link to its address (FR-BLK-06, D-45).
 
-The type is changed with the type converter (FR-BLK-08), which rewrites the line's syntax and its type tag `@section` ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
+The type is changed with the type converter (FR-BLK-08), which rewrites the line's syntax and drops `@section`, and a text block is made a section or plain text again by adding or removing `@section` ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
 
-**Block attributes**: `id` (its line's `ItemId`), `children` (the blocks of its line's children), `type`, and metadata read from the line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-48), `bookmark`, `url: bool` (the line carries `@url`, D-45), and the list of unsupported tags (D-3).
+**Block attributes**: `id` (its line's `ItemId`), `children` (the blocks of its line's children), `type`, `section` and `divider` (above), and metadata read from the line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `today`, `color` (first of `@red @orange @yellow @green @blue @violet`, D-48), `bookmark`, `url: bool` (the line carries `@url`, D-45), and the list of unsupported tags (D-3).
 
 ## 4. Edits
 

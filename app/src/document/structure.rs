@@ -518,7 +518,7 @@ mod tests {
         let task = block(&document, "- t");
         for (typed, line, kind) in [
             (Typed::Project, ":", BlockKind::Project),
-            (Typed::Section, "@section", BlockKind::Section),
+            (Typed::Section, "@section", BlockKind::Text),
             (Typed::Task, "- ", BlockKind::Task),
         ] {
             for place in [
@@ -532,7 +532,9 @@ mod tests {
                 let mut transaction = Transaction::new(ops, (), ());
                 document.apply(&mut transaction).unwrap();
                 assert_eq!(document.get(id).unwrap().text(), line, "{place:?}");
-                assert_eq!(blocks::block(&document, id).unwrap().kind(), kind);
+                let block = blocks::block(&document, id).unwrap();
+                assert_eq!(block.kind(), kind);
+                assert_eq!(block.section(), typed == Typed::Section);
                 document.apply(&mut transaction.inverse()).unwrap();
             }
         }

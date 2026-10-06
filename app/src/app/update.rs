@@ -149,6 +149,10 @@ pub enum Message {
     SetColor(Option<TagColor>),
     /// Open the color picker on the focused block, for it or the selected blocks (FR-TAG-05).
     OpenColorPicker,
+    /// Make the selected text blocks, else the focused block, sections by adding `@section`, or
+    /// with `false` plain text by removing it; a task or project is left as it is, with a notice
+    /// (FR-BLK-04, FR-OPS-07, D-52).
+    SetSection(bool),
     /// A key of the open color picker (FR-TAG-05).
     ColorPicker(MenuInput),
     /// Open the prompt for the focused block's `tag` date, resolving what is typed against
@@ -212,15 +216,14 @@ pub enum Message {
     /// Stop editing and add the next block: a first child when the block shows children, else
     /// a block below it (editing.md §3).
     NewNext,
-    /// Stop editing and edit the previous visible block that is not a divider, keeping the
-    /// caret's column where it can (editing.md §2).
+    /// Stop editing and edit the previous visible block, keeping the caret's column where it can
+    /// (editing.md §2).
     EditPrevious,
-    /// Stop editing and edit the next visible block that is not a divider, keeping the caret's
-    /// column where it can (editing.md §2).
+    /// Stop editing and edit the next visible block, keeping the caret's column where it can
+    /// (editing.md §2).
     EditNext,
     /// Add a block of this type at the top of the focused block's list, or the first selected
-    /// one's, its parent's children, and edit it; a section goes before the list's first section
-    /// (FR-MODE-06).
+    /// one's, its parent's children, and edit it (FR-MODE-06).
     NewTop(Typed),
     /// Add a block of this type where [`Message::NewBelow`] would and edit it (FR-MODE-06).
     NewTypedBelow(Typed),
@@ -340,6 +343,7 @@ impl Message {
             | Self::ToggleFlag(_)
             | Self::CycleColor
             | Self::SetColor(_)
+            | Self::SetSection(_)
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
@@ -471,6 +475,7 @@ impl State {
             Message::ToggleFlag(flag) => self.toggle_flag(flag),
             Message::CycleColor => self.cycle_color(),
             Message::SetColor(color) => self.set_color(color),
+            Message::SetSection(on) => self.set_section(on),
             Message::OpenColorPicker => self.open_color_picker(),
             Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),

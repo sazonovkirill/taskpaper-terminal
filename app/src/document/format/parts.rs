@@ -11,14 +11,12 @@ use crate::document::ItemKind;
 pub enum Typed {
     /// A project.
     Project,
-    /// A section.
+    /// A section: text carrying `@section` (D-52).
     Section,
     /// A task.
     Task,
     /// Text.
     Text,
-    /// A divider.
-    Divider,
 }
 
 /// The tag that gives a line its type, which a type change takes off unless it makes a section
@@ -110,7 +108,7 @@ impl LineParts {
 impl LineParts {
     /// The parts and text that give the line holding `text` the type `typed`: the old type's
     /// syntax and `@section` go, the new type's come and every other tag, `@url` included, stays
-    /// (editing.md §5, D-45). A divider's text is `---` (D-44).
+    /// (editing.md §5, D-45).
     #[must_use]
     pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
         let section = typed == Typed::Section;
@@ -131,7 +129,6 @@ impl LineParts {
             Typed::Task => self.prefix.clone(),
             _ => String::new(),
         };
-        let text = if typed == Typed::Divider { "---" } else { text };
         let parts = Self {
             prefix,
             project: typed == Typed::Project,
@@ -297,13 +294,6 @@ mod tests {
         assert_eq!(retyped("f() @code", Typed::Task), "- f() @code");
     }
 
-    // D-44
-    #[test]
-    fn a_divider_takes_dashes_for_its_text_and_keeps_other_tags() {
-        assert_eq!(retyped("- a @x @section", Typed::Divider), "--- @x");
-        assert_eq!(retyped("P:", Typed::Divider), "---");
-    }
-
     // FR-MODE-06
     #[test]
     fn an_empty_line_takes_the_syntax_of_its_type() {
@@ -312,7 +302,6 @@ mod tests {
             (Typed::Section, "@section"),
             (Typed::Task, "- "),
             (Typed::Text, ""),
-            (Typed::Divider, "---"),
         ] {
             assert_eq!(retyped("", typed), line, "{typed:?}");
         }

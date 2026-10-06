@@ -5,7 +5,7 @@
 
 use super::{Access, Notice, State};
 use crate::document::{
-    Block, BlockKind, ItemId, Op, Transaction, blocks,
+    Block, ItemId, Op, Transaction, blocks,
     format::Typed,
     structure::{self, Place, Shift},
 };
@@ -54,7 +54,10 @@ impl State {
                 NewBlock::LastChild => Place::LastChild(block),
                 NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
                 NewBlock::Below | NewBlock::Next => Place::Below(block),
-                NewBlock::Top => top_of(&list, typed).expect("the focused block is in its list"),
+                NewBlock::Top => list
+                    .first()
+                    .map(Place::Above)
+                    .expect("the focused block is in its list"),
             },
         };
         let (id, ops) = structure::new_block(&mut self.document, place, typed)
@@ -205,20 +208,6 @@ impl State {
                 self.folds.remove(&parent.id());
             }
         }
-    }
-}
-
-/// Where a block of type `typed` goes at the top of `list`: before its first block, except that
-/// a section goes before its first section, after the tasks above it, or at its end when it has
-/// none (editing.md §3, OQ-29). `None` for an empty list.
-fn top_of(list: &[Block], typed: Option<Typed>) -> Option<Place<'_>> {
-    if typed == Some(Typed::Section) {
-        list.iter()
-            .find(|block| block.kind() == BlockKind::Section)
-            .map(Place::Above)
-            .or_else(|| list.last().map(Place::Below))
-    } else {
-        list.first().map(Place::Above)
     }
 }
 
@@ -441,34 +430,6 @@ mod tests {
         );
     }
 
-    // FR-MODE-06, OQ-29
-    #[test]
-    fn upper_case_s_adds_a_section_before_the_first_section_or_at_the_end() {
-        let mut state = open("P:\n\t- a\n\tS @section\n\t\t- b\n\t- c\n\tT @section", 5);
-        state.update(Message::NewTop(Typed::Section));
-        typed(&mut state, "New");
-        state.update(Message::StopEditing);
-        assert_eq!(
-            lines(&state),
-            [
-                "P:",
-                "\t- a",
-                "\tNew @section",
-                "\tS @section",
-                "\t\t- b",
-                "\t- c",
-                "\tT @section"
-            ]
-        );
-        let mut state = open("P:\n\t- a\n\t\t- b\n\t- c\n\t\tn", 1);
-        state.update(Message::NewTop(Typed::Section));
-        assert_eq!(
-            lines(&state),
-            ["P:", "\t- a", "\t\t- b", "\t- c", "\t\tn", "\t@section"],
-            "after the last block's subtree"
-        );
-    }
-
     // FR-MODE-06
     #[test]
     fn lower_case_adds_a_typed_block_below() {
@@ -489,7 +450,7 @@ mod tests {
     #[test]
     fn typed_blocks_on_the_zoom_title_and_in_an_empty_outline_come_first() {
         for (new, line) in [
-            (Message::NewTop(Typed::Section), "@section"),
+            (Message::NewTop(Typed::Task), "- "),
             (Message::NewTypedBelow(Typed::Project), ":"),
         ] {
             let mut state = open("P:\n\t- a\n\tS @section", 0);

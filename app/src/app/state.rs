@@ -16,6 +16,7 @@ use super::{
     picker::Picker,
     saving::Autosave,
     selection::Selection,
+    type_picker::Conversion,
 };
 use crate::document::{
     Block, BlockKind, Document, Item, ItemId, TagColor, blocks,
@@ -53,7 +54,7 @@ pub struct State {
     /// The prompt for a block's start or due date, while it is open (FR-TAG-03).
     pub(super) date_prompt: Option<DatePrompt>,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
-    pub(super) type_picker: Option<Picker<BlockKind>>,
+    pub(super) type_picker: Option<Picker<Conversion>>,
     /// Whether the details popup is open over the focused block (D-3).
     pub(super) details: bool,
     /// Where editing resumes once a command run from the command menu is done (D-50).
@@ -130,6 +131,12 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
+    /// Making sections, or plain text of sections, skipped this many blocks that are tasks or
+    /// projects, which cannot be sections (D-52).
+    NotSections {
+        /// How many.
+        skipped: usize,
+    },
     /// A bookmark was added to the focused block, or removed when `added` is false (D-11).
     Bookmark {
         /// Whether the block is bookmarked now.
@@ -157,6 +164,10 @@ pub struct Row {
     pub depth: usize,
     /// The block's type.
     pub kind: BlockKind,
+    /// Whether it is a section: a text block carrying `@section` (FR-BLK-04, D-52).
+    pub section: bool,
+    /// Whether it is a divider: a text block reading `---` (FR-BLK-07, D-52).
+    pub divider: bool,
     /// Its text without type syntax and tags.
     pub text: String,
     /// Whether the block carries `@done`, with or without a value (D-17).
@@ -365,6 +376,8 @@ impl State {
             id: block.id(),
             depth,
             kind: block.kind(),
+            section: block.section(),
+            divider: block.divider(),
             text: self
                 .document
                 .get(block.id())
@@ -476,9 +489,15 @@ mod tests {
                 (1, BlockKind::Text, String::new()),
                 (1, BlockKind::Text, "two".to_owned()),
                 (2, BlockKind::Task, "child".to_owned()),
-                (1, BlockKind::Divider, "---".to_owned()),
+                (1, BlockKind::Text, "---".to_owned()),
             ]
         );
+        let flags: Vec<(bool, bool)> = state
+            .rows()
+            .iter()
+            .map(|row| (row.section, row.divider))
+            .collect();
+        assert_eq!(flags.last(), Some(&(false, true)), "a divider is text");
     }
 
     // FR-TAG-01, FR-DONE-01, D-17

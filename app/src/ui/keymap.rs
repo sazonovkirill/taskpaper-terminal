@@ -203,8 +203,8 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('I')], |_| Message::NewFirstChild),
     (&[key!('P')], |_| Message::NewTop(Typed::Project)),
     (&[key!('p')], |_| Message::NewTypedBelow(Typed::Project)),
-    (&[key!('S')], |_| Message::NewTop(Typed::Section)),
-    (&[key!('s')], |_| Message::NewTypedBelow(Typed::Section)),
+    (&[key!('S')], |_| Message::SetSection(true)),
+    (&[key!('s')], |_| Message::SetSection(false)),
     (&[key!('A')], |_| Message::NewTop(Typed::Task)),
     (&[key!('a')], |_| Message::NewTypedBelow(Typed::Task)),
     (&[key!('d'), key!('d')], |_| Message::Delete),
@@ -842,11 +842,7 @@ mod tests {
     // FR-MODE-06, D-26
     #[test]
     fn typed_creation_keys() {
-        for (lower, typed) in [
-            ('p', Typed::Project),
-            ('s', Typed::Section),
-            ('a', Typed::Task),
-        ] {
+        for (lower, typed) in [('p', Typed::Project), ('a', Typed::Task)] {
             let upper = lower.to_ascii_uppercase();
             let top = Message::NewTop(typed);
             check(KeyCode::Char(upper), KeyModifiers::SHIFT, Some(&top));
@@ -854,6 +850,16 @@ mod tests {
             let below = Message::NewTypedBelow(typed);
             check(KeyCode::Char(lower), KeyModifiers::NONE, Some(&below));
         }
+    }
+
+    // FR-BLK-04, D-52
+    #[test]
+    fn upper_and_lower_s_make_and_unmake_sections() {
+        let make = Some(&Message::SetSection(true));
+        check(KeyCode::Char('S'), KeyModifiers::SHIFT, make);
+        check(KeyCode::Char('S'), KeyModifiers::NONE, make);
+        let unmake = Some(&Message::SetSection(false));
+        check(KeyCode::Char('s'), KeyModifiers::NONE, unmake);
     }
 
     // FR-OPS-02, FR-OPS-03

@@ -15,7 +15,7 @@ Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 The block's editor opens where the block is drawn, keeping its indentation, marker, surrounding blocks and scroll position. A block is one line (D-43), so the editor is one line; text wider than the pane scrolls to keep the caret in view.
 
 **What is edited** is the block's visible text:
-- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed, while a `:` typed in text stays text. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider's text is its type, so a divider is not edited;
+- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed, while a `:` typed in text stays text. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider is text like any other and is edited as its raw `---` (D-52);
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message. A pasted single line, ignoring line breaks that end it, goes in at the caret as one undo step; text of several lines ends editing and becomes blocks below the block as `paste_below` makes them, in place of the block when its text is empty and it has no tags or children (FR-OPS-06);
 - with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01) and the raw link syntax of §2.2, and in text blocks the `#` heading markers (FR-FMT-03, D-45).
 
@@ -30,7 +30,7 @@ Edits are applied to the document as the user types (one undo step per edit sess
 | Key | Any block |
 |---|---|
 | `Enter` | End editing; create the next block in edit mode (§3) |
-| `↑` / `↓` | End editing and edit the previous / next visible block, skipping dividers, with the caret as many graphemes from the start as it was, or at the end of a shorter text, like moving between lines in a traditional editor. Each block's session is its own undo step. On the first / last such block nothing happens |
+| `↑` / `↓` | End editing and edit the previous / next visible block, dividers included (D-52), with the caret as many graphemes from the start as it was, or at the end of a shorter text, like moving between lines in a traditional editor. Each block's session is its own undo step. On the first / last such block nothing happens |
 | `Esc` | End editing |
 | `Tab` / `Shift+Tab` | Indent / outdent the block, stay in edit mode |
 | `Backspace` in an empty block | Delete the block, edit the previous visible block at its end; a block with children and the first row stay. A block created in this session leaves no undo step |
@@ -43,16 +43,16 @@ Typing one of these prefixes followed by a space converts the block (FR-MODE-05,
 
 | Typed, then space | Result |
 |---|---|
-| `---` | Divider. The block becomes a divider and a new block opens below it in edit mode, so typing continues: a task if the block was a task, otherwise text, as in §3. |
+| `---` | Divider. The block becomes a text block reading `---`, which is drawn as a divider (D-52), and a new block opens below it in edit mode, so typing continues: a task if the block was a task, otherwise text, as in §3. |
 | `[]` or `[ ]` | Task: the prefix becomes `- `. |
 | `[x]` or `[X]` | Completed task: the prefix becomes `- ` and `@done(YYYY-MM-DD)` with today's date is added (FR-DONE-01). |
 
 Rules:
 
-- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret, that the block has no children (FR-BLK-07) and that it is not the zoom title, whose next block would be its child; otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project or section, are ordinary text.
+- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret, that the block has no children (FR-BLK-07) and that it is not the zoom title, whose next block would be its child; otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project, are ordinary text. A section is a text block, so its prefixes fire too; the divider drops its `@section`, as a type change does.
 - Shortcuts fire only on a typed space. Pasted text is never converted.
 - The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
-- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode. `Backspace` in the still empty block below deletes only that block (§2), leaving the divider as its own step.
+- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode. `Backspace` in the still empty block below deletes only that block and edits the divider (§2), leaving the divider as its own step.
 - A conversion is part of the edit session's undo step (§2) and follows the rules of `convert_type` (§5).
 - `- ` and a trailing `:` need no shortcut: TaskPaper already reads them as a task and a project, and the marker updates live (OQ-27). `# ` stays text and starts a Markdown heading in a text block (§2.2, OQ-28).
 
@@ -60,7 +60,7 @@ The code-block shortcut ```` ``` ```` was dropped with code blocks (D-43).
 
 ### 2.2 Markdown in text
 
-Every block but a divider supports these links, and text blocks also headings, in addition to FR-FMT-01 (FR-FMT-03, D-25, D-45). They are derived from the line's text for display only; the text is stored unchanged, so the file stays plain TaskPaper.
+Every block supports these links, and text blocks, sections included (D-52), also headings, in addition to FR-FMT-01 (FR-FMT-03, D-25, D-45). They are derived from the line's text for display only; the text is stored unchanged, so the file stays plain TaskPaper.
 
 | Syntax | Meaning |
 |---|---|
@@ -80,7 +80,8 @@ Typing `/` in edit mode opens a menu at the caret listing every command that app
 
 | Group | Entries | Command |
 |---|---|---|
-| Type | Project, Section, Note, Task, Divider | Give the block that type (FR-BLK-08); "Note" is the menu's label for a text node |
+| Type | Project, Task, Note | Give the block that type (FR-BLK-08); "Note" is the menu's label for a text node |
+| | Make Section on a text block, or Remove Section on a section | Add or remove `@section` (D-52), as `S` and `s` do (§5) |
 | Status | Complete, or Uncomplete when the block is done | `toggle_done` (§5) |
 | | Toggle Today | `toggle_today` (§5) |
 | | Bookmark, or Remove Bookmark when the block has one | `toggle_bookmark` (§5) |
@@ -102,9 +103,9 @@ The `/` is not typed while the menu is open.
 | `Esc` | Close the menu and type `/` and the filter as text |
 | `Backspace` | Erase the filter's last character; on an empty filter, close the menu, typing nothing |
 
-A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text, and so does `/` followed by a space, as in "a / b". Other keys do nothing while the menu is open. D-44's instant letters (`/p`, `/s`, `/n`, `/t`) are gone, since filtering needs them: `/s` would otherwise make a section before `/set` is typed. `/p`, `/s`, `/n` or `/t` then `Enter` still choose Project, Section, Note or Task, which come first.
+A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text, and so does `/` followed by a space, as in "a / b". Other keys do nothing while the menu is open. D-44's instant letters (`/p`, `/s`, `/n`, `/t`) are gone, since filtering needs them: `/s` would otherwise make a section before `/set` is typed. `/p`, `/t` or `/n` then `Enter` still choose Project, Task or Note, which come first; `/make` and `/remove` reach the section entries.
 
-Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and the type tag `@section` go, other tags, `@url` included, stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, `@section` for a section, nothing for text. The caret stays where it was. A divider replaces the text with `---`, keeping the other tags, without confirmation, and ends editing, because a divider's text is its type (§2). The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
+Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and `@section` go, other tags, `@url` included, stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, nothing for text. Make Section adds `@section` after the other tags and Remove Section takes it off (D-52). The caret stays where it was. The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
 
 Every other entry runs the same command as its key in navigate mode, on the edited block. It ends the edit session, which stays one undo step, runs as a step of its own, and editing goes on in the block with the caret at the column it had. A command that opens the date prompt or the details popup returns to editing when that closes, whether the date was set or not. After Duplicate editing goes on in the original block; Delete leaves navigate mode on the block after it.
 
@@ -112,7 +113,7 @@ The list is a core list of the commands on one block, with their labels; the com
 
 ### 2.4 Cycling the type
 
-`Ctrl+T` in edit mode gives the edited block the next type of project, section, task and note (text), in that order and back to project, keeping the text and the caret (D-50). It changes the line as choosing that type in the command menu does, and each press is a change of the session's undo step. A divider is never edited, so a cycle always starts from one of the four.
+`Ctrl+T` in edit mode gives the edited block the next of project, section, task and note (text), in that order and back to project, keeping the text and the caret (D-50). A section is a text block with `@section` (D-52): a project becomes a text block with `@section`, a section a task without it, and any other text block, a divider among them, a project. It changes the line as the command menu does, and each press is a change of the session's undo step.
 
 ## 3. Creating blocks (FR-MODE-04)
 
@@ -129,7 +130,6 @@ The list is a core list of the commands on one block, with their labels; the com
 | Command | Result |
 |---|---|
 | `new_project_top` / `new_project_below` | A project as the first block of the list / as `new_below` would place it. |
-| `new_section_top` / `new_section_below` | A section placed before the first section of the list, so it comes after the tasks above it, or at the end of the list when it has none / as `new_below` would place it. |
 | `new_task_top` / `new_task_below` | A task as the first block of the list / as `new_below` would place it. |
 
 On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child`, which adds its last child; in a pane without blocks the new block is the first one.
@@ -161,7 +161,8 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 
 | Command | Behavior |
 |---|---|
-| `convert_type` (FR-BLK-08) | In edit mode, the command menu of §2.3 and `Ctrl+T` (§2.4) do this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Section, Note (text), Task and Divider, opening with the focused block's type highlighted; typing filters it by name. The chosen type goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). Rewrites the block's syntax as the command menu does: removes `- `/`:` and the type tag `@section`, then applies the new type's syntax (`- `, `:`, `@section`); other tags stay, `@url` included, since a link is not a type (D-45). Converting to a divider replaces the text with `---`, keeping the other tags, without confirmation, since undo restores it (as D-44). Converting a divider to another type replaces its `---`, which is its type rather than text, with the placeholder `…`. Choosing the block's own type changes nothing. |
+| `convert_type` (FR-BLK-08) | In edit mode, the command menu of §2.3 and `Ctrl+T` (§2.4) do this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Task, Note (text), Make Section and Remove Section, opening with the focused block's type highlighted, Make Section for a section; typing filters it by name. The chosen entry goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07); the section entries do what `make_section` and `remove_section` do. Rewrites the block's syntax as the command menu does: removes `- `/`:` and `@section`, then applies the new type's syntax (`- `, `:`); other tags stay, `@url` included, since a link is not a type (D-45). A divider is text, so it keeps its `---` (D-52). Choosing the block's own type changes nothing. |
+| `make_section` / `remove_section` (FR-BLK-04, D-52) | `S` adds bare `@section` to the targets that are text blocks without it, making them sections; `s` removes `@section` with any value from those that have it, making them plain text, as one undo step. Tasks and projects are never sections: they are left as they are, `@section` included when they carry it, and the status line says how many were skipped ("Only text can be a section: 1 skipped"). |
 | `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date, or of why the input is not a date, in which case `Enter` does nothing; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). The prompt opens with the block's current date typed and selected, so typing replaces it and `Enter` keeps it. Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |

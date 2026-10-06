@@ -14,7 +14,7 @@ pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
 use jiff::civil::Date;
 
 use super::{
-    Access, Effect, Notice, Restore, Row, State,
+    Access, Effect, Notice, Restore, State,
     node_commands::{Action, node_commands},
     structure::NewBlock,
     text_field::{TextEdit, TextField},
@@ -248,13 +248,13 @@ impl State {
         })
     }
 
-    /// Starts editing the focused block's text with the caret at its end, selecting nothing. A
-    /// divider, whose text is its type, is not edited; a read-only file refuses with a notice.
+    /// Starts editing the focused block's text with the caret at its end, selecting nothing; a
+    /// read-only file refuses with a notice.
     pub(super) fn start_editing(&mut self) {
         let Some((block, _)) = self.focused() else {
             return;
         };
-        if self.edit.is_some() || block.kind() == BlockKind::Divider {
+        if self.edit.is_some() {
             return;
         }
         if self.access() == Access::ReadOnly {
@@ -342,8 +342,8 @@ impl State {
     }
 
     /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
-    /// types what the menu took as text. A type change is a change of the session; a divider is
-    /// not edited, so choosing one ends editing. Any other command ends the session, runs as a
+    /// types what the menu took as text. A type change is a change of the session. Any other
+    /// command ends the session, runs as a
     /// step of its own and editing resumes on the block at the caret's column, once a prompt or
     /// popup it opened closes (editing.md §2.3).
     pub(super) fn command_menu_input(&mut self, input: MenuInput) -> Vec<Effect> {
@@ -358,9 +358,6 @@ impl State {
             Closed::Run(Action::Retype(typed)) => {
                 session.retype(typed);
                 self.write(false);
-                if typed == Typed::Divider {
-                    self.stop_editing();
-                }
             }
             Closed::Run(Action::Run(message)) => {
                 self.suspend_editing();
@@ -389,9 +386,9 @@ impl State {
         };
         let next = match block.kind() {
             BlockKind::Project => Typed::Section,
-            BlockKind::Section => Typed::Task,
+            BlockKind::Text if block.section() => Typed::Task,
             BlockKind::Task => Typed::Text,
-            BlockKind::Text | BlockKind::Divider => Typed::Project,
+            BlockKind::Text => Typed::Project,
         };
         session.retype(next);
         self.write(false);
@@ -434,22 +431,21 @@ impl State {
         self.add_block(NewBlock::Next, None);
     }
 
-    /// `↑`/`↓` in edit mode: ends editing and edits the visible block above or below, skipping
-    /// dividers, with the caret as many graphemes from the start as it was, or at the end of a
-    /// shorter text; nothing happens without such a block (editing.md §2, D-43).
+    /// `↑`/`↓` in edit mode: ends editing and edits the visible block above or below, with the
+    /// caret as many graphemes from the start as it was, or at the end of a shorter text; nothing
+    /// happens without such a block (editing.md §2, D-43).
     pub(super) fn edit_adjacent(&mut self, down: bool) {
         let Some(session) = &self.edit else {
             return;
         };
         let column = session.field.column();
         let rows = self.rows();
-        let editable = |row: &&Row| row.kind != BlockKind::Divider;
-        let above = rows.iter().take_while(|row| row.id != session.id);
-        let mut below = rows.iter().skip_while(|row| row.id != session.id).skip(1);
+        let at = rows.iter().position(|row| row.id == session.id);
         let target = if down {
-            below.find(editable)
+            at.and_then(|at| rows.get(at + 1))
         } else {
-            above.filter(editable).last()
+            at.and_then(|at| at.checked_sub(1))
+                .and_then(|above| rows.get(above))
         };
         let Some(target) = target.map(|row| row.id) else {
             return;
@@ -949,12 +945,21 @@ mod tests {
     }
 
     #[test]
-    fn dividers_and_an_empty_outline_are_not_edited() {
-        for (text, index) in [("- a\n---", 1), ("", 0)] {
-            let mut state = open(text, index);
-            state.update(Message::EditAtEnd);
-            assert_eq!(state.mode(), Mode::Navigate, "{text:?}");
-        }
+    fn an_empty_outline_is_not_edited() {
+        let mut state = open("", 0);
+        state.update(Message::EditAtEnd);
+        assert_eq!(state.mode(), Mode::Navigate);
+    }
+
+    // FR-BLK-07, D-52
+    #[test]
+    fn a_divider_is_edited_as_its_raw_text() {
+        let mut state = open("- a\n--- @x", 1);
+        state.update(Message::EditAtEnd);
+        assert_eq!(shown(&state), "---|");
+        typed(&mut state, "-");
+        assert_eq!(texts(&state), ["- a", "---- @x"]);
+        assert!(!state.rows()[1].divider, "four dashes are text");
     }
 
     // FR-NAV-03
@@ -1150,7 +1155,7 @@ P:
 
     // editing.md §2, D-43
     #[test]
-    fn up_and_down_skip_dividers_and_stay_at_the_ends() {
+    fn up_and_down_edit_dividers_too_and_stay_at_the_ends() {
         let mut state = open(
             "- a
 ---
@@ -1161,6 +1166,8 @@ P:
         state.update(Message::EditNext);
         assert_eq!(shown(&state), "b|", "nothing below");
         assert_eq!(state.focus(), Some(state.rows()[2].id));
+        state.update(Message::EditPrevious);
+        assert_eq!(shown(&state), "-|--", "a divider is text");
         state.update(Message::EditPrevious);
         assert_eq!(shown(&state), "a|");
         assert_eq!(state.focus(), Some(state.rows()[0].id));
@@ -1279,7 +1286,6 @@ Site @url(https://x.y)",
     fn a_type_chosen_after_the_slash_gives_the_block_its_type_with_the_caret_kept() {
         for (keys, line, kind) in [
             ("p", "Call Ana: @x", BlockKind::Project),
-            ("s", "Call Ana @x @section", BlockKind::Section),
             ("n", "Call Ana @x", BlockKind::Text),
             ("t", "- Call Ana @x", BlockKind::Task),
         ] {
@@ -1476,32 +1482,27 @@ Site @url(https://x.y)",
         assert_eq!(texts(&state), ["note", "- t"], "one step with the typing");
     }
 
-    // D-44
+    // D-52
     #[test]
-    fn a_divider_takes_the_line_and_ends_editing_as_one_step() {
-        let mut state = open("- a @x\n- b", 0);
-        state.update(Message::EditAtEnd);
-        typed(&mut state, "!");
-        slash(&mut state, "div");
+    fn make_section_and_remove_section_keep_editing_as_one_step() {
+        let mut state = editing_before_last_word("Call Ana @x\n- t");
+        slash(&mut state, "make");
+        assert_eq!(listed(&state), ["Make Section"]);
         menu(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["--- @x", "- b"]);
-        assert_eq!(state.mode(), Mode::Navigate);
-        assert_eq!(state.rows()[0].kind, BlockKind::Divider);
-        assert_eq!(state.focus, Some(state.rows()[0].id));
-        state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a @x", "- b"]);
-    }
-
-    // D-44
-    #[test]
-    fn a_new_block_made_a_divider_is_undone_with_its_creation() {
-        let mut state = open("- a", 0);
-        state.update(Message::NewBelow);
-        slash(&mut state, "di");
+        assert_eq!(texts(&state)[0], "Call Ana @x @section");
+        assert!(state.rows()[0].section);
+        assert_eq!(shown(&state), "Call |Ana");
+        slash(&mut state, "sec");
+        assert_eq!(listed(&state), ["Remove Section"]);
         menu(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["- a", "---"]);
+        assert_eq!(texts(&state)[0], "Call Ana @x");
+        state.update(Message::StopEditing);
         state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a"]);
+        assert_eq!(
+            texts(&state)[0],
+            "Call Ana @x",
+            "the session changed nothing"
+        );
     }
 
     // D-50
@@ -1511,16 +1512,17 @@ Site @url(https://x.y)",
         let mut seen = Vec::new();
         for _ in 0..4 {
             state.update(Message::CycleType);
-            seen.push((texts(&state)[0].clone(), state.rows()[0].kind));
+            let row = &state.rows()[0];
+            seen.push((texts(&state)[0].clone(), row.kind, row.section));
             assert_eq!(shown(&state), "Call |Ana");
         }
         assert_eq!(
             seen,
             [
-                ("Call Ana: @x".to_owned(), BlockKind::Project),
-                ("Call Ana @x @section".to_owned(), BlockKind::Section),
-                ("- Call Ana @x".to_owned(), BlockKind::Task),
-                ("Call Ana @x".to_owned(), BlockKind::Text),
+                ("Call Ana: @x".to_owned(), BlockKind::Project, false),
+                ("Call Ana @x @section".to_owned(), BlockKind::Text, true),
+                ("- Call Ana @x".to_owned(), BlockKind::Task, false),
+                ("Call Ana @x".to_owned(), BlockKind::Text, false),
             ]
         );
         state.update(Message::Undo);

@@ -27,7 +27,7 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-BLK-08, FR-BLK-04, keybindings.md §4, FR-OPS-08
+// FR-BLK-08, FR-BLK-04, keybindings.md §4, FR-OPS-08, D-52
 #[test]
 fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
     let mut app = Harness::with_text("Groceries @x\n\t- Milk\n", 30, 14);
@@ -37,17 +37,17 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
         [
             "▌ Groceries",
             "    - Milk",
-            "         ┌Node type:┐",
-            "         │ Project  │",
-            "         │ Section  │",
-            "         │ Note     │",
-            "         │ Task     │",
-            "         │ Divider  │",
-            "         └──────────┘",
+            "      ┌Node type:──────┐",
+            "      │ Project        │",
+            "      │ Task           │",
+            "      │ Note           │",
+            "      │ Make Section   │",
+            "      │ Remove Section │",
+            "      └────────────────┘",
             "",
         ]
     );
-    app.type_keys("sec");
+    app.type_keys("make");
     press(&mut app, KeyCode::Enter);
     assert!(
         !screen(&mut app)
@@ -75,13 +75,13 @@ fn a_line_with_a_url_keeps_it_under_its_new_type() {
     );
 }
 
-// FR-BLK-08, FR-BLK-07, D-44
+// FR-BLK-08, D-52
 #[test]
-fn a_task_becomes_a_divider_keeping_its_tags_and_esc_leaves_a_block_alone() {
+fn a_task_becomes_a_note_keeping_its_tags_and_esc_leaves_a_block_alone() {
     let mut app = Harness::with_text("- Milk @red\n- Bread\n", 30, 14);
-    app.type_keys("mydiv");
+    app.type_keys("mynote");
     press(&mut app, KeyCode::Enter);
-    assert_eq!(saved(&mut app), "--- @red\n- Bread\n");
+    assert_eq!(saved(&mut app), "Milk @red\n- Bread\n");
     app.type_keys("jmy");
     press(&mut app, KeyCode::Up);
     press(&mut app, KeyCode::Esc);
@@ -90,7 +90,30 @@ fn a_task_becomes_a_divider_keeping_its_tags_and_esc_leaves_a_block_alone() {
             .iter()
             .any(|row| row.contains("Node type:"))
     );
-    assert_eq!(saved(&mut app), "--- @red\n- Bread\n");
+    assert_eq!(saved(&mut app), "Milk @red\n- Bread\n");
+}
+
+// FR-BLK-04, D-52
+#[test]
+fn shift_s_makes_the_selected_text_blocks_sections_and_s_takes_it_back() {
+    let mut app = Harness::with_text("Fruit\n- Milk\nBread\n", 100, 14);
+    app.type_keys("JJS");
+    assert_eq!(saved(&mut app), "Fruit @section\n- Milk\nBread @section\n");
+    let status = screen(&mut app).last().cloned().unwrap_or_default();
+    assert!(
+        status.contains("Only text can be a section: 1 skipped"),
+        "the task is skipped and said so: {status:?}"
+    );
+    app.type_keys("z");
+    assert_eq!(
+        saved(&mut app),
+        "Fruit\n- Milk\nBread\n",
+        "one step to undo"
+    );
+    app.type_keys("Z");
+    press(&mut app, KeyCode::Esc);
+    app.type_keys("s");
+    assert_eq!(saved(&mut app), "Fruit @section\n- Milk\nBread\n");
 }
 
 // FR-BLK-08, FR-OPS-07, FR-OPS-08

@@ -6,7 +6,7 @@
 use jiff::civil::Date;
 
 use super::Message;
-use crate::document::{Block, DateChange, DateTag, Flag, TagColor, format::Typed};
+use crate::document::{Block, BlockKind, DateChange, DateTag, Flag, TagColor, format::Typed};
 
 /// A command on one block: its label and what running it does.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,13 +26,11 @@ pub(super) enum Action {
     Run(Message),
 }
 
-/// The type entries, in the order the menu lists them (D-44).
-const TYPES: [(Typed, &str); 5] = [
+/// The type entries, in the order the menu lists them (D-52).
+const TYPES: [(Typed, &str); 3] = [
     (Typed::Project, "Project"),
-    (Typed::Section, "Section"),
-    (Typed::Text, "Note"),
     (Typed::Task, "Task"),
-    (Typed::Divider, "Divider"),
+    (Typed::Text, "Note"),
 ];
 
 /// Each color with its entry's label.
@@ -45,8 +43,9 @@ const COLORS: [(TagColor, &str); 6] = [
     (TagColor::Violet, "Color: Violet"),
 ];
 
-/// Every command that applies to `block` in menu order, in groups a menu sets apart: types,
-/// status, dates, colors and the block itself (D-50). `link` says whether the block has a link to
+/// Every command that applies to `block` in menu order, in groups a menu sets apart: types, with
+/// Make Section or Remove Section for a text block (D-52), status, dates, colors and the block
+/// itself (D-50). `link` says whether the block has a link to
 /// open and `today` is the local date the date commands write. Labels follow the block's state,
 /// and a command that would change nothing, such as clearing a date it does not have, is left
 /// out, so no group is empty.
@@ -56,12 +55,19 @@ pub(super) fn node_commands(block: &Block, link: bool, today: Date) -> Vec<Vec<N
         action: Action::Run(message),
     };
     let date = |label, tag, change| run(label, Message::ChangeDate { tag, change, today });
+    let retype = |label, typed| NodeCommand {
+        label,
+        action: Action::Retype(typed),
+    };
+    let section = match block.kind() {
+        BlockKind::Text if block.section() => Some(retype("Remove Section", Typed::Text)),
+        BlockKind::Text => Some(retype("Make Section", Typed::Section)),
+        BlockKind::Project | BlockKind::Task => None,
+    };
     let types = TYPES
         .into_iter()
-        .map(|(typed, label)| NodeCommand {
-            label,
-            action: Action::Retype(typed),
-        })
+        .map(|(typed, label)| retype(label, typed))
+        .chain(section)
         .collect();
     let done = if block.done() {
         "Uncomplete"
@@ -157,7 +163,7 @@ mod tests {
         assert_eq!(
             groups("- a", false),
             [
-                vec!["Project", "Section", "Note", "Task", "Divider"],
+                vec!["Project", "Task", "Note"],
                 vec!["Complete", "Toggle Today", "Bookmark"],
                 vec![
                     "Set Start Date",
@@ -178,6 +184,37 @@ mod tests {
                 vec!["Show Details", "Duplicate", "Delete"],
             ]
         );
+    }
+
+    // D-52
+    #[test]
+    fn a_text_block_can_be_made_a_section_and_a_section_text_again() {
+        let types = |line| groups(line, false).swap_remove(0);
+        assert_eq!(types("a"), ["Project", "Task", "Note", "Make Section"]);
+        assert_eq!(types("---"), ["Project", "Task", "Note", "Make Section"]);
+        assert_eq!(
+            types("a @section"),
+            ["Project", "Task", "Note", "Remove Section"]
+        );
+        assert_eq!(types("P: @section"), ["Project", "Task", "Note"]);
+        for (line, label, typed) in [
+            ("a", "Make Section", Typed::Section),
+            ("a @section", "Remove Section", Typed::Text),
+        ] {
+            let document = format::parse(line);
+            let (id, _) = document.descendants(document.root()).next().unwrap();
+            let block = blocks::block(&document, id).unwrap();
+            let command = node_commands(&block, false, TODAY)
+                .swap_remove(0)
+                .swap_remove(3);
+            assert_eq!(
+                command,
+                NodeCommand {
+                    label,
+                    action: Action::Retype(typed)
+                }
+            );
+        }
     }
 
     // D-50
@@ -213,10 +250,8 @@ mod tests {
         let run = Action::Run;
         let cases = [
             ("Project", Action::Retype(Typed::Project)),
-            ("Section", Action::Retype(Typed::Section)),
             ("Note", Action::Retype(Typed::Text)),
             ("Task", Action::Retype(Typed::Task)),
-            ("Divider", Action::Retype(Typed::Divider)),
             ("Complete", run(Message::ToggleDone { today: TODAY })),
             (
                 "Set Start Date",

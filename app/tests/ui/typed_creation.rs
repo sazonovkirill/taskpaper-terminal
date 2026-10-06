@@ -1,10 +1,10 @@
-//! Step 2.7: adding a project, section or task with one key.
+//! Step 2.7: adding a project or task with one key.
 
 use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, outline_rows};
+use crate::support::{Harness, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -30,27 +30,6 @@ fn shifted(app: &mut Harness, c: char) {
 
 fn esc(app: &mut Harness) {
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-}
-
-// FR-MODE-06, OQ-29, FR-DOC-05
-#[test]
-fn shift_s_in_the_demo_adds_a_section_after_the_tasks_of_the_list() {
-    let mut app = Harness::demo(60, 20);
-    app.settle();
-    app.type_keys("j");
-    shifted(&mut app, 'S');
-    assert_caret(&mut app, 4, 7);
-    app.type_keys("Day trips");
-    esc(&mut app);
-    assert_eq!(
-        outline_rows(&mut app)[4..7],
-        ["  Lisbon travel guide", "  Day trips", "  Packing"]
-    );
-    assert_eq!(focused_rows(&mut app), ["  Day trips"]);
-    assert!(
-        saved(&mut app).contains("\tDay trips @section\n\tPacking @section\n"),
-        "saved as a section"
-    );
 }
 
 // FR-MODE-06, OQ-29, FR-DOC-02
