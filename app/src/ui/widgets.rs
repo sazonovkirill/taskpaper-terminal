@@ -480,34 +480,26 @@ impl Widget for Popup {
 }
 
 /// The date prompt ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), ui.md §1):
-/// a box over the middle of the screen titled with the date it sets, holding the text as typed
-/// with the selection reversed and, below it, what `Enter` does: set the date the text resolves
-/// to, remove the date, or nothing, saying why the text is not a date.
+/// a panel across the bottom of the screen, its border and title, the date it sets, in the
+/// accent color, holding the text as typed with the selection reversed and, below it, what
+/// `Enter` does: set the date the text resolves to, remove the date, or nothing, saying why the
+/// text is not a date (D-54).
 #[derive(Debug)]
-pub struct DatePromptPopup<'a> {
+pub struct DatePromptPanel<'a> {
     prompt: &'a DatePromptView<'a>,
 }
 
-impl<'a> DatePromptPopup<'a> {
-    /// The box's width and height, the border included.
-    const SIZE: (u16, u16) = (40, 4);
+impl<'a> DatePromptPanel<'a> {
+    /// The panel's height, the border included.
+    pub const HEIGHT: u16 = 4;
 
-    /// The popup showing `prompt`.
+    /// The panel showing `prompt`.
     #[must_use]
     pub fn new(prompt: &'a DatePromptView<'a>) -> Self {
         Self { prompt }
     }
 
-    /// Where the box goes over `area`: in its middle, and no larger than it.
-    #[must_use]
-    pub fn area(area: Rect) -> Rect {
-        area.centered(
-            Constraint::Length(Self::SIZE.0),
-            Constraint::Length(Self::SIZE.1),
-        )
-    }
-
-    /// The caret's cell when the box is drawn over `area`, on the text's line, the first inside
+    /// The caret's cell when the panel is drawn over `area`, on the text's line, the first inside
     /// the border.
     #[must_use]
     pub fn caret(&self, area: Rect) -> (u16, u16) {
@@ -556,14 +548,18 @@ impl<'a> DatePromptPopup<'a> {
     }
 }
 
-impl Widget for DatePromptPopup<'_> {
+impl Widget for DatePromptPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let title = match self.prompt.tag {
             DateTag::Start => " Start date ",
             DateTag::Due => " Due date ",
         };
-        let frame = Block::bordered().title(title);
+        let accent = Style::new().fg(ACCENT);
+        let frame = Block::bordered()
+            .border_style(accent)
+            .title_style(accent)
+            .title(title);
         let inner = frame.inner(area);
         frame.render(area, buf);
         let [input, preview] = inner.layout(&Layout::vertical([
@@ -1056,7 +1052,7 @@ mod tests {
     }
 
     /// The date prompt showing `text`, selected, with `date` as what it resolves to, drawn over
-    /// 30 × 6 cells.
+    /// 30 × 4 cells.
     fn date_prompt(text: &str, date: Result<Option<Date>, DateError>) -> Buffer {
         let view = DatePromptView {
             tag: DateTag::Start,
@@ -1065,14 +1061,11 @@ mod tests {
             selection: Some(0..text.len()),
             date,
         };
-        let popup = DatePromptPopup::new(&view);
-        let area = Rect::new(0, 0, 30, 6);
+        let panel = DatePromptPanel::new(&view);
+        let area = Rect::new(0, 0, 30, DatePromptPanel::HEIGHT);
         let mut buf = Buffer::empty(area);
-        assert_eq!(
-            popup.caret(DatePromptPopup::area(area)),
-            (2 + text_width(text), 2)
-        );
-        popup.render(DatePromptPopup::area(area), &mut buf);
+        assert_eq!(panel.caret(area), (2 + text_width(text), 1));
+        panel.render(area, &mut buf);
         buf
     }
 
@@ -1080,18 +1073,21 @@ mod tests {
         u16::try_from(text.len()).unwrap()
     }
 
-    // FR-TAG-03, ui.md §1: as wide as the area allows and in its middle.
+    // FR-TAG-03, ui.md §1, D-54: its border and title in the accent color.
     #[test]
     fn the_date_prompt_shows_the_text_selected_and_the_date_it_resolves_to() {
         let mut expected = Buffer::with_lines([
-            "",
             "┌ Start date ────────────────┐",
             "│ fri                        │",
             "│ Fri 9 Oct 2026             │",
             "└────────────────────────────┘",
-            "",
         ]);
-        expected.set_style(Rect::new(2, 2, 3, 1), Style::new().reversed());
+        let accent = Style::new().fg(ACCENT);
+        expected.set_style(Rect::new(0, 0, 30, 1), accent);
+        expected.set_style(Rect::new(0, 3, 30, 1), accent);
+        expected.set_style(Rect::new(0, 1, 1, 2), accent);
+        expected.set_style(Rect::new(29, 1, 1, 2), accent);
+        expected.set_style(Rect::new(2, 1, 3, 1), Style::new().reversed());
         assert_eq!(
             date_prompt("fri", Ok(Some(jiff::civil::date(2026, 10, 9)))),
             expected
@@ -1104,7 +1100,7 @@ mod tests {
         let preview = |text: &str, date| {
             let buf = date_prompt(text, date);
             (0..30)
-                .map(|x| buf[(x, 3)].symbol().to_owned())
+                .map(|x| buf[(x, 2)].symbol().to_owned())
                 .collect::<String>()
         };
         assert_eq!(

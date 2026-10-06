@@ -77,6 +77,8 @@ From here the app changes files, so file safety comes first: the serializer, ato
 
 **Owner feedback on M3 (2026-10-06), sections and dividers as text:** only TaskPaper's three block types remain, project, task and text (D-52). A section is a text block carrying `@section` and a divider a text block reading `---`; both look as before, and a divider is edited as its raw `---`. `S` makes the selected text blocks, else the focused one, sections and `s` plain text again, skipping tasks and projects with a notice; `@section` on a task or project is kept without effect and listed by `mi`. `my` and the command menu offer Make Section and Remove Section instead of the Section and Divider types, and `Ctrl+T` still cycles project, section, task and note. `S`/`s` no longer add sections. Try it: `S` on "Ask friends for more recommendations." in the demo's reading list, then `s`.
 
+**Owner feedback on M3 (2026-10-06), date panel:** the `ms`/`md` date prompt is a full-width panel at the bottom of the screen above the status line instead of a centered box, its border and title in the accent color, the rest of the screen dimmed while it is open; the outline scrolls only if the panel would cover the focused block (D-54). Try it: `md` on "Return Piranesi to the library" in the demo.
+
 ## M4 · Finding things
 
 | # | Step | Covers | After | Try it |

@@ -3,6 +3,7 @@
 use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
+use ratatui::style::{Color, Modifier};
 
 use crate::support::{DUE, Harness, line};
 
@@ -26,20 +27,19 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-/// Rows 3 to 6 of a 50-column screen, where the prompt is drawn over a short outline.
+/// Rows 5 to 8 of a 50 × 10 screen, where the prompt's panel is drawn above the status line.
 fn prompt_box(app: &mut Harness) -> Vec<String> {
-    screen(app).into_iter().skip(3).take(4).collect()
+    screen(app).into_iter().skip(5).take(4).collect()
 }
 
-/// The prompt box as drawn on a 50-column screen over `row`, with `title`, `text` and `preview`.
-fn drawn(row: &str, title: &str, text: &str, preview: &str) -> Vec<String> {
-    let edge = |left: &str, middle: &str, right: &str| format!("{left}{middle}{right}");
-    let rule = format!("{title}{}", "─".repeat(38 - title.chars().count()));
+/// The prompt's panel as drawn across a 50-column screen, with `title`, `text` and `preview`.
+fn drawn(title: &str, text: &str, preview: &str) -> Vec<String> {
+    let rule = format!("{title}{}", "─".repeat(48 - title.chars().count()));
     vec![
-        edge(&format!("{row:<5}"), &format!("┌{rule}┐"), ""),
-        edge("     ", &format!("│ {text:<37}│"), ""),
-        edge("     ", &format!("│ {preview:<37}│"), ""),
-        edge("     ", &format!("└{}┘", "─".repeat(38)), ""),
+        format!("┌{rule}┐"),
+        format!("│ {text:<47}│"),
+        format!("│ {preview:<47}│"),
+        format!("└{}┘", "─".repeat(48)),
     ]
 }
 
@@ -48,16 +48,19 @@ fn drawn(row: &str, title: &str, text: &str, preview: &str) -> Vec<String> {
 fn md_previews_a_typed_date_and_enter_makes_it_due() {
     let mut app = Harness::with_text("- Milk\n- Bread @due(2026-10-20)\n", 50, 10);
     app.type_keys("jmd");
-    let mut expected = drawn("▌ - B", " Due date ", "2026-10-20", "Tue 20 Oct 2026");
-    expected[0].push_str(" days");
-    assert_eq!(prompt_box(&mut app), expected);
+    assert_eq!(
+        prompt_box(&mut app),
+        drawn(" Due date ", "2026-10-20", "Tue 20 Oct 2026")
+    );
     app.type_keys("next fri");
-    expected[1] = drawn("", "", "next fri", "")[1].clone();
-    expected[2] = drawn("", "", "", "Fri 16 Oct 2026")[2].clone();
-    assert_eq!(prompt_box(&mut app), expected, "typing replaced the date");
+    assert_eq!(
+        prompt_box(&mut app),
+        drawn(" Due date ", "next fri", "Fri 16 Oct 2026"),
+        "typing replaced the date"
+    );
     assert_eq!(
         app.terminal.get_cursor_position().map(|p| (p.x, p.y)).ok(),
-        Some((15, 4)),
+        Some((10, 6)),
         "the caret after the text"
     );
     press(&mut app, KeyCode::Enter);
@@ -77,19 +80,59 @@ fn ms_on_a_block_without_a_start_opens_empty_and_esc_changes_nothing() {
     app.type_keys("ms");
     assert_eq!(
         prompt_box(&mut app),
-        drawn("", " Start date ", "", "No date: Enter removes it")
+        drawn(" Start date ", "", "No date: Enter removes it")
     );
     app.type_keys("jk+3d");
     assert_eq!(
         prompt_box(&mut app)[1..3],
-        drawn("", "", "jk+3d", "Not a date from “jk+3d”")[1..3],
+        drawn("", "jk+3d", "Not a date from “jk+3d”")[1..3],
         "letters are typed, not navigation"
     );
     press(&mut app, KeyCode::Esc);
-    assert_eq!(screen(&mut app)[3], "");
+    assert_eq!(screen(&mut app)[5], "");
     assert_eq!(screen(&mut app)[2], "▌ - Milk");
     app.type_keys("j");
     assert_eq!(saved(&mut app), "- Milk\n");
+}
+
+// ui.md §1, D-54
+#[test]
+fn the_panel_is_in_the_accent_color_and_the_rest_of_the_screen_is_dimmed() {
+    let mut app = Harness::with_text("- Milk\n", 50, 10);
+    app.type_keys("md");
+    assert_eq!(
+        screen(&mut app)[2],
+        "▌ - Milk",
+        "the outline keeps its place"
+    );
+    let buffer = app.render().buffer().clone();
+    let dimmed = |x, y| buffer[(x, y)].modifier.contains(Modifier::DIM);
+    assert!(dimmed(4, 0), "breadcrumbs");
+    assert!(dimmed(4, 2), "outline");
+    assert!(dimmed(0, 9), "status line");
+    assert!(!dimmed(0, 5) && !dimmed(2, 6), "panel");
+    let accent = Color::Rgb(0xff, 0xa6, 0x2b);
+    assert_eq!(buffer[(0, 5)].fg, accent, "border");
+    assert_eq!(buffer[(3, 5)].fg, accent, "title");
+    press(&mut app, KeyCode::Esc);
+    let buffer = app.render().buffer().clone();
+    assert!(!buffer[(4, 2)].modifier.contains(Modifier::DIM));
+}
+
+// ui.md §1, D-54: the outline scrolls only when the panel would cover the focus.
+#[test]
+fn the_focused_block_stays_visible_above_the_panel() {
+    let text = (0..20)
+        .map(|n| format!("- t{n}\n"))
+        .collect::<Vec<_>>()
+        .concat();
+    let mut app = Harness::with_text(&text, 50, 10);
+    app.type_keys("jjjj");
+    assert_eq!(screen(&mut app)[6], "▌ - t4");
+    app.type_keys("md");
+    let rows = screen(&mut app);
+    assert_eq!(rows[2..5], ["  - t3", "▌ - t4", "  - t5"]);
+    assert!(rows[5].starts_with("┌ Due date "), "{rows:#?}");
 }
 
 // FR-TAG-03, editing.md §5: empty input removes the tag.
@@ -100,7 +143,7 @@ fn enter_on_an_emptied_prompt_removes_the_date() {
     press(&mut app, KeyCode::Backspace);
     assert_eq!(
         prompt_box(&mut app)[1..3],
-        drawn("", "", "", "No date: Enter removes it")[1..3]
+        drawn("", "", "No date: Enter removes it")[1..3]
     );
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Milk @start(2026-10-01)\n");
@@ -111,25 +154,22 @@ fn enter_on_an_emptied_prompt_removes_the_date() {
 fn a_text_that_is_no_date_says_why_and_enter_keeps_the_prompt() {
     let mut app = Harness::with_text("- Milk\n", 50, 10);
     app.type_keys("md9999-12-31 +1d");
-    assert_eq!(
-        prompt_box(&mut app)[2],
-        drawn("", "", "", "Out of range")[2]
-    );
+    assert_eq!(prompt_box(&mut app)[2], drawn("", "", "Out of range")[2]);
     app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
     app.type_keys("next");
     assert_eq!(
         prompt_box(&mut app)[2],
-        drawn("", "", "", "Not a date: something is missing")[2]
+        drawn("", "", "Not a date: something is missing")[2]
     );
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
     app.type_keys("02-30");
     assert_eq!(
         prompt_box(&mut app)[1..3],
-        drawn("", "", "02-30", "No such day: “02-30”")[1..3],
+        drawn("", "02-30", "No such day: “02-30”")[1..3],
         "Ctrl+W deleted the word"
     );
     press(&mut app, KeyCode::Enter);
-    assert_eq!(prompt_box(&mut app)[1], drawn("", "", "02-30", "")[1]);
+    assert_eq!(prompt_box(&mut app)[1], drawn("", "02-30", "")[1]);
 
     press(&mut app, KeyCode::Home);
     app.type_keys("2026-");
@@ -141,7 +181,7 @@ fn a_text_that_is_no_date_says_why_and_enter_keeps_the_prompt() {
     assert_eq!(saved(&mut app), "- Milk @due(2026-02-28)\n");
 }
 
-// FR-TAG-03: a long text scrolls to keep the caret inside the box.
+// FR-TAG-03: a long text scrolls to keep the caret inside the panel.
 #[test]
 fn a_long_text_scrolls_inside_the_box() {
     let mut app = Harness::with_text("- Milk\n", 50, 10);
@@ -151,7 +191,7 @@ fn a_long_text_scrolls_inside_the_box() {
     assert!(text_row.ends_with("+1d +1d  │"), "{text_row}");
     assert_eq!(
         app.terminal.get_cursor_position().map(|p| (p.x, p.y)).ok(),
-        Some((43, 4))
+        Some((48, 6))
     );
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-17)\n");

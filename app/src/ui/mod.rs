@@ -15,14 +15,14 @@ use ratatui::{
     Frame, Terminal,
     backend::Backend,
     layout::{Constraint, Layout},
-    style::Stylize,
+    style::{Style, Stylize},
     text::Line,
 };
 
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, Keymap, Overlay, PromptKey};
-use widgets::{ConflictPrompt, DatePromptPopup, OutlineView, Popup};
+use widgets::{ConflictPrompt, DatePromptPanel, OutlineView, Popup};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -251,16 +251,24 @@ impl Tui {
     }
 
     /// Draws the whole screen: the breadcrumb header over a rule, the outline scrolled to keep the focus
-    /// visible, and the status line.
+    /// visible, the date prompt's panel below it while open, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
         let [pane, status] = frame.area().layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
-        let [header, separator, outline] = pane.layout(&Layout::vertical([
+        // The outline gives up the panel's rows rather than lying under it, so the focus scrolls
+        // into view above it (D-54).
+        let panel_height = if self.state.date_prompt().is_some() {
+            DatePromptPanel::HEIGHT
+        } else {
+            0
+        };
+        let [header, separator, outline, panel] = pane.layout(&Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Fill(1),
+            Constraint::Length(panel_height),
         ]));
         let [_, crumbs] = header.layout(&Layout::horizontal([
             Constraint::Length(widgets::GUTTER_WIDTH),
@@ -334,21 +342,27 @@ impl Tui {
             frame.render_widget(popup, area);
         }
         self.draw_status(frame, status);
-        if let Some(prompt) = self.state.date_prompt() {
-            let popup = DatePromptPopup::new(&prompt);
-            let area = DatePromptPopup::area(pane);
-            // The conflict prompt covers the date prompt with its caret.
-            if !self.state.in_conflict() {
-                frame.set_cursor_position(popup.caret(area));
-            }
-            frame.render_widget(popup, area);
-        }
+        self.draw_date_prompt(frame, panel);
         if self.state.in_conflict() {
             let diff = self.state.diff();
             self.diff_rows = ConflictPrompt::diff_rows(pane);
             let lines = diff.as_ref().map_or(0, Vec::len);
             self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
             frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), pane);
+        }
+    }
+
+    /// The date prompt's panel over `area` with its caret, if it is open, and the rest of the
+    /// screen dimmed to set it apart (D-54). The conflict prompt covers both.
+    fn draw_date_prompt(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        if let Some(prompt) = self.state.date_prompt()
+            && !self.state.in_conflict()
+        {
+            let screen = frame.area();
+            frame.buffer_mut().set_style(screen, Style::new().dim());
+            let panel = DatePromptPanel::new(&prompt);
+            frame.set_cursor_position(panel.caret(area));
+            frame.render_widget(panel, area);
         }
     }
 
