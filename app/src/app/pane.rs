@@ -296,8 +296,8 @@ impl State {
 
     /// Keeps every pane on what still shows after a change made in any of them, from where it
     /// stood by its `landmarks`: a pane whose zoom block is gone zooms to its nearest surviving
-    /// ancestor, a focus that no longer shows moves (navigation.md §2), and blocks no row shows
-    /// leave the selection.
+    /// ancestor, which takes the zoom block's place in its history, a focus that no longer shows
+    /// moves (navigation.md §2), and blocks no row shows leave the selection.
     pub(super) fn repair_panes(&mut self, landmarks: &[Landmark]) {
         self.pane = self.repaired(&self.pane, landmarks);
         self.others = self
@@ -321,6 +321,9 @@ impl State {
                 .copied()
                 .find(|&id| blocks::block(&self.document, id).is_some());
             pane.location = Location::Outline(kept);
+            if let Some(entry) = pane.history.get_mut(pane.history_at) {
+                *entry = pane.location;
+            }
             pane.focus = landing(&self.rows_of(&pane));
         }
         let before = landmark.map_or(&[][..], |landmark| &landmark.rows);
@@ -543,6 +546,23 @@ mod tests {
         );
         state.update(Message::Undo);
         assert_eq!(panes(&state)[0], "*⌂: Work", "undo returns to where it was");
+    }
+
+    // FR-NAV-04, navigation.md §4 and §5
+    #[test]
+    fn back_returns_to_the_ancestor_a_pane_went_to_when_its_zoom_block_was_deleted() {
+        let mut state = open(OUTLINE);
+        focus(&mut state, "Report");
+        state.update(Message::ZoomIn);
+        pane(&mut state, PaneChange::OpenLocation);
+        state.update(Message::GoHome);
+        focus(&mut state, "Report");
+        state.update(Message::Delete);
+        pane(&mut state, PaneChange::FocusLeft);
+        assert_eq!(panes(&state)[0], "*Work: Slides");
+        state.update(Message::GoHome);
+        state.update(Message::Back);
+        assert_eq!(panes(&state)[0], "*Work: Slides");
     }
 
     // FR-NAV-04, navigation.md §4
