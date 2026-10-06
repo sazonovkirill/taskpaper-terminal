@@ -1,12 +1,14 @@
-//! Step 3.4: `@today` with its marker chip, color tags that tint the text with `c` and the `mc`
-//! picker, and bookmarks with `mb`.
+//! Step 3.4: `@today` with its marker chip, color tags that tint the row's background with `c1` to
+//! `c6`, `cc` and the `mc` picker and go with `C` (D-48), and bookmarks with `mb`.
 
 use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Color};
 
-use crate::support::{BOOKMARK, DUE, Harness, STAR, line, outline_line, outline_rows};
+use crate::support::{
+    BOOKMARK, CURRENT_LINE, DUE, Harness, STAR, line, outline_line, outline_rows,
+};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -20,9 +22,18 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-/// The text color of the first character of outline row `y` after the gutter and `indent`.
-fn text_color(buffer: &Buffer, y: u16, indent: u16) -> Color {
-    buffer[(2 + indent, y)].fg
+/// The dim red background a `@red` block's row gets, and the brighter one when it is focused
+/// (D-48).
+const RED_TINT: Color = Color::Rgb(0x3b, 0x22, 0x24);
+const FOCUSED_RED_TINT: Color = Color::Rgb(0x4c, 0x2b, 0x2e);
+
+/// The background of row `y`'s cells from column `from` to the right edge, if it is the same
+/// throughout.
+fn background(buffer: &Buffer, y: u16, from: u16) -> Option<Color> {
+    let first = buffer[(from, y)].bg;
+    (from..buffer.area.width)
+        .all(|x| buffer[(x, y)].bg == first)
+        .then_some(first)
 }
 
 /// Every screen row, without trailing blanks.
@@ -33,23 +44,50 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-05, FR-TAG-06, D-26, FR-OPS-08
+// FR-TAG-05, FR-TAG-06, D-48, FR-OPS-08
 #[test]
-fn c_colors_the_focused_task_red_then_orange_and_z_undoes_it() {
+fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() {
     let mut app = Harness::with_text("- Milk\n- Bread\n", 30, 5);
     app.type_keys("jc");
+    let status = line(app.render().buffer(), 4);
+    assert!(status.ends_with(" c"), "the pending prefix shows: {status}");
+    app.type_keys("1");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 3), "- Bread");
-    assert_eq!(text_color(&buffer, 3, 2), Color::Red);
-    assert_eq!(text_color(&buffer, 2, 2), Color::Reset);
+    assert_eq!(background(&buffer, 3, 2), Some(FOCUSED_RED_TINT));
+    assert_eq!(buffer[(4, 3)].fg, Color::Reset, "the text keeps its color");
+    app.type_keys("k");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(background(&buffer, 3, 2), Some(RED_TINT));
+    assert_eq!(background(&buffer, 2, 2), Some(CURRENT_LINE));
     assert_eq!(saved(&mut app), "- Milk\n- Bread @red\n");
-    app.type_keys("c");
+    app.type_keys("jcc");
     assert_eq!(saved(&mut app), "- Milk\n- Bread @orange\n");
+    app.type_keys("c6");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread @violet\n");
+    app.press(KeyCode::Char('c'), KeyModifiers::SHIFT);
+    assert_eq!(saved(&mut app), "- Milk\n- Bread\n");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(background(&buffer, 3, 0), Some(CURRENT_LINE));
     app.type_keys("z");
-    assert_eq!(saved(&mut app), "- Milk\n- Bread @red\n");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread @violet\n");
 }
 
-// FR-TAG-05, D-5, keybindings.md §4, ui.md §1
+// FR-TAG-05, FR-OPS-07, D-48
+#[test]
+fn c_digit_and_shift_c_color_every_selected_block_in_one_step() {
+    let mut app = Harness::with_text("- Milk @blue\n- Bread\n- Eggs\n", 30, 6);
+    app.type_keys("Jc4");
+    assert_eq!(saved(&mut app), "- Milk @green\n- Bread @green\n- Eggs\n");
+    app.type_keys("C");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread\n- Eggs\n");
+    app.type_keys("z");
+    assert_eq!(saved(&mut app), "- Milk @green\n- Bread @green\n- Eggs\n");
+    app.type_keys("z");
+    assert_eq!(saved(&mut app), "- Milk @blue\n- Bread\n- Eggs\n");
+}
+
+// FR-TAG-05, D-48, keybindings.md §4, ui.md §1
 #[test]
 fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     let mut app = Harness::with_text("- Milk @yellow @x\n", 30, 14);
@@ -58,15 +96,15 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
         screen(&mut app)[2..12],
         [
             "▎ - Milk",
-            "          ┌Color:──┐",
-            "          │ Red    │",
-            "          │ Orange │",
-            "          │ Yellow │",
-            "          │ Green  │",
-            "          │ Blue   │",
-            "          │ Violet │",
-            "          │ None   │",
-            "          └────────┘",
+            "         ┌Color:────┐",
+            "         │ 1 Red    │",
+            "         │ 2 Orange │",
+            "         │ 3 Yellow │",
+            "         │ 4 Green  │",
+            "         │ 5 Blue   │",
+            "         │ 6 Violet │",
+            "         │   None   │",
+            "         └──────────┘",
         ]
     );
     let buffer = app.render().buffer().clone();
@@ -80,6 +118,13 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     press(&mut app, KeyCode::Enter);
     assert!(!screen(&mut app).iter().any(|row| row.contains("Color:")));
     assert_eq!(saved(&mut app), "- Milk @x @green\n");
+    app.type_keys("mc2");
+    assert!(!screen(&mut app).iter().any(|row| row.contains("Color:")));
+    assert_eq!(
+        saved(&mut app),
+        "- Milk @x @orange\n",
+        "a number chooses at once"
+    );
 }
 
 // FR-TAG-05, keybindings.md §4
@@ -89,11 +134,11 @@ fn typing_in_the_picker_filters_it_and_esc_closes_it_unchanged() {
     app.type_keys("mcno");
     let rows = screen(&mut app);
     assert!(
-        rows.contains(&"           │ None │".to_owned()),
+        rows.contains(&"          │   None │".to_owned()),
         "{rows:#?}"
     );
     assert!(
-        rows.contains(&"           └no────┘".to_owned()),
+        rows.contains(&"          └no──────┘".to_owned()),
         "{rows:#?}"
     );
     assert!(!rows.iter().any(|row| row.contains("Red")));
@@ -165,7 +210,7 @@ fn the_demo_shows_today_and_colors() {
         format!("Trip to Lisbon: {BOOKMARK}")
     );
     assert_eq!(
-        text_color(&buffer, row("  - Fix the broken contact form"), 4),
-        Color::Red
+        background(&buffer, row("  - Fix the broken contact form"), 4),
+        Some(RED_TINT)
     );
 }

@@ -6,11 +6,12 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, MenuInput, Mode, Paste, SelectionChange, State, TextEdit, Version, saving::Ending,
+    DateInput, MenuInput, Paste, SelectionChange, State, TextEdit, Version, saving::Ending,
     structure::NewBlock,
 };
 use crate::document::{
-    Block, DateChange, DateTag, Flag, Item, ItemId, blocks, format::Typed, structure::Shift,
+    Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
+    structure::Shift,
 };
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -143,6 +144,9 @@ pub enum Message {
     /// Give the selected blocks, else the focused block, the color after the focused block's own:
     /// none, red, orange, yellow, green, blue, violet and back to none (FR-TAG-06, D-26).
     CycleColor,
+    /// Give the selected blocks, else the focused block, `color`, or no color when `None`
+    /// (FR-TAG-05, FR-OPS-07, D-48).
+    SetColor(Option<TagColor>),
     /// Open the color picker on the focused block, for it or the selected blocks (FR-TAG-05).
     OpenColorPicker,
     /// A key of the open color picker (FR-TAG-05).
@@ -325,6 +329,7 @@ impl Message {
             | Self::ChangeDate { .. }
             | Self::ToggleFlag(_)
             | Self::CycleColor
+            | Self::SetColor(_)
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
@@ -454,6 +459,7 @@ impl State {
             Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),
             Message::ToggleFlag(flag) => self.toggle_flag(flag),
             Message::CycleColor => self.cycle_color(),
+            Message::SetColor(color) => self.set_color(color),
             Message::OpenColorPicker => self.open_color_picker(),
             Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
@@ -462,14 +468,8 @@ impl State {
             Message::TypePicker(input) => self.type_picker_input(input),
             Message::OpenDetails => self.open_details(),
             Message::CloseDetails => self.close_details(),
-            Message::Undo => match self.mode() {
-                Mode::Navigate => self.undo(),
-                Mode::Edit => self.undo_typing(),
-            },
-            Message::Redo => match self.mode() {
-                Mode::Navigate => self.redo(),
-                Mode::Edit => self.redo_typing(),
-            },
+            Message::Undo => self.undo(),
+            Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),
             Message::Text(edit) => self.edit_text(edit),
             Message::TypeSpace { today } => self.type_space(today),

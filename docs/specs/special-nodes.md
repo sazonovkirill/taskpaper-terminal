@@ -50,7 +50,7 @@ Each child line of the node starts one comment:
 ### 2.2 Display
 
 - **Badge:** a block with comments shows a comment icon and the count as a chip (`󰅺 3`), after its date chips (FR-UI-09). Without icons it shows `✎3`, or `c3` when the locale is not UTF-8 (FR-UI-10).
-- **Comments panel:** `C` in navigate mode, the context menu (FR-KEY-06) and Go to Command open a panel in the secondary sidebar on the right ([ui.md §1](ui.md#1-layout), D-28), Todoist style, replacing the shortcuts panel if it is open. Its header shows the block's display text. It lists the comments oldest first, each with its timestamp in a compact local form (`Today 12:09`, `Fri 12:09`, `4 Oct 2026 12:09`) above the text, wrapped to the panel width. An input at the bottom adds a comment.
+- **Comments panel:** its key in navigate mode, chosen with step 7.2 ([keybindings.md §2](keybindings.md#block-metadata-fr-blk-08-fr-tag-fr-done-01), D-48), the context menu (FR-KEY-06) and Go to Command open a panel in the secondary sidebar on the right ([ui.md §1](ui.md#1-layout), D-28), Todoist style, replacing the shortcuts panel if it is open. Its header shows the block's display text. It lists the comments oldest first, each with its timestamp in a compact local form (`Today 12:09`, `Fri 12:09`, `4 Oct 2026 12:09`) above the text, wrapped to the panel width. An input at the bottom adds a comment.
 - **Formatting:** comment text renders `**bold**` and `` `code` `` (FR-FMT-01), and URLs are underlined. `gx` on a comment opens its URL, or offers a picker when it has several (D-45). Tags inside comments are shown as typed, since they mean nothing there.
 - Clicking the badge opens the panel (FR-KEY-05).
 
@@ -72,7 +72,7 @@ Adding, editing or deleting a comment is one undo step (FR-OPS-08), undoable fro
 
 ### 2.4 Selections
 
-With several blocks selected, `C` opens the panel for the focused block only; comments are per block.
+With several blocks selected, the panel opens for the focused block only; comments are per block.
 
 ## 3. Later features
 

@@ -19,6 +19,14 @@ const ENTRIES: [(Option<TagColor>, &str); 7] = [
     (None, "None"),
 ];
 
+/// The color whose number `typed` is (D-48).
+fn numbered(typed: char) -> Option<TagColor> {
+    let number = typed.to_digit(10)?;
+    TagColor::ALL
+        .into_iter()
+        .find(|color| color.number() == number)
+}
+
 impl State {
     /// The color picker, while it is open.
     #[must_use]
@@ -34,13 +42,18 @@ impl State {
     }
 
     /// Applies `input` to the open color picker, and once a color or none is chosen, gives it to
-    /// the selected blocks, else the focused block.
+    /// the selected blocks, else the focused block. Typing a color's number, 1 to 6 in the
+    /// picker's order, chooses it at once (D-48).
     pub(super) fn color_picker_input(&mut self, input: MenuInput) {
-        let Some(closed) = self
-            .color_picker
-            .as_mut()
-            .and_then(|picker| picker.input(input))
-        else {
+        let Some(picker) = self.color_picker.as_mut() else {
+            return;
+        };
+        let closed = match input {
+            MenuInput::Type(typed) => numbered(typed).map(|color| Picked::Chosen(Some(color))),
+            _ => None,
+        }
+        .or_else(|| picker.input(input));
+        let Some(closed) = closed else {
             return;
         };
         self.color_picker = None;
@@ -51,7 +64,7 @@ impl State {
 
     /// Gives the selected blocks, else the focused block, `color`, or none (FR-TAG-05,
     /// FR-OPS-07).
-    fn set_color(&mut self, color: Option<TagColor>) {
+    pub(super) fn set_color(&mut self, color: Option<TagColor>) {
         let ops = self
             .targets()
             .iter()
@@ -159,6 +172,43 @@ mod tests {
         }
         pick(&mut state, MenuInput::Choose);
         assert_eq!(text(&state), "- a @red");
+    }
+
+    // FR-TAG-05, FR-OPS-07, D-48
+    #[test]
+    fn set_color_gives_every_target_the_color_or_none_in_one_step() {
+        let mut state = State::new(format::parse("- a @red\n- b\n- c @x @blue"), None);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::SetColor(Some(TagColor::Green)));
+        assert_eq!(texts(&state), ["- a @green", "- b @green", "- c @x @blue"]);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::SetColor(None));
+        assert_eq!(texts(&state), ["- a", "- b", "- c @x"]);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @green", "- b @green", "- c @x @blue"]);
+        let revision = state.document().revision();
+        state.update(Message::Select(SelectionChange::Clear));
+        state.update(Message::SetColor(Some(TagColor::Blue)));
+        assert_eq!(state.document().revision(), revision, "c is blue already");
+    }
+
+    // FR-TAG-05, D-48
+    #[test]
+    fn a_digit_in_the_picker_chooses_its_color_at_once() {
+        for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
+            let mut state = State::new(format::parse("- a @x"), None);
+            state.update(Message::OpenColorPicker);
+            pick(&mut state, MenuInput::Type(digit));
+            assert_eq!(state.color_picker(), None, "{digit}");
+            assert_eq!(text(&state), format!("- a @x @{}", color.tag()));
+        }
+        for other in ['0', '7', '9'] {
+            let mut state = State::new(format::parse("- a @red"), None);
+            state.update(Message::OpenColorPicker);
+            pick(&mut state, MenuInput::Type(other));
+            assert_eq!(listed(&state), (vec![], 0), "{other} filters");
+            assert_eq!(text(&state), "- a @red");
+        }
     }
 
     // FR-TAG-05, keybindings.md §4

@@ -19,7 +19,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else.
+- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else.
 
 ## 2. Navigate mode
 
@@ -106,13 +106,15 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Start date one day earlier / later | `[` / `]` |
 | Due date one day earlier / later | `{` / `}` |
 | Set start / due date with a prompt | `ms` / `md` |
-| Cycle color (none, red, orange, yellow, green, blue, violet) | `c` |
+| Set the color red, orange, yellow, green, blue or violet (D-48) | `c1` … `c6` |
+| Remove the color (D-48) | `C` |
+| Cycle color (none, red, orange, yellow, green, blue, violet) | `cc` (was `c`, D-48) |
 | Pick a color | `mc` |
 | Toggle today | `mt` |
 | Toggle bookmark | `mb` |
 | Convert block type | `my` |
 | Details (all tags) | `mi` |
-| Comments panel (FR-SPC-02) | `C` (was `c`) |
+| Comments panel (FR-SPC-02) | chosen with step 7.2 (`C` now removes the color, D-48) |
 | Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
 
 ### View, panes and panels
@@ -160,6 +162,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 ## 4. Other contexts
 
 - **Type menu** ([editing.md §2.3](editing.md#23-type-menu)): `p`, `s`, `n`, `t` right after `/` choose Project, Section, Note (text) or Task at once; other characters filter; `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. Divider has no letter: `/div` then `Enter`. The menu shows the type names only.
+- **Color picker** (`mc`, [editing.md §5](editing.md#5-block-commands)): a picker as below that lists each color with its number; typing `1` to `6` chooses that color at once (D-48), and other characters filter by name.
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `sec` and `Enter` makes a section.
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.

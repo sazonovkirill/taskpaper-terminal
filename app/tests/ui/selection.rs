@@ -148,11 +148,11 @@ fn structure_keys_move_and_delete_the_whole_selection() {
     assert_eq!(focused_rows(&mut app), ["  - Bakery"]);
 }
 
-// FR-OPS-07, FR-TAG-04, FR-TAG-05, D-11
+// FR-OPS-07, FR-TAG-04, FR-TAG-05, D-11, D-48
 #[test]
 fn metadata_keys_mark_every_selected_block() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jJc");
+    app.type_keys("jJcc");
     app.type_keys("mt");
     app.type_keys("mb");
     assert_eq!(

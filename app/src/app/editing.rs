@@ -4,7 +4,7 @@
 
 use jiff::civil::Date;
 
-use super::{Access, History, Notice, Restore, State};
+use super::{Access, History, Mode, Notice, Restore, State};
 use crate::document::{
     Block, DateChange, DateTag, Document, EditError, Flag, ItemId, Op, Transaction, metadata,
 };
@@ -41,14 +41,22 @@ impl State {
         self.commit_any(ops);
     }
 
-    /// Reverts the latest step and returns to where the view was before it (FR-OPS-08).
+    /// Reverts the latest step and returns to where the view was before it, or in edit mode
+    /// takes back the latest change to the text being edited (FR-OPS-08).
     pub(super) fn undo(&mut self) {
-        self.step(History::undo);
+        match self.mode() {
+            Mode::Navigate => self.step(History::undo),
+            Mode::Edit => self.undo_typing(),
+        }
     }
 
-    /// Replays the latest undone step and returns to where the view was after it (FR-OPS-08).
+    /// Replays the latest undone step and returns to where the view was after it, or in edit
+    /// mode the latest undone change to the text being edited (FR-OPS-08).
     pub(super) fn redo(&mut self) {
-        self.step(History::redo);
+        match self.mode() {
+            Mode::Navigate => self.step(History::redo),
+            Mode::Edit => self.redo_typing(),
+        }
     }
 
     /// Applies `ops` as one undoable step that keeps the focus where it is, after what an edit

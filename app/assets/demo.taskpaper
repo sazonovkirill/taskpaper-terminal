@@ -38,9 +38,10 @@ Weekend errands:
 	- Post office
 	- Bank
 	- Pharmacy
-	- Bakery
+	- Bakery @yellow
 	- Hardware store
 	Select several with J, K or v, then x completes them all and gG groups them.
+	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with [] for a task, [x] for a done task or --- for a divider, then a space.
 Packing list template:
 	- Toothbrush

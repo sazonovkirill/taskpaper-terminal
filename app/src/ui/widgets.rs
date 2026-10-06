@@ -85,22 +85,31 @@ impl Widget for OutlineView<'_> {
                 Some(editor) => (editor_line(row, editor, width).0, Line::default()),
                 None => (row_line(row, width), chips(row, self.today)),
             };
-            (index, line, chips)
+            (index, row, line, chips)
         });
-        for ((index, line, chips), (gutter_area, line_area)) in
+        for ((index, row, line, chips), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
             let focused = Some(index) == self.focused;
-            // The line patches its own styles over the band, so every foreground color and
-            // modifier survives on the focused row.
+            // The line patches its own styles over the band and the tint, so every foreground
+            // color and modifier survives on the focused and colored rows.
             if focused {
                 buf.set_style(gutter_area.union(line_area), current_line_style());
+            }
+            if let Some(color) = row.color {
+                let indent = u16::try_from(row.depth.saturating_mul(2)).unwrap_or(u16::MAX);
+                let tinted = Rect {
+                    x: line_area.x.saturating_add(indent),
+                    width: line_area.width.saturating_sub(indent),
+                    ..line_area
+                };
+                buf.set_style(tinted, Style::new().bg(tag_tint(color, focused)));
             }
             line.render(line_area, buf);
             chips.render(line_area, buf);
             if focused {
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
-            } else if self.rows.get(index).is_some_and(|row| row.selected) {
+            } else if row.selected {
                 Span::styled(FOCUS_MARKER, selection_style()).render(gutter_area, buf);
             }
         }
@@ -314,13 +323,22 @@ impl Popup {
         }
     }
 
-    /// The color picker, titled "Color:", each color's name in its tint.
+    /// The color picker, titled "Color:", each color's name in that color after its number,
+    /// which chooses it (D-48).
     #[must_use]
     pub fn colors(picker: &PickerView<Option<TagColor>>) -> Self {
-        let names = picker
+        let names: Vec<(String, Style)> = picker
             .entries
             .iter()
-            .map(|&(color, name)| (name, tint(Style::new(), color)));
+            .map(|&(color, name)| match color {
+                Some(color) => (
+                    format!("{} {name}", color.number()),
+                    Style::new().fg(tag_color(color)),
+                ),
+                None => (format!("  {name}"), Style::new()),
+            })
+            .collect();
+        let names = names.iter().map(|(name, style)| (name.as_str(), *style));
         Self {
             title: "Color:",
             entries: entries(names, picker.selected),
@@ -562,9 +580,9 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
             let mut style = style;
             if let Some(level) = heading {
                 style = style.bold();
-                match (level, row.color) {
-                    (1, None) => style = style.fg(PRIMARY),
-                    (2, None) => style = style.fg(SECONDARY),
+                match level {
+                    1 => style = style.fg(PRIMARY),
+                    2 => style = style.fg(SECONDARY),
                     _ => {}
                 }
             }
@@ -703,7 +721,7 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
         BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
     };
-    let style = tint(if row.title { style.bold() } else { style }, row.color);
+    let style = if row.title { style.bold() } else { style };
     // A done block recedes and is struck through, and everything inside it recedes; markers
     // recede with their text (D-36, D-40).
     if row.done {
@@ -783,20 +801,36 @@ fn rule(line: &Line, width: usize) -> Span<'static> {
     )
 }
 
-/// `style` with the text in `color`'s tint, if there is one (FR-TAG-05); themes arrive in step
-/// 6.2, until when orange is the 256-color orange 208 and violet the terminal's magenta.
-fn tint(style: Style, color: Option<TagColor>) -> Style {
-    let Some(color) = color else {
-        return style;
-    };
-    style.fg(match color {
+/// A color tag's own color, in which the color picker names it (FR-TAG-05); themes arrive in
+/// step 6.2, until when orange is the 256-color orange 208 and violet the terminal's magenta.
+fn tag_color(color: TagColor) -> Color {
+    match color {
         TagColor::Red => Color::Red,
         TagColor::Orange => Color::Indexed(208),
         TagColor::Yellow => Color::Yellow,
         TagColor::Green => Color::Green,
         TagColor::Blue => Color::Blue,
         TagColor::Violet => Color::Magenta,
-    })
+    }
+}
+
+/// The background a color tag gives its block's row (D-48): a very dim shade of the color, a step
+/// brighter on the focused row, as the current-line band is brighter than the background (D-39).
+/// Themes arrive in step 6.2, until when these shades are picked for dark terminals.
+fn tag_tint(color: TagColor, focused: bool) -> Color {
+    let ((r, g, b), (focused_r, focused_g, focused_b)) = match color {
+        TagColor::Red => ((0x3b, 0x22, 0x24), (0x4c, 0x2b, 0x2e)),
+        TagColor::Orange => ((0x3b, 0x2a, 0x1c), (0x4c, 0x36, 0x24)),
+        TagColor::Yellow => ((0x36, 0x32, 0x1c), (0x45, 0x40, 0x24)),
+        TagColor::Green => ((0x21, 0x33, 0x22), (0x2a, 0x42, 0x2c)),
+        TagColor::Blue => ((0x1f, 0x2a, 0x3d), (0x28, 0x36, 0x4e)),
+        TagColor::Violet => ((0x30, 0x23, 0x3d), (0x3d, 0x2d, 0x4e)),
+    };
+    if focused {
+        Color::Rgb(focused_r, focused_g, focused_b)
+    } else {
+        Color::Rgb(r, g, b)
+    }
 }
 
 /// Divider blocks: the rule-lines color, dimmed further so they recede behind the header rule
@@ -1167,74 +1201,108 @@ mod tests {
         assert_eq!(details("a"), expected);
     }
 
-    // FR-TAG-05, keybindings.md §4
+    // FR-TAG-05, keybindings.md §4, D-48
     #[test]
-    fn the_color_picker_names_each_color_in_its_tint() {
+    fn the_color_picker_names_each_color_in_it_after_its_number() {
         let mut state = State::new(format::parse("- a @blue"), None);
         state.update(Message::OpenColorPicker);
         let picker = state.color_picker().unwrap();
         let popup = Popup::colors(&picker);
-        assert_eq!(popup.size(), (10, 9));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 9));
+        assert_eq!(popup.size(), (12, 9));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 9));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "┌Color:──┐",
-            "│ Red    │",
-            "│ Orange │",
-            "│ Yellow │",
-            "│ Green  │",
-            "│ Blue   │",
-            "│ Violet │",
-            "│ None   │",
-            "└────────┘",
+            "┌Color:────┐",
+            "│ 1 Red    │",
+            "│ 2 Orange │",
+            "│ 3 Yellow │",
+            "│ 4 Green  │",
+            "│ 5 Blue   │",
+            "│ 6 Violet │",
+            "│   None   │",
+            "└──────────┘",
         ]);
-        for (y, color) in (1..).zip(TagColor::ALL) {
-            expected.set_style(Rect::new(1, y, 8, 1), tint(Style::new(), Some(color)));
+        for (y, color) in [
+            Color::Red,
+            Color::Indexed(208),
+            Color::Yellow,
+            Color::Green,
+            Color::Blue,
+            Color::Magenta,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let y = u16::try_from(y).unwrap() + 1;
+            expected.set_style(Rect::new(1, y, 10, 1), Style::new().fg(color));
         }
-        expected.set_style(Rect::new(1, 5, 8, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 5, 10, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         state.update(Message::ColorPicker(crate::app::MenuInput::Type('v')));
         let picker = state.color_picker().unwrap();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
         Popup::colors(&picker).render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["┌Color:──┐", "│ Violet │", "└v───────┘"]);
+        let mut expected = Buffer::with_lines(["┌Color:────┐", "│ 6 Violet │", "└v─────────┘"]);
         expected.set_style(
-            Rect::new(1, 1, 8, 1),
+            Rect::new(1, 1, 10, 1),
             Style::new().fg(Color::Magenta).reversed(),
         );
         assert_eq!(buf, expected);
     }
 
-    // FR-TAG-05, D-5
+    // FR-TAG-05, D-48
     #[test]
-    fn a_color_tag_tints_the_text_of_any_block_but_not_its_marker() {
-        let mut expected = Buffer::with_lines(["- a   ", "P:    ", "S     ", "n     ", "✔ d   "]);
-        expected.set_style(Rect::new(2, 0, 1, 1), Style::new().fg(Color::Red));
-        expected.set_style(
-            Rect::new(0, 1, 2, 1),
-            Style::new().bold().fg(Color::Indexed(208)),
-        );
-        expected.set_style(Rect::new(0, 2, 1, 1), Style::new().bold().fg(Color::Yellow));
-        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(Color::Green));
+    fn a_color_tag_tints_the_background_of_any_block_after_its_indent() {
+        let tint = |color| Style::new().bg(tag_tint(color, false));
+        let mut expected = Buffer::with_lines(["- a   ", "P:    ", "  S   ", "n     ", "✔ d   "]);
+        expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Red));
+        expected.set_style(Rect::new(0, 1, 6, 1), tint(TagColor::Orange));
+        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(2, 2, 4, 1), tint(TagColor::Yellow));
+        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().bold().fg(SECONDARY));
+        expected.set_style(Rect::new(0, 3, 6, 1), tint(TagColor::Green));
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 4, 6, 1), tint(TagColor::Blue));
         expected.set_style(Rect::new(0, 4, 2, 1), Style::new().dim());
-        expected.set_style(
-            Rect::new(2, 4, 1, 1),
-            Style::new().fg(Color::Blue).dim().crossed_out(),
-        );
+        expected.set_style(Rect::new(2, 4, 1, 1), Style::new().dim().crossed_out());
         assert_eq!(
             render(
-                "- a @red\nP: @orange\nS @section @yellow\nn @green\n- d @blue @done",
+                "- a @red\nP: @orange\n\tS @section @yellow\nn @green\n- d @blue @done",
                 6,
                 5
             ),
             expected
         );
         let mut expected = Buffer::with_lines(["u     "]);
+        expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Violet));
         expected.set_style(Rect::new(0, 0, 1, 1), Style::new().underlined().fg(LINK));
         assert_eq!(
             render("u @url(x) @violet", 6, 1),
             expected,
             "a link keeps the link color"
+        );
+    }
+
+    // D-39, D-48
+    #[test]
+    fn a_focused_colored_row_gets_a_brighter_tint_after_the_band() {
+        let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None).rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
+        OutlineView::new(&rows, TODAY)
+            .focused(Some(1))
+            .render(Rect::new(0, 0, 8, 3), &mut buf);
+        let band = Color::Indexed(235);
+        let bg = |x, y| buf[(x, y)].bg;
+        assert_eq!(buf[(0, 1)].symbol(), FOCUS_MARKER);
+        assert_eq!([bg(0, 1), bg(1, 1), bg(2, 1), bg(3, 1)], [band; 4]);
+        assert_eq!(bg(4, 1), tag_tint(TagColor::Green, true));
+        assert_eq!(bg(7, 1), tag_tint(TagColor::Green, true));
+        assert_eq!(bg(4, 2), tag_tint(TagColor::Green, false));
+        assert_eq!(bg(3, 2), Color::Reset, "no tint in the indent");
+        assert_eq!(bg(8, 2), Color::Reset, "no tint past the pane");
+        assert_ne!(
+            tag_tint(TagColor::Green, true),
+            tag_tint(TagColor::Green, false)
         );
     }
 
@@ -1367,7 +1435,11 @@ mod tests {
         expected.set_style(Rect::new(0, 3, 4, 1), text);
         expected.set_style(Rect::new(0, 3, 1, 1), link);
         expected.set_style(Rect::new(4, 3, 8, 1), link);
-        expected.set_style(Rect::new(0, 4, 10, 1), Style::new().fg(Color::Red).bold());
+        expected.set_style(
+            Rect::new(0, 4, 12, 1),
+            Style::new().bg(tag_tint(TagColor::Red, false)),
+        );
+        expected.set_style(Rect::new(0, 4, 10, 1), text.bold().fg(PRIMARY));
         expected.set_style(Rect::new(2, 4, 8, 1), Style::new().fg(LINK).underlined());
         expected.set_style(Rect::new(4, 5, 1, 1), Style::new().fg(LINK).underlined());
         assert_eq!(

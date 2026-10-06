@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use crate::{
     app::{DateInput, MenuInput, Message, Mode, Motion, Paste, SelectionChange, TextEdit},
-    document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
+    document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -160,7 +160,26 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(']')], |c| date(DateTag::Start, DateChange::Later, c)),
     (&[key!('{')], |c| date(DateTag::Due, DateChange::Earlier, c)),
     (&[key!('}')], |c| date(DateTag::Due, DateChange::Later, c)),
-    (&[key!('c')], |_| Message::CycleColor),
+    (&[key!('c'), key!('c')], |_| Message::CycleColor),
+    (&[key!('c'), key!('1')], |_| {
+        Message::SetColor(Some(TagColor::Red))
+    }),
+    (&[key!('c'), key!('2')], |_| {
+        Message::SetColor(Some(TagColor::Orange))
+    }),
+    (&[key!('c'), key!('3')], |_| {
+        Message::SetColor(Some(TagColor::Yellow))
+    }),
+    (&[key!('c'), key!('4')], |_| {
+        Message::SetColor(Some(TagColor::Green))
+    }),
+    (&[key!('c'), key!('5')], |_| {
+        Message::SetColor(Some(TagColor::Blue))
+    }),
+    (&[key!('c'), key!('6')], |_| {
+        Message::SetColor(Some(TagColor::Violet))
+    }),
+    (&[key!('C')], |_| Message::SetColor(None)),
     (&[key!('m'), key!('c')], |_| Message::OpenColorPicker),
     (&[key!('m'), key!('t')], |_| {
         Message::ToggleFlag(Flag::Today)
@@ -1056,14 +1075,31 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42: plain characters, which both key
-    // reportings send alike.
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48: plain characters, which both key
+    // reportings send alike, and `C`, which the kitty protocol sends as `c` with `Shift`.
     #[test]
     fn color_today_and_bookmark_keys() {
+        check(KeyCode::Char('c'), KeyModifiers::NONE, None);
+        assert_eq!(messages("cc", CONTEXT), [None, Some(Message::CycleColor)]);
+        for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
+            assert_eq!(
+                messages(&format!("c{digit}"), CONTEXT),
+                [None, Some(Message::SetColor(Some(color)))]
+            );
+        }
+        assert_eq!(
+            messages("c7j", CONTEXT),
+            [None, None, Some(Message::FocusNext)]
+        );
+        assert_eq!(
+            messages("C", CONTEXT),
+            [Some(Message::SetColor(None))],
+            "legacy reporting sends C"
+        );
         check(
             KeyCode::Char('c'),
-            KeyModifiers::NONE,
-            Some(&Message::CycleColor),
+            KeyModifiers::SHIFT,
+            Some(&Message::SetColor(None)),
         );
         for (second, expected) in [
             ('c', Message::OpenColorPicker),

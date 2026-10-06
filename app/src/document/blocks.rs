@@ -23,7 +23,7 @@ pub enum BlockKind {
     Divider,
 }
 
-/// A color tag, which tints a block's text (FR-TAG-05, D-5).
+/// A color tag, which tints a block's background (FR-TAG-05, D-48).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TagColor {
     /// `@red`.
@@ -61,6 +61,20 @@ impl TagColor {
             Self::Green => "green",
             Self::Blue => "blue",
             Self::Violet => "violet",
+        }
+    }
+
+    /// The color's number, 1 for red to 6 for violet in the order of [`Self::ALL`], by which
+    /// commands such as `c1` choose it (D-48).
+    #[must_use]
+    pub fn number(self) -> u32 {
+        match self {
+            Self::Red => 1,
+            Self::Orange => 2,
+            Self::Yellow => 3,
+            Self::Green => 4,
+            Self::Blue => 5,
+            Self::Violet => 6,
         }
     }
 
@@ -507,6 +521,13 @@ P: @blue @red
             ]
         );
         assert_eq!(marks("- a @red(x)"), [(false, false, Some(Red))]);
+    }
+
+    // D-48
+    #[test]
+    fn colors_are_numbered_from_one_in_their_order() {
+        let numbers: Vec<u32> = TagColor::ALL.into_iter().map(TagColor::number).collect();
+        assert_eq!(numbers, [1, 2, 3, 4, 5, 6]);
     }
 
     // D-26, editing.md §5
