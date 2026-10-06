@@ -150,7 +150,7 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     press(&mut app, KeyCode::Char('\\'));
     let rows = screen(&mut app);
     assert_eq!(
-        rows[3..9],
+        rows[4..10],
         [
             "  ┌Commands:─────────────────────────────────┐",
             "  │  󰅂 Go to Entry                    Enter  │",

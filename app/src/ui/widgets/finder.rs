@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::super::layout;
+use super::{super::layout, ACCENT};
 use crate::app::FinderView;
 
 /// The largest the overlay gets.
@@ -18,7 +18,8 @@ const SIZE: (u16, u16) = (80, 20);
 /// What stands before the query.
 const PROMPT: &str = "› ";
 
-/// A finder titled with what it finds, such as Go to Symbol: the query with the caret after it,
+/// A finder titled with what it finds, such as Go to Symbol, framed in the accent color like the
+/// other menus of commands: the query with the caret after it,
 /// then each matching entry's text and, dimmed after it, its detail, the highlighted one
 /// reversed and kept in view, or a dimmed line saying nothing matches.
 #[derive(Debug)]
@@ -62,7 +63,11 @@ impl<T> Widget for FinderPopup<'_, T> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = self.area(area);
         Clear.render(area, buf);
-        let frame = Block::bordered().title(self.title);
+        let accent = Style::new().fg(ACCENT);
+        let frame = Block::bordered()
+            .border_style(accent)
+            .title_style(accent)
+            .title(self.title);
         let inner = frame.inner(area);
         frame.render(area, buf);
         let mut rows = inner.rows();
@@ -103,6 +108,8 @@ impl<T> Widget for FinderPopup<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use ratatui::style::Color;
+
     use super::*;
     use crate::app::Candidate;
 
@@ -179,6 +186,8 @@ mod tests {
             "│ Two  Path    │",
             "└──────────────┘",
         ]);
+        expected.set_style(expected.area, Style::new().fg(ACCENT));
+        expected.set_style(Rect::new(1, 1, 14, 3), Style::new().fg(Color::Reset));
         expected.set_style(Rect::new(1, 3, 14, 1), Style::new().reversed());
         expected.set_style(Rect::new(5, 3, 6, 1), Style::new().reversed().dim());
         assert_eq!(buf, expected);

@@ -408,9 +408,9 @@ fn alt_enter_and_ctrl_v_open_the_focused_sidebar_entry_in_a_new_pane() {
             screen[..4],
             [
                 "  \u{f04ce} Today               │  ⌂                                  │  ⌂ › Home",
-                "  Projects              │─────────────────────────────────────│─────────────────────────────────────",
-                "    Work                │  Work:                              │  Home:",
-                "    Home                │    - Report                         │▌   - Water plants",
+                "                        │─────────────────────────────────────│─────────────────────────────────────",
+                "  Projects              │  Work:                              │  Home:",
+                "      Work              │    - Report                         │▌   - Water plants",
             ]
         );
     }
@@ -456,7 +456,7 @@ fn a_pane_is_never_wider_than_the_room_left_by_the_sidebars() {
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         screen(&mut app)[2],
-        "    Work               │▌ Work:                 │  Stop Editing             Esc",
+        "  Projects             │▌ Work:                 │  Stop Editing             Esc",
         "the one pane takes the 24 columns between the sidebars"
     );
     app.terminal.backend_mut().assert_cursor_position((30, 2));

@@ -19,8 +19,8 @@ use crate::{
 };
 
 /// The sidebar's lines: a heading over the bookmarks when there are any, the bookmarks, Today, a
-/// heading over the projects when there are any and the projects, indented 2 columns per level
-/// behind a marker of their fold. The focused entry is marked in a gutter like the outline's
+/// blank line and a heading over the projects when there are any, and the projects, indented under it and 2 columns
+/// more per level, behind a marker of their fold. The focused entry is marked in a gutter like the outline's
 /// focused block and gets the current-line band.
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
@@ -74,6 +74,9 @@ impl<'a> SidebarPanel<'a> {
                 | SidebarEntry::Project { .. } => None,
             };
             if let Some(heading) = heading {
+                if matches!(entry, SidebarEntry::Project { .. }) {
+                    lines.push((Line::default(), false));
+                }
                 lines.push((Line::styled(heading, heading_style()), false));
             }
             lines.push((entry_line(entry), Some(index) == self.view.focused));
@@ -103,7 +106,7 @@ fn entry_line(entry: &SidebarEntry) -> Line<'_> {
                 Fold::Collapsed => "▸",
             };
             Line::from(vec![
-                Span::raw(format!("{:indent$}{marker} ", "", indent = depth * 2)),
+                Span::raw(format!("{:indent$}{marker} ", "", indent = (depth + 1) * 2)),
                 Span::raw(text.as_str()),
             ])
         }
@@ -153,7 +156,7 @@ mod tests {
         let view = State::new(format::parse(text), None)
             .sidebar()
             .expect("shown by default");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 6));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
         SidebarPanel::new(&view).render(buf.area, &mut buf);
         buf
     }
@@ -181,8 +184,9 @@ mod tests {
                 format!("  {bookmark} A"),
                 format!("  {bookmark} B"),
                 format!("  {} Today", Icon::Today.glyph()),
+                String::new(),
                 "  Projects".to_owned(),
-                "    A".to_owned(),
+                "      A".to_owned(),
             ]
         );
     }
@@ -191,7 +195,7 @@ mod tests {
     #[test]
     fn headings_are_bold_and_dim() {
         let buf = draw("A: @bookmark");
-        for y in [0, 3] {
+        for y in [0, 4] {
             let modifier = buf[(2, y)].modifier;
             assert!(modifier.contains(Modifier::BOLD | Modifier::DIM), "row {y}");
         }

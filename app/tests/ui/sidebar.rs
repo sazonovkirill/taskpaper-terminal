@@ -73,16 +73,17 @@ fn listed(focused: Option<usize>) -> Vec<String> {
         "Bookmarks".to_owned(),
         format!("{BOOKMARK} Launch plan"),
         format!("{STAR} Today"),
+        String::new(),
         "Projects".to_owned(),
-        "▾ Work".to_owned(),
-        "    Reports".to_owned(),
-        "  Home".to_owned(),
+        "  ▾ Work".to_owned(),
+        "      Reports".to_owned(),
+        "    Home".to_owned(),
     ]
     .into_iter()
     .enumerate()
     .map(|(at, text)| {
         let gutter = if Some(at) == focused { "▌ " } else { "  " };
-        format!("{gutter}{text}")
+        format!("{gutter}{text}").trim_end().to_owned()
     })
     .collect()
 }
@@ -152,7 +153,11 @@ fn alt_0_and_g_0_focus_the_sidebar_where_j_k_and_the_arrows_move() {
     press(&mut app, KeyCode::Char('j'));
     assert_eq!(sidebar(&mut app), listed(Some(2)));
     press(&mut app, KeyCode::Down);
-    assert_eq!(sidebar(&mut app), listed(Some(4)), "headings are skipped");
+    assert_eq!(
+        sidebar(&mut app),
+        listed(Some(5)),
+        "headings and blank lines are skipped"
+    );
     press(&mut app, KeyCode::Char('k'));
     press(&mut app, KeyCode::Up);
     assert_eq!(sidebar(&mut app), listed(Some(1)));
@@ -212,16 +217,16 @@ fn h_and_l_and_the_arrows_fold_project_entries() {
     let mut app = app(80);
     alt_0(&mut app);
     app.type_keys("jjh");
-    let mut folded = listed(Some(4));
-    folded[4] = "▌ ▸ Work".to_owned();
-    folded.remove(5);
+    let mut folded = listed(Some(5));
+    folded[5] = "▌   ▸ Work".to_owned();
+    folded.remove(6);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Char('l'));
-    assert_eq!(sidebar(&mut app), listed(Some(4)));
+    assert_eq!(sidebar(&mut app), listed(Some(5)));
     press(&mut app, KeyCode::Left);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Right);
-    assert_eq!(sidebar(&mut app), listed(Some(4)));
+    assert_eq!(sidebar(&mut app), listed(Some(5)));
     assert_eq!(
         pane(&mut app)[3],
         format!("    - Launch plan {BOOKMARK}"),
@@ -285,14 +290,18 @@ fn the_sidebar_scrolls_to_keep_its_focused_entry_visible() {
     let mut app = Harness::with_text(&projects, 80, 6);
     app.render();
     assert_eq!(
-        sidebar(&mut app)[..2],
-        [format!("  {STAR} Today"), "  Projects".to_owned()]
+        sidebar(&mut app)[..3],
+        [
+            format!("  {STAR} Today"),
+            String::new(),
+            "  Projects".to_owned()
+        ]
     );
     alt_0(&mut app);
     app.type_keys("jjjjj");
     assert_eq!(
         sidebar(&mut app),
-        ["    P3", "    P4", "▌   P5", "    P6", "    P7"]
+        ["      P3", "      P4", "▌     P5", "      P6", "      P7"]
     );
 }
 
