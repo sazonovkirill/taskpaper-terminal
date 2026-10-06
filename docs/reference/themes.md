@@ -35,7 +35,7 @@ Each palette is mapped to the roles the UI needs. Values were copied from the or
 - **Accent**: the cursor, focused pane border and project headings.
 - **Red … Violet**: the six color tags of [FR-TAG-02](../functional-requirements.md#fr-tag--tags-as-metadata), also reused for overdue dates (red) and chips.
 
-The remaining roles in [the UI spec](../specs/ui.md#3-themes-fr-ui-0608), such as code, links, rule lines and errors, are drawn from these columns by the implementation.
+The remaining roles in [the UI spec](../specs/ui.md#3-themes-fr-ui-0608), such as links, rule lines and errors, are drawn from these columns by the implementation.
 
 | Theme | Background | Surface | Text | Muted | Accent | Red | Orange | Yellow | Green | Blue | Violet |
 |---|---|---|---|---|---|---|---|---|---|---|---|

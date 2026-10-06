@@ -35,7 +35,7 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
     assert_eq!(
         screen(&mut app)[2..12],
         [
-            "▎ Groceries",
+            "▌ Groceries",
             "    - Milk",
             "         ┌Node type:┐",
             "         │ Project  │",
@@ -66,7 +66,7 @@ fn a_line_with_a_url_keeps_it_under_its_new_type() {
     app.type_keys("mytask");
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Docs @url(https://a.b)\n- Milk\n");
-    assert_eq!(screen(&mut app)[2], "▎ - Docs");
+    assert_eq!(screen(&mut app)[2], "▌ - Docs");
     let buffer = app.render().buffer().clone();
     assert_eq!(
         buffer[(4, 2)].fg,

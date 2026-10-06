@@ -25,7 +25,7 @@ fn m_i_lists_the_tags_and_hidden_data_and_a_key_closes_it() {
     assert_eq!(
         screen(&mut app)[2..8],
         [
-            &format!("▎ - Milk{:>36}", format!("{DUE} Thu")),
+            &format!("▌ - Milk{:>36}", format!("{DUE} Thu")),
             "  -┌Details:────────────────────────────┐",
             "   │ @due(2026-10-08)                   │",
             "   │ @estimate(2h) unsupported          │",
@@ -39,7 +39,7 @@ fn m_i_lists_the_tags_and_hidden_data_and_a_key_closes_it() {
         !rows.iter().any(|row| row.contains("Details:")),
         "{rows:#?}"
     );
-    assert_eq!(rows[2], format!("▎ - Milk{:>36}", format!("{DUE} Thu")));
+    assert_eq!(rows[2], format!("▌ - Milk{:>36}", format!("{DUE} Thu")));
     app.type_keys("jmi");
     let rows = screen(&mut app);
     assert!(

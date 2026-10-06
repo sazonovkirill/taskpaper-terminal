@@ -42,7 +42,7 @@ fn slash_opens_the_menu_under_the_caret_and_a_letter_makes_a_section() {
     assert_eq!(
         screen(&mut app)[2..10],
         [
-            "▎ - Buy milk",
+            "▌ - Buy milk",
             "  - Call Ana┌Node type:┐",
             "            │ Project  │",
             "            │ Section  │",
@@ -71,7 +71,7 @@ fn typing_filters_the_menu_and_arrows_and_enter_choose() {
     assert_eq!(
         screen(&mut app)[2..7],
         [
-            "▎ Plan",
+            "▌ Plan",
             "      ┌Node type:┐",
             "      │ Project  │",
             "      │ Section  │",

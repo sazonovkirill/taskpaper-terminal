@@ -293,7 +293,7 @@ pub fn outline_line(buffer: &Buffer, y: u16) -> String {
 /// Whether row `y` carries the focus marker in the gutter, which a selected row carries dimmed.
 pub fn is_focused(buffer: &Buffer, y: u16) -> bool {
     let cell = &buffer[(buffer.area.left(), y)];
-    cell.symbol() == "▎" && !cell.modifier.contains(Modifier::DIM)
+    cell.symbol() == "▌" && !cell.modifier.contains(Modifier::DIM)
 }
 
 /// The text of every row marked as selected but not focused, after the gutter.
@@ -303,7 +303,7 @@ pub fn selected_rows(app: &mut Harness) -> Vec<String> {
     (area.top()..area.bottom())
         .filter(|&y| {
             let cell = &buffer[(area.left(), y)];
-            cell.symbol() == "▎" && cell.modifier.contains(Modifier::DIM)
+            cell.symbol() == "▌" && cell.modifier.contains(Modifier::DIM)
         })
         .map(|y| outline_line(&buffer, y))
         .collect()

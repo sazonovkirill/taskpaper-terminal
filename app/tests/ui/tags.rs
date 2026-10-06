@@ -11,7 +11,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     let mut expected = Buffer::with_lines([
         "  ⌂                                     ",
         "────────────────────────────────────────",
-        "▎ Errands:                              ",
+        "▌ Errands:                              ",
         "    - Call about the lease              ",
         "    ✔ Post the letter                   ",
         "    ✔ Buy stamps                        ",

@@ -169,7 +169,7 @@ pub struct Row {
     pub today: bool,
     /// Whether it carries `@bookmark` (D-11).
     pub bookmark: bool,
-    /// The color that tints its text (FR-TAG-05).
+    /// The color that tints its row's background (FR-TAG-05, D-48).
     pub color: Option<TagColor>,
     /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
     pub url: bool,

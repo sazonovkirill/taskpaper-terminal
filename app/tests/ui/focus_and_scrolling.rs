@@ -45,7 +45,7 @@ fn focus_starts_on_the_first_row_with_a_gutter_marker() {
     let mut expected = Buffer::with_lines([
         "  ⌂         ",
         "────────────",
-        "▎ A:        ",
+        "▌ A:        ",
         "    - b     ",
         &app.status(12),
     ]);
@@ -279,7 +279,7 @@ fn the_focused_block_gets_a_brighter_band_that_keeps_its_colors() {
     app.press(KeyCode::Enter, NONE);
     let edit = app.render().buffer().clone();
     for buffer in [&navigate, &edit] {
-        assert_eq!([line(buffer, 3), line(buffer, 4)], ["▎ first", "  second"]);
+        assert_eq!([line(buffer, 3), line(buffer, 4)], ["▌ first", "  second"]);
         for y in 2..6 {
             let band = if y == 3 { CURRENT_LINE } else { Color::Reset };
             for x in 0..16 {
@@ -295,4 +295,22 @@ fn the_focused_block_gets_a_brighter_band_that_keeps_its_colors() {
             }
         }
     }
+}
+
+// D-30, D-51
+#[test]
+fn the_focus_marker_is_a_half_block_in_the_primary_color_and_the_accent_while_editing() {
+    let mut app = Harness::with_text("- a\n- b\n", 16, 5);
+    let marker = |app: &mut Harness| {
+        let cell = app.render().buffer()[(0, 2)].clone();
+        (cell.symbol().to_owned(), cell.fg)
+    };
+    assert_eq!(marker(&mut app), ("▌".to_owned(), Color::LightBlue));
+    app.press(KeyCode::Enter, NONE);
+    assert_eq!(
+        marker(&mut app),
+        ("▌".to_owned(), Color::Rgb(0xff, 0xa6, 0x2b))
+    );
+    app.press(KeyCode::Esc, NONE);
+    assert_eq!(marker(&mut app), ("▌".to_owned(), Color::LightBlue));
 }

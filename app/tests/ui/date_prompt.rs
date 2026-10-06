@@ -48,7 +48,7 @@ fn drawn(row: &str, title: &str, text: &str, preview: &str) -> Vec<String> {
 fn md_previews_a_typed_date_and_enter_makes_it_due() {
     let mut app = Harness::with_text("- Milk\n- Bread @due(2026-10-20)\n", 50, 10);
     app.type_keys("jmd");
-    let mut expected = drawn("▎ - B", " Due date ", "2026-10-20", "Tue 20 Oct 2026");
+    let mut expected = drawn("▌ - B", " Due date ", "2026-10-20", "Tue 20 Oct 2026");
     expected[0].push_str(" days");
     assert_eq!(prompt_box(&mut app), expected);
     app.type_keys("next fri");
@@ -63,7 +63,7 @@ fn md_previews_a_typed_date_and_enter_makes_it_due() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         screen(&mut app)[3],
-        format!("▎ - Bread{:>41}", format!("{DUE} next Fri"))
+        format!("▌ - Bread{:>41}", format!("{DUE} next Fri"))
     );
     assert_eq!(saved(&mut app), "- Milk\n- Bread @due(2026-10-16)\n");
     app.type_keys("z");
@@ -87,7 +87,7 @@ fn ms_on_a_block_without_a_start_opens_empty_and_esc_changes_nothing() {
     );
     press(&mut app, KeyCode::Esc);
     assert_eq!(screen(&mut app)[3], "");
-    assert_eq!(screen(&mut app)[2], "▎ - Milk");
+    assert_eq!(screen(&mut app)[2], "▌ - Milk");
     app.type_keys("j");
     assert_eq!(saved(&mut app), "- Milk\n");
 }

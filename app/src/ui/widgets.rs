@@ -108,7 +108,12 @@ impl Widget for OutlineView<'_> {
             line.render(line_area, buf);
             chips.render(line_area, buf);
             if focused {
-                Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
+                let color = if self.editor.is_some() {
+                    ACCENT
+                } else {
+                    PRIMARY
+                };
+                Span::styled(FOCUS_MARKER, Style::new().fg(color)).render(gutter_area, buf);
             } else if row.selected {
                 Span::styled(FOCUS_MARKER, selection_style()).render(gutter_area, buf);
             }
@@ -120,8 +125,10 @@ impl Widget for OutlineView<'_> {
 /// root crumb lines up with top-level blocks (D-35).
 pub const GUTTER_WIDTH: u16 = 2;
 
-/// Marks the focused block in the gutter (D-30), and dimmed, each selected one (ui.md §2).
-const FOCUS_MARKER: &str = "▎";
+/// Marks the focused block in the gutter (D-30), in the primary color, or the accent while
+/// editing, and dimmed, each selected one (ui.md §2); a half block, twice the width of the
+/// quarter block it replaced (D-51).
+const FOCUS_MARKER: &str = "▌";
 
 /// Stands for the document root in the breadcrumbs (D-32).
 const HOME_ICON: &str = "⌂";
@@ -688,7 +695,7 @@ fn today_style() -> Style {
     Style::new().fg(Color::Yellow)
 }
 
-/// The bookmark icon (D-47), in the accent; themes arrive in step 6.2.
+/// The bookmark icon (D-47), in the primary color; themes arrive in step 6.2.
 fn bookmark_style() -> Style {
     Style::new().fg(PRIMARY)
 }
@@ -838,8 +845,13 @@ fn divider_style() -> Style {
     rule_style().dim()
 }
 
-/// The theme's accent (Textual's `$primary`), for projects; themes arrive in step 6.2.
+/// The theme's primary color (Textual's `$primary`), for projects and the focus marker in
+/// navigate mode; themes arrive in step 6.2.
 const PRIMARY: Color = Color::LightBlue;
+
+/// The theme's accent (Textual's `$accent`), for the focus marker while editing (D-51); themes
+/// arrive in step 6.2, until when it is Textual's default accent.
+const ACCENT: Color = Color::Rgb(0xff, 0xa6, 0x2b);
 
 /// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
 /// step 6.2.
@@ -1662,7 +1674,7 @@ mod tests {
             .focused(Some(0))
             .render(buf.area, &mut buf);
         let mut expected =
-            Buffer::with_lines([at_right("▎ - a", &chip(Icon::Overdue, "yesterday"), 20)]);
+            Buffer::with_lines([at_right("▌ - a", &chip(Icon::Overdue, "yesterday"), 20)]);
         expected.set_style(expected.area, current_line_style());
         expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(PRIMARY));
         expected.set_style(Rect::new(9, 0, 11, 1), overdue_style());
@@ -1681,14 +1693,20 @@ mod tests {
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 2));
         OutlineView::new(&rows, TODAY)
+            .focused(Some(0))
             .editor(editor.as_ref())
             .render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "  - a               ".to_owned(),
+            "▌ - a               ".to_owned(),
             at_right("  - b", &chip(Icon::Due, "today"), 20),
         ]);
+        expected.set_style(Rect::new(0, 0, 20, 1), current_line_style());
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(ACCENT));
         expected.set_style(Rect::new(13, 1, 7, 1), due_style());
-        assert_eq!(buf, expected);
+        assert_eq!(
+            buf, expected,
+            "the marker is in the accent while editing (D-51)"
+        );
     }
 
     #[test]
@@ -1700,7 +1718,7 @@ mod tests {
     // D-30, D-39
     #[test]
     fn marks_the_focused_row_in_the_gutter_on_a_band_without_changing_its_text() {
-        let mut expected = Buffer::with_lines(["  - a", "▎ - b", "  - c"]);
+        let mut expected = Buffer::with_lines(["  - a", "▌ - b", "  - c"]);
         expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
         expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
@@ -1742,7 +1760,7 @@ mod tests {
     #[test]
     fn starts_at_the_offset_and_marks_relative_to_it() {
         let area = Rect::new(2, 1, 6, 2);
-        let mut expected = Buffer::with_lines(["  - c ", "▎ - d "]);
+        let mut expected = Buffer::with_lines(["  - c ", "▌ - d "]);
         expected.area = area;
         expected.set_style(Rect::new(2, 2, 6, 1), current_line_style());
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
@@ -1760,7 +1778,7 @@ mod tests {
         OutlineView::new(&rows, TODAY)
             .focused(Some(1))
             .render(area, &mut buf);
-        let mut expected = Buffer::with_lines(["▎ - a", "▎ - b", "  - c"]);
+        let mut expected = Buffer::with_lines(["▌ - a", "▌ - b", "  - c"]);
         expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
         expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
         expected.set_style(Rect::new(0, 0, 1, 1), selection_style());

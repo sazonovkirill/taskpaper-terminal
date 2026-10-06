@@ -95,7 +95,7 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     assert_eq!(
         screen(&mut app)[2..12],
         [
-            "▎ - Milk",
+            "▌ - Milk",
             "         ┌Color:────┐",
             "         │ 1 Red    │",
             "         │ 2 Orange │",

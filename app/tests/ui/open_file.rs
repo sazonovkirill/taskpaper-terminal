@@ -16,7 +16,7 @@ fn shows_the_file_as_an_indented_outline() {
     let mut expected = Buffer::with_lines([
         "  ⌂                                 ",
         "────────────────────────────────────",
-        "▎ Groceries:                        ",
+        "▌ Groceries:                        ",
         "    - Milk                          ",
         "    - Bread                         ",
         "      Wholegrain if they have it.   ",
@@ -45,7 +45,7 @@ fn shows_the_demo_outline_without_a_path() {
     let mut expected = Buffer::with_lines([
         "  ⌂                                     ",
         "────────────────────────────────────────",
-        &format!("{:<40}", format!("▎ Trip to Lisbon: {BOOKMARK}")),
+        &format!("{:<40}", format!("▌ Trip to Lisbon: {BOOKMARK}")),
         "    - Book flights                      ",
         "    - Reserve a hotel near Alfama       ",
         &app.status(40),
