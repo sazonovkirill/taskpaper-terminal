@@ -35,7 +35,7 @@ Each row: indent, then the marker (if the type has one) and a space, then text, 
 |---|---|---|
 | Project | none | bold heading in the primary color (Textual's `$primary`), ending in `:` as in the file |
 | Task | `-`, done `✔` | normal; done tasks dimmed and struck through (falls back to dim), their `✔` dimmed too (D-36) |
-| Text | none | slightly dimmed; less dim than done tasks and the other dimmed blocks (D-37). A line carrying `@code` is text like any other (D-43) |
+| Text | none | slightly dimmed; less dim than done tasks and the other dimmed blocks (D-37). Until themes arrive it is the 256-color grey 248 (`#a8a8a8`), not the ANSI gray, which many terminals draw as their default foreground. A line carrying `@code` is text like any other (D-43) |
 | Section (a text block with `@section`, D-52) | none | bold italic label in the headers color (Textual's `$secondary`, D-49), no rule; children indented below |
 | Divider (a text block reading `---`, D-52) | none | in navigate mode a horizontal rule across the pane in the rule-lines color, dimmed further so it is fainter than the header rule (D-33); while edited, its raw `---` in the text style |
 

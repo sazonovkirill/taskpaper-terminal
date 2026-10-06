@@ -6,7 +6,7 @@ use ratatui::{
     style::{Color, Modifier},
 };
 
-use crate::support::{Harness, is_focused, outline_line};
+use crate::support::{Harness, TEXT, is_focused, outline_line};
 
 fn screen(app: &mut Harness) -> Buffer {
     app.render().buffer().clone()
@@ -63,7 +63,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
         "projects use the primary color"
     );
     let text = &buffer[(4, 3)];
-    assert_eq!(text.fg, Color::Gray, "text is dimmed");
+    assert_eq!(text.fg, TEXT, "text is dimmed");
     assert!(
         !text.modifier.contains(Modifier::DIM),
         "text is less dim than done tasks"
@@ -84,7 +84,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
         let cell = &buffer[(x, y)];
         assert_eq!(cell.bg, Color::Reset, "no code band at {x},{y}");
     }
-    assert_eq!(buffer[(4, 10)].fg, Color::Gray, "a code line is text");
+    assert_eq!(buffer[(4, 10)].fg, TEXT, "a code line is text");
     assert_eq!(focused_rows(&buffer), [2]);
 }
 

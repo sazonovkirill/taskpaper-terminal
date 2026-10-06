@@ -110,6 +110,9 @@ pub const OVERDUE: &str = "\u{f0a31}";
 pub const STAR: &str = "\u{f04ce}";
 pub const BOOKMARK: &str = "\u{f00c0}";
 
+/// The color of text blocks, dimmed less than done tasks (D-37).
+pub const TEXT: Color = Color::Indexed(248);
+
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
 

@@ -2,7 +2,7 @@
 
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 
-use crate::support::{CURRENT_LINE, Harness, STAR};
+use crate::support::{CURRENT_LINE, Harness, STAR, TEXT};
 
 // FR-TAG-01, FR-TAG-02, FR-TAG-04, FR-DONE-01, D-3, D-17, D-40
 #[test]
@@ -32,7 +32,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     expected.set_style(Rect::new(6, 6, 12, 1), done);
     expected.set_style(Rect::new(19, 6, 1, 1), Style::new().yellow().dim());
     expected.set_style(Rect::new(4, 7, 5, 1), project.dim().crossed_out());
-    expected.set_style(Rect::new(4, 8, 33, 1), Style::new().gray());
+    expected.set_style(Rect::new(4, 8, 33, 1), Style::new().fg(TEXT));
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
     app.render().assert_buffer(&expected);

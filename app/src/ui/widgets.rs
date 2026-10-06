@@ -937,8 +937,9 @@ const PRIMARY: Color = Color::LightBlue;
 const ACCENT: Color = Color::Rgb(0xff, 0xa6, 0x2b);
 
 /// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
-/// step 6.2.
-const TEXT: Color = Color::Gray;
+/// step 6.2. A fixed grey, `#a8a8a8`, because many terminals draw the ANSI gray as their default
+/// foreground, which left text undimmed.
+const TEXT: Color = Color::Indexed(248);
 
 /// The theme's link color, for every link (ui.md §2, D-45); themes arrive in step 6.2.
 const LINK: Color = Color::Cyan;
