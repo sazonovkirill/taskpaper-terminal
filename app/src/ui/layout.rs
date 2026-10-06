@@ -11,6 +11,73 @@ const SCROLL_MARGIN: usize = 2;
 /// The narrowest screen with room for the sidebar beside the panes (ui.md §1).
 const SIDEBAR_SCREEN: u16 = 80;
 
+/// The narrowest a pane gets, in columns ([navigation.md §5]).
+///
+/// [navigation.md §5]: ../../../docs/specs/navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13
+pub const PANE_MIN: u16 = 30;
+
+/// How many columns narrowing or widening a pane takes or gives (navigation.md §5).
+const PANE_STEP: u16 = 4;
+
+/// The width of each pane in a strip `width` columns wide, from left to right, for panes whose
+/// widths are `chosen`, `None` for one that takes its share: a chosen width is kept, within
+/// [`PANE_MIN`] and the strip's width, and the others share what is left equally, the leftmost
+/// taking the columns that do not divide, none narrower than [`PANE_MIN`]. No pane is wider than
+/// the strip, so the focused one always fits in view, even on a strip narrower than
+/// [`PANE_MIN`]. The panes may need more than the strip, which then scrolls ([`strip_offset`]),
+/// or leave some of it empty.
+#[must_use]
+pub fn pane_widths(width: u16, chosen: &[Option<u16>]) -> Vec<u16> {
+    let least = PANE_MIN.min(width);
+    let fixed = |chosen: u16| chosen.clamp(least, width);
+    let taken: u16 = chosen
+        .iter()
+        .flatten()
+        .fold(0, |sum, &chosen| sum.saturating_add(fixed(chosen)));
+    let sharing =
+        u16::try_from(chosen.iter().filter(|chosen| chosen.is_none()).count()).unwrap_or(u16::MAX);
+    let left = width.saturating_sub(taken);
+    let share = left.checked_div(sharing).unwrap_or_default();
+    let mut extra = left.checked_rem(sharing).unwrap_or_default();
+    chosen
+        .iter()
+        .map(|chosen| {
+            if let Some(chosen) = chosen {
+                return fixed(*chosen);
+            }
+            let one = u16::from(extra > 0);
+            extra -= one;
+            (share + one).max(least)
+        })
+        .collect()
+}
+
+/// A pane `width` columns wide narrowed by a step, but no narrower than [`PANE_MIN`].
+#[must_use]
+pub fn narrower(width: u16) -> u16 {
+    width.saturating_sub(PANE_STEP).max(PANE_MIN)
+}
+
+/// A pane `width` columns wide widened by a step, but no wider than a strip `strip` columns wide.
+#[must_use]
+pub fn wider(width: u16, strip: u16) -> u16 {
+    width.saturating_add(PANE_STEP).min(strip)
+}
+
+/// How many columns of a strip of panes `total` columns wide to scroll past to show it in a view
+/// `view` columns wide, scrolling as little as possible from `offset` to keep the focused pane,
+/// at the columns `focused`, fully in view, or its start when it is wider than the view, and
+/// never past the strip's end ([navigation.md §5]).
+///
+/// [navigation.md §5]: ../../../docs/specs/navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13
+#[must_use]
+pub fn strip_offset(offset: u16, focused: Range<u16>, view: u16, total: u16) -> u16 {
+    offset
+        .max(focused.end.saturating_sub(view))
+        .min(focused.start)
+        .min(total.saturating_sub(view))
+}
+
 /// The sidebar's width on a screen `width` columns wide: a quarter of it, within 24 to 32
 /// columns, or `None` below 80 columns, where the sidebar hides (ui.md §1).
 #[must_use]
@@ -177,6 +244,79 @@ mod tests {
         assert_eq!(
             secondary_sidebar(Rect::new(0, 0, 100, 9), body),
             (body, None)
+        );
+    }
+
+    // FR-UI-02, FR-UI-03, navigation.md §5
+    #[test]
+    fn panes_share_the_strip_equally_the_leftmost_taking_what_does_not_divide() {
+        assert_eq!(pane_widths(80, &[None]), [80]);
+        assert_eq!(pane_widths(80, &[None, None]), [40, 40]);
+        assert_eq!(pane_widths(100, &[None, None, None]), [34, 33, 33]);
+        assert_eq!(pane_widths(101, &[None, None, None]), [34, 34, 33]);
+    }
+
+    // FR-UI-03, navigation.md §5
+    #[test]
+    fn panes_are_never_narrower_than_30_columns_nor_wider_than_the_strip() {
+        assert_eq!(pane_widths(80, &[None, None, None]), [30, 30, 30]);
+        assert_eq!(
+            pane_widths(20, &[None, None]),
+            [20, 20],
+            "nor wider than a strip below 30"
+        );
+        assert_eq!(pane_widths(0, &[]), Vec::<u16>::new());
+    }
+
+    // FR-UI-03, navigation.md §5
+    #[test]
+    fn a_chosen_width_is_kept_and_the_other_panes_share_the_rest() {
+        assert_eq!(pane_widths(100, &[Some(36), None]), [36, 64]);
+        assert_eq!(pane_widths(100, &[None, Some(44), None]), [30, 44, 30]);
+        assert_eq!(
+            pane_widths(100, &[Some(36), Some(40)]),
+            [36, 40],
+            "the rest of the strip stays empty"
+        );
+        assert_eq!(
+            pane_widths(100, &[Some(12), Some(140)]),
+            [30, 100],
+            "within 30 columns and the strip"
+        );
+        assert_eq!(pane_widths(20, &[Some(26)]), [20], "a strip below 30");
+    }
+
+    // FR-UI-03, navigation.md §5
+    #[test]
+    fn narrowing_and_widening_go_by_4_columns_within_30_and_the_strip() {
+        assert_eq!(narrower(40), 36);
+        assert_eq!(narrower(33), 30);
+        assert_eq!(narrower(30), 30);
+        assert_eq!(narrower(3), 30);
+        assert_eq!(wider(40, 100), 44);
+        assert_eq!(wider(98, 100), 100);
+        assert_eq!(wider(100, 100), 100);
+        assert_eq!(wider(20, 20), 20, "a strip below 30");
+    }
+
+    // FR-UI-03, navigation.md §5
+    #[test]
+    fn the_strip_scrolls_as_little_as_it_must_to_show_the_focused_pane_whole() {
+        assert_eq!(strip_offset(0, 0..40, 80, 120), 0);
+        assert_eq!(strip_offset(0, 80..120, 80, 120), 40, "to its right edge");
+        assert_eq!(strip_offset(40, 40..80, 80, 120), 40, "already in view");
+        assert_eq!(strip_offset(40, 0..40, 80, 120), 0, "back to its left edge");
+        assert_eq!(strip_offset(0, 30..60, 50, 90), 10);
+        assert_eq!(
+            strip_offset(70, 30..60, 50, 90),
+            30,
+            "from a scroll past it"
+        );
+        assert_eq!(strip_offset(40, 0..40, 80, 40), 0, "never past the end");
+        assert_eq!(
+            strip_offset(0, 30..100, 50, 100),
+            30,
+            "its start when wider"
         );
     }
 

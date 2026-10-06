@@ -41,6 +41,7 @@ pub use edit_mode::{Editor, Mode};
 pub use external::{DiffLine, Version};
 pub use finder::{Candidate, FinderView};
 pub use history::{History, Restore};
+pub use pane::{PaneChange, PaneId, PaneView};
 pub use picker::PickerView;
 pub use save_as::{SaveAs, SaveAsStatus, SaveAsView};
 pub use saving::SaveState;

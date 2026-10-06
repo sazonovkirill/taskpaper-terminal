@@ -15,7 +15,9 @@ use jiff::civil::Date;
 pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
 
-use super::{Message, NewBlock, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit};
+use super::{
+    Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit,
+};
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
 /// A command: one user intent, whatever key, menu or palette gives it.
@@ -167,6 +169,13 @@ pub enum Command {
     EditNext,
     /// Toggle inline formatting around the edited text's selection.
     ToggleMarker(Marker),
+    /// Open, focus or close panes.
+    Pane(PaneChange),
+    /// Make the focused pane narrower, which the frontend carries out, since widths are
+    /// presentation (FR-UI-03).
+    NarrowPane,
+    /// Make the focused pane wider, which the frontend carries out.
+    WidenPane,
 }
 
 /// What a frontend knows that a command's message carries.
@@ -278,13 +287,17 @@ impl Command {
             Self::EditNext => "Edit Next Block".into(),
             Self::ToggleMarker(Marker::Bold) => "Bold".into(),
             Self::ToggleMarker(Marker::Code) => "Inline Code".into(),
+            Self::Pane(change) => pane_name(change),
+            Self::NarrowPane => "Narrow Pane".into(),
+            Self::WidenPane => "Widen Pane".into(),
         }
     }
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
-    /// [`Command::ToggleWrap`], which the frontend carries out, and for
-    /// [`Command::GoToCommand`], whose message carries the bindings the frontend shows.
+    /// [`Command::ToggleWrap`], [`Command::NarrowPane`] and [`Command::WidenPane`], which the
+    /// frontend carries out, and for [`Command::GoToCommand`], whose message carries the bindings
+    /// the frontend shows.
     #[must_use]
     pub fn message(self, inputs: &Inputs) -> Option<Message> {
         let today = inputs.today;
@@ -331,7 +344,11 @@ impl Command {
             Self::OpenColorPicker => Message::OpenColorPicker,
             Self::SetSection(on) => Message::SetSection(on),
             Self::OpenTypePicker => Message::OpenTypePicker,
-            Self::Retype(_) | Self::ToggleWrap | Self::GoToCommand => return None,
+            Self::Retype(_)
+            | Self::ToggleWrap
+            | Self::GoToCommand
+            | Self::NarrowPane
+            | Self::WidenPane => return None,
             Self::OpenDetails => Message::OpenDetails,
             Self::GoToSymbol => Message::OpenGoToSymbol,
             Self::MoveTo => Message::OpenMoveTo,
@@ -362,6 +379,7 @@ impl Command {
             Self::EditPrevious => Message::EditPrevious,
             Self::EditNext => Message::EditNext,
             Self::ToggleMarker(marker) => Message::Text(TextEdit::Toggle(marker)),
+            Self::Pane(change) => Message::Pane(change),
         })
     }
 }
@@ -371,6 +389,18 @@ fn date_name(tag: DateTag) -> &'static str {
     match tag {
         DateTag::Start => "Start",
         DateTag::Due => "Due",
+    }
+}
+
+/// The name of [`Command::Pane`] making `change`.
+fn pane_name(change: PaneChange) -> Cow<'static, str> {
+    match change {
+        PaneChange::Open => "Open in New Pane".into(),
+        PaneChange::OpenLocation => "Open Location in New Pane".into(),
+        PaneChange::Focus(at) => format!("Focus Pane {}", at + 1).into(),
+        PaneChange::FocusLeft => "Focus Pane Left".into(),
+        PaneChange::FocusRight => "Focus Pane Right".into(),
+        PaneChange::Close => "Close Pane".into(),
     }
 }
 
@@ -486,6 +516,18 @@ mod tests {
             (Command::Sidebar(SidebarInput::Expand), "Expand Entry"),
             (Command::Sidebar(SidebarInput::Choose), "Go to Entry"),
             (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
+            (Command::Pane(PaneChange::Open), "Open in New Pane"),
+            (
+                Command::Pane(PaneChange::OpenLocation),
+                "Open Location in New Pane",
+            ),
+            (Command::Pane(PaneChange::Focus(0)), "Focus Pane 1"),
+            (Command::Pane(PaneChange::Focus(8)), "Focus Pane 9"),
+            (Command::Pane(PaneChange::FocusLeft), "Focus Pane Left"),
+            (Command::Pane(PaneChange::FocusRight), "Focus Pane Right"),
+            (Command::Pane(PaneChange::Close), "Close Pane"),
+            (Command::NarrowPane, "Narrow Pane"),
+            (Command::WidenPane, "Widen Pane"),
         ] {
             assert_eq!(command.name(), name);
         }
@@ -536,18 +578,25 @@ mod tests {
                 Command::Sidebar(SidebarInput::Choose),
                 Message::Sidebar(SidebarInput::Choose),
             ),
+            (
+                Command::Pane(PaneChange::Focus(2)),
+                Message::Pane(PaneChange::Focus(2)),
+            ),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }
     }
 
     // D-44: a type change is a change of the edit session, which no message makes; wrapping is
-    // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06).
+    // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06) and the
+    // widths of panes (navigation.md §5).
     #[test]
-    fn retyping_toggling_wrap_and_going_to_a_command_send_no_message() {
+    fn retyping_toggling_wrap_going_to_a_command_and_resizing_send_no_message() {
         assert_eq!(Command::Retype(Typed::Project).message(&INPUTS), None);
         assert_eq!(Command::ToggleWrap.message(&INPUTS), None);
         assert_eq!(Command::GoToCommand.message(&INPUTS), None);
+        assert_eq!(Command::NarrowPane.message(&INPUTS), None);
+        assert_eq!(Command::WidenPane.message(&INPUTS), None);
     }
 
     #[test]
@@ -555,7 +604,11 @@ mod tests {
         for entry in REGISTRY {
             let none = matches!(
                 entry.command,
-                Command::Retype(_) | Command::ToggleWrap | Command::GoToCommand
+                Command::Retype(_)
+                    | Command::ToggleWrap
+                    | Command::GoToCommand
+                    | Command::NarrowPane
+                    | Command::WidenPane
             );
             assert_eq!(entry.command.message(&INPUTS).is_none(), none, "{entry:?}");
         }

@@ -299,8 +299,9 @@ impl State {
         }
     }
 
-    /// Replaces the document with `document`, keeping the zoom, the focus, the history, the
-    /// selection and the collapsed blocks and project entries on the blocks they were on. An edit session ends with
+    /// Replaces the document with `document`, keeping each pane's zoom, focus, history and
+    /// selection and the collapsed blocks and project entries on the blocks they were on; a
+    /// focus that finds no block moves as after any change. An edit session ends with
     /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
     /// closes with it, as does an edit a command of the command menu would resume (D-50), and so
     /// do Go to Symbol and Move to, whose candidates name blocks of the old document, and the
@@ -314,27 +315,18 @@ impl State {
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
-        self.pane.location = self.pane.location.rematched(nearest);
-        self.pane.history = self
-            .pane
-            .history
-            .iter()
-            .map(|location| location.rematched(nearest))
-            .collect();
-        self.pane.focus = self.pane.focus.and_then(nearest);
         let exact = |id: ItemId| {
             rematch(&old, &self.document, id).and_then(|(id, exact)| exact.then_some(id))
         };
+        for pane in std::iter::once(&mut self.pane).chain(&mut self.others) {
+            pane.rematch(nearest, exact);
+        }
         self.folds = self
             .folds
             .iter()
             .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
-        self.pane.selection = self.pane.selection.mapped(exact);
         self.sidebar.rematch_folds(exact);
-        if self.pane.focus.is_none() {
-            self.pane.focus = self.rows().first().map(|row| row.id);
-        }
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
     }

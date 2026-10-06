@@ -29,7 +29,7 @@ impl State {
     }
 
     /// The commands on the selected blocks, else the focused block, that the pane takes where it
-    /// is.
+    /// is, then those of the panes.
     fn block_commands(&self) -> Vec<Vec<NodeCommand>> {
         let blocks = self.targets();
         if blocks.is_empty() {
@@ -47,7 +47,9 @@ impl State {
             today: self.today,
             page_rows: 0,
         };
+        let alone = focused.is_some();
         let mut groups = context_commands(&blocks, focused);
+        groups.push(self.pane_commands(alone));
         for group in &mut groups {
             group.retain(|entry| {
                 entry
@@ -139,7 +141,14 @@ mod tests {
         assert!(shown(&state).contains(&"Toggle Fold".to_owned()));
         let mut linked = open("- See https://example.com\n");
         linked.update(Message::OpenContextMenu);
-        assert_eq!(shown(&linked).last().map(String::as_str), Some("Open Link"));
+        let listed = shown(&linked);
+        let panes = listed.iter().rposition(|label| label == "|").unwrap();
+        assert_eq!(listed[panes - 1], "Open Link", "last of the view group");
+        assert_eq!(
+            listed[panes + 1..],
+            ["Open in New Pane", "Open Location in New Pane"],
+            "the panes group, without Close Pane while there is one pane"
+        );
     }
 
     // FR-KEY-06, FR-OPS-07
@@ -182,7 +191,13 @@ mod tests {
         state.update(Message::OpenContextMenu);
         assert_eq!(
             shown(&state),
-            ["Go to Entry", "|", "Return to Outline", "Hide Sidebar"]
+            [
+                "Go to Entry",
+                "Open in New Pane",
+                "|",
+                "Return to Outline",
+                "Hide Sidebar"
+            ]
         );
         assert_eq!(
             menu(&mut state, MenuInput::Choose),

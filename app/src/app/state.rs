@@ -31,8 +31,9 @@ use crate::document::{
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
-/// whether it is saved, the pane with its focus, selection and zoom, any edit session on the
-/// focused block, the collapsed blocks, the sidebar and the status-line notice.
+/// whether it is saved, the panes, each with its focus, selection and zoom, any edit session on
+/// the focused pane's focused block, the collapsed blocks, the sidebar and the status-line
+/// notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -50,8 +51,14 @@ pub struct State {
     pub(super) today: Date,
     /// The notice the status line shows, and until when.
     notice: Option<(Notice, Duration)>,
-    /// The focused pane (FR-UI-02).
+    /// The pane that has the keys (FR-UI-02).
     pub(super) pane: Pane,
+    /// The other panes from left to right.
+    pub(super) others: Vec<Pane>,
+    /// The focused pane's position among all panes: how many of `others` are left of it.
+    pub(super) pane_at: usize,
+    /// The latest pane's number, which tells it apart from the others.
+    pub(super) pane_ids: u64,
     /// The edit session of the focused block, in edit mode (FR-MODE-01).
     pub(super) edit: Option<Session>,
     /// The color picker over the focused block, while it is open (FR-TAG-05).
@@ -92,6 +99,14 @@ pub enum Location {
 }
 
 impl Location {
+    /// The block shown as the root, or `None` at home and in the Today view (FR-NAV-03).
+    pub(super) fn zoom(self) -> Option<ItemId> {
+        match self {
+            Self::Outline(zoom) => zoom,
+            Self::Today => None,
+        }
+    }
+
     /// This location with its zoom block replaced by what `rematch` finds for it, home when it
     /// finds nothing.
     pub(super) fn rematched(self, rematch: impl FnOnce(ItemId) -> Option<ItemId>) -> Self {
@@ -263,7 +278,10 @@ impl State {
             now: Duration::ZERO,
             today: Date::default(),
             notice: None,
-            pane: Pane::at(Location::Outline(None)),
+            pane: Pane::first(),
+            others: Vec::new(),
+            pane_at: 0,
+            pane_ids: 0,
             edit: None,
             color_picker: None,
             date_prompt: None,
@@ -391,7 +409,12 @@ impl State {
     /// FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
-        self.zoom_block_of(&self.pane)
+        self.breadcrumbs_of(&self.pane)
+    }
+
+    /// The breadcrumbs of `pane`, as [`State::breadcrumbs`] gives them.
+    pub(super) fn breadcrumbs_of(&self, pane: &Pane) -> Vec<String> {
+        self.zoom_block_of(pane)
             .map(|block| self.path_to(&block))
             .unwrap_or_default()
     }

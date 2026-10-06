@@ -7,7 +7,8 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SaveAs, TextEdit,
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
+    TextEdit,
     commands::{REGISTRY, SIDEBAR},
 };
 
@@ -58,6 +59,10 @@ pub enum KeyAction {
     ToggleWrap,
     /// Opens Go to Command, listing the bindings the frontend shows (FR-NAV-06).
     GoToCommand,
+    /// Makes the focused pane narrower, as widths are the frontend's to choose (FR-UI-03).
+    NarrowPane,
+    /// Makes the focused pane wider.
+    WidenPane,
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -216,6 +221,12 @@ const MENU: &[(Key, MenuInput)] = &[
     (key!(ctrl 'n'), MenuInput::Next),
     (key!(Backspace), MenuInput::Erase),
 ];
+
+/// The keys of Go to Symbol that open the highlighted block in a new pane instead of going to
+/// it ([keybindings.md §4]).
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const OPEN_IN_NEW_PANE: [Key; 2] = [key!(alt Enter), key!(ctrl 'v')];
 
 /// The message of the open `menu` for `key`: `Ctrl+Q` quits, a menu binding, else typing the
 /// character it is, as in edit mode.
@@ -385,21 +396,28 @@ pub fn labels(keys: &[&str]) -> String {
 }
 
 /// How the keys that give `command` read on screen, each as [`label`] writes it, separated by
-/// commas: its navigate-mode bindings, else its bindings in the focused sidebar.
+/// commas: its navigate-mode bindings, else its bindings in the focused sidebar, or the other way
+/// round where the `sidebar` has the keys.
 #[must_use]
-pub fn bindings(command: Command) -> String {
-    REGISTRY
-        .iter()
-        .find(|entry| entry.mode == Mode::Navigate && entry.command == command)
-        .map(|entry| entry.keys)
-        .or_else(|| {
-            SIDEBAR
-                .iter()
-                .find(|&&(bound, _)| bound == command)
-                .map(|&(_, keys)| keys)
-        })
-        .map(labels)
-        .unwrap_or_default()
+pub fn bindings(command: Command, sidebar: bool) -> String {
+    let navigate = || {
+        REGISTRY
+            .iter()
+            .find(|entry| entry.mode == Mode::Navigate && entry.command == command)
+            .map(|entry| entry.keys)
+    };
+    let focused_sidebar = || {
+        SIDEBAR
+            .iter()
+            .find(|&&(bound, _)| bound == command)
+            .map(|&(_, keys)| keys)
+    };
+    let keys = if sidebar {
+        focused_sidebar().or_else(navigate)
+    } else {
+        navigate().or_else(focused_sidebar)
+    };
+    keys.map(labels).unwrap_or_default()
 }
 
 /// What giving `command` asks for, its message carrying what it needs of `context`, as its keys
@@ -409,6 +427,8 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
     match command {
         Command::ToggleWrap => Some(KeyAction::ToggleWrap),
         Command::GoToCommand => Some(KeyAction::GoToCommand),
+        Command::NarrowPane => Some(KeyAction::NarrowPane),
+        Command::WidenPane => Some(KeyAction::WidenPane),
         command => command.message(&context.inputs()).map(KeyAction::Send),
     }
 }
@@ -570,6 +590,9 @@ impl Keymap {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::ColorPicker => menu_message(pressed, Menu::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Menu::TypePicker),
+                Overlay::GoToSymbol if OPEN_IN_NEW_PANE.contains(&pressed) => {
+                    Some(Message::Pane(PaneChange::Open))
+                }
                 Overlay::GoToSymbol => menu_message(pressed, Menu::GoToSymbol),
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
@@ -656,7 +679,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{NewBlock, SelectionChange, SidebarInput},
+        app::{NewBlock, PaneChange, SelectionChange, SidebarInput},
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
 
@@ -671,7 +694,10 @@ mod tests {
             self.action_for(event, now, context)
                 .and_then(|action| match action {
                     KeyAction::Send(message) => Some(message),
-                    KeyAction::ToggleWrap | KeyAction::GoToCommand => None,
+                    KeyAction::ToggleWrap
+                    | KeyAction::GoToCommand
+                    | KeyAction::NarrowPane
+                    | KeyAction::WidenPane => None,
                 })
         }
     }
@@ -2140,11 +2166,29 @@ mod tests {
     // FR-KEY-06, ui.md §5
     #[test]
     fn a_commands_bindings_are_its_navigate_keys_or_its_sidebar_keys() {
-        assert_eq!(bindings(Command::ContextMenu), "\\, Shift+F10, Menu");
-        assert_eq!(bindings(Command::Count), "");
-        assert_eq!(bindings(Command::Retype(Typed::Task)), "", "edit mode's");
-        assert_eq!(bindings(Command::Sidebar(SidebarInput::Choose)), "Enter");
-        assert_eq!(bindings(Command::Sidebar(SidebarInput::Next)), "j, ↓");
+        assert_eq!(bindings(Command::ContextMenu, false), "\\, Shift+F10, Menu");
+        assert_eq!(bindings(Command::Count, false), "");
+        assert_eq!(
+            bindings(Command::Retype(Typed::Task), false),
+            "",
+            "edit mode's"
+        );
+        assert_eq!(
+            bindings(Command::Sidebar(SidebarInput::Choose), false),
+            "Enter"
+        );
+        assert_eq!(
+            bindings(Command::Sidebar(SidebarInput::Next), false),
+            "j, ↓"
+        );
+        let open = Command::Pane(PaneChange::Open);
+        assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v");
+        assert_eq!(
+            bindings(open, true),
+            "Alt+Enter, Ctrl+V",
+            "the sidebar's own"
+        );
+        assert_eq!(bindings(Command::Undo, true), "z, Ctrl+Z", "no sidebar key");
     }
 
     // FR-NAV-05, keybindings.md §2 and §4
@@ -2178,6 +2222,128 @@ mod tests {
             keymap.message_for(&char('g'), ms(3), finding),
             Some(Message::Menu(Menu::GoToSymbol, MenuInput::Type('g')))
         );
+    }
+
+    /// What the keys `presses` ask for in turn from a fresh keymap in `context`.
+    fn actions(presses: &[(KeyCode, KeyModifiers)], context: &Context) -> Vec<Option<KeyAction>> {
+        let mut keymap = Keymap::default();
+        presses
+            .iter()
+            .map(|&(code, modifiers)| keymap.action_for(&key(code, modifiers), ms(0), context))
+            .collect()
+    }
+
+    // FR-UI-03, keybindings.md §1–2, D-42: `Ctrl+\` has the classic variant `Ctrl+W v`, and
+    // legacy reporting's `Ctrl+4` is not bound.
+    #[test]
+    fn ctrl_backslash_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
+        let ctrl = KeyModifiers::CONTROL;
+        let none = KeyModifiers::NONE;
+        let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
+        assert_eq!(
+            actions(&[(KeyCode::Char('\\'), ctrl)], CONTEXT),
+            [pane(PaneChange::Open)]
+        );
+        assert_eq!(actions(&[(KeyCode::Char('4'), ctrl)], CONTEXT), [None]);
+        for (c, expected) in [
+            ('v', pane(PaneChange::Open)),
+            ('s', pane(PaneChange::OpenLocation)),
+            ('h', pane(PaneChange::FocusLeft)),
+            ('l', pane(PaneChange::FocusRight)),
+            ('c', pane(PaneChange::Close)),
+            ('<', Some(KeyAction::NarrowPane)),
+            ('>', Some(KeyAction::WidenPane)),
+            ('x', None),
+        ] {
+            assert_eq!(
+                actions(
+                    &[(KeyCode::Char('w'), ctrl), (KeyCode::Char(c), none)],
+                    CONTEXT
+                ),
+                [None, expected],
+                "Ctrl+W {c}"
+            );
+        }
+        assert_eq!(
+            actions(
+                &[(KeyCode::Char('w'), ctrl), (KeyCode::Char('v'), none)],
+                EDITING
+            ),
+            [
+                Some(KeyAction::Send(Message::Text(TextEdit::DeleteWordBackward))),
+                Some(KeyAction::Send(Message::Text(TextEdit::Insert('v')))),
+            ],
+            "edit mode keeps Ctrl+W"
+        );
+    }
+
+    // FR-UI-03, keybindings.md §2, D-42: `Alt+1` … `Alt+9` have the classic variants `g1` …
+    // `g9`, beside `Alt+0` and `g0` for the sidebar.
+    #[test]
+    fn alt_and_g_with_a_digit_focus_that_pane() {
+        for (at, digit) in ('1'..='9').enumerate() {
+            let focus = Some(Message::Pane(PaneChange::Focus(at)));
+            check(KeyCode::Char(digit), KeyModifiers::ALT, focus.as_ref());
+            assert_eq!(messages(&format!("g{digit}"), CONTEXT), [None, focus]);
+        }
+    }
+
+    // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with
+    // `Shift`.
+    #[test]
+    fn alt_shift_h_and_l_narrow_and_widen_the_pane() {
+        let alt = KeyModifiers::ALT;
+        let alt_shift = KeyModifiers::ALT | KeyModifiers::SHIFT;
+        for (code, modifiers, expected) in [
+            (KeyCode::Char('H'), alt, KeyAction::NarrowPane),
+            (KeyCode::Char('h'), alt_shift, KeyAction::NarrowPane),
+            (KeyCode::Char('L'), alt, KeyAction::WidenPane),
+            (KeyCode::Char('l'), alt_shift, KeyAction::WidenPane),
+        ] {
+            assert_eq!(
+                actions(&[(code, modifiers)], CONTEXT),
+                [Some(expected)],
+                "{modifiers:?} {code:?}"
+            );
+        }
+        assert_eq!(
+            action(Command::NarrowPane, CONTEXT),
+            Some(KeyAction::NarrowPane),
+            "as Go to Command gives it"
+        );
+        assert_eq!(
+            action(Command::WidenPane, CONTEXT),
+            Some(KeyAction::WidenPane)
+        );
+    }
+
+    // FR-UI-03, navigation.md §5–6, keybindings.md §4, D-42: `Alt+Enter` has the classic variant
+    // `Ctrl+V` in Go to Symbol and the sidebar, and means nothing to other pickers.
+    #[test]
+    fn alt_enter_and_ctrl_v_open_the_choice_of_go_to_symbol_and_the_sidebar_in_a_new_pane() {
+        let open = Some(KeyAction::Send(Message::Pane(PaneChange::Open)));
+        let finding = &Context {
+            overlay: Some(Overlay::GoToSymbol),
+            ..*CONTEXT
+        };
+        let moving = &Context {
+            overlay: Some(Overlay::MoveTo),
+            ..*CONTEXT
+        };
+        for (code, modifiers) in [
+            (KeyCode::Enter, KeyModifiers::ALT),
+            (KeyCode::Char('v'), KeyModifiers::CONTROL),
+        ] {
+            assert_eq!(
+                actions(&[(code, modifiers)], finding),
+                std::slice::from_ref(&open)
+            );
+            assert_eq!(
+                actions(&[(code, modifiers)], IN_SIDEBAR),
+                std::slice::from_ref(&open)
+            );
+            assert_eq!(actions(&[(code, modifiers)], moving), [None]);
+        }
     }
 
     // FR-OPS-05, keybindings.md §2 and §4

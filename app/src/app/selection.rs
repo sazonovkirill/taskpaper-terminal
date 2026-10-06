@@ -2,7 +2,7 @@
 //! toggle and clear it, and which blocks a command then takes
 //! ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01), FR-OPS-01).
 
-use super::State;
+use super::{State, pane::Pane};
 use crate::document::{Block, ItemId, blocks};
 
 /// A change to which blocks are selected (FR-OPS-01).
@@ -130,23 +130,22 @@ impl State {
         self.pane.selection = Selection::default();
     }
 
-    /// Unselects the blocks no row shows any more, because they were deleted, folded away or
+    /// Unselects the blocks no row of `pane` shows any more, because they were deleted, folded away or
     /// left out of the zoom, so a command never acts on a block the user cannot see.
-    pub(super) fn keep_visible_selection(&mut self) {
-        if !self.selecting() {
+    pub(super) fn keep_visible_selection(&self, pane: &mut Pane) {
+        if pane.selection.picked.is_empty() {
             return;
         }
-        let rows: Vec<ItemId> = self.rows().into_iter().map(|row| row.id).collect();
-        self.pane.selection.picked.retain(|id| rows.contains(id));
+        let rows: Vec<ItemId> = self.rows_of(pane).into_iter().map(|row| row.id).collect();
+        pane.selection.picked.retain(|id| rows.contains(id));
         // A run whose head is hidden ends anyway, because the focus left it.
-        if self
-            .pane
+        if pane
             .selection
             .run
             .as_ref()
             .is_some_and(|run| !rows.contains(&run.anchor))
         {
-            self.pane.selection.run = None;
+            pane.selection.run = None;
         }
     }
 

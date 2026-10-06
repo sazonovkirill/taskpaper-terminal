@@ -46,16 +46,16 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
         rows[3..9],
         [
             "▌   - Book the hotel",
-            "      ┌Commands:─────────────────────────────────────────┐",
-            "    - │  󰅂 Edit                                   Enter  │",
-            "  Othe│  󰅂 New Block Below                            o  │",
-            "      │  󰅂 New Block Above                            O  │",
-            "      │  󰅂 New Block as Last Child                    i  │",
+            "      ┌Commands:───────────────────────────────────────────┐",
+            "    - │  󰅂 Edit                                     Enter  │",
+            "  Othe│  󰅂 New Block Below                              o  │",
+            "      │  󰅂 New Block Above                              O  │",
+            "      │  󰅂 New Block as Last Child                      i  │",
         ],
         "anchored at the task's text, below it"
     );
     assert_eq!(
-        rows[14], "      └──────────────────────────────────────────────────┘",
+        rows[14], "      └────────────────────────────────────────────────────┘",
         "no taller than the room below the task"
     );
     let buffer = app.render().buffer().clone();
@@ -152,12 +152,12 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     assert_eq!(
         rows[3..9],
         [
-            "  ┌Commands:──────────────────────┐the hotel",
-            "  │  󰅂 Go to Entry         Enter  │the station",
-            "  │───────────────────────────────│",
-            "  │  󰅂 Return to Outline     Esc  │",
-            "  │  󰅂 Hide Sidebar       Ctrl+B  │",
-            "  └───────────────────────────────┘",
+            "  ┌Commands:─────────────────────────────────┐",
+            "  │  󰅂 Go to Entry                    Enter  │",
+            "  │  󰅂 Open in New Pane   Alt+Enter, Ctrl+V  │",
+            "  │──────────────────────────────────────────│",
+            "  │  󰅂 Return to Outline                Esc  │",
+            "  │  󰅂 Hide Sidebar                  Ctrl+B  │",
         ],
         "under the focused entry"
     );

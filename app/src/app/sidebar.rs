@@ -5,7 +5,7 @@
 use std::collections::HashSet;
 
 use super::{
-    Location, State,
+    Location, PaneChange, State,
     commands::{Command, NodeCommand},
 };
 use crate::document::{BlockKind, ItemId, blocks};
@@ -79,6 +79,16 @@ pub enum SidebarEntry {
         /// Whether its child projects are listed.
         fold: Fold,
     },
+}
+
+impl SidebarEntry {
+    /// Where choosing the entry goes: into its block, or the Today view.
+    fn location(&self) -> Location {
+        match self {
+            Self::Bookmark { id, .. } | Self::Project { id, .. } => Location::Outline(Some(*id)),
+            Self::Today => Location::Today,
+        }
+    }
 }
 
 /// Whether a project entry's child projects are listed.
@@ -160,13 +170,7 @@ impl State {
                 }
             }
             SidebarInput::Choose => {
-                let location = focused.map(|entry| match entry {
-                    SidebarEntry::Bookmark { id, .. } | SidebarEntry::Project { id, .. } => {
-                        Location::Outline(Some(*id))
-                    }
-                    SidebarEntry::Today => Location::Today,
-                });
-                if let Some(location) = location {
+                if let Some(location) = focused.map(SidebarEntry::location) {
                     self.sidebar.focus = None;
                     self.go_to(location);
                 }
@@ -175,8 +179,16 @@ impl State {
         }
     }
 
+    /// Where the focused entry goes, while the sidebar has the keys.
+    pub(super) fn sidebar_location(&self) -> Option<Location> {
+        let entries = self.sidebar_entries();
+        entries
+            .get(self.sidebar_focus(&entries)?)
+            .map(SidebarEntry::location)
+    }
+
     /// The commands the context menu offers on the focused entry while the sidebar has the keys:
-    /// going to it and folding a project entry with child projects, then leaving or hiding the
+    /// going to it, opening it in a new pane and folding a project entry with child projects, then leaving or hiding the
     /// sidebar (FR-KEY-06).
     pub(super) fn sidebar_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
         let entries = self.sidebar_entries();
@@ -196,10 +208,10 @@ impl State {
             | SidebarEntry::Bookmark { .. }
             | SidebarEntry::Today => None,
         };
-        let entry = [SidebarInput::Choose]
+        let entry = [NodeCommand::named(Command::Sidebar(SidebarInput::Choose))]
             .into_iter()
-            .chain(fold)
-            .map(|input| NodeCommand::named(Command::Sidebar(input)))
+            .chain([NodeCommand::named(Command::Pane(PaneChange::Open))])
+            .chain(fold.map(|input| NodeCommand::named(Command::Sidebar(input))))
             .collect();
         let sidebar = vec![
             NodeCommand::named(Command::Sidebar(SidebarInput::Leave)),
@@ -562,39 +574,48 @@ Home: @bookmark
 
     // FR-KEY-06
     #[test]
-    fn the_focused_entrys_commands_go_to_it_fold_it_and_leave_or_hide_the_sidebar() {
+    fn the_focused_entrys_commands_go_to_it_open_it_fold_it_and_leave_or_hide_the_sidebar() {
         let mut state = open(OUTLINE);
         assert_eq!(entry_commands(&state), None, "the pane has the keys");
         state.update(Message::FocusSidebar);
         let leave = "Return to Outline, Hide Sidebar".to_owned();
         assert_eq!(
             entry_commands(&state),
-            Some(vec!["Go to Entry".to_owned(), leave.clone()]),
+            Some(vec![
+                "Go to Entry, Open in New Pane".to_owned(),
+                leave.clone()
+            ]),
             "a bookmark"
         );
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
         assert_eq!(
             entry_commands(&state),
-            Some(vec!["Go to Entry".to_owned(), leave.clone()]),
+            Some(vec![
+                "Go to Entry, Open in New Pane".to_owned(),
+                leave.clone()
+            ]),
             "Today"
         );
         input(&mut state, &[SidebarInput::Next]);
         assert_eq!(
             entry_commands(&state),
             Some(vec![
-                "Go to Entry, Collapse Entry".to_owned(),
+                "Go to Entry, Open in New Pane, Collapse Entry".to_owned(),
                 leave.clone()
             ])
         );
         input(&mut state, &[SidebarInput::Collapse]);
         assert_eq!(
             entry_commands(&state),
-            Some(vec!["Go to Entry, Expand Entry".to_owned(), leave.clone()])
+            Some(vec![
+                "Go to Entry, Open in New Pane, Expand Entry".to_owned(),
+                leave.clone()
+            ])
         );
         input(&mut state, &[SidebarInput::Next]);
         assert_eq!(
             entry_commands(&state),
-            Some(vec!["Go to Entry".to_owned(), leave]),
+            Some(vec!["Go to Entry, Open in New Pane".to_owned(), leave]),
             "a project without child projects"
         );
         let groups = state.sidebar_commands().unwrap();

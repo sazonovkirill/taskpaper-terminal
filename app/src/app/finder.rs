@@ -75,6 +75,14 @@ impl<T: Clone> Finder<T> {
         }
     }
 
+    /// The value of the highlighted candidate, or `None` when the query matches none.
+    pub(super) fn highlighted(&self) -> Option<&T> {
+        self.ranked
+            .get(self.selected)
+            .and_then(|&index| self.candidates.get(index))
+            .map(|candidate| &candidate.value)
+    }
+
     /// Ranks the candidates the query matches: by tier, then by how well their text matches,
     /// then in the order given. Each word of the query must match, fuzzily, ignoring case unless
     /// it has a capital (navigation.md §8); characters such as `!` or `^` match themselves.
@@ -118,13 +126,7 @@ impl<T: Clone> Finder<T> {
             MenuInput::Next => {
                 self.selected = (self.selected + 1).min(self.ranked.len().saturating_sub(1));
             }
-            MenuInput::Choose => {
-                return self
-                    .ranked
-                    .get(self.selected)
-                    .and_then(|&index| self.candidates.get(index))
-                    .map(|candidate| Picked::Chosen(candidate.value.clone()));
-            }
+            MenuInput::Choose => return self.highlighted().cloned().map(Picked::Chosen),
             MenuInput::Dismiss => return Some(Picked::Cancelled),
         }
         None

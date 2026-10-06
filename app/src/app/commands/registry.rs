@@ -5,7 +5,7 @@
 
 use super::Command;
 use crate::{
-    app::{Mode, NewBlock, Paste, SelectionChange, SidebarInput},
+    app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput},
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -370,6 +370,86 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["\\", "shift+f10", "menu"],
     ),
+    entry!(
+        Command::Pane(PaneChange::Open),
+        Mode::Navigate,
+        &["ctrl+\\", "ctrl+w v"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::OpenLocation),
+        Mode::Navigate,
+        &["ctrl+w s"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(0)),
+        Mode::Navigate,
+        &["alt+1", "g 1"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(1)),
+        Mode::Navigate,
+        &["alt+2", "g 2"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(2)),
+        Mode::Navigate,
+        &["alt+3", "g 3"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(3)),
+        Mode::Navigate,
+        &["alt+4", "g 4"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(4)),
+        Mode::Navigate,
+        &["alt+5", "g 5"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(5)),
+        Mode::Navigate,
+        &["alt+6", "g 6"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(6)),
+        Mode::Navigate,
+        &["alt+7", "g 7"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(7)),
+        Mode::Navigate,
+        &["alt+8", "g 8"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Focus(8)),
+        Mode::Navigate,
+        &["alt+9", "g 9"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::FocusLeft),
+        Mode::Navigate,
+        &["ctrl+w h"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::FocusRight),
+        Mode::Navigate,
+        &["ctrl+w l"],
+    ),
+    entry!(
+        Command::Pane(PaneChange::Close),
+        Mode::Navigate,
+        &["ctrl+w c"]
+    ),
+    entry!(
+        Command::NarrowPane,
+        Mode::Navigate,
+        &["ctrl+w <", "alt+shift+h"],
+    ),
+    entry!(
+        Command::WidenPane,
+        Mode::Navigate,
+        &["ctrl+w >", "alt+shift+l"],
+    ),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),
@@ -406,6 +486,7 @@ pub const SIDEBAR: &[(Command, &[&str])] = &[
     (Command::Sidebar(SidebarInput::Collapse), &["h", "left"]),
     (Command::Sidebar(SidebarInput::Expand), &["l", "right"]),
     (Command::Sidebar(SidebarInput::Choose), &["enter"]),
+    (Command::Pane(PaneChange::Open), &["alt+enter", "ctrl+v"]),
     (Command::Sidebar(SidebarInput::Leave), &["esc"]),
     (Command::ContextMenu, &["\\", "shift+f10", "menu"]),
     (Command::ToggleSidebar, &["ctrl+b"]),
@@ -547,6 +628,8 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::GoToSymbol,
             Command::GoToCommand,
             Command::ContextMenu,
+            Command::Pane(PaneChange::Open),
+            Command::Pane(PaneChange::Close),
             Command::Quit,
         ],
     ),
@@ -674,7 +757,7 @@ mod tests {
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 7),
-                ("View and Panels", 6),
+                ("View and Panels", 8),
             ]
         );
         assert_eq!(
@@ -685,7 +768,7 @@ mod tests {
         let (_, editing) = &edit[0];
         assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[5].keys, ["ctrl+q"]);
+        assert_eq!(view[7].keys, ["ctrl+q"]);
     }
 
     // FR-UI-01, FR-KEY-06, keybindings.md §4

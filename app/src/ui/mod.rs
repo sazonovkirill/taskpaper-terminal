@@ -7,20 +7,23 @@ pub mod layout;
 mod theme;
 pub mod widgets;
 
-use std::{path::PathBuf, time::Duration};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 use crossterm::event::{Event, KeyModifiers};
 use jiff::Zoned;
 use ratatui::{
     Frame, Terminal,
     backend::Backend,
-    layout::{Constraint, Layout},
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
     text::Line,
+    widgets::{Block, Borders, Widget},
 };
 
 use crate::app::{
-    Effect, Location, Message, Mode, Origin, SaveAs, SidebarInput, State, commands::REGISTRY,
+    Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
+    commands::REGISTRY,
 };
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
@@ -60,9 +63,15 @@ pub struct Tui {
     keymap: Keymap,
     /// Whether text too long for its line wraps, or ends in `…` (FR-UI-05).
     wrap: bool,
-    /// The first outline line on screen.
-    scroll: usize,
-    /// The outline's height at the last draw, which a page motion moves.
+    /// The first outline line on screen of each pane.
+    scrolls: HashMap<PaneId, usize>,
+    /// How many columns of the strip of panes are scrolled past on its left (navigation.md §5).
+    strip_scroll: u16,
+    /// The focused pane's width at the last draw, which narrowing and widening change.
+    pane_width: u16,
+    /// The width of the strip of panes at the last draw, the most a pane is widened to.
+    strip_width: u16,
+    /// The focused pane's outline height at the last draw, which a page motion moves.
     page_rows: usize,
     /// The outline line the focused block started on at the last draw, counted from the top of
     /// the screen.
@@ -111,7 +120,10 @@ impl Tui {
             midnight: None,
             keymap: Keymap::default(),
             wrap: true,
-            scroll: 0,
+            scrolls: HashMap::new(),
+            strip_scroll: 0,
+            pane_width: 0,
+            strip_width: 0,
             page_rows: 0,
             focus_line: None,
             page_anchor: None,
@@ -235,16 +247,17 @@ impl Tui {
             .min()
     }
 
-    /// When the local date changes, counted like `now`, if the outline shows a date chip, which the
-    /// new date names differently, or the pane shows the Today view, whose entries it changes.
+    /// When the local date changes, counted like `now`, if a pane shows a date chip, which the
+    /// new date names differently, or the Today view, whose entries it changes.
     fn next_midnight(&self, now: Duration) -> Option<Duration> {
-        if self.state.location() != Location::Today
-            && !self
-                .state
-                .rows()
-                .iter()
-                .any(|row| row.start.is_some() || row.due.is_some())
-        {
+        let dated = self.state.panes().iter().any(|pane| {
+            pane.location == Location::Today
+                || pane
+                    .rows
+                    .iter()
+                    .any(|row| row.start.is_some() || row.due.is_some())
+        });
+        if !dated {
             return None;
         }
         let local = (self.clock)();
@@ -279,6 +292,14 @@ impl Tui {
         match action {
             KeyAction::Send(message) => self.send(message, now),
             KeyAction::ToggleWrap => self.wrap = !self.wrap,
+            KeyAction::NarrowPane => {
+                let width = layout::narrower(self.pane_width);
+                self.send(Message::ResizePane(width), now);
+            }
+            KeyAction::WidenPane => {
+                let width = layout::wider(self.pane_width, self.strip_width);
+                self.send(Message::ResizePane(width), now);
+            }
             KeyAction::GoToCommand => {
                 let bindings = REGISTRY
                     .iter()
@@ -352,9 +373,9 @@ impl Tui {
         }
     }
 
-    /// Draws the whole screen: the breadcrumb header over a rule, the outline scrolled to keep the focus
-    /// visible, the shortcuts panel at the right while open, the date prompt's panel below them
-    /// while open, and the status line.
+    /// Draws the whole screen: the sidebar, the panes side by side, each a breadcrumb header over
+    /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
+    /// while open, the date prompt's panel below them while open, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
         let screen = frame.area();
         self.width = screen.width;
@@ -375,36 +396,25 @@ impl Tui {
         ]));
         let screen_body = body;
         let (body, entry) = self.draw_sidebar(frame, body);
-        let (pane, sidebar) = match self.state.shortcuts() {
+        let (strip, sidebar) = match self.state.shortcuts() {
             Some(_) => layout::secondary_sidebar(screen, body),
             None => (body, None),
         };
-        let [header, separator, outline] = pane.layout(&Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
+        // Popups over the panes go below their headers, over every pane.
+        let [_, outline] = strip.layout(&Layout::vertical([
+            Constraint::Length(2),
             Constraint::Fill(1),
         ]));
-        let [_, crumbs] = header.layout(&Layout::horizontal([
-            Constraint::Length(widgets::GUTTER_WIDTH),
-            Constraint::Fill(1),
-        ]));
-        let header = match self.state.location() {
-            Location::Outline(_) => {
-                widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(crumbs.width))
-            }
-            Location::Today => widgets::today_header(),
-        };
-        frame.render_widget(header, crumbs);
-        frame.render_widget(
-            Line::styled(
-                "─".repeat(usize::from(separator.width)),
-                widgets::rule_style(),
-            ),
-            separator,
-        );
-        let focused = self.draw_outline(frame, outline);
+        let small = screen.width < 40 || screen.height < 10;
+        let focused = self.draw_panes(frame, strip, small);
         // Centered popups go over the sidebar, which a narrow screen draws over the outline.
         self.draw_shortcuts(frame, sidebar);
+        if let Some(caret) = focused.caret {
+            frame.set_cursor_position(caret);
+            if let Some(menu) = self.state.command_menu() {
+                draw_anchored(frame, Popup::commands(&menu), outline, caret);
+            }
+        }
         let centered = self
             .state
             .color_picker()
@@ -440,10 +450,11 @@ impl Tui {
             let anchor = if self.state.sidebar_focused() {
                 entry
             } else {
-                focused
+                focused.block
             };
             if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
-                draw_anchored(frame, Popup::context_menu(&menu), screen_body, anchor);
+                let popup = Popup::context_menu(&menu, self.state.sidebar_focused());
+                draw_anchored(frame, popup, screen_body, anchor);
             }
         }
         self.draw_status(frame, status);
@@ -451,6 +462,125 @@ impl Tui {
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
         }
+    }
+
+    /// The panes side by side in `strip`, each as wide as [`layout::pane_widths`] makes it, the
+    /// strip scrolled to keep the focused pane fully in view, or on a `small` screen only the
+    /// focused pane, across the strip (ui.md §1); returns what overlays need of the focused pane.
+    fn draw_panes(&mut self, frame: &mut Frame, strip: Rect, small: bool) -> FocusedPane {
+        let mut panes = self.state.panes();
+        self.scrolls
+            .retain(|id, _| panes.iter().any(|pane| pane.id == *id));
+        if small {
+            panes.retain(|pane| pane.focused);
+        }
+        let widths = if small {
+            vec![strip.width]
+        } else {
+            let chosen: Vec<Option<u16>> = panes.iter().map(|pane| pane.width).collect();
+            layout::pane_widths(strip.width, &chosen)
+        };
+        let starts: Vec<u16> = widths
+            .iter()
+            .scan(0u16, |start, &width| {
+                let this = *start;
+                *start = start.saturating_add(width);
+                Some(this)
+            })
+            .collect();
+        let total = widths
+            .iter()
+            .fold(0u16, |sum, &width| sum.saturating_add(width));
+        let at = panes
+            .iter()
+            .position(|pane| pane.focused)
+            .unwrap_or_default();
+        let start = starts.get(at).copied().unwrap_or_default();
+        let width = widths.get(at).copied().unwrap_or_default();
+        self.pane_width = width;
+        self.strip_width = strip.width;
+        self.strip_scroll =
+            layout::strip_offset(self.strip_scroll, start..start + width, strip.width, total);
+        let mut focused = FocusedPane::default();
+        let count = panes.len();
+        for (index, (pane, (&start, &width))) in
+            panes.iter().zip(starts.iter().zip(&widths)).enumerate()
+        {
+            let divider = index + 1 < count;
+            let left = start.saturating_sub(self.strip_scroll);
+            let skipped = self.strip_scroll.saturating_sub(start);
+            let shown = width
+                .saturating_sub(skipped)
+                .min(strip.width.saturating_sub(left));
+            if shown == 0 {
+                continue;
+            }
+            let x = strip.x.saturating_add(left);
+            if shown == width {
+                let area = Rect::new(x, strip.y, width, strip.height);
+                let drawn = self.draw_pane(frame.buffer_mut(), area, pane, divider);
+                if pane.focused {
+                    focused = drawn;
+                }
+            } else {
+                // A pane cut off at an edge of the strip is drawn whole and shown in part. It
+                // never has the keys, as the focused pane always fits in view, so the overlays
+                // need nothing of it.
+                let area = Rect::new(0, strip.y, width, strip.height);
+                let mut whole = Buffer::empty(area);
+                self.draw_pane(&mut whole, area, pane, divider);
+                let shown = Rect::new(x, strip.y, shown, strip.height);
+                copy(&whole, skipped, frame.buffer_mut(), shown);
+            }
+        }
+        focused
+    }
+
+    /// `pane` in `area` with a rule on its right edge when `divider` says another pane follows:
+    /// its breadcrumb header, dimmed unless it has the keys (ui.md §1), over a rule and its
+    /// outline; returns what overlays need of it.
+    fn draw_pane(
+        &mut self,
+        buf: &mut Buffer,
+        area: Rect,
+        pane: &PaneView,
+        divider: bool,
+    ) -> FocusedPane {
+        let area = if divider {
+            let rule = Block::new()
+                .borders(Borders::RIGHT)
+                .border_style(widgets::rule_style());
+            let inner = rule.inner(area);
+            rule.render(area, buf);
+            inner
+        } else {
+            area
+        };
+        let [header, separator, outline] = area.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ]));
+        let [_, crumbs] = header.layout(&Layout::horizontal([
+            Constraint::Length(widgets::GUTTER_WIDTH),
+            Constraint::Fill(1),
+        ]));
+        let line = match pane.location {
+            Location::Outline(_) => {
+                widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width))
+            }
+            Location::Today => widgets::today_header(),
+        };
+        line.render(crumbs, buf);
+        if !pane.focused {
+            buf.set_style(crumbs, Style::new().dim());
+        }
+        Line::styled(
+            "─".repeat(usize::from(separator.width)),
+            widgets::rule_style(),
+        )
+        .render(separator, buf);
+        self.draw_outline(buf, outline, pane)
     }
 
     /// The conflict prompt over `area`, its diff scrolled no further than its last page.
@@ -470,19 +600,17 @@ impl Tui {
         }
     }
 
-    /// The outline in `area`, scrolled to keep the focused block in view, and while editing the
-    /// caret with the command menu at it, unless the conflict prompt covers them; returns where
-    /// the focused block's text starts on screen, if a block is focused.
-    fn draw_outline(
-        &mut self,
-        frame: &mut Frame,
-        area: ratatui::layout::Rect,
-    ) -> Option<(u16, u16)> {
-        let rows = self.state.rows();
-        let focused = self.focused_index();
-        let editor = self.state.editor();
-        let view = OutlineView::new(&rows, (self.clock)().date())
-            .focused(focused)
+    /// `pane`'s outline in `area`, scrolled to keep its focused block in view, which is marked
+    /// when the pane has the keys, and drawn as its editor while editing; returns, for the pane
+    /// with the keys, where the caret and the focused block's text are on screen.
+    fn draw_outline(&mut self, buf: &mut Buffer, area: Rect, pane: &PaneView) -> FocusedPane {
+        let rows = &pane.rows;
+        let focused = pane
+            .focus
+            .and_then(|focus| rows.iter().position(|row| row.id == focus));
+        let editor = self.state.editor().filter(|_| pane.focused);
+        let view = OutlineView::new(rows, (self.clock)().date())
+            .focused(focused.filter(|_| pane.focused))
             .editor(editor.as_ref())
             .wrap(self.wrap);
         // The first screen line of each row, and the line after the last.
@@ -498,41 +626,48 @@ impl Tui {
             .collect();
         let start = |index: usize| starts.get(index).copied().unwrap_or_default();
         let focus = focused.map_or(0..1, |index| start(index)..start(index + 1));
-        if let Some(line) = self.page_anchor.take() {
-            self.scroll = focus.start.saturating_sub(line);
-        }
-        self.page_rows = usize::from(area.height);
-        let lines = starts.last().copied().unwrap_or_default();
-        self.scroll = layout::scroll_offset(self.scroll, focus.clone(), self.page_rows, lines);
-        self.focus_line = focused.map(|_| focus.start.saturating_sub(self.scroll));
-        frame.render_widget(view.offset(self.scroll), area);
-        if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
-            && let Some(row) = focused.and_then(|index| rows.get(index))
-        {
-            let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
-            let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
-            let x = u16::try_from(column)
-                .unwrap_or(u16::MAX)
-                .min(text_width.saturating_sub(1));
-            let y = u16::try_from(focus.start.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
-            let caret = (
-                area.x.saturating_add(widgets::GUTTER_WIDTH + x),
-                area.y.saturating_add(y),
-            );
-            frame.set_cursor_position(caret);
-            if let Some(menu) = self.state.command_menu() {
-                draw_anchored(frame, Popup::commands(&menu), area, caret);
+        let mut scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
+        if pane.focused {
+            if let Some(line) = self.page_anchor.take() {
+                scroll = focus.start.saturating_sub(line);
             }
+            self.page_rows = usize::from(area.height);
         }
-        let row = focused.and_then(|index| rows.get(index))?;
-        let column = u16::try_from(widgets::text_column(row)).unwrap_or(u16::MAX);
-        let line = u16::try_from(self.focus_line?).unwrap_or(u16::MAX);
-        Some((
-            area.x
-                .saturating_add(widgets::GUTTER_WIDTH)
-                .saturating_add(column),
-            area.y.saturating_add(line),
-        ))
+        let lines = starts.last().copied().unwrap_or_default();
+        scroll = layout::scroll_offset(scroll, focus.clone(), usize::from(area.height), lines);
+        self.scrolls.insert(pane.id, scroll);
+        view.offset(scroll).render(area, buf);
+        if !pane.focused {
+            return FocusedPane::default();
+        }
+        self.focus_line = focused.map(|_| focus.start.saturating_sub(scroll));
+        let line = u16::try_from(focus.start.saturating_sub(scroll)).unwrap_or(u16::MAX);
+        let row = focused.and_then(|index| rows.get(index));
+        let caret = editor
+            .as_ref()
+            .filter(|_| !self.state.in_conflict())
+            .zip(row)
+            .map(|(editor, row)| {
+                let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
+                let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
+                let x = u16::try_from(column)
+                    .unwrap_or(u16::MAX)
+                    .min(text_width.saturating_sub(1));
+                (
+                    area.x.saturating_add(widgets::GUTTER_WIDTH + x),
+                    area.y.saturating_add(line),
+                )
+            });
+        let block = row.map(|row| {
+            let column = u16::try_from(widgets::text_column(row)).unwrap_or(u16::MAX);
+            (
+                area.x
+                    .saturating_add(widgets::GUTTER_WIDTH)
+                    .saturating_add(column),
+                area.y.saturating_add(line),
+            )
+        });
+        FocusedPane { caret, block }
     }
 
     /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
@@ -631,16 +766,34 @@ impl Tui {
         }
     }
 
-    /// The position of the focused row among the outline's rows.
-    fn focused_index(&self) -> Option<usize> {
-        let focus = self.state.focus()?;
-        self.state.rows().iter().position(|row| row.id == focus)
-    }
-
     /// Whether the user asked to quit.
     #[must_use]
     pub fn should_quit(&self) -> bool {
         self.quit
+    }
+}
+
+/// What overlays need of the pane with the keys, as drawn: where the caret is while editing, and
+/// where the focused block's text starts.
+#[derive(Debug, Default)]
+struct FocusedPane {
+    caret: Option<(u16, u16)>,
+    block: Option<(u16, u16)>,
+}
+
+/// Copies the columns of `from` starting `skipped` columns from its left onto `area` of `to`.
+fn copy(from: &Buffer, skipped: u16, to: &mut Buffer, area: Rect) {
+    for y in area.top()..area.bottom() {
+        for (offset, x) in (area.left()..area.right()).enumerate() {
+            let column = from
+                .area
+                .x
+                .saturating_add(skipped)
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            if let (Some(cell), Some(target)) = (from.cell((column, y)), to.cell_mut((x, y))) {
+                *target = cell.clone();
+            }
+        }
     }
 }
 

@@ -421,10 +421,12 @@ impl Popup {
     }
 
     /// The context menu: the command menu's box, with each command's keys right-aligned in the
-    /// primary color and its filter as typed (FR-KEY-06, ui.md §5).
+    /// primary color, those of the focused sidebar when the `sidebar` has the keys, and its
+    /// filter as typed (FR-KEY-06, ui.md §5).
     #[must_use]
-    pub fn context_menu(menu: &CommandMenuView) -> Self {
-        Self::command_list(menu, keymap::bindings, menu.filter.to_owned())
+    pub fn context_menu(menu: &CommandMenuView, sidebar: bool) -> Self {
+        let keys = |command| keymap::bindings(command, sidebar);
+        Self::command_list(menu, keys, menu.filter.to_owned())
     }
 
     /// A menu of commands titled "Commands:" in the accent color like its border, each entry
@@ -1465,7 +1467,7 @@ mod tests {
                 crate::app::MenuInput::Type(c),
             ));
         }
-        let popup = Popup::context_menu(&state.context_menu().unwrap());
+        let popup = Popup::context_menu(&state.context_menu().unwrap(), false);
         assert_eq!(popup.size(), (23, 4));
         let mut buf = Buffer::empty(Rect::new(0, 0, 23, 4));
         popup.render(buf.area, &mut buf);

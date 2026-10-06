@@ -6,8 +6,11 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, Paste, SaveAs, SelectionChange, SidebarInput, State,
-    TextEdit, Version, saving::Ending, structure::NewBlock,
+    Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
+    SidebarInput, State, TextEdit, Version,
+    pane::{Pane, landing},
+    saving::Ending,
+    structure::NewBlock,
 };
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
@@ -277,6 +280,11 @@ pub enum Message {
     },
     /// Change which blocks are selected (FR-OPS-01).
     Select(SelectionChange),
+    /// Open, focus or close panes (FR-UI-02, FR-UI-03).
+    Pane(PaneChange),
+    /// Keep this width for the focused pane, which the frontend chose when narrowing or widening
+    /// it (FR-UI-03).
+    ResizePane(u16),
     /// Put the selected blocks, else the focused block, under a new text block where the first
     /// one was, and edit it (FR-OPS-04).
     Group,
@@ -336,7 +344,8 @@ impl Message {
             | Self::Copy
             | Self::Cut
             | Self::Paste(_)
-            | Self::Pasted { .. } => false,
+            | Self::Pasted { .. }
+            | Self::ResizePane(_) => false,
             Self::Quit
             | Self::Terminate
             | Self::KeepMine
@@ -393,7 +402,8 @@ impl Message {
             | Self::MoveDown
             | Self::OpenUrl
             | Self::Select(_)
-            | Self::Group => true,
+            | Self::Group
+            | Self::Pane(_) => true,
             Self::Menu(menu, _) => menu.ends_editing(),
         }
     }
@@ -499,9 +509,9 @@ impl State {
         if message.ends_editing() {
             self.stop_editing();
         }
+        let landmarks = self.landmarks();
         let mut effects = self.dispatch(message);
-        self.repair_focus();
-        self.keep_visible_selection();
+        self.repair_panes(&landmarks);
         self.expire_notice();
         effects.extend(self.save_if_due());
         effects
@@ -553,8 +563,8 @@ impl State {
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(Location::Outline(None)),
-            Message::Back => self.walk_history(self.pane.history_at.checked_sub(1)),
-            Message::Forward => self.walk_history(self.pane.history_at.checked_add(1)),
+            Message::Back => self.walk_history(false),
+            Message::Forward => self.walk_history(true),
             Message::ToggleSidebar => self.toggle_sidebar(),
             Message::FocusSidebar => self.focus_sidebar(),
             Message::Sidebar(input) => self.sidebar_input(input),
@@ -603,6 +613,8 @@ impl State {
             Message::Group => self.group(),
             Message::OpenUrl => effects = self.open_url(),
             Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
+            Message::Pane(change) => self.change_panes(change),
+            Message::ResizePane(width) => self.resize_pane(width),
         }
         effects
     }
@@ -675,13 +687,25 @@ impl State {
         self.show(location);
     }
 
-    /// Shows the history entry at `at`, if there is one.
-    fn walk_history(&mut self, at: Option<usize>) {
-        if let Some(at) = at
-            && let Some(&location) = self.pane.history.get(at)
+    /// Shows the next history entry, or with `forward` false the previous one, skipping those
+    /// whose zoom block no longer exists (FR-NAV-04).
+    fn walk_history(&mut self, forward: bool) {
+        let mut at = self.pane.history_at;
+        while let Some(next) = if forward {
+            at.checked_add(1)
+        } else {
+            at.checked_sub(1)
+        } && let Some(&location) = self.pane.history.get(next)
         {
-            self.pane.history_at = at;
-            self.show(location);
+            at = next;
+            if location
+                .zoom()
+                .is_none_or(|id| blocks::block(self.document(), id).is_some())
+            {
+                self.pane.history_at = at;
+                self.show(location);
+                return;
+            }
         }
     }
 
@@ -697,12 +721,7 @@ impl State {
         let rows = self.rows();
         self.pane.focus = left
             .filter(|&id| rows.iter().any(|row| row.id == id))
-            .or_else(|| {
-                rows.iter()
-                    .find(|row| !row.title)
-                    .or(rows.first())
-                    .map(|row| row.id)
-            });
+            .or_else(|| landing(&rows));
     }
 
     fn focus_parent(&mut self) {
@@ -858,25 +877,30 @@ impl State {
         }
     }
 
-    /// Moves focus off a block a fold or hiding done blocks hid: to the next visible block in
-    /// document order, else the previous one, else the first row, the title (navigation §2). With
-    /// no focus, as when every block was hidden, focuses the first row if one is back.
-    fn repair_focus(&mut self) {
-        let visible: Vec<_> = self.rows().into_iter().map(|row| row.id).collect();
-        let Some(focus) = self.pane.focus else {
-            self.pane.focus = visible.first().copied();
+    /// Moves `pane`'s focus off a block a fold or hiding done blocks hid: to the next visible
+    /// block in document order, else the previous one, else the first row, the title
+    /// (navigation §2); off a block that is gone, to the next of the rows `before` the change
+    /// that still shows, else the previous one, else the first row. With no focus, as when every
+    /// block was hidden, focuses the first row if one is back.
+    pub(super) fn repair_focus(&self, pane: &mut Pane, before: &[ItemId]) {
+        let visible: Vec<_> = self.rows_of(pane).into_iter().map(|row| row.id).collect();
+        let Some(focus) = pane.focus else {
+            pane.focus = visible.first().copied();
             return;
         };
         if visible.contains(&focus) {
             return;
         }
-        let order: Vec<_> = self
-            .blocks(false)
-            .into_iter()
-            .map(|(block, _)| block.id())
-            .collect();
+        let order: Vec<_> = if self.document.get(focus).is_some() {
+            self.blocks_of(pane, false)
+                .into_iter()
+                .map(|(block, _)| block.id())
+                .collect()
+        } else {
+            before.to_vec()
+        };
         let at = order.iter().position(|&id| id == focus).unwrap_or_default();
-        self.pane.focus = order
+        pane.focus = order
             .iter()
             .skip(at)
             .chain(order.iter().take(at).rev())

@@ -146,7 +146,9 @@ impl State {
             | Message::Duplicate
             | Message::OpenUrl
             | Message::OpenUrlFailed { .. }
-            | Message::Select(_) => Some(message),
+            | Message::Select(_)
+            | Message::Pane(_)
+            | Message::ResizePane(_) => Some(message),
         }
     }
 
