@@ -1,5 +1,6 @@
-//! The registry's table: every command with the mode it belongs to and its default bindings
-//! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)).
+//! The registry's tables: every command with the mode it belongs to and its default bindings
+//! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)), and the
+//! commands of each mode the shortcuts panel lists, grouped (FR-KEY-04).
 
 use super::Command;
 use crate::{
@@ -356,6 +357,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+p", "g s", "/"]),
+    entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),
@@ -381,6 +383,192 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::Cut, Mode::Edit, &["ctrl+x"]),
     entry!(Command::Paste(Paste::Below), Mode::Edit, &["ctrl+v"]),
 ];
+
+/// A group of bindings as [keybindings.md] groups them, which the shortcuts panel lists the
+/// commands under.
+///
+/// [keybindings.md]: ../../../../docs/specs/keybindings.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Group {
+    /// Moving the focus.
+    Moving,
+    /// Folding blocks.
+    Folding,
+    /// Zooming and the zoom history.
+    Zoom,
+    /// Editing and creating blocks in navigate mode.
+    Creating,
+    /// Selecting blocks.
+    Selection,
+    /// Changing the outline's structure, the clipboard and undo.
+    Structure,
+    /// A block's dates, tags, color and type.
+    Metadata,
+    /// The view, panels and quitting.
+    View,
+    /// Edit mode's own commands.
+    Editing,
+}
+
+impl Group {
+    /// The group's name, which heads its commands in the shortcuts panel.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Moving => "Moving",
+            Self::Folding => "Folding",
+            Self::Zoom => "Zoom and History",
+            Self::Creating => "Editing and Creating",
+            Self::Selection => "Selection",
+            Self::Structure => "Structure",
+            Self::Metadata => "Block Metadata",
+            Self::View => "View and Panels",
+            Self::Editing => "Editing",
+        }
+    }
+}
+
+/// The most useful commands of each mode, which the shortcuts panel lists, grouped and in the
+/// order of [keybindings.md] (FR-KEY-04, [ui.md §4]). Every one is bound in its mode.
+///
+/// [keybindings.md]: ../../../../docs/specs/keybindings.md
+/// [ui.md §4]: ../../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04
+const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
+    (
+        Mode::Navigate,
+        Group::Moving,
+        &[
+            Command::FocusNext,
+            Command::FocusPrevious,
+            Command::Collapse,
+            Command::Expand,
+            Command::FocusFirst,
+            Command::FocusLast,
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Folding,
+        &[
+            Command::ToggleFold,
+            Command::ExpandAll,
+            Command::CollapseAll,
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Zoom,
+        &[
+            Command::ZoomIn,
+            Command::ZoomOut,
+            Command::Back,
+            Command::Forward,
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Creating,
+        &[
+            Command::Edit,
+            Command::New(NewBlock::Below, None),
+            Command::New(NewBlock::LastChild, None),
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Selection,
+        &[
+            Command::Select(SelectionChange::ExtendDown),
+            Command::Select(SelectionChange::Toggle),
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Structure,
+        &[
+            Command::Indent,
+            Command::Outdent,
+            Command::MoveUp,
+            Command::MoveDown,
+            Command::Delete,
+            Command::Copy,
+            Command::Paste(Paste::Below),
+            Command::Undo,
+            Command::Redo,
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::Metadata,
+        &[
+            Command::ToggleDone,
+            Command::ChangeDate(DateTag::Start, DateChange::Today),
+            Command::ChangeDate(DateTag::Due, DateChange::Today),
+            Command::OpenDatePrompt(DateTag::Due),
+            Command::OpenColorPicker,
+            Command::ToggleFlag(Flag::Bookmark),
+            Command::OpenDetails,
+        ],
+    ),
+    (
+        Mode::Navigate,
+        Group::View,
+        &[
+            Command::ToggleShowDone,
+            Command::ToggleWrap,
+            Command::GoToSymbol,
+            Command::Quit,
+        ],
+    ),
+    (
+        Mode::Edit,
+        Group::Editing,
+        &[
+            Command::StopEditing,
+            Command::NewNext,
+            Command::EditPrevious,
+            Command::EditNext,
+            Command::OpenCommandMenu,
+            Command::CycleType,
+            Command::ToggleMarker(Marker::Bold),
+            Command::ToggleMarker(Marker::Code),
+        ],
+    ),
+    (
+        Mode::Edit,
+        Group::Structure,
+        &[
+            Command::Indent,
+            Command::Outdent,
+            Command::Undo,
+            Command::Redo,
+            Command::Copy,
+            Command::Paste(Paste::Below),
+        ],
+    ),
+    (Mode::Edit, Group::View, &[Command::Quit]),
+];
+
+/// What the shortcuts panel lists in `mode`: each group with the registry entries of its
+/// commands, which hold their keys (FR-KEY-04).
+#[must_use]
+pub fn shortcuts(mode: Mode) -> Vec<(Group, Vec<&'static Entry>)> {
+    SHORTCUTS
+        .iter()
+        .filter(|(listed, ..)| *listed == mode)
+        .map(|&(_, group, commands)| {
+            let entries = commands
+                .iter()
+                .filter_map(|&command| {
+                    REGISTRY
+                        .iter()
+                        .find(|entry| entry.command == command && entry.mode == mode)
+                })
+                .collect();
+            (group, entries)
+        })
+        .collect()
+}
 
 #[cfg(test)]
 mod tests {
@@ -411,6 +599,63 @@ mod tests {
                 );
             }
         }
+    }
+
+    // FR-KEY-04
+    #[test]
+    fn the_shortcuts_panel_lists_bound_commands_of_its_mode_once() {
+        for (mode, _, commands) in SHORTCUTS {
+            for command in *commands {
+                assert!(
+                    REGISTRY.iter().any(|entry| entry.command == *command
+                        && entry.mode == *mode
+                        && !entry.keys.is_empty()),
+                    "{command:?} is not bound in {mode:?}"
+                );
+            }
+        }
+        for mode in [Mode::Navigate, Mode::Edit] {
+            let listed: Vec<_> = shortcuts(mode)
+                .into_iter()
+                .flat_map(|(_, entries)| entries)
+                .collect();
+            let distinct: HashSet<_> = listed.iter().map(|entry| entry.command.name()).collect();
+            assert_eq!(distinct.len(), listed.len(), "{mode:?}");
+            assert!(listed.iter().all(|entry| entry.mode == mode), "{mode:?}");
+        }
+    }
+
+    // FR-KEY-04
+    #[test]
+    fn the_shortcuts_panel_groups_each_modes_commands_in_the_order_of_the_key_bindings() {
+        let groups = |mode| -> Vec<_> {
+            shortcuts(mode)
+                .into_iter()
+                .map(|(group, entries)| (group.name(), entries.len()))
+                .collect()
+        };
+        assert_eq!(
+            groups(Mode::Navigate),
+            [
+                ("Moving", 6),
+                ("Folding", 3),
+                ("Zoom and History", 4),
+                ("Editing and Creating", 3),
+                ("Selection", 2),
+                ("Structure", 9),
+                ("Block Metadata", 7),
+                ("View and Panels", 4),
+            ]
+        );
+        assert_eq!(
+            groups(Mode::Edit),
+            [("Editing", 8), ("Structure", 6), ("View and Panels", 1)]
+        );
+        let edit = shortcuts(Mode::Edit);
+        let (_, editing) = &edit[0];
+        assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
+        let (_, view) = &shortcuts(Mode::Navigate)[7];
+        assert_eq!(view[3].keys, ["ctrl+q"]);
     }
 
     #[test]

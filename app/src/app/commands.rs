@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use jiff::civil::Date;
 
 pub(super) use node::{NodeCommand, node_commands};
-pub use registry::{Entry, REGISTRY};
+pub use registry::{Entry, Group, REGISTRY, shortcuts};
 
 use super::{Message, NewBlock, Paste, SelectionChange, TextEdit};
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
@@ -63,6 +63,8 @@ pub enum Command {
     /// Turn word wrap on or off, which the frontend carries out itself, since wrapping is
     /// presentation (FR-UI-05).
     ToggleWrap,
+    /// Open or close the shortcuts panel.
+    ToggleShortcuts,
     /// Zoom into the focused block.
     ZoomIn,
     /// Zoom out to the parent.
@@ -196,6 +198,7 @@ impl Command {
             Self::CollapseAll => "Collapse All".into(),
             Self::ToggleShowDone => "Show/Hide Completed".into(),
             Self::ToggleWrap => "Toggle Word Wrap".into(),
+            Self::ToggleShortcuts => "Shortcuts".into(),
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
@@ -277,6 +280,7 @@ impl Command {
             Self::ExpandAll => Message::ExpandAll,
             Self::CollapseAll => Message::CollapseAll,
             Self::ToggleShowDone => Message::ToggleShowDone,
+            Self::ToggleShortcuts => Message::ToggleShortcuts,
             Self::ZoomIn => Message::ZoomIn,
             Self::ZoomOut => Message::ZoomOut,
             Self::GoHome => Message::GoHome,
@@ -434,6 +438,7 @@ mod tests {
             (Command::Retype(Typed::Text), "Note"),
             (Command::Retype(Typed::Section), "Make Section"),
             (Command::ToggleMarker(Marker::Code), "Inline Code"),
+            (Command::ToggleShortcuts, "Shortcuts"),
         ] {
             assert_eq!(command.name(), name);
         }
@@ -476,6 +481,7 @@ mod tests {
                 Message::ClearDate(DateTag::Due),
             ),
             (Command::NewNext, Message::NewNext),
+            (Command::ToggleShortcuts, Message::ToggleShortcuts),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

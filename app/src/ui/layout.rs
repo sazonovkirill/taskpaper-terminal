@@ -2,7 +2,7 @@
 
 use std::ops::Range;
 
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Layout, Rect};
 
 /// Lines kept between the focused block and the top or bottom edge when the view is tall enough
 /// ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01)).
@@ -50,6 +50,28 @@ pub fn room(area: Rect, line: u16) -> u16 {
     below.max(above)
 }
 
+/// Where the secondary sidebar goes on a `screen` whose panes would fill `body`, and what is left
+/// of `body` to the panes ([ui.md §1](../../../docs/specs/ui.md#1-layout), D-28): a quarter of the
+/// screen's width but 32 to 40 columns at the right of `body`, taken from the panes, or drawn over
+/// their right part on a screen narrower than 80 columns. A screen smaller than 40×10 has room
+/// only for the focused pane, so no sidebar.
+#[must_use]
+pub fn secondary_sidebar(screen: Rect, body: Rect) -> (Rect, Option<Rect>) {
+    if screen.width < 40 || screen.height < 10 {
+        return (body, None);
+    }
+    let width = (screen.width / 4).clamp(32, 40);
+    let [panes, sidebar] = body.layout(&Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(width),
+    ]));
+    if screen.width < 80 {
+        (body, Some(sidebar))
+    } else {
+        (panes, Some(sidebar))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,6 +104,58 @@ mod tests {
         assert_eq!(
             anchored(area, (5, 7), (10, room(area, 7))),
             Rect::new(5, 1, 10, 6)
+        );
+    }
+
+    #[test]
+    fn the_secondary_sidebar_takes_a_quarter_of_the_width_within_32_to_40_columns() {
+        let body = |width| Rect::new(0, 0, width, 23);
+        let screen = |width| Rect::new(0, 0, width, 24);
+        assert_eq!(
+            secondary_sidebar(screen(80), body(80)),
+            (body(48), Some(Rect::new(48, 0, 32, 23)))
+        );
+        assert_eq!(
+            secondary_sidebar(screen(140), body(140)),
+            (body(105), Some(Rect::new(105, 0, 35, 23)))
+        );
+        assert_eq!(
+            secondary_sidebar(screen(200), body(200)),
+            (body(160), Some(Rect::new(160, 0, 40, 23)))
+        );
+        let below_left_sidebar = Rect::new(30, 1, 170, 20);
+        assert_eq!(
+            secondary_sidebar(screen(200), below_left_sidebar),
+            (Rect::new(30, 1, 130, 20), Some(Rect::new(160, 1, 40, 20))),
+            "it stays at the right of the body"
+        );
+    }
+
+    #[test]
+    fn a_narrow_screen_draws_the_secondary_sidebar_over_the_panes() {
+        let body = Rect::new(0, 0, 79, 23);
+        assert_eq!(
+            secondary_sidebar(Rect::new(0, 0, 79, 24), body),
+            (body, Some(Rect::new(47, 0, 32, 23)))
+        );
+        let body = Rect::new(0, 0, 40, 9);
+        assert_eq!(
+            secondary_sidebar(Rect::new(0, 0, 40, 10), body),
+            (body, Some(Rect::new(8, 0, 32, 9)))
+        );
+    }
+
+    #[test]
+    fn a_screen_below_40_by_10_has_no_secondary_sidebar() {
+        let body = Rect::new(0, 0, 39, 23);
+        assert_eq!(
+            secondary_sidebar(Rect::new(0, 0, 39, 24), body),
+            (body, None)
+        );
+        let body = Rect::new(0, 0, 100, 8);
+        assert_eq!(
+            secondary_sidebar(Rect::new(0, 0, 100, 9), body),
+            (body, None)
         );
     }
 

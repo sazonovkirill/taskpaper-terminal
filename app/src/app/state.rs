@@ -67,6 +67,8 @@ pub struct State {
     pub(super) folds: HashSet<ItemId>,
     /// Whether done blocks show, with everything inside them (FR-DONE-02).
     pub(super) show_done: bool,
+    /// Whether the shortcuts panel is open (FR-KEY-04).
+    pub(super) shortcuts: bool,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
     pub(super) zoom: Option<ItemId>,
     /// Every zoom visited, oldest first, for back and forward (FR-NAV-04).
@@ -236,6 +238,7 @@ impl State {
             resume: None,
             folds: HashSet::new(),
             show_done: true,
+            shortcuts: false,
             zoom: None,
             history: vec![None],
             history_at: 0,

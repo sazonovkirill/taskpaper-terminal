@@ -74,8 +74,12 @@ fn main() -> anyhow::Result<()> {
         .ok()
         .map(|clipboard| Box::new(Arboard(clipboard)) as Box<dyn SystemClipboard>);
     let clipboard = Clipboard::new(system, io::stdout());
-    let mut tui = ui::Tui::new(state, io, Browser::system(), clipboard, jiff::Zoned::now);
+    let tui = ui::Tui::new(state, io, Browser::system(), clipboard, jiff::Zoned::now);
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
+    // Asked before the event thread starts, which would otherwise read the terminal's answer; a
+    // terminal that does not answer is taken not to speak the protocol.
+    let kitty = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
+    let mut tui = tui.with_kitty_keyboard(kitty);
     // Terminals that cannot report focus, bracket pasted text or speak the kitty keyboard protocol
     // ignore the requests, so keys arrive as legacy reporting sends them (keybindings.md §1).
     let _ = execute!(

@@ -33,6 +33,8 @@ pub struct Context {
     pub command_menu: bool,
     /// The popup over the outline that takes the keys of navigate mode, if one is open.
     pub overlay: Option<Overlay>,
+    /// Whether the shortcuts panel is open, which `Esc` closes in navigate mode (FR-KEY-04).
+    pub shortcuts: bool,
 }
 
 impl Context {
@@ -317,6 +319,61 @@ fn parse_sequence(text: &str) -> Option<Vec<Key>> {
     text.split(' ').map(parse_key).collect()
 }
 
+/// How the binding `keys`, written in the config file's notation, reads on screen: as
+/// [keybindings.md] writes keys, such as `Ctrl+D`, `Alt+k`, `Ctrl+Shift+Z`, `Shift+↓`, `Space`, a
+/// sequence of characters run together (`gg`) and other sequences spaced (`Ctrl+W v`). The same on
+/// every platform, unlike crossterm's `Display`, which names `Ctrl` "Control" on Unix. `None`
+/// when `keys` is not in the notation.
+///
+/// [keybindings.md]: ../../../docs/specs/keybindings.md
+#[must_use]
+pub fn label(keys: &str) -> Option<String> {
+    let sequence = parse_sequence(keys)?;
+    let plain = sequence.iter().all(|&(modifiers, code)| {
+        modifiers.is_empty() && matches!(code, KeyCode::Char(c) if c != ' ')
+    });
+    let presses: Vec<String> = sequence.into_iter().map(key_label).collect();
+    Some(presses.join(if plain { "" } else { " " }))
+}
+
+/// How one key reads on screen ([`label`]): its modifiers, then the key, a letter with `Ctrl` in
+/// capitals and a capital letter with a modifier marked with `Shift`.
+fn key_label((modifiers, code): Key) -> String {
+    let mut label = String::new();
+    let shifted = matches!(code, KeyCode::Char(c) if c.is_uppercase()) && !modifiers.is_empty();
+    for (modifier, name) in [
+        (KeyModifiers::CONTROL, "Ctrl+"),
+        (KeyModifiers::ALT, "Alt+"),
+    ] {
+        if modifiers.contains(modifier) {
+            label.push_str(name);
+        }
+    }
+    if shifted || modifiers.contains(KeyModifiers::SHIFT) {
+        label.push_str("Shift+");
+    }
+    let name = match code {
+        KeyCode::Char(' ') => "Space".to_owned(),
+        KeyCode::Char(c) if modifiers.contains(KeyModifiers::CONTROL) => {
+            c.to_uppercase().to_string()
+        }
+        KeyCode::Char(c) => c.to_string(),
+        KeyCode::Up => "↑".to_owned(),
+        KeyCode::Down => "↓".to_owned(),
+        KeyCode::Left => "←".to_owned(),
+        KeyCode::Right => "→".to_owned(),
+        KeyCode::PageUp => "PgUp".to_owned(),
+        KeyCode::PageDown => "PgDn".to_owned(),
+        KeyCode::BackTab => "Tab".to_owned(),
+        KeyCode::Enter => "Enter".to_owned(),
+        KeyCode::Backspace => "Backspace".to_owned(),
+        KeyCode::Delete => "Delete".to_owned(),
+        code => code.to_string(),
+    };
+    label.push_str(&name);
+    label
+}
+
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
 /// fails to match or times out. Keys that are a binding of their own and start longer ones, such
 /// as `o` (D-53), send their own message only when the sequence ends without continuing.
@@ -443,6 +500,9 @@ impl Keymap {
             };
             return message.map(KeyAction::Send);
         }
+        if context.shortcuts && self.pending.is_empty() && pressed == key!(Esc) {
+            return Some(KeyAction::Send(Message::CloseShortcuts));
+        }
         self.pending.push(pressed);
         let longer = self
             .navigate
@@ -532,6 +592,7 @@ mod tests {
         mode: Mode::Navigate,
         command_menu: false,
         overlay: None,
+        shortcuts: false,
     };
 
     const EDITING: &Context = &Context {
@@ -963,6 +1024,108 @@ mod tests {
             messages("gc", CONTEXT),
             [None, Some(Message::ToggleShowDone)]
         );
+    }
+
+    // FR-KEY-04, D-42: both key reportings send `?`, the kitty protocol with `Shift`.
+    #[test]
+    fn question_mark_toggles_the_shortcuts_panel_and_esc_closes_it() {
+        let toggle = Some(&Message::ToggleShortcuts);
+        check(KeyCode::Char('?'), KeyModifiers::NONE, toggle);
+        check(KeyCode::Char('?'), KeyModifiers::SHIFT, toggle);
+        let open = &Context {
+            shortcuts: true,
+            ..*CONTEXT
+        };
+        let mut keymap = Keymap::default();
+        let esc = key(KeyCode::Esc, KeyModifiers::NONE);
+        assert_eq!(
+            keymap.message_for(&esc, ms(0), open),
+            Some(Message::CloseShortcuts)
+        );
+        assert_eq!(
+            keymap.message_for(&esc, ms(0), CONTEXT),
+            Some(Message::Select(SelectionChange::Clear)),
+            "without the panel, Esc clears the selection"
+        );
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&press('g'), ms(0), open), None);
+        assert_eq!(
+            keymap.message_for(&esc, ms(1), open),
+            None,
+            "Esc ends a pending sequence first"
+        );
+        assert_eq!(messages("?", open), [Some(Message::ToggleShortcuts)]);
+        assert_eq!(
+            Keymap::default().message_for(
+                &esc,
+                ms(0),
+                &Context {
+                    mode: Mode::Edit,
+                    ..*open
+                }
+            ),
+            Some(Message::StopEditing),
+            "in edit mode Esc stops editing"
+        );
+        assert_eq!(
+            messages(
+                "?",
+                &Context {
+                    mode: Mode::Edit,
+                    ..*open
+                }
+            ),
+            [Some(text(TextEdit::Insert('?')))],
+            "in edit mode `?` is typed"
+        );
+    }
+
+    // FR-KEY-04
+    #[test]
+    fn labels_write_keys_as_the_key_bindings_do() {
+        for (keys, expected) in [
+            ("j", "j"),
+            ("G", "G"),
+            ("g g", "gg"),
+            ("o s", "os"),
+            ("space", "Space"),
+            ("' space", "' Space"),
+            ("ctrl+q", "Ctrl+Q"),
+            ("ctrl+'", "Ctrl+'"),
+            ("alt+k", "Alt+k"),
+            ("alt+`", "Alt+`"),
+            ("ctrl+shift+z", "Ctrl+Shift+Z"),
+            ("alt+shift+left", "Alt+Shift+←"),
+            ("shift+down", "Shift+↓"),
+            ("shift+tab", "Shift+Tab"),
+            ("up", "↑"),
+            ("right", "→"),
+            ("ctrl+down", "Ctrl+↓"),
+            ("pagedown", "PgDn"),
+            ("pageup", "PgUp"),
+            ("delete", "Delete"),
+            ("backspace", "Backspace"),
+            ("enter", "Enter"),
+            ("ctrl+enter", "Ctrl+Enter"),
+            ("esc", "Esc"),
+            ("home", "Home"),
+            ("+", "+"),
+            ("ctrl+w v", "Ctrl+W v"),
+            ("?", "?"),
+        ] {
+            assert_eq!(label(keys).as_deref(), Some(expected), "{keys}");
+        }
+        assert_eq!(label("hyper+x"), None);
+        assert_eq!(label("g nothing"), None);
+    }
+
+    #[test]
+    fn every_registry_binding_has_a_label() {
+        for entry in REGISTRY {
+            for keys in entry.keys {
+                assert!(label(keys).is_some(), "{keys}");
+            }
+        }
     }
 
     // FR-BLK-06

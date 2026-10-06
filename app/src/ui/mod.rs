@@ -9,7 +9,7 @@ pub mod widgets;
 
 use std::{path::PathBuf, time::Duration};
 
-use crossterm::event::Event;
+use crossterm::event::{Event, KeyModifiers};
 use jiff::Zoned;
 use ratatui::{
     Frame, Terminal,
@@ -22,7 +22,9 @@ use ratatui::{
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
-use widgets::{ConflictPrompt, DatePromptPanel, FinderPopup, OutlineView, Popup};
+use widgets::{
+    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, ShortcutsPanel,
+};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +68,8 @@ pub struct Tui {
     diff_scroll: usize,
     /// How many diff lines the prompt showed at the last draw, which a page scrolls.
     diff_rows: usize,
+    /// What the terminal has shown of its keyboard, which the shortcuts panel notes.
+    keyboard: Keyboard,
     quit: bool,
 }
 
@@ -97,10 +101,19 @@ impl Tui {
             ending: false,
             diff_scroll: 0,
             diff_rows: 0,
+            keyboard: Keyboard::default(),
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
         tui
+    }
+
+    /// The frontend told whether the terminal speaks the kitty keyboard protocol, which the
+    /// shortcuts panel notes (keybindings.md §1).
+    #[must_use]
+    pub fn with_kitty_keyboard(mut self, kitty: bool) -> Self {
+        self.keyboard.kitty = kitty;
+        self
     }
 
     /// Handles one input at time `now` (since the frontend started).
@@ -118,6 +131,9 @@ impl Tui {
         if *event == Event::FocusGained {
             self.send(Message::CheckFile, now);
             return;
+        }
+        if let Some(key) = event.as_key_press_event() {
+            self.keyboard.alt_seen |= key.modifiers.contains(KeyModifiers::ALT);
         }
         if self.state.in_conflict() {
             self.handle_prompt_key(event, now);
@@ -148,6 +164,7 @@ impl Tui {
             mode: self.state.mode(),
             command_menu: self.state.command_menu().is_some(),
             overlay: self.overlay(),
+            shortcuts: self.state.shortcuts().is_some(),
         }
     }
 
@@ -281,9 +298,11 @@ impl Tui {
     }
 
     /// Draws the whole screen: the breadcrumb header over a rule, the outline scrolled to keep the focus
-    /// visible, the date prompt's panel below it while open, and the status line.
+    /// visible, the shortcuts panel at the right while open, the date prompt's panel below them
+    /// while open, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
-        let [pane, status] = frame.area().layout(&Layout::vertical([
+        let screen = frame.area();
+        let [main, status] = screen.layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
@@ -294,11 +313,18 @@ impl Tui {
         } else {
             0
         };
-        let [header, separator, outline, panel] = pane.layout(&Layout::vertical([
+        let [body, panel] = main.layout(&Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(panel_height),
+        ]));
+        let (pane, sidebar) = match self.state.shortcuts() {
+            Some(_) => layout::secondary_sidebar(screen, body),
+            None => (body, None),
+        };
+        let [header, separator, outline] = pane.layout(&Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Fill(1),
-            Constraint::Length(panel_height),
         ]));
         let [_, crumbs] = header.layout(&Layout::horizontal([
             Constraint::Length(widgets::GUTTER_WIDTH),
@@ -316,6 +342,8 @@ impl Tui {
             separator,
         );
         self.draw_outline(frame, outline);
+        // Centered popups go over the sidebar, which a narrow screen draws over the outline.
+        self.draw_shortcuts(frame, sidebar);
         let centered = self
             .state
             .color_picker()
@@ -343,11 +371,24 @@ impl Tui {
         self.draw_status(frame, status);
         self.draw_date_prompt(frame, panel);
         if self.state.in_conflict() {
-            let diff = self.state.diff();
-            self.diff_rows = ConflictPrompt::diff_rows(pane);
-            let lines = diff.as_ref().map_or(0, Vec::len);
-            self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
-            frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), pane);
+            self.draw_conflict(frame, main);
+        }
+    }
+
+    /// The conflict prompt over `area`, its diff scrolled no further than its last page.
+    fn draw_conflict(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        let diff = self.state.diff();
+        self.diff_rows = ConflictPrompt::diff_rows(area);
+        let lines = diff.as_ref().map_or(0, Vec::len);
+        self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
+        frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), area);
+    }
+
+    /// The shortcuts panel in the secondary sidebar's `area`, while it is open and has room
+    /// (FR-KEY-04, D-28).
+    fn draw_shortcuts(&self, frame: &mut Frame, area: Option<ratatui::layout::Rect>) {
+        if let (Some(groups), Some(area)) = (self.state.shortcuts(), area) {
+            frame.render_widget(ShortcutsPanel::new(&groups, self.keyboard), area);
         }
     }
 

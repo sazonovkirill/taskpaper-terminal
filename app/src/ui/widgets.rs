@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Clear, Widget},
+    widgets::{Block, Borders, Clear, Padding, Widget},
 };
 
 use unicode_segmentation::UnicodeSegmentation;
@@ -19,11 +19,12 @@ mod finder;
 
 pub use finder::FinderPopup;
 
-use super::{layout, theme::Icon};
+use super::{keymap, layout, theme::Icon};
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
         Notice, PickerView, Row, SaveState,
+        commands::{Entry, Group},
     },
     document::{
         BlockKind, DateTag, Details, Flag, TagColor,
@@ -590,6 +591,107 @@ impl Widget for Popup {
         for (line, row) in self.entries.into_iter().skip(offset).zip(inner.rows()) {
             buf.set_style(row, line.style);
             line.render(row, buf);
+        }
+    }
+}
+
+/// What the terminal has shown of its keyboard, which the shortcuts panel notes (ui.md §4,
+/// [keybindings.md §1](../../../docs/specs/keybindings.md#1-terminal-constraints)).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Keyboard {
+    /// Whether the kitty keyboard protocol is active.
+    pub kitty: bool,
+    /// Whether a key with `Alt` has arrived, which on macOS takes a terminal setting.
+    pub alt_seen: bool,
+}
+
+/// The shortcuts panel in the secondary sidebar ([ui.md §4](../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04),
+/// FR-KEY-04, D-28): titled "Shortcuts" beside a rule down its left edge, each group's name in
+/// the headers color over its commands, each command's name with its keys at the right in the
+/// primary color, `…` last when the list is cut short, and below it what the keyboard reports:
+/// how to send `Alt` on macOS until an `Alt` key arrives, and whether the kitty protocol is on.
+#[derive(Debug)]
+pub struct ShortcutsPanel<'a> {
+    groups: &'a [(Group, Vec<&'static Entry>)],
+    keyboard: Keyboard,
+}
+
+impl<'a> ShortcutsPanel<'a> {
+    /// The panel listing `groups`, noting what `keyboard` reports.
+    #[must_use]
+    pub fn new(groups: &'a [(Group, Vec<&'static Entry>)], keyboard: Keyboard) -> Self {
+        Self { groups, keyboard }
+    }
+
+    /// The list's rows: each group's name, then each of its commands' names with their keys.
+    fn rows(&self) -> Vec<(Line<'static>, Line<'static>)> {
+        let mut rows = Vec::new();
+        for (group, entries) in self.groups {
+            rows.push((
+                Line::styled(group.name(), Style::new().fg(SECONDARY).bold()),
+                Line::default(),
+            ));
+            for entry in entries {
+                let keys: Vec<String> = entry
+                    .keys
+                    .iter()
+                    .filter_map(|keys| keymap::label(keys))
+                    .collect();
+                rows.push((
+                    Line::from(format!(" {}", entry.command.name())),
+                    Line::styled(keys.join(", "), Style::new().fg(PRIMARY)),
+                ));
+            }
+        }
+        rows
+    }
+
+    /// The notes under the list, after a blank line.
+    fn notes(&self) -> Vec<Line<'static>> {
+        let mut notes = vec![Line::default()];
+        if !self.keyboard.alt_seen {
+            notes.push(Line::from("No Alt key seen yet: on macOS"));
+            notes.push(Line::from("set Option as Meta or Esc+"));
+        }
+        let kitty = if self.keyboard.kitty { "on" } else { "off" };
+        notes.push(Line::from(format!("Kitty keyboard protocol: {kitty}")));
+        notes.into_iter().map(Line::dim).collect()
+    }
+}
+
+impl Widget for ShortcutsPanel<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Clear.render(area, buf);
+        let frame = Block::new()
+            .borders(Borders::LEFT)
+            .border_style(rule_style())
+            .padding(Padding::horizontal(1))
+            .title(Line::from("Shortcuts").bold());
+        let inner = frame.inner(area);
+        frame.render(area, buf);
+        let notes = self.notes();
+        let height = u16::try_from(notes.len()).unwrap_or(u16::MAX);
+        let [list, footer] = inner.layout(&Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(height),
+        ]));
+        let rows = self.rows();
+        let shown = usize::from(list.height);
+        let cut = rows.len() > shown;
+        for (index, ((name, keys), row)) in rows.into_iter().zip(list.rows()).enumerate() {
+            if cut && index + 1 == shown {
+                Line::from("…").dim().render(row, buf);
+                break;
+            }
+            let width = u16::try_from(keys.width()).unwrap_or(u16::MAX);
+            let [name_area, keys_area] = row.layout(
+                &Layout::horizontal([Constraint::Fill(1), Constraint::Length(width)]).spacing(1),
+            );
+            wrap::truncate(&name, usize::from(name_area.width)).render(name_area, buf);
+            keys.right_aligned().render(keys_area, buf);
+        }
+        for (note, row) in notes.into_iter().zip(footer.rows()) {
+            note.render(row, buf);
         }
     }
 }

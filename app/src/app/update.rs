@@ -114,6 +114,10 @@ pub enum Message {
     CollapseAll,
     /// Hide done blocks, each with everything inside it, or show them again (FR-DONE-02).
     ToggleShowDone,
+    /// Open the shortcuts panel, or close it if it is open (FR-KEY-04).
+    ToggleShortcuts,
+    /// Close the shortcuts panel.
+    CloseShortcuts,
     /// Show the focused block as the root.
     ZoomIn,
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
@@ -292,6 +296,8 @@ impl Message {
             | Self::NewNext
             | Self::EditPrevious
             | Self::EditNext
+            | Self::ToggleShortcuts
+            | Self::CloseShortcuts
             | Self::Indent
             | Self::Outdent
             | Self::Copy
@@ -451,6 +457,8 @@ impl State {
             Message::ExpandAll => self.expand_all(),
             Message::CollapseAll => self.collapse_all(),
             Message::ToggleShowDone => self.show_done = !self.show_done,
+            Message::ToggleShortcuts => self.shortcuts = !self.shortcuts,
+            Message::CloseShortcuts => self.shortcuts = false,
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(None),

@@ -17,6 +17,7 @@ mod links;
 mod picker;
 pub mod saving;
 mod selection;
+mod shortcuts;
 pub mod state;
 mod structure;
 pub mod text_field;
