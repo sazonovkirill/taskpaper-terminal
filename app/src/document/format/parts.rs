@@ -113,8 +113,8 @@ impl LineParts {
 impl LineParts {
     /// The parts and text that give the line holding `text` the type `typed`: the old type's
     /// syntax and `@section` go, the new type's come and every other tag, `@url` included, stays
-    /// (editing.md §5, D-45). A colon ending the text of a task or note becomes the project's
-    /// own, so it is not doubled.
+    /// (editing.md §5, D-45). A colon ending the text of a task becomes the project's own, so it
+    /// is not doubled.
     #[must_use]
     pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
         let colon_is_syntax =
@@ -141,12 +141,23 @@ impl LineParts {
             Typed::Task => self.prefix.clone(),
             _ => String::new(),
         };
+        let parts = Self { prefix, tags };
         let text = if typed == Typed::Project {
             format!("{name}:")
+        } else if parts.reads_as_project(name) {
+            name.trim_end_matches(|c| c == ':' || tags::is_whitespace(c))
+                .to_owned()
         } else {
             name.to_owned()
         };
-        (Self { prefix, tags }, text)
+        (parts, text)
+    }
+
+    /// Whether the line holding `text` would be read back as a project, as a task's text ending
+    /// in colons would once the task becomes a note or section; those colons then go so the
+    /// block keeps the type chosen for it.
+    fn reads_as_project(&self, text: &str) -> bool {
+        kind(&self.compose(text)) == ItemKind::Project
     }
 }
 
@@ -316,6 +327,24 @@ mod tests {
             "- P:",
             "a task's colon is text"
         );
+        assert_eq!(
+            retyped("- P:", Typed::Text),
+            "P",
+            "a note ending in a colon would be a project"
+        );
+        assert_eq!(retyped("- P: @x", Typed::Section), "P @x @section");
+        assert_eq!(
+            retyped("- a::", Typed::Text),
+            "a",
+            "every closing colon goes"
+        );
+        assert_eq!(retyped("- a: : @x", Typed::Text), "a @x");
+        assert_eq!(
+            retyped("Inbox:  ", Typed::Text),
+            "Inbox:  ",
+            "a note whose colon is followed by spaces stays as it is"
+        );
+        assert_eq!(retyped("- a: b", Typed::Text), "a: b");
     }
 
     // FR-MODE-06

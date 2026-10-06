@@ -136,3 +136,12 @@ fn a_task_ending_in_a_colon_becomes_a_project_with_one_colon() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "Errands:\n");
 }
+
+// FR-BLK-08: a note ending in a colon would be read back as a project, so the colon goes.
+#[test]
+fn a_task_ending_in_a_colon_becomes_a_note_without_it() {
+    let mut app = Harness::with_text("- Errands:\n", 40, 14);
+    app.type_keys("mynote");
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(saved(&mut app), "Errands\n");
+}
