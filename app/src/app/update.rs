@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit, Version,
+    DateInput, Location, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit, Version,
     saving::Ending, structure::NewBlock,
 };
 use crate::document::{
@@ -19,11 +19,13 @@ use crate::document::{
 pub enum Message {
     /// The frontend is ready to carry out effects; sent once, first.
     Started,
-    /// The frontend's clock reads `now`, the time since it started. A frontend sends one before
-    /// every other message and whenever [`State::deadline`] passes.
+    /// The frontend's clock reads `now`, the time since it started, on the local date `today`. A
+    /// frontend sends one before every other message and whenever [`State::deadline`] passes.
     Tick {
         /// The time since the frontend started.
         now: Duration,
+        /// The local date.
+        today: Date,
     },
     /// The [`Disk::Save`] under way succeeded.
     Saved,
@@ -118,7 +120,8 @@ pub enum Message {
     ToggleShortcuts,
     /// Close the shortcuts panel.
     CloseShortcuts,
-    /// Show the focused block as the root.
+    /// Show the focused block as the root; in the Today view, go to the focused entry in the
+    /// outline (D-7).
     ZoomIn,
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
     ZoomOut,
@@ -431,6 +434,9 @@ pub enum Disk {
 impl State {
     /// Applies `message` and returns the effects the frontend must carry out.
     pub fn update(&mut self, message: Message) -> Vec<Effect> {
+        let Some(message) = self.as_located(message) else {
+            return Vec::new();
+        };
         if message.ends_editing() {
             self.stop_editing();
         }
@@ -447,7 +453,10 @@ impl State {
         let mut effects = Vec::new();
         match message {
             Message::Started => effects = self.backup_on_open(),
-            Message::Tick { now } => self.now = now,
+            Message::Tick { now, today } => {
+                self.now = now;
+                self.today = today;
+            }
             Message::Saved => self.saved(),
             Message::SaveFailed { reason } => self.save_failed(reason),
             Message::SaveRefused { contents } => self.save_refused(contents),
@@ -486,7 +495,7 @@ impl State {
             Message::CloseShortcuts => self.shortcuts = false,
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
-            Message::GoHome => self.go_to(None),
+            Message::GoHome => self.go_to(Location::Outline(None)),
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
             Message::ToggleSidebar => self.toggle_sidebar(),
@@ -544,7 +553,7 @@ impl State {
     /// The focused block and whether it is the title row.
     pub(super) fn focused(&self) -> Option<(Block, bool)> {
         let id = self.focus?;
-        Some((blocks::block(self.document(), id)?, Some(id) == self.zoom))
+        Some((blocks::block(self.document(), id)?, Some(id) == self.zoom()))
     }
 
     /// The focused block unless it is the title, which stands for the view's root: it does not
@@ -563,46 +572,56 @@ impl State {
             .unwrap_or_default()
     }
 
-    /// Zooms into the focused block (FR-NAV-03).
+    /// Zooms into the focused block (FR-NAV-03), or in the Today view goes to it in the outline
+    /// (D-7).
     fn zoom_in(&mut self) {
-        if let Some(block) = self.focused_block() {
-            self.go_to(Some(block.id()));
+        let Some(block) = self.focused_block() else {
+            return;
+        };
+        match self.location {
+            Location::Outline(_) => self.go_to(Location::Outline(Some(block.id()))),
+            Location::Today => self.go_to_entry(&block),
         }
     }
 
     /// Zooms out to the parent of the zoomed block (FR-NAV-03).
     fn zoom_out(&mut self) {
-        if let Some(zoom) = self.zoom {
-            self.go_to(blocks::parent(self.document(), zoom).map(|block| block.id()));
+        if let Some(zoom) = self.zoom() {
+            let parent = blocks::parent(self.document(), zoom).map(|block| block.id());
+            self.go_to(Location::Outline(parent));
         }
     }
 
-    /// Zooms to `zoom`, a new entry in the history that drops any forward entries.
-    pub(super) fn go_to(&mut self, zoom: Option<ItemId>) {
-        if zoom == self.zoom {
+    /// Shows `location`, a new entry in the history that drops any forward entries.
+    pub(super) fn go_to(&mut self, location: Location) {
+        if location == self.location {
             return;
         }
         self.history.truncate(self.history_at + 1);
-        self.history.push(zoom);
+        self.history.push(location);
         self.history_at = self.history.len() - 1;
-        self.show(zoom);
+        self.show(location);
     }
 
     /// Shows the history entry at `at`, if there is one.
     fn walk_history(&mut self, at: Option<usize>) {
         if let Some(at) = at
-            && let Some(&zoom) = self.history.get(at)
+            && let Some(&location) = self.history.get(at)
         {
             self.history_at = at;
-            self.show(zoom);
+            self.show(location);
         }
     }
 
-    /// Shows `zoom` as the root and focuses the block zoomed out of when it is visible, else the
-    /// first block under the title, else the title.
-    fn show(&mut self, zoom: Option<ItemId>) {
-        let left = self.zoom;
-        self.zoom = zoom;
+    /// Shows `location` and focuses the block left when it is visible: the block zoomed out of,
+    /// or the focused entry when leaving the Today view; else the first block under the title,
+    /// else the title.
+    fn show(&mut self, location: Location) {
+        let left = match self.location {
+            Location::Outline(zoom) => zoom,
+            Location::Today => self.focus,
+        };
+        self.location = location;
         let rows = self.rows();
         self.focus = left
             .filter(|&id| rows.iter().any(|row| row.id == id))

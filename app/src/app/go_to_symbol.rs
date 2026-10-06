@@ -4,7 +4,7 @@
 //! FR-NAV-05).
 
 use super::{
-    MenuInput, State,
+    Location, MenuInput, State,
     finder::{Candidate, Finder, FinderView},
     picker::Picked,
 };
@@ -74,7 +74,8 @@ impl State {
         if let Picked::Chosen(id) = closed
             && let Some(block) = blocks::block(&self.document, id)
         {
-            self.go_to(blocks::parent(&self.document, id).map(|parent| parent.id()));
+            let parent = blocks::parent(&self.document, id).map(|parent| parent.id());
+            self.go_to(Location::Outline(parent));
             self.focus = Some(block.id());
         }
     }

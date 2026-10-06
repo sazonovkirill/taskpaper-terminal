@@ -19,7 +19,7 @@ use ratatui::{
     text::Line,
 };
 
-use crate::app::{Effect, Message, Mode, Origin, SidebarInput, State};
+use crate::app::{Effect, Location, Message, Mode, Origin, SidebarInput, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use widgets::{
@@ -48,7 +48,8 @@ pub struct Tui {
     /// Reads the local time, whose date messages that write one carry and chips are drawn on.
     clock: fn() -> Zoned,
     /// When the local date next changes while the outline shows a date chip, whose relative date
-    /// then changes and which may become overdue (FR-TAG-03, D-46).
+    /// then changes and which may become overdue (FR-TAG-03, D-46), or the pane shows the Today
+    /// view, which then lists the blocks for the new date (D-7).
     midnight: Option<Duration>,
     keymap: Keymap,
     /// Whether text too long for its line wraps, or ends in `…` (FR-UI-05).
@@ -203,7 +204,10 @@ impl Tui {
         if let Some(action) = self.keymap.expire(now, &self.context()) {
             self.act(action, now);
         }
-        let effects = self.state.update(Message::Tick { now });
+        let effects = self.state.update(Message::Tick {
+            now,
+            today: (self.clock)().date(),
+        });
         self.run(effects);
         self.midnight = self.next_midnight(now);
     }
@@ -221,13 +225,14 @@ impl Tui {
     }
 
     /// When the local date changes, counted like `now`, if the outline shows a date chip, which the
-    /// new date names differently.
+    /// new date names differently, or the pane shows the Today view, whose entries it changes.
     fn next_midnight(&self, now: Duration) -> Option<Duration> {
-        if !self
-            .state
-            .rows()
-            .iter()
-            .any(|row| row.start.is_some() || row.due.is_some())
+        if self.state.location() != Location::Today
+            && !self
+                .state
+                .rows()
+                .iter()
+                .any(|row| row.start.is_some() || row.due.is_some())
         {
             return None;
         }
@@ -271,7 +276,10 @@ impl Tui {
         if message == Message::Terminate {
             self.ending = true;
         }
-        let mut effects = self.state.update(Message::Tick { now });
+        let mut effects = self.state.update(Message::Tick {
+            now,
+            today: (self.clock)().date(),
+        });
         effects.extend(self.state.update(message));
         self.run(effects);
         self.midnight = self.next_midnight(now);
@@ -344,10 +352,13 @@ impl Tui {
             Constraint::Length(widgets::GUTTER_WIDTH),
             Constraint::Fill(1),
         ]));
-        frame.render_widget(
-            widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(crumbs.width)),
-            crumbs,
-        );
+        let header = match self.state.location() {
+            Location::Outline(_) => {
+                widgets::breadcrumbs(&self.state.breadcrumbs(), usize::from(crumbs.width))
+            }
+            Location::Today => widgets::today_header(),
+        };
+        frame.render_widget(header, crumbs);
         frame.render_widget(
             Line::styled(
                 "─".repeat(usize::from(separator.width)),

@@ -195,15 +195,15 @@ fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
     assert_eq!(pane(&mut app)[2], "▌ Reports:", "k moves in the pane");
 }
 
-// D-7: the Today view arrives with step 4.7.
+// D-7, navigation §6, §7
 #[test]
-fn enter_on_today_does_nothing_yet() {
+fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
     alt_0(&mut app);
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
-    assert_eq!(pane(&mut app)[0], "  ⌂");
-    assert_eq!(sidebar(&mut app), listed(Some(2)));
+    assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
+    assert_eq!(sidebar(&mut app), listed(None));
 }
 
 // keybindings.md §4

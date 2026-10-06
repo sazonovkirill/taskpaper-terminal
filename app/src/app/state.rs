@@ -45,6 +45,8 @@ pub struct State {
     pub(super) external: External,
     /// The frontend's time at the latest tick.
     pub(super) now: Duration,
+    /// The frontend's local date at the latest tick, which the Today view lists blocks for (D-7).
+    pub(super) today: Date,
     /// The notice the status line shows, and until when.
     notice: Option<(Notice, Duration)>,
     pub(super) focus: Option<ItemId>,
@@ -72,14 +74,34 @@ pub struct State {
     pub(super) show_done: bool,
     /// Whether the shortcuts panel is open (FR-KEY-04).
     pub(super) shortcuts: bool,
-    /// The block shown as the root, or `None` at home (FR-NAV-03).
-    pub(super) zoom: Option<ItemId>,
-    /// Every zoom visited, oldest first, for back and forward (FR-NAV-04).
-    pub(super) history: Vec<Option<ItemId>>,
-    /// The position of the current zoom in `history`.
+    /// What the pane shows: the outline below a zoom, or the Today view (FR-NAV-03, D-7).
+    pub(super) location: Location,
+    /// Every location visited, oldest first, for back and forward (FR-NAV-04).
+    pub(super) history: Vec<Location>,
+    /// The position of the current location in `history`.
     pub(super) history_at: usize,
     /// The navigation sidebar (FR-UI-01).
     pub(super) sidebar: Sidebar,
+}
+
+/// What a pane shows (navigation.md §4, §7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Location {
+    /// The outline below this zoom block, or below the document root at home (FR-NAV-03).
+    Outline(Option<ItemId>),
+    /// The Today view: a flat list of the blocks for today (FR-TAG-04, D-7).
+    Today,
+}
+
+impl Location {
+    /// This location with its zoom block replaced by what `rematch` finds for it, home when it
+    /// finds nothing.
+    pub(super) fn rematched(self, rematch: impl FnOnce(ItemId) -> Option<ItemId>) -> Self {
+        match self {
+            Self::Outline(zoom) => Self::Outline(zoom.and_then(rematch)),
+            Self::Today => Self::Today,
+        }
+    }
 }
 
 /// Whether the open file may be written.
@@ -206,6 +228,9 @@ pub struct Row {
     pub url: bool,
     /// Whether it is selected (FR-OPS-01).
     pub selected: bool,
+    /// The text of each block above it, from the top level down, as an entry of the Today view
+    /// shows it; empty in an outline (D-7).
+    pub path: Vec<String>,
 }
 
 impl Row {
@@ -231,6 +256,7 @@ impl State {
             origin: Origin::Chosen,
             access: Access::ReadWrite,
             now: Duration::ZERO,
+            today: Date::default(),
             notice: None,
             focus: None,
             selection: Selection::default(),
@@ -245,8 +271,8 @@ impl State {
             folds: HashSet::new(),
             show_done: true,
             shortcuts: false,
-            zoom: None,
-            history: vec![None],
+            location: Location::Outline(None),
+            history: vec![Location::Outline(None)],
             history_at: 0,
             sidebar: Sidebar::default(),
         };
@@ -337,14 +363,24 @@ impl State {
         self.focus
     }
 
-    /// The block shown as the root, or `None` at home (FR-NAV-03).
+    /// The block shown as the root, or `None` at home and in the Today view (FR-NAV-03).
     #[must_use]
     pub fn zoom(&self) -> Option<ItemId> {
-        self.zoom
+        match self.location {
+            Location::Outline(zoom) => zoom,
+            Location::Today => None,
+        }
+    }
+
+    /// What the pane shows (navigation.md §4, §7).
+    #[must_use]
+    pub fn location(&self) -> Location {
+        self.location
     }
 
     /// The text of each block from the top level down to the zoom block as shown, without the
-    /// delimiters of its formatting; empty at home (FR-NAV-03, FR-FMT-01, FR-FMT-03).
+    /// delimiters of its formatting; empty at home and in the Today view (FR-NAV-03, FR-FMT-01,
+    /// FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
         self.zoom_block()
@@ -375,13 +411,21 @@ impl State {
         runs.iter().map(|run| run.text).collect()
     }
 
-    /// The visible rows: when zoomed, a title row for the zoom block at depth 0, then its child
+    /// The visible rows: the outline's, or in the Today view its entries (D-7).
+    #[must_use]
+    pub fn rows(&self) -> Vec<Row> {
+        match self.location {
+            Location::Outline(_) => self.outline_rows(),
+            Location::Today => self.today_rows(),
+        }
+    }
+
+    /// The outline's rows: when zoomed, a title row for the zoom block at depth 0, then its child
     /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
     /// their children, done blocks are hidden with theirs while completed blocks are, and special
     /// nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row inside a done
     /// block, also one above the zoom, says so (D-40).
-    #[must_use]
-    pub fn rows(&self) -> Vec<Row> {
+    fn outline_rows(&self) -> Vec<Row> {
         let title = self.zoom_block().map(|block| {
             let inside_done =
                 std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
@@ -405,7 +449,8 @@ impl State {
         title.into_iter().chain(rows).collect()
     }
 
-    fn row(&self, block: &Block, depth: usize, title: bool, inside_done: bool) -> Row {
+    /// The row of `block` at `depth` in an outline, the title row with `title`.
+    pub(super) fn row(&self, block: &Block, depth: usize, title: bool, inside_done: bool) -> Row {
         Row {
             id: block.id(),
             depth,
@@ -432,12 +477,13 @@ impl State {
             color: block.color(),
             url: block.url(),
             selected: self.selection.contains(block.id()),
+            path: Vec::new(),
         }
     }
 
     /// The zoom block, or `None` at home.
     pub(super) fn zoom_block(&self) -> Option<Block> {
-        blocks::block(&self.document, self.zoom?)
+        blocks::block(&self.document, self.zoom()?)
     }
 
     /// Every block below the zoom in order with its depth; with `visible`, only those the rows

@@ -292,11 +292,11 @@ impl State {
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
-        self.zoom = self.zoom.and_then(nearest);
+        self.location = self.location.rematched(nearest);
         self.history = self
             .history
             .iter()
-            .map(|zoom| zoom.and_then(nearest))
+            .map(|location| location.rematched(nearest))
             .collect();
         self.focus = self.focus.and_then(nearest);
         let exact = |id: ItemId| {
@@ -432,13 +432,19 @@ mod tests {
     fn opened(text: &str) -> State {
         let mut state = State::new(format::parse(text), Some(PathBuf::from(FILE)))
             .with_version(Some(version(text)));
-        state.update(Message::Tick { now: ms(0) });
+        state.update(Message::Tick {
+            now: ms(0),
+            today: jiff::civil::Date::default(),
+        });
         state
     }
 
     /// Changes the first line's text to `text` at time `now`, as a command would.
     fn edit(state: &mut State, text: &str, now: Duration) -> Vec<Effect> {
-        state.update(Message::Tick { now });
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        });
         let document = &mut state.document;
         let id = document.descendants(document.root()).next().unwrap().0;
         let before = document.get(id).unwrap().text().to_owned();
@@ -450,7 +456,10 @@ mod tests {
         document
             .apply(&mut Transaction::new(vec![op], (), ()))
             .unwrap();
-        state.update(Message::Tick { now })
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        })
     }
 
     fn found(text: &str) -> Message {
@@ -537,7 +546,10 @@ mod tests {
         let mut state = opened("a\n");
         edit(&mut state, "b", ms(0));
         assert_eq!(
-            state.update(Message::Tick { now: ms(1000) }),
+            state.update(Message::Tick {
+                now: ms(1000),
+                today: jiff::civil::Date::default()
+            }),
             save_over("b\n", Some(version("a\n")))
         );
         state.update(Message::Saved);
@@ -573,9 +585,31 @@ mod tests {
         state.update(Message::Back);
         assert_eq!(state.zoom(), None, "the history is kept");
         assert_eq!(
-            state.update(Message::Tick { now: ms(9000) }),
+            state.update(Message::Tick {
+                now: ms(9000),
+                today: jiff::civil::Date::default()
+            }),
             [],
             "a reload is not a change to save"
+        );
+    }
+
+    // F-FILE-06, D-7
+    #[test]
+    fn a_reload_keeps_the_today_view_and_its_focus_and_lists_the_new_blocks() {
+        let mut state = opened("- a @today\n- b @today\n");
+        state.update(Message::FocusNext);
+        state.update(Message::ZoomIn);
+        state.go_to(crate::app::Location::Today);
+        state.update(found("- new @today\n- a @today\n- b @today @x\n"));
+        assert_eq!(state.location(), crate::app::Location::Today);
+        assert_eq!(texts(&state), ["new", "a", "b"]);
+        assert_eq!(text_of(&state, state.focus()).as_deref(), Some("b"));
+        state.update(Message::Back);
+        assert_eq!(
+            text_of(&state, state.zoom()).as_deref(),
+            Some("b"),
+            "the history is kept"
         );
     }
 
@@ -652,7 +686,10 @@ mod tests {
         assert_eq!(state.update(Message::FileChecked { contents: None }), []);
         edit(&mut state, "b", ms(0));
         assert_eq!(
-            state.update(Message::Tick { now: ms(1000) }),
+            state.update(Message::Tick {
+                now: ms(1000),
+                today: jiff::civil::Date::default()
+            }),
             save_over("b\n", None)
         );
         state.update(Message::Saved);
@@ -670,7 +707,13 @@ mod tests {
         assert_eq!(texts(&state), ["mine"]);
         assert_eq!(state.notice(), None);
         assert_eq!(state.deadline(), None);
-        assert_eq!(state.update(Message::Tick { now: ms(9000) }), []);
+        assert_eq!(
+            state.update(Message::Tick {
+                now: ms(9000),
+                today: jiff::civil::Date::default()
+            }),
+            []
+        );
         assert_eq!(state.save_state(), SaveState::Unsaved);
     }
 
@@ -713,7 +756,13 @@ mod tests {
                 copy: PathBuf::from("/backups/copy.taskpaper")
             })
         );
-        assert_eq!(state.update(Message::Tick { now: ms(9000) }), []);
+        assert_eq!(
+            state.update(Message::Tick {
+                now: ms(9000),
+                today: jiff::civil::Date::default()
+            }),
+            []
+        );
     }
 
     // file-io.md §3, FR-TAG-03
@@ -785,7 +834,10 @@ mod tests {
         state.update(Message::ToggleDone {
             today: jiff::civil::date(2026, 10, 5),
         });
-        state.update(Message::Tick { now: ms(1000) });
+        state.update(Message::Tick {
+            now: ms(1000),
+            today: jiff::civil::Date::default(),
+        });
         state.update(Message::Saved);
         state.update(found("- b\n"));
         state.update(Message::Undo);
@@ -798,7 +850,10 @@ mod tests {
     fn taking_theirs_ends_a_failed_save() {
         let mut state = opened("a\n");
         edit(&mut state, "mine", ms(0));
-        state.update(Message::Tick { now: ms(1000) });
+        state.update(Message::Tick {
+            now: ms(1000),
+            today: jiff::civil::Date::default(),
+        });
         state.update(Message::SaveFailed {
             reason: "disk full".to_owned(),
         });
@@ -890,7 +945,10 @@ mod tests {
         let mut state = opened("a\n");
         edit(&mut state, "mine", ms(0));
         assert_eq!(
-            state.update(Message::Tick { now: ms(1000) }),
+            state.update(Message::Tick {
+                now: ms(1000),
+                today: jiff::civil::Date::default()
+            }),
             save_over("mine\n", Some(version("a\n")))
         );
         state.update(Message::SaveRefused {
@@ -900,7 +958,10 @@ mod tests {
         assert_eq!(state.save_state(), SaveState::Unsaved, "not a failure");
         let mut state = opened("a\n");
         edit(&mut state, "mine", ms(0));
-        state.update(Message::Tick { now: ms(1000) });
+        state.update(Message::Tick {
+            now: ms(1000),
+            today: jiff::civil::Date::default(),
+        });
         assert_eq!(
             state.update(Message::SaveRefused { contents: None }),
             save_over("mine\n", None)
@@ -915,7 +976,10 @@ mod tests {
     fn a_change_found_while_a_save_runs_opens_the_prompt() {
         let mut state = opened("a\n");
         edit(&mut state, "mine", ms(0));
-        state.update(Message::Tick { now: ms(1000) });
+        state.update(Message::Tick {
+            now: ms(1000),
+            today: jiff::civil::Date::default(),
+        });
         state.update(found("mine\n"));
         assert!(state.in_conflict());
         state.update(Message::SaveRefused {

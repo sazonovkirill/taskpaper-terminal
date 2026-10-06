@@ -360,6 +360,7 @@ mod tests {
         let later = |state: &mut State, seconds| {
             state.update(Message::Tick {
                 now: Duration::from_secs(seconds),
+                today: jiff::civil::Date::default(),
             })
         };
         assert_eq!(

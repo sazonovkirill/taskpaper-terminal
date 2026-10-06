@@ -20,7 +20,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ```
 
 - **Sidebar** (FR-UI-01) on the left, 24–32 columns.
-- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, a house icon `⌂` for the document root followed by the path to the zoom block, D-32, starting after the focus gutter of §2 so the root crumb lines up with top-level blocks, D-35) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row showing the zoom block styled as in §2 for its type (marker, color, dimming, a project's `:`), in bold and without indent, so its type is clear (D-34). The focused pane's header is highlighted.
+- **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, a house icon `⌂` for the document root followed by the path to the zoom block, D-32, starting after the focus gutter of §2 so the root crumb lines up with top-level blocks, D-35) or, in the Today view, the Today icon and the name `Today` in its place ([navigation.md §7](navigation.md#7-today-view-fr-tag-04-d-7)) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row showing the zoom block styled as in §2 for its type (marker, color, dimming, a project's `:`), in bold and without indent, so its type is clear (D-34). The focused pane's header is highlighted.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
 - **Secondary sidebar** on the right, 32–40 columns, shown only while it holds the `?` shortcuts panel (§4) or the comments panel (FR-SPC-02, [special-nodes.md §2.2](special-nodes.md#22-display)), one at a time; opening one replaces the other (D-28). It takes its width from the panes, which keep their minimum and scroll horizontally as in [navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13). Below 80 columns it is drawn over the right part of the focused pane.
 - **Pickers and prompts** (Go to Symbol, Go to Command, Move to, type, color, Save As) are centered overlays at most 80×20.
@@ -30,6 +30,8 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ## 2. Blocks
 
 Each row: indent, then the marker (if the type has one) and a space, then text, the `@today` and bookmark icons, and right-aligned chips. The indent is exactly the block's depth in the hierarchy, 2 columns per level, whatever its type; markers and icons come after it and never change it. Only tasks have markers; every other block starts with its text. So a task's text node, being its child, sits one level in and lines up with the task's text, as in TaskPaper (D-31).
+
+An entry of the Today view has no indent and shows its breadcrumb path dimmed after its icons, two spaces after them, the crumbs joined by ` › ` ([navigation.md §7](navigation.md#7-today-view-fr-tag-04-d-7)).
 
 | Block (FR-BLK) | Marker | Text |
 |---|---|---|

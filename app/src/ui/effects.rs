@@ -502,6 +502,7 @@ mod tests {
         let mut state = state;
         let effects = state.update(Message::Tick {
             now: std::time::Duration::from_secs(1),
+            today: jiff::civil::Date::default(),
         });
         assert_eq!(
             effects.last(),

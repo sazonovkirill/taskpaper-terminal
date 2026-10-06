@@ -46,6 +46,7 @@ Weekend errands:
 	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with - and a space for a task or end it with : for a project, and Backspace at its start or Delete at its end makes it text again.
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.
+	Open Today from the sidebar with Alt+0, then j and Enter, for what is due or started by today; Alt+l or gz on one of its blocks goes to it in the outline.
 Packing list template:
 	- Toothbrush
 	- Socks

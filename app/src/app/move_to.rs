@@ -4,7 +4,7 @@
 //! FR-OPS-05).
 
 use super::{
-    Access, MenuInput, Notice, State,
+    Access, Location, MenuInput, Notice, State,
     finder::{Finder, FinderView},
     picker::Picked,
 };
@@ -70,12 +70,13 @@ impl State {
         self.commit_focusing(ops, focus);
         let above: Vec<ItemId> =
             std::iter::successors(Some(to), |&line| self.document.get(line)?.parent()).collect();
-        if self.zoom.is_none_or(|zoom| above.contains(&zoom)) {
-            for line in above.iter().take_while(|&&line| Some(line) != self.zoom) {
+        let zoom = self.zoom();
+        if zoom.is_none_or(|zoom| above.contains(&zoom)) {
+            for line in above.iter().take_while(|&&line| Some(line) != zoom) {
                 self.folds.remove(line);
             }
         } else {
-            self.go_to(Some(to));
+            self.go_to(Location::Outline(Some(to)));
             self.focus = focus;
         }
     }

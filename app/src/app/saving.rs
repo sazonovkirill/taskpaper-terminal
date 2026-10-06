@@ -375,14 +375,20 @@ mod tests {
     /// A file holding one line, `a`, opened at time 0.
     fn opened() -> State {
         let mut state = State::new(format::parse("a\n"), Some(PathBuf::from(FILE)));
-        state.update(Message::Tick { now: ms(0) });
+        state.update(Message::Tick {
+            now: ms(0),
+            today: jiff::civil::Date::default(),
+        });
         state
     }
 
     /// Sets the text of the document's only line to `text` at time `now`, as a command would:
     /// the frontend's tick, then the change, then the update that follows every message.
     fn edit(state: &mut State, text: &str, now: Duration) -> Vec<Effect> {
-        state.update(Message::Tick { now });
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        });
         let document = &mut state.document;
         let id = document.descendants(document.root()).next().unwrap().0;
         let before = document.get(id).unwrap().text().to_owned();
@@ -394,11 +400,17 @@ mod tests {
         document
             .apply(&mut Transaction::new(vec![op], (), ()))
             .unwrap();
-        state.update(Message::Tick { now })
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        })
     }
 
     fn tick(state: &mut State, now: Duration) -> Vec<Effect> {
-        state.update(Message::Tick { now })
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        })
     }
 
     /// The effects of a save of `text` while there is no file yet.

@@ -1130,6 +1130,7 @@ mod tests {
         state.update(Message::EditAtEnd);
         state.update(Message::Tick {
             now: Duration::from_secs(1),
+            today: jiff::civil::Date::default(),
         });
         assert_eq!(state.mode(), Mode::Edit, "a tick leaves it alone");
     }
@@ -1177,6 +1178,7 @@ mod tests {
     fn later(state: &mut State, seconds: u64) -> Vec<Effect> {
         state.update(Message::Tick {
             now: Duration::from_secs(seconds),
+            today: jiff::civil::Date::default(),
         })
     }
 

@@ -4,7 +4,7 @@
 
 use std::collections::HashSet;
 
-use super::State;
+use super::{Location, State};
 use crate::document::{BlockKind, ItemId, blocks};
 
 /// Whether the sidebar is shown, its focused entry while it has the keys, and its folded project
@@ -156,14 +156,18 @@ impl State {
                     self.sidebar.folds.remove(id);
                 }
             }
-            SidebarInput::Choose => match focused {
-                Some(SidebarEntry::Bookmark { id, .. } | SidebarEntry::Project { id, .. }) => {
+            SidebarInput::Choose => {
+                let location = focused.map(|entry| match entry {
+                    SidebarEntry::Bookmark { id, .. } | SidebarEntry::Project { id, .. } => {
+                        Location::Outline(Some(*id))
+                    }
+                    SidebarEntry::Today => Location::Today,
+                });
+                if let Some(location) = location {
                     self.sidebar.focus = None;
-                    self.go_to(Some(*id));
+                    self.go_to(location);
                 }
-                // The Today view arrives with step 4.7.
-                Some(SidebarEntry::Today) | None => {}
-            },
+            }
             SidebarInput::Leave => self.sidebar.focus = None,
         }
     }
@@ -458,15 +462,23 @@ Home: @bookmark
         );
     }
 
-    // D-7: the Today view arrives with step 4.7.
+    // D-7, navigation §6, §7
     #[test]
-    fn choosing_today_does_nothing_yet() {
+    fn choosing_today_shows_the_today_view_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
+        state.update(Message::FocusSidebar);
+        input(&mut state, &[SidebarInput::Choose]);
         state.update(Message::FocusSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
         input(&mut state, &[SidebarInput::Choose]);
-        assert_eq!(zoomed(&state), None);
-        assert_eq!(focused(&state), Some(2));
+        assert_eq!(state.location(), Location::Today);
+        assert!(!state.sidebar_focused());
+        state.update(Message::Back);
+        assert_eq!(
+            zoomed(&state).as_deref(),
+            Some("Launch plan"),
+            "Today is a step of the zoom history"
+        );
     }
 
     // keybindings.md §4

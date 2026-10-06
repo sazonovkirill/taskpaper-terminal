@@ -29,6 +29,7 @@ mod show_completed;
 mod sidebar;
 mod support;
 mod tags;
+mod today;
 mod typed_creation;
 mod word_wrap;
 mod zoom;

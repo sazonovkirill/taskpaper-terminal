@@ -185,7 +185,7 @@ impl State {
                 !std::iter::successors(blocks::parent(self.document(), row.id), |above| {
                     blocks::parent(self.document(), above.id())
                 })
-                .any(|above| Some(above.id()) != self.zoom && selected(above.id()))
+                .any(|above| Some(above.id()) != self.zoom() && selected(above.id()))
             })
             .filter_map(|row| blocks::block(self.document(), row.id))
             .collect()

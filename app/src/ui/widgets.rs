@@ -212,6 +212,17 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
     line.bold()
 }
 
+/// The header of the Today view in place of breadcrumbs: its icon, as in the sidebar, and its name,
+/// bold as the focused pane's header (navigation.md §7, ui.md §1).
+#[must_use]
+pub fn today_header() -> Line<'static> {
+    Line::from(vec![
+        Span::styled(Icon::Today.glyph(), today_style()),
+        Span::raw(" Today"),
+    ])
+    .bold()
+}
+
 /// What the status line says after the file's path (ui.md §1, file-io.md §1–3): `●` while changes
 /// are unsaved, an error badge when the last save failed, `read-only`, `not on disk` when the file
 /// was deleted or moved away, the question a failed save on quit asks, and the current notice.
@@ -853,7 +864,8 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
 /// whatever its type, then the marker of a task, then the text with its inline formatting
 /// (D-31, FR-FMT-01), then the `@today` star and the bookmark icon, each after a space (D-47),
 /// dimmed with a done block or one inside it. A collapsed block with children shows `▸ n` after
-/// them (ui.md §2). The zoom title is drawn like its block, in bold (D-34).
+/// them (ui.md §2), and an entry of the Today view the path of the blocks above it, dimmed
+/// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34).
 fn row_line(row: &Row, width: usize) -> Line<'_> {
     let (marker, marker_style, style) = row_style(row);
     let mut line = Line::from(vec![
@@ -888,6 +900,12 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
     if row.hidden_children > 0 {
         line.push_span(Span::styled(
             format!(" ▸ {}", row.hidden_children),
+            Style::new().dim(),
+        ));
+    }
+    if !row.path.is_empty() {
+        line.push_span(Span::styled(
+            format!("  {}", row.path.join(" › ")),
             Style::new().dim(),
         ));
     }
@@ -1829,6 +1847,40 @@ mod tests {
             ),
             expected
         );
+    }
+
+    // D-7, navigation §7
+    #[test]
+    fn the_today_header_names_the_view_after_its_icon_in_bold() {
+        let header = today_header();
+        assert_eq!(header.to_string(), format!("{} Today", Icon::Today.glyph()));
+        assert_eq!(header.style, Style::new().bold());
+        assert_eq!(header.spans[0].style, today_style());
+    }
+
+    // D-7, ui.md §2
+    #[test]
+    fn a_today_entry_shows_its_path_dimmed_after_its_icons_and_before_its_chips() {
+        let mut state = State::new(
+            format::parse("A:\n\tB:\n\t\t- c @today @due(2026-10-05)\n"),
+            None,
+        );
+        state.update(Message::Tick {
+            now: std::time::Duration::ZERO,
+            today: TODAY,
+        });
+        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
+        let star = Icon::Today.glyph();
+        let mut expected = Buffer::with_lines([at_right(
+            &format!("- c {star}  A › B"),
+            &chip(Icon::Due, "today"),
+            24,
+        )]);
+        expected.set_style(Rect::new(4, 0, 1, 1), today_style());
+        expected.set_style(Rect::new(5, 0, 7, 1), Style::new().dim());
+        expected.set_style(Rect::new(17, 0, 7, 1), due_style());
+        assert_eq!(draw(&state.rows(), 24, 1), expected);
     }
 
     // FR-NAV-03
