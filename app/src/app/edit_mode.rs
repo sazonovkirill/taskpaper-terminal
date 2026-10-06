@@ -1,11 +1,10 @@
 //! Edit mode: the focused block's text edited in place with the text keys, written to the
 //! document as it is typed, refused where it would type a tag, undone as one step and repaired
-//! when editing ends, with the command menu that `/` opens and the typed shortcuts
-//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, FR-MODE-05,
-//! OQ-24, OQ-25, OQ-27, D-44, D-50).
+//! when editing ends, with the command menu that `/` opens
+//! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, OQ-24, OQ-25,
+//! OQ-27, D-44, D-50).
 
 mod command_menu;
-mod shortcut;
 
 use std::{mem, ops::Range};
 
@@ -81,12 +80,6 @@ pub(super) struct Session {
     typing: bool,
     /// The command menu, while `/` has it open (D-50).
     menu: Option<CommandMenu>,
-    /// The parts and text as typed, prefix and space included, while the latest change is a
-    /// typed shortcut that the very next `Backspace` or `Ctrl+Z` takes back (editing.md §2.1).
-    shortcut: Option<(LineParts, TextField)>,
-    /// Whether the session's step joins the step before it: the divider a typed `--- ` made of
-    /// the block above (editing.md §2.1).
-    joins: bool,
 }
 
 impl Session {
@@ -106,17 +99,18 @@ impl Session {
             redo: Vec::new(),
             typing: false,
             menu: None,
-            shortcut: None,
-            joins: false,
         }
     }
 
     /// Applies `edit` to the text, or returns `false` and changes nothing when it would type a
     /// tag (OQ-25). A character that breaks a line is not typed, since it would split the line
     /// when the file is read back. Text that makes the line a task takes the task's syntax, so
-    /// that its dash shows as the marker (OQ-27).
+    /// that its dash shows as the marker, and deleting the marker or a project's `:` takes it
+    /// off again (OQ-27).
     fn edit(&mut self, edit: TextEdit) -> bool {
-        self.shortcut = None;
+        if self.unmark(edit) {
+            return true;
+        }
         if let TextEdit::Insert(c) = edit
             && format::breaks_line(c)
         {
@@ -149,6 +143,28 @@ impl Session {
         true
     }
 
+    /// Takes off the task's dash that `Backspace` at the start of the text deletes, or the
+    /// project's `:` that `Delete` at its end deletes, as one change to undo, and returns
+    /// whether it did (OQ-27).
+    fn unmark(&mut self, edit: TextEdit) -> bool {
+        let end = match edit {
+            TextEdit::DeleteBackward => false,
+            TextEdit::DeleteForward => true,
+            _ => return false,
+        };
+        let text = self.field.text();
+        let at = if end { text.len() } else { 0 };
+        if self.field.selection().is_some() || self.field.caret() != at {
+            return false;
+        }
+        let Some((parts, text)) = self.parts.unmarked(text, end) else {
+            return false;
+        };
+        let caret = if end { text.len() } else { 0 };
+        self.change(parts, TextField::with_caret(text, caret));
+        true
+    }
+
     /// Puts `line`, which holds no line break, in place of the selection or at the caret as one
     /// change to undo, leaving out each `@` that would start a tag, as typing it would (OQ-25);
     /// returns whether it left one out.
@@ -167,7 +183,6 @@ impl Session {
     /// Takes the text back to before its latest change, or with `undo` false, replays the
     /// latest change undone.
     fn step(&mut self, undo: bool) {
-        self.shortcut = None;
         let (from, to) = if undo {
             (&mut self.undo, &mut self.redo)
         } else {
@@ -185,7 +200,6 @@ impl Session {
     /// Gives the text the type `typed` as one change to undo, keeping the caret where it was
     /// (editing.md §2.3).
     fn retype(&mut self, typed: Typed) {
-        self.shortcut = None;
         let (parts, text) = self.parts.retyped(typed, self.field.text());
         let field = TextField::with_caret(text, self.field.caret());
         self.change(parts, field);
@@ -287,16 +301,12 @@ impl State {
     }
 
     /// Applies `edit` to the text being edited and writes it to the document, or shows why a
-    /// tag cannot be typed (OQ-25). `Backspace` right after a typed shortcut takes it back, and
-    /// in an empty text deletes the block instead (editing.md §2, §2.1).
+    /// tag cannot be typed (OQ-25). `Backspace` in an empty text deletes the block instead
+    /// (editing.md §2).
     pub(super) fn edit_text(&mut self, edit: TextEdit) {
         let Some(session) = &mut self.edit else {
             return;
         };
-        if edit == TextEdit::DeleteBackward && session.revert_shortcut() {
-            self.write(false);
-            return;
-        }
         if edit == TextEdit::DeleteBackward && session.field.text().is_empty() {
             self.delete_empty_block();
             return;
@@ -337,7 +347,6 @@ impl State {
         }) else {
             return;
         };
-        session.shortcut = None;
         session.menu = Some(CommandMenu::new(node_commands(&block, link, today)));
     }
 
@@ -458,12 +467,9 @@ impl State {
         }
     }
 
-    /// Takes the text being edited back to before its latest change, or to the text as typed
-    /// right after a typed shortcut (editing.md §2.1).
+    /// Takes the text being edited back to before its latest change.
     pub(super) fn undo_typing(&mut self) {
-        if let Some(session) = &mut self.edit
-            && !session.revert_shortcut()
-        {
+        if let Some(session) = &mut self.edit {
             session.step(true);
         }
         self.write(false);
@@ -478,8 +484,8 @@ impl State {
     }
 
     /// Ends editing: writes the line repaired where it breaks canonical-outline rule 2 or 4 and
-    /// records the whole session, with the block's creation, as one step to undo, or as part of
-    /// the step before it when the session joins it (file-format.md §3.1, FR-OPS-08).
+    /// records the whole session, with the block's creation, as one step to undo
+    /// (file-format.md §3.1, FR-OPS-08).
     pub(super) fn stop_editing(&mut self) {
         self.write(true);
         let Some(session) = self.edit.take() else {
@@ -497,19 +503,17 @@ impl State {
             .cloned()
             .chain(session.applied())
             .collect();
-        self.record_session(session.joins, Transaction::new(ops, before, after));
+        self.edits.record(Transaction::new(ops, before, after));
         self.focus = Some(session.id);
     }
 
     /// Records the creation of the block being edited as a step of its own, so that a step
     /// committed while it is edited, which may move it, comes after it in the history and is
-    /// undone before it. The text is recorded when editing ends. A typed shortcut can no longer
-    /// be taken back on its own after such a step.
+    /// undone before it. The text is recorded when editing ends.
     pub(super) fn record_edit_so_far(&mut self) {
         let Some(session) = self.edit.as_mut() else {
             return;
         };
-        session.shortcut = None;
         let ops = mem::take(&mut session.created);
         if !ops.is_empty() {
             let before = Restore {
@@ -518,18 +522,7 @@ impl State {
             let after = Restore {
                 focus: Some(session.id),
             };
-            let joins = mem::take(&mut session.joins);
-            self.record_session(joins, Transaction::new(ops, before, after));
-        }
-    }
-
-    /// Records `step`, which a session applied, as the next step to undo, or with `joins` as part
-    /// of the latest one.
-    fn record_session(&mut self, joins: bool, step: Transaction<Restore>) {
-        if joins {
-            self.edits.join(step);
-        } else {
-            self.edits.record(step);
+            self.edits.record(Transaction::new(ops, before, after));
         }
     }
 
@@ -785,6 +778,84 @@ mod tests {
         assert_eq!(state.editor().unwrap().suffix, "");
         assert_eq!(state.rows()[0].kind, BlockKind::Task);
         assert_eq!(texts(&state), ["- My Inbox:"]);
+    }
+
+    // OQ-27
+    #[test]
+    fn deleting_the_dash_or_the_colon_takes_the_type_off() {
+        let mut state = open("- buy @x", 0);
+        edit_from_start(&mut state);
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["buy @x"]);
+        assert_eq!(state.rows()[0].kind, BlockKind::Text);
+        assert_eq!(shown(&state), "|buy");
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- buy @x"], "a change of the session");
+        let mut state = open("Inbox: @x", 0);
+        state.update(Message::EditAtEnd);
+        press(&mut state, TextEdit::DeleteForward, 1);
+        assert_eq!(texts(&state), ["Inbox @x"]);
+        assert_eq!(state.editor().unwrap().suffix, "");
+        assert_eq!(shown(&state), "Inbox|");
+        let mut state = open("- Inbox:", 0);
+        edit_from_start(&mut state);
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(state.rows()[0].kind, BlockKind::Project, "the text decides");
+        assert_eq!(shown(&state), "|Inbox");
+    }
+
+    // OQ-27
+    #[test]
+    fn only_a_delete_at_the_marker_with_nothing_selected_takes_it_off() {
+        for (line, edit, expected) in [
+            ("- ab", TextEdit::DeleteBackward, "- a"),
+            ("- ab", TextEdit::DeleteForward, "- ab"),
+            ("Ab:", TextEdit::DeleteBackward, "A:"),
+            ("ab", TextEdit::DeleteForward, "ab"),
+        ] {
+            let mut state = open(line, 0);
+            state.update(Message::EditAtEnd);
+            press(&mut state, edit, 1);
+            assert_eq!(texts(&state), [expected], "{line:?} {edit:?}");
+        }
+        let mut state = open("- ab", 0);
+        state.update(Message::EditAtEnd);
+        state.update(Message::Text(TextEdit::Move {
+            motion: Motion::Start,
+            select: true,
+        }));
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(
+            state.rows()[0].kind,
+            BlockKind::Task,
+            "a selection is deleted"
+        );
+        let mut state = open("Ab:", 0);
+        edit_from_start(&mut state);
+        state.update(Message::Text(TextEdit::Move {
+            motion: Motion::End,
+            select: true,
+        }));
+        press(&mut state, TextEdit::DeleteForward, 1);
+        assert_eq!(
+            state.rows()[0].kind,
+            BlockKind::Project,
+            "a selection is deleted"
+        );
+    }
+
+    // OQ-27, D-52
+    #[test]
+    fn a_section_that_becomes_a_task_is_a_section_again_as_text() {
+        let mut state = open("Ideas @section", 0);
+        edit_from_start(&mut state);
+        typed(&mut state, "- ");
+        assert_eq!(texts(&state), ["- Ideas @section"]);
+        assert_eq!(state.rows()[0].kind, BlockKind::Task);
+        assert!(!state.rows()[0].section, "the tag has no effect on a task");
+        press(&mut state, TextEdit::DeleteBackward, 1);
+        assert_eq!(texts(&state), ["Ideas @section"]);
+        assert!(state.rows()[0].section);
     }
 
     // FR-OPS-08, editing.md §2
@@ -1532,23 +1603,5 @@ Site @url(https://x.y)",
         assert_eq!(texts(&state)[0], "Call Ana @x");
         state.update(Message::CycleType);
         assert_eq!(texts(&state)[0], "Call Ana @x", "only while editing");
-    }
-
-    // D-50, editing.md §2.1
-    #[test]
-    fn ctrl_t_after_a_typed_shortcut_leaves_backspace_to_the_text() {
-        let mut state = open("a", 0);
-        state.update(Message::New(NewBlock::Below, None));
-        typed(&mut state, "[]");
-        state.update(Message::TypeSpace { today: TODAY });
-        assert_eq!(texts(&state), ["a", "- "]);
-        state.update(Message::CycleType);
-        assert_eq!(texts(&state), ["a", ""]);
-        state.update(Message::Text(TextEdit::DeleteBackward));
-        assert_eq!(
-            texts(&state),
-            ["a"],
-            "an empty block is deleted, not reverted"
-        );
     }
 }

@@ -152,6 +152,49 @@ fn the_marker_follows_the_type_the_text_gives() {
     assert_eq!(saved(&mut app), "- Call\n");
 }
 
+// OQ-27, D-52
+#[test]
+fn a_dash_or_a_colon_typed_or_deleted_changes_the_type_both_ways() {
+    let mut app = Harness::with_text("Ideas @section\n- Milk\nInbox:\n", 40, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Home, 1);
+    app.type_keys("- ");
+    press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Home, 1);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("j");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Delete, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    app.type_keys("k");
+    press(&mut app, KeyCode::Enter, 1);
+    app.type_keys(":");
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(outline_rows(&mut app)[..3], ["- Ideas", "Milk:", "Inbox"]);
+    assert_eq!(
+        saved(&mut app),
+        "- Ideas @section\nMilk:\nInbox\n",
+        "the task keeps the tag, which has no effect on it"
+    );
+    app.type_keys("k");
+    press(&mut app, KeyCode::Enter, 1);
+    press(&mut app, KeyCode::Home, 1);
+    press(&mut app, KeyCode::Backspace, 1);
+    press(&mut app, KeyCode::Esc, 1);
+    assert_eq!(saved(&mut app), "Ideas @section\nMilk:\nInbox\n");
+    let buffer = app.render().buffer().clone();
+    assert!(
+        buffer[(2, 2)]
+            .style()
+            .add_modifier
+            .contains(ratatui::style::Modifier::ITALIC),
+        "a section again, in bold italic"
+    );
+}
+
 // FR-OPS-08, keybindings.md §3
 #[test]
 fn ctrl_z_undoes_typing_and_z_undoes_the_whole_session() {

@@ -19,7 +19,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else.
+- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else, unless the pending key is a binding of its own: then it fires first and the key acts after it (§2, D-53).
 
 ## 2. Navigate mode
 
@@ -153,7 +153,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
 | Open the command menu of the block's commands (D-50, [editing.md §2.3](editing.md#23-command-menu)) | `/` |
 | Cycle the block's type: project, section, task, note (D-50, [editing.md §2.4](editing.md#24-cycling-the-type)) | `Ctrl+T` |
-| Typed shortcuts: a divider, a task, a completed task (FR-MODE-05, [editing.md §2.1](editing.md#21-typed-shortcuts)); `Backspace` or `Ctrl+Z` right after takes one back | `--- `, `[] ` or `[ ] `, `[x] ` at the start of the text |
+| Make a task text again / a project text again (OQ-27, [editing.md §2](editing.md#2-edit-mode)) | `Backspace` at the start of the text / `Delete` at its end |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |

@@ -184,13 +184,6 @@ pub enum Message {
     EditAtEnd,
     /// Change the text being edited (FR-MODE-03).
     Text(TextEdit),
-    /// Type a space in the text being edited, which turns a typed shortcut before the caret
-    /// into the block's type, `today` being the frontend's local date for a task it completes
-    /// (FR-MODE-05).
-    TypeSpace {
-        /// The local date.
-        today: Date,
-    },
     /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
     StopEditing,
     /// Open the command menu at the caret, as typing `/` in edit mode does, `today` being the
@@ -285,7 +278,6 @@ impl Message {
             | Self::Redo
             | Self::EditAtEnd
             | Self::Text(_)
-            | Self::TypeSpace { .. }
             | Self::StopEditing
             | Self::OpenCommandMenu { .. }
             | Self::CommandMenu(_)
@@ -473,7 +465,6 @@ impl State {
             Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),
             Message::Text(edit) => self.edit_text(edit),
-            Message::TypeSpace { today } => self.type_space(today),
             Message::StopEditing => self.stop_editing(),
             Message::OpenCommandMenu { today } => self.open_command_menu(today),
             Message::CommandMenu(input) => effects = self.command_menu_input(input),

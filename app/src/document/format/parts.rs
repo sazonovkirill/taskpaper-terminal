@@ -103,6 +103,24 @@ impl LineParts {
         };
         Some((parts, format!("{rest}{}", self.suffix())))
     }
+
+    /// When these parts hold a task's dash, or with `end` a project's `:`: the parts and text of
+    /// the line `text` makes without it, which takes the type it then parses as (OQ-27).
+    #[must_use]
+    pub fn unmarked(&self, text: &str, end: bool) -> Option<(Self, String)> {
+        let marked = if end {
+            self.project
+        } else {
+            !self.prefix.is_empty()
+        };
+        marked.then(|| {
+            let parts = Self {
+                tags: self.tags.clone(),
+                ..Self::default()
+            };
+            Self::split(&parts.compose(text))
+        })
+    }
 }
 
 impl LineParts {
@@ -135,21 +153,6 @@ impl LineParts {
             tags,
         };
         (parts, text.to_owned())
-    }
-
-    /// These parts with the tag `name` set to `value` as [`tags::set`] sets it on a line: the
-    /// first occurrence's value replaced, else the tag added after the others.
-    #[must_use]
-    pub fn tagged(mut self, name: &str, value: &str) -> Self {
-        let found = self
-            .tags
-            .iter_mut()
-            .find(|tag| tags::scan(tag).iter().any(|found| found.name == name));
-        match found {
-            Some(tag) => *tag = tags::set(tag, name, value),
-            None => self.tags.push(tags::set("", name, value)),
-        }
-        self
     }
 }
 
@@ -205,6 +208,24 @@ mod tests {
         assert_eq!(edited("a @id", "b @id"), "b @id", "reserved names are text");
         assert_eq!(edited("- a", ""), "- ");
         assert_eq!(edited("P:", ""), ":");
+    }
+
+    // OQ-27
+    #[test]
+    fn unmarked_parts_take_the_type_their_line_then_parses_as() {
+        let unmarked = |line: &str, end: bool| {
+            let (parts, text) = LineParts::split(line);
+            parts
+                .unmarked(&text, end)
+                .map(|(parts, text)| parts.line(&text))
+        };
+        assert_eq!(unmarked("- a @x", false).as_deref(), Some("a @x"));
+        assert_eq!(unmarked("- a:", false).as_deref(), Some("a:"));
+        assert_eq!(unmarked("- - a", false).as_deref(), Some("- a"));
+        assert_eq!(unmarked("A: @x", true).as_deref(), Some("A @x"));
+        assert_eq!(unmarked("- a", true), None);
+        assert_eq!(unmarked("A:", false), None);
+        assert_eq!(unmarked("a @section", false), None);
     }
 
     // OQ-27
@@ -305,23 +326,5 @@ mod tests {
         ] {
             assert_eq!(retyped("", typed), line, "{typed:?}");
         }
-    }
-
-    // FR-MODE-05, FR-DONE-01
-    #[test]
-    fn a_tag_set_on_the_parts_replaces_its_value_or_comes_last() {
-        let tagged = |line: &str| {
-            let (parts, text) = LineParts::split(line);
-            parts.tagged("done", "2026-10-05").line(&text)
-        };
-        assert_eq!(tagged("- a @x"), "- a @x @done(2026-10-05)");
-        assert_eq!(tagged("- a @done @x"), "- a @done(2026-10-05) @x");
-        let (task, _) = LineParts::split("- a");
-        assert_eq!(
-            task.tagged("done", "2026-10-05").line(""),
-            "- \u{2026} @done(2026-10-05)",
-            "an empty task keeps the placeholder"
-        );
-        assert_eq!(tagged(""), "@done(2026-10-05)");
     }
 }

@@ -46,26 +46,6 @@ impl History {
         }
     }
 
-    /// Makes `transaction`, which the document has already been changed by, part of the latest
-    /// step to undo, which then ends where it ends, as for a change that finishes the step
-    /// before it. Without a step to undo it becomes one, as [`History::record`] makes it.
-    pub fn join(&mut self, transaction: Transaction<Restore>) {
-        let Some(latest) = self.undo.pop() else {
-            self.record(transaction);
-            return;
-        };
-        // The inverse of a step ends where the step began.
-        let before = *latest.after();
-        let ops = latest
-            .inverse()
-            .ops()
-            .iter()
-            .chain(transaction.ops())
-            .cloned()
-            .collect();
-        self.record(Transaction::new(ops, before, *transaction.after()));
-    }
-
     /// Reverts the latest step and returns where the view was before it, or `None` when there is
     /// nothing to undo.
     ///
@@ -241,33 +221,5 @@ mod tests {
         document.apply(&mut external.inverse()).unwrap();
         assert_eq!(history.undo(&mut document), Ok(Some(BEFORE)));
         assert_eq!(texts(&document), ["a"]);
-    }
-
-    // FR-OPS-08, editing.md §2.1
-    #[test]
-    fn a_joined_change_is_undone_and_redone_with_the_latest_step() {
-        let mut document = parse("a\nb");
-        let mut history = History::default();
-        let mut typed = rename(&document, "b", "B");
-        let joined_after = *typed.after();
-        document.apply(&mut typed).unwrap();
-        history.join(typed);
-        commit(&mut history, &mut document, "a", "A");
-        let mut joined = rename(&document, "B", "BB");
-        document.apply(&mut joined).unwrap();
-        let joined = Transaction::new(joined.ops().to_vec(), joined_after, joined_after);
-        history.join(joined);
-        assert_eq!(texts(&document), ["A", "BB"]);
-        assert_eq!(history.undo(&mut document), Ok(Some(BEFORE)));
-        assert_eq!(texts(&document), ["a", "B"], "one step takes back both");
-        assert_eq!(history.redo(&mut document), Ok(Some(joined_after)));
-        assert_eq!(texts(&document), ["A", "BB"]);
-        history.undo(&mut document).unwrap();
-        assert_eq!(history.undo(&mut document), Ok(Some(BEFORE)));
-        assert_eq!(
-            texts(&document),
-            ["a", "b"],
-            "a change joined to no step is one"
-        );
     }
 }

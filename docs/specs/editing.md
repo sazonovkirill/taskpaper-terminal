@@ -1,6 +1,6 @@
 # Spec: Editing
 
-Covers FR-MODE (typed shortcuts included), FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and FR-DONE. All edits are transactions over the [data model](data-model.md#4-edits) and are undoable (FR-OPS-08). Key bindings are in [keybindings.md](keybindings.md).
+Covers FR-MODE, FR-OPS, FR-BLK-08, FR-TAG, FR-FMT and FR-DONE. All edits are transactions over the [data model](data-model.md#4-edits) and are undoable (FR-OPS-08). Key bindings are in [keybindings.md](keybindings.md).
 
 ## 1. Modes
 
@@ -15,7 +15,7 @@ Each pane is in **navigate** or **edit** mode (FR-MODE-01, D-1).
 The block's editor opens where the block is drawn, keeping its indentation, marker, surrounding blocks and scroll position. A block is one line (D-43), so the editor is one line; text wider than the pane scrolls to keep the caret in view.
 
 **What is edited** is the block's visible text:
-- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed, while a `:` typed in text stays text. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider is text like any other and is edited as its raw `---` (D-52);
+- without `- ` and the project `:` (the type is shown by the marker). The line is written back with its type syntax re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed, while a `:` typed in text stays text. `Backspace` with the caret at the start of a task's text, nothing selected, deletes the dash, and `Delete` at the end of a project's text deletes the `:`; the block then takes the type its line reads as, each as one change of the session (D-52). The tags stay: a section that gains `- ` is a task whose `@section` has no effect, and is a section again once its dash is deleted. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider is text like any other and is edited as its raw `---` (D-52);
 - without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message. A pasted single line, ignoring line breaks that end it, goes in at the caret as one undo step; text of several lines ends editing and becomes blocks below the block as `paste_below` makes them, in place of the block when its text is empty and it has no tags or children (FR-OPS-06);
 - with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01) and the raw link syntax of §2.2, and in text blocks the `#` heading markers (FR-FMT-03, D-45).
 
@@ -39,24 +39,7 @@ Ending edit mode applies the canonical-outline repairs for the line ([file-forma
 
 ### 2.1 Typed shortcuts
 
-Typing one of these prefixes followed by a space converts the block (FR-MODE-05, D-24), like Workflowy's Markdown triggers ([reference §16](../reference/workflowy.md#16-node-types-listbullet-types)):
-
-| Typed, then space | Result |
-|---|---|
-| `---` | Divider. The block becomes a text block reading `---`, which is drawn as a divider (D-52), and a new block opens below it in edit mode, so typing continues: a task if the block was a task, otherwise text, as in §3. |
-| `[]` or `[ ]` | Task: the prefix becomes `- `. |
-| `[x]` or `[X]` | Completed task: the prefix becomes `- ` and `@done(YYYY-MM-DD)` with today's date is added (FR-DONE-01). |
-
-Rules:
-
-- A shortcut fires only when the prefix is the start of the text of a **text or task block** and the space is typed right after it, with the caret there. The divider also requires that no text follows the caret, that the block has no children (FR-BLK-07) and that it is not the zoom title, whose next block would be its child; otherwise the space is inserted as text. `[]`, `[ ]` and `[x]` in a task, and every prefix in a project, are ordinary text. A section is a text block, so its prefixes fire too; the divider drops its `@section`, as a type change does.
-- Shortcuts fire only on a typed space. Pasted text is never converted.
-- The prefix and the space are consumed; the block's type shows through its marker, as for every other type (§2).
-- The very next key after a conversion can revert it: `Backspace` or `Ctrl+Z` restores the previous type, removes any `@done` the shortcut added, and puts back the typed prefix and space as text, without firing again. The divider is the exception: it ends the edit session, and the conversion plus the new block below form one undo step that undo (`z`) reverts in navigate mode. `Backspace` in the still empty block below deletes only that block and edits the divider (§2), leaving the divider as its own step.
-- A conversion is part of the edit session's undo step (§2) and follows the rules of `convert_type` (§5).
-- `- ` and a trailing `:` need no shortcut: TaskPaper already reads them as a task and a project, and the marker updates live (OQ-27). `# ` stays text and starts a Markdown heading in a text block (§2.2, OQ-28).
-
-The code-block shortcut ```` ``` ```` was dropped with code blocks (D-43).
+Dropped (D-52). Typed prefixes such as `--- ` and `[] ` no longer change a block's type, and a space is always typed as text. A divider is text typed as `---` (D-52). `- ` and a trailing `:` still make a task and a project, and deleting them makes the block text again (§2, OQ-27). `# ` starts a Markdown heading in a text block (§2.2, OQ-28).
 
 ### 2.2 Markdown in text
 
