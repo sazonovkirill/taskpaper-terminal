@@ -128,6 +128,9 @@ impl State {
             | Message::GoToSymbol(_)
             | Message::OpenMoveTo
             | Message::MoveTo(_)
+            | Message::OpenGoToCommand(_)
+            | Message::GoToCommand(_)
+            | Message::Count
             | Message::Undo
             | Message::Redo
             | Message::EditAtEnd

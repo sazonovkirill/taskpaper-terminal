@@ -56,6 +56,8 @@ pub enum KeyAction {
     Send(Message),
     /// Turns word wrap on or off, which is the frontend's to draw (FR-UI-05).
     ToggleWrap,
+    /// Opens Go to Command, listing the bindings the frontend shows (FR-NAV-06).
+    GoToCommand,
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -73,6 +75,8 @@ pub enum Overlay {
     GoToSymbol,
     /// Move to (FR-OPS-05).
     MoveTo,
+    /// Go to Command (FR-NAV-06).
+    GoToCommand,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -371,6 +375,26 @@ pub fn label(keys: &str) -> Option<String> {
     Some(presses.join(if plain { "" } else { " " }))
 }
 
+/// How the bindings `keys` read on screen, each as [`label`] writes it, separated by commas.
+#[must_use]
+pub fn labels(keys: &[&str]) -> String {
+    keys.iter()
+        .filter_map(|keys| label(keys))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// What giving `command` asks for, its message carrying what it needs of `context`, as its keys
+/// or Go to Command give it.
+#[must_use]
+pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
+    match command {
+        Command::ToggleWrap => Some(KeyAction::ToggleWrap),
+        Command::GoToCommand => Some(KeyAction::GoToCommand),
+        command => command.message(&context.inputs()).map(KeyAction::Send),
+    }
+}
+
 /// How one key reads on screen ([`label`]): its modifiers, then the key, a letter with `Ctrl` in
 /// capitals and a capital letter with a modifier marked with `Shift`.
 fn key_label((modifiers, code): Key) -> String {
@@ -453,10 +477,7 @@ impl Keymap {
     /// What the navigate-mode binding whose keys are `keys` asks for, if any.
     fn bound(&self, keys: &[Key], context: &Context) -> Option<KeyAction> {
         let (_, command) = self.navigate.iter().find(|(bound, _)| bound == keys)?;
-        match command {
-            Command::ToggleWrap => Some(KeyAction::ToggleWrap),
-            command => command.message(&context.inputs()).map(KeyAction::Send),
-        }
+        action(*command, context)
     }
 
     /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
@@ -522,6 +543,7 @@ impl Keymap {
                 Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
                 Overlay::GoToSymbol => menu_message(pressed, Message::GoToSymbol),
                 Overlay::MoveTo => menu_message(pressed, Message::MoveTo),
+                Overlay::GoToCommand => menu_message(pressed, Message::GoToCommand),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -617,7 +639,7 @@ mod tests {
             self.action_for(event, now, context)
                 .and_then(|action| match action {
                     KeyAction::Send(message) => Some(message),
-                    KeyAction::ToggleWrap => None,
+                    KeyAction::ToggleWrap | KeyAction::GoToCommand => None,
                 })
         }
     }
@@ -1908,6 +1930,65 @@ mod tests {
                 assert!(parse_sequence(keys).is_some(), "{keys}");
             }
         }
+    }
+
+    // FR-NAV-06, keybindings.md §2 and §4
+    #[test]
+    fn ctrl_k_and_colon_open_go_to_command_which_takes_the_keys_of_pickers() {
+        let mut keymap = Keymap::default();
+        let ctrl_k = key(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        assert_eq!(
+            keymap.action_for(&ctrl_k, ms(0), CONTEXT),
+            Some(KeyAction::GoToCommand)
+        );
+        let colon = key(KeyCode::Char(':'), KeyModifiers::NONE);
+        assert_eq!(
+            keymap.action_for(&colon, ms(1), CONTEXT),
+            Some(KeyAction::GoToCommand)
+        );
+        let finding = &Context {
+            overlay: Some(Overlay::GoToCommand),
+            ..*CONTEXT
+        };
+        assert_eq!(
+            keymap.message_for(&ctrl_k, ms(2), finding),
+            None,
+            "no second Go to Command"
+        );
+        assert_eq!(
+            keymap.message_for(&colon, ms(3), finding),
+            Some(Message::GoToCommand(MenuInput::Type(':')))
+        );
+    }
+
+    // FR-NAV-06
+    #[test]
+    fn a_command_asks_for_its_message_or_what_the_frontend_does() {
+        assert_eq!(
+            action(Command::PageDown, CONTEXT),
+            Some(KeyAction::Send(Message::PageDown { rows: PAGE }))
+        );
+        assert_eq!(
+            action(Command::ToggleWrap, CONTEXT),
+            Some(KeyAction::ToggleWrap)
+        );
+        assert_eq!(
+            action(Command::GoToCommand, CONTEXT),
+            Some(KeyAction::GoToCommand)
+        );
+        assert_eq!(action(Command::Retype(Typed::Task), CONTEXT), None);
+    }
+
+    // FR-KEY-04, FR-NAV-06
+    #[test]
+    fn labels_join_each_bindings_label() {
+        assert_eq!(labels(&["ctrl+k", ":"]), "Ctrl+K, :");
+        assert_eq!(
+            labels(&["hyper+x", "g s"]),
+            "gs",
+            "what is not a key is left out"
+        );
+        assert_eq!(labels(&[]), "");
     }
 
     // FR-NAV-05, keybindings.md §2 and §4

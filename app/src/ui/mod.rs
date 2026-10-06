@@ -19,7 +19,9 @@ use ratatui::{
     text::Line,
 };
 
-use crate::app::{Effect, Location, Message, Mode, Origin, SidebarInput, State};
+use crate::app::{
+    Effect, Location, Message, Mode, Origin, SidebarInput, State, commands::REGISTRY,
+};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use widgets::{
@@ -208,7 +210,7 @@ impl Tui {
             now,
             today: (self.clock)().date(),
         });
-        self.run(effects);
+        self.run(effects, now);
         self.midnight = self.next_midnight(now);
     }
 
@@ -268,6 +270,14 @@ impl Tui {
         match action {
             KeyAction::Send(message) => self.send(message, now),
             KeyAction::ToggleWrap => self.wrap = !self.wrap,
+            KeyAction::GoToCommand => {
+                let bindings = REGISTRY
+                    .iter()
+                    .filter(|entry| entry.mode == Mode::Navigate)
+                    .map(|entry| (entry.command, keymap::labels(entry.keys)))
+                    .collect();
+                self.send(Message::OpenGoToCommand(bindings), now);
+            }
         }
     }
 
@@ -281,11 +291,12 @@ impl Tui {
             today: (self.clock)().date(),
         });
         effects.extend(self.state.update(message));
-        self.run(effects);
+        self.run(effects, now);
         self.midnight = self.next_midnight(now);
     }
 
-    fn run(&mut self, effects: Vec<Effect>) {
+    /// Carries out `effects` at time `now`.
+    fn run(&mut self, effects: Vec<Effect>, now: Duration) {
         for effect in effects {
             match effect {
                 Effect::Quit => self.quit = true,
@@ -294,14 +305,19 @@ impl Tui {
                 Effect::ReadClipboard(at) => {
                     if let Some(text) = self.clipboard.paste() {
                         let effects = self.state.update(Message::Pasted { text, at });
-                        self.run(effects);
+                        self.run(effects, now);
                     }
                 }
                 Effect::OpenUrl(url) => {
                     if let Err(error) = self.browser.open(&url) {
                         let reason = error.to_string();
                         let effects = self.state.update(Message::OpenUrlFailed { url, reason });
-                        self.run(effects);
+                        self.run(effects, now);
+                    }
+                }
+                Effect::Run(command) => {
+                    if let Some(action) = keymap::action(command, &self.context()) {
+                        self.act(action, now);
                     }
                 }
             }
@@ -389,10 +405,13 @@ impl Tui {
             .go_to_symbol()
             .map(|view| ("Go to Symbol", view))
             .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
-        if let Some((title, view)) = finder.filter(|_| !self.state.in_conflict()) {
-            let finder = FinderPopup::new(title, &view);
-            frame.set_cursor_position(finder.caret(outline));
-            frame.render_widget(finder, outline);
+        if !self.state.in_conflict() {
+            if let Some((title, view)) = finder {
+                draw_finder(frame, FinderPopup::new(title, &view), outline);
+            }
+            if let Some(view) = self.state.go_to_command() {
+                draw_finder(frame, FinderPopup::new("Go to Command", &view), outline);
+            }
         }
         self.draw_status(frame, status);
         self.draw_date_prompt(frame, panel);
@@ -550,6 +569,8 @@ impl Tui {
             Some(Overlay::GoToSymbol)
         } else if self.state.move_to().is_some() {
             Some(Overlay::MoveTo)
+        } else if self.state.go_to_command().is_some() {
+            Some(Overlay::GoToCommand)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }
@@ -566,4 +587,10 @@ impl Tui {
     pub fn should_quit(&self) -> bool {
         self.quit
     }
+}
+
+/// The fuzzy finder `finder` over `area`, with the caret after its query.
+fn draw_finder<T>(frame: &mut Frame, finder: FinderPopup<'_, T>, area: ratatui::layout::Rect) {
+    frame.set_cursor_position(finder.caret(area));
+    frame.render_widget(finder, area);
 }

@@ -361,6 +361,8 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ToggleSidebar, Mode::Navigate, &["ctrl+b"]),
     entry!(Command::FocusSidebar, Mode::Navigate, &["alt+0", "g 0"]),
+    entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+k", ":"]),
+    entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),
@@ -520,6 +522,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ToggleShowDone,
             Command::ToggleWrap,
             Command::GoToSymbol,
+            Command::GoToCommand,
             Command::Quit,
         ],
     ),
@@ -647,7 +650,7 @@ mod tests {
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 7),
-                ("View and Panels", 4),
+                ("View and Panels", 5),
             ]
         );
         assert_eq!(
@@ -658,7 +661,7 @@ mod tests {
         let (_, editing) = &edit[0];
         assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[3].keys, ["ctrl+q"]);
+        assert_eq!(view[4].keys, ["ctrl+q"]);
     }
 
     #[test]

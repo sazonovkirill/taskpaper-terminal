@@ -108,6 +108,11 @@ pub enum Command {
     GoToSymbol,
     /// Find a block by name and move the selection under it.
     MoveTo,
+    /// Find a command by name and give it, which the frontend opens with the bindings it shows
+    /// (FR-NAV-06).
+    GoToCommand,
+    /// Count the blocks and words under the focused block (FR-OPS-09).
+    Count,
     /// Undo.
     Undo,
     /// Redo.
@@ -227,6 +232,8 @@ impl Command {
             Self::OpenDetails => "Show Details".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::MoveTo => "Move to…".into(),
+            Self::GoToCommand => "Go to Command".into(),
+            Self::Count => "Count Blocks and Words".into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -259,8 +266,9 @@ impl Command {
     }
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
-    /// [`Command::Retype`], which changes an edit session rather than sending a message, and for
-    /// [`Command::ToggleWrap`], which the frontend carries out.
+    /// [`Command::Retype`], which changes an edit session rather than sending a message, for
+    /// [`Command::ToggleWrap`], which the frontend carries out, and for
+    /// [`Command::GoToCommand`], whose message carries the bindings the frontend shows.
     #[must_use]
     pub fn message(self, inputs: &Inputs) -> Option<Message> {
         let today = inputs.today;
@@ -307,10 +315,11 @@ impl Command {
             Self::OpenColorPicker => Message::OpenColorPicker,
             Self::SetSection(on) => Message::SetSection(on),
             Self::OpenTypePicker => Message::OpenTypePicker,
-            Self::Retype(_) | Self::ToggleWrap => return None,
+            Self::Retype(_) | Self::ToggleWrap | Self::GoToCommand => return None,
             Self::OpenDetails => Message::OpenDetails,
             Self::GoToSymbol => Message::OpenGoToSymbol,
             Self::MoveTo => Message::OpenMoveTo,
+            Self::Count => Message::Count,
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,
@@ -494,23 +503,28 @@ mod tests {
             ),
             (Command::NewNext, Message::NewNext),
             (Command::ToggleShortcuts, Message::ToggleShortcuts),
+            (Command::Count, Message::Count),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }
     }
 
     // D-44: a type change is a change of the edit session, which no message makes; wrapping is
-    // the frontend's (FR-UI-05).
+    // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06).
     #[test]
-    fn retyping_and_toggling_wrap_send_no_message() {
+    fn retyping_toggling_wrap_and_going_to_a_command_send_no_message() {
         assert_eq!(Command::Retype(Typed::Project).message(&INPUTS), None);
         assert_eq!(Command::ToggleWrap.message(&INPUTS), None);
+        assert_eq!(Command::GoToCommand.message(&INPUTS), None);
     }
 
     #[test]
-    fn every_command_of_the_registry_but_retyping_and_toggling_wrap_sends_a_message() {
+    fn every_command_of_the_registry_but_those_sends_a_message() {
         for entry in REGISTRY {
-            let none = matches!(entry.command, Command::Retype(_) | Command::ToggleWrap);
+            let none = matches!(
+                entry.command,
+                Command::Retype(_) | Command::ToggleWrap | Command::GoToCommand
+            );
             assert_eq!(entry.command.message(&INPUTS).is_none(), none, "{entry:?}");
         }
     }

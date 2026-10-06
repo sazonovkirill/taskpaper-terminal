@@ -299,6 +299,17 @@ fn notice_span(notice: &Notice) -> Span<'static> {
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style())
         }
+        Notice::Count { blocks, words } => {
+            let plural = |n: usize, one: &str| match n {
+                1 => format!("1 {one}"),
+                n => format!("{n} {one}s"),
+            };
+            Span::raw(format!(
+                "{}, {}",
+                plural(*blocks, "block"),
+                plural(*words, "word")
+            ))
+        }
     }
 }
 
@@ -647,14 +658,9 @@ impl<'a> ShortcutsPanel<'a> {
                 Line::default(),
             ));
             for entry in entries {
-                let keys: Vec<String> = entry
-                    .keys
-                    .iter()
-                    .filter_map(|keys| keymap::label(keys))
-                    .collect();
                 rows.push((
                     Line::from(format!(" {}", entry.command.name())),
-                    Line::styled(keys.join(", "), Style::new().fg(PRIMARY)),
+                    Line::styled(keymap::labels(entry.keys), Style::new().fg(PRIMARY)),
                 ));
             }
         }
@@ -2412,6 +2418,20 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
+            (
+                Notice::Count {
+                    blocks: 1,
+                    words: 2,
+                },
+                plain("1 block, 2 words"),
+            ),
+            (
+                Notice::Count {
+                    blocks: 0,
+                    words: 1,
+                },
+                plain("0 blocks, 1 word"),
+            ),
             (
                 Notice::NotSections { skipped: 2 },
                 (

@@ -6,8 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, Location, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit, Version,
-    saving::Ending, structure::NewBlock,
+    Command, DateInput, Location, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit,
+    Version, saving::Ending, structure::NewBlock,
 };
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
@@ -198,6 +198,13 @@ pub enum Message {
     OpenMoveTo,
     /// A key of the open Move to (FR-OPS-05).
     MoveTo(MenuInput),
+    /// Open Go to Command over the commands of navigate mode, each shown with its bindings as
+    /// the frontend writes them, for the commands it binds (FR-NAV-06).
+    OpenGoToCommand(Vec<(Command, String)>),
+    /// A key of the open Go to Command (FR-NAV-06).
+    GoToCommand(MenuInput),
+    /// Show how many blocks and words are under the focused block (FR-OPS-09).
+    Count,
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -366,6 +373,9 @@ impl Message {
             | Self::GoToSymbol(_)
             | Self::OpenMoveTo
             | Self::MoveTo(_)
+            | Self::OpenGoToCommand(_)
+            | Self::GoToCommand(_)
+            | Self::Count
             | Self::New(..)
             | Self::Delete
             | Self::Duplicate
@@ -393,6 +403,9 @@ pub enum Effect {
     /// Show this URL in the system browser; a failure comes back as [`Message::OpenUrlFailed`]
     /// (FR-BLK-06).
     OpenUrl(String),
+    /// Give this command, chosen in Go to Command, as its keys would: its message carries what
+    /// the frontend knows, or the frontend carries it out (FR-NAV-06).
+    Run(Command),
 }
 
 /// Disk work for the frontend; each kind reports its result back as a [`Message`].
@@ -470,14 +483,12 @@ impl State {
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),
-            Message::FocusNext => self.move_focus(|at, last| at.saturating_add(1).min(last)),
-            Message::FocusPrevious => self.move_focus(|at, _| at.saturating_sub(1)),
+            Message::FocusNext => self.focus_down(1),
+            Message::FocusPrevious => self.focus_up(1),
             Message::FocusFirst => self.move_focus(|_, _| 0),
             Message::FocusLast => self.move_focus(|_, last| last),
-            Message::PageDown { rows } => {
-                self.move_focus(|at, last| at.saturating_add(rows).min(last));
-            }
-            Message::PageUp { rows } => self.move_focus(|at, _| at.saturating_sub(rows)),
+            Message::PageDown { rows } => self.focus_down(rows),
+            Message::PageUp { rows } => self.focus_up(rows),
             Message::FocusParent => self.focus_parent(),
             Message::FocusNextSibling => self.move_to_sibling(|at| at.checked_add(1)),
             Message::FocusPreviousSibling => self.move_to_sibling(|at| at.checked_sub(1)),
@@ -520,6 +531,9 @@ impl State {
             Message::GoToSymbol(input) => self.go_to_symbol_input(input),
             Message::OpenMoveTo => self.open_move_to(),
             Message::MoveTo(input) => self.move_to_input(input),
+            Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
+            Message::GoToCommand(input) => effects.extend(self.go_to_command_input(input)),
+            Message::Count => self.count(),
             Message::Undo => self.undo(),
             Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),
@@ -811,6 +825,16 @@ impl State {
             .find(|id| visible.contains(id))
             .or(visible.first())
             .copied();
+    }
+
+    /// Focuses the row `rows` rows below the focused one, or the last.
+    fn focus_down(&mut self, rows: usize) {
+        self.move_focus(|at, last| at.saturating_add(rows).min(last));
+    }
+
+    /// Focuses the row `rows` rows above the focused one, or the first.
+    fn focus_up(&mut self, rows: usize) {
+        self.move_focus(|at, _| at.saturating_sub(rows));
     }
 
     /// Focuses the row at the index `to` picks from the focused index and the last index. Without

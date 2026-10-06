@@ -9,7 +9,7 @@ use std::{
 use jiff::civil::Date;
 
 use super::{
-    History,
+    Command, History,
     date_prompt::DatePrompt,
     edit_mode::{Resume, Session},
     external::External,
@@ -66,6 +66,8 @@ pub struct State {
     pub(super) symbols: Option<Finder<ItemId>>,
     /// Move to, while it is open (FR-OPS-05).
     pub(super) destinations: Option<Finder<ItemId>>,
+    /// Go to Command, while it is open (FR-NAV-06).
+    pub(super) commands: Option<Finder<Command>>,
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -177,6 +179,13 @@ pub enum Notice {
         /// Whether the block is bookmarked now.
         added: bool,
     },
+    /// How many blocks are under the focused block and how many words they hold (FR-OPS-09).
+    Count {
+        /// The blocks.
+        blocks: usize,
+        /// The words of their text.
+        words: usize,
+    },
     /// The browser could not be started on a URL (FR-BLK-06).
     OpenUrlFailed {
         /// The URL.
@@ -267,6 +276,7 @@ impl State {
             details: false,
             symbols: None,
             destinations: None,
+            commands: None,
             resume: None,
             folds: HashSet::new(),
             show_done: true,

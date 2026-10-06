@@ -4,6 +4,7 @@
 mod clipboard;
 mod color_picker;
 pub mod commands;
+mod count;
 mod date_prompt;
 pub mod demo;
 mod details;
@@ -11,6 +12,7 @@ mod edit_mode;
 mod editing;
 pub mod external;
 mod finder;
+mod go_to_command;
 mod go_to_symbol;
 pub mod history;
 mod links;

@@ -13,6 +13,7 @@ mod external_changes;
 mod focus_and_scrolling;
 mod folding;
 mod formatting;
+mod go_to_command;
 mod go_to_symbol;
 mod hang_up;
 mod markdown;
