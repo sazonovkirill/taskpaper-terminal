@@ -68,6 +68,11 @@ pub enum Command {
     ToggleWrap,
     /// Open or close the shortcuts panel.
     ToggleShortcuts,
+    /// Scroll the shortcuts panel down a page, which the frontend carries out, since scrolling
+    /// is presentation (D-55).
+    ScrollShortcutsDown,
+    /// Scroll the shortcuts panel up a page, which the frontend carries out.
+    ScrollShortcutsUp,
     /// Zoom into the focused block.
     ZoomIn,
     /// Zoom out to the parent.
@@ -192,15 +197,7 @@ impl Command {
     #[must_use]
     pub fn name(self) -> Cow<'static, str> {
         match self {
-            Self::ChangeDate(tag, change) => {
-                let change = match change {
-                    DateChange::Today => "Today",
-                    DateChange::Tomorrow => "Tomorrow",
-                    DateChange::Earlier => "One Day Earlier",
-                    DateChange::Later => "One Day Later",
-                };
-                format!("{} {change}", date_name(tag)).into()
-            }
+            Self::ChangeDate(tag, change) => change_date_name(tag, change).into(),
             Self::ClearDate(tag) => format!("Clear {} Date", date_name(tag)).into(),
             Self::OpenDatePrompt(tag) => format!("Set {} Date", date_name(tag)).into(),
             Self::SetColor(Some(color)) => format!("Color: {}", color_name(color)).into(),
@@ -227,6 +224,8 @@ impl Command {
             Self::ToggleShowDone => "Show/Hide Completed".into(),
             Self::ToggleWrap => "Toggle Word Wrap".into(),
             Self::ToggleShortcuts => "Shortcuts".into(),
+            Self::ScrollShortcutsDown => "Scroll Shortcuts Down".into(),
+            Self::ScrollShortcutsUp => "Scroll Shortcuts Up".into(),
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
@@ -295,8 +294,8 @@ impl Command {
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
-    /// [`Command::ToggleWrap`], [`Command::NarrowPane`] and [`Command::WidenPane`], which the
-    /// frontend carries out, and for [`Command::GoToCommand`], whose message carries the bindings
+    /// [`Command::ToggleWrap`], [`Command::NarrowPane`], [`Command::WidenPane`] and the scrolling
+    /// of the shortcuts panel, which the frontend carries out, and for [`Command::GoToCommand`], whose message carries the bindings
     /// the frontend shows.
     #[must_use]
     pub fn message(self, inputs: &Inputs) -> Option<Message> {
@@ -348,7 +347,9 @@ impl Command {
             | Self::ToggleWrap
             | Self::GoToCommand
             | Self::NarrowPane
-            | Self::WidenPane => return None,
+            | Self::WidenPane
+            | Self::ScrollShortcutsDown
+            | Self::ScrollShortcutsUp => return None,
             Self::OpenDetails => Message::OpenDetails,
             Self::GoToSymbol => Message::OpenGoToSymbol,
             Self::MoveTo => Message::OpenMoveTo,
@@ -390,6 +391,17 @@ fn date_name(tag: DateTag) -> &'static str {
         DateTag::Start => "Start",
         DateTag::Due => "Due",
     }
+}
+
+/// The name of [`Command::ChangeDate`] making `change` to the date `tag`.
+fn change_date_name(tag: DateTag, change: DateChange) -> String {
+    let change = match change {
+        DateChange::Today => "Today",
+        DateChange::Tomorrow => "Tomorrow",
+        DateChange::Earlier => "One Day Earlier",
+        DateChange::Later => "One Day Later",
+    };
+    format!("{} {change}", date_name(tag))
 }
 
 /// The name of [`Command::Pane`] making `change`.
@@ -509,6 +521,8 @@ mod tests {
             (Command::Retype(Typed::Section), "Make Section"),
             (Command::ToggleMarker(Marker::Code), "Inline Code"),
             (Command::ToggleShortcuts, "Shortcuts"),
+            (Command::ScrollShortcutsDown, "Scroll Shortcuts Down"),
+            (Command::ScrollShortcutsUp, "Scroll Shortcuts Up"),
             (Command::ContextMenu, "Context Menu"),
             (Command::Sidebar(SidebarInput::Next), "Next Entry"),
             (Command::Sidebar(SidebarInput::Previous), "Previous Entry"),
@@ -588,15 +602,17 @@ mod tests {
     }
 
     // D-44: a type change is a change of the edit session, which no message makes; wrapping is
-    // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06) and the
-    // widths of panes (navigation.md §5).
+    // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06), the
+    // widths of panes (navigation.md §5) and the scrolling of the shortcuts panel (D-55).
     #[test]
-    fn retyping_toggling_wrap_going_to_a_command_and_resizing_send_no_message() {
+    fn retyping_toggling_wrap_going_to_a_command_resizing_and_scrolling_send_no_message() {
         assert_eq!(Command::Retype(Typed::Project).message(&INPUTS), None);
         assert_eq!(Command::ToggleWrap.message(&INPUTS), None);
         assert_eq!(Command::GoToCommand.message(&INPUTS), None);
         assert_eq!(Command::NarrowPane.message(&INPUTS), None);
         assert_eq!(Command::WidenPane.message(&INPUTS), None);
+        assert_eq!(Command::ScrollShortcutsDown.message(&INPUTS), None);
+        assert_eq!(Command::ScrollShortcutsUp.message(&INPUTS), None);
     }
 
     #[test]
@@ -609,6 +625,8 @@ mod tests {
                     | Command::GoToCommand
                     | Command::NarrowPane
                     | Command::WidenPane
+                    | Command::ScrollShortcutsDown
+                    | Command::ScrollShortcutsUp
             );
             assert_eq!(entry.command.message(&INPUTS).is_none(), none, "{entry:?}");
         }

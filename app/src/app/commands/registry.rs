@@ -360,6 +360,8 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+p", "g s", "/"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
+    entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
+    entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
     entry!(Command::ToggleSidebar, Mode::Navigate, &["ctrl+b"]),
     entry!(Command::FocusSidebar, Mode::Navigate, &["alt+0", "g 0"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+k", ":"]),

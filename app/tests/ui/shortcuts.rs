@@ -56,7 +56,7 @@ const NAVIGATE: [&str; 29] = [
     "│ Selection",
     "│  Extend Selection… J, Shift+↓",
     "│  Toggle Selected            v",
-    "│ …",
+    "│ ↓ more                      )",
     "│",
     "│ No Alt key seen yet: on macOS",
     "│ set Option as Meta or Esc+",
@@ -143,7 +143,7 @@ fn the_panel_lists_edit_modes_bindings_while_editing() {
 
 // FR-KEY-04, ui.md §1: below 80 columns the panel covers the right of the outline.
 #[test]
-fn a_narrow_screen_draws_the_panel_over_the_outline_and_cuts_the_list_short() {
+fn a_narrow_screen_draws_the_panel_over_the_outline_and_scrolls_the_list() {
     let mut app = Harness::with_text("- A task with a rather long name\n", 60, 12);
     app.type_keys("?");
     assert_eq!(
@@ -155,7 +155,7 @@ fn a_narrow_screen_draws_the_panel_over_the_outline_and_cuts_the_list_short() {
             "                            │  Previous Block          k, ↑",
             "                            │  Collapse                h, ←",
             "                            │  Expand                  l, →",
-            "                            │ …",
+            "                            │ ↓ more                      )",
             "                            │",
             "                            │ No Alt key seen yet: on macOS",
             "                            │ set Option as Meta or Esc+",
@@ -185,7 +185,12 @@ fn the_panel_notes_once_alt_arrives_and_whether_the_kitty_protocol_is_on() {
     let panel = right_of(&mut app, 48);
     assert_eq!(
         panel[26..],
-        ["│ …", "│", "│ Kitty keyboard protocol: on", ""],
+        [
+            "│ ↓ more                      )",
+            "│",
+            "│ Kitty keyboard protocol: on",
+            ""
+        ],
         "the Alt note is gone, so the list is longer"
     );
     assert_eq!(panel[25], "│  Indent                   Tab");
@@ -216,4 +221,119 @@ fn a_list_that_just_fits_is_not_cut_short() {
     let panel = right_of(&mut app, 48);
     assert_eq!(panel[18..20], ["│  Quit                  Ctrl+Q", "│"]);
     assert_eq!(panel[22], "│ Kitty keyboard protocol: off");
+}
+
+/// Types each character of `keys`, drawing the screen after each as the event loop does, so the
+/// panel knows its page.
+fn drawn(app: &mut Harness, keys: &str) {
+    for c in keys.chars() {
+        app.render();
+        app.type_keys(&c.to_string());
+    }
+}
+
+// FR-KEY-04, D-55: `)` and `(` scroll a list taller than the panel a page at a time, and lines
+// say where more are hidden.
+#[test]
+fn parentheses_scroll_the_list_a_page_at_a_time_and_more_lines_say_what_is_hidden() {
+    let mut app = Harness::with_text(OUTLINE, 60, 12);
+    app.type_keys("?");
+    drawn(&mut app, ")");
+    assert_eq!(
+        right_of(&mut app, 28)[1..7],
+        [
+            "│ ↑ more                      (",
+            "│  Expand                  l, →",
+            "│  First Block         gg, Home",
+            "│  Last Block            G, End",
+            "│ Folding",
+            "│ ↓ more                      )",
+        ],
+        "a page is the four lines between the more lines"
+    );
+    drawn(&mut app, "(");
+    assert_eq!(
+        right_of(&mut app, 28)[1..3],
+        ["│ Moving", "│  Next Block              j, ↓"]
+    );
+    drawn(&mut app, "((");
+    assert_eq!(right_of(&mut app, 28)[1], "│ Moving", "the top stops it");
+    drawn(&mut app, &")".repeat(20));
+    let panel = right_of(&mut app, 28);
+    assert_eq!(
+        panel[1..7],
+        [
+            "│ ↑ more                      (",
+            "│  Go to Command      Ctrl+K, :",
+            "│  Context … \\, Shift+F10, Menu",
+            "│  Open in Ne… Ctrl+\\, Ctrl+W v",
+            "│  Close Pane          Ctrl+W c",
+            "│  Quit                  Ctrl+Q",
+        ],
+        "the end stops it, with no more line below"
+    );
+    drawn(&mut app, "(");
+    assert_eq!(
+        right_of(&mut app, 28)[6],
+        "│ ↓ more                      )",
+        "one page up from the end"
+    );
+    app.type_keys("j");
+    assert_eq!(
+        right_of(&mut app, 28)[6],
+        "│ ↓ more                      )",
+        "keys still navigate"
+    );
+}
+
+// D-55: the panel opens again at the top, and while editing, where `)` and `(` type, the more
+// lines name no keys.
+#[test]
+fn the_panel_reopens_at_the_top_and_names_no_keys_while_editing() {
+    let mut app = Harness::with_text(OUTLINE, 60, 12);
+    app.type_keys("?");
+    drawn(&mut app, "))??");
+    assert_eq!(right_of(&mut app, 28)[1], "│ Moving");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(")");
+    assert_eq!(
+        right_of(&mut app, 28)[1..7],
+        [
+            "│ Editing",
+            "│  Stop Editing             Esc",
+            "│  Stop Editing and Add … Enter",
+            "│  Edit Previous Block        ↑",
+            "│  Edit Next Block            ↓",
+            "│ ↓ more",
+        ]
+    );
+    assert!(screen(&mut app)[2].contains("Home):"), "typed");
+}
+
+// D-55: while the sidebar or a popup has the keys, `)` and `(` do not scroll, and the more line
+// names no keys.
+#[test]
+fn the_more_line_names_no_keys_while_the_sidebar_or_a_popup_has_them() {
+    let more = |app: &mut Harness| {
+        screen(app).into_iter().find_map(|row| {
+            row.split_once("│ ↓ more")
+                .map(|(_, keys)| keys.trim().to_owned())
+        })
+    };
+    let mut app = Harness::with_text(OUTLINE, 100, 12);
+    app.type_keys("?");
+    assert_eq!(more(&mut app).as_deref(), Some(")"));
+    app.type_keys("g0");
+    assert_eq!(
+        more(&mut app).as_deref(),
+        Some(""),
+        "the sidebar has the keys"
+    );
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    assert_eq!(
+        more(&mut app).as_deref(),
+        Some(""),
+        "Go to Symbol has the keys"
+    );
 }

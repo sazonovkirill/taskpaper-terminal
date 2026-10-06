@@ -669,19 +669,102 @@ pub struct Keyboard {
 /// The shortcuts panel in the secondary sidebar ([ui.md §4](../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04),
 /// FR-KEY-04, D-28): titled "Shortcuts" beside a rule down its left edge, each group's name in
 /// the headers color over its commands, each command's name with its keys at the right in the
-/// primary color, `…` last when the list is cut short, and below it what the keyboard reports:
-/// how to send `Alt` on macOS until an `Alt` key arrives, and whether the kitty protocol is on.
+/// primary color, scrolled, with a `↑ more` line first while lines are hidden above and a
+/// `↓ more` line last while lines are hidden below, each with the keys that scroll that way
+/// (D-55), and below it what the keyboard reports: how to send `Alt` on macOS until an `Alt` key
+/// arrives, and whether the kitty protocol is on.
 #[derive(Debug)]
 pub struct ShortcutsPanel<'a> {
     groups: &'a [(Group, Vec<&'static Entry>)],
     keyboard: Keyboard,
+    scroll: usize,
+    keys: [&'a str; 2],
+}
+
+/// Which list lines a panel shows: from the first line on, as many as there is room for, and
+/// whether lines are hidden above and below.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Window {
+    first: usize,
+    shown: usize,
+    above: bool,
+    below: bool,
 }
 
 impl<'a> ShortcutsPanel<'a> {
-    /// The panel listing `groups`, noting what `keyboard` reports.
+    /// The panel listing `groups` from the top, noting what `keyboard` reports.
     #[must_use]
     pub fn new(groups: &'a [(Group, Vec<&'static Entry>)], keyboard: Keyboard) -> Self {
-        Self { groups, keyboard }
+        Self {
+            groups,
+            keyboard,
+            scroll: 0,
+            keys: ["", ""],
+        }
+    }
+
+    /// The panel with its list scrolled `scroll` lines down, as far as the list goes, its
+    /// `↑ more` and `↓ more` lines naming `keys`: the keys that scroll up and down, empty where
+    /// none does.
+    #[must_use]
+    pub fn scrolled(self, scroll: usize, keys: [&'a str; 2]) -> Self {
+        Self {
+            scroll,
+            keys,
+            ..self
+        }
+    }
+
+    /// How far the list scrolls when the panel is drawn over `area`, and how many lines a page
+    /// scrolls: the lines shown between the `↑ more` and `↓ more` lines, at least one.
+    #[must_use]
+    pub fn scroll_range(&self, area: Rect) -> (usize, usize) {
+        let height = usize::from(self.list(area).height);
+        let last = self.window(height, usize::MAX).first;
+        (last, height.saturating_sub(2).max(1))
+    }
+
+    /// The list's area when the panel is drawn over `area`: inside the frame, above the notes.
+    fn list(&self, area: Rect) -> Rect {
+        let height = u16::try_from(self.notes().len()).unwrap_or(u16::MAX);
+        let [list, _] = Self::frame().inner(area).layout(&Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(height),
+        ]));
+        list
+    }
+
+    /// The lines a list `height` lines tall shows scrolled `scroll` lines down, as far as the
+    /// list goes: all of them when they fit, else as many as fit beside the `more` lines.
+    fn window(&self, height: usize, scroll: usize) -> Window {
+        let lines = self.rows().len();
+        if lines <= height {
+            return Window {
+                first: 0,
+                shown: lines,
+                above: false,
+                below: false,
+            };
+        }
+        // At the end the `↑ more` line takes a row and the last lines take the rest.
+        let first = scroll.min(lines - height.saturating_sub(1));
+        let above = first > 0;
+        let below = first + height.saturating_sub(1) < lines;
+        Window {
+            first,
+            shown: height.saturating_sub(usize::from(above) + usize::from(below)),
+            above,
+            below,
+        }
+    }
+
+    /// The panel's frame: a rule down its left edge, its title and padding.
+    fn frame() -> Block<'static> {
+        Block::new()
+            .borders(Borders::LEFT)
+            .border_style(rule_style())
+            .padding(Padding::horizontal(1))
+            .title(Line::from("Shortcuts").bold())
     }
 
     /// The list's rows: each group's name, then each of its commands' names with their keys.
@@ -702,6 +785,14 @@ impl<'a> ShortcutsPanel<'a> {
         rows
     }
 
+    /// The row saying more lines are hidden, `↑` above or `↓` below, with the keys that show them.
+    fn more(arrow: &str, keys: &str) -> (Line<'static>, Line<'static>) {
+        (
+            Line::from(format!("{arrow} more")).dim(),
+            Line::styled(keys.to_owned(), Style::new().fg(PRIMARY)),
+        )
+    }
+
     /// The notes under the list, after a blank line.
     fn notes(&self) -> Vec<Line<'static>> {
         let mut notes = vec![Line::default()];
@@ -718,27 +809,24 @@ impl<'a> ShortcutsPanel<'a> {
 impl Widget for ShortcutsPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
-        let frame = Block::new()
-            .borders(Borders::LEFT)
-            .border_style(rule_style())
-            .padding(Padding::horizontal(1))
-            .title(Line::from("Shortcuts").bold());
+        let frame = Self::frame();
         let inner = frame.inner(area);
         frame.render(area, buf);
-        let notes = self.notes();
-        let height = u16::try_from(notes.len()).unwrap_or(u16::MAX);
-        let [list, footer] = inner.layout(&Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Length(height),
-        ]));
-        let rows = self.rows();
-        let shown = usize::from(list.height);
-        let cut = rows.len() > shown;
-        for (index, ((name, keys), row)) in rows.into_iter().zip(list.rows()).enumerate() {
-            if cut && index + 1 == shown {
-                Line::from("…").dim().render(row, buf);
-                break;
-            }
+        let list = self.list(area);
+        let window = self.window(usize::from(list.height), self.scroll);
+        let [up, down] = self.keys;
+        let rows = window
+            .above
+            .then(|| Self::more("↑", up))
+            .into_iter()
+            .chain(
+                self.rows()
+                    .into_iter()
+                    .skip(window.first)
+                    .take(window.shown),
+            )
+            .chain(window.below.then(|| Self::more("↓", down)));
+        for ((name, keys), row) in rows.zip(list.rows()) {
             let width = u16::try_from(keys.width()).unwrap_or(u16::MAX);
             let [name_area, keys_area] = row.layout(
                 &Layout::horizontal([Constraint::Fill(1), Constraint::Length(width)]).spacing(1),
@@ -746,7 +834,8 @@ impl Widget for ShortcutsPanel<'_> {
             wrap::truncate(&name, usize::from(name_area.width)).render(name_area, buf);
             keys.right_aligned().render(keys_area, buf);
         }
-        for (note, row) in notes.into_iter().zip(footer.rows()) {
+        let footer = inner.rows().skip(usize::from(list.height));
+        for (note, row) in self.notes().into_iter().zip(footer) {
             note.render(row, buf);
         }
     }

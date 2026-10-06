@@ -63,6 +63,10 @@ pub enum KeyAction {
     NarrowPane,
     /// Makes the focused pane wider.
     WidenPane,
+    /// Scrolls the shortcuts panel down a page, as scrolling is the frontend's (D-55).
+    ScrollShortcutsDown,
+    /// Scrolls the shortcuts panel up a page.
+    ScrollShortcutsUp,
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -429,6 +433,8 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
         Command::GoToCommand => Some(KeyAction::GoToCommand),
         Command::NarrowPane => Some(KeyAction::NarrowPane),
         Command::WidenPane => Some(KeyAction::WidenPane),
+        Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
+        Command::ScrollShortcutsUp => Some(KeyAction::ScrollShortcutsUp),
         command => command.message(&context.inputs()).map(KeyAction::Send),
     }
 }
@@ -697,7 +703,9 @@ mod tests {
                     KeyAction::ToggleWrap
                     | KeyAction::GoToCommand
                     | KeyAction::NarrowPane
-                    | KeyAction::WidenPane => None,
+                    | KeyAction::WidenPane
+                    | KeyAction::ScrollShortcutsDown
+                    | KeyAction::ScrollShortcutsUp => None,
                 })
         }
     }
@@ -1108,6 +1116,26 @@ mod tests {
         check(KeyCode::Up, alt, up);
         check(KeyCode::Char('j'), alt, down);
         check(KeyCode::Down, alt, down);
+    }
+
+    // FR-KEY-04, D-42, D-55: plain characters, which both key reportings send alike.
+    #[test]
+    fn parentheses_scroll_the_shortcuts_panel_in_navigate_mode() {
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.action_for(&press(')'), ms(0), CONTEXT),
+            Some(KeyAction::ScrollShortcutsDown)
+        );
+        assert_eq!(
+            keymap.action_for(&press('('), ms(1), CONTEXT),
+            Some(KeyAction::ScrollShortcutsUp)
+        );
+        assert_eq!(
+            keymap.message_for(&press(')'), ms(2), EDITING),
+            Some(Message::Text(TextEdit::Insert(')'))),
+            "edit mode types them"
+        );
     }
 
     // FR-UI-05, D-42

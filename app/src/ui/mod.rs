@@ -23,7 +23,7 @@ use ratatui::{
 
 use crate::app::{
     Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
-    commands::REGISTRY,
+    commands::{Command, REGISTRY},
 };
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
@@ -91,6 +91,10 @@ pub struct Tui {
     diff_rows: usize,
     /// What the terminal has shown of its keyboard, which the shortcuts panel notes.
     keyboard: Keyboard,
+    /// The first line of the shortcuts panel's list on screen (D-55).
+    shortcuts_scroll: usize,
+    /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
+    shortcuts_page: usize,
     quit: bool,
 }
 
@@ -133,6 +137,8 @@ impl Tui {
             diff_scroll: 0,
             diff_rows: 0,
             keyboard: Keyboard::default(),
+            shortcuts_scroll: 0,
+            shortcuts_page: 0,
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -299,6 +305,12 @@ impl Tui {
             KeyAction::WidenPane => {
                 let width = layout::wider(self.pane_width, self.strip_width);
                 self.send(Message::ResizePane(width), now);
+            }
+            KeyAction::ScrollShortcutsDown => {
+                self.shortcuts_scroll = self.shortcuts_scroll.saturating_add(self.shortcuts_page);
+            }
+            KeyAction::ScrollShortcutsUp => {
+                self.shortcuts_scroll = self.shortcuts_scroll.saturating_sub(self.shortcuts_page);
             }
             KeyAction::GoToCommand => {
                 let bindings = REGISTRY
@@ -610,11 +622,29 @@ impl Tui {
     }
 
     /// The shortcuts panel in the secondary sidebar's `area`, while it is open and has room
-    /// (FR-KEY-04, D-28).
-    fn draw_shortcuts(&self, frame: &mut Frame, area: Option<ratatui::layout::Rect>) {
-        if let (Some(groups), Some(area)) = (self.state.shortcuts(), area) {
-            frame.render_widget(ShortcutsPanel::new(&groups, self.keyboard), area);
-        }
+    /// (FR-KEY-04, D-28), its list scrolled no further than its end and naming the keys that
+    /// scroll it while they do (D-55); a closed panel opens at the top.
+    fn draw_shortcuts(&mut self, frame: &mut Frame, area: Option<ratatui::layout::Rect>) {
+        let (Some(groups), Some(area)) = (self.state.shortcuts(), area) else {
+            self.shortcuts_scroll = 0;
+            return;
+        };
+        let context = self.context();
+        let scrolls =
+            context.mode == Mode::Navigate && context.overlay.is_none() && !context.sidebar;
+        let [up, down] =
+            [Command::ScrollShortcutsUp, Command::ScrollShortcutsDown].map(|command| {
+                if scrolls {
+                    keymap::bindings(command, false)
+                } else {
+                    String::new()
+                }
+            });
+        let panel = ShortcutsPanel::new(&groups, self.keyboard);
+        let (last, page) = panel.scroll_range(area);
+        self.shortcuts_scroll = self.shortcuts_scroll.min(last);
+        self.shortcuts_page = page;
+        frame.render_widget(panel.scrolled(self.shortcuts_scroll, [&up, &down]), area);
     }
 
     /// `pane`'s outline in `area`, scrolled to keep its focused block in view, which is marked

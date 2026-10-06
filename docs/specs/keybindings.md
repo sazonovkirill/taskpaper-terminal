@@ -125,6 +125,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
 | Toggle sidebar / focus sidebar, showing it (FR-UI-01) | `Ctrl+B` / `Alt+0`, `g0` (the non-`Alt` route of §1) |
 | Shortcuts panel (FR-KEY-04) | `?` |
+| Scroll the shortcuts panel down / up a page, while it is open (D-55) | `)` / `(` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |
 | Go to Command (FR-NAV-06) | `Ctrl+K`, `:` (was `Ctrl+P`) |
 | Settings window (FR-SET-02) | `g,` |

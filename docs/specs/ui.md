@@ -64,7 +64,7 @@ An entry of the Today view has no indent and shows its breadcrumb path dimmed af
 
 ## 4. Shortcuts panel (FR-KEY-04)
 
-`?` toggles a panel in the secondary sidebar on the right (§1, D-28), listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
+`?` toggles a panel in the secondary sidebar on the right (§1, D-28), listing the most useful bindings for the current mode and context (navigate, edit, sidebar, picker), grouped as in [keybindings.md](keybindings.md) and showing user overrides. A list taller than the panel scrolls (D-55): `)` and `(` scroll it down and up a page in navigate mode, while the panel stays open and every other key keeps its binding; a dim `↑ more` line first and `↓ more` line last show that lines are hidden above or below, each with the key that scrolls that way when that key would scroll, so not while editing, in the sidebar or in a popup. The panel opens at the top. It notes when `Alt` keys have never been received (macOS Option setting) and whether the kitty keyboard protocol is active.
 
 ## 5. Context menu (FR-KEY-06)
 
