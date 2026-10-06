@@ -132,7 +132,7 @@ Selected blocks move one after another in document order, last first for `outden
 | `delete` (FR-OPS-06) | Remove the blocks with their subtrees; focus moves to the next visible block after the last of them, else the previous one. |
 | `duplicate` | Deep copy of each block, inserted after the original's subtree; the focus moves to the copy of the last one. |
 | `copy` / `cut` / `paste_below` / `paste_above` | Copy puts TaskPaper text on the clipboard: the selected blocks' lines, tags and special nodes included, tab-indented relative to the shallowest block, `\n` line endings. Paste parses the clipboard with the TaskPaper parser and inserts the blocks after (or before) the focused block at its depth, keeping relative structure, as one undo step that focuses the last top-level block pasted; on the zoom title they become its first children. A single line of plain text pastes as one text block. In edit mode, copy and cut take the selected text (§2). |
-| `count` (FR-OPS-09) | Status message: number of blocks and words under the focused block (or the pane's zoom root). |
+| `count` (FR-OPS-09) | Status message: number of blocks and words under the focused block (or the pane's zoom root); in the Today view, under the focused entry, and none when the view is empty. |
 
 Clipboard backend: the system clipboard via `arboard` when a display server is reachable; otherwise OSC 52 for copy (works over SSH, and in tmux with `set-clipboard on`), and for paste the terminal's bracketed paste, which pastes below the focused block or into the text being edited, while `Ctrl+V` and `Alt+V` paste the text the app copied last.
 

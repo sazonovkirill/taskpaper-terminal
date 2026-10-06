@@ -34,8 +34,10 @@ use crate::{
     },
 };
 
+mod save_as;
 mod sidebar;
 
+pub use save_as::SaveAsPrompt;
 pub use sidebar::SidebarPanel;
 
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and

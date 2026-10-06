@@ -126,6 +126,7 @@ impl State {
             | Message::OpenMoveTo
             | Message::OpenGoToCommand(_)
             | Message::Count
+            | Message::SaveAs(_)
             | Message::Undo
             | Message::Redo
             | Message::EditAtEnd

@@ -6,8 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit,
-    Version, saving::Ending, structure::NewBlock,
+    Command, DateInput, Location, MenuInput, Paste, SaveAs, SelectionChange, SidebarInput, State,
+    TextEdit, Version, saving::Ending, structure::NewBlock,
 };
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
@@ -197,6 +197,8 @@ pub enum Message {
     Count,
     /// A key of the open menu or picker that `Menu` names.
     Menu(Menu, MenuInput),
+    /// Save As: a key of its prompt or the frontend's report (FR-DOC-06).
+    SaveAs(SaveAs),
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -386,6 +388,7 @@ impl Message {
                 _,
             )
             | Self::Count
+            | Self::SaveAs(_)
             | Self::New(..)
             | Self::Delete
             | Self::Duplicate
@@ -416,6 +419,15 @@ pub enum Effect {
     /// Give this command, chosen in Go to Command, as its keys would: its message carries what
     /// the frontend knows, or the frontend carries it out (FR-NAV-06).
     Run(Command),
+    /// Complete the folder that ends this path as typed, `~` standing for the home folder, and
+    /// report the result as [`SaveAs::Completed`] when there is one (file-io.md §2).
+    CompletePath(String),
+    /// Resolve this path as typed, `~` standing for the home folder, and report it as
+    /// [`SaveAs::Resolved`].
+    ResolvePath(String),
+    /// Watch the file at this path for changes made elsewhere, instead of any watched before,
+    /// sending [`Message::CheckFile`] after each burst of them (file-io.md §3).
+    Watch(PathBuf),
 }
 
 /// Disk work for the frontend; each kind reports its result back as a [`Message`].
@@ -442,6 +454,16 @@ pub enum Disk {
     Check {
         /// The open file.
         path: PathBuf,
+    },
+    /// Write `text` to the file at `path` for Save As, as [`Disk::Save`] does; the result comes
+    /// back as [`SaveAs::Saved`], [`SaveAs::Failed`] or [`SaveAs::Refused`] (FR-DOC-06).
+    SaveAs {
+        /// The file to write.
+        path: PathBuf,
+        /// The serialized document.
+        text: String,
+        /// The version the file must still be, or `None` when there must be no file.
+        expected: Option<Version>,
     },
     /// Write `contents` to a new conflict copy in the backups folder of the file at `path`, even
     /// when backups are off; the result comes back as [`Message::ConflictCopied`] or
@@ -475,7 +497,7 @@ impl State {
     fn dispatch(&mut self, message: Message) -> Vec<Effect> {
         let mut effects = Vec::new();
         match message {
-            Message::Started => effects = self.backup_on_open(),
+            Message::Started => effects = [self.backup_on_open(), self.watch()].concat(),
             Message::Tick { now, today } => {
                 self.now = now;
                 self.today = today;
@@ -540,6 +562,7 @@ impl State {
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::Count => self.count(),
             Message::Menu(menu, input) => effects = self.menu_input(menu, input),
+            Message::SaveAs(event) => effects = self.save_as_event(event),
             Message::Undo => self.undo(),
             Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),

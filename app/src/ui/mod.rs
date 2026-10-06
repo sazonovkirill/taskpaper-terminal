@@ -20,13 +20,13 @@ use ratatui::{
 };
 
 use crate::app::{
-    Effect, Location, Message, Mode, Origin, SidebarInput, State, commands::REGISTRY,
+    Effect, Location, Message, Mode, Origin, SaveAs, SidebarInput, State, commands::REGISTRY,
 };
-use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
+use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, ShortcutsPanel,
-    SidebarPanel,
+    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
+    ShortcutsPanel, SidebarPanel,
 };
 
 /// What the event loop waits for.
@@ -43,6 +43,10 @@ pub enum Input {
 pub struct Tui {
     state: State,
     io: Io,
+    /// Watches the open file for changes made elsewhere.
+    files: FileWatch,
+    /// The home folder, which `~` stands for in paths typed (file-io.md §2).
+    home: Option<PathBuf>,
     /// Shows URLs the core asks to open.
     browser: Browser,
     /// Holds what the core copies and gives it back to paste.
@@ -82,20 +86,25 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// A frontend showing `state` that carries out disk work with `io`, opens URLs with
-    /// `browser`, copies and pastes with `clipboard` and reads the local time from `clock`,
-    /// starting with what the core asks for on opening.
+    /// A frontend showing `state` that carries out disk work with `io`, watches the open file
+    /// with `files`, opens URLs with `browser`, copies and pastes with `clipboard`, reads the
+    /// local time from `clock` and takes `~` in paths typed for `home`, starting with what the
+    /// core asks for on opening.
     #[must_use]
     pub fn new(
         state: State,
         io: Io,
+        files: FileWatch,
         browser: Browser,
         clipboard: Clipboard,
         clock: fn() -> Zoned,
+        home: Option<PathBuf>,
     ) -> Self {
         let mut tui = Self {
             state,
             io,
+            files,
+            home,
             browser,
             clipboard,
             clock,
@@ -315,6 +324,16 @@ impl Tui {
                         self.run(effects, now);
                     }
                 }
+                Effect::CompletePath(text) => {
+                    if let Some(completed) = effects::complete_path(&text, self.home.as_deref()) {
+                        self.send(Message::SaveAs(SaveAs::Completed(completed)), now);
+                    }
+                }
+                Effect::ResolvePath(text) => {
+                    let path = effects::expand_path(&text, self.home.as_deref());
+                    self.send(Message::SaveAs(SaveAs::Resolved(path)), now);
+                }
+                Effect::Watch(path) => self.files.watch(&path),
                 Effect::Run(command) => {
                     if let Some(action) = keymap::action(command, &self.context()) {
                         self.act(action, now);
@@ -411,6 +430,11 @@ impl Tui {
             }
             if let Some(view) = self.state.go_to_command() {
                 draw_finder(frame, FinderPopup::new("Go to Command", &view), outline);
+            }
+            if let Some(view) = self.state.save_as() {
+                let prompt = SaveAsPrompt::new(&view);
+                frame.set_cursor_position(prompt.caret(outline));
+                frame.render_widget(prompt, outline);
             }
         }
         self.draw_status(frame, status);
@@ -571,6 +595,8 @@ impl Tui {
             Some(Overlay::MoveTo)
         } else if self.state.go_to_command().is_some() {
             Some(Overlay::GoToCommand)
+        } else if self.state.save_as().is_some() {
+            Some(Overlay::SaveAs)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }

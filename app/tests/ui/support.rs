@@ -25,7 +25,7 @@ use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
         Input, Tui,
-        effects::{self, Backups, Browser, Clipboard, Io},
+        effects::{self, Backups, Browser, Clipboard, FileWatch, Io},
     },
 };
 use tempfile::TempDir;
@@ -128,6 +128,8 @@ pub struct Harness {
     /// Whether the file is the temporary one a start without a path makes.
     temporary: bool,
     pub backups: PathBuf,
+    /// The home folder `~` stands for, empty at the start.
+    pub home: PathBuf,
     inputs: Receiver<Input>,
     now: Duration,
     _dir: TempDir,
@@ -187,6 +189,8 @@ impl Harness {
     /// Starts the app on `state` with its backups in `dir/backups`.
     fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
+        let home = dir.path().join("home");
+        std::fs::create_dir(&home).expect("the temporary folder is writable");
         CLOCK.set(local(NOW));
         let (results, inputs) = mpsc::channel();
         let io = Io::start(results, Backups::new(Some(backups.clone()), || NOW));
@@ -197,10 +201,13 @@ impl Harness {
             tui: Tui::new(
                 state,
                 io,
+                FileWatch::off(),
                 Browser::new(OPENER),
                 Clipboard::new(None, terminal_output.clone()),
                 || CLOCK.with_borrow(Zoned::clone),
+                Some(home.clone()),
             ),
+            home,
             terminal_output,
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,

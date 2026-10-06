@@ -101,6 +101,14 @@ impl External {
         }
     }
 
+    /// The open file is now another one, which was just written at `version`.
+    pub(super) fn moved(&mut self, version: Version) {
+        *self = Self {
+            known: Some(version),
+            ..Self::default()
+        };
+    }
+
     /// Whether the conflict prompt is open, which pauses saving.
     pub(super) fn in_conflict(&self) -> bool {
         self.conflict.is_some()
@@ -115,8 +123,20 @@ impl State {
         self
     }
 
-    /// A check of the file on disk, when there is one to check.
+    /// Watching the open file, when there is one, for changes made elsewhere (F-FILE-06).
+    pub(super) fn watch(&self) -> Vec<Effect> {
+        self.path()
+            .map(|path| Effect::Watch(path.into()))
+            .into_iter()
+            .collect()
+    }
+
+    /// A check of the file on disk, when there is one to check. None while Save As writes the
+    /// document elsewhere: the result could only arrive once that file is the open one.
     pub(super) fn check_file(&self) -> Vec<Effect> {
+        if self.saving_as() {
+            return Vec::new();
+        }
         self.path()
             .map(|path| Effect::Disk(Disk::Check { path: path.into() }))
             .into_iter()

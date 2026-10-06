@@ -23,6 +23,7 @@ mod moving;
 mod open_file;
 mod open_url;
 mod quick_dates;
+mod save_as;
 mod saving;
 mod selection;
 mod shortcuts;

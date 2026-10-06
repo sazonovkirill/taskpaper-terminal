@@ -6,6 +6,7 @@ mod atomic;
 mod backup;
 mod browser;
 mod clipboard;
+mod paths;
 mod recovery;
 mod watch;
 mod worker;
@@ -24,8 +25,9 @@ use thiserror::Error;
 pub use backup::{BackupError, Backups, folder as backups_folder};
 pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
+pub use paths::{complete as complete_path, expand as expand_path};
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
-pub use watch::{Watcher, watch};
+pub use watch::FileWatch;
 pub use worker::Io;
 
 use crate::{

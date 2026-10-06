@@ -14,7 +14,7 @@ use jiff::civil::Date;
 pub(super) use node::{NodeCommand, node_commands};
 pub use registry::{Entry, Group, REGISTRY, shortcuts};
 
-use super::{Message, NewBlock, Paste, SelectionChange, TextEdit};
+use super::{Message, NewBlock, Paste, SaveAs, SelectionChange, TextEdit};
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
 /// A command: one user intent, whatever key, menu or palette gives it.
@@ -113,6 +113,8 @@ pub enum Command {
     GoToCommand,
     /// Count the blocks and words under the focused block (FR-OPS-09).
     Count,
+    /// Write the document to a path the user types and continue with that file (FR-DOC-06).
+    SaveAs,
     /// Undo.
     Undo,
     /// Redo.
@@ -234,6 +236,7 @@ impl Command {
             Self::MoveTo => "Move to…".into(),
             Self::GoToCommand => "Go to Command".into(),
             Self::Count => "Count Blocks and Words".into(),
+            Self::SaveAs => "Save As".into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -320,6 +323,7 @@ impl Command {
             Self::GoToSymbol => Message::OpenGoToSymbol,
             Self::MoveTo => Message::OpenMoveTo,
             Self::Count => Message::Count,
+            Self::SaveAs => Message::SaveAs(SaveAs::Open),
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,
@@ -504,6 +508,7 @@ mod tests {
             (Command::NewNext, Message::NewNext),
             (Command::ToggleShortcuts, Message::ToggleShortcuts),
             (Command::Count, Message::Count),
+            (Command::SaveAs, Message::SaveAs(SaveAs::Open)),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

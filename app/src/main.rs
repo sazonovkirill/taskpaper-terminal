@@ -26,7 +26,7 @@ use taskpaper_terminal::{
     app::Message,
     ui::{
         self, Input,
-        effects::{Backups, Browser, Clipboard, Io, Recovery, SystemClipboard},
+        effects::{Backups, Browser, Clipboard, FileWatch, Io, Recovery, SystemClipboard},
     },
 };
 
@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
         || jiff::Zoned::now().datetime(),
     );
     let backups = Backups::new(
-        ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home),
+        ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home.clone()),
         || jiff::Zoned::now().datetime(),
     );
     let state = match path {
@@ -65,16 +65,21 @@ fn main() -> anyhow::Result<()> {
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
     let io = Io::start(inputs.clone(), backups);
-    // Without a watcher, the checks on regaining focus and before every save still find changes.
-    let _watcher = state
-        .path()
-        .and_then(|path| ui::effects::watch(path, inputs.clone()).ok());
+    let files = FileWatch::new(inputs.clone());
     // Without a display server, as over SSH, there is no system clipboard to reach.
     let system = arboard::Clipboard::new()
         .ok()
         .map(|clipboard| Box::new(Arboard(clipboard)) as Box<dyn SystemClipboard>);
     let clipboard = Clipboard::new(system, io::stdout());
-    let tui = ui::Tui::new(state, io, Browser::system(), clipboard, jiff::Zoned::now);
+    let tui = ui::Tui::new(
+        state,
+        io,
+        files,
+        Browser::system(),
+        clipboard,
+        jiff::Zoned::now,
+        home,
+    );
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
     // Asked before the event thread starts, which would otherwise read the terminal's answer; a
     // terminal that does not answer is taken not to speak the protocol.

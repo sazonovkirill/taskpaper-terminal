@@ -10,7 +10,7 @@ use std::{
 
 use super::{Backups, atomic};
 use crate::{
-    app::{Disk, Message, Version},
+    app::{Disk, Message, SaveAs, Version},
     ui::Input,
 };
 
@@ -87,7 +87,20 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
                 path,
                 text,
                 expected,
-            }) => Some(save(&path, &text, expected)),
+            }) => Some(match write(&path, &text, expected) {
+                Written::Done => Message::Saved,
+                Written::Failed(reason) => Message::SaveFailed { reason },
+                Written::Refused(contents) => Message::SaveRefused { contents },
+            }),
+            Job::Disk(Disk::SaveAs {
+                path,
+                text,
+                expected,
+            }) => Some(Message::SaveAs(match write(&path, &text, expected) {
+                Written::Done => SaveAs::Saved,
+                Written::Failed(reason) => SaveAs::Failed { reason },
+                Written::Refused(contents) => SaveAs::Refused { contents },
+            })),
             Job::Disk(Disk::Check { path }) => check(&path),
             Job::Disk(Disk::ConflictCopy { path, contents }) => {
                 Some(match backups.conflict(&path, &contents) {
@@ -118,19 +131,27 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
     }
 }
 
+/// How writing a file went.
+enum Written {
+    Done,
+    /// Not done, because the file was no longer the version expected; these are its bytes now,
+    /// or `None` when there is no file.
+    Refused(Option<Vec<u8>>),
+    /// Failed, for this reason.
+    Failed(String),
+}
+
 /// Writes `text` to `path`, unless just before the rename the file is no longer at `expected`.
-fn save(path: &Path, text: &str, expected: Option<Version>) -> Message {
-    let saved = atomic::prepare(path, text.as_bytes()).and_then(|prepared| {
+fn write(path: &Path, text: &str, expected: Option<Version>) -> Written {
+    let written = atomic::prepare(path, text.as_bytes()).and_then(|prepared| {
         let found = read(prepared.target())?;
         if found.as_deref().map(Version::of) == expected {
-            prepared.commit().map(|()| Message::Saved)
+            prepared.commit().map(|()| Written::Done)
         } else {
-            Ok(Message::SaveRefused { contents: found })
+            Ok(Written::Refused(found))
         }
     });
-    saved.unwrap_or_else(|error| Message::SaveFailed {
-        reason: error.to_string(),
-    })
+    written.unwrap_or_else(|error| Written::Failed(error.to_string()))
 }
 
 /// What is at `path` now. A file that cannot be read is not reported: the next save reads it
@@ -205,6 +226,41 @@ mod tests {
             "{results:?}"
         );
         assert_eq!(results[2], Input::Core(Message::Saved));
+        assert_eq!(fs::read_to_string(&path)?, "two");
+        Ok(())
+    }
+
+    // FR-DOC-06, F-FILE-04
+    #[test]
+    fn saves_as_another_file_and_reports_each_result_as_save_as() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("new.taskpaper");
+        let save_as = |path: &Path, text: &str, expected: Option<&str>| Disk::SaveAs {
+            path: path.to_owned(),
+            text: text.to_owned(),
+            expected: expected.map(|text| Version::of(text.as_bytes())),
+        };
+        io.submit(save_as(&path, "one", None));
+        io.submit(save_as(&path, "two", None));
+        io.submit(save_as(&path, "two", Some("one")));
+        io.submit(save_as(&dir.path().join("missing/x.taskpaper"), "x", None));
+        io.flush();
+        let results = results(&inputs);
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0], Input::Core(Message::SaveAs(SaveAs::Saved)));
+        assert_eq!(
+            results[1],
+            Input::Core(Message::SaveAs(SaveAs::Refused {
+                contents: Some(b"one".to_vec())
+            })),
+            "a file that must not be there is not replaced"
+        );
+        assert_eq!(results[2], Input::Core(Message::SaveAs(SaveAs::Saved)));
+        assert!(
+            matches!(&results[3], Input::Core(Message::SaveAs(SaveAs::Failed { reason })) if reason.contains("No such file")),
+            "{results:?}"
+        );
         assert_eq!(fs::read_to_string(&path)?, "two");
         Ok(())
     }

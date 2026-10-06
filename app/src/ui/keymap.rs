@@ -7,8 +7,8 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SidebarInput,
-    TextEdit, commands::REGISTRY,
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SaveAs,
+    SidebarInput, TextEdit, commands::REGISTRY,
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -77,6 +77,8 @@ pub enum Overlay {
     MoveTo,
     /// Go to Command (FR-NAV-06).
     GoToCommand,
+    /// The Save As prompt (FR-DOC-06).
+    SaveAs,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -279,6 +281,30 @@ fn sidebar_message(key: Key) -> Option<Message> {
         .iter()
         .find(|(bound, _)| *bound == key)
         .map(|&(_, input)| Message::Sidebar(input))
+}
+
+/// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
+/// without other bindings are typed, and other keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const SAVE_AS: &[(Key, SaveAs)] = &[
+    (key!(Enter), SaveAs::Accept),
+    (key!(Esc), SaveAs::Cancel),
+    (key!(Tab), SaveAs::Complete),
+];
+
+/// The Save As message for `key`: `Ctrl+Q` quits, a prompt binding, else the change to the path
+/// it asks for.
+fn save_as_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    let event = SAVE_AS
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|(_, event)| event.clone())
+        .or_else(|| text_edit(key).map(SaveAs::Edit))?;
+    Some(Message::SaveAs(event))
 }
 
 /// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
@@ -546,6 +572,7 @@ impl Keymap {
                 Overlay::GoToSymbol => menu_message(pressed, Menu::GoToSymbol),
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
+                Overlay::SaveAs => save_as_message(pressed),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -1961,6 +1988,44 @@ mod tests {
             keymap.message_for(&colon, ms(3), finding),
             Some(Message::Menu(Menu::GoToCommand, MenuInput::Type(':')))
         );
+    }
+
+    // FR-DOC-06, keybindings.md §4
+    #[test]
+    fn the_save_as_prompt_takes_text_keys_enter_esc_and_tab() {
+        let mut keymap = Keymap::default();
+        let saving = &Context {
+            overlay: Some(Overlay::SaveAs),
+            ..*CONTEXT
+        };
+        let save_as = |event| Some(Message::SaveAs(event));
+        for (code, modifiers, expected) in [
+            (KeyCode::Enter, KeyModifiers::NONE, save_as(SaveAs::Accept)),
+            (KeyCode::Esc, KeyModifiers::NONE, save_as(SaveAs::Cancel)),
+            (KeyCode::Tab, KeyModifiers::NONE, save_as(SaveAs::Complete)),
+            (
+                KeyCode::Char('~'),
+                KeyModifiers::NONE,
+                save_as(SaveAs::Edit(TextEdit::Insert('~'))),
+            ),
+            (
+                KeyCode::Backspace,
+                KeyModifiers::NONE,
+                save_as(SaveAs::Edit(TextEdit::DeleteBackward)),
+            ),
+            (
+                KeyCode::Char('q'),
+                KeyModifiers::CONTROL,
+                Some(Message::Quit),
+            ),
+            (KeyCode::F(2), KeyModifiers::NONE, None),
+        ] {
+            assert_eq!(
+                keymap.message_for(&key(code, modifiers), ms(0), saving),
+                expected,
+                "{code:?}"
+            );
+        }
     }
 
     // FR-NAV-06

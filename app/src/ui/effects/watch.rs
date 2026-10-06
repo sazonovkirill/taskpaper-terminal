@@ -21,6 +21,45 @@ pub struct Watcher {
     _debouncer: Debouncer<RecommendedWatcher, RecommendedCache>,
 }
 
+/// Watches the open file, one at a time, when watching is on.
+#[derive(Debug)]
+pub struct FileWatch {
+    /// Where watchers report, or `None` when nothing is watched.
+    inputs: Option<Sender<Input>>,
+    watcher: Option<Watcher>,
+}
+
+impl FileWatch {
+    /// Watching that sends [`Message::CheckFile`] to `inputs`.
+    #[must_use]
+    pub fn new(inputs: Sender<Input>) -> Self {
+        Self {
+            inputs: Some(inputs),
+            watcher: None,
+        }
+    }
+
+    /// No watching, for a frontend whose changes on disk only checks find.
+    #[must_use]
+    pub fn off() -> Self {
+        Self {
+            inputs: None,
+            watcher: None,
+        }
+    }
+
+    /// Watches the file at `path` instead of the one watched before. Without a watcher, as when
+    /// the system's fails, the checks on regaining focus and before every save still find
+    /// changes.
+    pub fn watch(&mut self, path: &Path) {
+        self.watcher = None;
+        self.watcher = self
+            .inputs
+            .as_ref()
+            .and_then(|inputs| watch(path, inputs.clone()).ok());
+    }
+}
+
 /// Watches the folder of the file at `path`, or of a link's target, and sends
 /// [`Message::CheckFile`] to `inputs` after each burst of changes in it. The folder is watched
 /// rather than the file, because many editors save by renaming a new file over the old one, and
@@ -70,6 +109,46 @@ mod tests {
             received.recv_timeout(Duration::from_secs(10))?,
             Input::Core(Message::CheckFile)
         );
+        Ok(())
+    }
+
+    // F-FILE-06, FR-DOC-06
+    #[test]
+    fn a_file_watch_follows_the_file_it_was_last_told() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        fs::create_dir(dir.path().join("old"))?;
+        fs::create_dir(dir.path().join("new"))?;
+        let (inputs, received) = mpsc::channel();
+        let mut files = FileWatch::new(inputs);
+        files.watch(&dir.path().join("old/a.taskpaper"));
+        files.watch(&dir.path().join("new/b.taskpaper"));
+        fs::write(dir.path().join("old/a.taskpaper"), "- a\n")?;
+        assert!(
+            received.recv_timeout(Duration::from_millis(600)).is_err(),
+            "the old folder is not watched"
+        );
+        fs::write(dir.path().join("new/b.taskpaper"), "- b\n")?;
+        assert_eq!(
+            received.recv_timeout(Duration::from_secs(10))?,
+            Input::Core(Message::CheckFile)
+        );
+        files.watch(Path::new("/nonexistent-folder/todo.taskpaper"));
+        fs::write(dir.path().join("new/b.taskpaper"), "- c\n")?;
+        assert!(
+            received.recv_timeout(Duration::from_millis(600)).is_err(),
+            "a watch that fails leaves none"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_file_watch_that_is_off_watches_nothing() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let mut files = FileWatch::off();
+        let path = dir.path().join("a.taskpaper");
+        files.watch(&path);
+        fs::write(&path, "- a\n")?;
+        assert!(files.watcher.is_none());
         Ok(())
     }
 

@@ -197,6 +197,13 @@ impl Autosave {
         self.writing = None;
     }
 
+    /// The document at `revision` was written to the file that is now the open one, by Save As.
+    pub(super) fn saved_as(&mut self, revision: u64) {
+        self.saved = Some(revision);
+        self.failure = None;
+        self.confirm_quit = false;
+    }
+
     /// The local version must overwrite the file on disk, at once, even if unchanged.
     pub(super) fn overwrite(&mut self) {
         self.saved = None;
@@ -274,7 +281,7 @@ impl State {
 
     /// Moves empty lines ending the outline below the top level to the top level, as one step to
     /// undo with a notice, because the file would read them back there (file-format.md §3.1).
-    fn lift_trailing_blanks(&mut self) {
+    pub(super) fn lift_trailing_blanks(&mut self) {
         let ops = canonical::lift_trailing_blanks(self.document());
         if !ops.is_empty() {
             self.commit(ops);
@@ -323,6 +330,7 @@ impl State {
     /// the session and keeping the local version over the disk's do not wait.
     fn holds_save(&self) -> bool {
         self.editing_holds_save()
+            || self.saving_as()
             || self.autosave.ending.is_none()
                 && !self.autosave.urgent
                 && self.edits.can_redo()
@@ -667,12 +675,16 @@ mod tests {
         assert_eq!(state.update(Message::Saved), [Effect::Quit]);
     }
 
-    // FR-DOC-07
+    // FR-DOC-07, F-FILE-06
     #[test]
-    fn backs_up_an_opened_file_on_start() {
-        let backup = [Effect::Disk(Disk::Backup {
-            path: PathBuf::from(FILE),
-        })];
+    fn backs_up_and_watches_an_opened_file_on_start() {
+        let watch = Effect::Watch(PathBuf::from(FILE));
+        let backup = [
+            Effect::Disk(Disk::Backup {
+                path: PathBuf::from(FILE),
+            }),
+            watch.clone(),
+        ];
         assert_eq!(opened().update(Message::Started), backup);
         let read_only = opened().with_access(Access::ReadOnly);
         assert_eq!(read_only.clone().update(Message::Started), backup);
@@ -680,7 +692,7 @@ mod tests {
         let unnamed = State::new(format::parse("a\n"), None);
         assert_eq!(unnamed.clone().update(Message::Started), []);
         let temporary = opened().with_origin(Origin::Temporary);
-        assert_eq!(temporary.clone().update(Message::Started), []);
+        assert_eq!(temporary.clone().update(Message::Started), [watch]);
     }
 
     // FR-DOC-05, file-io.md §2

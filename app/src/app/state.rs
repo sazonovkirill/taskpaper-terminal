@@ -15,6 +15,7 @@ use super::{
     external::External,
     finder::Finder,
     picker::Picker,
+    save_as,
     saving::Autosave,
     selection::Selection,
     sidebar::Sidebar,
@@ -68,6 +69,8 @@ pub struct State {
     pub(super) destinations: Option<Finder<ItemId>>,
     /// Go to Command, while it is open (FR-NAV-06).
     pub(super) commands: Option<Finder<Command>>,
+    /// The Save As prompt, while it is open (FR-DOC-06).
+    pub(super) save_as: Option<save_as::Prompt>,
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -277,6 +280,7 @@ impl State {
             symbols: None,
             destinations: None,
             commands: None,
+            save_as: None,
             resume: None,
             folds: HashSet::new(),
             show_done: true,
@@ -316,6 +320,14 @@ impl State {
     #[must_use]
     pub fn with_origin(self, origin: Origin) -> Self {
         Self { origin, ..self }
+    }
+
+    /// Makes the file at `path`, which the user chose and the document was just written to, the
+    /// open file (FR-DOC-06).
+    pub(super) fn switch_file(&mut self, path: PathBuf) {
+        self.path = Some(path);
+        self.origin = Origin::Chosen;
+        self.access = Access::ReadWrite;
     }
 
     /// Who chose the open file.

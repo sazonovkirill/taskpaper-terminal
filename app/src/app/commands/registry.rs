@@ -363,6 +363,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::FocusSidebar, Mode::Navigate, &["alt+0", "g 0"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+k", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
+    entry!(Command::SaveAs, Mode::Navigate, &[]),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),
