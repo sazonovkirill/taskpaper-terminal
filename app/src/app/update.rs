@@ -425,10 +425,20 @@ pub enum Disk {
 impl State {
     /// Applies `message` and returns the effects the frontend must carry out.
     pub fn update(&mut self, message: Message) -> Vec<Effect> {
-        let mut effects = Vec::new();
         if message.ends_editing() {
             self.stop_editing();
         }
+        let mut effects = self.dispatch(message);
+        self.repair_focus();
+        self.keep_visible_selection();
+        self.expire_notice();
+        effects.extend(self.save_if_due());
+        effects
+    }
+
+    /// Hands `message` to the feature that handles it and returns the effects that asks for.
+    fn dispatch(&mut self, message: Message) -> Vec<Effect> {
+        let mut effects = Vec::new();
         match message {
             Message::Started => effects = self.backup_on_open(),
             Message::Tick { now } => self.now = now,
@@ -520,10 +530,6 @@ impl State {
             Message::OpenUrl => effects = self.open_url(),
             Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
         }
-        self.repair_focus();
-        self.keep_visible_selection();
-        self.expire_notice();
-        effects.extend(self.save_if_due());
         effects
     }
 
