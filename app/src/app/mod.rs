@@ -18,6 +18,7 @@ mod go_to_command;
 mod go_to_symbol;
 pub mod history;
 mod links;
+mod memo;
 mod move_to;
 mod pane;
 mod picker;

@@ -334,7 +334,7 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::OpenMoveTo);
         choose(&mut state, "B");
-        let rows: Vec<String> = state.rows().into_iter().map(|row| row.text).collect();
+        let rows: Vec<String> = state.rows().iter().map(|row| row.text.clone()).collect();
         assert_eq!(rows, ["A", "B", "b", "x"]);
         assert_eq!(text(&state, state.focus()), "x");
     }

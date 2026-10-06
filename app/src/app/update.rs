@@ -894,7 +894,7 @@ impl State {
     /// that still shows, else the previous one, else the first row. With no focus, as when every
     /// block was hidden, focuses the first row if one is back.
     pub(super) fn repair_focus(&self, pane: &mut Pane, before: &[ItemId]) {
-        let visible: Vec<_> = self.rows_of(pane).into_iter().map(|row| row.id).collect();
+        let visible: Vec<_> = self.rows_of(pane).iter().map(|row| row.id).collect();
         let Some(focus) = pane.focus else {
             pane.focus = visible.first().copied();
             return;
@@ -1039,8 +1039,8 @@ mod tests {
     fn visible(state: &State) -> Vec<(usize, String, usize)> {
         state
             .rows()
-            .into_iter()
-            .map(|row| (row.depth, row.text, row.hidden_children))
+            .iter()
+            .map(|row| (row.depth, row.text.clone(), row.hidden_children))
             .collect()
     }
 
@@ -1195,7 +1195,7 @@ mod tests {
 
     /// The display text of each visible row.
     fn texts(state: &State) -> Vec<String> {
-        state.rows().into_iter().map(|row| row.text).collect()
+        state.rows().iter().map(|row| row.text.clone()).collect()
     }
 
     // FR-DONE-02
@@ -1230,7 +1230,7 @@ mod tests {
     fn hiding_every_block_leaves_no_focus_until_one_shows_again() {
         let mut state = open("- a @done\n- b @done", 1);
         state.update(Message::ToggleShowDone);
-        assert_eq!(state.rows(), []);
+        assert_eq!(*state.rows(), []);
         assert_eq!(state.focus(), None);
         state.update(Message::ToggleShowDone);
         assert_eq!(focus_text(&state), "a", "the first row");

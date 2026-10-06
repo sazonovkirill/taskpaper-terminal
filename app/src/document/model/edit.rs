@@ -626,6 +626,21 @@ mod tests {
         );
     }
 
+    // N-PERF-02
+    #[test]
+    fn a_stamp_holds_until_the_document_changes_and_a_copy_has_its_own() {
+        let mut document = parse("- a");
+        let stamp = document.stamp();
+        assert_eq!(document.stamp(), stamp);
+        assert_ne!(document.clone().stamp(), stamp, "a copy");
+        document.apply(&mut transaction(Vec::new())).unwrap();
+        assert_eq!(document.stamp(), stamp, "no change");
+        document
+            .apply(&mut transaction(vec![set_text(&document, "- a", "- b")]))
+            .unwrap();
+        assert_ne!(document.stamp(), stamp);
+    }
+
     #[test]
     fn stale_or_missing_lines_are_refused_without_change() {
         let mut document = parse("- a\n\t- b");

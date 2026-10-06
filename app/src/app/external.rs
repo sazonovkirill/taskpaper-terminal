@@ -444,7 +444,7 @@ mod tests {
     }
 
     fn texts(state: &State) -> Vec<String> {
-        state.rows().into_iter().map(|row| row.text).collect()
+        state.rows().iter().map(|row| row.text.clone()).collect()
     }
 
     /// The text of the block with id `id`.
@@ -604,9 +604,9 @@ mod tests {
     fn project_folds(state: &State) -> Vec<(String, crate::app::Fold)> {
         let view = state.sidebar().expect("shown");
         view.entries
-            .into_iter()
+            .iter()
             .filter_map(|entry| match entry {
-                crate::app::SidebarEntry::Project { text, fold, .. } => Some((text, fold)),
+                crate::app::SidebarEntry::Project { text, fold, .. } => Some((text.clone(), *fold)),
                 crate::app::SidebarEntry::Bookmark { .. } | crate::app::SidebarEntry::Today => None,
             })
             .collect()
@@ -1109,9 +1109,9 @@ mod tests {
         state.update(found("- z\n- a\n- b\n- c\n"));
         let selected: Vec<String> = state
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text)
+            .map(|row| row.text.clone())
             .collect();
         assert_eq!(selected, ["b"]);
         state.update(Message::Delete);

@@ -989,9 +989,9 @@ mod tests {
     fn selected(state: &State) -> Vec<String> {
         state
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text)
+            .map(|row| row.text.clone())
             .collect()
     }
 

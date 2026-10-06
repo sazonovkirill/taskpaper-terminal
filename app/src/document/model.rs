@@ -2,6 +2,8 @@
 
 mod edit;
 
+use std::sync::Arc;
+
 use slotmap::{SlotMap, new_key_type};
 
 use super::format::{self, LineOrigin};
@@ -14,7 +16,7 @@ new_key_type! {
 }
 
 /// A parsed `.taskpaper` document: one item per line under a virtual root.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Document {
     /// Every line of the session; a removed line's slot is emptied, not freed, so undo can put
     /// the line back under the same id.
@@ -22,7 +24,39 @@ pub struct Document {
     root: ItemId,
     format: FileFormat,
     revision: u64,
+    /// Shared only by this document's stamps, so that no other document, a copy included, has
+    /// equal ones.
+    identity: Arc<()>,
 }
+
+impl Clone for Document {
+    /// A copy that changes apart from this document, so it gets an identity of its own.
+    fn clone(&self) -> Self {
+        Self {
+            items: self.items.clone(),
+            root: self.root,
+            format: self.format.clone(),
+            revision: self.revision,
+            identity: Arc::default(),
+        }
+    }
+}
+
+/// A document's content at one point: two stamps are equal only when they come from the same
+/// document at the same revision, so a view computed from one fits the other.
+#[derive(Debug, Clone)]
+pub struct Stamp {
+    identity: Arc<()>,
+    revision: u64,
+}
+
+impl PartialEq for Stamp {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.identity, &other.identity) && self.revision == other.revision
+    }
+}
+
+impl Eq for Stamp {}
 
 /// One line of the file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +147,7 @@ impl Document {
             root,
             format,
             revision: 0,
+            identity: Arc::default(),
         }
     }
 
@@ -138,6 +173,15 @@ impl Document {
     #[must_use]
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// The document's content as it is now: its stamp changes with every applied transaction.
+    #[must_use]
+    pub fn stamp(&self) -> Stamp {
+        Stamp {
+            identity: Arc::clone(&self.identity),
+            revision: self.revision,
+        }
     }
 
     /// Every item below `id` in document order, with its depth relative to `id`'s children (0).

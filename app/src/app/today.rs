@@ -211,7 +211,7 @@ Work: @done
     fn listed(state: &State) -> Vec<String> {
         state
             .rows()
-            .into_iter()
+            .iter()
             .map(|row| {
                 assert_eq!(row.depth, 0, "entries are flat");
                 assert!(!row.title);

@@ -102,7 +102,7 @@ impl State {
     /// order, which every pane showing the view shares, leaving the document as it is and making
     /// no step to undo.
     pub(super) fn reorder_entries(&mut self, down: bool) {
-        let shown: Vec<ItemId> = self.rows().into_iter().map(|row| row.id).collect();
+        let shown: Vec<ItemId> = self.rows().iter().map(|row| row.id).collect();
         let moving: Vec<ItemId> = self.targets().iter().map(Block::id).collect();
         let mut every = self.pane.clone();
         every.show_done = true;
@@ -243,7 +243,7 @@ mod tests {
 
     /// The text of each row.
     fn listed(state: &State) -> Vec<String> {
-        state.rows().into_iter().map(|row| row.text).collect()
+        state.rows().iter().map(|row| row.text.clone()).collect()
     }
 
     /// The text of the focused block.
@@ -251,10 +251,11 @@ mod tests {
         let id = state.focus().expect("a focus");
         state
             .rows()
-            .into_iter()
+            .iter()
             .find(|row| row.id == id)
             .expect("shown")
             .text
+            .clone()
     }
 
     // D-57, navigation §7

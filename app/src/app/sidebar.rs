@@ -2,13 +2,14 @@
 //! project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-sidebar-fr-ui-01-d-7-d-11-d-28),
 //! FR-UI-01).
 
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc};
 
 use super::{
     Location, PaneChange, State,
     commands::{Command, NodeCommand},
+    memo::Memo,
 };
-use crate::document::{BlockKind, ItemId, blocks};
+use crate::document::{BlockKind, ItemId, Stamp, blocks};
 
 /// Whether the sidebar is shown, its focused entry while it has the keys, and its folded project
 /// entries, which are its own and not the outline's.
@@ -18,6 +19,15 @@ pub(super) struct Sidebar {
     /// The index of the focused entry, while the sidebar has the keys.
     focus: Option<usize>,
     folds: HashSet<ItemId>,
+    entries: Memo<EntriesKey, Rc<[SidebarEntry]>>,
+}
+
+/// Everything the sidebar's entries are computed from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EntriesKey {
+    document: Stamp,
+    folds: HashSet<ItemId>,
+    show_done: bool,
 }
 
 impl Sidebar {
@@ -46,6 +56,7 @@ impl Default for Sidebar {
             shown: true,
             focus: None,
             folds: HashSet::new(),
+            entries: Memo::default(),
         }
     }
 }
@@ -117,7 +128,7 @@ pub enum Fold {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SidebarView {
     /// Its entries in order; Today is always among them.
-    pub entries: Vec<SidebarEntry>,
+    pub entries: Rc<[SidebarEntry]>,
     /// The index of the focused entry, while the sidebar has the keys.
     pub focused: Option<usize>,
 }
@@ -238,13 +249,20 @@ impl State {
     }
 
     /// Every bookmarked block in document order, then Today, then the project tree.
-    fn sidebar_entries(&self) -> Vec<SidebarEntry> {
-        let root = self.document().root();
-        let mut entries = Vec::new();
-        self.push_bookmarks(root, &mut entries);
-        entries.push(SidebarEntry::Today);
-        entries.extend(self.projects(root, 0));
-        entries
+    fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
+        let key = EntriesKey {
+            document: self.document().stamp(),
+            folds: self.sidebar.folds.clone(),
+            show_done: self.pane.show_done,
+        };
+        self.sidebar.entries.get(key, || {
+            let root = self.document().root();
+            let mut entries = Vec::new();
+            self.push_bookmarks(root, &mut entries);
+            entries.push(SidebarEntry::Today);
+            entries.extend(self.projects(root, 0));
+            entries.into()
+        })
     }
 
     /// Appends an entry for each bookmarked block below `line`, depth first, but not for

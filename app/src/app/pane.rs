@@ -5,7 +5,7 @@
 //! ([navigation.md §5](../../../docs/specs/navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13),
 //! FR-UI-02, FR-UI-03, D-13).
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, rc::Rc};
 
 use super::{
     Location, Row, SidebarInput, State,
@@ -124,7 +124,7 @@ pub struct PaneView {
     /// [`State::breadcrumbs`] gives them.
     pub breadcrumbs: Vec<String>,
     /// Its visible rows.
-    pub rows: Vec<Row>,
+    pub rows: Rc<[Row]>,
     /// Its focused row's item.
     pub focus: Option<ItemId>,
     /// The width the frontend gave it when it was last narrowed or widened, or `None` while it
@@ -308,7 +308,7 @@ impl State {
                 )
                 .map(|block| block.id())
                 .collect(),
-                rows: self.rows_of(pane).into_iter().map(|row| row.id).collect(),
+                rows: self.rows_of(pane).iter().map(|row| row.id).collect(),
             })
             .collect()
     }
@@ -790,9 +790,9 @@ mod tests {
         pane(&mut state, PaneChange::FocusLeft);
         let selected: Vec<String> = state
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text)
+            .map(|row| row.text.clone())
             .collect();
         assert_eq!(selected, ["Report"]);
     }

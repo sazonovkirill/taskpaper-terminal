@@ -70,7 +70,7 @@ impl State {
     /// to the focus; a run begins at the focus unless the focus is where the latest one ended.
     fn extend_selection(&mut self, down: bool) {
         let Some(focus) = self.pane.focus else { return };
-        let rows: Vec<ItemId> = self.rows().into_iter().map(|row| row.id).collect();
+        let rows: Vec<ItemId> = self.rows().iter().map(|row| row.id).collect();
         let run = match self.pane.selection.run.take() {
             Some(run) if run.head == focus => run,
             _ => Run {
@@ -118,7 +118,7 @@ impl State {
     fn select_all(&mut self) {
         let picked = self
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| !row.title)
             .map(|row| row.id)
             .collect();
@@ -136,7 +136,7 @@ impl State {
         if pane.selection.picked.is_empty() {
             return;
         }
-        let rows: Vec<ItemId> = self.rows_of(pane).into_iter().map(|row| row.id).collect();
+        let rows: Vec<ItemId> = self.rows_of(pane).iter().map(|row| row.id).collect();
         pane.selection.picked.retain(|id| rows.contains(id));
         // A run whose head is hidden ends anyway, because the focus left it.
         if pane
@@ -159,7 +159,7 @@ impl State {
     pub(super) fn targets(&self) -> Vec<Block> {
         let selected: Vec<Block> = self
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| self.pane.selection.contains(row.id))
             .filter_map(|row| blocks::block(self.document(), row.id))
             .collect();
@@ -179,7 +179,7 @@ impl State {
         }
         let selected = |id: ItemId| self.pane.selection.contains(id);
         self.rows()
-            .into_iter()
+            .iter()
             .filter(|row| !row.title && selected(row.id))
             .filter(|row| {
                 !std::iter::successors(blocks::parent(self.document(), row.id), |above| {
@@ -219,9 +219,9 @@ mod tests {
     fn selected(state: &State) -> Vec<String> {
         state
             .rows()
-            .into_iter()
+            .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text)
+            .map(|row| row.text.clone())
             .collect()
     }
 

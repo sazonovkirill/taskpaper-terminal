@@ -3,6 +3,7 @@
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
+    rc::Rc,
     time::Duration,
 };
 
@@ -15,16 +16,18 @@ use super::{
     edit_mode::{Resume, Session},
     external::External,
     finder::Finder,
+    memo::Memo,
     pane::Pane,
     picker::Picker,
     save_as,
     saving::Autosave,
+    selection::Selection,
     sidebar::Sidebar,
     today_order::TodayOrder,
     type_picker::Conversion,
 };
 use crate::document::{
-    Block, BlockKind, Document, Item, ItemId, TagColor, blocks,
+    Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks,
     inline::{self, Syntax},
 };
 
@@ -90,6 +93,20 @@ pub struct State {
     pub(super) sidebar: Sidebar,
     /// The order the user gave the Today view's entries (D-57).
     pub(super) today_order: TodayOrder,
+    /// The rows of the panes, kept while what they show stays the same.
+    rows: Memo<RowsKey, Rc<[Row]>>,
+}
+
+/// Everything the rows of a pane are computed from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RowsKey {
+    document: Stamp,
+    folds: HashSet<ItemId>,
+    location: Location,
+    show_done: bool,
+    selection: Selection,
+    today: Date,
+    today_order: TodayOrder,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -300,6 +317,7 @@ impl State {
             shortcuts: false,
             sidebar: Sidebar::default(),
             today_order: TodayOrder::default(),
+            rows: Memo::default(),
         };
         state.pane.focus = state.rows().first().map(|row| row.id);
         state
@@ -448,16 +466,25 @@ impl State {
 
     /// The visible rows: the outline's, or in the Today view its entries (D-7).
     #[must_use]
-    pub fn rows(&self) -> Vec<Row> {
+    pub fn rows(&self) -> Rc<[Row]> {
         self.rows_of(&self.pane)
     }
 
     /// The visible rows of `pane`: its outline's, or in the Today view its entries (D-7).
-    pub(super) fn rows_of(&self, pane: &Pane) -> Vec<Row> {
-        match pane.location {
-            Location::Outline(_) => self.outline_rows(pane),
-            Location::Today => self.today_rows(pane),
-        }
+    pub(super) fn rows_of(&self, pane: &Pane) -> Rc<[Row]> {
+        let key = RowsKey {
+            document: self.document.stamp(),
+            folds: self.folds.clone(),
+            location: pane.location,
+            show_done: pane.show_done,
+            selection: pane.selection.clone(),
+            today: self.today,
+            today_order: self.today_order.clone(),
+        };
+        self.rows.get(key, || match pane.location {
+            Location::Outline(_) => self.outline_rows(pane).into(),
+            Location::Today => self.today_rows(pane).into(),
+        })
     }
 
     /// The rows of `pane`'s outline: when zoomed, a title row for the zoom block at depth 0, then its child
@@ -605,8 +632,8 @@ mod tests {
     fn summary(state: &State) -> Vec<(usize, BlockKind, String)> {
         state
             .rows()
-            .into_iter()
-            .map(|row| (row.depth, row.kind, row.text))
+            .iter()
+            .map(|row| (row.depth, row.kind, row.text.clone()))
             .collect()
     }
 
@@ -628,11 +655,7 @@ mod tests {
             .map(|(id, _)| id)
             .collect();
         assert_eq!(
-            state
-                .rows()
-                .into_iter()
-                .map(|row| row.id)
-                .collect::<Vec<_>>(),
+            state.rows().iter().map(|row| row.id).collect::<Vec<_>>(),
             ids
         );
     }
@@ -674,8 +697,8 @@ mod tests {
         );
         let rows: Vec<_> = state
             .rows()
-            .into_iter()
-            .map(|row| (row.text, row.done))
+            .iter()
+            .map(|row| (row.text.clone(), row.done))
             .collect();
         assert_eq!(
             rows,
@@ -703,7 +726,7 @@ mod tests {
         );
         let dates: Vec<_> = state
             .rows()
-            .into_iter()
+            .iter()
             .map(|row| (row.text.clone(), row.start, row.due, row.overdue(today)))
             .collect();
         let day = |d| Some(jiff::civil::date(2026, 10, d));
@@ -726,8 +749,8 @@ mod tests {
     fn completion(state: &State) -> Vec<(String, bool, bool)> {
         state
             .rows()
-            .into_iter()
-            .map(|row| (row.text, row.done, row.inside_done))
+            .iter()
+            .map(|row| (row.text.clone(), row.done, row.inside_done))
             .collect()
     }
 
@@ -805,7 +828,7 @@ mod tests {
 
     #[test]
     fn empty_document_has_no_rows() {
-        assert_eq!(State::new(Document::default(), None).rows(), Vec::new());
+        assert_eq!(*State::new(Document::default(), None).rows(), []);
     }
 
     #[test]

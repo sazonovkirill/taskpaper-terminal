@@ -13,5 +13,5 @@ pub use format::DecodeError;
 pub use metadata::{DateChange, DateTag, Flag};
 pub use model::{
     Document, EditError, FileFormat, IndentUnit, Item, ItemId, ItemKind, LineEnding, Op, Snapshot,
-    Transaction,
+    Stamp, Transaction,
 };
