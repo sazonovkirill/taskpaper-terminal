@@ -4,7 +4,7 @@ use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{DUE, Harness, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -113,7 +113,7 @@ fn tags_stay_hidden_and_follow_the_edited_text() {
     press(&mut app, KeyCode::Esc, 1);
     assert_eq!(
         outline_rows(&mut app)[0],
-        "- Call Ana back          due Fri 9 Oct",
+        format!("- Call Ana back{:>23}", format!("{DUE} Fri")),
         "the due date shows only as its chip (FR-TAG-03)"
     );
     assert_eq!(saved(&mut app), "- Call Ana back @due(2026-10-09) @home\n");

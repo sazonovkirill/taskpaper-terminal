@@ -71,6 +71,8 @@ From here the app changes files, so file safety comes first: the serializer, ato
 
 **Owner feedback on M3 (2026-10-05):** links need no block type (D-45). Five types remain: project, section, task, text and divider; URL leaves the `my` picker. A line carrying `@url(…)` keeps whatever type its line has, its tag hidden and preserved, and its title is drawn as a link. Every link, bare URLs, `<url>` and `[title](url)`, is drawn in the link color and underlined in every block but a divider, so Markdown links extend from text blocks to tasks, projects and sections; headings stay text-only. `gx` opens the focused block's link, `@url` first, also on a selection; it reaches the command palettes with the command registry of step 4.1. The demo shows a link in a task and in a text block and an `@url` line. Try it: `gx` on "The Pragmatic Programmer" in the demo's reading list.
 
+**Owner feedback on M3 (2026-10-06):** date chips name the date relative to today, such as `tomorrow`, `next Tue` or `in 15 days`, after a calendar icon, start chips green and due chips red (D-46); this brings in the icon table of step 6.3 early, with only the icons drawn so far and their fallbacks unused until the `icons` setting. Try it: the demo's dates read `today`, `tomorrow`, a weekday, `next` and a weekday, `in 20 days` and `2 days ago`.
+
 ## M4 · Finding things
 
 | # | Step | Covers | After | Try it |

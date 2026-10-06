@@ -30,7 +30,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     expected.set_style(Rect::new(6, 4, 15, 1), done);
     expected.set_style(Rect::new(6, 5, 10, 1), done);
     expected.set_style(Rect::new(6, 6, 12, 1), done);
-    expected.set_style(Rect::new(38, 6, 2, 1), Style::new().yellow().dim());
+    expected.set_style(Rect::new(39, 6, 1, 1), Style::new().yellow().dim());
     expected.set_style(Rect::new(4, 7, 5, 1), project.dim().crossed_out());
     expected.set_style(Rect::new(4, 8, 33, 1), Style::new().gray());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());

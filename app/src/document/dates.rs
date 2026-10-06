@@ -1,5 +1,6 @@
 //! The date expressions users type, such as `tomorrow`, `next fri` or `+3d`, resolved against a
-//! given day ([search.md §4](../../../docs/specs/search.md#4-dates)). Hides their grammar.
+//! given day ([search.md §4](../../../docs/specs/search.md#4-dates)), and the words that name a
+//! date relative to a given day, such as `tomorrow` or `in 15 days` (D-46). Hides their grammar.
 
 use std::vec;
 
@@ -55,6 +56,23 @@ pub fn parse(text: &str, today: Date, tag: DateTag) -> Result<Date, DateError> {
         tag,
     }
     .expression()
+}
+
+/// `date` named relative to `today`: `today`, `tomorrow` or `yesterday`; the weekday, such as
+/// `Tue`, 2 to 6 days ahead; `next Tue` 7 to 13 days ahead; `in 15 days` further ahead; and
+/// `3 days ago` further back (D-46).
+#[must_use]
+pub fn relative(date: Date, today: Date) -> String {
+    let days = (date - today).get_days();
+    match days {
+        0 => "today".to_owned(),
+        1 => "tomorrow".to_owned(),
+        -1 => "yesterday".to_owned(),
+        2..=6 => date.strftime("%a").to_string(),
+        7..=13 => format!("next {}", date.strftime("%a")),
+        14.. => format!("in {days} days"),
+        ..=-2 => format!("{} days ago", days.unsigned_abs()),
+    }
 }
 
 /// One part of a date expression.
@@ -575,6 +593,41 @@ mod tests {
             parse("12-25", Date::MAX, DateTag::Due),
             Err(DateError::OutOfRange { offset: 0 })
         );
+    }
+
+    // D-46
+    #[test]
+    fn relative_names_today_and_its_neighbors_in_words() {
+        assert_eq!(relative(TODAY, TODAY), "today");
+        assert_eq!(relative(date(2026, 10, 8), TODAY), "tomorrow");
+        assert_eq!(relative(date(2026, 10, 6), TODAY), "yesterday");
+    }
+
+    // D-46
+    #[test]
+    fn relative_names_the_weekday_of_the_coming_week_then_the_next() {
+        let names: Vec<String> = (9..=20)
+            .map(|day| relative(date(2026, 10, day), TODAY))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "Fri", "Sat", "Sun", "Mon", "Tue", "next Wed", "next Thu", "next Fri", "next Sat",
+                "next Sun", "next Mon", "next Tue",
+            ]
+        );
+    }
+
+    // D-46
+    #[test]
+    fn relative_counts_days_further_ahead_and_back() {
+        assert_eq!(relative(date(2026, 10, 21), TODAY), "in 14 days");
+        assert_eq!(relative(date(2026, 10, 22), TODAY), "in 15 days");
+        assert_eq!(relative(date(2027, 10, 7), TODAY), "in 365 days");
+        assert_eq!(relative(date(2026, 10, 5), TODAY), "2 days ago");
+        assert_eq!(relative(date(2025, 10, 7), TODAY), "365 days ago");
+        assert_eq!(relative(Date::MAX, Date::MIN), "in 7304483 days");
+        assert_eq!(relative(Date::MIN, Date::MAX), "7304483 days ago");
     }
 
     #[test]

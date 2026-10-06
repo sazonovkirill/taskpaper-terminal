@@ -5,7 +5,7 @@ Trip to Lisbon: @travel @bookmark
 	Lisbon travel guide @url(https://www.visitlisboa.com)
 	Packing @section
 		- Passport @done
-		- Rain jacket @due({today+6})
+		- Rain jacket @due({today+20})
 		- Phone charger @today
 Website release 2.0:
 	- Write the release notes @done({today-1})

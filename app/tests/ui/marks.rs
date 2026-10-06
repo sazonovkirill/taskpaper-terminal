@@ -6,7 +6,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Color};
 
-use crate::support::{Harness, line, outline_line, outline_rows};
+use crate::support::{DUE, Harness, line, outline_line, outline_rows};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -113,15 +113,15 @@ fn m_t_marks_the_focused_block_for_today_with_a_star_chip() {
     app.type_keys("mt");
     assert_eq!(
         outline_rows(&mut app)[0],
-        format!("{:<23}★ due Fri 9 Oct", "- Milk")
+        format!("{:<31}★ {DUE} Fri", "- Milk")
     );
     let buffer = app.render().buffer().clone();
-    assert_eq!(buffer[(25, 2)].fg, Color::Yellow);
+    assert_eq!(buffer[(33, 2)].fg, Color::Yellow);
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09) @today\n");
     app.type_keys("mt");
     assert_eq!(
         outline_rows(&mut app)[0],
-        format!("{:<25}due Fri 9 Oct", "- Milk")
+        format!("{:<33}{DUE} Fri", "- Milk")
     );
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09)\n");
 }

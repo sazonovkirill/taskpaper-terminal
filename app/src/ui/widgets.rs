@@ -13,13 +13,14 @@ use ratatui::{
 
 use unicode_segmentation::UnicodeSegmentation;
 
+use super::theme::Icon;
 use crate::{
     app::{
         Access, DatePromptView, DiffLine, Editor, Notice, PickerView, Row, SaveState, TypeMenuView,
     },
     document::{
         BlockKind, DateTag, Details, TagColor,
-        dates::DateError,
+        dates::{self, DateError},
         inline::{self, Format, Syntax},
     },
 };
@@ -616,31 +617,40 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
 }
 
 /// The chips of `row` on `today`, right-aligned, each after a space: `★` when it has `@today`
-/// (FR-TAG-04), then its start and due dates as `start Fri 8 Oct` and `due Fri 8 Oct`, with the year when it is not this year's, an overdue
-/// date in the error color, and dimmed with a done block or one inside it (ui.md §2, FR-TAG-03).
+/// (FR-TAG-04), then its start date in green and its due date in red, each as its icon and the
+/// date named relative to `today`, such as `tomorrow` (D-46); an overdue date has its own icon and
+/// is reversed. All are dimmed with a done block or one inside it (ui.md §2, FR-TAG-03).
 fn chips(row: &Row, today: Date) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
-    let chip = |label: &str, date: Date, style: Style| {
-        let format = if date.year() == today.year() {
-            "%a %-d %b"
-        } else {
-            "%a %-d %b %Y"
-        };
-        Span::styled(format!(" {label} {}", date.strftime(format)), recede(style))
+    let chip = |icon: Icon, date: Date, style: Style| {
+        [
+            Span::raw(" "),
+            Span::styled(
+                format!("{} {}", icon.glyph(), dates::relative(date, today)),
+                recede(style),
+            ),
+        ]
     };
-    let due_style = if row.overdue(today) {
-        error_style()
-    } else {
-        chip_style()
+    let due = |date| {
+        if row.overdue(today) {
+            chip(Icon::Overdue, date, overdue_style())
+        } else {
+            chip(Icon::Due, date, due_style())
+        }
     };
     let spans: Vec<Span> = [
-        row.today
-            .then(|| Span::styled(format!(" {TODAY_MARKER}"), recede(today_style()))),
-        row.start.map(|date| chip("start", date, chip_style())),
-        row.due.map(|date| chip("due", date, due_style)),
+        row.today.then(|| {
+            [
+                Span::raw(" "),
+                Span::styled(TODAY_MARKER, recede(today_style())),
+            ]
+        }),
+        row.start.map(|date| chip(Icon::Start, date, start_style())),
+        row.due.map(due),
     ]
     .into_iter()
+    .flatten()
     .flatten()
     .collect();
     Line::from(spans).right_aligned()
@@ -654,9 +664,20 @@ fn today_style() -> Style {
     Style::new().fg(Color::Yellow)
 }
 
-/// Date chips that are not overdue; themes arrive in step 6.2.
-fn chip_style() -> Style {
-    Style::new().fg(Color::Cyan)
+/// Start date chips, always green (D-46); themes arrive in step 6.2.
+fn start_style() -> Style {
+    Style::new().fg(Color::Green)
+}
+
+/// Due date chips, always red (D-46); themes arrive in step 6.2.
+fn due_style() -> Style {
+    Style::new().fg(Color::Red)
+}
+
+/// Overdue due date chips: red and reversed, so they stand out from other due dates (FR-TAG-03,
+/// D-46); themes arrive in step 6.2.
+fn overdue_style() -> Style {
+    due_style().bold().reversed()
 }
 
 /// The marker of a block with its style, and the style of its text, by its type, its color and
@@ -838,6 +859,16 @@ mod tests {
             }
         }
         text
+    }
+
+    /// A date chip as drawn: its icon, then the date in words.
+    fn chip(icon: Icon, date: &str) -> String {
+        format!("{} {date}", icon.glyph())
+    }
+
+    /// `text`, then `chips` ending at column `width`; every character is one cell wide.
+    fn at_right(text: &str, chips: &str, width: usize) -> String {
+        format!("{text}{chips:>pad$}", pad = width - text.chars().count())
     }
 
     #[track_caller]
@@ -1199,21 +1230,21 @@ mod tests {
     #[test]
     fn today_shows_as_a_star_chip_before_the_dates() {
         let mut expected = Buffer::with_lines([
-            "- a  ★ due Fri 9 Oct",
-            "- b                ★",
-            "P:                 ★",
-            "  - c              ★",
+            at_right("- a", &format!("★ {}", chip(Icon::Due, "Fri")), 20),
+            "- b                ★".to_owned(),
+            "P:                 ★".to_owned(),
+            "  - c              ★".to_owned(),
         ]);
-        expected.set_style(Rect::new(4, 0, 2, 1), today_style());
-        expected.set_style(Rect::new(6, 0, 14, 1), chip_style());
-        expected.set_style(Rect::new(18, 1, 2, 1), today_style());
+        expected.set_style(Rect::new(13, 0, 1, 1), today_style());
+        expected.set_style(Rect::new(15, 0, 5, 1), due_style());
+        expected.set_style(Rect::new(19, 1, 1, 1), today_style());
         expected.set_style(
             Rect::new(0, 2, 2, 1),
             Style::new().bold().fg(PRIMARY).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(18, 2, 2, 1), today_style().dim());
+        expected.set_style(Rect::new(19, 2, 1, 1), today_style().dim());
         expected.set_style(Rect::new(2, 3, 3, 1), Style::new().dim());
-        expected.set_style(Rect::new(18, 3, 2, 1), today_style().dim());
+        expected.set_style(Rect::new(19, 3, 1, 1), today_style().dim());
         assert_eq!(
             render(
                 "- a @due(2026-10-09) @today\n- b @today(x)\nP: @today @done\n\t- c @today",
@@ -1475,14 +1506,19 @@ mod tests {
     #[test]
     fn dates_show_as_chips_at_the_right_edge() {
         let mut expected = Buffer::with_lines([
-            "- a  start Mon 5 Oct due Fri 9 Oct",
-            "- b                  due Sun 4 Oct",
-            "- c           start Fri 1 Oct 2027",
-            "- d                               ",
+            at_right(
+                "- a",
+                &format!("{} {}", chip(Icon::Start, "today"), chip(Icon::Due, "Fri")),
+                34,
+            ),
+            at_right("- b", &chip(Icon::Overdue, "yesterday"), 34),
+            at_right("- c", &chip(Icon::Start, "in 361 days"), 34),
+            "- d                               ".to_owned(),
         ]);
-        expected.set_style(Rect::new(4, 0, 30, 1), chip_style());
-        expected.set_style(Rect::new(20, 1, 14, 1), error_style());
-        expected.set_style(Rect::new(13, 2, 21, 1), chip_style());
+        expected.set_style(Rect::new(21, 0, 7, 1), start_style());
+        expected.set_style(Rect::new(29, 0, 5, 1), due_style());
+        expected.set_style(Rect::new(23, 1, 11, 1), overdue_style());
+        expected.set_style(Rect::new(21, 2, 13, 1), start_style());
         assert_eq!(
             render(
                 "- a @due(2026-10-09) @start(2026-10-05)\n- b @due(2026-10-04)\n- c @start(2027-10-01) @due(x)\n- d @start",
@@ -1496,14 +1532,17 @@ mod tests {
     // FR-TAG-03, D-40
     #[test]
     fn chips_of_done_blocks_recede_and_are_not_overdue() {
-        let mut expected = Buffer::with_lines(["P:    due Sun 4 Oct", "  - a due Sun 4 Oct"]);
+        let mut expected = Buffer::with_lines([
+            at_right("P:", &chip(Icon::Due, "yesterday"), 19),
+            at_right("  - a", &chip(Icon::Due, "yesterday"), 19),
+        ]);
         expected.set_style(
             Rect::new(0, 0, 2, 1),
             Style::new().bold().fg(PRIMARY).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(5, 0, 14, 1), chip_style().dim());
+        expected.set_style(Rect::new(8, 0, 11, 1), due_style().dim());
         expected.set_style(Rect::new(2, 1, 3, 1), Style::new().dim());
-        expected.set_style(Rect::new(5, 1, 14, 1), chip_style().dim());
+        expected.set_style(Rect::new(8, 1, 11, 1), due_style().dim());
         assert_eq!(
             render("P: @done @due(2026-10-04)\n\t- a @due(2026-10-04)", 19, 2),
             expected
@@ -1518,10 +1557,11 @@ mod tests {
         OutlineView::new(&rows, TODAY)
             .focused(Some(0))
             .render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["▎ - a  due Sun 4 Oct"]);
+        let mut expected =
+            Buffer::with_lines([at_right("▎ - a", &chip(Icon::Overdue, "yesterday"), 20)]);
         expected.set_style(expected.area, current_line_style());
         expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(6, 0, 14, 1), error_style());
+        expected.set_style(Rect::new(9, 0, 11, 1), overdue_style());
         assert_eq!(buf, expected);
     }
 
@@ -1539,8 +1579,11 @@ mod tests {
         OutlineView::new(&rows, TODAY)
             .editor(editor.as_ref())
             .render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["  - a               ", "  - b  due Mon 5 Oct"]);
-        expected.set_style(Rect::new(6, 1, 14, 1), chip_style());
+        let mut expected = Buffer::with_lines([
+            "  - a               ".to_owned(),
+            at_right("  - b", &chip(Icon::Due, "today"), 20),
+        ]);
+        expected.set_style(Rect::new(13, 1, 7, 1), due_style());
         assert_eq!(buf, expected);
     }
 

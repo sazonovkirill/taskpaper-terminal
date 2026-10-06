@@ -4,6 +4,7 @@
 pub mod effects;
 pub mod keymap;
 pub mod layout;
+mod theme;
 pub mod widgets;
 
 use std::{path::PathBuf, time::Duration};
@@ -43,8 +44,8 @@ pub struct Tui {
     clipboard: Clipboard,
     /// Reads the local time, whose date messages that write one carry and chips are drawn on.
     clock: fn() -> Zoned,
-    /// When the local date next changes while the outline shows a due date, which may then become
-    /// overdue (FR-TAG-03).
+    /// When the local date next changes while the outline shows a date chip, whose relative date
+    /// then changes and which may become overdue (FR-TAG-03, D-46).
     midnight: Option<Duration>,
     keymap: Keymap,
     /// The first outline row on screen.
@@ -168,10 +169,15 @@ impl Tui {
             .min()
     }
 
-    /// When the local date changes, counted like `now`, if the outline shows a due date that the
-    /// new date may make overdue.
+    /// When the local date changes, counted like `now`, if the outline shows a date chip, which the
+    /// new date names differently.
     fn next_midnight(&self, now: Duration) -> Option<Duration> {
-        if !self.state.rows().iter().any(|row| row.due.is_some()) {
+        if !self
+            .state
+            .rows()
+            .iter()
+            .any(|row| row.start.is_some() || row.due.is_some())
+        {
             return None;
         }
         let local = (self.clock)();

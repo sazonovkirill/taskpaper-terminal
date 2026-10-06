@@ -212,6 +212,11 @@ mod tests {
             "demo lacks a due date to come"
         );
         assert!(
+            rows.iter()
+                .any(|row| row.due.is_some_and(|due| (due - TODAY).get_days() >= 14)),
+            "demo lacks a date far enough ahead to be counted in days (D-46)"
+        );
+        assert!(
             rows.iter().any(|row| row.overdue(TODAY)),
             "demo lacks an overdue task"
         );

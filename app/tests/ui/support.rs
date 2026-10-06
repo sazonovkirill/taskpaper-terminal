@@ -101,6 +101,11 @@ fn base64_decode(encoded: &str) -> Vec<u8> {
 /// names the URL `gx` chose.
 pub const OPENER: &str = "tpt-test-no-such-opener";
 
+/// The icons of a start, a due and an overdue date chip (ui.md §7, D-46).
+pub const START: &str = "\u{f166d}";
+pub const DUE: &str = "\u{f166c}";
+pub const OVERDUE: &str = "\u{f0a31}";
+
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
 

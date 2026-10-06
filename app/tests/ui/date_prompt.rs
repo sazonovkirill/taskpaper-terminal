@@ -4,7 +4,7 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, line};
+use crate::support::{DUE, Harness, line};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -49,7 +49,7 @@ fn md_previews_a_typed_date_and_enter_makes_it_due() {
     let mut app = Harness::with_text("- Milk\n- Bread @due(2026-10-20)\n", 50, 10);
     app.type_keys("jmd");
     let mut expected = drawn("▎ - B", " Due date ", "2026-10-20", "Tue 20 Oct 2026");
-    expected[0].push_str("0 Oct");
+    expected[0].push_str(" days");
     assert_eq!(prompt_box(&mut app), expected);
     app.type_keys("next fri");
     expected[1] = drawn("", "", "next fri", "")[1].clone();
@@ -63,7 +63,7 @@ fn md_previews_a_typed_date_and_enter_makes_it_due() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         screen(&mut app)[3],
-        format!("▎ - Bread{:>41}", "due Fri 16 Oct")
+        format!("▎ - Bread{:>41}", format!("{DUE} next Fri"))
     );
     assert_eq!(saved(&mut app), "- Milk\n- Bread @due(2026-10-16)\n");
     app.type_keys("z");
@@ -189,5 +189,5 @@ fn the_demo_has_a_due_date_to_change_with_md() {
         .iter()
         .find(|row| row.contains("Return Piranesi to the library"))
         .expect("the task is shown");
-    assert!(task.ends_with("due Tue 6 Oct"), "{task}");
+    assert!(task.ends_with(&format!("{DUE} tomorrow")), "{task}");
 }
