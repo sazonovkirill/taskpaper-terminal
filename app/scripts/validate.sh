@@ -73,6 +73,11 @@ mutants() {
   CARGO_MUTANTS_JOBS="${CARGO_MUTANTS_JOBS:-$(( ($(getconf _NPROCESSORS_ONLN) + 1) / 2 ))}" cargo mutants --in-diff "$diff"
 }
 
+# Times opening a 100k-line outline and keystrokes on it against N-PERF-01 and N-PERF-02.
+bench() {
+  cargo bench --locked --bench perf
+}
+
 # Checks the prerequisites in docs/quality/agent-workflow.md and prints how to fix each missing one.
 doctor() {
   local missing=0 rustup_bin toolchain installed component tool
@@ -160,7 +165,8 @@ case "${1:-all}" in
   mutants) mutants ;;
   doctor) doctor ;;
   trace) trace ;;
+  bench) bench ;;
   # The coverage run is the test run: llvm-cov runs every test, and clippy above already denies warnings.
   all) static_checks; coverage ;;
-  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace]' >&2; exit 2 ;;
+  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace|bench]' >&2; exit 2 ;;
 esac

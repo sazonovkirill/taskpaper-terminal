@@ -8,6 +8,10 @@ publish = false
 name = "tpt"
 path = "src/main.rs"
 
+[[bench]]
+name = "perf"
+harness = false
+
 [dependencies]
 anyhow = "1.0.104"
 arboard = { version = "3.6.1", default-features = false }

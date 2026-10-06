@@ -69,6 +69,10 @@ Feature-complete means every Must requirement has a test that shows it working.
 - An integration test names the requirement IDs it covers (`FR-NAV-03`, `F-FILE-04`, `N-REL-01`) in a comment on the test, for example `// FR-NAV-03, FR-NAV-04`. A unit test does the same when it is the main evidence for a requirement, such as a round-trip property test for F-FILE-03. A test that covers no requirement needs no reference.
 - `bash app/scripts/validate.sh trace` lists every Must requirement in [functional-requirements.md](../functional-requirements.md) and [requirements.md](../requirements.md) that no test or source file names yet. It reports and does not fail validation; delivering the last feature of v1 includes bringing it to zero.
 
+## Performance
+
+`app/benches/perf.rs` checks the performance requirements N-PERF-01 and N-PERF-02 on a generated 100k-line, 10 MB outline: opening it to its first frame, and each common keystroke to its rendered frame, through the same `Tui` the binary runs. `bash app/scripts/validate.sh bench` runs it in release mode and fails when a scenario misses its budget; it is not part of `all`, because timings depend on the machine. `cargo test --all-targets`, and so `all`, runs every scenario once on a small outline without timing it, so the benchmark keeps building and running. Run `bench` before and after a change that could slow opening, editing or drawing, and record both results on the task.
+
 ## Parallel execution
 
 Every test must pass when run in parallel with every other test, in any order, as threads in one process (`cargo test`).
