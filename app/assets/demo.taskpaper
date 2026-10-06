@@ -41,6 +41,7 @@ Weekend errands:
 	- Bakery @yellow
 	- Hardware store
 	Select several with J, K or v, then x completes them all and gG groups them.
+	Add a block with o below, O above, i or I inside, a or A at the end or start of the list, then s, p, t or n for a section, project, task or note.
 	Make a line of text a section with S, and plain text again with s.
 	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with [] for a task, [x] for a done task or --- for a divider, then a space.
@@ -48,4 +49,4 @@ Weekend errands:
 Packing list template:
 	- Toothbrush
 	- Socks
-	Duplicate this list with D, or copy it with Ctrl+C and paste it below or above another block with Ctrl+V or Alt+V.
+	Duplicate this list with D, or copy it with y and paste it below or above another block with p or P.

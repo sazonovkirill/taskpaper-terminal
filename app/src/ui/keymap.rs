@@ -1,6 +1,6 @@
 //! Key events to app messages ([keybindings.md](../../../docs/specs/keybindings.md)).
 
-use std::time::Duration;
+use std::{mem, time::Duration};
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
@@ -149,11 +149,11 @@ const NAVIGATE: &[Binding] = &[
         today: context.today,
     }),
     (&[key!('t')], |c| date(DateTag::Start, DateChange::Today, c)),
-    (&[key!('y')], |c| {
+    (&[key!('w')], |c| {
         date(DateTag::Start, DateChange::Tomorrow, c)
     }),
     (&[key!('T')], |c| date(DateTag::Due, DateChange::Today, c)),
-    (&[key!('Y')], |c| {
+    (&[key!('W')], |c| {
         date(DateTag::Due, DateChange::Tomorrow, c)
     }),
     (&[key!('[')], |c| {
@@ -203,25 +203,90 @@ const NAVIGATE: &[Binding] = &[
     (&[key!('O')], |_| Message::New(NewBlock::Above, None)),
     (&[key!('i')], |_| Message::New(NewBlock::LastChild, None)),
     (&[key!('I')], |_| Message::New(NewBlock::FirstChild, None)),
-    (&[key!('P')], |_| {
-        Message::New(NewBlock::Start, Some(Typed::Project))
+    (&[key!('a')], |_| Message::New(NewBlock::End, None)),
+    (&[key!('A')], |_| Message::New(NewBlock::Start, None)),
+    (&[key!('o'), key!('s')], |_| {
+        typed(NewBlock::Below, Typed::Section)
     }),
-    (&[key!('p')], |_| {
-        Message::New(NewBlock::Below, Some(Typed::Project))
+    (&[key!('o'), key!('p')], |_| {
+        typed(NewBlock::Below, Typed::Project)
+    }),
+    (&[key!('o'), key!('t')], |_| {
+        typed(NewBlock::Below, Typed::Task)
+    }),
+    (&[key!('o'), key!('n')], |_| {
+        typed(NewBlock::Below, Typed::Text)
+    }),
+    (&[key!('O'), key!('s')], |_| {
+        typed(NewBlock::Above, Typed::Section)
+    }),
+    (&[key!('O'), key!('p')], |_| {
+        typed(NewBlock::Above, Typed::Project)
+    }),
+    (&[key!('O'), key!('t')], |_| {
+        typed(NewBlock::Above, Typed::Task)
+    }),
+    (&[key!('O'), key!('n')], |_| {
+        typed(NewBlock::Above, Typed::Text)
+    }),
+    (&[key!('i'), key!('s')], |_| {
+        typed(NewBlock::LastChild, Typed::Section)
+    }),
+    (&[key!('i'), key!('p')], |_| {
+        typed(NewBlock::LastChild, Typed::Project)
+    }),
+    (&[key!('i'), key!('t')], |_| {
+        typed(NewBlock::LastChild, Typed::Task)
+    }),
+    (&[key!('i'), key!('n')], |_| {
+        typed(NewBlock::LastChild, Typed::Text)
+    }),
+    (&[key!('I'), key!('s')], |_| {
+        typed(NewBlock::FirstChild, Typed::Section)
+    }),
+    (&[key!('I'), key!('p')], |_| {
+        typed(NewBlock::FirstChild, Typed::Project)
+    }),
+    (&[key!('I'), key!('t')], |_| {
+        typed(NewBlock::FirstChild, Typed::Task)
+    }),
+    (&[key!('I'), key!('n')], |_| {
+        typed(NewBlock::FirstChild, Typed::Text)
+    }),
+    (&[key!('a'), key!('s')], |_| {
+        typed(NewBlock::End, Typed::Section)
+    }),
+    (&[key!('a'), key!('p')], |_| {
+        typed(NewBlock::End, Typed::Project)
+    }),
+    (&[key!('a'), key!('t')], |_| {
+        typed(NewBlock::End, Typed::Task)
+    }),
+    (&[key!('a'), key!('n')], |_| {
+        typed(NewBlock::End, Typed::Text)
+    }),
+    (&[key!('A'), key!('s')], |_| {
+        typed(NewBlock::Start, Typed::Section)
+    }),
+    (&[key!('A'), key!('p')], |_| {
+        typed(NewBlock::Start, Typed::Project)
+    }),
+    (&[key!('A'), key!('t')], |_| {
+        typed(NewBlock::Start, Typed::Task)
+    }),
+    (&[key!('A'), key!('n')], |_| {
+        typed(NewBlock::Start, Typed::Text)
     }),
     (&[key!('S')], |_| Message::SetSection(true)),
     (&[key!('s')], |_| Message::SetSection(false)),
-    (&[key!('A')], |_| {
-        Message::New(NewBlock::Start, Some(Typed::Task))
-    }),
-    (&[key!('a')], |_| {
-        Message::New(NewBlock::Below, Some(Typed::Task))
-    }),
     (&[key!('d'), key!('d')], |_| Message::Delete),
     (&[key!(Delete)], |_| Message::Delete),
     (&[key!('D')], |_| Message::Duplicate),
+    (&[key!('y')], |_| Message::Copy),
     (&[key!(ctrl 'c')], |_| Message::Copy),
     (&[key!(ctrl 'x')], |_| Message::Cut),
+    (&[key!('p')], |_| Message::Paste(Paste::Below)),
+    (&[key!('P')], |_| Message::Paste(Paste::Above)),
     (&[key!(ctrl 'v')], |_| Message::Paste(Paste::Below)),
     (&[key!(alt 'v')], |_| Message::Paste(Paste::Above)),
     (&[key!(Tab)], |_| Message::Indent),
@@ -246,6 +311,11 @@ const NAVIGATE: &[Binding] = &[
     (&[key!(ctrl 'a')], |_| Message::Select(SelectionChange::All)),
     (&[key!(Esc)], |_| Message::Select(SelectionChange::Clear)),
 ];
+
+/// Adding a block of type `typed` where `at` says (FR-MODE-06, D-53).
+fn typed(at: NewBlock, typed: Typed) -> Message {
+    Message::New(at, Some(typed))
+}
 
 /// Changing the focused block's `tag` date as `change` says, from the local date (FR-TAG-06).
 fn date(tag: DateTag, change: DateChange, context: &Context) -> Message {
@@ -463,20 +533,34 @@ fn edit_message(key: Key, context: &Context) -> Option<Message> {
     text_edit(key).map(Message::Text)
 }
 
+/// The message of the navigate-mode binding whose keys are `keys`, if any.
+fn bound(keys: &[Key], context: &Context) -> Option<Message> {
+    NAVIGATE
+        .iter()
+        .find(|(bound, _)| *bound == keys)
+        .map(|(_, message)| message(context))
+}
+
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
-/// fails to match or times out.
+/// fails to match or times out. Keys that are a binding of their own and start longer ones, such
+/// as `o` (D-53), send their own message only when the sequence ends without continuing.
 #[derive(Debug, Default)]
 pub struct Keymap {
     pending: Vec<Key>,
     /// When the pending sequence started, in the frontend's time.
     started: Duration,
+    /// Whether the key just handled ended a sequence that was a binding of its own, whose message
+    /// came back instead, so the key is still to be handled.
+    replay: bool,
 }
 
 impl Keymap {
     /// The message `event` completes at time `now`, if any, carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
     /// navigate and edit mode alone; repeats, releases and other events are ignored. A key that
-    /// continues no binding ends the pending sequence and does nothing.
+    /// continues no binding ends the pending sequence and does nothing, unless the sequence, or
+    /// one that timed out, is a binding of its own: then its message comes back and
+    /// [`Keymap::replay`] says to handle `event` again once that message is handled.
     pub fn message_for(
         &mut self,
         event: &Event,
@@ -484,6 +568,10 @@ impl Keymap {
         context: &Context,
     ) -> Option<Message> {
         if let Event::Paste(text) = event {
+            if let Some(message) = bound(&mem::take(&mut self.pending), context) {
+                self.replay = true;
+                return Some(message);
+            }
             let menu = context.command_menu || context.overlay.is_some();
             return (!menu).then(|| Message::Pasted {
                 text: text.clone(),
@@ -491,7 +579,10 @@ impl Keymap {
             });
         }
         let key = event.as_key_press_event()?;
-        self.expire(now);
+        if let Some(message) = self.expire(now, context) {
+            self.replay = true;
+            return Some(message);
+        }
         if self.pending.is_empty() {
             self.started = now;
         }
@@ -527,25 +618,40 @@ impl Keymap {
             };
         }
         self.pending.push(pressed);
-        if let Some((_, message)) = NAVIGATE.iter().find(|(keys, _)| *keys == self.pending) {
-            self.pending.clear();
-            return Some(message(context));
+        let longer = |pending: &[Key]| {
+            NAVIGATE
+                .iter()
+                .any(|(keys, _)| keys.len() > pending.len() && keys.starts_with(pending))
+        };
+        if longer(&self.pending) {
+            return None;
         }
-        // No binding equals the pending keys, so any binding they start is longer.
-        if !NAVIGATE
-            .iter()
-            .any(|(keys, _)| keys.starts_with(&self.pending))
-        {
+        if let Some(message) = bound(&self.pending, context) {
             self.pending.clear();
+            return Some(message);
         }
-        None
+        self.pending.pop();
+        let held = bound(&self.pending, context);
+        self.replay = held.is_some();
+        self.pending.clear();
+        held
     }
 
-    /// Drops the pending sequence once [`SEQUENCE_TIMEOUT`] has passed since it started.
-    pub fn expire(&mut self, now: Duration) {
-        if self.deadline().is_some_and(|deadline| now >= deadline) {
-            self.pending.clear();
+    /// Whether the key [`Keymap::message_for`] just handled is still to be handled, in the
+    /// context the message it returned leaves; reading it clears it.
+    pub fn replay(&mut self) -> bool {
+        mem::take(&mut self.replay)
+    }
+
+    /// Drops the pending sequence once [`SEQUENCE_TIMEOUT`] has passed since it started, and
+    /// returns the message of the binding it is, if any, such as a lone `o` (D-53).
+    pub fn expire(&mut self, now: Duration, context: &Context) -> Option<Message> {
+        if self.deadline().is_none_or(|deadline| now < deadline) {
+            return None;
         }
+        let message = bound(&self.pending, context);
+        self.pending.clear();
+        message
     }
 
     /// When the pending sequence times out, or `None` when no sequence is pending.
@@ -681,9 +787,9 @@ mod tests {
     fn date_keys_set_and_move_the_start_and_due_dates() {
         for (c, tag, change) in [
             ('t', DateTag::Start, DateChange::Today),
-            ('y', DateTag::Start, DateChange::Tomorrow),
+            ('w', DateTag::Start, DateChange::Tomorrow),
             ('T', DateTag::Due, DateChange::Today),
-            ('Y', DateTag::Due, DateChange::Tomorrow),
+            ('W', DateTag::Due, DateChange::Tomorrow),
             ('[', DateTag::Start, DateChange::Earlier),
             (']', DateTag::Start, DateChange::Later),
             ('{', DateTag::Due, DateChange::Earlier),
@@ -820,26 +926,6 @@ mod tests {
     #[test]
     fn creating_and_deleting_keys() {
         let none = KeyModifiers::NONE;
-        check(
-            KeyCode::Char('o'),
-            none,
-            Some(&Message::New(NewBlock::Below, None)),
-        );
-        check(
-            KeyCode::Char('O'),
-            KeyModifiers::SHIFT,
-            Some(&Message::New(NewBlock::Above, None)),
-        );
-        check(
-            KeyCode::Char('i'),
-            none,
-            Some(&Message::New(NewBlock::LastChild, None)),
-        );
-        check(
-            KeyCode::Char('I'),
-            KeyModifiers::SHIFT,
-            Some(&Message::New(NewBlock::FirstChild, None)),
-        );
         check(KeyCode::Char('o'), KeyModifiers::ALT, None);
         check(KeyCode::Delete, none, Some(&Message::Delete));
         check(
@@ -857,17 +943,116 @@ mod tests {
         );
     }
 
-    // FR-MODE-06, D-26
+    /// The creation key `c`, pressed as a terminal reports it.
+    fn creation(c: char) -> Event {
+        let shift = if c.is_ascii_uppercase() {
+            KeyModifiers::SHIFT
+        } else {
+            KeyModifiers::NONE
+        };
+        key(KeyCode::Char(c), shift)
+    }
+
+    /// Where each creation key adds a block (D-41, D-53).
+    const PLACES: [(char, NewBlock); 6] = [
+        ('o', NewBlock::Below),
+        ('O', NewBlock::Above),
+        ('i', NewBlock::LastChild),
+        ('I', NewBlock::FirstChild),
+        ('a', NewBlock::End),
+        ('A', NewBlock::Start),
+    ];
+
+    // FR-MODE-04, FR-MODE-06, D-53
     #[test]
-    fn typed_creation_keys() {
-        for (lower, typed) in [('p', Typed::Project), ('a', Typed::Task)] {
-            let upper = lower.to_ascii_uppercase();
-            let top = Message::New(NewBlock::Start, Some(typed));
-            check(KeyCode::Char(upper), KeyModifiers::SHIFT, Some(&top));
-            check(KeyCode::Char(upper), KeyModifiers::NONE, Some(&top));
-            let below = Message::New(NewBlock::Below, Some(typed));
-            check(KeyCode::Char(lower), KeyModifiers::NONE, Some(&below));
+    fn a_creation_key_then_a_type_letter_adds_a_block_of_that_type() {
+        for (c, at) in PLACES {
+            for (letter, typed) in [
+                ('s', Typed::Section),
+                ('p', Typed::Project),
+                ('t', Typed::Task),
+                ('n', Typed::Text),
+            ] {
+                let mut keymap = Keymap::default();
+                assert_eq!(keymap.message_for(&creation(c), ms(0), CONTEXT), None);
+                assert_eq!(keymap.pending(), c.to_string());
+                let next = key(KeyCode::Char(letter), KeyModifiers::NONE);
+                assert_eq!(
+                    keymap.message_for(&next, ms(999), CONTEXT),
+                    Some(Message::New(at, Some(typed))),
+                    "{c}{letter}"
+                );
+                assert!(!keymap.replay(), "{c}{letter}");
+                assert_eq!(keymap.pending(), "");
+            }
         }
+    }
+
+    // FR-MODE-04, D-53
+    #[test]
+    fn a_lone_creation_key_adds_a_block_of_the_fitting_type_once_the_sequence_times_out() {
+        for (c, at) in PLACES {
+            let mut keymap = Keymap::default();
+            keymap.message_for(&creation(c), ms(0), CONTEXT);
+            assert_eq!(keymap.expire(ms(999), CONTEXT), None, "{c}");
+            assert_eq!(keymap.pending(), c.to_string());
+            assert_eq!(
+                keymap.expire(ms(1_000), CONTEXT),
+                Some(Message::New(at, None)),
+                "{c}"
+            );
+            assert_eq!(keymap.pending(), "");
+            assert_eq!(keymap.expire(ms(2_000), CONTEXT), None, "once");
+        }
+    }
+
+    // FR-MODE-04, FR-OPS-06, D-53
+    #[test]
+    fn text_pasted_after_a_lone_creation_key_adds_the_block_and_is_pasted_again() {
+        let mut keymap = Keymap::default();
+        let pasted = Event::Paste("a".to_owned());
+        keymap.message_for(&creation('o'), ms(0), CONTEXT);
+        assert_eq!(
+            keymap.message_for(&pasted, ms(10), CONTEXT),
+            Some(Message::New(NewBlock::Below, None))
+        );
+        assert!(keymap.replay());
+        keymap.message_for(
+            &key(KeyCode::Char('g'), KeyModifiers::NONE),
+            ms(20),
+            CONTEXT,
+        );
+        assert!(keymap.message_for(&pasted, ms(30), CONTEXT).is_some());
+        assert!(!keymap.replay());
+        assert_eq!(keymap.pending(), "", "the paste ends any sequence");
+    }
+
+    // FR-MODE-04, D-53
+    #[test]
+    fn a_key_that_continues_no_creation_sequence_adds_the_block_and_is_handled_again() {
+        let mut keymap = Keymap::default();
+        keymap.message_for(&creation('o'), ms(0), CONTEXT);
+        let b = key(KeyCode::Char('B'), KeyModifiers::SHIFT);
+        assert_eq!(
+            keymap.message_for(&b, ms(10), CONTEXT),
+            Some(Message::New(NewBlock::Below, None))
+        );
+        assert!(keymap.replay(), "B is still to be typed");
+        assert!(!keymap.replay(), "reading it clears it");
+        assert_eq!(keymap.pending(), "");
+        keymap.message_for(&creation('i'), ms(20), CONTEXT);
+        let j = key(KeyCode::Char('j'), KeyModifiers::NONE);
+        assert_eq!(
+            keymap.message_for(&j, ms(2_000), CONTEXT),
+            Some(Message::New(NewBlock::LastChild, None)),
+            "a sequence that timed out unnoticed"
+        );
+        assert!(keymap.replay());
+        assert_eq!(
+            keymap.message_for(&j, ms(2_000), CONTEXT),
+            Some(Message::FocusNext)
+        );
+        assert!(!keymap.replay());
     }
 
     // FR-BLK-04, D-52
@@ -1342,9 +1527,9 @@ mod tests {
         let mut keymap = Keymap::default();
         let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
         keymap.message_for(&g, ms(0), CONTEXT);
-        keymap.expire(ms(999));
+        assert_eq!(keymap.expire(ms(999), CONTEXT), None);
         assert_eq!(keymap.pending(), "g");
-        keymap.expire(ms(1_000));
+        assert_eq!(keymap.expire(ms(1_000), CONTEXT), None);
         assert_eq!(keymap.pending(), "");
         assert_eq!(keymap.deadline(), None);
     }
@@ -1385,7 +1570,7 @@ mod tests {
     #[test]
     fn unbound_keys_leave_nothing_pending() {
         let mut keymap = Keymap::default();
-        keymap.message_for(&key(KeyCode::Char('w'), KeyModifiers::NONE), ms(0), CONTEXT);
+        keymap.message_for(&key(KeyCode::Char('q'), KeyModifiers::NONE), ms(0), CONTEXT);
         assert_eq!(keymap.pending(), "");
         assert_eq!(keymap.deadline(), None);
     }
@@ -1489,6 +1674,25 @@ mod tests {
             KeyModifiers::ALT,
             Some(&Message::Paste(Paste::Above)),
         );
+    }
+
+    // FR-OPS-06, D-53
+    #[test]
+    fn y_copies_and_p_pastes_below_and_shift_p_above_in_navigate_mode() {
+        let none = KeyModifiers::NONE;
+        check(KeyCode::Char('y'), none, Some(&Message::Copy));
+        check(
+            KeyCode::Char('p'),
+            none,
+            Some(&Message::Paste(Paste::Below)),
+        );
+        let above = Some(&Message::Paste(Paste::Above));
+        check(KeyCode::Char('P'), KeyModifiers::SHIFT, above);
+        check(KeyCode::Char('P'), none, above);
+        let typed = |c| Keymap::default().message_for(&key(KeyCode::Char(c), none), ms(0), EDITING);
+        for c in ['y', 'p', 'P'] {
+            assert_eq!(typed(c), Some(Message::Text(TextEdit::Insert(c))), "{c}");
+        }
     }
 
     // FR-OPS-06, editing.md §4

@@ -1,5 +1,5 @@
-//! Step 3.6: duplicating blocks with `D`, copying, cutting and pasting them with `Ctrl+C`,
-//! `Ctrl+X`, `Ctrl+V` and `Alt+V`, and pasting text into the terminal. No system clipboard is
+//! Step 3.6: duplicating blocks with `D`, copying, cutting and pasting them with `Ctrl+C` or `y`,
+//! `Ctrl+X`, `Ctrl+V` or `p` and `Alt+V` or `P` (D-53), and pasting text into the terminal. No system clipboard is
 //! reachable here, so copying writes OSC 52 and `Ctrl+V` pastes what was copied last.
 
 use std::{fs, time::Duration};
@@ -117,6 +117,17 @@ fn ctrl_x_and_ctrl_v_move_selected_blocks() {
     assert_eq!(outline_rows(&mut app)[..2], ["- c", ""]);
     ctrl(&mut app, 'v');
     assert_eq!(saved(&mut app), "- c\n- a\n- b\n");
+}
+
+// FR-OPS-06, D-53
+#[test]
+fn y_copies_and_p_and_shift_p_paste_below_and_above() {
+    let mut app = Harness::with_text("- a\n- b\n", 50, 10);
+    app.type_keys("y");
+    assert_eq!(app.terminal_output.copied(), ["- a\n"]);
+    app.type_keys("jp");
+    app.press(KeyCode::Char('P'), KeyModifiers::SHIFT);
+    assert_eq!(saved(&mut app), "- a\n- b\n- a\n- a\n");
 }
 
 // FR-OPS-06

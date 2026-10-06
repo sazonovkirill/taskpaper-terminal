@@ -49,7 +49,7 @@ The owner's bindings (D-26) take keys that earlier drafts used: `c` (comments), 
 - Folding drops the `z` prefix: `'` and `Space` toggle, `"` toggles the subtree, `=`/`-` expand and collapse by level, `+`/`_` expand and collapse all. Quit is `Ctrl+Q` only; `u` and `Ctrl+R` are no longer undo and redo.
 - `Ctrl+P` is Go to Symbol (with `gs`), `Ctrl+K` Go to Command (with `:`), and inserting a link (Later) is typing `[[` only.
 - The context menu moves from `M` to `\`; `Ctrl+'` needs the kitty keyboard protocol, so `gh` stays as the route that always works.
-- "The list" is the focused block's siblings. Upper case adds at its top (a section goes before the first section, after the tasks); lower case adds right below the focused block, as `o` does. Since D-52 `S`/`s` make and unmake sections instead, so the section placement is gone.
+- "The list" is the focused block's siblings. Upper case adds at its top (a section goes before the first section, after the tasks); lower case adds right below the focused block, as `o` does. Since D-52 `S`/`s` make and unmake sections instead, so the section placement is gone; since D-53 creation keys are two-key sequences, `a`/`A` add at the end/start of the list, `y` copies and `p`/`P` paste.
 - `/` opens Go to Symbol until search exists.
 
 **Decision (2026-10-04):** the owner accepted the proposed default, left the meaning of top and bottom to Claude (kept as proposed), and confirmed that files open fully expanded.

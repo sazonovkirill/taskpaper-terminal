@@ -112,16 +112,10 @@ impl Tui {
             self.handle_prompt_key(event, now);
             return;
         }
-        let context = Context {
-            page_rows: self.page_rows,
-            today: (self.clock)().date(),
-            mode: self.state.mode(),
-            command_menu: self.state.command_menu().is_some(),
-            overlay: self.overlay(),
-        };
-        let Some(message) = self.keymap.message_for(event, now, &context) else {
+        let Some(message) = self.keymap.message_for(event, now, &self.context()) else {
             return;
         };
+        let replay = self.keymap.replay();
         let paging = matches!(message, Message::PageDown { .. } | Message::PageUp { .. });
         let before = self.focused_index();
         self.send(message, now);
@@ -129,6 +123,22 @@ impl Tui {
         // screen instead of only being dragged into view.
         if paging && let (Some(before), Some(after)) = (before, self.focused_index()) {
             self.scroll = (self.scroll + after).saturating_sub(before);
+        }
+        // The key ended a sequence that sent its own message, such as a lone `o`, and now acts
+        // where that message left the app, so typing right after `o` goes into the new block.
+        if replay {
+            self.handle_event(event, now);
+        }
+    }
+
+    /// What the keymap needs to know to turn a key into a message.
+    fn context(&self) -> Context {
+        Context {
+            page_rows: self.page_rows,
+            today: (self.clock)().date(),
+            mode: self.state.mode(),
+            command_menu: self.state.command_menu().is_some(),
+            overlay: self.overlay(),
         }
     }
 
@@ -148,10 +158,13 @@ impl Tui {
         }
     }
 
-    /// Lets time pass to `now` without an event: ends a key sequence that timed out and lets the
-    /// core start a save that is due.
+    /// Lets time pass to `now` without an event: ends a key sequence that timed out, sending its
+    /// message when it is a binding of its own, such as a lone `o`, and lets the core start a save
+    /// that is due.
     pub fn tick(&mut self, now: Duration) {
-        self.keymap.expire(now);
+        if let Some(message) = self.keymap.expire(now, &self.context()) {
+            self.send(message, now);
+        }
         let effects = self.state.update(Message::Tick { now });
         self.run(effects);
         self.midnight = self.next_midnight(now);

@@ -25,15 +25,17 @@ pub enum NewBlock {
     Next,
     /// At the start of its list, its parent's children (FR-MODE-06).
     Start,
+    /// At the end of its list, after the last block's subtree (D-53).
+    End,
 }
 
 impl State {
     /// Adds an empty block of type `typed`, or of the type that fits, where `new` says and edits
-    /// it (FR-MODE-04, FR-MODE-06). With blocks selected, a block below goes after the last of
-    /// them and one above or at the top of the list by the first; children go to the focused
-    /// block. On the zoom title, which stands for the view's root, the block becomes the first
-    /// one under it, or the last one for [`NewBlock::LastChild`]; in an outline without rows it
-    /// is the first block. A read-only file refuses with a notice.
+    /// it (FR-MODE-04, FR-MODE-06). With blocks selected, a block below or at the end of the list
+    /// goes by the last of them and one above or at the start of the list by the first; children
+    /// go to the focused block. On the zoom title, which stands for the view's root, the block
+    /// becomes the first one under it, or the last one for [`NewBlock::LastChild`] and
+    /// [`NewBlock::End`]; in an outline without rows it is the first block. A read-only file refuses with a notice.
     pub(super) fn add_block(&mut self, new: NewBlock, typed: Option<Typed>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
@@ -41,12 +43,14 @@ impl State {
         }
         let focused = self.creation_reference(new);
         let list = match (&focused, new) {
-            (Some((block, false)), NewBlock::Start) => self.siblings(block.id()),
+            (Some((block, false)), NewBlock::Start | NewBlock::End) => self.siblings(block.id()),
             _ => Vec::new(),
         };
         let place = match &focused {
             None => Place::Start,
-            Some((block, true)) if new == NewBlock::LastChild => Place::LastChild(block),
+            Some((block, true)) if matches!(new, NewBlock::LastChild | NewBlock::End) => {
+                Place::LastChild(block)
+            }
             Some((block, true)) => Place::FirstChild(block),
             Some((block, false)) => match new {
                 NewBlock::Above => Place::Above(block),
@@ -57,6 +61,10 @@ impl State {
                 NewBlock::Start => list
                     .first()
                     .map(Place::Above)
+                    .expect("the focused block is in its list"),
+                NewBlock::End => list
+                    .last()
+                    .map(Place::Below)
                     .expect("the focused block is in its list"),
             },
         };
@@ -71,12 +79,12 @@ impl State {
     }
 
     /// The block a new block is placed by, and whether it is the title: the focused block, or
-    /// with blocks selected, the last of them for a block below and the first for one above or
-    /// at the top of the list.
+    /// with blocks selected, the last of them for a block below or at the end of the list and the
+    /// first for one above or at its start.
     fn creation_reference(&self, new: NewBlock) -> Option<(Block, bool)> {
         let roots = self.roots();
         let selected = match new {
-            NewBlock::Below | NewBlock::Next => roots.last(),
+            NewBlock::Below | NewBlock::Next | NewBlock::End => roots.last(),
             NewBlock::Above | NewBlock::Start => roots.first(),
             NewBlock::FirstChild | NewBlock::LastChild => None,
         };
@@ -431,6 +439,37 @@ mod tests {
             lines(&state)[..2],
             ["- ", "P:"],
             "the top level is a list too"
+        );
+    }
+
+    // FR-MODE-04, D-53
+    #[test]
+    fn the_end_of_the_list_is_after_its_last_blocks_subtree() {
+        let text = "P:\n\t- a\n\tn\n\t\t- b\n\tC @hidden\nQ:";
+        let mut state = open(text, 1);
+        state.update(Message::New(NewBlock::End, None));
+        assert_eq!(
+            lines(&state),
+            ["P:", "\t- a", "\tn", "\t\t- b", "\t", "\tC @hidden", "Q:"],
+            "text after text, before the special node"
+        );
+        state.update(Message::StopEditing);
+        let mut state = open(text, 1);
+        state.update(Message::Select(SelectionChange::ExtendUp));
+        state.update(Message::New(NewBlock::End, Some(Typed::Task)));
+        assert_eq!(
+            lines(&state),
+            ["P:", "\t- a", "\tn", "\t\t- b", "\tC @hidden", "Q:", "- "],
+            "the list of the selected block"
+        );
+        let mut state = open(text, 0);
+        state.update(Message::ZoomIn);
+        state.update(Message::FocusFirst);
+        state.update(Message::New(NewBlock::End, Some(Typed::Section)));
+        assert_eq!(
+            lines(&state)[..6],
+            ["P:", "\t- a", "\tn", "\t\t- b", "\t@section", "\tC @hidden"],
+            "the zoom title's last child"
         );
     }
 

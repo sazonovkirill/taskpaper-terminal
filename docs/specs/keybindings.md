@@ -62,13 +62,13 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 
 | Command | Keys |
 |---|---|
-| Edit focused block (caret at end) | `Enter` (`a` now adds a task) |
+| Edit focused block (caret at end) | `Enter` |
 | New block below / above | `o` / `O` |
 | New last child / first child, expanding the block | `i` / `I` (`I` was `Alt+o`; D-41) |
-| New project at the top of the list / below the focused block | `P` / `p` |
-| New task at the top of the list / below the focused block | `A` / `a` |
+| New block at the end / start of the list (D-53) | `a` / `A` |
+| The same, as a section, project, task or note (D-53) | any of the six keys above, then `s`, `p`, `t` or `n`: `os`, `Ip`, `at`, `An`, … |
 
-The four typed creation commands are in [editing.md §3](editing.md#3-creating-blocks-fr-mode-04). A section is a text block with `@section`, made with `S` (D-52, below).
+The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for a type letter for the sequence timeout of §1, shown in the status line like `g`, and then add a block of the type that fits ([editing.md §3](editing.md#3-creating-blocks-fr-mode-04)). Any other key ends the wait at once: the block is added and the key goes on to it, so `o` then `B` starts a new block with `B`, while `o` then `t` adds a task. `p`/`P` and `a`/`A` no longer add projects and tasks, and `S`/`s` no longer add sections (D-52). A section is a text block with `@section`, also made with `S` (below).
 
 ### Selection (FR-OPS-01)
 
@@ -89,8 +89,8 @@ The four typed creation commands are in [editing.md §3](editing.md#3-creating-b
 | Move to… | `gm` (was `m`) |
 | Delete | `dd`, `Delete` |
 | Duplicate | `D` (was `yd`) |
-| Copy / cut | `Ctrl+C` / `Ctrl+X` (`y` now sets tomorrow) |
-| Paste below / above | `Ctrl+V` / `Alt+V` (`p`, `P` now add projects); text pasted into the terminal goes below |
+| Copy / cut | `y`, `Ctrl+C` / `Ctrl+X` (D-53) |
+| Paste below / above | `p`, `Ctrl+V` / `P`, `Alt+V` (D-53); text pasted into the terminal goes below |
 | Undo / redo | `z` / `Z`, `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 
 ### Block metadata (FR-BLK-08, FR-TAG, FR-DONE-01)
@@ -100,8 +100,8 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Command | Keys |
 |---|---|
 | Toggle done | `x`, `Ctrl+Enter` |
-| Start date today / tomorrow | `t` / `y` |
-| Due date today / tomorrow | `T` / `Y` |
+| Start date today / tomorrow | `t` / `w` (`w` was `y`, D-53) |
+| Due date today / tomorrow | `T` / `W` (`W` was `Y`, D-53) |
 | Start date one day earlier / later | `[` / `]` |
 | Due date one day earlier / later | `{` / `}` |
 | Set start / due date with a prompt | `ms` / `md` |

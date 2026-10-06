@@ -302,6 +302,22 @@ mod tests {
         );
     }
 
+    // FR-DOC-05, D-53
+    #[test]
+    fn demo_has_text_lines_that_point_to_the_creation_and_clipboard_keys() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        for (hint, what) in [
+            ("then s, p, t or n", "the creation sequences"),
+            ("copy it with y", "y and p"),
+        ] {
+            assert!(
+                rows.iter()
+                    .any(|row| row.kind == BlockKind::Text && row.text.contains(hint)),
+                "demo lacks a hint at {what}"
+            );
+        }
+    }
+
     // FR-DOC-05, D-52
     #[test]
     fn demo_has_a_text_line_that_points_to_the_section_keys() {

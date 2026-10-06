@@ -41,6 +41,11 @@ fn a_new_list_is_written_from_scratch_with_o_enter_and_backspace() {
     let mut app = Harness::with_text("", 40, 8);
     app.settle();
     app.type_keys("o");
+    assert!(
+        status_line(&mut app).starts_with("NAV"),
+        "o waits for a type letter"
+    );
+    app.wait(Duration::from_secs(1));
     assert!(status_line(&mut app).starts_with("EDIT · "));
     app.type_keys("Trip:");
     press(&mut app, KeyCode::Enter, 1);
@@ -68,10 +73,12 @@ fn shift_o_adds_a_block_above_i_a_last_child_and_shift_i_a_first_child() {
     app.type_keys("Eggs");
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("i");
+    app.wait(Duration::from_secs(1));
     assert_caret(&mut app, 8, 5);
     app.type_keys("Free range");
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("ggi");
+    app.wait(Duration::from_secs(1));
     assert!(status_line(&mut app).starts_with("EDIT · "));
     app.type_keys("Rice");
     press(&mut app, KeyCode::Esc, 1);

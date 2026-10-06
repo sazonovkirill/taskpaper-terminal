@@ -124,17 +124,13 @@ The list is a core list of the commands on one block, with their labels; the com
 | `new_last_child` | New block as the focused block's last child (expanding it), before the special nodes that end its children ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)). |
 | `new_first_child` | New block as the focused block's first child (expanding it). |
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
+| `new_end` / `new_start` (D-53) | New block after the last block of the focused block's list, with its subtree / before the first block of the list. "The list" is the focused block's siblings; in an empty pane it is the zoom block's children ([OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go) default). |
 
-**Typed creation** (D-26) adds a block of a chosen type in one key, opened in edit mode with empty text. "The list" is the focused block's siblings; in an empty pane it is the zoom block's children ([OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go) default).
+**Typed creation** (D-53) adds a block of a chosen type at any of these places: the place's key (`o`, `O`, `i`, `I`, `a`, `A`) followed by `s` for a section (a text block with `@section`, D-52), `p` for a project, `t` for a task or `n` for a note, opened in edit mode with empty text. The place's key alone, once the sequence times out or another key follows, adds a block of the type that fits, as below.
 
-| Command | Result |
-|---|---|
-| `new_project_top` / `new_project_below` | A project as the first block of the list / as `new_below` would place it. |
-| `new_task_top` / `new_task_below` | A task as the first block of the list / as `new_below` would place it. |
+On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child` and `new_end`, which add its last child; in a pane without blocks the new block is the first one.
 
-On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child`, which adds its last child; in a pane without blocks the new block is the first one.
-
-With blocks selected, a new block below (`new_below`, `new_*_below`) goes after the last selected block's subtree, and one above or at the top of the list (`new_above`, `new_*_top`) is placed by the first selected block; `new_first_child` and `new_last_child` still add to the focused block. The selection is cleared as the new block opens in edit mode.
+With blocks selected, a new block below or at the end of the list (`new_below`, `new_end`) goes by the last selected block, and one above or at the start of the list (`new_above`, `new_start`) by the first selected block; `new_first_child` and `new_last_child` still add to the focused block. The selection is cleared as the new block opens in edit mode.
 
 The new block's type follows OQ-03 default A: a task next to a task (after it for `new_below`, before it for `new_above`), otherwise text; a new child of a project or task is a task. It opens in edit mode with empty text.
 

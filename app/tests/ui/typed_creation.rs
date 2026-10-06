@@ -32,20 +32,21 @@ fn esc(app: &mut Harness) {
     app.press(KeyCode::Esc, KeyModifiers::NONE);
 }
 
-// FR-MODE-06, OQ-29, FR-DOC-02
+// FR-MODE-06, OQ-29, FR-DOC-02, D-53
 #[test]
-fn shift_a_and_shift_p_add_at_the_top_of_the_list_and_p_and_a_below() {
+fn a_place_key_and_a_type_letter_add_a_block_of_that_type_there() {
     let mut app = Harness::open("groceries.taskpaper", 50, 12);
     app.settle();
     app.type_keys("jj");
     shifted(&mut app, 'A');
+    app.type_keys("t");
     assert_caret(&mut app, 6, 3);
     app.type_keys("Eggs");
     esc(&mut app);
-    app.type_keys("p");
+    app.type_keys("op");
     app.type_keys("Bakery");
     esc(&mut app);
-    app.type_keys("a");
+    app.type_keys("ot");
     app.type_keys("Rye");
     esc(&mut app);
     assert_eq!(
@@ -53,7 +54,8 @@ fn shift_a_and_shift_p_add_at_the_top_of_the_list_and_p_and_a_below() {
         ["Groceries:", "  - Eggs", "  Bakery:", "  - Rye", "  - Milk"]
     );
     app.type_keys("G");
-    shifted(&mut app, 'P');
+    shifted(&mut app, 'A');
+    app.type_keys("p");
     app.type_keys("Inbox");
     esc(&mut app);
     assert_eq!(outline_rows(&mut app)[..2], ["Inbox:", "Groceries:"]);
@@ -63,5 +65,31 @@ fn shift_a_and_shift_p_add_at_the_top_of_the_list_and_p_and_a_below() {
             "Inbox:\n{}",
             GROCERIES.replace("\t- Milk", "\t- Eggs\n\tBakery:\n\t- Rye\n\t- Milk")
         )
+    );
+}
+
+// FR-MODE-04, FR-MODE-06, D-53
+#[test]
+fn a_and_shift_a_add_at_the_end_and_start_of_the_list_and_a_lone_key_waits() {
+    let mut app = Harness::with_text("- a\n- b\n", 40, 10);
+    app.settle();
+    app.type_keys("as");
+    app.type_keys("Later");
+    esc(&mut app);
+    app.type_keys("gg");
+    app.type_keys("In");
+    app.type_keys("Why");
+    esc(&mut app);
+    app.type_keys("a");
+    app.wait(Duration::from_secs(1));
+    app.type_keys("c");
+    esc(&mut app);
+    shifted(&mut app, 'A');
+    app.type_keys("Q");
+    esc(&mut app);
+    assert_eq!(
+        saved(&mut app),
+        "- a\n\tQ\n\tWhy\n\tc\n- b\nLater @section\n",
+        "a and A act on the list of the block just added"
     );
 }

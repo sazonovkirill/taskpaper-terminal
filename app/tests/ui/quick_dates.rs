@@ -41,11 +41,11 @@ fn with_chips(text: &str, chips: &str) -> String {
     format!("{text}{chips:>width$}", width = 38 - text.chars().count())
 }
 
-// FR-TAG-06, FR-TAG-03, FR-DOC-02
+// FR-TAG-06, FR-TAG-03, FR-DOC-02, D-53
 #[test]
-fn shift_y_makes_the_focused_task_due_tomorrow_and_z_undoes_it() {
+fn shift_w_makes_the_focused_task_due_tomorrow_and_z_undoes_it() {
     let mut app = Harness::with_text("- Milk\n- Bread\n", 40, 5);
-    app.type_keys("jY");
+    app.type_keys("jW");
     assert_eq!(
         outline_rows(&mut app)[..2],
         [
@@ -59,16 +59,16 @@ fn shift_y_makes_the_focused_task_due_tomorrow_and_z_undoes_it() {
     assert_eq!(saved(&mut app), "- Milk\n- Bread\n");
 }
 
-// FR-TAG-06, D-26
+// FR-TAG-06, D-26, D-53
 #[test]
-fn t_y_and_shift_t_set_start_and_due_to_today_or_tomorrow() {
+fn t_w_and_shift_t_set_start_and_due_to_today_or_tomorrow() {
     let mut app = Harness::with_text("- a\n- b\n", 40, 5);
     app.type_keys("t");
     assert_eq!(
         outline_rows(&mut app)[0],
         with_chips("- a", &format!("{START} today"))
     );
-    app.type_keys("y");
+    app.type_keys("w");
     assert_eq!(
         outline_rows(&mut app)[0],
         with_chips("- a", &format!("{START} tomorrow"))
@@ -110,7 +110,7 @@ fn moving_a_missing_date_counts_from_today() {
 #[test]
 fn shifted_date_keys_work_in_both_key_reportings() {
     let mut app = Harness::with_text("- a\n", 40, 4);
-    app.press(KeyCode::Char('y'), KeyModifiers::SHIFT);
+    app.press(KeyCode::Char('w'), KeyModifiers::SHIFT);
     assert_eq!(
         outline_rows(&mut app)[0],
         with_chips("- a", &format!("{DUE} tomorrow"))
