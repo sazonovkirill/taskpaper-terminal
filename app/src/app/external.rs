@@ -11,8 +11,10 @@ use std::{
 
 use similar::{ChangeTag, TextDiff};
 
-use super::{Effect, History, Notice, SaveState, State, saving::Ending, update::Disk};
-use crate::document::{Document, ItemId, blocks, format};
+use super::{
+    Effect, History, Notice, SaveState, State, saving::Ending, text_path::TextPath, update::Disk,
+};
+use crate::document::{Document, ItemId, format};
 
 /// Unchanged lines the diff shows around each change.
 const CONTEXT: usize = 3;
@@ -314,10 +316,9 @@ impl State {
         self.context_menu = None;
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
-        let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
-        let exact = |id: ItemId| {
-            rematch(&old, &self.document, id).and_then(|(id, exact)| exact.then_some(id))
-        };
+        let found = |id: ItemId| TextPath::of(&old, id)?.find(&self.document);
+        let nearest = |id: ItemId| found(id).map(|(id, _)| id);
+        let exact = |id: ItemId| found(id).and_then(|(id, exact)| exact.then_some(id));
         for pane in std::iter::once(&mut self.pane).chain(&mut self.others) {
             pane.rematch(nearest, exact);
         }
@@ -358,48 +359,6 @@ impl State {
     pub fn gone_from_disk(&self) -> bool {
         self.external.gone
     }
-}
-
-/// The block of `to` at the place block `id` has in `from`: the path of block texts from the
-/// top level down, counting equal texts among siblings, leads to it. When the path breaks off,
-/// the nearest surviving ancestor; the flag says whether the whole path matched.
-fn rematch(from: &Document, to: &Document, id: ItemId) -> Option<(ItemId, bool)> {
-    let path: Vec<(String, usize)> = std::iter::successors(blocks::block(from, id), |block| {
-        blocks::parent(from, block.id())
-    })
-    .filter_map(|block| step(from, block.id()))
-    .collect();
-    let mut line = to.root();
-    let mut found = None;
-    for (text, nth) in path.iter().rev() {
-        let Some(next) = blocks::children(to, line)
-            .into_iter()
-            .filter(|block| shown_text(to, block.id()).as_ref() == Some(text))
-            .nth(*nth)
-        else {
-            return found.map(|id| (id, false));
-        };
-        line = next.id();
-        found = Some(next.id());
-    }
-    found.map(|id| (id, true))
-}
-
-/// The text of block `id` and how many earlier sibling blocks have the same one.
-fn step(document: &Document, id: ItemId) -> Option<(String, usize)> {
-    let text = shown_text(document, id)?;
-    let parent = document.get(id)?.parent()?;
-    let nth = blocks::children(document, parent)
-        .into_iter()
-        .take_while(|block| block.id() != id)
-        .filter(|block| shown_text(document, block.id()).as_ref() == Some(&text))
-        .count();
-    Some((text, nth))
-}
-
-/// The text of block `id` as shown, so a change of tags alone keeps the match.
-fn shown_text(document: &Document, id: ItemId) -> Option<String> {
-    document.get(id).map(crate::document::Item::display_text)
 }
 
 /// The lines that differ from `disk` to `mine`, with [`CONTEXT`] unchanged lines around each
