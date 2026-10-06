@@ -16,8 +16,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use super::{layout, theme::Icon};
 use crate::{
     app::{
-        Access, Action, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Message, Notice, PickerView, Row, SaveState,
+        Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
+        Notice, PickerView, Row, SaveState,
     },
     document::{
         BlockKind, DateTag, Details, Flag, TagColor,
@@ -337,8 +337,8 @@ impl Popup {
             .iter()
             .enumerate()
             .map(|(index, row)| match row {
-                MenuRow::Command { label, action } => {
-                    let (icon, style) = command_icon(action);
+                MenuRow::Command { label, command } => {
+                    let (icon, style) = command_icon(*command);
                     let line = Line::from(vec![
                         Span::raw(PAD),
                         Span::styled(icon.glyph(), style),
@@ -468,37 +468,33 @@ impl Popup {
     }
 }
 
-/// The icon of the command menu's entry that does `action`, in its style: the colors of the
-/// matching chips and icons of the outline (D-46, D-47), a color entry in its color, and a command
-/// without an icon of its own the generic one (D-54).
-fn command_icon(action: &Action) -> (Icon, Style) {
+/// The icon of the command menu's entry for `command`, in its style: the colors of the matching
+/// chips and icons of the outline (D-46, D-47), a color entry in its color, and a command without
+/// an icon of its own the generic one (D-54).
+fn command_icon(command: Command) -> (Icon, Style) {
     let plain = |icon| (icon, Style::new());
     let date = |tag| match tag {
         DateTag::Start => (Icon::Start, start_style()),
         DateTag::Due => (Icon::Due, due_style()),
     };
-    match action {
-        Action::Retype(Typed::Project) => plain(Icon::Project),
-        Action::Retype(Typed::Task) => plain(Icon::Task),
-        Action::Retype(Typed::Text) => plain(Icon::Note),
-        Action::Retype(Typed::Section) => plain(Icon::Section),
-        Action::Run(Message::ToggleFlag(Flag::Today)) => (Icon::Today, today_style()),
-        Action::Run(Message::ToggleFlag(Flag::Bookmark)) => (Icon::Bookmark, bookmark_style()),
-        Action::Run(
-            Message::OpenDatePrompt { tag, .. }
-            | Message::ChangeDate { tag, .. }
-            | Message::ClearDate(tag),
-        ) => date(*tag),
-        Action::Run(Message::ToggleDone { .. }) => plain(Icon::Complete),
-        Action::Run(Message::SetColor(Some(color))) => {
-            (Icon::Color, Style::new().fg(tag_color(*color)))
+    match command {
+        Command::Retype(Typed::Project) => plain(Icon::Project),
+        Command::Retype(Typed::Task) => plain(Icon::Task),
+        Command::Retype(Typed::Text) => plain(Icon::Note),
+        Command::Retype(Typed::Section) => plain(Icon::Section),
+        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style()),
+        Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style()),
+        Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
+            date(tag)
         }
-        Action::Run(Message::SetColor(None)) => plain(Icon::Color),
-        Action::Run(Message::OpenDetails) => plain(Icon::Details),
-        Action::Run(Message::OpenUrl) => plain(Icon::Link),
-        Action::Run(Message::Duplicate) => plain(Icon::Duplicate),
-        Action::Run(Message::Delete) => plain(Icon::Delete),
-        Action::Run(_) => plain(Icon::Command),
+        Command::ToggleDone => plain(Icon::Complete),
+        Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(tag_color(color))),
+        Command::SetColor(None) => plain(Icon::Color),
+        Command::OpenDetails => plain(Icon::Details),
+        Command::OpenUrl => plain(Icon::Link),
+        Command::Duplicate => plain(Icon::Duplicate),
+        Command::Delete => plain(Icon::Delete),
+        _ => plain(Icon::Command),
     }
 }
 
@@ -1261,64 +1257,47 @@ mod tests {
     // D-54: every entry has its icon, a color entry in its color.
     #[test]
     fn each_command_has_its_icon() {
-        let today = jiff::civil::date(2026, 10, 6);
-        let run = Action::Run;
         let cases = [
-            (Action::Retype(Typed::Project), Icon::Project, Style::new()),
-            (Action::Retype(Typed::Task), Icon::Task, Style::new()),
-            (Action::Retype(Typed::Text), Icon::Note, Style::new()),
-            (Action::Retype(Typed::Section), Icon::Section, Style::new()),
+            (Command::Retype(Typed::Project), Icon::Project, Style::new()),
+            (Command::Retype(Typed::Task), Icon::Task, Style::new()),
+            (Command::Retype(Typed::Text), Icon::Note, Style::new()),
+            (Command::Retype(Typed::Section), Icon::Section, Style::new()),
+            (Command::ToggleDone, Icon::Complete, Style::new()),
+            (Command::ToggleFlag(Flag::Today), Icon::Today, today_style()),
             (
-                run(Message::ToggleDone { today }),
-                Icon::Complete,
-                Style::new(),
-            ),
-            (
-                run(Message::ToggleFlag(Flag::Today)),
-                Icon::Today,
-                today_style(),
-            ),
-            (
-                run(Message::ToggleFlag(Flag::Bookmark)),
+                Command::ToggleFlag(Flag::Bookmark),
                 Icon::Bookmark,
                 bookmark_style(),
             ),
             (
-                run(Message::OpenDatePrompt {
-                    tag: DateTag::Start,
-                    today,
-                }),
+                Command::OpenDatePrompt(DateTag::Start),
                 Icon::Start,
                 start_style(),
             ),
             (
-                run(Message::ChangeDate {
-                    tag: DateTag::Due,
-                    change: crate::document::DateChange::Today,
-                    today,
-                }),
+                Command::ChangeDate(DateTag::Due, crate::document::DateChange::Today),
                 Icon::Due,
                 due_style(),
             ),
             (
-                run(Message::ClearDate(DateTag::Start)),
+                Command::ClearDate(DateTag::Start),
                 Icon::Start,
                 start_style(),
             ),
             (
-                run(Message::SetColor(Some(TagColor::Blue))),
+                Command::SetColor(Some(TagColor::Blue)),
                 Icon::Color,
                 Style::new().fg(Color::Blue),
             ),
-            (run(Message::SetColor(None)), Icon::Color, Style::new()),
-            (run(Message::OpenDetails), Icon::Details, Style::new()),
-            (run(Message::OpenUrl), Icon::Link, Style::new()),
-            (run(Message::Duplicate), Icon::Duplicate, Style::new()),
-            (run(Message::Delete), Icon::Delete, Style::new()),
-            (run(Message::Undo), Icon::Command, Style::new()),
+            (Command::SetColor(None), Icon::Color, Style::new()),
+            (Command::OpenDetails, Icon::Details, Style::new()),
+            (Command::OpenUrl, Icon::Link, Style::new()),
+            (Command::Duplicate, Icon::Duplicate, Style::new()),
+            (Command::Delete, Icon::Delete, Style::new()),
+            (Command::Undo, Icon::Command, Style::new()),
         ];
-        for (action, icon, style) in cases {
-            assert_eq!(command_icon(&action), (icon, style), "{action:?}");
+        for (command, icon, style) in cases {
+            assert_eq!(command_icon(command), (icon, style), "{command:?}");
         }
     }
 

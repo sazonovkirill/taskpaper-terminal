@@ -3,6 +3,7 @@
 
 mod clipboard;
 mod color_picker;
+pub mod commands;
 mod date_prompt;
 pub mod demo;
 mod details;
@@ -11,7 +12,6 @@ mod editing;
 pub mod external;
 pub mod history;
 mod links;
-mod node_commands;
 mod picker;
 pub mod saving;
 mod selection;
@@ -22,11 +22,11 @@ mod type_picker;
 pub mod update;
 
 pub use clipboard::Paste;
+pub use commands::{Command, Inputs};
 pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{CommandMenuView, Editor, MenuInput, MenuRow, Mode};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};
-pub use node_commands::Action;
 pub use picker::PickerView;
 pub use saving::SaveState;
 pub use selection::SelectionChange;

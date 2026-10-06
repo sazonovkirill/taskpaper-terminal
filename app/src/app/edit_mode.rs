@@ -14,7 +14,7 @@ use jiff::civil::Date;
 
 use super::{
     Access, Effect, Notice, Restore, State,
-    node_commands::{Action, node_commands},
+    commands::{Command, Inputs, node_commands},
     structure::NewBlock,
     text_field::{TextEdit, TextField},
 };
@@ -76,8 +76,9 @@ pub(super) struct Session {
     /// Whether the latest change typed a character, so that the next one typed joins its undo
     /// step.
     typing: bool,
-    /// The command menu, while `/` has it open (D-50).
-    menu: Option<CommandMenu>,
+    /// The command menu, while `/` has it open, with the local date its date commands write
+    /// (D-50).
+    menu: Option<(CommandMenu, Date)>,
 }
 
 impl Session {
@@ -330,7 +331,11 @@ impl State {
     /// The command menu, while it is open (D-50).
     #[must_use]
     pub fn command_menu(&self) -> Option<CommandMenuView<'_>> {
-        self.edit.as_ref()?.menu.as_ref().map(CommandMenu::view)
+        self.edit
+            .as_ref()?
+            .menu
+            .as_ref()
+            .map(|(menu, _)| menu.view())
     }
 
     /// `/` in edit mode: opens the command menu with the commands for the edited block, `today`
@@ -343,7 +348,7 @@ impl State {
         }) else {
             return;
         };
-        session.menu = Some(CommandMenu::new(node_commands(&block, link, today)));
+        session.menu = Some((CommandMenu::new(node_commands(&block, link)), today));
     }
 
     /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
@@ -355,18 +360,30 @@ impl State {
         let Some(session) = &mut self.edit else {
             return Vec::new();
         };
-        let Some(closed) = session.menu.as_mut().and_then(|menu| menu.input(input)) else {
+        let Some((closed, today)) = session
+            .menu
+            .as_mut()
+            .and_then(|(menu, today)| Some((menu.input(input)?, *today)))
+        else {
             return Vec::new();
         };
         session.menu = None;
         match closed {
-            Closed::Run(Action::Retype(typed)) => {
+            Closed::Run(Command::Retype(typed)) => {
                 session.retype(typed);
                 self.write(false);
             }
-            Closed::Run(Action::Run(message)) => {
+            Closed::Run(command) => {
+                // No command of the menu pages, so a page needs no height.
+                let inputs = Inputs {
+                    today,
+                    page_rows: 0,
+                };
                 self.suspend_editing();
-                let effects = self.update(message);
+                let effects = command
+                    .message(&inputs)
+                    .map(|message| self.update(message))
+                    .unwrap_or_default();
                 self.resume_editing();
                 return effects;
             }
@@ -1367,7 +1384,7 @@ Site @url(https://x.y)",
     }
 
     /// The labels the open menu lists, with `|` for a divider.
-    fn listed(state: &State) -> Vec<&'static str> {
+    fn listed(state: &State) -> Vec<&str> {
         let rows = state.command_menu().unwrap().rows;
         rows.into_iter()
             .map(|row| match row {

@@ -2,7 +2,7 @@
 //! filter typed after `/`, the highlighted command, and what each key does to them
 //! ([editing.md §2.3](../../../../docs/specs/editing.md#23-command-menu), D-44, D-50).
 
-use super::super::node_commands::{Action, NodeCommand};
+use super::super::commands::{Command, NodeCommand};
 
 /// A key of the open command menu or a picker, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,12 +35,12 @@ pub struct CommandMenuView<'a> {
 /// A row of the open menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuRow<'a> {
-    /// A command: its label and what it does.
+    /// A command with its label.
     Command {
         /// What the menu shows, which its filter matches.
-        label: &'static str,
-        /// What choosing it does.
-        action: &'a Action,
+        label: &'a str,
+        /// The command choosing it gives.
+        command: Command,
     },
     /// A line between two groups of commands, which cannot be highlighted.
     Divider,
@@ -59,7 +59,7 @@ pub(super) struct CommandMenu {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Closed {
     /// The chosen command runs.
-    Run(Action),
+    Run(Command),
     /// This text is typed, the `/` and the filter that chose nothing.
     Literal(String),
     /// Nothing is typed: the `/` was erased.
@@ -84,7 +84,7 @@ impl CommandMenu {
             .map(|group| {
                 group
                     .iter()
-                    .filter(|command| matches(command.label, &self.filter))
+                    .filter(|command| matches(&command.label, &self.filter))
                     .collect::<Vec<_>>()
             })
             .filter(|group| !group.is_empty())
@@ -108,8 +108,8 @@ impl CommandMenu {
                     selected = rows.len();
                 }
                 rows.push(MenuRow::Command {
-                    label: command.label,
-                    action: &command.action,
+                    label: &command.label,
+                    command: command.command,
                 });
             }
         }
@@ -154,7 +154,7 @@ impl CommandMenu {
             MenuInput::Choose => self
                 .matching()
                 .nth(self.selected)
-                .map(|command| Closed::Run(command.action.clone())),
+                .map(|command| Closed::Run(command.command)),
             MenuInput::Dismiss => Some(Closed::Literal(self.literal())),
         }
     }
@@ -178,20 +178,17 @@ fn matches(label: &str, filter: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        app::Message,
-        document::{DateTag, format::Typed},
-    };
+    use crate::document::{DateTag, format::Typed};
 
-    /// A menu offering a command for each of `labels`, each running a message of its own, in
-    /// groups of the sizes `GROUPS`.
+    /// A menu offering the command of [`COMMANDS`] at the same position for each of `labels`,
+    /// in groups of the sizes `GROUPS`.
     fn offering(labels: &[&'static str]) -> CommandMenu {
         let mut commands = labels
             .iter()
-            .enumerate()
-            .map(|(index, &label)| NodeCommand {
-                label,
-                action: Action::Run(Message::PageDown { rows: index }),
+            .zip(COMMANDS)
+            .map(|(&label, command)| NodeCommand {
+                label: label.into(),
+                command,
             });
         CommandMenu::new(
             GROUPS
@@ -203,6 +200,18 @@ mod tests {
 
     /// The sizes of the groups of [`LABELS`].
     const GROUPS: [usize; 3] = [2, 4, 2];
+
+    /// A command for each of [`LABELS`], each different.
+    const COMMANDS: [Command; 8] = [
+        Command::FocusNext,
+        Command::FocusPrevious,
+        Command::FocusFirst,
+        Command::FocusLast,
+        Command::FocusParent,
+        Command::Collapse,
+        Command::Expand,
+        Command::ZoomIn,
+    ];
 
     const LABELS: [&str; 8] = [
         "Project",
@@ -223,7 +232,7 @@ mod tests {
     }
 
     /// The labels the menu shows, with `|` for a divider.
-    fn shown(menu: &CommandMenu) -> Vec<&'static str> {
+    fn shown(menu: &CommandMenu) -> Vec<&str> {
         menu.view()
             .rows
             .into_iter()
@@ -334,7 +343,7 @@ mod tests {
         menu.input(MenuInput::Next);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(Action::Run(Message::PageDown { rows: 4 }))),
+            Some(Closed::Run(COMMANDS[4])),
             "Due Today"
         );
     }
@@ -344,17 +353,17 @@ mod tests {
     fn choosing_a_type_retypes_the_block() {
         let mut menu = CommandMenu::new(vec![vec![
             NodeCommand {
-                label: "Project",
-                action: Action::Retype(Typed::Project),
+                label: "Project".into(),
+                command: Command::Retype(Typed::Project),
             },
             NodeCommand {
-                label: "Clear Start Date",
-                action: Action::Run(Message::ClearDate(DateTag::Start)),
+                label: "Clear Start Date".into(),
+                command: Command::ClearDate(DateTag::Start),
             },
         ]]);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(Action::Retype(Typed::Project)))
+            Some(Closed::Run(Command::Retype(Typed::Project)))
         );
     }
 
@@ -375,7 +384,7 @@ mod tests {
         assert_eq!(menu.view().selected, 3);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(Action::Run(Message::PageDown { rows: 5 })))
+            Some(Closed::Run(COMMANDS[5]))
         );
     }
 
@@ -393,7 +402,7 @@ mod tests {
         menu.input(MenuInput::Previous);
         assert_eq!(
             menu.input(MenuInput::Choose),
-            Some(Closed::Run(Action::Run(Message::PageDown { rows: 2 })))
+            Some(Closed::Run(COMMANDS[2]))
         );
     }
 

@@ -5,11 +5,9 @@ use std::{mem, time::Duration};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
-use crate::{
-    app::{
-        DateInput, MenuInput, Message, Mode, Motion, NewBlock, Paste, SelectionChange, TextEdit,
-    },
-    document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
+use crate::app::{
+    Command, DateInput, Inputs, MenuInput, Message, Mode, Motion, Paste, TextEdit,
+    commands::REGISTRY,
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -20,9 +18,6 @@ pub const SEQUENCE_TIMEOUT: Duration = Duration::from_secs(1);
 /// One key press: its modifiers and code, with `Shift` dropped from characters because the
 /// character already says whether it is shifted.
 type Key = (KeyModifiers, KeyCode);
-
-/// A binding's keys and the message they send, given what the frontend knows.
-type Binding = (&'static [Key], fn(&Context) -> Message);
 
 /// What the frontend knows that a message may carry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,6 +32,16 @@ pub struct Context {
     pub command_menu: bool,
     /// The popup over the outline that takes the keys of navigate mode, if one is open.
     pub overlay: Option<Overlay>,
+}
+
+impl Context {
+    /// What a command's message carries of this context.
+    fn inputs(&self) -> Inputs {
+        Inputs {
+            today: self.today,
+            page_rows: self.page_rows,
+        }
+    }
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -88,253 +93,6 @@ macro_rules! key {
     };
 }
 
-/// Navigate-mode bindings ([keybindings.md §2]).
-///
-/// [keybindings.md §2]: ../../../docs/specs/keybindings.md#2-navigate-mode
-const NAVIGATE: &[Binding] = &[
-    (&[key!(ctrl 'q')], |_| Message::Quit),
-    (&[key!('j')], |_| Message::FocusNext),
-    (&[key!(Down)], |_| Message::FocusNext),
-    (&[key!('k')], |_| Message::FocusPrevious),
-    (&[key!(Up)], |_| Message::FocusPrevious),
-    (&[key!('g'), key!('g')], |_| Message::FocusFirst),
-    (&[key!(Home)], |_| Message::FocusFirst),
-    (&[key!('G')], |_| Message::FocusLast),
-    (&[key!(End)], |_| Message::FocusLast),
-    (&[key!(ctrl 'd')], |context| Message::PageDown {
-        rows: context.page_rows,
-    }),
-    (&[key!(PageDown)], |context| Message::PageDown {
-        rows: context.page_rows,
-    }),
-    (&[key!(ctrl 'u')], |context| Message::PageUp {
-        rows: context.page_rows,
-    }),
-    (&[key!(PageUp)], |context| Message::PageUp {
-        rows: context.page_rows,
-    }),
-    (&[key!('h')], |_| Message::Collapse),
-    (&[key!(Left)], |_| Message::Collapse),
-    (&[key!('l')], |_| Message::Expand),
-    (&[key!(Right)], |_| Message::Expand),
-    (&[key!(ctrl Down)], |_| Message::FocusNextSibling),
-    (&[key!(ctrl Up)], |_| Message::FocusPreviousSibling),
-    (&[key!('g'), key!('p')], |_| Message::FocusParent),
-    (&[key!('g'), key!('l')], |_| Message::FocusLastChild),
-    (&[key!('\'')], |_| Message::ToggleFold),
-    (&[key!(' ')], |_| Message::ToggleFold),
-    (&[key!('"')], |_| Message::ToggleSubtree),
-    (&[key!('=')], |_| Message::ExpandLevel),
-    (&[key!('-')], |_| Message::CollapseLevel),
-    (&[key!('+')], |_| Message::ExpandAll),
-    (&[key!('_')], |_| Message::CollapseAll),
-    (&[key!('.')], |_| Message::ZoomIn),
-    (&[key!(alt 'l')], |_| Message::ZoomIn),
-    (&[key!(alt Right)], |_| Message::ZoomIn),
-    (&[key!('g'), key!('z')], |_| Message::ZoomIn),
-    (&[key!('>')], |_| Message::ZoomOut),
-    (&[key!(alt 'h')], |_| Message::ZoomOut),
-    (&[key!(alt Left)], |_| Message::ZoomOut),
-    (&[key!('g'), key!('u')], |_| Message::ZoomOut),
-    (&[key!(ctrl '\'')], |_| Message::GoHome),
-    (&[key!('g'), key!('h')], |_| Message::GoHome),
-    (&[key!('H')], |_| Message::Back),
-    (&[key!(alt shift Left)], |_| Message::Back),
-    (&[key!('L')], |_| Message::Forward),
-    (&[key!(alt shift Right)], |_| Message::Forward),
-    (&[key!('x')], |context| Message::ToggleDone {
-        today: context.today,
-    }),
-    (&[key!(ctrl Enter)], |context| Message::ToggleDone {
-        today: context.today,
-    }),
-    (&[key!('t')], |c| date(DateTag::Start, DateChange::Today, c)),
-    (&[key!('w')], |c| {
-        date(DateTag::Start, DateChange::Tomorrow, c)
-    }),
-    (&[key!('T')], |c| date(DateTag::Due, DateChange::Today, c)),
-    (&[key!('W')], |c| {
-        date(DateTag::Due, DateChange::Tomorrow, c)
-    }),
-    (&[key!('[')], |c| {
-        date(DateTag::Start, DateChange::Earlier, c)
-    }),
-    (&[key!(']')], |c| date(DateTag::Start, DateChange::Later, c)),
-    (&[key!('{')], |c| date(DateTag::Due, DateChange::Earlier, c)),
-    (&[key!('}')], |c| date(DateTag::Due, DateChange::Later, c)),
-    (&[key!('c'), key!('c')], |_| Message::CycleColor),
-    (&[key!('c'), key!('1')], |_| {
-        Message::SetColor(Some(TagColor::Red))
-    }),
-    (&[key!('c'), key!('2')], |_| {
-        Message::SetColor(Some(TagColor::Orange))
-    }),
-    (&[key!('c'), key!('3')], |_| {
-        Message::SetColor(Some(TagColor::Yellow))
-    }),
-    (&[key!('c'), key!('4')], |_| {
-        Message::SetColor(Some(TagColor::Green))
-    }),
-    (&[key!('c'), key!('5')], |_| {
-        Message::SetColor(Some(TagColor::Blue))
-    }),
-    (&[key!('c'), key!('6')], |_| {
-        Message::SetColor(Some(TagColor::Violet))
-    }),
-    (&[key!('C')], |_| Message::SetColor(None)),
-    (&[key!('m'), key!('c')], |_| Message::OpenColorPicker),
-    (&[key!('m'), key!('t')], |_| {
-        Message::ToggleFlag(Flag::Today)
-    }),
-    (&[key!('m'), key!('b')], |_| {
-        Message::ToggleFlag(Flag::Bookmark)
-    }),
-    (&[key!('m'), key!('s')], |c| date_prompt(DateTag::Start, c)),
-    (&[key!('m'), key!('d')], |c| date_prompt(DateTag::Due, c)),
-    (&[key!('m'), key!('y')], |_| Message::OpenTypePicker),
-    (&[key!('m'), key!('i')], |_| Message::OpenDetails),
-    (&[key!('z')], |_| Message::Undo),
-    (&[key!(ctrl 'z')], |_| Message::Undo),
-    (&[key!('Z')], |_| Message::Redo),
-    (&[key!(ctrl 'Z')], |_| Message::Redo),
-    (&[key!(ctrl 'y')], |_| Message::Redo),
-    (&[key!(Enter)], |_| Message::EditAtEnd),
-    (&[key!('o')], |_| Message::New(NewBlock::Below, None)),
-    (&[key!('O')], |_| Message::New(NewBlock::Above, None)),
-    (&[key!('i')], |_| Message::New(NewBlock::LastChild, None)),
-    (&[key!('I')], |_| Message::New(NewBlock::FirstChild, None)),
-    (&[key!('a')], |_| Message::New(NewBlock::End, None)),
-    (&[key!('A')], |_| Message::New(NewBlock::Start, None)),
-    (&[key!('o'), key!('s')], |_| {
-        typed(NewBlock::Below, Typed::Section)
-    }),
-    (&[key!('o'), key!('p')], |_| {
-        typed(NewBlock::Below, Typed::Project)
-    }),
-    (&[key!('o'), key!('t')], |_| {
-        typed(NewBlock::Below, Typed::Task)
-    }),
-    (&[key!('o'), key!('n')], |_| {
-        typed(NewBlock::Below, Typed::Text)
-    }),
-    (&[key!('O'), key!('s')], |_| {
-        typed(NewBlock::Above, Typed::Section)
-    }),
-    (&[key!('O'), key!('p')], |_| {
-        typed(NewBlock::Above, Typed::Project)
-    }),
-    (&[key!('O'), key!('t')], |_| {
-        typed(NewBlock::Above, Typed::Task)
-    }),
-    (&[key!('O'), key!('n')], |_| {
-        typed(NewBlock::Above, Typed::Text)
-    }),
-    (&[key!('i'), key!('s')], |_| {
-        typed(NewBlock::LastChild, Typed::Section)
-    }),
-    (&[key!('i'), key!('p')], |_| {
-        typed(NewBlock::LastChild, Typed::Project)
-    }),
-    (&[key!('i'), key!('t')], |_| {
-        typed(NewBlock::LastChild, Typed::Task)
-    }),
-    (&[key!('i'), key!('n')], |_| {
-        typed(NewBlock::LastChild, Typed::Text)
-    }),
-    (&[key!('I'), key!('s')], |_| {
-        typed(NewBlock::FirstChild, Typed::Section)
-    }),
-    (&[key!('I'), key!('p')], |_| {
-        typed(NewBlock::FirstChild, Typed::Project)
-    }),
-    (&[key!('I'), key!('t')], |_| {
-        typed(NewBlock::FirstChild, Typed::Task)
-    }),
-    (&[key!('I'), key!('n')], |_| {
-        typed(NewBlock::FirstChild, Typed::Text)
-    }),
-    (&[key!('a'), key!('s')], |_| {
-        typed(NewBlock::End, Typed::Section)
-    }),
-    (&[key!('a'), key!('p')], |_| {
-        typed(NewBlock::End, Typed::Project)
-    }),
-    (&[key!('a'), key!('t')], |_| {
-        typed(NewBlock::End, Typed::Task)
-    }),
-    (&[key!('a'), key!('n')], |_| {
-        typed(NewBlock::End, Typed::Text)
-    }),
-    (&[key!('A'), key!('s')], |_| {
-        typed(NewBlock::Start, Typed::Section)
-    }),
-    (&[key!('A'), key!('p')], |_| {
-        typed(NewBlock::Start, Typed::Project)
-    }),
-    (&[key!('A'), key!('t')], |_| {
-        typed(NewBlock::Start, Typed::Task)
-    }),
-    (&[key!('A'), key!('n')], |_| {
-        typed(NewBlock::Start, Typed::Text)
-    }),
-    (&[key!('S')], |_| Message::SetSection(true)),
-    (&[key!('s')], |_| Message::SetSection(false)),
-    (&[key!('d'), key!('d')], |_| Message::Delete),
-    (&[key!(Delete)], |_| Message::Delete),
-    (&[key!('D')], |_| Message::Duplicate),
-    (&[key!('y')], |_| Message::Copy),
-    (&[key!(ctrl 'c')], |_| Message::Copy),
-    (&[key!(ctrl 'x')], |_| Message::Cut),
-    (&[key!('p')], |_| Message::Paste(Paste::Below)),
-    (&[key!('P')], |_| Message::Paste(Paste::Above)),
-    (&[key!(ctrl 'v')], |_| Message::Paste(Paste::Below)),
-    (&[key!(alt 'v')], |_| Message::Paste(Paste::Above)),
-    (&[key!(Tab)], |_| Message::Indent),
-    (&[key!(shift BackTab)], |_| Message::Outdent),
-    (&[key!(alt 'k')], |_| Message::MoveUp),
-    (&[key!(alt Up)], |_| Message::MoveUp),
-    (&[key!(alt 'j')], |_| Message::MoveDown),
-    (&[key!(alt Down)], |_| Message::MoveDown),
-    (&[key!('g'), key!('x')], |_| Message::OpenUrl),
-    (&[key!('g'), key!('G')], |_| Message::Group),
-    (&[key!('J')], |_| {
-        Message::Select(SelectionChange::ExtendDown)
-    }),
-    (&[key!(shift Down)], |_| {
-        Message::Select(SelectionChange::ExtendDown)
-    }),
-    (&[key!('K')], |_| Message::Select(SelectionChange::ExtendUp)),
-    (&[key!(shift Up)], |_| {
-        Message::Select(SelectionChange::ExtendUp)
-    }),
-    (&[key!('v')], |_| Message::Select(SelectionChange::Toggle)),
-    (&[key!(ctrl 'a')], |_| Message::Select(SelectionChange::All)),
-    (&[key!(Esc)], |_| Message::Select(SelectionChange::Clear)),
-];
-
-/// Adding a block of type `typed` where `at` says (FR-MODE-06, D-53).
-fn typed(at: NewBlock, typed: Typed) -> Message {
-    Message::New(at, Some(typed))
-}
-
-/// Changing the focused block's `tag` date as `change` says, from the local date (FR-TAG-06).
-fn date(tag: DateTag, change: DateChange, context: &Context) -> Message {
-    Message::ChangeDate {
-        tag,
-        change,
-        today: context.today,
-    }
-}
-
-/// Opening the prompt for the focused block's `tag` date, resolved against the local date
-/// (FR-TAG-03).
-fn date_prompt(tag: DateTag, context: &Context) -> Message {
-    Message::OpenDatePrompt {
-        tag,
-        today: context.today,
-    }
-}
-
 /// What a key does while the conflict prompt is open (file-io.md §3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PromptKey {
@@ -379,41 +137,6 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
         .find(|(key, _)| *key == pressed)
         .map(|(_, action)| action(rows))
 }
-
-/// Edit-mode bindings ([keybindings.md §3], [editing.md §2]); the [`TEXT`] keys change the text,
-/// and characters without other bindings are typed.
-///
-/// [keybindings.md §3]: ../../../docs/specs/keybindings.md#3-edit-mode
-/// [editing.md §2]: ../../../docs/specs/editing.md#2-edit-mode
-const EDIT: &[Binding] = &[
-    (&[key!(ctrl 'q')], |_| Message::Quit),
-    (&[key!(Esc)], |_| Message::StopEditing),
-    (&[key!('/')], |context| Message::OpenCommandMenu {
-        today: context.today,
-    }),
-    (&[key!(Enter)], |_| Message::NewNext),
-    (&[key!(Tab)], |_| Message::Indent),
-    (&[key!(shift BackTab)], |_| Message::Outdent),
-    (&[key!(ctrl 't')], |_| Message::CycleType),
-    (&[key!(Up)], |_| Message::EditPrevious),
-    (&[key!(Down)], |_| Message::EditNext),
-    (&[key!(ctrl 'b')], |_| {
-        Message::Text(TextEdit::Toggle(Marker::Bold))
-    }),
-    (&[key!(alt '`')], |_| {
-        Message::Text(TextEdit::Toggle(Marker::Code))
-    }),
-    // `Alt` needs a setting on macOS, so inline code also has a key without it (keybindings.md §1).
-    (&[key!(ctrl 'e')], |_| {
-        Message::Text(TextEdit::Toggle(Marker::Code))
-    }),
-    (&[key!(ctrl 'z')], |_| Message::Undo),
-    (&[key!(ctrl 'Z')], |_| Message::Redo),
-    (&[key!(ctrl 'y')], |_| Message::Redo),
-    (&[key!(ctrl 'c')], |_| Message::Copy),
-    (&[key!(ctrl 'x')], |_| Message::Cut),
-    (&[key!(ctrl 'v')], |_| Message::Paste(Paste::Below)),
-];
 
 /// Moving the caret by a [`Motion`], extending the selection when the second argument is `true`.
 macro_rules! go {
@@ -522,27 +245,75 @@ fn text_edit(key: Key) -> Option<TextEdit> {
         .or_else(|| typed_char(key).map(TextEdit::Insert))
 }
 
-/// The edit-mode message for `key`: its binding, else the change to the text it asks for.
-fn edit_message(key: Key, context: &Context) -> Option<Message> {
-    if let Some((_, message)) = EDIT.iter().find(|(keys, _)| *keys == [key]) {
-        return Some(message(context));
+/// The key `text` names in the notation of the config file ([keybindings.md §5]): a character,
+/// or a key name or character after `ctrl+`, `alt+` and `shift+` in any order. `shift+` with a
+/// letter is the capital, as the keymap matches it (D-42). `None` for anything else.
+///
+/// [keybindings.md §5]: ../../../docs/specs/keybindings.md#5-configuration
+fn parse_key(text: &str) -> Option<Key> {
+    let (modifiers, name) = match text.rsplit_once('+') {
+        _ if text.chars().count() == 1 => (None, text),
+        None => (None, text),
+        Some((modifiers, "")) => (Some(modifiers.strip_suffix('+')?), "+"),
+        Some((modifiers, name)) => (Some(modifiers), name),
+    };
+    let mut held = KeyModifiers::NONE;
+    for modifier in modifiers
+        .into_iter()
+        .flat_map(|modifiers| modifiers.split('+'))
+    {
+        held |= match modifier {
+            "ctrl" => KeyModifiers::CONTROL,
+            "alt" => KeyModifiers::ALT,
+            "shift" => KeyModifiers::SHIFT,
+            _ => return None,
+        };
     }
-    text_edit(key).map(Message::Text)
+    let mut chars = name.chars();
+    if let (Some(c), None) = (chars.next(), chars.next()) {
+        let c = if held.contains(KeyModifiers::SHIFT) {
+            c.to_ascii_uppercase()
+        } else {
+            c
+        };
+        return Some((held.difference(KeyModifiers::SHIFT), KeyCode::Char(c)));
+    }
+    let code = match name {
+        "space" => KeyCode::Char(' '),
+        "enter" => KeyCode::Enter,
+        "esc" => KeyCode::Esc,
+        "tab" if held.contains(KeyModifiers::SHIFT) => KeyCode::BackTab,
+        "tab" => KeyCode::Tab,
+        "backspace" => KeyCode::Backspace,
+        "delete" => KeyCode::Delete,
+        "up" => KeyCode::Up,
+        "down" => KeyCode::Down,
+        "left" => KeyCode::Left,
+        "right" => KeyCode::Right,
+        "home" => KeyCode::Home,
+        "end" => KeyCode::End,
+        "pageup" => KeyCode::PageUp,
+        "pagedown" => KeyCode::PageDown,
+        _ => return None,
+    };
+    Some((held, code))
 }
 
-/// The message of the navigate-mode binding whose keys are `keys`, if any.
-fn bound(keys: &[Key], context: &Context) -> Option<Message> {
-    NAVIGATE
-        .iter()
-        .find(|(bound, _)| *bound == keys)
-        .map(|(_, message)| message(context))
+/// The keys of the sequence `text` names: keys as [`parse_key`] reads them, separated by
+/// spaces. `None` when any of them is not a key.
+fn parse_sequence(text: &str) -> Option<Vec<Key>> {
+    text.split(' ').map(parse_key).collect()
 }
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
 /// fails to match or times out. Keys that are a binding of their own and start longer ones, such
 /// as `o` (D-53), send their own message only when the sequence ends without continuing.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Keymap {
+    /// Each navigate-mode sequence with its command.
+    navigate: Vec<(Vec<Key>, Command)>,
+    /// Each edit-mode key with its command, as a sequence of one key.
+    edit: Vec<(Vec<Key>, Command)>,
     pending: Vec<Key>,
     /// When the pending sequence started, in the frontend's time.
     started: Duration,
@@ -551,7 +322,46 @@ pub struct Keymap {
     replay: bool,
 }
 
+impl Default for Keymap {
+    /// The keymap of the registry's default bindings.
+    fn default() -> Self {
+        let mut navigate = Vec::new();
+        let mut edit = Vec::new();
+        for entry in REGISTRY {
+            for keys in entry.keys.iter().filter_map(|keys| parse_sequence(keys)) {
+                match entry.mode {
+                    Mode::Navigate => navigate.push((keys, entry.command)),
+                    Mode::Edit => edit.push((keys, entry.command)),
+                }
+            }
+        }
+        Self {
+            navigate,
+            edit,
+            pending: Vec::new(),
+            started: Duration::ZERO,
+            replay: false,
+        }
+    }
+}
+
 impl Keymap {
+    /// The message of the navigate-mode binding whose keys are `keys`, if any.
+    fn bound(&self, keys: &[Key], context: &Context) -> Option<Message> {
+        self.navigate
+            .iter()
+            .find(|(bound, _)| bound == keys)
+            .and_then(|(_, command)| command.message(&context.inputs()))
+    }
+
+    /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
+    fn edit_message(&self, key: Key, context: &Context) -> Option<Message> {
+        if let Some((_, command)) = self.edit.iter().find(|(bound, _)| *bound == [key]) {
+            return command.message(&context.inputs());
+        }
+        text_edit(key).map(Message::Text)
+    }
+
     /// The message `event` completes at time `now`, if any, carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
     /// navigate and edit mode alone; repeats, releases and other events are ignored. A key that
@@ -565,7 +375,8 @@ impl Keymap {
         context: &Context,
     ) -> Option<Message> {
         if let Event::Paste(text) = event {
-            if let Some(message) = bound(&mem::take(&mut self.pending), context) {
+            let pending = mem::take(&mut self.pending);
+            if let Some(message) = self.bound(&pending, context) {
                 self.replay = true;
                 return Some(message);
             }
@@ -611,24 +422,23 @@ impl Keymap {
             return if context.command_menu {
                 menu_message(pressed, Message::CommandMenu)
             } else {
-                edit_message(pressed, context)
+                self.edit_message(pressed, context)
             };
         }
         self.pending.push(pressed);
-        let longer = |pending: &[Key]| {
-            NAVIGATE
-                .iter()
-                .any(|(keys, _)| keys.len() > pending.len() && keys.starts_with(pending))
-        };
-        if longer(&self.pending) {
+        let longer = self
+            .navigate
+            .iter()
+            .any(|(keys, _)| keys.len() > self.pending.len() && keys.starts_with(&self.pending));
+        if longer {
             return None;
         }
-        if let Some(message) = bound(&self.pending, context) {
+        if let Some(message) = self.bound(&self.pending, context) {
             self.pending.clear();
             return Some(message);
         }
         self.pending.pop();
-        let held = bound(&self.pending, context);
+        let held = self.bound(&self.pending, context);
         self.replay = held.is_some();
         self.pending.clear();
         held
@@ -646,7 +456,7 @@ impl Keymap {
         if self.deadline().is_none_or(|deadline| now < deadline) {
             return None;
         }
-        let message = bound(&self.pending, context);
+        let message = self.bound(&self.pending, context);
         self.pending.clear();
         message
     }
@@ -673,6 +483,10 @@ mod tests {
     use crossterm::event::{KeyEvent, KeyEventKind, KeyEventState};
 
     use super::*;
+    use crate::{
+        app::{NewBlock, SelectionChange},
+        document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
+    };
 
     const PAGE: usize = 7;
 
@@ -1703,6 +1517,62 @@ mod tests {
             },
         ] {
             assert_eq!(keymap.message_for(&pasted, ms(0), &context), None);
+        }
+    }
+
+    // keybindings.md §5
+    #[test]
+    fn keys_are_read_in_the_config_notation() {
+        let ctrl = KeyModifiers::CONTROL;
+        let alt = KeyModifiers::ALT;
+        let shift = KeyModifiers::SHIFT;
+        let none = KeyModifiers::NONE;
+        for (text, key) in [
+            ("j", (none, KeyCode::Char('j'))),
+            ("G", (none, KeyCode::Char('G'))),
+            ("+", (none, KeyCode::Char('+'))),
+            ("ctrl++", (ctrl, KeyCode::Char('+'))),
+            ("shift+g", (none, KeyCode::Char('G'))),
+            ("ctrl+shift+z", (ctrl, KeyCode::Char('Z'))),
+            ("shift+ctrl+z", (ctrl, KeyCode::Char('Z'))),
+            ("alt+`", (alt, KeyCode::Char('`'))),
+            ("ctrl+'", (ctrl, KeyCode::Char('\''))),
+            ("space", (none, KeyCode::Char(' '))),
+            ("enter", (none, KeyCode::Enter)),
+            ("ctrl+enter", (ctrl, KeyCode::Enter)),
+            ("esc", (none, KeyCode::Esc)),
+            ("tab", (none, KeyCode::Tab)),
+            ("shift+tab", (shift, KeyCode::BackTab)),
+            ("backspace", (none, KeyCode::Backspace)),
+            ("delete", (none, KeyCode::Delete)),
+            ("up", (none, KeyCode::Up)),
+            ("down", (none, KeyCode::Down)),
+            ("alt+shift+left", (alt.union(shift), KeyCode::Left)),
+            ("right", (none, KeyCode::Right)),
+            ("home", (none, KeyCode::Home)),
+            ("end", (none, KeyCode::End)),
+            ("pageup", (none, KeyCode::PageUp)),
+            ("pagedown", (none, KeyCode::PageDown)),
+        ] {
+            assert_eq!(parse_key(text), Some(key), "{text}");
+        }
+        for text in ["", "meta+j", "ctrl+", "ctrl+nope", "jj", "+j"] {
+            assert_eq!(parse_key(text), None, "{text}");
+        }
+        assert_eq!(
+            parse_sequence("g shift+g"),
+            Some(vec![(none, KeyCode::Char('g')), (none, KeyCode::Char('G'))])
+        );
+        assert_eq!(parse_sequence("g nope"), None);
+    }
+
+    // keybindings.md §2–3
+    #[test]
+    fn every_default_binding_is_a_key_sequence() {
+        for entry in REGISTRY {
+            for keys in entry.keys {
+                assert!(parse_sequence(keys).is_some(), "{keys}");
+            }
         }
     }
 }
