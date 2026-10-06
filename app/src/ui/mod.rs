@@ -22,7 +22,7 @@ use ratatui::{
 };
 
 use crate::app::{
-    Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
+    Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
     commands::REGISTRY,
 };
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
@@ -329,8 +329,17 @@ impl Tui {
     fn run(&mut self, effects: Vec<Effect>, now: Duration) {
         for effect in effects {
             match effect {
-                Effect::Quit => self.quit = true,
-                Effect::Disk(disk) => self.io.submit(disk),
+                Effect::Quit => {
+                    self.keep_view();
+                    self.quit = true;
+                }
+                Effect::Disk(disk) => {
+                    let saving = matches!(disk, Disk::Save { .. });
+                    self.io.submit(disk);
+                    if saving {
+                        self.keep_view();
+                    }
+                }
                 Effect::CopyToClipboard(text) => self.clipboard.copy(&text),
                 Effect::ReadClipboard(at) => {
                     if let Some(text) = self.clipboard.paste() {
@@ -361,6 +370,14 @@ impl Tui {
                     }
                 }
             }
+        }
+    }
+
+    /// Keeps the layout of the open file, when it has one to keep, for its next launch: on every
+    /// save and on quitting (file-io.md §5).
+    fn keep_view(&self) {
+        if let (Some(path), Some(view)) = (self.state.path(), self.state.view_state()) {
+            self.io.store_view(path.to_owned(), view);
         }
     }
 

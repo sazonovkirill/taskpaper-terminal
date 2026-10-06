@@ -21,6 +21,17 @@ pub(super) struct Sidebar {
 }
 
 impl Sidebar {
+    /// Whether it is shown.
+    pub(super) fn shown(&self) -> bool {
+        self.shown
+    }
+
+    /// Shows it, or hides it when `shown` is false, without giving it the keys.
+    pub(super) fn show(&mut self, shown: bool) {
+        self.shown = shown;
+        self.focus = None;
+    }
+
     /// Keeps each folded project entry folded on the block `rematch` finds for its block in a
     /// reloaded document, and drops the fold when it finds none (file-io.md §3).
     pub(super) fn rematch_folds(&mut self, rematch: impl Fn(ItemId) -> Option<ItemId>) {
@@ -131,8 +142,7 @@ impl State {
 
     /// `Ctrl+B`: shows the sidebar, or hides it and gives the pane the keys.
     pub(super) fn toggle_sidebar(&mut self) {
-        self.sidebar.shown = !self.sidebar.shown;
-        self.sidebar.focus = None;
+        self.sidebar.show(!self.sidebar.shown);
     }
 
     /// `Alt+0`: shows the sidebar and gives it the keys, on its first entry unless it has them.

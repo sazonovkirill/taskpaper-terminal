@@ -461,3 +461,65 @@ fn a_pane_is_never_wider_than_the_room_left_by_the_sidebars() {
     );
     app.terminal.backend_mut().assert_cursor_position((30, 2));
 }
+
+// FR-UI-04, file-io.md §5, navigation.md §5
+#[test]
+fn quitting_and_reopening_the_file_brings_its_panes_back() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    app.hide_sidebar();
+    ctrl(&mut app, '\\');
+    assert_eq!(screen(&mut app)[..9], WORK_BESIDE);
+    let mut app = app.reopen(80, 10);
+    assert_eq!(
+        screen(&mut app)[..9],
+        WORK_BESIDE,
+        "the panes, their zooms and focus, and the hidden sidebar"
+    );
+    let kept = std::fs::read_to_string(&app.views).expect("the layout is kept");
+    assert!(kept.contains("outline.taskpaper"), "{kept}");
+}
+
+// FR-UI-04, file-io.md §5
+#[test]
+fn each_save_keeps_the_layout() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    ctrl(&mut app, '\\');
+    app.type_keys("x");
+    assert!(!app.views.exists(), "nothing kept before the save");
+    app.wait(std::time::Duration::from_secs(1));
+    app.settle();
+    let kept = std::fs::read_to_string(&app.views).expect("the layout is kept");
+    assert!(kept.contains("\"zoom\""), "{kept}");
+}
+
+// FR-DOC-05, file-io.md §5
+#[test]
+fn the_temporary_file_keeps_no_layout() {
+    let mut app = Harness::demo(80, 10);
+    ctrl(&mut app, '\\');
+    ctrl(&mut app, 'q');
+    app.settle();
+    assert!(app.tui.should_quit());
+    assert!(!app.views.exists());
+}
+
+// FR-UI-04, FR-TAG-04, file-io.md §5
+#[test]
+fn reopening_focuses_the_today_entry_that_was_focused() {
+    let text = "Errands:\n\t- Post office @today\n\t- Dentist @due(2026-10-05)\n";
+    let focused = |app: &mut Harness| -> Vec<String> {
+        screen(app)
+            .into_iter()
+            .filter(|row| row.contains("│▌"))
+            .collect()
+    };
+    let mut app = Harness::with_text(text, 80, 10);
+    app.render();
+    alt(&mut app, '0');
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys("j");
+    let expected = focused(&mut app);
+    assert!(expected[0].contains("Dentist"), "{expected:?}");
+    let mut app = app.reopen(80, 10);
+    assert_eq!(focused(&mut app), expected);
+}

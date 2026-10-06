@@ -140,7 +140,12 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
     let path = dir.path().join("todo.taskpaper");
     std::fs::write(&path, "Errands:\n\t- Post office\n")?;
     let data = dir.path().join("data");
-    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", &data),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
     terminal.wait_until(|screen| screen.contains("- Post office"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
@@ -176,7 +181,12 @@ fn a_completed_key_sequence_acts_at_once() -> TestResult {
     });
     std::fs::write(&path, text)?;
     let data = dir.path().join("data");
-    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", &data),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
     terminal.wait_until(|screen| screen.contains("Task 001"))?;
     terminal.send(termlens::Key::Char('G'))?;
     terminal.wait_until(|screen| screen.contains("Task 100") && !screen.contains("Task 001"))?;
@@ -207,6 +217,37 @@ fn daily_copies(data: &std::path::Path) -> std::io::Result<Vec<String>> {
     Ok(copies)
 }
 
+// FR-UI-04, file-io.md §5
+#[test]
+fn quitting_and_reopening_a_file_brings_its_panes_back() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "Errands:\n\t- Post office\n")?;
+    let state = dir.path().join("state");
+    let open = || {
+        termlens::bin!(
+            "tpt",
+            arg(&path),
+            env("XDG_DATA_HOME", dir.path().join("data")),
+            env("XDG_STATE_HOME", &state)
+        )
+    };
+    let two_panes = |screen: &termlens::Screen| screen.row_text(0).contains("⌂ › Errands");
+    let mut terminal = open()?;
+    terminal.wait_until(|screen| screen.contains("- Post office"))?;
+    terminal.send(termlens::Key::Ctrl('w'))?;
+    terminal.send(termlens::Key::Char('v'))?;
+    terminal.wait_until(two_panes)?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert!(state.join("taskpaper-terminal/views.json").exists());
+    let mut terminal = open()?;
+    terminal.wait_until(two_panes)?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    Ok(())
+}
+
 // FR-DOC-07, F-FILE-09
 #[test]
 fn opening_a_file_backs_it_up_under_xdg_data_home() -> TestResult {
@@ -214,7 +255,12 @@ fn opening_a_file_backs_it_up_under_xdg_data_home() -> TestResult {
     let path = dir.path().join("todo.taskpaper");
     std::fs::write(&path, "- Call the bank\n")?;
     let data = dir.path().join("data");
-    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", &data),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
     terminal.wait_until(|screen| screen.contains("- Call the bank"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
     assert!(terminal.wait_exit()?.success());
@@ -230,7 +276,12 @@ fn sigterm_and_sighup_end_the_session_and_restore_the_terminal() -> TestResult {
         let path = dir.path().join("todo.taskpaper");
         std::fs::write(&path, "- Water the plants\n")?;
         let data = dir.path().join("data");
-        let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+        let mut terminal = termlens::bin!(
+            "tpt",
+            arg(&path),
+            env("XDG_DATA_HOME", &data),
+            env("XDG_STATE_HOME", dir.path().join("state"))
+        )?;
         terminal.wait_until(|screen| screen.contains("- Water the plants"))?;
         terminal.signal(signal)?;
         assert!(terminal.wait_exit()?.success(), "{signal:?}");
@@ -301,7 +352,8 @@ fn recovered_changes_keep_the_file_they_replace_in_a_copy() -> TestResult {
     let mut terminal = termlens::bin!(
         "tpt",
         arg(&path),
-        env("XDG_DATA_HOME", dir.path().join("data"))
+        env("XDG_DATA_HOME", dir.path().join("data")),
+        env("XDG_STATE_HOME", dir.path().join("state"))
     )?;
     terminal.wait_until(|screen| screen.contains("- Opened earlier today"))?;
     terminal.send(termlens::Key::Ctrl('q'))?;
@@ -372,7 +424,12 @@ fn asks_for_the_kitty_keyboard_protocol_and_gives_it_back_on_quit() -> TestResul
     let path = dir.path().join("todo.taskpaper");
     std::fs::write(&path, "- Call the bank\n")?;
     let data = dir.path().join("data");
-    let mut terminal = termlens::bin!("tpt", arg(&path), env("XDG_DATA_HOME", &data))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", &data),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
     terminal.wait_until(|screen| screen.contains("- Call the bank"))?;
     let push = "^[[>1u";
     let pop = "^[[1<u";

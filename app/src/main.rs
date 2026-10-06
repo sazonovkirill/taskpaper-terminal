@@ -26,7 +26,7 @@ use taskpaper_terminal::{
     app::Message,
     ui::{
         self, Input,
-        effects::{Backups, Browser, Clipboard, FileWatch, Io, Recovery, SystemClipboard},
+        effects::{Backups, Browser, Clipboard, FileWatch, Io, Recovery, SystemClipboard, Views},
     },
 };
 
@@ -45,6 +45,10 @@ fn main() -> anyhow::Result<()> {
         ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home.clone()),
         || jiff::Zoned::now().datetime(),
     );
+    let views = Views::new(ui::effects::views_file(
+        std::env::var_os("XDG_STATE_HOME"),
+        home.clone(),
+    ));
     let state = match path {
         Some(path) => {
             // Opening first reports what is wrong with the path before asking anything.
@@ -62,9 +66,10 @@ fn main() -> anyhow::Result<()> {
             jiff::Zoned::now().datetime(),
         )?,
     };
+    let state = views.restore(state);
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
-    let io = Io::start(inputs.clone(), backups);
+    let io = Io::start(inputs.clone(), backups, views);
     let files = FileWatch::new(inputs.clone());
     // Without a display server, as over SSH, there is no system clipboard to reach.
     let system = arboard::Clipboard::new()

@@ -1,13 +1,16 @@
 //! Naming a block by its place in the outline instead of by its id, which holds only within one
-//! document, so that a reloaded document can be matched with the old one
-//! ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes)).
+//! document, so that a reloaded document can be matched with the old one and a layout kept
+//! between sessions with the file ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes),
+//! [§5](../../../docs/specs/file-io.md#5-view-state-persistence)).
+
+use serde::{Deserialize, Serialize};
 
 use crate::document::{Document, Item, ItemId, blocks};
 
 /// A block's place in an outline: for each block from the top level down to it, its text as shown
 /// without tags, so that a change of tags alone keeps the match, and how many earlier sibling
-/// blocks have the same text.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// blocks have the same text. It is kept as a list of `[text, count]` pairs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct TextPath(Vec<(String, usize)>);
 
 impl TextPath {

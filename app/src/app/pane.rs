@@ -37,7 +37,7 @@ pub(super) struct Pane {
     pub(super) show_done: bool,
     /// The width the frontend last gave the pane when it was narrowed or widened, kept for it,
     /// or `None` while the pane takes its share of the screen.
-    width: Option<u16>,
+    pub(super) width: Option<u16>,
 }
 
 impl Pane {
@@ -156,12 +156,26 @@ impl State {
     /// Every pane from left to right (FR-UI-02).
     #[must_use]
     pub fn panes(&self) -> Vec<PaneView> {
-        let (left, right) = self.others.split_at(self.pane_at.min(self.others.len()));
-        left.iter()
-            .map(|pane| self.pane_view(pane, false))
-            .chain([self.pane_view(&self.pane, true)])
-            .chain(right.iter().map(|pane| self.pane_view(pane, false)))
+        self.panes_in_order()
+            .map(|pane| self.pane_view(pane, pane.id == self.pane.id))
             .collect()
+    }
+
+    /// Every pane from left to right.
+    pub(super) fn panes_in_order(&self) -> impl Iterator<Item = &Pane> {
+        let (left, right) = self.others.split_at(self.pane_at.min(self.others.len()));
+        left.iter().chain([&self.pane]).chain(right)
+    }
+
+    /// Replaces the panes with `panes` from left to right, giving the keys to the one at
+    /// `focused`, or the last when there are fewer; without any, the panes stay as they are.
+    pub(super) fn set_panes(&mut self, mut panes: Vec<Pane>, focused: usize) {
+        let at = focused.min(panes.len().saturating_sub(1));
+        if at < panes.len() {
+            self.pane = panes.remove(at);
+            self.others = panes;
+            self.pane_at = at;
+        }
     }
 
     /// `pane` as a frontend shows it, with the keys when `focused`.
@@ -227,13 +241,18 @@ impl State {
     /// there, or with `None` the block it lands on, and gives it the keys. It shows completed
     /// blocks when the focused pane does.
     fn open_pane(&mut self, location: Location, focus: Option<ItemId>) {
-        self.pane_ids = self.pane_ids.saturating_add(1);
-        let mut pane = Pane::new(PaneId(self.pane_ids), location);
+        let mut pane = self.new_pane(location);
         pane.show_done = self.pane.show_done;
         pane.focus = focus.or_else(|| landing(&self.rows_of(&pane)));
         let left = std::mem::replace(&mut self.pane, pane);
         self.others.insert(self.pane_at, left);
         self.pane_at += 1;
+    }
+
+    /// A pane at `location` told apart from every other, as [`Pane::new`] makes it.
+    pub(super) fn new_pane(&mut self, location: Location) -> Pane {
+        self.pane_ids = self.pane_ids.saturating_add(1);
+        Pane::new(PaneId(self.pane_ids), location)
     }
 
     /// Gives the keys to the pane at `at`, counted from 0 at the left, if there is one.

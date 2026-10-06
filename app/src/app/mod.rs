@@ -33,6 +33,7 @@ mod text_path;
 mod today;
 mod type_picker;
 pub mod update;
+mod view_state;
 
 pub use clipboard::Paste;
 pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
@@ -53,3 +54,4 @@ pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};
 pub use type_picker::Conversion;
 pub use update::{Disk, Effect, Menu, Message};
+pub use view_state::ViewState;

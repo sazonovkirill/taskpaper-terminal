@@ -63,8 +63,8 @@ Existing: `ratatui` 0.30, `crossterm` 0.29 (UI only). Proposed additions, each a
 | `notify` / `notify-debouncer-full` | File watching (UI effects). |
 | `similar` | Line diff of the external-change conflict prompt (App). |
 | `arboard` | System clipboard, reached from `main.rs` through `ui::effects::SystemClipboard` so that tests never touch it; the OSC 52 fallback is crossterm's `CopyToClipboard` command, with its `osc52` feature (UI effects). |
-| `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). |
-| `directories` | State paths per platform (UI). The config and backup paths follow XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`, `$XDG_DATA_HOME` or `~/.local/share`), not `~/Library` (FR-SET-01, FR-DOC-07). |
+| `serde`, `toml`, `toml_edit`, `serde_json` | Config and view-state files; `toml_edit` writes settings without losing comments (UI). The view state the core hands out derives `serde`'s traits, so any frontend can store it (App). |
+| `directories` | State paths per platform (UI). The config, backup, recovery and view-state paths follow XDG on macOS too (`$XDG_CONFIG_HOME` or `~/.config`, `$XDG_DATA_HOME` or `~/.local/share`, `$XDG_STATE_HOME` or `~/.local/state`), not `~/Library` (FR-SET-01, FR-DOC-07, file-io.md §4–5). |
 | `tachyonfx` | Animation effects (UI); 0.25 builds on `ratatui-core` 0.1, the core of Ratatui 0.30. |
 | `tempfile` | Atomic writes (UI effects). |
 | `thiserror`, `anyhow` | Typed library errors / `main.rs` only (code-quality.md). |

@@ -1,6 +1,6 @@
 //! Carries out the core's I/O at the edge ([file-io.md](../../../docs/specs/file-io.md)):
 //! opening files, watching them, saving, checking and backing them up on the disk worker,
-//! recovery files and the clipboard.
+//! keeping their layouts, recovery files and the clipboard.
 
 mod atomic;
 mod backup;
@@ -8,6 +8,7 @@ mod browser;
 mod clipboard;
 mod paths;
 mod recovery;
+mod views;
 mod watch;
 mod worker;
 
@@ -27,6 +28,7 @@ pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
 pub use paths::{complete as complete_path, expand as expand_path};
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
+pub use views::{Views, ViewsError, file as views_file};
 pub use watch::FileWatch;
 pub use worker::Io;
 

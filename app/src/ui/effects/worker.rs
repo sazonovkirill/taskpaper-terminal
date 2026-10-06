@@ -3,14 +3,14 @@
 
 use std::{
     fs, io,
-    path::Path,
+    path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, Sender},
     thread::{self, JoinHandle},
 };
 
-use super::{Backups, atomic};
+use super::{Backups, Views, atomic};
 use crate::{
-    app::{Disk, Message, SaveAs, Version},
+    app::{Disk, Message, SaveAs, Version, ViewState},
     ui::Input,
 };
 
@@ -25,17 +25,19 @@ pub struct Io {
 #[derive(Debug)]
 enum Job {
     Disk(Disk),
+    /// Keep this layout for the file at this path.
+    StoreView(PathBuf, ViewState),
     /// Answers once every job before it is done and its result sent.
     Flush(Sender<()>),
 }
 
 impl Io {
-    /// Starts the worker, which sends each result to `results` as an [`Input::Core`] message and
-    /// makes backups with `backups`.
+    /// Starts the worker, which sends each result to `results` as an [`Input::Core`] message,
+    /// makes backups with `backups` and keeps layouts in `views`.
     #[must_use]
-    pub fn start(results: Sender<Input>, backups: Backups) -> Self {
+    pub fn start(results: Sender<Input>, backups: Backups, views: Views) -> Self {
         let (jobs, queue) = mpsc::channel();
-        let worker = thread::spawn(move || work(&queue, &results, backups));
+        let worker = thread::spawn(move || work(&queue, &results, backups, &views));
         Self {
             jobs: Some(jobs),
             worker: Some(worker),
@@ -45,6 +47,12 @@ impl Io {
     /// Queues `disk` behind the work queued before it.
     pub fn submit(&self, disk: Disk) {
         self.send(Job::Disk(disk));
+    }
+
+    /// Queues keeping `view` as the layout of the file at `path` behind the work queued before
+    /// it (file-io.md §5).
+    pub fn store_view(&self, path: PathBuf, view: ViewState) {
+        self.send(Job::StoreView(path, view));
     }
 
     /// Waits until the work queued so far is done and its results are sent.
@@ -80,7 +88,7 @@ impl Drop for Io {
 }
 
 /// Runs the jobs from `queue` until it closes.
-fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
+fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, views: &Views) {
     for job in queue {
         let message = match job {
             Job::Disk(Disk::Save {
@@ -117,6 +125,13 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups) {
                     .map(|error| Message::BackupFailed {
                         reason: error.to_string(),
                     })
+            }
+            Job::StoreView(path, view) => {
+                // A layout that cannot be kept loses only the arrangement of the panes on the
+                // next launch, never anything of the file, and the spec has the status line say
+                // nothing of it (file-io.md §5).
+                let _ = views.store(&path, &view);
+                None
             }
             Job::Flush(done) => {
                 // The flusher waits for this answer and only stops waiting by being dropped.
@@ -187,7 +202,8 @@ mod tests {
         let backups = Backups::new(Some(dir.join("backups")), || {
             date(2026, 10, 5).at(9, 30, 0, 0)
         });
-        (Io::start(results, backups), inputs)
+        let views = Views::new(Some(dir.join("state/views.json")));
+        (Io::start(results, backups, views), inputs)
     }
 
     fn results(inputs: &Receiver<Input>) -> Vec<Input> {
@@ -297,6 +313,24 @@ mod tests {
             results(&inputs).as_slice(),
             [Input::Core(Message::BackupFailed { reason })] if reason.contains("directory")
         ));
+        Ok(())
+    }
+
+    // FR-UI-04, file-io.md §5
+    #[test]
+    fn keeps_layouts_in_order_with_saves_and_reports_nothing() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        let mut state = super::super::open(&path)?;
+        state.update(Message::ToggleSidebar);
+        io.submit(save_job(&path, "Work:\n"));
+        io.store_view(path.clone(), state.view_state().expect("a layout"));
+        io.flush();
+        assert_eq!(results(&inputs), [Input::Core(Message::Saved)]);
+        let views = Views::new(Some(dir.path().join("state/views.json")));
+        let restored = views.restore(super::super::open(&path)?);
+        assert_eq!(restored.sidebar(), None, "kept for the saved file");
         Ok(())
     }
 

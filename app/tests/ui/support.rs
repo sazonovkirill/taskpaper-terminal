@@ -25,7 +25,7 @@ use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
         Input, Tui,
-        effects::{self, Backups, Browser, Clipboard, FileWatch, Io},
+        effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
     },
 };
 use tempfile::TempDir;
@@ -116,8 +116,8 @@ pub const TEXT: Color = Color::Indexed(248);
 /// The background of every line of the focused block (D-39).
 pub const CURRENT_LINE: Color = Color::Indexed(235);
 
-/// A running app with its terminal, the temporary folder holding its file and its backups
-/// folder, and a clock that only moves when the test says so.
+/// A running app with its terminal, the temporary folder holding its file, its backups folder
+/// and its `views.json`, and a clock that only moves when the test says so.
 pub struct Harness {
     pub tui: Tui,
     pub terminal: Terminal<TestBackend>,
@@ -128,6 +128,8 @@ pub struct Harness {
     /// Whether the file is the temporary one a start without a path makes.
     temporary: bool,
     pub backups: PathBuf,
+    /// Where the app keeps the layouts of the files it opens.
+    pub views: PathBuf,
     /// The home folder `~` stands for, empty at the start.
     pub home: PathBuf,
     inputs: Receiver<Input>,
@@ -186,14 +188,34 @@ impl Harness {
         Self::start(state, dir, width, height)
     }
 
-    /// Starts the app on `state` with its backups in `dir/backups`.
+    /// Quits, then starts the app again on the same file in a `width`×`height` terminal, as a
+    /// new launch would.
+    pub fn reopen(mut self, width: u16, height: u16) -> Self {
+        self.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
+        self.settle();
+        assert!(self.tui.should_quit(), "the app quits");
+        let path = self.path.clone().expect("a file was opened");
+        let Self { tui, _dir: dir, .. } = self;
+        // Dropping the app waits for the disk work it asked for.
+        drop(tui);
+        Self::open_path(dir, &path, width, height)
+    }
+
+    /// Starts the app on `state` with its backups in `dir/backups` and its layouts in
+    /// `dir/state/views.json`.
     fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
+        let views = dir.path().join("state/views.json");
+        let state = Views::new(Some(views.clone())).restore(state);
         let home = dir.path().join("home");
-        std::fs::create_dir(&home).expect("the temporary folder is writable");
+        std::fs::create_dir_all(&home).expect("the temporary folder is writable");
         CLOCK.set(local(NOW));
         let (results, inputs) = mpsc::channel();
-        let io = Io::start(results, Backups::new(Some(backups.clone()), || NOW));
+        let io = Io::start(
+            results,
+            Backups::new(Some(backups.clone()), || NOW),
+            Views::new(Some(views.clone())),
+        );
         let terminal_output = Output::default();
         Self {
             path: state.path().map(Path::to_owned),
@@ -211,6 +233,7 @@ impl Harness {
             terminal_output,
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),
             backups,
+            views,
             inputs,
             now: Duration::ZERO,
             _dir: dir,
