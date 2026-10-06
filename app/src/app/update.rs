@@ -112,6 +112,8 @@ pub enum Message {
     ExpandAll,
     /// Collapse every block under the zoom.
     CollapseAll,
+    /// Hide done blocks, each with everything inside it, or show them again (FR-DONE-02).
+    ToggleShowDone,
     /// Show the focused block as the root.
     ZoomIn,
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
@@ -314,6 +316,7 @@ impl Message {
             | Self::CollapseLevel
             | Self::ExpandAll
             | Self::CollapseAll
+            | Self::ToggleShowDone
             | Self::ZoomIn
             | Self::ZoomOut
             | Self::GoHome
@@ -441,6 +444,7 @@ impl State {
             Message::CollapseLevel => self.collapse_level(),
             Message::ExpandAll => self.expand_all(),
             Message::CollapseAll => self.collapse_all(),
+            Message::ToggleShowDone => self.show_done = !self.show_done,
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(None),
@@ -583,7 +587,8 @@ impl State {
         let Some(id) = self.focused_block().map(|block| block.id()) else {
             return;
         };
-        let siblings = self.siblings(id);
+        let mut siblings = self.siblings(id);
+        siblings.retain(|sibling| self.shows(sibling));
         if let Some(at) = siblings.iter().position(|block| block.id() == id)
             && let Some(sibling) = to(at).and_then(|index| siblings.get(index))
         {
@@ -596,7 +601,7 @@ impl State {
         let Some((block, title)) = self.focused() else {
             return;
         };
-        if let Some(child) = self.children(&block).last() {
+        if let Some(child) = self.shown_children(&block).last() {
             if !title {
                 self.folds.remove(&block.id());
             }
@@ -620,7 +625,7 @@ impl State {
             return;
         };
         if (title || !self.folds.remove(&block.id()))
-            && let Some(child) = self.children(&block).first()
+            && let Some(child) = self.shown_children(&block).first()
         {
             self.focus = Some(child.id());
         }
@@ -720,12 +725,15 @@ impl State {
         }
     }
 
-    /// Moves focus off a block a fold hid: to the next visible block in document order, else the
-    /// previous one (navigation §2). A hidden block always has a visible ancestor before it, so
-    /// one of the two exists.
+    /// Moves focus off a block a fold or hiding done blocks hid: to the next visible block in
+    /// document order, else the previous one, else the first row, the title (navigation §2). With
+    /// no focus, as when every block was hidden, focuses the first row if one is back.
     fn repair_focus(&mut self) {
-        let Some(focus) = self.focus else { return };
         let visible: Vec<_> = self.rows().into_iter().map(|row| row.id).collect();
+        let Some(focus) = self.focus else {
+            self.focus = visible.first().copied();
+            return;
+        };
         if visible.contains(&focus) {
             return;
         }
@@ -740,6 +748,7 @@ impl State {
             .skip(at)
             .chain(order.iter().take(at).rev())
             .find(|id| visible.contains(id))
+            .or(visible.first())
             .copied();
     }
 
@@ -1001,6 +1010,74 @@ mod tests {
         let mut last = open("A:\n\t- b\n\t\t- c", 2);
         last.update(Message::CollapseAll);
         assert_eq!(focus_text(&last), "A");
+    }
+
+    /// Done blocks at two depths, one with a child, among blocks that are not done.
+    const DONE: &str = "A:\n\t- b @done\n\t\t- c\n\t- d\nE: @done\n\t- f\n- g @done";
+
+    /// The display text of each visible row.
+    fn texts(state: &State) -> Vec<String> {
+        state.rows().into_iter().map(|row| row.text).collect()
+    }
+
+    // FR-DONE-02
+    #[test]
+    fn done_blocks_show_until_hidden_with_everything_inside_them() {
+        let mut state = open(DONE, 0);
+        assert_eq!(texts(&state), ["A", "b", "c", "d", "E", "f", "g"]);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(texts(&state), ["A", "d"]);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(texts(&state), ["A", "b", "c", "d", "E", "f", "g"]);
+    }
+
+    // FR-DONE-02, navigation §2
+    #[test]
+    fn hiding_the_focused_done_block_focuses_the_next_visible_else_the_previous() {
+        let mut state = open(DONE, 2);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(focus_text(&state), "d", "from inside a done block");
+        let mut last = open(DONE, 6);
+        last.update(Message::ToggleShowDone);
+        assert_eq!(focus_text(&last), "d");
+        let mut zoomed = open("A:\n\t- b @done\n- c", 0);
+        zoomed.update(Message::ZoomIn);
+        zoomed.update(Message::ToggleShowDone);
+        assert_eq!(texts(&zoomed), ["A"], "the title stays");
+        assert_eq!(focus_text(&zoomed), "A", "the parent");
+    }
+
+    // FR-DONE-02, navigation §2
+    #[test]
+    fn hiding_every_block_leaves_no_focus_until_one_shows_again() {
+        let mut state = open("- a @done\n- b @done", 1);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(state.rows(), []);
+        assert_eq!(state.focus(), None);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(focus_text(&state), "a", "the first row");
+    }
+
+    // FR-DONE-02, FR-NAV-01
+    #[test]
+    fn child_and_sibling_motions_skip_hidden_done_blocks() {
+        let mut state = open("A:\n\t- b @done\n\t- c\n\t- d @done\n- e", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::Expand);
+        assert_eq!(focus_text(&state), "c", "the first child shown");
+        state.update(Message::FocusNextSibling);
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::FocusPreviousSibling);
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::FocusParent);
+        state.update(Message::FocusLastChild);
+        assert_eq!(focus_text(&state), "c", "the last child shown");
+        let mut done = open("A:\n\t- b @done\n- e", 0);
+        done.update(Message::ToggleShowDone);
+        done.update(Message::Collapse);
+        done.update(Message::FocusLastChild);
+        assert_eq!(focus_text(&done), "A", "no child shows");
+        assert_eq!(done.folds.len(), 1, "nothing to unfold for");
     }
 
     // FR-NAV-01

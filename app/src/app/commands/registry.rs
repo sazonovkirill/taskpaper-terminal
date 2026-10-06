@@ -353,6 +353,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetSection(false), Mode::Navigate, &["s"]),
     entry!(Command::OpenDetails, Mode::Navigate, &["m i"]),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
+    entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),

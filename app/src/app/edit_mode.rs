@@ -429,7 +429,8 @@ impl State {
     }
 
     /// Edits the block that [`State::suspend_editing`] left again, with the caret at the column
-    /// it had, once no prompt or popup is open; a block that is gone is not edited.
+    /// it had, once no prompt or popup is open; a block that is gone, or that no row shows any
+    /// more, is not edited.
     pub(super) fn resume_editing(&mut self) {
         if self.date_prompt.is_some() || self.details {
             return;
@@ -437,7 +438,7 @@ impl State {
         let Some(resume) = self.resume.take() else {
             return;
         };
-        if blocks::block(&self.document, resume.id).is_none() {
+        if !self.rows().iter().any(|row| row.id == resume.id) {
             return;
         }
         self.focus = Some(resume.id);
@@ -1530,6 +1531,19 @@ Site @url(https://x.y)",
         menu(&mut state, MenuInput::Choose);
         assert_eq!(texts(&state), [line, "- t"]);
         assert_eq!(state.mode(), Mode::Navigate, "nothing to edit");
+    }
+
+    // D-50, FR-DONE-02, navigation §2
+    #[test]
+    fn completing_the_edited_block_while_done_blocks_are_hidden_ends_editing() {
+        let mut state = open("- a\n- b", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::EditAtEnd);
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), ["- a @done(2026-10-06)", "- b"]);
+        assert_eq!(state.mode(), Mode::Navigate, "nothing shown to edit");
+        assert_eq!(state.focus(), Some(state.rows()[0].id), "the next block");
     }
 
     // D-44, D-50, editing.md §2.3

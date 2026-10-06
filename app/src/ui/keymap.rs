@@ -894,6 +894,20 @@ mod tests {
         check(KeyCode::Down, alt, down);
     }
 
+    // FR-DONE-02
+    #[test]
+    fn ctrl_o_and_g_c_show_or_hide_completed_blocks() {
+        check(
+            KeyCode::Char('o'),
+            KeyModifiers::CONTROL,
+            Some(&Message::ToggleShowDone),
+        );
+        assert_eq!(
+            messages("gc", CONTEXT),
+            [None, Some(Message::ToggleShowDone)]
+        );
+    }
+
     // FR-BLK-06
     #[test]
     fn g_x_opens_the_url() {

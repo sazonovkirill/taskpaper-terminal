@@ -28,7 +28,8 @@ pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
 /// whether it is saved, the focused row and any edit session on it, the selected blocks, the
-/// collapsed blocks, the zoom with its history and the status-line notice.
+/// collapsed blocks, whether completed blocks show, the zoom with its history and the status-line
+/// notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -61,6 +62,8 @@ pub struct State {
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
+    /// Whether done blocks show, with everything inside them (FR-DONE-02).
+    pub(super) show_done: bool,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
     pub(super) zoom: Option<ItemId>,
     /// Every zoom visited, oldest first, for back and forward (FR-NAV-04).
@@ -228,6 +231,7 @@ impl State {
             details: false,
             resume: None,
             folds: HashSet::new(),
+            show_done: true,
             zoom: None,
             history: vec![None],
             history_at: 0,
@@ -344,8 +348,9 @@ impl State {
 
     /// The visible rows: when zoomed, a title row for the zoom block at depth 0, then its child
     /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
-    /// their children and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-SPC-01). A row
-    /// inside a done block, also one above the zoom, says so (D-40).
+    /// their children, done blocks are hidden with theirs while completed blocks are, and special
+    /// nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row inside a done
+    /// block, also one above the zoom, says so (D-40).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
         let title = self.zoom_block().map(|block| {
@@ -406,26 +411,49 @@ impl State {
         blocks::block(&self.document, self.zoom?)
     }
 
-    /// Every block below the zoom in order with its depth; with `folded`, only those not hidden
-    /// by a collapsed ancestor. The zoom block's own fold hides nothing.
-    pub(super) fn blocks(&self, folded: bool) -> Vec<(Block, usize)> {
+    /// Every block below the zoom in order with its depth; with `visible`, only those the rows
+    /// show: none hidden by a collapsed ancestor or, while completed blocks are hidden, by being
+    /// done or inside a done block. The zoom block's own fold hides nothing.
+    pub(super) fn blocks(&self, visible: bool) -> Vec<(Block, usize)> {
         let top = self
             .zoom_block()
             .map_or(self.document.root(), |block| block.id());
         let mut out = Vec::new();
-        self.push_blocks(top, 0, folded, &mut out);
+        self.push_blocks(top, 0, visible, &mut out);
         out
     }
 
-    fn push_blocks(&self, line: ItemId, depth: usize, folded: bool, out: &mut Vec<(Block, usize)>) {
+    fn push_blocks(
+        &self,
+        line: ItemId,
+        depth: usize,
+        visible: bool,
+        out: &mut Vec<(Block, usize)>,
+    ) {
         for block in blocks::children(&self.document, line) {
+            if visible && !self.shows(&block) {
+                continue;
+            }
             let id = block.id();
-            let open = !(folded && self.folds.contains(&id));
+            let open = !(visible && self.folds.contains(&id));
             out.push((block, depth));
             if open {
-                self.push_blocks(id, depth + 1, folded, out);
+                self.push_blocks(id, depth + 1, visible, out);
             }
         }
+    }
+
+    /// Whether `block` shows where the blocks around it do: not when it is done while completed
+    /// blocks are hidden (FR-DONE-02).
+    pub(super) fn shows(&self, block: &Block) -> bool {
+        self.show_done || !block.done()
+    }
+
+    /// The child blocks of `block` that show when it is expanded (FR-DONE-02).
+    pub(super) fn shown_children(&self, block: &Block) -> Vec<Block> {
+        let mut children = self.children(block);
+        children.retain(|child| self.shows(child));
+        children
     }
 
     /// The child blocks of `block`.

@@ -22,6 +22,7 @@ mod open_url;
 mod quick_dates;
 mod saving;
 mod selection;
+mod show_completed;
 mod support;
 mod tags;
 mod typed_creation;

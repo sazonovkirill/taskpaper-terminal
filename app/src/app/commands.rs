@@ -58,6 +58,8 @@ pub enum Command {
     ExpandAll,
     /// Collapse every block.
     CollapseAll,
+    /// Show or hide completed blocks.
+    ToggleShowDone,
     /// Zoom into the focused block.
     ZoomIn,
     /// Zoom out to the parent.
@@ -205,6 +207,7 @@ impl Command {
             Self::CollapseLevel => "Collapse One Level".into(),
             Self::ExpandAll => "Expand All".into(),
             Self::CollapseAll => "Collapse All".into(),
+            Self::ToggleShowDone => "Show/Hide Completed".into(),
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
@@ -283,6 +286,7 @@ impl Command {
             Self::CollapseLevel => Message::CollapseLevel,
             Self::ExpandAll => Message::ExpandAll,
             Self::CollapseAll => Message::CollapseAll,
+            Self::ToggleShowDone => Message::ToggleShowDone,
             Self::ZoomIn => Message::ZoomIn,
             Self::ZoomOut => Message::ZoomOut,
             Self::GoHome => Message::GoHome,
