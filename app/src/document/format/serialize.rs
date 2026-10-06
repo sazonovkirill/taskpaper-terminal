@@ -271,8 +271,8 @@ mod tests {
                 let item = document.get(id).unwrap();
                 let tags: Vec<_> = item
                     .tags()
-                    .into_iter()
-                    .map(|tag| match tag.value {
+                    .iter()
+                    .map(|tag| match &tag.value {
                         Some(value) => format!("@{}({value})", tag.name),
                         None => format!("@{}", tag.name),
                     })

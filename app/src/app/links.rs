@@ -34,9 +34,9 @@ impl State {
 /// opens the first until a picker can offer them all (editing.md §2.2).
 fn address(item: &Item, syntax: Syntax) -> Option<String> {
     item.tags()
-        .into_iter()
+        .iter()
         .find(|tag| tag.name == "url")
-        .and_then(|tag| tag.value)
+        .and_then(|tag| tag.value.clone())
         .map(|value| value.trim().to_owned())
         .filter(|value| inline::has_scheme(value))
         .or_else(|| {

@@ -29,7 +29,7 @@ pub struct Document {
 pub struct Item {
     parent: Option<ItemId>,
     children: Vec<ItemId>,
-    text: String,
+    text: Line,
     extra_indent: usize,
     original: Option<LineOrigin>,
 }
@@ -104,7 +104,7 @@ impl Document {
         let root = items.insert(Some(Item {
             parent: None,
             children: Vec::new(),
-            text: String::new(),
+            text: Line::new(String::new()),
             extra_indent: 0,
             original: None,
         }));
@@ -170,7 +170,7 @@ impl Document {
         let id = self.items.insert(Some(Item {
             parent: Some(parent),
             children: Vec::new(),
-            text,
+            text: Line::new(text),
             extra_indent,
             original: None,
         }));
@@ -208,7 +208,7 @@ impl Item {
     /// The line without its indentation; the single source of truth for everything derived.
     #[must_use]
     pub fn text(&self) -> &str {
-        &self.text
+        &self.text.text
     }
 
     /// Indent levels beyond the expected depth, kept so indent jumps are written back unchanged.
@@ -225,19 +225,41 @@ impl Item {
     /// The TaskPaper type of this line.
     #[must_use]
     pub fn kind(&self) -> ItemKind {
-        format::kind(&self.text)
+        self.text.kind
     }
 
     /// The text without the task's `- `, the project's `:` and every tag.
     #[must_use]
     pub fn display_text(&self) -> String {
-        format::display_text(&self.text)
+        self.text.display_text.clone()
     }
 
     /// The tags on this line, first occurrence per name.
     #[must_use]
-    pub fn tags(&self) -> Vec<format::tags::Tag> {
-        format::tags(&self.text)
+    pub fn tags(&self) -> &[format::tags::Tag] {
+        &self.text.tags
+    }
+}
+
+/// A line's text with what it says, derived when the text is set rather than each time it is
+/// read, since every view reads it for every line (data-model.md §1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Line {
+    text: String,
+    kind: ItemKind,
+    tags: Vec<format::tags::Tag>,
+    display_text: String,
+}
+
+impl Line {
+    fn new(text: String) -> Self {
+        let (kind, tags, display_text) = format::read(&text);
+        Self {
+            text,
+            kind,
+            tags,
+            display_text,
+        }
     }
 }
 

@@ -114,17 +114,19 @@ impl Block {
     fn of(id: ItemId, item: &Item) -> Self {
         let kind = kind(item);
         let text = kind == BlockKind::Text;
+        let tags = item.tags();
+        let has = |name| tags.iter().any(|tag| tag.name == name);
         Self {
             id,
             kind,
-            done: has_tag(item, "done"),
-            start: date_tag(item, "start"),
-            due: date_tag(item, "due"),
-            today: has_tag(item, "today"),
-            bookmark: has_tag(item, "bookmark"),
-            color: color(item),
-            url: has_tag(item, "url"),
-            section: text && has_tag(item, "section"),
+            done: has("done"),
+            start: date_tag(tags, "start"),
+            due: date_tag(tags, "due"),
+            today: has("today"),
+            bookmark: has("bookmark"),
+            color: color(tags),
+            url: has("url"),
+            section: text && has("section"),
             divider: text && item.display_text().trim() == "---",
         }
     }
@@ -307,20 +309,20 @@ fn has_tag(item: &Item, name: &str) -> bool {
     item.tags().iter().any(|tag| tag.name == name)
 }
 
-/// The color of the first color tag of `item`.
-fn color(item: &Item) -> Option<TagColor> {
-    item.tags().iter().find_map(|tag| {
+/// The color of the first color tag among `tags`.
+fn color(tags: &[tags::Tag]) -> Option<TagColor> {
+    tags.iter().find_map(|tag| {
         TagColor::ALL
             .into_iter()
             .find(|color| color.tag() == tag.name)
     })
 }
 
-/// The date the first tag `name` of `item` holds, read as an ISO 8601 date such as the
+/// The date the first tag `name` among `tags` holds, read as an ISO 8601 date such as the
 /// `YYYY-MM-DD` the app writes (D-6).
-fn date_tag(item: &Item, name: &str) -> Option<Date> {
-    let tag = item.tags().into_iter().find(|tag| tag.name == name)?;
-    tag.value?.parse().ok()
+fn date_tag(tags: &[tags::Tag], name: &str) -> Option<Date> {
+    let tag = tags.iter().find(|tag| tag.name == name)?;
+    tag.value.as_deref()?.parse().ok()
 }
 
 #[cfg(test)]

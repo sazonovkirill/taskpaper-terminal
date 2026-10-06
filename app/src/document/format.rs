@@ -90,7 +90,36 @@ fn parse_text(text: &str, bom: bool) -> Document {
 /// The TaskPaper type of a line body.
 #[must_use]
 pub fn kind(text: &str) -> ItemKind {
-    let content = content(text);
+    kind_of(text, &tags::scan(text))
+}
+
+/// The body without a task's `- `, a project's `:` and every tag (data-model.md §2).
+#[must_use]
+pub fn display_text(text: &str) -> String {
+    let scanned = tags::scan(text);
+    display_text_of(text, kind_of(text, &scanned), &scanned)
+}
+
+/// The line's tags, keeping only the first occurrence of each name (file-format.md §5).
+#[must_use]
+pub fn tags(text: &str) -> Vec<tags::Tag> {
+    first_of_each(tags::scan(text))
+}
+
+/// The type, tags and display text of a line body, as [`kind`], [`tags`] and [`display_text`]
+/// give them, with one scan for its tags.
+pub(crate) fn read(text: &str) -> (ItemKind, Vec<tags::Tag>, String) {
+    let scanned = tags::scan(text);
+    let kind = kind_of(text, &scanned);
+    let display_text = display_text_of(text, kind, &scanned);
+    (kind, first_of_each(scanned), display_text)
+}
+
+/// The type of `text`, whose tags are `scanned`.
+fn kind_of(text: &str, scanned: &[tags::Tag]) -> ItemKind {
+    let content = text
+        .get(..tags::trailing_run_start(text, scanned))
+        .unwrap_or(text);
     let mut chars = content.chars();
     if chars.next() == Some('-') && chars.next().is_some_and(is_whitespace) {
         ItemKind::Task
@@ -101,22 +130,20 @@ pub fn kind(text: &str) -> ItemKind {
     }
 }
 
-/// The body without a task's `- `, a project's `:` and every tag (data-model.md §2).
-#[must_use]
-pub fn display_text(text: &str) -> String {
-    let shown = without_tags(text);
-    match kind(text) {
+/// The display text of `text`, of type `kind`, whose tags are `scanned`.
+fn display_text_of(text: &str, kind: ItemKind, scanned: &[tags::Tag]) -> String {
+    let shown = without_tags(text, scanned);
+    match kind {
         ItemKind::Task => shown.chars().skip(2).collect(),
         ItemKind::Project => shown.strip_suffix(':').unwrap_or(&shown).to_owned(),
         ItemKind::Note => shown,
     }
 }
 
-/// The line's tags, keeping only the first occurrence of each name (file-format.md §5).
-#[must_use]
-pub fn tags(text: &str) -> Vec<tags::Tag> {
+/// `scanned` with only the first occurrence of each name.
+fn first_of_each(scanned: Vec<tags::Tag>) -> Vec<tags::Tag> {
     let mut found: Vec<tags::Tag> = Vec::new();
-    for tag in tags::scan(text) {
+    for tag in scanned {
         if found.iter().all(|seen| seen.name != tag.name) {
             found.push(tag);
         }
@@ -124,18 +151,14 @@ pub fn tags(text: &str) -> Vec<tags::Tag> {
     found
 }
 
-/// Removes every tag occurrence. A tag's span starts at the whitespace before it, so the text
-/// after a tag starts with the whitespace that followed it; that collapses to one space between
-/// the remaining text on either side, or to nothing at either end of the line.
-fn without_tags(text: &str) -> String {
+/// Removes every tag occurrence, `scanned`. A tag's span starts at the whitespace before it, so
+/// the text after a tag starts with the whitespace that followed it; that collapses to one space
+/// between the remaining text on either side, or to nothing at either end of the line.
+fn without_tags(text: &str, scanned: &[tags::Tag]) -> String {
     let mut shown = String::with_capacity(text.len());
     let mut rest = 0;
     let line_end = text.len()..text.len();
-    for span in tags::scan(text)
-        .into_iter()
-        .map(|tag| tag.span)
-        .chain([line_end])
-    {
+    for span in scanned.iter().map(|tag| tag.span.clone()).chain([line_end]) {
         let piece = text.get(rest..span.start).unwrap_or_default();
         let piece = if rest == 0 {
             piece
@@ -151,11 +174,6 @@ fn without_tags(text: &str) -> String {
         rest = span.end;
     }
     shown
-}
-
-/// The body without its trailing tag run, which decides the item type.
-fn content(text: &str) -> &str {
-    text.get(..tags::trailing_run_start(text)).unwrap_or(text)
 }
 
 /// Whether `c` ends a line wherever it stands, so that text holding it is read back as several
@@ -666,6 +684,16 @@ mod tests {
     }
 
     // FR-TAG-02
+    proptest::proptest! {
+        /// Reading a line at once gives what reading its type, tags and display text apart does.
+        #[test]
+        fn reading_a_line_at_once_matches_reading_it_piece_by_piece(
+            text in "[- a:@()x\\t]{0,20}",
+        ) {
+            proptest::prop_assert_eq!(read(&text), (kind(&text), tags(&text), display_text(&text)));
+        }
+    }
+
     #[test]
     fn tags_keep_the_first_occurrence_per_name() {
         let found: Vec<_> = tags("- a @done @due(1) b @done(2026-10-01) @due(2) @x")

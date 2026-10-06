@@ -3,9 +3,10 @@
 
 use std::collections::HashMap;
 
+use slotmap::SecondaryMap;
 use thiserror::Error;
 
-use super::{Document, Item, ItemId};
+use super::{Document, Item, ItemId, Line};
 
 /// A primitive change to the line tree; every edit, its undo and its redo is a sequence of these.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,7 +166,7 @@ impl Snapshot {
                 Item {
                     parent: None,
                     children: Vec::new(),
-                    text,
+                    text: Line::new(text),
                     extra_indent: 0,
                     original: None,
                 },
@@ -325,10 +326,10 @@ impl Document {
         match op {
             Op::SetText { id, before, after } => {
                 let item = self.line_mut(*id)?;
-                if item.text != *before {
+                if item.text() != before {
                     return Err(EditError::Stale { id: *id });
                 }
-                item.text.clone_from(after);
+                item.text = Line::new(after.clone());
             }
             Op::SetExtraIndent { id, before, after } => {
                 let item = self.line_mut(*id)?;
@@ -451,11 +452,11 @@ impl Document {
                 Some((id, item.parent?, item.extra_indent))
             })
             .collect();
-        let mut depths: HashMap<ItemId, usize> = HashMap::new();
+        let mut depths: SecondaryMap<ItemId, usize> = SecondaryMap::new();
         let mut open: Vec<(ItemId, usize)> = Vec::new();
         let mut repairs = Vec::new();
         for (id, parent, extra_indent) in lines {
-            let base = depths.get(&parent).map_or(0, |depth| depth + 1);
+            let base = depths.get(parent).map_or(0, |depth| depth + 1);
             let mut depth = base + extra_indent;
             close_lines_at_or_below(&mut open, depth);
             if open.last().map_or(self.root, |&(line, _)| line) != parent {
@@ -600,6 +601,29 @@ mod tests {
         document.apply(&mut change.inverse()).unwrap();
         assert_eq!(show(&document), ["- a", "- b"]);
         assert_eq!(document.revision(), 2);
+    }
+
+    // N-PERF-02
+    #[test]
+    fn a_changed_line_reads_its_new_type_tags_and_display_text() {
+        let mut document = parse("- a @due(2026-10-08)");
+        let a = id(&document, "- a @due(2026-10-08)");
+        let mut change = transaction(vec![set_text(
+            &document,
+            "- a @due(2026-10-08)",
+            "B: @today",
+        )]);
+        document.apply(&mut change).unwrap();
+        let item = document.get(a).unwrap();
+        assert_eq!(item.kind(), crate::document::ItemKind::Project);
+        assert_eq!(item.display_text(), "B");
+        assert_eq!(
+            item.tags()
+                .iter()
+                .map(|tag| tag.name.as_str())
+                .collect::<Vec<_>>(),
+            ["today"]
+        );
     }
 
     #[test]

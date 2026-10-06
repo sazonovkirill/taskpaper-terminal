@@ -44,12 +44,13 @@ pub fn scan(text: &str) -> Vec<Tag> {
     tags
 }
 
-/// Where the trailing tag run starts: a sequence of tags followed only by whitespace up to the end.
-/// Returns `text.len()` when the line does not end in a tag.
+/// Where the trailing tag run of `text`, whose tags [`scan`] found as `scanned`, starts: a
+/// sequence of tags followed only by whitespace up to the end. Returns `text.len()` when the line
+/// does not end in a tag.
 #[must_use]
-pub fn trailing_run_start(text: &str) -> usize {
+pub fn trailing_run_start(text: &str, scanned: &[Tag]) -> usize {
     let mut run_start = text.trim_end_matches(is_whitespace).len();
-    for tag in scan(text).iter().rev() {
+    for tag in scanned.iter().rev() {
         if tag.span.end != run_start {
             break;
         }
@@ -324,29 +325,35 @@ mod tests {
 
     #[test]
     fn trailing_run_starts_at_the_first_trailing_tag() {
-        assert_eq!(trailing_run_start("Groceries: @home @due(1)  "), 10);
+        assert_eq!(
+            trailing_run_start(
+                "Groceries: @home @due(1)  ",
+                &scan("Groceries: @home @due(1)  ")
+            ),
+            10
+        );
     }
 
     #[test]
     fn mid_line_tag_is_not_part_of_the_trailing_run() {
-        assert_eq!(trailing_run_start("a @x(1) b:"), 10);
-        assert_eq!(trailing_run_start("a @x b @y"), 6);
+        assert_eq!(trailing_run_start("a @x(1) b:", &scan("a @x(1) b:")), 10);
+        assert_eq!(trailing_run_start("a @x b @y", &scan("a @x b @y")), 6);
     }
 
     #[test]
     fn line_without_trailing_tags_has_no_run() {
-        assert_eq!(trailing_run_start("Inbox:  "), 8);
-        assert_eq!(trailing_run_start(""), 0);
+        assert_eq!(trailing_run_start("Inbox:  ", &scan("Inbox:  ")), 8);
+        assert_eq!(trailing_run_start("", &scan("")), 0);
     }
 
     #[test]
     fn whole_line_of_tags_is_a_run_from_zero() {
-        assert_eq!(trailing_run_start("@a @b"), 0);
+        assert_eq!(trailing_run_start("@a @b", &scan("@a @b")), 0);
     }
 
     #[test]
     fn duplicate_tags_still_count_in_the_trailing_run() {
-        assert_eq!(trailing_run_start("x @a @a"), 1);
+        assert_eq!(trailing_run_start("x @a @a", &scan("x @a @a")), 1);
     }
 
     #[track_caller]
