@@ -113,14 +113,16 @@ impl LineParts {
 impl LineParts {
     /// The parts and text that give the line holding `text` the type `typed`: the old type's
     /// syntax and `@section` go, the new type's come and every other tag, `@url` included, stays
-    /// (editing.md §5, D-45).
+    /// (editing.md §5, D-45). A colon ending the text of a task or note becomes the project's
+    /// own, so it is not doubled.
     #[must_use]
     pub fn retyped(&self, typed: Typed, text: &str) -> (Self, String) {
-        let name = match kind(&self.compose(text)) {
-            ItemKind::Project => text.trim_end_matches(tags::is_whitespace).strip_suffix(':'),
-            ItemKind::Task | ItemKind::Note => None,
-        }
-        .unwrap_or(text);
+        let colon_is_syntax =
+            typed == Typed::Project || kind(&self.compose(text)) == ItemKind::Project;
+        let name = colon_is_syntax
+            .then(|| text.trim_end_matches(tags::is_whitespace).strip_suffix(':'))
+            .flatten()
+            .unwrap_or(text);
         let section = typed == Typed::Section;
         let mut tags: Vec<String> = self
             .tags
@@ -304,7 +306,14 @@ mod tests {
         );
         assert_eq!(
             retyped("- P:", Typed::Project),
-            "P::",
+            "P:",
+            "a colon ending the text is the project's own"
+        );
+        assert_eq!(retyped("P: @x", Typed::Project), "P: @x");
+        assert_eq!(retyped("Note: here:  @x", Typed::Project), "Note: here: @x");
+        assert_eq!(
+            retyped("- P:", Typed::Task),
+            "- P:",
             "a task's colon is text"
         );
     }

@@ -126,3 +126,12 @@ fn m_y_turns_every_selected_block_into_a_task_and_z_undoes_them_at_once() {
     app.type_keys("z");
     assert_eq!(saved(&mut app), "Milk\nBread\nEggs\n", "one step to undo");
 }
+
+// FR-BLK-08: a task's colon becomes the project's own rather than being doubled.
+#[test]
+fn a_task_ending_in_a_colon_becomes_a_project_with_one_colon() {
+    let mut app = Harness::with_text("- Errands:\n", 40, 14);
+    app.type_keys("myproject");
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(saved(&mut app), "Errands:\n");
+}
