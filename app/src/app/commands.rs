@@ -98,6 +98,8 @@ pub enum Command {
     Retype(Typed),
     /// Show the details popup.
     OpenDetails,
+    /// Find a block by name and go to it.
+    GoToSymbol,
     /// Undo.
     Undo,
     /// Redo.
@@ -172,25 +174,7 @@ impl Command {
             Self::ClearDate(tag) => format!("Clear {} Date", date_name(tag)).into(),
             Self::OpenDatePrompt(tag) => format!("Set {} Date", date_name(tag)).into(),
             Self::SetColor(Some(color)) => format!("Color: {}", color_name(color)).into(),
-            Self::New(at, typed) => {
-                let typed = match typed {
-                    None => "Block",
-                    Some(Typed::Project) => "Project",
-                    Some(Typed::Section) => "Section",
-                    Some(Typed::Task) => "Task",
-                    Some(Typed::Text) => "Note",
-                };
-                let at = match at {
-                    NewBlock::Below => "Below",
-                    NewBlock::Above => "Above",
-                    NewBlock::FirstChild => "as First Child",
-                    NewBlock::LastChild => "as Last Child",
-                    NewBlock::Next => "Next",
-                    NewBlock::Start => "at Start",
-                    NewBlock::End => "at End",
-                };
-                format!("New {typed} {at}").into()
-            }
+            Self::New(at, typed) => new_name(at, typed).into(),
             Self::Quit => "Quit".into(),
             Self::FocusNext => "Next Block".into(),
             Self::FocusPrevious => "Previous Block".into(),
@@ -230,6 +214,7 @@ impl Command {
             Self::Retype(Typed::Task) => "Task".into(),
             Self::Retype(Typed::Text) => "Note".into(),
             Self::OpenDetails => "Show Details".into(),
+            Self::GoToSymbol => "Go to Symbol".into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -309,6 +294,7 @@ impl Command {
             Self::OpenTypePicker => Message::OpenTypePicker,
             Self::Retype(_) | Self::ToggleWrap => return None,
             Self::OpenDetails => Message::OpenDetails,
+            Self::GoToSymbol => Message::OpenGoToSymbol,
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,
@@ -354,6 +340,27 @@ fn color_name(color: TagColor) -> &'static str {
         TagColor::Blue => "Blue",
         TagColor::Violet => "Violet",
     }
+}
+
+/// The name of [`Command::New`] adding a block of the type `typed` at `at`.
+fn new_name(at: NewBlock, typed: Option<Typed>) -> String {
+    let typed = match typed {
+        None => "Block",
+        Some(Typed::Project) => "Project",
+        Some(Typed::Section) => "Section",
+        Some(Typed::Task) => "Task",
+        Some(Typed::Text) => "Note",
+    };
+    let at = match at {
+        NewBlock::Below => "Below",
+        NewBlock::Above => "Above",
+        NewBlock::FirstChild => "as First Child",
+        NewBlock::LastChild => "as Last Child",
+        NewBlock::Next => "Next",
+        NewBlock::Start => "at Start",
+        NewBlock::End => "at End",
+    };
+    format!("New {typed} {at}")
 }
 
 #[cfg(test)]

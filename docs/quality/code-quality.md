@@ -141,7 +141,7 @@ cognitive_complexity = "warn"
 ## Toolchain and dependencies
 
 - `rust-toolchain.toml` at the repository root pins an exact stable release with the `rustfmt`, `clippy` and `llvm-tools` components. Bumping it is its own commit, which fixes any new lint findings. Agents use rustup so the pin takes effect.
-- `cargo-deny`, configured in `app/deny.toml`, runs in `validate.sh static` and checks advisories, licenses (permissive licenses only), banned and duplicate crates, and that every crate comes from crates.io. A duplicate version that Ratatui or crossterm pulls in is listed under `skip` with a reason and removed once upstream converges. The crate sets `publish = false` until the owner chooses a license, so the license check covers dependencies only.
+- `cargo-deny`, configured in `app/deny.toml`, runs in `validate.sh static` and checks advisories, licenses (permissive licenses only, plus MPL-2.0 for `nucleo-matcher`, which [architecture.md §3](../specs/architecture.md) names; any other non-permissive license needs the owner), banned and duplicate crates, and that every crate comes from crates.io. A duplicate version that Ratatui or crossterm pulls in is listed under `skip` with a reason and removed once upstream converges. The crate sets `publish = false` until the owner chooses a license, so the license check covers dependencies only.
 - Prefer `std`, Ratatui and crossterm when they cover the need. Add a dependency only for a demonstrated need, after checking its maintenance, license, size and transitive dependencies; record why on the task. Versions stay locked in `app/Cargo.lock` and every build uses `--locked`.
 - No dependency may make network requests, collect data or write outside the files the user opens.
 

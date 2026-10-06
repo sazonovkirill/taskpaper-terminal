@@ -177,6 +177,10 @@ pub enum Message {
     OpenDetails,
     /// Close the details popup.
     CloseDetails,
+    /// Open Go to Symbol (FR-NAV-05).
+    OpenGoToSymbol,
+    /// A key of the open Go to Symbol (FR-NAV-05).
+    GoToSymbol(MenuInput),
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -336,6 +340,8 @@ impl Message {
             | Self::TypePicker(_)
             | Self::OpenDetails
             | Self::CloseDetails
+            | Self::OpenGoToSymbol
+            | Self::GoToSymbol(_)
             | Self::New(..)
             | Self::Delete
             | Self::Duplicate
@@ -465,6 +471,8 @@ impl State {
             Message::TypePicker(input) => self.type_picker_input(input),
             Message::OpenDetails => self.open_details(),
             Message::CloseDetails => self.close_details(),
+            Message::OpenGoToSymbol => self.open_go_to_symbol(),
+            Message::GoToSymbol(input) => self.go_to_symbol_input(input),
             Message::Undo => self.undo(),
             Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),
@@ -536,7 +544,7 @@ impl State {
     }
 
     /// Zooms to `zoom`, a new entry in the history that drops any forward entries.
-    fn go_to(&mut self, zoom: Option<ItemId>) {
+    pub(super) fn go_to(&mut self, zoom: Option<ItemId>) {
         if zoom == self.zoom {
             return;
         }

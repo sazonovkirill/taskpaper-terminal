@@ -15,6 +15,10 @@ use ratatui::{
 
 use unicode_segmentation::UnicodeSegmentation;
 
+mod finder;
+
+pub use finder::FinderPopup;
+
 use super::{layout, theme::Icon};
 use crate::{
     app::{

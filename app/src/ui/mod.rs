@@ -22,7 +22,7 @@ use ratatui::{
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
-use widgets::{ConflictPrompt, DatePromptPanel, OutlineView, Popup};
+use widgets::{ConflictPrompt, DatePromptPanel, FinderPopup, OutlineView, Popup};
 
 /// What the event loop waits for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -331,6 +331,15 @@ impl Tui {
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
             frame.render_widget(popup, area);
         }
+        if let Some(view) = self
+            .state
+            .go_to_symbol()
+            .filter(|_| !self.state.in_conflict())
+        {
+            let finder = FinderPopup::new("Go to Symbol", &view);
+            frame.set_cursor_position(finder.caret(outline));
+            frame.render_widget(finder, outline);
+        }
         self.draw_status(frame, status);
         self.draw_date_prompt(frame, panel);
         if self.state.in_conflict() {
@@ -449,6 +458,8 @@ impl Tui {
             Some(Overlay::ColorPicker)
         } else if self.state.type_picker().is_some() {
             Some(Overlay::TypePicker)
+        } else if self.state.go_to_symbol().is_some() {
+            Some(Overlay::GoToSymbol)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }

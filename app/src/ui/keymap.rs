@@ -65,6 +65,8 @@ pub enum Overlay {
     TypePicker,
     /// The details popup, which any key closes (D-3).
     Details,
+    /// Go to Symbol (FR-NAV-05).
+    GoToSymbol,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -426,6 +428,7 @@ impl Keymap {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
+                Overlay::GoToSymbol => menu_message(pressed, Message::GoToSymbol),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -1642,5 +1645,38 @@ mod tests {
                 assert!(parse_sequence(keys).is_some(), "{keys}");
             }
         }
+    }
+
+    // FR-NAV-05, keybindings.md §2 and §4
+    #[test]
+    fn ctrl_p_g_s_and_slash_open_go_to_symbol_which_takes_the_keys_of_pickers() {
+        let mut keymap = Keymap::default();
+        let ctrl_p = key(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        assert_eq!(
+            keymap.message_for(&ctrl_p, ms(0), CONTEXT),
+            Some(Message::OpenGoToSymbol)
+        );
+        let char = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&char('g'), ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.message_for(&char('s'), ms(1), CONTEXT),
+            Some(Message::OpenGoToSymbol)
+        );
+        assert_eq!(
+            keymap.message_for(&char('/'), ms(2), CONTEXT),
+            Some(Message::OpenGoToSymbol)
+        );
+        let finding = &Context {
+            overlay: Some(Overlay::GoToSymbol),
+            ..*CONTEXT
+        };
+        assert_eq!(
+            keymap.message_for(&ctrl_p, ms(0), finding),
+            Some(Message::GoToSymbol(MenuInput::Previous))
+        );
+        assert_eq!(
+            keymap.message_for(&char('g'), ms(3), finding),
+            Some(Message::GoToSymbol(MenuInput::Type('g')))
+        );
     }
 }

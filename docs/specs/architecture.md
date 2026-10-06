@@ -10,7 +10,7 @@ How the crate in `app/` is organized. Detailed behavior is in the other specs.
 UI (frontend)          ui::{keymap, widgets, layout, theme, animation, effects, config}
    │                            │
    ▼                            ▼
-App (core)             app::{state, update, history, workspace, commands, pickers, today}
+App (core)             app::{state, update, history, workspace, commands, finder, today}
    │
    ▼
 Document (core)        document::{model, blocks, format, dates, query}
@@ -24,7 +24,7 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `document::dates`, `document::query` | Document | Date parser now; search query parser and matcher later ([search.md](search.md)). Today's date is passed in. |
 | `app::workspace` | App | Panes, shared folds, focus, selection, modes, edit-mode text and caret, Today view, visible blocks of each pane ([data-model.md §6](data-model.md#6-panes-and-view-state), [navigation.md](navigation.md)). |
 | `app::commands` | App | The command registry: every user intent as a command with its name, the modes it is given in and its default bindings, written in the config notation of [keybindings.md §5](keybindings.md#5-configuration), in one table that the keymap reads and the menus, Go to Command and the `?` panel list; the message each command sends; and the commands of one block that the command menu and the context menu offer. The messages are handled in `app::update` and the modules it calls. |
-| `app::pickers` | App | Go to Symbol, Go to Command, Move to, context-menu entries: candidate lists and fuzzy ranking. |
+| `app::finder` and one module per finder (`app::go_to_symbol`, …) | App | The fuzzy finder shared by Go to Symbol, Go to Command and Move to: query, ranking with `nucleo-matcher` by tier and score, highlight; each finder module builds its candidates and acts on the choice. |
 | `app::history` | App | The undo/redo history of committed transactions and the focus to restore with each (code-quality.md assigns undo to App). |
 | `app::update` | App | `update(state, message) -> effects`, committing each command's transaction to the history; autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
 | `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |

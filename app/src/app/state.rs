@@ -13,6 +13,7 @@ use super::{
     date_prompt::DatePrompt,
     edit_mode::{Resume, Session},
     external::External,
+    finder::Finder,
     picker::Picker,
     saving::Autosave,
     selection::Selection,
@@ -58,6 +59,8 @@ pub struct State {
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// Whether the details popup is open over the focused block (D-3).
     pub(super) details: bool,
+    /// Go to Symbol, while it is open (FR-NAV-05).
+    pub(super) symbols: Option<Finder<ItemId>>,
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -229,6 +232,7 @@ impl State {
             date_prompt: None,
             type_picker: None,
             details: false,
+            symbols: None,
             resume: None,
             folds: HashSet::new(),
             show_done: true,
@@ -333,17 +337,32 @@ impl State {
     /// delimiters of its formatting; empty at home (FR-NAV-03, FR-FMT-01, FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
-        let mut crumbs: Vec<String> = std::iter::successors(self.zoom_block(), |block| {
+        self.zoom_block()
+            .map(|block| self.path_to(&block))
+            .unwrap_or_default()
+    }
+
+    /// The text of each block from the top level down to `block`, itself included, as
+    /// [`State::shown_text`] gives it.
+    pub(super) fn path_to(&self, block: &Block) -> Vec<String> {
+        let mut path: Vec<String> = std::iter::successors(Some(block.clone()), |block| {
             blocks::parent(&self.document, block.id())
         })
-        .filter_map(|block| {
-            let text = self.document.get(block.id())?.display_text();
-            let runs = inline::runs(&text, Syntax::of(block.kind()));
-            Some(runs.iter().map(|run| run.text).collect())
-        })
+        .map(|block| self.shown_text(&block))
         .collect();
-        crumbs.reverse();
-        crumbs
+        path.reverse();
+        path
+    }
+
+    /// The text of `block` as shown, without the delimiters of its formatting.
+    pub(super) fn shown_text(&self, block: &Block) -> String {
+        let text = self
+            .document
+            .get(block.id())
+            .map(Item::display_text)
+            .unwrap_or_default();
+        let runs = inline::runs(&text, Syntax::of(block.kind()));
+        runs.iter().map(|run| run.text).collect()
     }
 
     /// The visible rows: when zoomed, a title row for the zoom block at depth 0, then its child
