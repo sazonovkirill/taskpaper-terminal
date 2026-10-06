@@ -7,8 +7,8 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SaveAs,
-    SidebarInput, TextEdit, commands::REGISTRY,
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SaveAs, TextEdit,
+    commands::{REGISTRY, SIDEBAR},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -79,6 +79,8 @@ pub enum Overlay {
     GoToCommand,
     /// The Save As prompt (FR-DOC-06).
     SaveAs,
+    /// The context menu (FR-KEY-06).
+    ContextMenu,
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -252,37 +254,6 @@ fn date_prompt_message(key: Key) -> Option<Message> {
     Some(Message::DatePrompt(input))
 }
 
-/// Bindings of the focused sidebar ([keybindings.md §4]); other keys do nothing.
-///
-/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
-const SIDEBAR: &[(Key, SidebarInput)] = &[
-    (key!('j'), SidebarInput::Next),
-    (key!(Down), SidebarInput::Next),
-    (key!('k'), SidebarInput::Previous),
-    (key!(Up), SidebarInput::Previous),
-    (key!('h'), SidebarInput::Collapse),
-    (key!(Left), SidebarInput::Collapse),
-    (key!('l'), SidebarInput::Expand),
-    (key!(Right), SidebarInput::Expand),
-    (key!(Enter), SidebarInput::Choose),
-    (key!(Esc), SidebarInput::Leave),
-];
-
-/// The message of the focused sidebar for `key`: `Ctrl+Q` quits, `Ctrl+B` hides the sidebar,
-/// else a sidebar binding.
-fn sidebar_message(key: Key) -> Option<Message> {
-    if key == key!(ctrl 'q') {
-        return Some(Message::Quit);
-    }
-    if key == key!(ctrl 'b') {
-        return Some(Message::ToggleSidebar);
-    }
-    SIDEBAR
-        .iter()
-        .find(|(bound, _)| *bound == key)
-        .map(|&(_, input)| Message::Sidebar(input))
-}
-
 /// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
 /// without other bindings are typed, and other keys do nothing.
 ///
@@ -375,7 +346,8 @@ fn parse_key(text: &str) -> Option<Key> {
         "end" => KeyCode::End,
         "pageup" => KeyCode::PageUp,
         "pagedown" => KeyCode::PageDown,
-        _ => return None,
+        "menu" => KeyCode::Menu,
+        name => KeyCode::F(name.strip_prefix('f')?.parse().ok()?),
     };
     Some((held, code))
 }
@@ -410,6 +382,24 @@ pub fn labels(keys: &[&str]) -> String {
         .filter_map(|keys| label(keys))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// How the keys that give `command` read on screen, each as [`label`] writes it, separated by
+/// commas: its navigate-mode bindings, else its bindings in the focused sidebar.
+#[must_use]
+pub fn bindings(command: Command) -> String {
+    REGISTRY
+        .iter()
+        .find(|entry| entry.mode == Mode::Navigate && entry.command == command)
+        .map(|entry| entry.keys)
+        .or_else(|| {
+            SIDEBAR
+                .iter()
+                .find(|&&(bound, _)| bound == command)
+                .map(|&(_, keys)| keys)
+        })
+        .map(labels)
+        .unwrap_or_default()
 }
 
 /// What giving `command` asks for, its message carrying what it needs of `context`, as its keys
@@ -470,6 +460,8 @@ pub struct Keymap {
     navigate: Vec<(Vec<Key>, Command)>,
     /// Each edit-mode key with its command, as a sequence of one key.
     edit: Vec<(Vec<Key>, Command)>,
+    /// Each key of the focused sidebar with its command.
+    sidebar: Vec<(Key, Command)>,
     pending: Vec<Key>,
     /// When the pending sequence started, in the frontend's time.
     started: Duration,
@@ -491,9 +483,18 @@ impl Default for Keymap {
                 }
             }
         }
+        let sidebar = SIDEBAR
+            .iter()
+            .flat_map(|&(command, keys)| {
+                keys.iter()
+                    .filter_map(|keys| parse_key(keys))
+                    .map(move |key| (key, command))
+            })
+            .collect();
         Self {
             navigate,
             edit,
+            sidebar,
             pending: Vec::new(),
             started: Duration::ZERO,
             replay: false,
@@ -573,6 +574,7 @@ impl Keymap {
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
                 Overlay::SaveAs => save_as_message(pressed),
+                Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -580,7 +582,8 @@ impl Keymap {
         }
         if context.sidebar {
             self.pending.clear();
-            return sidebar_message(pressed).map(KeyAction::Send);
+            let (_, command) = self.sidebar.iter().find(|(key, _)| *key == pressed)?;
+            return action(*command, context);
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
@@ -653,7 +656,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{NewBlock, SelectionChange},
+        app::{NewBlock, SelectionChange, SidebarInput},
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
 
@@ -2056,6 +2059,92 @@ mod tests {
             "what is not a key is left out"
         );
         assert_eq!(labels(&[]), "");
+        assert_eq!(labels(&["f1", "ctrl+f12", "menu"]), "F1, Ctrl+F12, Menu");
+        assert_eq!(
+            labels(&["fx", "f"]),
+            "f",
+            "only a number makes a function key"
+        );
+    }
+
+    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42
+    #[test]
+    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_sidebar() {
+        let open = Some(&Message::OpenContextMenu);
+        check(KeyCode::Char('\\'), KeyModifiers::NONE, open);
+        check(KeyCode::F(10), KeyModifiers::SHIFT, open);
+        check(KeyCode::Menu, KeyModifiers::NONE, open);
+        check(KeyCode::F(10), KeyModifiers::NONE, None);
+        let mut keymap = Keymap::default();
+        let sidebar = &Context {
+            sidebar: true,
+            ..*CONTEXT
+        };
+        for (at, (code, modifiers)) in [
+            (KeyCode::Char('\\'), KeyModifiers::NONE),
+            (KeyCode::F(10), KeyModifiers::SHIFT),
+            (KeyCode::Menu, KeyModifiers::NONE),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(
+                keymap
+                    .message_for(&key(code, modifiers), ms(at as u64), sidebar)
+                    .as_ref(),
+                open,
+                "{code:?}"
+            );
+        }
+        assert_eq!(
+            keymap.message_for(&key(KeyCode::Char('j'), KeyModifiers::NONE), ms(9), sidebar),
+            Some(Message::Sidebar(SidebarInput::Next)),
+            "other keys stay the sidebar's"
+        );
+        assert_eq!(
+            keymap.message_for(
+                &key(KeyCode::Char('\\'), KeyModifiers::NONE),
+                ms(10),
+                EDITING
+            ),
+            Some(Message::Text(TextEdit::Insert('\\'))),
+            "edit mode types it"
+        );
+    }
+
+    // FR-KEY-06, keybindings.md §4
+    #[test]
+    fn the_open_context_menu_takes_the_keys_of_pickers() {
+        let mut keymap = Keymap::default();
+        let menu = &Context {
+            overlay: Some(Overlay::ContextMenu),
+            ..*CONTEXT
+        };
+        for (at, (code, input)) in [
+            (KeyCode::Down, MenuInput::Next),
+            (KeyCode::Up, MenuInput::Previous),
+            (KeyCode::Enter, MenuInput::Choose),
+            (KeyCode::Esc, MenuInput::Dismiss),
+            (KeyCode::Char('j'), MenuInput::Type('j')),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(
+                keymap.message_for(&key(code, KeyModifiers::NONE), ms(at as u64), menu),
+                Some(Message::Menu(Menu::ContextMenu, input))
+            );
+        }
+    }
+
+    // FR-KEY-06, ui.md §5
+    #[test]
+    fn a_commands_bindings_are_its_navigate_keys_or_its_sidebar_keys() {
+        assert_eq!(bindings(Command::ContextMenu), "\\, Shift+F10, Menu");
+        assert_eq!(bindings(Command::Count), "");
+        assert_eq!(bindings(Command::Retype(Typed::Task)), "", "edit mode's");
+        assert_eq!(bindings(Command::Sidebar(SidebarInput::Choose)), "Enter");
+        assert_eq!(bindings(Command::Sidebar(SidebarInput::Next)), "j, ↓");
     }
 
     // FR-NAV-05, keybindings.md §2 and §4

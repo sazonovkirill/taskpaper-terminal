@@ -303,12 +303,14 @@ impl State {
     /// selection and the collapsed blocks and project entries on the blocks they were on. An edit session ends with
     /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
     /// closes with it, as does an edit a command of the command menu would resume (D-50), and so
-    /// do Go to Symbol and Move to, whose candidates name blocks of the old document.
+    /// do Go to Symbol and Move to, whose candidates name blocks of the old document, and the
+    /// context menu, whose labels tell the old blocks' state.
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
         self.symbols = None;
         self.destinations = None;
+        self.context_menu = None;
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
@@ -824,6 +826,16 @@ mod tests {
         assert_eq!(state.move_to(), None);
         state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
         assert_eq!(format::serialize(state.document()), "X\nA\nB\nC\n");
+    }
+
+    // file-io.md §3, FR-KEY-06
+    #[test]
+    fn a_reload_closes_the_context_menu() {
+        let mut state = opened("- A\n");
+        state.update(Message::OpenContextMenu);
+        assert!(state.context_menu().is_some());
+        state.update(found("- A @done\n"));
+        assert_eq!(state.context_menu(), None);
     }
 
     // file-io.md §3, D-50

@@ -373,7 +373,8 @@ impl Tui {
             Constraint::Fill(1),
             Constraint::Length(panel_height),
         ]));
-        let body = self.draw_sidebar(frame, body);
+        let screen_body = body;
+        let (body, entry) = self.draw_sidebar(frame, body);
         let (pane, sidebar) = match self.state.shortcuts() {
             Some(_) => layout::secondary_sidebar(screen, body),
             None => (body, None),
@@ -401,7 +402,7 @@ impl Tui {
             ),
             separator,
         );
-        self.draw_outline(frame, outline);
+        let focused = self.draw_outline(frame, outline);
         // Centered popups go over the sidebar, which a narrow screen draws over the outline.
         self.draw_shortcuts(frame, sidebar);
         let centered = self
@@ -436,6 +437,14 @@ impl Tui {
                 frame.set_cursor_position(prompt.caret(outline));
                 frame.render_widget(prompt, outline);
             }
+            let anchor = if self.state.sidebar_focused() {
+                entry
+            } else {
+                focused
+            };
+            if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
+                draw_anchored(frame, Popup::context_menu(&menu), screen_body, anchor);
+            }
         }
         self.draw_status(frame, status);
         self.draw_date_prompt(frame, panel);
@@ -462,8 +471,13 @@ impl Tui {
     }
 
     /// The outline in `area`, scrolled to keep the focused block in view, and while editing the
-    /// caret with the command menu at it, unless the conflict prompt covers them.
-    fn draw_outline(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+    /// caret with the command menu at it, unless the conflict prompt covers them; returns where
+    /// the focused block's text starts on screen, if a block is focused.
+    fn draw_outline(
+        &mut self,
+        frame: &mut Frame,
+        area: ratatui::layout::Rect,
+    ) -> Option<(u16, u16)> {
         let rows = self.state.rows();
         let focused = self.focused_index();
         let editor = self.state.editor();
@@ -507,25 +521,31 @@ impl Tui {
             );
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.command_menu() {
-                let popup = Popup::commands(&menu);
-                let (width, height) = popup.size();
-                let height = height.min(layout::room(area, caret.1));
-                let anchored = layout::anchored(area, caret, (width, height));
-                frame.render_widget(popup, anchored);
+                draw_anchored(frame, Popup::commands(&menu), area, caret);
             }
         }
+        let row = focused.and_then(|index| rows.get(index))?;
+        let column = u16::try_from(widgets::text_column(row)).unwrap_or(u16::MAX);
+        let line = u16::try_from(self.focus_line?).unwrap_or(u16::MAX);
+        Some((
+            area.x
+                .saturating_add(widgets::GUTTER_WIDTH)
+                .saturating_add(column),
+            area.y.saturating_add(line),
+        ))
     }
 
     /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
-    /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1).
+    /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1), and
+    /// where the focused entry starts on screen, if one is focused.
     fn draw_sidebar(
         &mut self,
         frame: &mut Frame,
         area: ratatui::layout::Rect,
-    ) -> ratatui::layout::Rect {
+    ) -> (ratatui::layout::Rect, Option<(u16, u16)>) {
         let (Some(view), Some(width)) = (self.state.sidebar(), layout::sidebar_width(area.width))
         else {
-            return area;
+            return (area, None);
         };
         let [sidebar, pane] = area.layout(&Layout::horizontal([
             Constraint::Length(width),
@@ -533,8 +553,15 @@ impl Tui {
         ]));
         let panel = SidebarPanel::new(&view);
         self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(sidebar.height));
+        let entry = panel.focused_line().map(|line| {
+            let line = u16::try_from(line.saturating_sub(self.sidebar_scroll)).unwrap_or(u16::MAX);
+            (
+                sidebar.x.saturating_add(widgets::GUTTER_WIDTH),
+                sidebar.y.saturating_add(line),
+            )
+        });
         frame.render_widget(panel.offset(self.sidebar_scroll), sidebar);
-        pane
+        (pane, entry)
     }
 
     /// The date prompt's panel over `area` with its caret, if it is open, and the rest of the
@@ -597,6 +624,8 @@ impl Tui {
             Some(Overlay::GoToCommand)
         } else if self.state.save_as().is_some() {
             Some(Overlay::SaveAs)
+        } else if self.state.context_menu().is_some() {
+            Some(Overlay::ContextMenu)
         } else {
             self.state.details().map(|_| Overlay::Details)
         }
@@ -613,6 +642,14 @@ impl Tui {
     pub fn should_quit(&self) -> bool {
         self.quit
     }
+}
+
+/// `popup` anchored at the caret or element at `anchor` inside `area`, no taller than the room
+/// there (ui.md §5).
+fn draw_anchored(frame: &mut Frame, popup: Popup, area: ratatui::layout::Rect, anchor: (u16, u16)) {
+    let (width, height) = popup.size();
+    let height = height.min(layout::room(area, anchor.1));
+    frame.render_widget(popup, layout::anchored(area, anchor, (width, height)));
 }
 
 /// The fuzzy finder `finder` over `area`, with the caret after its query.

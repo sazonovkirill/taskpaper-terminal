@@ -1,5 +1,6 @@
 //! The command registry: every command a user can give, with its name, the modes it belongs to
-//! and its default key bindings in one table ([`REGISTRY`]), which the keymap reads and the
+//! and its default key bindings in one table ([`REGISTRY`]), and the focused sidebar's in
+//! another ([`SIDEBAR`]), which the keymap reads and the
 //! menus, the command palette and the shortcuts panel list
 //! ([architecture.md §1](../../../docs/specs/architecture.md#1-layers-and-modules),
 //! [keybindings.md](../../../docs/specs/keybindings.md)).
@@ -11,10 +12,10 @@ use std::borrow::Cow;
 
 use jiff::civil::Date;
 
-pub(super) use node::{NodeCommand, node_commands};
-pub use registry::{Entry, Group, REGISTRY, shortcuts};
+pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
+pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
 
-use super::{Message, NewBlock, Paste, SaveAs, SelectionChange, TextEdit};
+use super::{Message, NewBlock, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit};
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
 /// A command: one user intent, whatever key, menu or palette gives it.
@@ -115,6 +116,11 @@ pub enum Command {
     Count,
     /// Write the document to a path the user types and continue with that file (FR-DOC-06).
     SaveAs,
+    /// Open the context menu on the focused block, the selection or the focused sidebar entry
+    /// (FR-KEY-06).
+    ContextMenu,
+    /// A key of the focused sidebar, which its entries' context menu offers (FR-UI-01).
+    Sidebar(SidebarInput),
     /// Undo.
     Undo,
     /// Redo.
@@ -237,6 +243,13 @@ impl Command {
             Self::GoToCommand => "Go to Command".into(),
             Self::Count => "Count Blocks and Words".into(),
             Self::SaveAs => "Save As".into(),
+            Self::ContextMenu => "Context Menu".into(),
+            Self::Sidebar(SidebarInput::Next) => "Next Entry".into(),
+            Self::Sidebar(SidebarInput::Previous) => "Previous Entry".into(),
+            Self::Sidebar(SidebarInput::Collapse) => "Collapse Entry".into(),
+            Self::Sidebar(SidebarInput::Expand) => "Expand Entry".into(),
+            Self::Sidebar(SidebarInput::Choose) => "Go to Entry".into(),
+            Self::Sidebar(SidebarInput::Leave) => "Return to Outline".into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -324,6 +337,8 @@ impl Command {
             Self::MoveTo => Message::OpenMoveTo,
             Self::Count => Message::Count,
             Self::SaveAs => Message::SaveAs(SaveAs::Open),
+            Self::ContextMenu => Message::OpenContextMenu,
+            Self::Sidebar(input) => Message::Sidebar(input),
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,
@@ -464,6 +479,13 @@ mod tests {
             (Command::Retype(Typed::Section), "Make Section"),
             (Command::ToggleMarker(Marker::Code), "Inline Code"),
             (Command::ToggleShortcuts, "Shortcuts"),
+            (Command::ContextMenu, "Context Menu"),
+            (Command::Sidebar(SidebarInput::Next), "Next Entry"),
+            (Command::Sidebar(SidebarInput::Previous), "Previous Entry"),
+            (Command::Sidebar(SidebarInput::Collapse), "Collapse Entry"),
+            (Command::Sidebar(SidebarInput::Expand), "Expand Entry"),
+            (Command::Sidebar(SidebarInput::Choose), "Go to Entry"),
+            (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
         ] {
             assert_eq!(command.name(), name);
         }
@@ -509,6 +531,11 @@ mod tests {
             (Command::ToggleShortcuts, Message::ToggleShortcuts),
             (Command::Count, Message::Count),
             (Command::SaveAs, Message::SaveAs(SaveAs::Open)),
+            (Command::ContextMenu, Message::OpenContextMenu),
+            (
+                Command::Sidebar(SidebarInput::Choose),
+                Message::Sidebar(SidebarInput::Choose),
+            ),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

@@ -5,6 +5,7 @@ mod clipboard;
 mod color_picker;
 mod command_menu;
 pub mod commands;
+mod context_menu;
 mod count;
 mod date_prompt;
 pub mod demo;

@@ -4,6 +4,7 @@ mod blocks;
 mod clipboard;
 mod command_menu;
 mod completing;
+mod context_menu;
 mod converting;
 mod creating;
 mod date_prompt;

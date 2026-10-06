@@ -394,7 +394,7 @@ impl Widget for ConflictPrompt<'_> {
 /// A popup over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
 /// box with a title listing lines, for a menu the entries the filter matches with the highlighted
 /// one reversed and kept in view and the filter at the bottom once one is typed. It shows the
-/// command menu (D-50), the color picker (FR-TAG-05), the type picker (FR-BLK-08) and a block's
+/// command menu (D-50), the context menu (FR-KEY-06), the color picker (FR-TAG-05), the type picker (FR-BLK-08) and a block's
 /// details (D-3).
 #[derive(Debug)]
 pub struct Popup {
@@ -412,50 +412,81 @@ impl Popup {
     /// and `/` before its filter (D-50, D-54).
     #[must_use]
     pub fn commands(menu: &CommandMenuView) -> Self {
+        let filter = if menu.filter.is_empty() {
+            String::new()
+        } else {
+            format!("/{}", menu.filter)
+        };
+        Self::command_list(menu, |_| String::new(), filter)
+    }
+
+    /// The context menu: the command menu's box, with each command's keys right-aligned in the
+    /// primary color and its filter as typed (FR-KEY-06, ui.md §5).
+    #[must_use]
+    pub fn context_menu(menu: &CommandMenuView) -> Self {
+        Self::command_list(menu, keymap::bindings, menu.filter.to_owned())
+    }
+
+    /// A menu of commands titled "Commands:" in the accent color like its border, each entry
+    /// after its icon with what `keys` says of its command right-aligned 2 columns after the
+    /// widest label, padded by 2 columns on each side, a line across it between groups and
+    /// `filter` at the bottom.
+    fn command_list(
+        menu: &CommandMenuView,
+        keys: impl Fn(Command) -> String,
+        filter: String,
+    ) -> Self {
         const PAD: &str = "  ";
         let title = "Commands:";
-        let mut entries: Vec<Line<'static>> = menu
+        let parts: Vec<Option<(Line<'static>, String)>> = menu
             .rows
             .iter()
-            .enumerate()
-            .map(|(index, row)| match row {
+            .map(|row| match row {
                 MenuRow::Command { label, command } => {
                     let (icon, style) = command_icon(*command);
                     let line = Line::from(vec![
                         Span::raw(PAD),
                         Span::styled(icon.glyph(), style),
-                        Span::raw(format!(" {label}{PAD}")),
+                        Span::raw(format!(" {label}")),
                     ]);
-                    if index == menu.selected {
-                        line.reversed()
-                    } else {
-                        line
-                    }
+                    Some((line, keys(*command)))
                 }
-                MenuRow::Divider => Line::default(),
+                MenuRow::Divider => None,
             })
             .collect();
-        let width = entries
-            .iter()
-            .map(Line::width)
-            .chain([Line::from(title).width()])
+        let commands = || parts.iter().flatten();
+        let labels = commands().map(|(line, _)| line.width()).max();
+        let keys_width = commands()
+            .map(|(_, keys)| Line::from(keys.as_str()).width())
             .max()
             .unwrap_or_default();
-        for (line, row) in entries.iter_mut().zip(&menu.rows) {
-            if *row == MenuRow::Divider {
-                *line = Line::from("─".repeat(width)).dim();
-            }
-        }
+        let gap = if keys_width > 0 { PAD.len() } else { 0 };
+        let columns = labels.unwrap_or_default() + gap + keys_width;
+        let width = (columns + PAD.len()).max(Line::from(title).width());
+        let entries = parts
+            .into_iter()
+            .enumerate()
+            .map(|(index, part)| {
+                let Some((mut line, keys)) = part else {
+                    return Line::from("─".repeat(width)).dim();
+                };
+                let fill = columns.saturating_sub(line.width() + Line::from(keys.as_str()).width());
+                line.push_span(" ".repeat(fill));
+                line.push_span(Span::styled(keys, Style::new().fg(PRIMARY)));
+                line.push_span(PAD);
+                if index == menu.selected {
+                    line.reversed()
+                } else {
+                    line
+                }
+            })
+            .collect();
         Self {
             title,
             frame: Style::new().fg(ACCENT),
             entries,
             selected: menu.selected,
-            filter: if menu.filter.is_empty() {
-                String::new()
-            } else {
-                format!("/{}", menu.filter)
-            },
+            filter,
         }
     }
 
@@ -987,7 +1018,8 @@ fn overdue_style() -> Style {
 }
 
 /// The column of `row`'s line where its text starts, after its indent and marker.
-fn text_column(row: &Row) -> usize {
+#[must_use]
+pub fn text_column(row: &Row) -> usize {
     let (marker, _, _) = row_style(row);
     row.depth * 2 + Span::raw(marker).width()
 }
@@ -1420,6 +1452,37 @@ mod tests {
             command_menu(&[Type('d'), Type('u'), Type('e'), Next], 20),
             expected
         );
+    }
+
+    // FR-KEY-06, ui.md §5
+    #[test]
+    fn the_context_menu_shows_each_commands_keys_right_aligned_and_its_filter_as_typed() {
+        let mut state = State::new(format::parse("- a"), None);
+        state.update(Message::OpenContextMenu);
+        for c in "due t".chars() {
+            state.update(Message::Menu(
+                Menu::ContextMenu,
+                crate::app::MenuInput::Type(c),
+            ));
+        }
+        let popup = Popup::context_menu(&state.context_menu().unwrap());
+        assert_eq!(popup.size(), (23, 4));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 23, 4));
+        popup.render(buf.area, &mut buf);
+        let due = Icon::Due.glyph();
+        let mut expected = Buffer::with_lines([
+            "┌Commands:────────────┐".to_owned(),
+            format!("│  {due} Due Today     T  │"),
+            format!("│  {due} Due Tomorrow  W  │"),
+            "└due t────────────────┘".to_owned(),
+        ]);
+        accent_frame(&mut expected, 23, 4);
+        expected.set_style(Rect::new(1, 1, 21, 1), Style::new().reversed());
+        for y in 1..3 {
+            expected.set_style(Rect::new(3, y, 1, 1), due_style());
+            expected.set_style(Rect::new(19, y, 1, 1), Style::new().fg(PRIMARY));
+        }
+        assert_eq!(buf, expected);
     }
 
     // D-50, D-54, ui.md §5

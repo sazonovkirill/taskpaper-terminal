@@ -4,7 +4,10 @@
 
 use std::collections::HashSet;
 
-use super::{Location, State};
+use super::{
+    Location, State,
+    commands::{Command, NodeCommand},
+};
 use crate::document::{BlockKind, ItemId, blocks};
 
 /// Whether the sidebar is shown, its focused entry while it has the keys, and its folded project
@@ -170,6 +173,39 @@ impl State {
             }
             SidebarInput::Leave => self.sidebar.focus = None,
         }
+    }
+
+    /// The commands the context menu offers on the focused entry while the sidebar has the keys:
+    /// going to it and folding a project entry with child projects, then leaving or hiding the
+    /// sidebar (FR-KEY-06).
+    pub(super) fn sidebar_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
+        let entries = self.sidebar_entries();
+        let entry = entries.get(self.sidebar_focus(&entries)?)?;
+        let fold = match entry {
+            SidebarEntry::Project {
+                fold: Fold::Expanded,
+                ..
+            } => Some(SidebarInput::Collapse),
+            SidebarEntry::Project {
+                fold: Fold::Collapsed,
+                ..
+            } => Some(SidebarInput::Expand),
+            SidebarEntry::Project {
+                fold: Fold::Leaf, ..
+            }
+            | SidebarEntry::Bookmark { .. }
+            | SidebarEntry::Today => None,
+        };
+        let entry = [SidebarInput::Choose]
+            .into_iter()
+            .chain(fold)
+            .map(|input| NodeCommand::named(Command::Sidebar(input)))
+            .collect();
+        let sidebar = vec![
+            NodeCommand::named(Command::Sidebar(SidebarInput::Leave)),
+            NodeCommand::labelled("Hide Sidebar", Command::ToggleSidebar),
+        ];
+        Some(vec![entry, sidebar])
     }
 
     /// The focused entry's index among `entries`, kept on the last one when entries went away.
@@ -505,5 +541,64 @@ Home: @bookmark
         assert_eq!(focused(&state), Some(1));
         input(&mut state, &[SidebarInput::Previous]);
         assert_eq!(focused(&state), Some(0));
+    }
+
+    /// The labels of the focused entry's context-menu commands, each group's joined by `, `.
+    fn entry_commands(state: &State) -> Option<Vec<String>> {
+        let groups = state.sidebar_commands()?;
+        Some(
+            groups
+                .iter()
+                .map(|group| {
+                    group
+                        .iter()
+                        .map(|command| command.label.as_ref())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .collect(),
+        )
+    }
+
+    // FR-KEY-06
+    #[test]
+    fn the_focused_entrys_commands_go_to_it_fold_it_and_leave_or_hide_the_sidebar() {
+        let mut state = open(OUTLINE);
+        assert_eq!(entry_commands(&state), None, "the pane has the keys");
+        state.update(Message::FocusSidebar);
+        let leave = "Return to Outline, Hide Sidebar".to_owned();
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec!["Go to Entry".to_owned(), leave.clone()]),
+            "a bookmark"
+        );
+        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec!["Go to Entry".to_owned(), leave.clone()]),
+            "Today"
+        );
+        input(&mut state, &[SidebarInput::Next]);
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec![
+                "Go to Entry, Collapse Entry".to_owned(),
+                leave.clone()
+            ])
+        );
+        input(&mut state, &[SidebarInput::Collapse]);
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec!["Go to Entry, Expand Entry".to_owned(), leave.clone()])
+        );
+        input(&mut state, &[SidebarInput::Next]);
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec!["Go to Entry".to_owned(), leave]),
+            "a project without child projects"
+        );
+        let groups = state.sidebar_commands().unwrap();
+        assert_eq!(groups[1][1].command, Command::ToggleSidebar);
+        assert_eq!(groups[0][0].command, Command::Sidebar(SidebarInput::Choose));
     }
 }

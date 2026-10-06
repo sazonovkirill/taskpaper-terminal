@@ -1,10 +1,11 @@
 //! The registry's tables: every command with the mode it belongs to and its default bindings
-//! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)), and the
-//! commands of each mode the shortcuts panel lists, grouped (FR-KEY-04).
+//! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)), the keys of
+//! the focused sidebar (§4), and the commands of each mode the shortcuts panel lists, grouped
+//! (FR-KEY-04).
 
 use super::Command;
 use crate::{
-    app::{Mode, NewBlock, Paste, SelectionChange},
+    app::{Mode, NewBlock, Paste, SelectionChange, SidebarInput},
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -364,6 +365,11 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+k", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::SaveAs, Mode::Navigate, &[]),
+    entry!(
+        Command::ContextMenu,
+        Mode::Navigate,
+        &["\\", "shift+f10", "menu"],
+    ),
     entry!(Command::Quit, Mode::Edit, &["ctrl+q"]),
     entry!(Command::StopEditing, Mode::Edit, &["esc"]),
     entry!(Command::NewNext, Mode::Edit, &["enter"]),
@@ -388,6 +394,22 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::Copy, Mode::Edit, &["ctrl+c"]),
     entry!(Command::Cut, Mode::Edit, &["ctrl+x"]),
     entry!(Command::Paste(Paste::Below), Mode::Edit, &["ctrl+v"]),
+];
+
+/// The keys of the focused sidebar, each command's written as in [`Entry::keys`]; other keys do
+/// nothing there ([keybindings.md §4]).
+///
+/// [keybindings.md §4]: ../../../../docs/specs/keybindings.md#4-other-contexts
+pub const SIDEBAR: &[(Command, &[&str])] = &[
+    (Command::Sidebar(SidebarInput::Next), &["j", "down"]),
+    (Command::Sidebar(SidebarInput::Previous), &["k", "up"]),
+    (Command::Sidebar(SidebarInput::Collapse), &["h", "left"]),
+    (Command::Sidebar(SidebarInput::Expand), &["l", "right"]),
+    (Command::Sidebar(SidebarInput::Choose), &["enter"]),
+    (Command::Sidebar(SidebarInput::Leave), &["esc"]),
+    (Command::ContextMenu, &["\\", "shift+f10", "menu"]),
+    (Command::ToggleSidebar, &["ctrl+b"]),
+    (Command::Quit, &["ctrl+q"]),
 ];
 
 /// A group of bindings as [keybindings.md] groups them, which the shortcuts panel lists the
@@ -524,6 +546,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ToggleWrap,
             Command::GoToSymbol,
             Command::GoToCommand,
+            Command::ContextMenu,
             Command::Quit,
         ],
     ),
@@ -651,7 +674,7 @@ mod tests {
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 7),
-                ("View and Panels", 5),
+                ("View and Panels", 6),
             ]
         );
         assert_eq!(
@@ -662,7 +685,32 @@ mod tests {
         let (_, editing) = &edit[0];
         assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[4].keys, ["ctrl+q"]);
+        assert_eq!(view[5].keys, ["ctrl+q"]);
+    }
+
+    // FR-UI-01, FR-KEY-06, keybindings.md §4
+    #[test]
+    fn the_sidebar_binds_each_key_once_to_a_command_with_a_message() {
+        let mut seen = HashSet::new();
+        for (command, keys) in SIDEBAR {
+            assert!(!keys.is_empty(), "{command:?}");
+            for keys in *keys {
+                assert!(seen.insert(*keys), "{keys}");
+                assert!(!keys.contains(' '), "no sequence: {keys}");
+            }
+        }
+        let context_menu = REGISTRY
+            .iter()
+            .find(|entry| entry.command == Command::ContextMenu)
+            .map(|entry| entry.keys);
+        assert_eq!(
+            SIDEBAR
+                .iter()
+                .find(|(command, _)| *command == Command::ContextMenu)
+                .map(|&(_, keys)| keys),
+            context_menu,
+            "the context menu opens with the same keys everywhere"
+        );
     }
 
     #[test]

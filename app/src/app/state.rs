@@ -10,6 +10,7 @@ use jiff::civil::Date;
 
 use super::{
     Command, History,
+    command_menu::CommandMenu,
     date_prompt::DatePrompt,
     edit_mode::{Resume, Session},
     external::External,
@@ -71,6 +72,8 @@ pub struct State {
     pub(super) commands: Option<Finder<Command>>,
     /// The Save As prompt, while it is open (FR-DOC-06).
     pub(super) save_as: Option<save_as::Prompt>,
+    /// The context menu, while it is open (FR-KEY-06).
+    pub(super) context_menu: Option<CommandMenu>,
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
@@ -281,6 +284,7 @@ impl State {
             destinations: None,
             commands: None,
             save_as: None,
+            context_menu: None,
             resume: None,
             folds: HashSet::new(),
             show_done: true,

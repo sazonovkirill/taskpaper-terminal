@@ -45,13 +45,17 @@ impl<'a> SidebarPanel<'a> {
     /// to keep the focused entry visible and never past the last line.
     #[must_use]
     pub fn scroll(&self, offset: usize, height: usize) -> usize {
-        let lines = self.lines();
-        match lines.iter().position(|&(_, focused)| focused) {
-            Some(focused) => {
-                layout::scroll_offset(offset, focused..focused + 1, height, lines.len())
-            }
-            None => offset.min(lines.len().saturating_sub(height)),
+        let lines = self.lines().len();
+        match self.focused_line() {
+            Some(focused) => layout::scroll_offset(offset, focused..focused + 1, height, lines),
+            None => offset.min(lines.saturating_sub(height)),
         }
+    }
+
+    /// The line of the focused entry, counted from the first, while the sidebar has the keys.
+    #[must_use]
+    pub fn focused_line(&self) -> Option<usize> {
+        self.lines().iter().position(|&(_, focused)| focused)
     }
 
     /// Each line with whether it shows the focused entry.

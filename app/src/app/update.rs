@@ -195,6 +195,9 @@ pub enum Message {
     OpenGoToCommand(Vec<(Command, String)>),
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
+    /// Open the context menu on the focused sidebar entry while the sidebar has the keys, else
+    /// on the selection or the focused block (FR-KEY-06).
+    OpenContextMenu,
     /// A key of the open menu or picker that `Menu` names.
     Menu(Menu, MenuInput),
     /// Save As: a key of its prompt or the frontend's report (FR-DOC-06).
@@ -294,6 +297,8 @@ pub enum Menu {
     GoToCommand,
     /// The command menu of edit mode (D-50).
     CommandMenu,
+    /// The context menu (FR-KEY-06).
+    ContextMenu,
 }
 
 impl Message {
@@ -384,11 +389,13 @@ impl Message {
                 | Menu::TypePicker
                 | Menu::GoToSymbol
                 | Menu::MoveTo
-                | Menu::GoToCommand,
+                | Menu::GoToCommand
+                | Menu::ContextMenu,
                 _,
             )
             | Self::Count
             | Self::SaveAs(_)
+            | Self::OpenContextMenu
             | Self::New(..)
             | Self::Delete
             | Self::Duplicate
@@ -561,6 +568,7 @@ impl State {
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::Count => self.count(),
+            Message::OpenContextMenu => self.open_context_menu(),
             Message::Menu(menu, input) => effects = self.menu_input(menu, input),
             Message::SaveAs(event) => effects = self.save_as_event(event),
             Message::Undo => self.undo(),
@@ -602,6 +610,7 @@ impl State {
             Menu::MoveTo => self.move_to_input(input),
             Menu::GoToCommand => return self.go_to_command_input(input).into_iter().collect(),
             Menu::CommandMenu => return self.command_menu_input(input),
+            Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),
         }
         Vec::new()
     }

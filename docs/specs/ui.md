@@ -70,6 +70,14 @@ An entry of the Today view has no indent and shows its breadcrumb path dimmed af
 
 A popup anchored at the focused element (or at the pointer for right-click) listing every command available for that element, grouped (Edit, Structure, Metadata, View, Panes), each with its key binding right-aligned. Commands that do not apply (for example Open URL on a block without one) are omitted. Entries come from the core's command list for that context, so the menu, the command palette and the `?` panel always agree.
 
+- **Look:** the command menu's box below (title "Commands:", icons, a dim line between groups), placed like it below the focused row from the start of its text, or below the focused sidebar entry, with each command's keys in the primary color at the right and the filter, as typed, in the bottom border.
+- **On a block:** Edit, the new-block commands, the clipboard, Duplicate and Delete; the structural commands; status (Complete or Uncomplete, Today, Bookmark or Remove Bookmark); dates; colors; Convert Type with Make or Remove Section; then Zoom In, Toggle Fold for a block with children, Count, Show Details and Open Link for a block with a link. Labels and omissions follow the block's state as in the command menu.
+- **On the selection:** the same groups without the commands of one block (editing it, adding blocks, the type picker and the view group), labelled for every selected block: Uncomplete only when all are done, Clear Due Date when any has a due date.
+- **In the Today view:** what the view does not take (adding, pasting, indenting, moving, folding) is left out (navigation.md §7).
+- **On a sidebar entry** (while the sidebar has the keys): Go to Entry, Collapse or Expand Entry for a project entry with child projects, then Return to Outline and Hide Sidebar.
+- **Crumbs and pane headers** take no keyboard focus, so their menus come with right-click (step 6.5); the Panes group comes with split panes (step 5.1).
+- Typing a character that would match nothing is not added to the filter; `Backspace` on an empty filter does nothing.
+
 The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D-50) is a smaller popup of the same kind: a bordered box titled "Commands:", its border and title in the accent color (D-54), on the line below the caret, starting at the caret's column, or above the caret's line when there is no room below, moved left to stay on screen. It is as tall as its entries but no taller than the larger room below or above the caret's line, and scrolls to keep the highlighted entry in view. It lists the matching labels one per line, each after its icon (§7) and padded by 2 columns on each side, the highlighted one reversed, with a dim line across the box between groups, and shows `/` and the filter in its bottom border once one is typed.
 
 ## 6. Mouse (FR-KEY-05, D-16)
