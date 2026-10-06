@@ -1,4 +1,5 @@
-//! Key events to app messages ([keybindings.md](../../../docs/specs/keybindings.md)).
+//! Key events to app messages, and to the frontend's own commands
+//! ([keybindings.md](../../../docs/specs/keybindings.md)).
 
 use std::{mem, time::Duration};
 
@@ -42,6 +43,15 @@ impl Context {
             page_rows: self.page_rows,
         }
     }
+}
+
+/// What a key asks for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyAction {
+    /// Sends the core this message.
+    Send(Message),
+    /// Turns word wrap on or off, which is the frontend's to draw (FR-UI-05).
+    ToggleWrap,
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -346,12 +356,13 @@ impl Default for Keymap {
 }
 
 impl Keymap {
-    /// The message of the navigate-mode binding whose keys are `keys`, if any.
-    fn bound(&self, keys: &[Key], context: &Context) -> Option<Message> {
-        self.navigate
-            .iter()
-            .find(|(bound, _)| bound == keys)
-            .and_then(|(_, command)| command.message(&context.inputs()))
+    /// What the navigate-mode binding whose keys are `keys` asks for, if any.
+    fn bound(&self, keys: &[Key], context: &Context) -> Option<KeyAction> {
+        let (_, command) = self.navigate.iter().find(|(bound, _)| bound == keys)?;
+        match command {
+            Command::ToggleWrap => Some(KeyAction::ToggleWrap),
+            command => command.message(&context.inputs()).map(KeyAction::Send),
+        }
     }
 
     /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
@@ -362,34 +373,36 @@ impl Keymap {
         text_edit(key).map(Message::Text)
     }
 
-    /// The message `event` completes at time `now`, if any, carrying what it needs of
+    /// What `event` completes at time `now`, if anything, a message carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
     /// navigate and edit mode alone; repeats, releases and other events are ignored. A key that
     /// continues no binding ends the pending sequence and does nothing, unless the sequence, or
-    /// one that timed out, is a binding of its own: then its message comes back and
-    /// [`Keymap::replay`] says to handle `event` again once that message is handled.
-    pub fn message_for(
+    /// one that timed out, is a binding of its own: then what it asks for comes back and
+    /// [`Keymap::replay`] says to handle `event` again once that is done.
+    pub fn action_for(
         &mut self,
         event: &Event,
         now: Duration,
         context: &Context,
-    ) -> Option<Message> {
+    ) -> Option<KeyAction> {
         if let Event::Paste(text) = event {
             let pending = mem::take(&mut self.pending);
-            if let Some(message) = self.bound(&pending, context) {
+            if let Some(action) = self.bound(&pending, context) {
                 self.replay = true;
-                return Some(message);
+                return Some(action);
             }
             let menu = context.command_menu || context.overlay.is_some();
-            return (!menu).then(|| Message::Pasted {
-                text: text.clone(),
-                at: Paste::Below,
+            return (!menu).then(|| {
+                KeyAction::Send(Message::Pasted {
+                    text: text.clone(),
+                    at: Paste::Below,
+                })
             });
         }
         let key = event.as_key_press_event()?;
-        if let Some(message) = self.expire(now, context) {
+        if let Some(action) = self.expire(now, context) {
             self.replay = true;
-            return Some(message);
+            return Some(action);
         }
         if self.pending.is_empty() {
             self.started = now;
@@ -409,21 +422,23 @@ impl Keymap {
         };
         if let Some(overlay) = context.overlay {
             self.pending.clear();
-            return match overlay {
+            let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
+            return message.map(KeyAction::Send);
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
-            return if context.command_menu {
+            let message = if context.command_menu {
                 menu_message(pressed, Message::CommandMenu)
             } else {
                 self.edit_message(pressed, context)
             };
+            return message.map(KeyAction::Send);
         }
         self.pending.push(pressed);
         let longer = self
@@ -433,9 +448,9 @@ impl Keymap {
         if longer {
             return None;
         }
-        if let Some(message) = self.bound(&self.pending, context) {
+        if let Some(action) = self.bound(&self.pending, context) {
             self.pending.clear();
-            return Some(message);
+            return Some(action);
         }
         self.pending.pop();
         let held = self.bound(&self.pending, context);
@@ -444,21 +459,21 @@ impl Keymap {
         held
     }
 
-    /// Whether the key [`Keymap::message_for`] just handled is still to be handled, in the
-    /// context the message it returned leaves; reading it clears it.
+    /// Whether the key [`Keymap::action_for`] just handled is still to be handled, in the
+    /// context what it returned leaves; reading it clears it.
     pub fn replay(&mut self) -> bool {
         mem::take(&mut self.replay)
     }
 
     /// Drops the pending sequence once [`SEQUENCE_TIMEOUT`] has passed since it started, and
-    /// returns the message of the binding it is, if any, such as a lone `o` (D-53).
-    pub fn expire(&mut self, now: Duration, context: &Context) -> Option<Message> {
+    /// returns what the binding it is asks for, if any, such as a lone `o` (D-53).
+    pub fn expire(&mut self, now: Duration, context: &Context) -> Option<KeyAction> {
         if self.deadline().is_none_or(|deadline| now < deadline) {
             return None;
         }
-        let message = self.bound(&self.pending, context);
+        let action = self.bound(&self.pending, context);
         self.pending.clear();
-        message
+        action
     }
 
     /// When the pending sequence times out, or `None` when no sequence is pending.
@@ -487,6 +502,22 @@ mod tests {
         app::{NewBlock, SelectionChange},
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
+
+    impl Keymap {
+        /// The message `event` sends the core, if any.
+        fn message_for(
+            &mut self,
+            event: &Event,
+            now: Duration,
+            context: &Context,
+        ) -> Option<Message> {
+            self.action_for(event, now, context)
+                .and_then(|action| match action {
+                    KeyAction::Send(message) => Some(message),
+                    KeyAction::ToggleWrap => None,
+                })
+        }
+    }
 
     const PAGE: usize = 7;
 
@@ -809,7 +840,7 @@ mod tests {
             assert_eq!(keymap.pending(), c.to_string());
             assert_eq!(
                 keymap.expire(ms(1_000), CONTEXT),
-                Some(Message::New(at, None)),
+                Some(KeyAction::Send(Message::New(at, None))),
                 "{c}"
             );
             assert_eq!(keymap.pending(), "");
@@ -892,6 +923,29 @@ mod tests {
         check(KeyCode::Up, alt, up);
         check(KeyCode::Char('j'), alt, down);
         check(KeyCode::Down, alt, down);
+    }
+
+    // FR-UI-05, D-42
+    #[test]
+    fn alt_z_and_g_w_toggle_word_wrap() {
+        let mut keymap = Keymap::default();
+        let alt_z = key(KeyCode::Char('z'), KeyModifiers::ALT);
+        assert_eq!(
+            keymap.action_for(&alt_z, ms(0), CONTEXT),
+            Some(KeyAction::ToggleWrap)
+        );
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.action_for(&press('g'), ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.action_for(&press('w'), ms(1), CONTEXT),
+            Some(KeyAction::ToggleWrap)
+        );
+        assert_eq!(keymap.action_for(&alt_z, ms(2), EDITING), None);
+        assert_eq!(
+            keymap.message_for(&alt_z, ms(3), CONTEXT),
+            None,
+            "the core is not told"
+        );
     }
 
     // FR-DONE-02

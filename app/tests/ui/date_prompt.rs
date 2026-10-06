@@ -5,7 +5,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
 
-use crate::support::{DUE, Harness, line};
+use crate::support::{DUE, Harness, focused_rows, line};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -209,13 +209,14 @@ fn ctrl_q_quits_from_the_prompt() {
 #[test]
 fn the_demo_has_a_due_date_to_change_with_md() {
     let mut app = Harness::demo(70, 40);
-    let rows = screen(&mut app);
-    let down = rows
-        .iter()
-        .skip(2)
-        .position(|row| row.contains("Return Piranesi to the library"))
-        .expect("the demo has the task");
-    app.type_keys(&"j".repeat(down));
+    // A wrapped block takes more than one screen line, so the task is found by moving to it.
+    for _ in 0..40 {
+        let focused = focused_rows(&mut app).concat();
+        if focused.contains("Return Piranesi to the library") {
+            break;
+        }
+        app.type_keys("j");
+    }
     app.type_keys("md");
     let rows = screen(&mut app);
     assert!(

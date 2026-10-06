@@ -26,4 +26,5 @@ mod show_completed;
 mod support;
 mod tags;
 mod typed_creation;
+mod word_wrap;
 mod zoom;

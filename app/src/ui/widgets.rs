@@ -1,5 +1,7 @@
 //! Widgets that draw the core's view state ([ui.md §2](../../../docs/specs/ui.md#2-blocks)).
 
+mod wrap;
+
 use std::ops::Range;
 
 use jiff::civil::Date;
@@ -27,9 +29,12 @@ use crate::{
     },
 };
 
-/// The outline: a gutter that marks the focused block, whose line gets a brighter background, and
-/// the selected blocks, then one line per block, 2 columns of indent per level, a marker and the
-/// text, with its date chips at the right edge. A block being edited shows the text as typed instead, without chips.
+/// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
+/// the selected blocks, then each block, 2 columns of indent per level, a marker and the text,
+/// with its date chips at the right edge of its first line. Text too long for its line wraps
+/// under where it starts, or with wrap off ends in `…` on the one line (FR-UI-05); it stops
+/// before the chips. A block being edited shows the text as typed instead, without chips, on one
+/// line.
 #[derive(Debug)]
 pub struct OutlineView<'a> {
     rows: &'a [Row],
@@ -37,11 +42,12 @@ pub struct OutlineView<'a> {
     offset: usize,
     focused: Option<usize>,
     editor: Option<&'a Editor<'a>>,
+    wrap: bool,
 }
 
 impl<'a> OutlineView<'a> {
     /// A view of `rows` on `today`, the local date, drawn from the top of its area with no row
-    /// focused.
+    /// focused and wrap off.
     #[must_use]
     pub fn new(rows: &'a [Row], today: Date) -> Self {
         Self {
@@ -50,10 +56,11 @@ impl<'a> OutlineView<'a> {
             offset: 0,
             focused: None,
             editor: None,
+            wrap: false,
         }
     }
 
-    /// Starts drawing at row `offset` of the outline instead of its first row.
+    /// Starts drawing at screen line `offset` of the outline instead of its first line.
     #[must_use]
     pub fn offset(self, offset: usize) -> Self {
         Self { offset, ..self }
@@ -73,6 +80,48 @@ impl<'a> OutlineView<'a> {
     pub fn editor(self, editor: Option<&'a Editor<'a>>) -> Self {
         Self { editor, ..self }
     }
+
+    /// Wraps text too long for its line when `wrap` is on, else ends it in `…` (FR-UI-05).
+    #[must_use]
+    pub fn wrap(self, wrap: bool) -> Self {
+        Self { wrap, ..self }
+    }
+
+    /// How many screen lines each row takes in an area `width` columns wide, the gutter
+    /// included.
+    #[must_use]
+    pub fn heights(&self, width: u16) -> Vec<usize> {
+        let width = usize::from(width.saturating_sub(GUTTER_WIDTH));
+        self.blocks(width)
+            .map(|(_, _, lines, _)| lines.len())
+            .collect()
+    }
+
+    /// Each row with its index, its screen lines `width` columns wide and its chips.
+    fn blocks(
+        &self,
+        width: usize,
+    ) -> impl Iterator<Item = (usize, &'a Row, Vec<Line<'a>>, Line<'static>)> {
+        self.rows.iter().enumerate().map(move |(index, row)| {
+            if let Some(editor) = self.editor.filter(|editor| editor.id == row.id) {
+                return (
+                    index,
+                    row,
+                    vec![editor_line(row, editor, width).0],
+                    Line::default(),
+                );
+            }
+            let chips = chips(row, self.today);
+            let room = width.saturating_sub(chips.width());
+            let line = row_line(row, room);
+            let lines = if self.wrap {
+                wrap::wrap(&line, text_column(row), room, width)
+            } else {
+                vec![wrap::truncate(&line, room)]
+            };
+            (index, row, lines, chips)
+        })
+    }
 }
 
 impl Widget for OutlineView<'_> {
@@ -81,14 +130,14 @@ impl Widget for OutlineView<'_> {
             Constraint::Length(GUTTER_WIDTH),
             Constraint::Fill(1),
         ]));
-        let width = usize::from(text.width);
-        let lines = self.rows.iter().enumerate().map(|(index, row)| {
-            let (line, chips) = match self.editor.filter(|editor| editor.id == row.id) {
-                Some(editor) => (editor_line(row, editor, width).0, Line::default()),
-                None => (row_line(row, width), chips(row, self.today)),
-            };
-            (index, row, line, chips)
-        });
+        let lines = self
+            .blocks(usize::from(text.width))
+            .flat_map(|(index, row, lines, chips)| {
+                let mut chips = Some(chips);
+                lines
+                    .into_iter()
+                    .map(move |line| (index, row, line, chips.take().unwrap_or_default()))
+            });
         for ((index, row, line, chips), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
@@ -528,7 +577,12 @@ impl Widget for Popup {
         let inner = frame.inner(area);
         frame.render(area, buf);
         let height = usize::from(inner.height);
-        let offset = layout::scroll_offset(0, self.selected, height, self.entries.len());
+        let offset = layout::scroll_offset(
+            0,
+            self.selected..self.selected + 1,
+            height,
+            self.entries.len(),
+        );
         for (line, row) in self.entries.into_iter().skip(offset).zip(inner.rows()) {
             buf.set_style(row, line.style);
             line.render(row, buf);
@@ -794,6 +848,12 @@ fn due_style() -> Style {
 /// D-46); themes arrive in step 6.2.
 fn overdue_style() -> Style {
     due_style().bold().reversed()
+}
+
+/// The column of `row`'s line where its text starts, after its indent and marker.
+fn text_column(row: &Row) -> usize {
+    let (marker, _, _) = row_style(row);
+    row.depth * 2 + Span::raw(marker).width()
 }
 
 /// The marker of a block with its style, and the style of its text, by its type and whether it
@@ -1601,7 +1661,7 @@ mod tests {
             "A           ",
             "B           ",
             "C d         ",
-            "e f https://",
+            "e f https:/…",
             "H mailto:g  ",
             "- # i       ",
         ]);
@@ -1880,9 +1940,10 @@ mod tests {
         );
     }
 
+    // FR-UI-05
     #[test]
-    fn clips_rows_that_do_not_fit() {
-        let expected = Buffer::with_lines(["- abc", "- d  "]);
+    fn with_wrap_off_text_that_does_not_fit_ends_in_an_ellipsis_and_rows_below_are_clipped() {
+        let expected = Buffer::with_lines(["- ab…", "- d  "]);
         assert_eq!(render("- abcdef\n- d\n- e", 5, 2), expected);
     }
 
@@ -1967,6 +2028,103 @@ mod tests {
     #[test]
     fn empty_outline_draws_nothing() {
         assert_eq!(render("", 4, 1), Buffer::with_lines(["    "]));
+    }
+
+    /// The text of each line of `buf`, without trailing blanks.
+    fn lines(buf: &Buffer) -> Vec<String> {
+        (0..buf.area.height)
+            .map(|y| {
+                (0..buf.area.width)
+                    .map(|x| buf[(x, y)].symbol())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    /// Draws `text` with wrap on in a `width` × `height` area, the gutter included, focusing row
+    /// `focused` and starting at line `offset`.
+    fn wrapped(text: &str, width: u16, height: u16, focused: usize, offset: usize) -> Buffer {
+        let rows = State::new(format::parse(text), None).rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        OutlineView::new(&rows, TODAY)
+            .wrap(true)
+            .focused(Some(focused))
+            .offset(offset)
+            .render(buf.area, &mut buf);
+        buf
+    }
+
+    // FR-UI-05, FR-TAG-03
+    #[test]
+    fn wrapped_text_goes_on_under_where_it_starts_and_stops_before_the_chips() {
+        let buf = wrapped(
+            "P:\n\t- buy milk and eggs @due(2026-10-05)\n\tnotes on the long trip\n- end",
+            22,
+            6,
+            3,
+            0,
+        );
+        assert_eq!(
+            lines(&buf),
+            [
+                "  P:",
+                &at_right("    - buy milk", &chip(Icon::Due, "today"), 22),
+                "      and eggs",
+                "    notes on the long",
+                "    trip",
+                "▌ - end",
+            ]
+        );
+    }
+
+    // FR-UI-05, D-30, D-39, D-48
+    #[test]
+    fn every_line_of_a_wrapped_block_gets_its_marker_band_and_tint() {
+        let buf = wrapped("- aaa bbb @red\n- c", 9, 3, 0, 0);
+        assert_eq!(lines(&buf), ["▌ - aaa", "▌   bbb", "  - c"]);
+        for y in 0..2 {
+            assert_eq!(buf[(0, y)].fg, PRIMARY, "line {y}");
+            assert_eq!(buf[(0, y)].bg, Color::Indexed(235), "line {y}");
+            assert_eq!(buf[(4, y)].bg, tag_tint(TagColor::Red, true), "line {y}");
+        }
+        assert_eq!(buf[(0, 2)].bg, Color::Reset);
+    }
+
+    // FR-UI-05
+    #[test]
+    fn a_wrapped_view_starts_at_its_offset_inside_a_block() {
+        let buf = wrapped("- aaa bbb ccc\n- d", 9, 2, 1, 1);
+        assert_eq!(lines(&buf), ["    bbb", "    ccc"]);
+        assert_eq!(buf[(0, 0)].symbol(), " ", "the focused block starts below");
+    }
+
+    // FR-UI-05, FR-MODE-02
+    #[test]
+    fn heights_count_the_lines_of_each_row_and_one_for_the_edited_row() {
+        let mut state = State::new(format::parse("- aaa bbb ccc\n- d\n- eee fff"), None);
+        let rows = state.rows();
+        let view = OutlineView::new(&rows, TODAY);
+        assert_eq!(view.heights(9), [1, 1, 1], "wrap off");
+        assert_eq!(view.wrap(true).heights(9), [3, 1, 2]);
+        state.update(Message::EditAtEnd);
+        let editor = state.editor();
+        let rows = state.rows();
+        let view = OutlineView::new(&rows, TODAY)
+            .wrap(true)
+            .editor(editor.as_ref());
+        assert_eq!(view.heights(9), [1, 1, 2]);
+        assert_eq!(view.heights(0), [1, 1, 1], "no room for text");
+    }
+
+    // FR-UI-05, FR-TAG-03
+    #[test]
+    fn with_wrap_off_text_ends_in_an_ellipsis_before_the_chips() {
+        assert_eq!(
+            lines(&render("- buy milk and eggs @due(2026-10-05)", 20, 1)),
+            [at_right("- buy milk …", &chip(Icon::Due, "today"), 20)]
+        );
     }
 
     /// The spans `file_status` draws, as text and style.

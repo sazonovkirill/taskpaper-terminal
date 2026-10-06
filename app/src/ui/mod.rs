@@ -21,7 +21,7 @@ use ratatui::{
 
 use crate::app::{Effect, Message, Mode, Origin, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
-use keymap::{Context, Keymap, Overlay, PromptKey};
+use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use widgets::{ConflictPrompt, DatePromptPanel, OutlineView, Popup};
 
 /// What the event loop waits for.
@@ -48,10 +48,18 @@ pub struct Tui {
     /// then changes and which may become overdue (FR-TAG-03, D-46).
     midnight: Option<Duration>,
     keymap: Keymap,
-    /// The first outline row on screen.
+    /// Whether text too long for its line wraps, or ends in `…` (FR-UI-05).
+    wrap: bool,
+    /// The first outline line on screen.
     scroll: usize,
     /// The outline's height at the last draw, which a page motion moves.
     page_rows: usize,
+    /// The outline line the focused block started on at the last draw, counted from the top of
+    /// the screen.
+    focus_line: Option<usize>,
+    /// Where the next draw puts the focused block's first line, counted from the top of the
+    /// screen: where it was before a page motion.
+    page_anchor: Option<usize>,
     /// Whether the process was told to end, so only saving is left.
     ending: bool,
     /// The first line of the conflict prompt's diff on screen.
@@ -81,8 +89,11 @@ impl Tui {
             clock,
             midnight: None,
             keymap: Keymap::default(),
+            wrap: true,
             scroll: 0,
             page_rows: 0,
+            focus_line: None,
+            page_anchor: None,
             ending: false,
             diff_scroll: 0,
             diff_rows: 0,
@@ -112,18 +123,16 @@ impl Tui {
             self.handle_prompt_key(event, now);
             return;
         }
-        let Some(message) = self.keymap.message_for(event, now, &self.context()) else {
+        let Some(action) = self.keymap.action_for(event, now, &self.context()) else {
             return;
         };
         let replay = self.keymap.replay();
-        let paging = matches!(message, Message::PageDown { .. } | Message::PageUp { .. });
-        let before = self.focused_index();
-        self.send(message, now);
-        // A page motion scrolls the view with the focus, so the focused row keeps its place on
-        // screen instead of only being dragged into view.
-        if paging && let (Some(before), Some(after)) = (before, self.focused_index()) {
-            self.scroll = (self.scroll + after).saturating_sub(before);
+        if let KeyAction::Send(Message::PageDown { .. } | Message::PageUp { .. }) = action {
+            // A page motion scrolls the view with the focus, so the focused block keeps its
+            // place on screen instead of only being dragged into view.
+            self.page_anchor = self.focus_line;
         }
+        self.act(action, now);
         // The key ended a sequence that sent its own message, such as a lone `o`, and now acts
         // where that message left the app, so typing right after `o` goes into the new block.
         if replay {
@@ -162,8 +171,8 @@ impl Tui {
     /// message when it is a binding of its own, such as a lone `o`, and lets the core start a save
     /// that is due.
     pub fn tick(&mut self, now: Duration) {
-        if let Some(message) = self.keymap.expire(now, &self.context()) {
-            self.send(message, now);
+        if let Some(action) = self.keymap.expire(now, &self.context()) {
+            self.act(action, now);
         }
         let effects = self.state.update(Message::Tick { now });
         self.run(effects);
@@ -218,6 +227,14 @@ impl Tui {
     /// Waits until the disk work asked for so far is done; its results are inputs to handle.
     pub fn flush(&self) {
         self.io.flush();
+    }
+
+    /// Does what a key asks for at time `now`.
+    fn act(&mut self, action: KeyAction, now: Duration) {
+        match action {
+            KeyAction::Send(message) => self.send(message, now),
+            KeyAction::ToggleWrap => self.wrap = !self.wrap,
+        }
     }
 
     /// Tells the core the time, then sends it `message`, and carries out the effects.
@@ -298,47 +315,7 @@ impl Tui {
             ),
             separator,
         );
-        let rows = self.state.rows();
-        let focused = self.focused_index();
-        self.page_rows = usize::from(outline.height);
-        self.scroll = layout::scroll_offset(
-            self.scroll,
-            focused.unwrap_or_default(),
-            self.page_rows,
-            rows.len(),
-        );
-        let editor = self.state.editor();
-        frame.render_widget(
-            OutlineView::new(&rows, (self.clock)().date())
-                .offset(self.scroll)
-                .focused(focused)
-                .editor(editor.as_ref()),
-            outline,
-        );
-        // The conflict prompt covers the outline, caret and command menu included.
-        if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
-            && let Some(index) = focused
-            && let Some(row) = rows.get(index)
-        {
-            let text_width = outline.width.saturating_sub(widgets::GUTTER_WIDTH);
-            let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
-            let x = u16::try_from(column)
-                .unwrap_or(u16::MAX)
-                .min(text_width.saturating_sub(1));
-            let y = u16::try_from(index.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
-            let caret = (
-                outline.x.saturating_add(widgets::GUTTER_WIDTH + x),
-                outline.y.saturating_add(y),
-            );
-            frame.set_cursor_position(caret);
-            if let Some(menu) = self.state.command_menu() {
-                let popup = Popup::commands(&menu);
-                let (width, height) = popup.size();
-                let height = height.min(layout::room(outline, caret.1));
-                let area = layout::anchored(outline, caret, (width, height));
-                frame.render_widget(popup, area);
-            }
-        }
+        self.draw_outline(frame, outline);
         let centered = self
             .state
             .color_picker()
@@ -362,6 +339,61 @@ impl Tui {
             let lines = diff.as_ref().map_or(0, Vec::len);
             self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
             frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), pane);
+        }
+    }
+
+    /// The outline in `area`, scrolled to keep the focused block in view, and while editing the
+    /// caret with the command menu at it, unless the conflict prompt covers them.
+    fn draw_outline(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        let rows = self.state.rows();
+        let focused = self.focused_index();
+        let editor = self.state.editor();
+        let view = OutlineView::new(&rows, (self.clock)().date())
+            .focused(focused)
+            .editor(editor.as_ref())
+            .wrap(self.wrap);
+        // The first screen line of each row, and the line after the last.
+        let starts: Vec<usize> = std::iter::once(0)
+            .chain(
+                view.heights(area.width)
+                    .into_iter()
+                    .scan(0, |line, height| {
+                        *line += height;
+                        Some(*line)
+                    }),
+            )
+            .collect();
+        let start = |index: usize| starts.get(index).copied().unwrap_or_default();
+        let focus = focused.map_or(0..1, |index| start(index)..start(index + 1));
+        if let Some(line) = self.page_anchor.take() {
+            self.scroll = focus.start.saturating_sub(line);
+        }
+        self.page_rows = usize::from(area.height);
+        let lines = starts.last().copied().unwrap_or_default();
+        self.scroll = layout::scroll_offset(self.scroll, focus.clone(), self.page_rows, lines);
+        self.focus_line = focused.map(|_| focus.start.saturating_sub(self.scroll));
+        frame.render_widget(view.offset(self.scroll), area);
+        if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
+            && let Some(row) = focused.and_then(|index| rows.get(index))
+        {
+            let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
+            let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
+            let x = u16::try_from(column)
+                .unwrap_or(u16::MAX)
+                .min(text_width.saturating_sub(1));
+            let y = u16::try_from(focus.start.saturating_sub(self.scroll)).unwrap_or(u16::MAX);
+            let caret = (
+                area.x.saturating_add(widgets::GUTTER_WIDTH + x),
+                area.y.saturating_add(y),
+            );
+            frame.set_cursor_position(caret);
+            if let Some(menu) = self.state.command_menu() {
+                let popup = Popup::commands(&menu);
+                let (width, height) = popup.size();
+                let height = height.min(layout::room(area, caret.1));
+                let anchored = layout::anchored(area, caret, (width, height));
+                frame.render_widget(popup, anchored);
+            }
         }
     }
 

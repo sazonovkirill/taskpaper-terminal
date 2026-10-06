@@ -1,22 +1,25 @@
 //! Placement on screen that the core leaves to the frontend ([ui.md](../../../docs/specs/ui.md)).
 
+use std::ops::Range;
+
 use ratatui::layout::Rect;
 
-/// Rows kept between the focused row and the top or bottom edge when the view is tall enough
+/// Lines kept between the focused block and the top or bottom edge when the view is tall enough
 /// ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01)).
 const SCROLL_MARGIN: usize = 2;
 
-/// The first of `len` rows to draw in a view `height` rows tall so that the row `focus` is
-/// visible with [`SCROLL_MARGIN`] rows around it where space allows, scrolling as little as
-/// possible from `offset` and never past the last row.
+/// The first of `len` lines to draw in a view `height` lines tall so that the lines `focus` of
+/// the focused block are visible with [`SCROLL_MARGIN`] lines around them where space allows,
+/// or its first lines when it is taller than the view, scrolling as little as possible from
+/// `offset` and never past the last line.
 #[must_use]
-pub fn scroll_offset(offset: usize, focus: usize, height: usize, len: usize) -> usize {
-    // A view with no rows has nothing to keep visible; treating it as one row keeps the bounds
-    // below ordered.
+pub fn scroll_offset(offset: usize, focus: Range<usize>, height: usize, len: usize) -> usize {
+    // A view with no lines has nothing to keep visible; treating it as one line keeps the
+    // bounds below ordered.
     let height = height.max(1);
     let margin = SCROLL_MARGIN.min((height - 1) / 2);
-    let highest = focus.saturating_sub(margin);
-    let lowest = (focus + 1 + margin).saturating_sub(height).min(highest);
+    let highest = focus.start.saturating_sub(margin);
+    let lowest = (focus.end + margin).saturating_sub(height).min(highest);
     offset
         .clamp(lowest, highest)
         .min(len.saturating_sub(height))
@@ -82,9 +85,27 @@ mod tests {
         );
     }
 
+    /// Checks the offset for a focused block one line tall at line `focus`.
     #[track_caller]
     fn check(offset: usize, focus: usize, height: usize, len: usize, expected: usize) {
-        assert_eq!(scroll_offset(offset, focus, height, len), expected);
+        assert_eq!(
+            scroll_offset(offset, focus..focus + 1, height, len),
+            expected
+        );
+    }
+
+    // FR-UI-05
+    #[test]
+    fn keeps_every_line_of_a_wrapped_block_in_view_or_its_first_ones() {
+        assert_eq!(scroll_offset(0, 6..9, 10, 100), 1, "two lines below it");
+        assert_eq!(scroll_offset(0, 2..5, 10, 100), 0);
+        assert_eq!(scroll_offset(20, 12..15, 10, 100), 10, "two lines above it");
+        assert_eq!(
+            scroll_offset(0, 20..40, 10, 100),
+            18,
+            "taller than the view"
+        );
+        assert_eq!(scroll_offset(30, 20..40, 10, 100), 18);
     }
 
     #[test]

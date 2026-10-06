@@ -60,6 +60,9 @@ pub enum Command {
     CollapseAll,
     /// Show or hide completed blocks.
     ToggleShowDone,
+    /// Turn word wrap on or off, which the frontend carries out itself, since wrapping is
+    /// presentation (FR-UI-05).
+    ToggleWrap,
     /// Zoom into the focused block.
     ZoomIn,
     /// Zoom out to the parent.
@@ -208,6 +211,7 @@ impl Command {
             Self::ExpandAll => "Expand All".into(),
             Self::CollapseAll => "Collapse All".into(),
             Self::ToggleShowDone => "Show/Hide Completed".into(),
+            Self::ToggleWrap => "Toggle Word Wrap".into(),
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
@@ -258,7 +262,8 @@ impl Command {
     }
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
-    /// [`Command::Retype`], which changes an edit session rather than sending a message.
+    /// [`Command::Retype`], which changes an edit session rather than sending a message, and for
+    /// [`Command::ToggleWrap`], which the frontend carries out.
     #[must_use]
     pub fn message(self, inputs: &Inputs) -> Option<Message> {
         let today = inputs.today;
@@ -302,7 +307,7 @@ impl Command {
             Self::OpenColorPicker => Message::OpenColorPicker,
             Self::SetSection(on) => Message::SetSection(on),
             Self::OpenTypePicker => Message::OpenTypePicker,
-            Self::Retype(_) => return None,
+            Self::Retype(_) | Self::ToggleWrap => return None,
             Self::OpenDetails => Message::OpenDetails,
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
@@ -469,21 +474,19 @@ mod tests {
         }
     }
 
-    // D-44: a type change is a change of the edit session, which no message makes.
+    // D-44: a type change is a change of the edit session, which no message makes; wrapping is
+    // the frontend's (FR-UI-05).
     #[test]
-    fn retyping_sends_no_message() {
+    fn retyping_and_toggling_wrap_send_no_message() {
         assert_eq!(Command::Retype(Typed::Project).message(&INPUTS), None);
+        assert_eq!(Command::ToggleWrap.message(&INPUTS), None);
     }
 
     #[test]
-    fn every_command_of_the_registry_but_retyping_sends_a_message() {
+    fn every_command_of_the_registry_but_retyping_and_toggling_wrap_sends_a_message() {
         for entry in REGISTRY {
-            let retype = matches!(entry.command, Command::Retype(_));
-            assert_eq!(
-                entry.command.message(&INPUTS).is_none(),
-                retype,
-                "{entry:?}"
-            );
+            let none = matches!(entry.command, Command::Retype(_) | Command::ToggleWrap);
+            assert_eq!(entry.command.message(&INPUTS).is_none(), none, "{entry:?}");
         }
     }
 }
