@@ -1,7 +1,7 @@
 # Implementation plan
 
 - Status: Draft
-- Last updated: 2026-10-05
+- Last updated: 2026-10-06
 
 The order in which v1 is built. The app starts almost trivial and gains one feature per step; after every step it starts, shows the file and does everything earlier steps added, with no half-finished feature reachable by the user. Each step is sized to be one Todoist task for one agent and lists what it covers, what it needs first and what the owner can try when it lands. What each feature does is in the [functional requirements](functional-requirements.md) and the [specs](specs/README.md); this file only orders the work.
 
@@ -52,7 +52,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 
 **Milestone result:** a usable outliner with safe saving, backups and undo.
 
-**Owner feedback on M2 (2026-10-05):** back to a model close to TaskPaper, one line per block with six types: project, section, task, divider, URL and text (D-43); code blocks, fenced code and multi-line text move to Later. In edit mode, `/` opens a type menu that makes the block a project, section, text node ("Note"), task or divider (D-44, [editing.md §2.3](specs/editing.md#23-type-menu)).
+**Owner feedback on M2 (2026-10-05):** back to a model close to TaskPaper, one line per block with six types: project, section, task, divider, URL and text (D-43); code blocks, fenced code and multi-line text move to Later. In edit mode, `/` opens a type menu that makes the block a project, section, text node ("Note"), task or divider (D-44, [editing.md §2.3](specs/editing.md#23-command-menu); since D-50 the menu offers every command of the block).
 
 ## M3 · Metadata and formatting
 
@@ -64,7 +64,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 3.4 | **Today, colors and bookmarks.** `mt` and its marker chip; `c` cycling and the `mc` picker, text tint; `mb`. | FR-TAG-04 (tag), FR-TAG-05, FR-TAG-06, D-11 | 3.2 | Color a task red |
 | 3.5 | **Selection. hub** `J`/`K`, `Shift`+arrows, `v`, `Ctrl+A`, `Esc`; every command so far applies to the selection; `gG` groups it. | FR-OPS-01, FR-OPS-04, FR-OPS-07 | 2.9, 3.4 | Complete five tasks at once |
 | 3.6 | **Clipboard and duplicate.** `Ctrl+C`/`Ctrl+X`/`Ctrl+V`/`Alt+V` with hierarchy, `D`; `arboard` with the OSC 52 and bracketed-paste fallbacks; paste in edit mode with the `@` rule. | FR-OPS-06 | 3.5 | Copy a project into another file |
-| 3.7 | **Type converter and details.** The `my` picker for all six types (five since D-45) and the `mi` popup with unsupported tags and unknown special nodes. The edit-mode type menu of D-44 already converts the edited block between five types; the picker can extend it with URL (dropped by D-45) and selections. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
+| 3.7 | **Type converter and details.** The `my` picker for all six types (five since D-45) and the `mi` popup with unsupported tags and unknown special nodes. The edit-mode type menu of D-44 (the command menu since D-50) already converts the edited block between five types; the picker can extend it with URL (dropped by D-45) and selections. | FR-BLK-08, D-3 | 3.4 | Turn a text block into a section |
 | 3.8 | **Typed shortcuts.** `--- `, `[] `, `[ ] `, `[x] ` and their revert. | FR-MODE-05, editing §2.1 | 3.7 | Type `--- ` |
 | 3.9 | **Inline formatting and URLs.** `**bold**` and `` `code` `` rendered, bare URLs underlined, URL blocks (dropped by D-45), `gx` opening the browser; `Ctrl+B` and `` Alt+` `` (with `Ctrl+E` as its non-`Alt` route) in edit mode (Should). Until the picker of 4.2, `gx` on a block with several URLs opens the first. | FR-FMT-01, FR-FMT-02, FR-BLK-06, D-10 | 2.5 | Bold text renders bold |
 | 3.10 | **Markdown in text.** Headings and links rendered in navigate mode; `gx` also opens a Markdown link, the first with a URL. | FR-FMT-03, editing §2.2 | 3.9 | A text block with a `## heading` |
@@ -73,11 +73,13 @@ From here the app changes files, so file safety comes first: the serializer, ato
 
 **Owner feedback on M3 (2026-10-06):** date chips name the date relative to today, such as `tomorrow`, `next Tue` or `in 15 days`, after a calendar icon, start chips green and due chips red (D-46); this brings in the icon table of step 6.3 early, with only the icons drawn so far and their fallbacks unused until the `icons` setting. The `@today` star and a bookmark icon move right after the block's text, the star first (D-47). Try it: the demo's dates read `today`, `tomorrow`, a weekday, `next` and a weekday, `in 20 days` and `2 days ago`; `mb` and `mt` on any block show their icons after its text. Colors tint the row's background instead of the text: a very dim shade of the tag's color from the block's marker to the pane's right edge, a step brighter on the focused row, the gutter and indentation untouched (D-48). `c1` to `c6` set red to violet, `C` removes the color, cycling moves from `c` to `cc`, and the `mc` picker numbers its colors, a number choosing at once. The demo's weekend errands say so and hold a yellow block. Markdown formatting keeps the block's own color: bold is bold, inline code dimmed, a level-1 heading bold and underlined and the others bold, while links keep the link color (D-49). Sections are italic (D-49). The focus marker is a wider `▌`, in the primary color in navigate mode and the accent while editing (D-51). Try it: `c4` on a task, then `C`, and press `Enter` to see the marker take the accent color.
 
+**Owner feedback on M3 (2026-10-06), slash menu:** in edit mode `/` offers every command of the block, not only types: dates, today, bookmark, colors, complete, details, link, duplicate and delete, filtered by the starts of the labels' words as typed, and `Ctrl+T` cycles the block's type (D-50, [editing.md §2.3–2.4](specs/editing.md#23-command-menu)). The demo's errands list points to it. Try it: `Enter` on a task, then `/due` and `Enter`.
+
 ## M4 · Finding things
 
 | # | Step | Covers | After | Try it |
 |---|---|---|---|---|
-| 4.1 | **Command registry. hub** Every command gets a name, a context and its bindings in one table that the keymap reads; the palette, the `?` panel and the context menu read it later. Refactor only, no visible change. | architecture §1, FR-KEY-06 (basis) | 2.6 | (no visible change) |
+| 4.1 | **Command registry. hub** Every command gets a name, a context and its bindings in one table that the keymap reads; the palette, the `?` panel and the context menu read it later. It absorbs the edit-mode command menu's list of node commands (`app::node_commands`, D-50). Refactor only, no visible change. | architecture §1, FR-KEY-06 (basis) | 2.6 | (no visible change) |
 | 4.2 | **Fuzzy picker and Go to Symbol.** One picker overlay on `nucleo-matcher`; `Ctrl+P`, `gs` and, until search exists, `/`; ranking as in navigation §8. | FR-NAV-05 | 4.1 | Jump to any block by name |
 | 4.3 | **Go to Command, Count and Save As.** `Ctrl+K` and `:` list every command with its binding; Count and Save As (with its path prompt) become reachable there. | FR-NAV-06, FR-OPS-09, FR-DOC-06 | 4.2, 2.10 | Save the `/tmp` file to your notes folder |
 | 4.4 | **Move to.** `gm` with the same picker. | FR-OPS-05 | 4.2, 3.5 | Move a task to another project |
@@ -85,7 +87,7 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 4.6 | **Sidebar.** Bookmarks, the Today entry and the project tree; `Ctrl+B`, `Alt+0` and the sidebar keys; hidden below 80 columns. | FR-UI-01, navigation §6 | 3.4 | Jump to a bookmark |
 | 4.7 | **Today view.** A pane location listing today's blocks with their breadcrumbs, editable in place. | FR-TAG-04 (view), D-7, navigation §7 | 4.6, 3.2 | Open Today |
 | 4.8 | **Shortcuts panel.** `?` opens the secondary sidebar on the right with the bindings for the current mode, from the registry. | FR-KEY-04, ui §1 and §4, D-28 | 4.1 | Press `?` |
-| 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. Can reuse the type menu's popup and its placement at the caret (`TypeMenuPopup`, `layout::anchored`). | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
+| 4.9 | **Context menu.** `\`, `Shift+F10` and the Menu key; grouped entries from the registry. Can reuse the command menu's popup and its placement at the caret (`Popup::commands`, `layout::anchored`, `layout::room`). | FR-KEY-06, ui §5 | 4.3 | Press `\` on a task |
 
 ## M5 · Panes
 

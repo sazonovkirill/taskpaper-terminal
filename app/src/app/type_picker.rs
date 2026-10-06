@@ -8,7 +8,8 @@ use super::{
 };
 use crate::document::{BlockKind, metadata};
 
-/// Every entry of the picker with its name, in the order it lists them: the type menu's (D-44).
+/// Every entry of the picker with its name, in the order it lists them: the command menu's
+/// types (D-44).
 const ENTRIES: [(BlockKind, &str); 5] = [
     (BlockKind::Project, "Project"),
     (BlockKind::Section, "Section"),

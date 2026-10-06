@@ -13,10 +13,11 @@ use ratatui::{
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use super::theme::Icon;
+use super::{layout, theme::Icon};
 use crate::{
     app::{
-        Access, DatePromptView, DiffLine, Editor, Notice, PickerView, Row, SaveState, TypeMenuView,
+        Access, CommandMenuView, DatePromptView, DiffLine, Editor, MenuRow, Notice, PickerView,
+        Row, SaveState,
     },
     document::{
         BlockKind, DateTag, Details, TagColor,
@@ -305,23 +306,43 @@ impl Widget for ConflictPrompt<'_> {
 
 /// A popup over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
 /// box with a title listing lines, for a menu the entries the filter matches with the highlighted
-/// one reversed and the filter at the bottom once one is typed. It shows the type menu (D-44),
-/// the color picker (FR-TAG-05) and a block's details (D-3).
+/// one reversed and kept in view and the filter at the bottom once one is typed. It shows the
+/// command menu (D-50), the color picker (FR-TAG-05), the type picker (FR-BLK-08) and a block's
+/// details (D-3).
 #[derive(Debug)]
 pub struct Popup {
     title: &'static str,
     entries: Vec<Line<'static>>,
+    selected: usize,
     filter: String,
 }
 
 impl Popup {
-    /// The type menu, titled "Node type:", with `/` before its filter.
+    /// The command menu, titled "Commands:", with a line across it between groups and `/`
+    /// before its filter (D-50).
     #[must_use]
-    pub fn types(menu: &TypeMenuView) -> Self {
-        let names = menu.entries.iter().map(|entry| (entry.name, Style::new()));
+    pub fn commands(menu: &CommandMenuView) -> Self {
+        let title = "Commands:";
+        let names = menu.rows.iter().map(|row| match row {
+            MenuRow::Command(label) => (*label, Style::new()),
+            MenuRow::Divider => ("", Style::new()),
+        });
+        let mut entries = entries(names, menu.selected);
+        let width = entries
+            .iter()
+            .map(Line::width)
+            .chain([Line::from(title).width()])
+            .max()
+            .unwrap_or_default();
+        for (line, row) in entries.iter_mut().zip(&menu.rows) {
+            if *row == MenuRow::Divider {
+                *line = Line::from("─".repeat(width)).dim();
+            }
+        }
         Self {
-            title: NODE_TYPE,
-            entries: entries(names, menu.selected),
+            title,
+            entries,
+            selected: menu.selected,
             filter: if menu.filter.is_empty() {
                 String::new()
             } else {
@@ -349,17 +370,19 @@ impl Popup {
         Self {
             title: "Color:",
             entries: entries(names, picker.selected),
+            selected: picker.selected,
             filter: picker.filter.to_owned(),
         }
     }
 
-    /// The type picker, titled "Node type:" like the type menu (FR-BLK-08).
+    /// The type picker, titled "Node type:" (FR-BLK-08).
     #[must_use]
     pub fn block_types(picker: &PickerView<BlockKind>) -> Self {
         let names = picker.entries.iter().map(|&(_, name)| (name, Style::new()));
         Self {
-            title: NODE_TYPE,
+            title: "Node type:",
             entries: entries(names, picker.selected),
+            selected: picker.selected,
             filter: picker.filter.to_owned(),
         }
     }
@@ -392,6 +415,7 @@ impl Popup {
         Self {
             title: "Details:",
             entries,
+            selected: 0,
             filter: String::new(),
         }
     }
@@ -414,9 +438,6 @@ impl Popup {
         (width, height)
     }
 }
-
-/// The title of the type menu and the type picker.
-const NODE_TYPE: &str = "Node type:";
 
 /// A menu's entry lines: each name padded by a space and in its style, the one at `selected`
 /// reversed.
@@ -445,7 +466,9 @@ impl Widget for Popup {
             .title_bottom(self.filter);
         let inner = frame.inner(area);
         frame.render(area, buf);
-        for (line, row) in self.entries.into_iter().zip(inner.rows()) {
+        let height = usize::from(inner.height);
+        let offset = layout::scroll_offset(0, self.selected, height, self.entries.len());
+        for (line, row) in self.entries.into_iter().skip(offset).zip(inner.rows()) {
             buf.set_style(row, line.style);
             line.render(row, buf);
         }
@@ -1096,55 +1119,69 @@ mod tests {
         );
     }
 
-    /// The type menu of a session on `a` after `keys`, drawn at its size.
-    fn type_menu(keys: &[crate::app::MenuInput]) -> Buffer {
-        let mut state = State::new(format::parse("a"), None);
+    /// The command menu of a session on `- a` after `keys`, drawn at its size but at most
+    /// `height` rows tall.
+    fn command_menu(keys: &[crate::app::MenuInput], height: u16) -> Buffer {
+        let mut state = State::new(format::parse("- a"), None);
         state.update(Message::EditAtEnd);
-        state.update(Message::OpenTypeMenu);
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 6),
+        });
         for key in keys {
-            state.update(Message::TypeMenu(*key));
+            state.update(Message::CommandMenu(*key));
         }
-        let menu = state.type_menu().unwrap();
-        let popup = Popup::types(&menu);
-        let (width, height) = popup.size();
-        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
+        let menu = state.command_menu().unwrap();
+        let popup = Popup::commands(&menu);
+        let (width, full) = popup.size();
+        let mut buf = Buffer::empty(Rect::new(0, 0, width, full.min(height)));
         popup.render(buf.area, &mut buf);
         buf
     }
 
-    // D-44, ui.md §5
+    // D-50, ui.md §5
     #[test]
-    fn the_type_menu_lists_the_types_under_its_title_with_the_highlight_reversed() {
+    fn the_command_menu_shows_the_matches_under_its_title_and_the_filter_at_the_bottom() {
+        use crate::app::MenuInput::{Next, Type};
         let mut expected = Buffer::with_lines([
-            "┌Node type:┐",
-            "│ Project  │",
-            "│ Section  │",
-            "│ Note     │",
-            "│ Task     │",
-            "│ Divider  │",
-            "└──────────┘",
+            "┌Commands:─────┐",
+            "│ Set Due Date │",
+            "│ Due Today    │",
+            "│ Due Tomorrow │",
+            "└/due──────────┘",
         ]);
-        expected.set_style(Rect::new(1, 2, 10, 1), Style::new().reversed());
-        assert_eq!(type_menu(&[crate::app::MenuInput::Next]), expected);
+        expected.set_style(Rect::new(1, 2, 14, 1), Style::new().reversed());
+        assert_eq!(
+            command_menu(&[Type('d'), Type('u'), Type('e'), Next], 20),
+            expected
+        );
     }
 
-    // D-44, ui.md §5
+    // D-50, ui.md §5
     #[test]
-    fn the_type_menu_shows_the_filter_at_the_bottom() {
-        use crate::app::MenuInput::Type;
+    fn a_command_menu_taller_than_its_room_scrolls_to_keep_the_highlight_in_view() {
         let mut expected = Buffer::with_lines([
-            "┌Node type:┐",
-            "│ Project  │",
-            "│ Section  │",
-            "└/ect──────┘",
+            "┌Commands:───────┐",
+            "│────────────────│",
+            "│ Complete       │",
+            "│ Toggle Today   │",
+            "│ Bookmark       │",
+            "│────────────────│",
+            "└────────────────┘",
         ]);
-        expected.set_style(Rect::new(1, 1, 10, 1), Style::new().reversed());
-        assert_eq!(type_menu(&[Type('e'), Type('c'), Type('t')]), expected);
+        for y in [1, 5] {
+            expected.set_style(Rect::new(1, y, 16, 1), Style::new().dim());
+        }
+        expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
+        assert_eq!(
+            command_menu(&[crate::app::MenuInput::Next; 6], 7),
+            expected,
+            "groups apart, the highlight on Toggle Today"
+        );
     }
 
     // FR-BLK-08, keybindings.md §4
     #[test]
-    fn the_type_picker_lists_the_five_types_under_the_type_menus_title() {
+    fn the_type_picker_lists_the_five_types() {
         let mut state = State::new(format::parse("a"), None);
         state.update(Message::OpenTypePicker);
         let popup = Popup::block_types(&state.type_picker().unwrap());

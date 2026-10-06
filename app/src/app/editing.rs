@@ -28,6 +28,17 @@ impl State {
         self.commit_any(ops);
     }
 
+    /// Removes the `tag` date of the selected blocks, else the focused block (FR-TAG-03,
+    /// FR-OPS-07).
+    pub(super) fn clear_date(&mut self, tag: DateTag) {
+        let ops = self
+            .targets()
+            .iter()
+            .filter_map(|block| metadata::set_date(self.document(), block, tag, None))
+            .collect();
+        self.commit_any(ops);
+    }
+
     /// Adds the bare tag `flag` to the selected blocks, else the focused block, or removes it when
     /// all have it (FR-TAG-04, D-11, FR-OPS-07).
     pub(super) fn toggle_flag(&mut self, flag: Flag) {
@@ -497,5 +508,23 @@ mod tests {
         assert_eq!(state.notice(), Some(&Notice::Bookmark { added: false }));
         state.update(Message::ToggleFlag(Flag::Today));
         assert_eq!(texts(&state), ["- a @today", "- b @today", "- c"]);
+    }
+
+    // FR-TAG-03, D-50, FR-OPS-07
+    #[test]
+    fn clear_date_removes_the_date_of_the_targets_as_one_step() {
+        let mut state = open(
+            "- a @start(2026-10-01) @due(2026-10-09)\n- b @due(1)\n- c",
+            0,
+        );
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::ClearDate(DateTag::Due));
+        assert_eq!(texts(&state), ["- a @start(2026-10-01)", "- b", "- c"]);
+        state.update(Message::ClearDate(DateTag::Start));
+        assert_eq!(texts(&state), ["- a", "- b", "- c"]);
+        state.update(Message::ClearDate(DateTag::Start));
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- a @start(2026-10-01)", "- b", "- c"]);
     }
 }

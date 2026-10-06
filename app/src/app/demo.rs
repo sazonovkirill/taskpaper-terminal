@@ -317,4 +317,15 @@ mod tests {
             "the template has no blocks"
         );
     }
+
+    // FR-DOC-05, D-50
+    #[test]
+    fn demo_has_a_text_line_that_points_to_the_command_menu() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Text && row.text.contains("type / for")),
+            "demo lacks a hint at the command menu"
+        );
+    }
 }

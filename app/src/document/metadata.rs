@@ -185,7 +185,7 @@ pub fn set_color(document: &Document, block: &Block, color: Option<TagColor>) ->
     })
 }
 
-/// The op that gives `block` the type `to`, as the type menu of edit mode does: the old type's
+/// The op that gives `block` the type `to`, as the command menu of edit mode does: the old type's
 /// syntax and the type tag `@section` go, other tags stay and the new type's syntax comes
 /// (editing.md §5, D-44, D-45). A divider's `---` gives way to the placeholder. `None` when the
 /// line stays as it is or the block is not in `document`.

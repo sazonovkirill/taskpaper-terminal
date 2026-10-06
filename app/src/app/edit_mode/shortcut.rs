@@ -248,8 +248,10 @@ mod tests {
         assert_eq!(texts(&state), ["a"], "a motion came between");
         let mut state = editing_new();
         typed(&mut state, "[] ");
-        state.update(Message::OpenTypeMenu);
-        state.update(Message::TypeMenu(crate::app::MenuInput::Erase));
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 6),
+        });
+        state.update(Message::CommandMenu(crate::app::MenuInput::Erase));
         state.update(Message::Undo);
         assert_eq!(
             texts(&state),

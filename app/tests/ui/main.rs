@@ -2,6 +2,7 @@
 
 mod blocks;
 mod clipboard;
+mod command_menu;
 mod completing;
 mod converting;
 mod creating;
@@ -23,7 +24,6 @@ mod saving;
 mod selection;
 mod support;
 mod tags;
-mod type_menu;
 mod typed_creation;
 mod typed_shortcuts;
 mod zoom;

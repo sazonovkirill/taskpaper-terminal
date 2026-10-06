@@ -31,8 +31,8 @@ pub struct Context {
     pub today: Date,
     /// Whether keys navigate or edit text, which decides their bindings.
     pub mode: Mode,
-    /// Whether the type menu is open, which takes the keys of edit mode (D-44).
-    pub type_menu: bool,
+    /// Whether the command menu is open, which takes the keys of edit mode (D-50).
+    pub command_menu: bool,
     /// The popup over the outline that takes the keys of navigate mode, if one is open.
     pub overlay: Option<Overlay>,
 }
@@ -308,13 +308,16 @@ pub fn prompt_key(event: &Event, page_rows: usize) -> Option<PromptKey> {
 const EDIT: &[Binding] = &[
     (&[key!(ctrl 'q')], |_| Message::Quit),
     (&[key!(Esc)], |_| Message::StopEditing),
-    (&[key!('/')], |_| Message::OpenTypeMenu),
+    (&[key!('/')], |context| Message::OpenCommandMenu {
+        today: context.today,
+    }),
     (&[key!(' ')], |context| Message::TypeSpace {
         today: context.today,
     }),
     (&[key!(Enter)], |_| Message::NewNext),
     (&[key!(Tab)], |_| Message::Indent),
     (&[key!(shift BackTab)], |_| Message::Outdent),
+    (&[key!(ctrl 't')], |_| Message::CycleType),
     (&[key!(Up)], |_| Message::EditPrevious),
     (&[key!(Down)], |_| Message::EditNext),
     (&[key!(ctrl 'b')], |_| {
@@ -373,11 +376,11 @@ const TEXT: &[(Key, TextEdit)] = &[
     (key!(ctrl 'a'), TextEdit::SelectAll),
 ];
 
-/// Bindings of the open type menu and color picker ([keybindings.md §3–4], [editing.md §2.3]);
+/// Bindings of the open command menu and pickers ([keybindings.md §3–4], [editing.md §2.3]);
 /// characters without other bindings filter them, and other keys do nothing.
 ///
 /// [keybindings.md §3–4]: ../../../docs/specs/keybindings.md#4-other-contexts
-/// [editing.md §2.3]: ../../../docs/specs/editing.md#23-type-menu
+/// [editing.md §2.3]: ../../../docs/specs/editing.md#23-command-menu
 const MENU: &[(Key, MenuInput)] = &[
     (key!(Esc), MenuInput::Dismiss),
     (key!(Enter), MenuInput::Choose),
@@ -388,7 +391,7 @@ const MENU: &[(Key, MenuInput)] = &[
     (key!(Backspace), MenuInput::Erase),
 ];
 
-/// The message of the open type menu or color picker for `key`, made by `to`: `Ctrl+Q` quits, a
+/// The message of the open command menu or a picker for `key`, made by `to`: `Ctrl+Q` quits, a
 /// menu binding, else typing the character it is, as in edit mode.
 fn menu_message(key: Key, to: fn(MenuInput) -> Message) -> Option<Message> {
     if key == key!(ctrl 'q') {
@@ -471,7 +474,7 @@ impl Keymap {
         context: &Context,
     ) -> Option<Message> {
         if let Event::Paste(text) = event {
-            let menu = context.type_menu || context.overlay.is_some();
+            let menu = context.command_menu || context.overlay.is_some();
             return (!menu).then(|| Message::Pasted {
                 text: text.clone(),
                 at: Paste::Below,
@@ -507,8 +510,8 @@ impl Keymap {
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
-            return if context.type_menu {
-                menu_message(pressed, Message::TypeMenu)
+            return if context.command_menu {
+                menu_message(pressed, Message::CommandMenu)
             } else {
                 edit_message(pressed, context)
             };
@@ -566,7 +569,7 @@ mod tests {
         page_rows: PAGE,
         today: TODAY,
         mode: Mode::Navigate,
-        type_menu: false,
+        command_menu: false,
         overlay: None,
     };
 
@@ -940,6 +943,12 @@ mod tests {
         }
         check_editing(KeyCode::Char('j'), KeyModifiers::CONTROL, None);
         check_editing(
+            KeyCode::Char('t'),
+            KeyModifiers::CONTROL,
+            Some(&Message::CycleType),
+        );
+        check(KeyCode::Char('t'), KeyModifiers::CONTROL, None);
+        check_editing(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,
             Some(&Message::Quit),
@@ -998,17 +1007,17 @@ mod tests {
     }
 
     const IN_MENU: &Context = &Context {
-        type_menu: true,
+        command_menu: true,
         ..*EDITING
     };
 
-    /// The message each key sends while the type menu is open.
+    /// The message each key sends while the command menu is open.
     #[track_caller]
     fn check_menu(code: KeyCode, modifiers: KeyModifiers, expected: Option<MenuInput>) {
         let mut keymap = Keymap::default();
         assert_eq!(
             keymap.message_for(&key(code, modifiers), ms(0), IN_MENU),
-            expected.map(Message::TypeMenu),
+            expected.map(Message::CommandMenu),
             "{modifiers:?} {code:?}"
         );
     }
@@ -1028,19 +1037,19 @@ mod tests {
         );
     }
 
-    // D-44
+    // D-50
     #[test]
-    fn slash_opens_the_type_menu_in_edit_mode() {
+    fn slash_opens_the_command_menu_in_edit_mode_dated_for_its_commands() {
         check_editing(
             KeyCode::Char('/'),
             KeyModifiers::NONE,
-            Some(&Message::OpenTypeMenu),
+            Some(&Message::OpenCommandMenu { today: TODAY }),
         );
     }
 
-    // D-44, keybindings.md §3
+    // D-44, D-50, keybindings.md §3
     #[test]
-    fn the_type_menu_takes_the_keys_of_pickers() {
+    fn the_command_menu_takes_the_keys_of_pickers() {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
         check_menu(KeyCode::Up, none, Some(MenuInput::Previous));
@@ -1471,7 +1480,7 @@ mod tests {
         assert_eq!(keymap.message_for(&pasted, ms(0), EDITING), expected);
         for context in [
             Context {
-                type_menu: true,
+                command_menu: true,
                 ..*EDITING
             },
             Context {

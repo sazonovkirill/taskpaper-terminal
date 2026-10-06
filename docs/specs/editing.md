@@ -74,33 +74,45 @@ Every block but a divider supports these links, and text blocks also headings, i
 - A hidden `@url(…)` tag on a line of any type is a link too: the block's whole title is drawn as one, and `open_url` opens its address before any link in the text (FR-BLK-06, D-45).
 - `open_url` (§5) opens the link of a block: the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)). Until the picker of step 4.2, it opens the `@url` address, else the first link in the text whose address has a scheme, so `[notes](notes.txt)` is skipped.
 
-### 2.3 Type menu
+### 2.3 Command menu
 
-Typing `/` in edit mode opens a menu at the caret that gives the block another type (D-44, FR-BLK-08). It reads:
+Typing `/` in edit mode opens a menu at the caret listing every command that applies to the edited block (D-50, amending D-44). It is titled "Commands:" and lists, in this order, five groups set apart by a line that cannot be highlighted:
 
-```
-Node type:
-Project
-Section
-Note
-Task
-Divider
-```
+| Group | Entries | Command |
+|---|---|---|
+| Type | Project, Section, Note, Task, Divider | Give the block that type (FR-BLK-08); "Note" is the menu's label for a text node |
+| Status | Complete, or Uncomplete when the block is done | `toggle_done` (§5) |
+| | Toggle Today | `toggle_today` (§5) |
+| | Bookmark, or Remove Bookmark when the block has one | `toggle_bookmark` (§5) |
+| Dates | Set Start Date, Set Due Date | `set_start` / `set_due`: the date prompt (§5) |
+| | Start Today, Start Tomorrow, Due Today, Due Tomorrow | `start_today`, `start_tomorrow`, `due_today`, `due_tomorrow` (§5) |
+| | Clear Start Date, Clear Due Date, each only when the block has that date | Remove the date, as the prompt does with an empty text |
+| Color | Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, Color: Violet; Remove Color only when the block has a color | Give the block that color, or none (FR-TAG-05) |
+| Block | Show Details | `details` (§5) |
+| | Open Link, only when the block has a link | `open_url` (§5) |
+| | Duplicate, Delete | `duplicate`, `delete` (§4) |
 
-"Note" is the menu's label for a text node. The `/` is not typed while the menu is open.
+The `/` is not typed while the menu is open.
 
 | Key | Effect |
 |---|---|
-| `p`, `s`, `n`, `t` right after `/` | Choose Project, Section, Note (text) or Task at once |
-| Other characters | Filter the entries by name, ignoring case, highlighting the first (`/div` leaves Divider) |
-| `↑`/`↓`, `Ctrl+P`/`Ctrl+N` | Move the highlight |
-| `Enter` | Choose the highlighted entry |
+| Characters | Filter the entries, highlighting the first match: each word typed, ignoring case, must start a word of the label, in order, so `/date` leaves Set Start Date and Set Due Date (and Clear … Date when there is one), `/due` the entries with "Due", and `/p` Project first. A line stays only between two groups that both still have matches |
+| `↑`/`↓`, `Ctrl+P`/`Ctrl+N` | Move the highlight over the entries, skipping the lines between groups; a list taller than the room at the caret scrolls to keep it in view |
+| `Enter` | Run the highlighted entry |
 | `Esc` | Close the menu and type `/` and the filter as text |
 | `Backspace` | Erase the filter's last character; on an empty filter, close the menu, typing nothing |
 
-A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text. Other keys do nothing while the menu is open.
+A filter that matches no entry closes the menu and types `/` and the filter, so a path such as `/home` stays text, and so does `/` followed by a space, as in "a / b". Other keys do nothing while the menu is open. D-44's instant letters (`/p`, `/s`, `/n`, `/t`) are gone, since filtering needs them: `/s` would otherwise make a section before `/set` is typed. `/p`, `/s`, `/n` or `/t` then `Enter` still choose Project, Section, Note or Task, which come first.
 
 Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and the type tag `@section` go, other tags, `@url` included, stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, `@section` for a section, nothing for text. The caret stays where it was. A divider replaces the text with `---`, keeping the other tags, without confirmation, and ends editing, because a divider's text is its type (§2). The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
+
+Every other entry runs the same command as its key in navigate mode, on the edited block. It ends the edit session, which stays one undo step, runs as a step of its own, and editing goes on in the block with the caret at the column it had. A command that opens the date prompt or the details popup returns to editing when that closes, whether the date was set or not. After Duplicate editing goes on in the original block; Delete leaves navigate mode on the block after it.
+
+The list is a core list of the commands on one block, with their labels; the command registry of step 4.1 is meant to absorb it.
+
+### 2.4 Cycling the type
+
+`Ctrl+T` in edit mode gives the edited block the next type of project, section, task and note (text), in that order and back to project, keeping the text and the caret (D-50). It changes the line as choosing that type in the command menu does, and each press is a change of the session's undo step. A divider is never edited, so a cycle always starts from one of the four.
 
 ## 3. Creating blocks (FR-MODE-04)
 
@@ -149,7 +161,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 
 | Command | Behavior |
 |---|---|
-| `convert_type` (FR-BLK-08) | In edit mode, the type menu of §2.3 does this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Section, Note (text), Task and Divider, opening with the focused block's type highlighted; typing filters it by name. The chosen type goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). Rewrites the block's syntax as the type menu does: removes `- `/`:` and the type tag `@section`, then applies the new type's syntax (`- `, `:`, `@section`); other tags stay, `@url` included, since a link is not a type (D-45). Converting to a divider replaces the text with `---`, keeping the other tags, without confirmation, since undo restores it (as D-44). Converting a divider to another type replaces its `---`, which is its type rather than text, with the placeholder `…`. Choosing the block's own type changes nothing. |
+| `convert_type` (FR-BLK-08) | In edit mode, the command menu of §2.3 and `Ctrl+T` (§2.4) do this for the edited block. In navigate mode, `my` opens a picker titled "Node type:" listing Project, Section, Note (text), Task and Divider, opening with the focused block's type highlighted; typing filters it by name. The chosen type goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). Rewrites the block's syntax as the command menu does: removes `- `/`:` and the type tag `@section`, then applies the new type's syntax (`- `, `:`, `@section`); other tags stay, `@url` included, since a link is not a type (D-45). Converting to a divider replaces the text with `---`, keeping the other tags, without confirmation, since undo restores it (as D-44). Converting a divider to another type replaces its `---`, which is its type rather than text, with the placeholder `…`. Choosing the block's own type changes nothing. |
 | `toggle_done` (FR-DONE-01) | If every target is done, remove `@done` (with any value); otherwise add `@done(YYYY-MM-DD)` with today's local date to those that are not done (D-4). |
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date with live preview of the resolved date, or of why the input is not a date, in which case `Enter` does nothing; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). The prompt opens with the block's current date typed and selected, so typing replaces it and `Enter` keeps it. Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |

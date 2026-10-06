@@ -5,7 +5,7 @@
 use super::{canonical::PLACEHOLDER, display_text, kind, tags};
 use crate::document::ItemKind;
 
-/// A type the user gives a block: when adding it (FR-MODE-06, D-26) or from the type menu
+/// A type the user gives a block: when adding it (FR-MODE-06, D-26) or from the command menu
 /// (D-44).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Typed {

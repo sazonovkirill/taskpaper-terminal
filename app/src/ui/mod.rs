@@ -116,7 +116,7 @@ impl Tui {
             page_rows: self.page_rows,
             today: (self.clock)().date(),
             mode: self.state.mode(),
-            type_menu: self.state.type_menu().is_some(),
+            command_menu: self.state.command_menu().is_some(),
             overlay: self.overlay(),
         };
         let Some(message) = self.keymap.message_for(event, now, &context) else {
@@ -294,7 +294,7 @@ impl Tui {
                 .editor(editor.as_ref()),
             outline,
         );
-        // The conflict prompt covers the outline, caret and type menu included.
+        // The conflict prompt covers the outline, caret and command menu included.
         if let Some(editor) = editor.as_ref().filter(|_| !self.state.in_conflict())
             && let Some(index) = focused
             && let Some(row) = rows.get(index)
@@ -310,9 +310,11 @@ impl Tui {
                 outline.y.saturating_add(y),
             );
             frame.set_cursor_position(caret);
-            if let Some(menu) = self.state.type_menu() {
-                let popup = Popup::types(&menu);
-                let area = layout::anchored(outline, caret, popup.size());
+            if let Some(menu) = self.state.command_menu() {
+                let popup = Popup::commands(&menu);
+                let (width, height) = popup.size();
+                let height = height.min(layout::room(outline, caret.1));
+                let area = layout::anchored(outline, caret, (width, height));
                 frame.render_widget(popup, area);
             }
         }

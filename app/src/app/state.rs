@@ -9,8 +9,13 @@ use std::{
 use jiff::civil::Date;
 
 use super::{
-    History, date_prompt::DatePrompt, edit_mode::Session, external::External, picker::Picker,
-    saving::Autosave, selection::Selection,
+    History,
+    date_prompt::DatePrompt,
+    edit_mode::{Resume, Session},
+    external::External,
+    picker::Picker,
+    saving::Autosave,
+    selection::Selection,
 };
 use crate::document::{
     Block, BlockKind, Document, Item, ItemId, TagColor, blocks,
@@ -51,6 +56,8 @@ pub struct State {
     pub(super) type_picker: Option<Picker<BlockKind>>,
     /// Whether the details popup is open over the focused block (D-3).
     pub(super) details: bool,
+    /// Where editing resumes once a command run from the command menu is done (D-50).
+    pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
     /// The block shown as the root, or `None` at home (FR-NAV-03).
@@ -208,6 +215,7 @@ impl State {
             date_prompt: None,
             type_picker: None,
             details: false,
+            resume: None,
             folds: HashSet::new(),
             zoom: None,
             history: vec![None],

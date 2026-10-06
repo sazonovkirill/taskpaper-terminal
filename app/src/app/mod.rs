@@ -11,6 +11,7 @@ mod editing;
 pub mod external;
 pub mod history;
 mod links;
+mod node_commands;
 mod picker;
 pub mod saving;
 mod selection;
@@ -22,7 +23,7 @@ pub mod update;
 
 pub use clipboard::Paste;
 pub use date_prompt::{DateInput, DatePromptView};
-pub use edit_mode::{Editor, MenuEntry, MenuInput, Mode, TypeMenuView};
+pub use edit_mode::{CommandMenuView, Editor, MenuInput, MenuRow, Mode};
 pub use external::{DiffLine, Version};
 pub use history::{History, Restore};
 pub use picker::PickerView;

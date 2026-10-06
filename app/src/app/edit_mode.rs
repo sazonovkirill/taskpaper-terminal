@@ -1,19 +1,21 @@
 //! Edit mode: the focused block's text edited in place with the text keys, written to the
 //! document as it is typed, refused where it would type a tag, undone as one step and repaired
-//! when editing ends, with the type menu that `/` opens and the typed shortcuts
+//! when editing ends, with the command menu that `/` opens and the typed shortcuts
 //! ([editing.md §1–2](../../../docs/specs/editing.md#1-modes), FR-MODE-01–03, FR-MODE-05,
-//! OQ-24, OQ-25, OQ-27, D-44).
+//! OQ-24, OQ-25, OQ-27, D-44, D-50).
 
+mod command_menu;
 mod shortcut;
-mod type_menu;
 
 use std::{mem, ops::Range};
 
-use type_menu::{Closed, TypeMenu};
-pub use type_menu::{MenuEntry, MenuInput, TypeMenuView};
+use command_menu::{Closed, CommandMenu};
+pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
+use jiff::civil::Date;
 
 use super::{
-    Access, Notice, Restore, Row, State,
+    Access, Effect, Notice, Restore, Row, State,
+    node_commands::{Action, node_commands},
     structure::NewBlock,
     text_field::{TextEdit, TextField},
 };
@@ -46,6 +48,13 @@ pub struct Editor<'a> {
     pub suffix: &'static str,
 }
 
+/// Where editing resumes after a command of the command menu: the block and the caret's column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Resume {
+    id: ItemId,
+    column: usize,
+}
+
 /// One edit session: the block's line as it started and as it is written now, its parts and the
 /// text field, with the session's own undo history of the text.
 #[derive(Debug, Clone)]
@@ -70,8 +79,8 @@ pub(super) struct Session {
     /// Whether the latest change typed a character, so that the next one typed joins its undo
     /// step.
     typing: bool,
-    /// The type menu, while `/` has it open (D-44).
-    menu: Option<TypeMenu>,
+    /// The command menu, while `/` has it open (D-50).
+    menu: Option<CommandMenu>,
     /// The parts and text as typed, prefix and space included, while the latest change is a
     /// typed shortcut that the very next `Backspace` or `Ctrl+Z` takes back (editing.md §2.1).
     shortcut: Option<(LineParts, TextField)>,
@@ -176,6 +185,7 @@ impl Session {
     /// Gives the text the type `typed` as one change to undo, keeping the caret where it was
     /// (editing.md §2.3).
     fn retype(&mut self, typed: Typed) {
+        self.shortcut = None;
         let (parts, text) = self.parts.retyped(typed, self.field.text());
         let field = TextField::with_caret(text, self.field.caret());
         self.change(parts, field);
@@ -311,38 +321,52 @@ impl State {
         self.write(false);
     }
 
-    /// The type menu, while it is open (D-44).
+    /// The command menu, while it is open (D-50).
     #[must_use]
-    pub fn type_menu(&self) -> Option<TypeMenuView<'_>> {
-        self.edit.as_ref()?.menu.as_ref().map(TypeMenu::view)
+    pub fn command_menu(&self) -> Option<CommandMenuView<'_>> {
+        self.edit.as_ref()?.menu.as_ref().map(CommandMenu::view)
     }
 
-    /// `/` in edit mode: opens the type menu (editing.md §2.3).
-    pub(super) fn open_type_menu(&mut self) {
-        if let Some(session) = &mut self.edit {
-            session.shortcut = None;
-            session.menu = Some(TypeMenu::default());
-        }
-    }
-
-    /// Applies `input` to the open type menu, and once it closes, gives the block the chosen
-    /// type as a change of the session or types what the menu took as text. A divider is not
-    /// edited, so choosing one ends editing (editing.md §2.3).
-    pub(super) fn type_menu_input(&mut self, input: MenuInput) {
-        let Some(session) = &mut self.edit else {
+    /// `/` in edit mode: opens the command menu with the commands for the edited block, `today`
+    /// being the local date they write (editing.md §2.3).
+    pub(super) fn open_command_menu(&mut self, today: Date) {
+        let link = !self.open_url().is_empty();
+        let Some((session, block)) = self.edit.as_mut().and_then(|session| {
+            let block = blocks::block(&self.document, session.id)?;
+            Some((session, block))
+        }) else {
             return;
         };
+        session.shortcut = None;
+        session.menu = Some(CommandMenu::new(node_commands(&block, link, today)));
+    }
+
+    /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
+    /// types what the menu took as text. A type change is a change of the session; a divider is
+    /// not edited, so choosing one ends editing. Any other command ends the session, runs as a
+    /// step of its own and editing resumes on the block at the caret's column, once a prompt or
+    /// popup it opened closes (editing.md §2.3).
+    pub(super) fn command_menu_input(&mut self, input: MenuInput) -> Vec<Effect> {
+        let Some(session) = &mut self.edit else {
+            return Vec::new();
+        };
         let Some(closed) = session.menu.as_mut().and_then(|menu| menu.input(input)) else {
-            return;
+            return Vec::new();
         };
         session.menu = None;
         match closed {
-            Closed::Apply(typed) => {
+            Closed::Run(Action::Retype(typed)) => {
                 session.retype(typed);
                 self.write(false);
                 if typed == Typed::Divider {
                     self.stop_editing();
                 }
+            }
+            Closed::Run(Action::Run(message)) => {
+                self.suspend_editing();
+                let effects = self.update(message);
+                self.resume_editing();
+                return effects;
             }
             Closed::Literal(literal) => {
                 for c in literal.chars() {
@@ -350,6 +374,57 @@ impl State {
                 }
             }
             Closed::Erased => {}
+        }
+        Vec::new()
+    }
+
+    /// `Ctrl+T` in edit mode: gives the block the next type of project, section, task and note,
+    /// and a note the first, as a change of the session with the caret kept (D-50).
+    pub(super) fn cycle_type(&mut self) {
+        let Some((session, block)) = self.edit.as_mut().and_then(|session| {
+            let block = blocks::block(&self.document, session.id)?;
+            Some((session, block))
+        }) else {
+            return;
+        };
+        let next = match block.kind() {
+            BlockKind::Project => Typed::Section,
+            BlockKind::Section => Typed::Task,
+            BlockKind::Task => Typed::Text,
+            BlockKind::Text | BlockKind::Divider => Typed::Project,
+        };
+        session.retype(next);
+        self.write(false);
+    }
+
+    /// Ends the edit session, if any, so that a command runs as a step of its own, keeping where
+    /// editing resumes once the command is done (D-50).
+    pub(super) fn suspend_editing(&mut self) {
+        if let Some(session) = &self.edit {
+            self.resume = Some(Resume {
+                id: session.id,
+                column: session.field.column(),
+            });
+            self.stop_editing();
+        }
+    }
+
+    /// Edits the block that [`State::suspend_editing`] left again, with the caret at the column
+    /// it had, once no prompt or popup is open; a block that is gone is not edited.
+    pub(super) fn resume_editing(&mut self) {
+        if self.date_prompt.is_some() || self.details {
+            return;
+        }
+        let Some(resume) = self.resume.take() else {
+            return;
+        };
+        if blocks::block(&self.document, resume.id).is_none() {
+            return;
+        }
+        self.focus = Some(resume.id);
+        self.start_editing();
+        if let Some(session) = &mut self.edit {
+            session.field = TextField::at_column(session.field.text().to_owned(), resume.column);
         }
     }
 
@@ -542,7 +617,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Motion, Version},
+        app::{DateInput, Disk, Effect, Message, Motion, Version},
         document::format,
     };
 
@@ -1166,35 +1241,54 @@ Site @url(https://x.y)",
         assert_eq!(texts(&state), ["run()! @code", "Site! @url(https://x.y)"]);
     }
 
-    fn menu(state: &mut State, input: MenuInput) {
-        state.update(Message::TypeMenu(input));
+    const TODAY: Date = jiff::civil::date(2026, 10, 6);
+
+    fn menu(state: &mut State, input: MenuInput) -> Vec<Effect> {
+        state.update(Message::CommandMenu(input))
     }
 
-    /// Opens the type menu and types `keys` into it.
+    /// Opens the command menu and types `keys` into it.
     fn slash(state: &mut State, keys: &str) {
-        state.update(Message::OpenTypeMenu);
+        state.update(Message::OpenCommandMenu { today: TODAY });
         for c in keys.chars() {
             menu(state, MenuInput::Type(c));
         }
     }
 
-    // D-44, editing.md §2.3
+    /// The labels the open menu lists, with `|` for a divider.
+    fn listed(state: &State) -> Vec<&'static str> {
+        let rows = state.command_menu().unwrap().rows;
+        rows.into_iter()
+            .map(|row| match row {
+                MenuRow::Command(label) => label,
+                MenuRow::Divider => "|",
+            })
+            .collect()
+    }
+
+    /// `text` with its first block edited and the caret before its last word.
+    fn editing_before_last_word(text: &str) -> State {
+        let mut state = open(text, 0);
+        state.update(Message::EditAtEnd);
+        go(&mut state, Motion::WordLeft);
+        state
+    }
+
+    // D-44, D-50, editing.md §2.3
     #[test]
-    fn a_shortcut_after_the_slash_gives_the_block_its_type_with_the_caret_kept() {
+    fn a_type_chosen_after_the_slash_gives_the_block_its_type_with_the_caret_kept() {
         for (keys, line, kind) in [
             ("p", "Call Ana: @x", BlockKind::Project),
             ("s", "Call Ana @x @section", BlockKind::Section),
             ("n", "Call Ana @x", BlockKind::Text),
             ("t", "- Call Ana @x", BlockKind::Task),
         ] {
-            let mut state = open("- Call Ana @x\n- t", 0);
-            state.update(Message::EditAtEnd);
-            go(&mut state, Motion::WordLeft);
-            state.update(Message::OpenTypeMenu);
-            assert!(state.type_menu().is_some());
+            let mut state = editing_before_last_word("- Call Ana @x\n- t");
+            slash(&mut state, keys);
+            assert!(state.command_menu().is_some(), "{keys} only filters");
             assert_eq!(texts(&state)[0], "- Call Ana @x", "opening changes nothing");
-            menu(&mut state, MenuInput::Type(keys.chars().next().unwrap()));
-            assert_eq!(state.type_menu(), None, "{keys}");
+            menu(&mut state, MenuInput::Choose);
+            assert_eq!(state.command_menu(), None, "{keys}");
             assert_eq!(texts(&state)[0], line, "{keys}");
             assert_eq!(state.rows()[0].kind, kind, "{keys}");
             assert_eq!(shown(&state), "Call |Ana", "{keys}");
@@ -1202,32 +1296,116 @@ Site @url(https://x.y)",
         }
     }
 
-    // D-44, editing.md §2.3
+    // D-50, editing.md §2.3
     #[test]
-    fn typing_after_the_slash_filters_and_enter_chooses_the_highlighted_entry() {
-        let mut state = open("- a", 0);
+    fn the_menu_lists_the_blocks_commands_and_filters_them_by_word() {
+        let mut state = open("- a @due(2026-10-09) https://x.y", 0);
         state.update(Message::EditAtEnd);
-        slash(&mut state, "e");
-        let names: Vec<_> = state
-            .type_menu()
-            .unwrap()
-            .entries
-            .iter()
-            .map(|entry| entry.name)
-            .collect();
-        assert_eq!(names, ["Project", "Section", "Note", "Divider"]);
-        assert_eq!(state.type_menu().unwrap().filter, "e");
-        menu(&mut state, MenuInput::Next);
+        slash(&mut state, "");
+        let all = listed(&state);
+        assert_eq!(all.first(), Some(&"Project"));
+        assert!(all.contains(&"Clear Due Date") && all.contains(&"Open Link"));
+        assert!(!all.contains(&"Clear Start Date"), "no start date to clear");
+        menu(&mut state, MenuInput::Dismiss);
+        state.update(Message::Text(TextEdit::DeleteBackward));
+        slash(&mut state, "date");
+        assert_eq!(
+            listed(&state),
+            ["Set Start Date", "Set Due Date", "Clear Due Date"]
+        );
+        assert_eq!(state.command_menu().unwrap().filter, "date");
+    }
+
+    // D-50, editing.md §2.3
+    #[test]
+    fn a_command_runs_as_its_own_step_and_editing_resumes_at_the_caret() {
+        let mut state = editing_before_last_word("- Call Ana\n- t");
+        typed(&mut state, "x");
+        slash(&mut state, "due");
+        assert_eq!(
+            listed(&state),
+            ["Set Due Date", "Due Today", "Due Tomorrow"]
+        );
         menu(&mut state, MenuInput::Next);
         menu(&mut state, MenuInput::Next);
         menu(&mut state, MenuInput::Previous);
-        assert_eq!(state.type_menu().unwrap().selected, 2);
-        menu(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["a"]);
-        assert_eq!(shown(&state), "a|");
+        assert_eq!(menu(&mut state, MenuInput::Choose), []);
+        assert_eq!(texts(&state), ["- Call xAna @due(2026-10-06)", "- t"]);
+        assert_eq!(state.mode(), Mode::Edit);
+        assert_eq!(state.command_menu(), None);
+        assert_eq!(shown(&state), "Call x|Ana", "the caret where it was");
+        typed(&mut state, "y");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- Call xAna @due(2026-10-06)", "- t"]);
+        state.update(Message::Undo);
+        assert_eq!(
+            texts(&state),
+            ["- Call xAna", "- t"],
+            "the command's own step"
+        );
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["- Call Ana", "- t"], "the typing before it");
     }
 
-    // D-44, editing.md §2.3
+    // D-50, editing.md §2.3
+    #[test]
+    fn a_prompt_the_menu_opens_returns_to_editing_when_it_closes() {
+        for (input, line) in [
+            (DateInput::Apply, "- Call Ana @start(2026-10-07)"),
+            (DateInput::Cancel, "- Call Ana"),
+        ] {
+            let mut state = editing_before_last_word("- Call Ana");
+            slash(&mut state, "set s");
+            menu(&mut state, MenuInput::Choose);
+            assert_eq!(state.mode(), Mode::Navigate, "the prompt takes the keys");
+            assert!(state.date_prompt().is_some());
+            for c in "tomorrow".chars() {
+                state.update(Message::DatePrompt(DateInput::Edit(TextEdit::Insert(c))));
+            }
+            assert_eq!(state.mode(), Mode::Navigate, "the prompt stays open");
+            state.update(Message::DatePrompt(input));
+            assert_eq!(texts(&state), [line]);
+            assert_eq!(state.mode(), Mode::Edit, "{input:?}");
+            assert_eq!(shown(&state), "Call |Ana", "{input:?}");
+        }
+    }
+
+    // D-50, D-3
+    #[test]
+    fn the_details_the_menu_shows_return_to_editing_when_closed() {
+        let mut state = editing_before_last_word("- Call Ana @x");
+        slash(&mut state, "show");
+        menu(&mut state, MenuInput::Choose);
+        assert!(state.details().is_some());
+        assert_eq!(state.mode(), Mode::Navigate);
+        state.update(Message::CloseDetails);
+        assert_eq!(shown(&state), "Call |Ana");
+    }
+
+    // D-50
+    #[test]
+    fn duplicate_and_open_link_resume_editing_on_the_block_and_delete_does_not() {
+        let line = "- see https://x.y now";
+        let mut state = editing_before_last_word(&format!("{line}\n- t"));
+        slash(&mut state, "dup");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), [line, line, "- t"]);
+        assert_eq!(state.focus(), Some(state.rows()[0].id), "the original");
+        assert_eq!(shown(&state), "see https://x.y |now");
+        slash(&mut state, "open");
+        assert_eq!(
+            menu(&mut state, MenuInput::Choose),
+            [Effect::OpenUrl("https://x.y".to_owned())]
+        );
+        assert_eq!(shown(&state), "see https://x.y |now");
+        slash(&mut state, "del");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(texts(&state), [line, "- t"]);
+        assert_eq!(state.mode(), Mode::Navigate, "nothing to edit");
+    }
+
+    // D-44, D-50, editing.md §2.3
     #[test]
     fn esc_or_a_filter_matching_nothing_types_the_slash_and_the_filter() {
         let mut state = open("see", 0);
@@ -1237,19 +1415,19 @@ Site @url(https://x.y)",
         menu(&mut state, MenuInput::Dismiss);
         assert_eq!(shown(&state), "see /|");
         slash(&mut state, "h");
-        assert_eq!(state.type_menu(), None, "nothing is called h");
+        assert_eq!(state.command_menu(), None, "nothing starts with h");
         typed(&mut state, "ome");
         assert_eq!(texts(&state), ["see //home"]);
-        slash(&mut state, "ro");
+        slash(&mut state, "r");
         menu(&mut state, MenuInput::Dismiss);
-        assert_eq!(shown(&state), "see //home/ro|");
+        assert_eq!(shown(&state), "see //home/r|");
         slash(&mut state, "o");
         menu(&mut state, MenuInput::Erase);
         menu(&mut state, MenuInput::Erase);
-        assert_eq!(state.type_menu(), None);
+        assert_eq!(state.command_menu(), None);
         assert_eq!(
             shown(&state),
-            "see //home/ro|",
+            "see //home/r|",
             "erasing the slash types nothing"
         );
     }
@@ -1259,15 +1437,15 @@ Site @url(https://x.y)",
     fn a_menu_input_without_an_open_menu_does_nothing() {
         let mut state = open("a", 0);
         menu(&mut state, MenuInput::Choose);
-        state.update(Message::OpenTypeMenu);
-        assert_eq!(state.type_menu(), None, "no menu in navigate mode");
+        state.update(Message::OpenCommandMenu { today: TODAY });
+        assert_eq!(state.command_menu(), None, "no menu in navigate mode");
         state.update(Message::EditAtEnd);
         menu(&mut state, MenuInput::Type('t'));
         assert_eq!(texts(&state), ["a"]);
-        state.update(Message::OpenTypeMenu);
+        state.update(Message::OpenCommandMenu { today: TODAY });
         state.update(Message::StopEditing);
         state.update(Message::EditAtEnd);
-        assert_eq!(state.type_menu(), None, "the menu ends with the session");
+        assert_eq!(state.command_menu(), None, "the menu ends with the session");
     }
 
     // D-44, FR-OPS-08
@@ -1277,6 +1455,7 @@ Site @url(https://x.y)",
         state.update(Message::EditAtEnd);
         typed(&mut state, "s");
         slash(&mut state, "p");
+        menu(&mut state, MenuInput::Choose);
         assert_eq!(texts(&state), ["notes:", "- t"]);
         assert_eq!(state.editor().unwrap().suffix, ":");
         state.update(Message::Undo);
@@ -1323,5 +1502,51 @@ Site @url(https://x.y)",
         assert_eq!(texts(&state), ["- a", "---"]);
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["- a"]);
+    }
+
+    // D-50
+    #[test]
+    fn ctrl_t_cycles_project_section_task_and_note_keeping_text_and_caret() {
+        let mut state = editing_before_last_word("Call Ana @x\n- t");
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            state.update(Message::CycleType);
+            seen.push((texts(&state)[0].clone(), state.rows()[0].kind));
+            assert_eq!(shown(&state), "Call |Ana");
+        }
+        assert_eq!(
+            seen,
+            [
+                ("Call Ana: @x".to_owned(), BlockKind::Project),
+                ("Call Ana @x @section".to_owned(), BlockKind::Section),
+                ("- Call Ana @x".to_owned(), BlockKind::Task),
+                ("Call Ana @x".to_owned(), BlockKind::Text),
+            ]
+        );
+        state.update(Message::Undo);
+        assert_eq!(texts(&state)[0], "- Call Ana @x", "a change of the session");
+        state.update(Message::StopEditing);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state)[0], "Call Ana @x");
+        state.update(Message::CycleType);
+        assert_eq!(texts(&state)[0], "Call Ana @x", "only while editing");
+    }
+
+    // D-50, editing.md §2.1
+    #[test]
+    fn ctrl_t_after_a_typed_shortcut_leaves_backspace_to_the_text() {
+        let mut state = open("a", 0);
+        state.update(Message::NewBelow);
+        typed(&mut state, "[]");
+        state.update(Message::TypeSpace { today: TODAY });
+        assert_eq!(texts(&state), ["a", "- "]);
+        state.update(Message::CycleType);
+        assert_eq!(texts(&state), ["a", ""]);
+        state.update(Message::Text(TextEdit::DeleteBackward));
+        assert_eq!(
+            texts(&state),
+            ["a"],
+            "an empty block is deleted, not reverted"
+        );
     }
 }

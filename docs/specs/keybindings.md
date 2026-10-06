@@ -151,7 +151,8 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | End editing and create the next block | `Enter` |
 | End editing and edit the previous / next visible block that is not a divider, at the same column (D-43) | `↑` / `↓` |
 | Select to the start / end of the text | `Shift+↑` / `Shift+↓` |
-| Open the type menu (D-44, [editing.md §2.3](editing.md#23-type-menu)) | `/` |
+| Open the command menu of the block's commands (D-50, [editing.md §2.3](editing.md#23-command-menu)) | `/` |
+| Cycle the block's type: project, section, task, note (D-50, [editing.md §2.4](editing.md#24-cycling-the-type)) | `Ctrl+T` |
 | Typed shortcuts: a divider, a task, a completed task (FR-MODE-05, [editing.md §2.1](editing.md#21-typed-shortcuts)); `Backspace` or `Ctrl+Z` right after takes one back | `--- `, `[] ` or `[ ] `, `[x] ` at the start of the text |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
@@ -161,7 +162,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 ## 4. Other contexts
 
-- **Type menu** ([editing.md §2.3](editing.md#23-type-menu)): `p`, `s`, `n`, `t` right after `/` choose Project, Section, Note (text) or Task at once; other characters filter; `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. Divider has no letter: `/div` then `Enter`. The menu shows the type names only.
+- **Command menu** ([editing.md §2.3](editing.md#23-command-menu)): characters filter by the starts of the labels' words, in order (`/date`, `/due`, `/color r`); `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, skipping the lines between groups, `Enter` runs the highlighted entry (the first by default), `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. There are no instant letters (D-50): `/p` then `Enter` makes a project. The menu shows the labels only.
 - **Color picker** (`mc`, [editing.md §5](editing.md#5-block-commands)): a picker as below that lists each color with its number; typing `1` to `6` chooses that color at once (D-48), and other characters filter by name.
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `sec` and `Enter` makes a section.
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.

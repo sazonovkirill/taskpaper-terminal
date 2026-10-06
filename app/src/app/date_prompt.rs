@@ -105,7 +105,8 @@ impl State {
     }
 
     /// Applies `input` to the open prompt; applying sets the date of the blocks the prompt was
-    /// opened on that are still there as one step to undo (FR-OPS-08).
+    /// opened on that are still there as one step to undo (FR-OPS-08). A prompt the command menu
+    /// opened returns to editing when it closes (D-50).
     pub(super) fn date_prompt_input(&mut self, input: DateInput) {
         let Some(prompt) = &mut self.date_prompt else {
             return;
@@ -127,6 +128,7 @@ impl State {
                 self.commit_any(ops);
             }
         }
+        self.resume_editing();
     }
 }
 

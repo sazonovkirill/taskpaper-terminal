@@ -67,7 +67,7 @@ Each row: indent, then the marker (if the type has one) and a space, then text, 
 
 A popup anchored at the focused element (or at the pointer for right-click) listing every command available for that element, grouped (Edit, Structure, Metadata, View, Panes), each with its key binding right-aligned. Commands that do not apply (for example Open URL on a block without one) are omitted. Entries come from the core's command list for that context, so the menu, the command palette and the `?` panel always agree.
 
-The type menu of edit mode ([editing.md §2.3](editing.md#23-type-menu), D-44) is a smaller popup of the same kind: a bordered box titled "Node type:" on the line below the caret, starting at the caret's column, or above the caret's line when there is no room below, moved left to stay on screen. It lists the matching type names one per line, the highlighted one reversed, and shows `/` and the filter in its bottom border once one is typed.
+The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D-50) is a smaller popup of the same kind: a bordered box titled "Commands:" on the line below the caret, starting at the caret's column, or above the caret's line when there is no room below, moved left to stay on screen. It is as tall as its entries but no taller than the larger room below or above the caret's line, and scrolls to keep the highlighted entry in view. It lists the matching labels one per line, the highlighted one reversed, with a dim line across the box between groups, and shows `/` and the filter in its bottom border once one is typed.
 
 ## 6. Mouse (FR-KEY-05, D-16)
 

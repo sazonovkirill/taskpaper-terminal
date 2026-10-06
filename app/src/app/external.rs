@@ -282,10 +282,11 @@ impl State {
     /// Replaces the document with `document`, keeping the zoom, the focus, the history, the
     /// selection and the collapsed blocks on the blocks they were on. An edit session ends with
     /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
-    /// closes with it.
+    /// closes with it, as does an edit a command of the command menu would resume (D-50).
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
+        self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
         self.zoom = self.zoom.and_then(nearest);
@@ -687,6 +688,27 @@ mod tests {
         assert!(state.date_prompt().is_some());
         state.update(found("- b\n"));
         assert_eq!(state.date_prompt(), None);
+    }
+
+    // file-io.md §3, D-50
+    #[test]
+    fn a_reload_forgets_the_edit_a_menu_command_would_resume() {
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::EditAtEnd);
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 5),
+        });
+        for c in "set due".chars() {
+            state.update(Message::CommandMenu(crate::app::MenuInput::Type(c)));
+        }
+        state.update(Message::CommandMenu(crate::app::MenuInput::Choose));
+        assert!(state.date_prompt().is_some());
+        state.update(found("- x\n- y\n"));
+        state.update(Message::FocusLast);
+        state.update(Message::OpenDetails);
+        state.update(Message::CloseDetails);
+        assert_eq!(state.mode(), crate::app::Mode::Navigate);
+        assert_eq!(state.focus(), Some(state.rows()[1].id));
     }
 
     // file-io.md §3, FR-OPS-08

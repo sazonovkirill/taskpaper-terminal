@@ -38,6 +38,15 @@ pub fn anchored(area: Rect, caret: (u16, u16), size: (u16, u16)) -> Rect {
     Rect::new(x, y, width, height).clamp(area)
 }
 
+/// The most rows a popup anchored at the caret on `line` can have inside `area`: those below the
+/// line or those above it, whichever are more (ui.md §5).
+#[must_use]
+pub fn room(area: Rect, line: u16) -> u16 {
+    let below = area.bottom().saturating_sub(line.saturating_add(1));
+    let above = line.saturating_sub(area.top());
+    below.max(above)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -57,6 +66,19 @@ mod tests {
             anchored(area, (5, 2), (50, 20)),
             Rect::new(2, 1, 40, 10),
             "a popup larger than the area fills it"
+        );
+    }
+
+    #[test]
+    fn a_popup_has_room_on_the_larger_side_of_the_caret() {
+        let area = Rect::new(2, 1, 40, 10);
+        assert_eq!(room(area, 1), 9, "the top line has the rest below");
+        assert_eq!(room(area, 3), 7);
+        assert_eq!(room(area, 7), 6, "more above");
+        assert_eq!(room(area, 10), 9, "the bottom line has the rest above");
+        assert_eq!(
+            anchored(area, (5, 7), (10, room(area, 7))),
+            Rect::new(5, 1, 10, 6)
         );
     }
 

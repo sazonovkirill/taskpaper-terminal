@@ -161,6 +161,8 @@ pub enum Message {
     },
     /// A key of the open date prompt (FR-TAG-03).
     DatePrompt(DateInput),
+    /// Remove the `tag` date of the selected blocks, else the focused block (FR-TAG-03, D-50).
+    ClearDate(DateTag),
     /// Open the type picker on the focused block (FR-BLK-08).
     OpenTypePicker,
     /// A key of the open type picker (FR-BLK-08).
@@ -187,10 +189,17 @@ pub enum Message {
     },
     /// Stop editing and return to navigate mode on the same block (FR-MODE-01).
     StopEditing,
-    /// Open the type menu at the caret, as typing `/` in edit mode does (D-44).
-    OpenTypeMenu,
-    /// A key of the open type menu (D-44).
-    TypeMenu(MenuInput),
+    /// Open the command menu at the caret, as typing `/` in edit mode does, `today` being the
+    /// frontend's local date that its date commands write (D-50).
+    OpenCommandMenu {
+        /// The local date.
+        today: Date,
+    },
+    /// A key of the open command menu (D-50).
+    CommandMenu(MenuInput),
+    /// Give the block being edited the next type of project, section, task and note, as `Ctrl+T`
+    /// does (D-50).
+    CycleType,
     /// Add a block after the focused block's subtree, or the last selected one's, and edit it
     /// (FR-MODE-04).
     NewBelow,
@@ -286,8 +295,9 @@ impl Message {
             | Self::Text(_)
             | Self::TypeSpace { .. }
             | Self::StopEditing
-            | Self::OpenTypeMenu
-            | Self::TypeMenu(_)
+            | Self::OpenCommandMenu { .. }
+            | Self::CommandMenu(_)
+            | Self::CycleType
             | Self::DatePrompt(_)
             | Self::NewNext
             | Self::EditPrevious
@@ -333,6 +343,7 @@ impl Message {
             | Self::OpenColorPicker
             | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
+            | Self::ClearDate(_)
             | Self::OpenTypePicker
             | Self::TypePicker(_)
             | Self::OpenDetails
@@ -464,6 +475,7 @@ impl State {
             Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
             Message::DatePrompt(input) => self.date_prompt_input(input),
+            Message::ClearDate(tag) => self.clear_date(tag),
             Message::OpenTypePicker => self.open_type_picker(),
             Message::TypePicker(input) => self.type_picker_input(input),
             Message::OpenDetails => self.open_details(),
@@ -474,8 +486,9 @@ impl State {
             Message::Text(edit) => self.edit_text(edit),
             Message::TypeSpace { today } => self.type_space(today),
             Message::StopEditing => self.stop_editing(),
-            Message::OpenTypeMenu => self.open_type_menu(),
-            Message::TypeMenu(input) => self.type_menu_input(input),
+            Message::OpenCommandMenu { today } => self.open_command_menu(today),
+            Message::CommandMenu(input) => effects = self.command_menu_input(input),
+            Message::CycleType => self.cycle_type(),
             Message::NewBelow => self.add_block(NewBlock::Below, None),
             Message::NewAbove => self.add_block(NewBlock::Above, None),
             Message::NewFirstChild => self.add_block(NewBlock::FirstChild, None),

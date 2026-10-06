@@ -18,9 +18,10 @@ impl State {
         self.details = self.focused().is_some();
     }
 
-    /// Closes the details popup.
+    /// Closes the details popup, returning to editing when the command menu opened it (D-50).
     pub(super) fn close_details(&mut self) {
         self.details = false;
+        self.resume_editing();
     }
 }
 
