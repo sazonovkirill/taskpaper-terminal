@@ -324,7 +324,6 @@ impl Message {
             | Self::Text(_)
             | Self::StopEditing
             | Self::OpenCommandMenu { .. }
-            | Self::Menu(Menu::CommandMenu, _)
             | Self::CycleType
             | Self::DatePrompt(_)
             | Self::NewNext
@@ -384,15 +383,6 @@ impl Message {
             | Self::OpenGoToSymbol
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
-            | Self::Menu(
-                Menu::ColorPicker
-                | Menu::TypePicker
-                | Menu::GoToSymbol
-                | Menu::MoveTo
-                | Menu::GoToCommand
-                | Menu::ContextMenu,
-                _,
-            )
             | Self::Count
             | Self::SaveAs(_)
             | Self::OpenContextMenu
@@ -404,6 +394,23 @@ impl Message {
             | Self::OpenUrl
             | Self::Select(_)
             | Self::Group => true,
+            Self::Menu(menu, _) => menu.ends_editing(),
+        }
+    }
+}
+
+impl Menu {
+    /// Whether a key of this menu belongs to navigate mode, ending an edit session first, rather
+    /// than to the command menu of edit mode.
+    fn ends_editing(self) -> bool {
+        match self {
+            Self::CommandMenu => false,
+            Self::ColorPicker
+            | Self::TypePicker
+            | Self::GoToSymbol
+            | Self::MoveTo
+            | Self::GoToCommand
+            | Self::ContextMenu => true,
         }
     }
 }
