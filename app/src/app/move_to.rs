@@ -64,6 +64,7 @@ impl State {
                 .any(|line| moving.iter().any(|block| block.id() == line))
         };
         let focus = self
+            .pane
             .focus
             .filter(|&id| inside(id))
             .or_else(|| moving.last().map(Block::id));
@@ -77,7 +78,7 @@ impl State {
             }
         } else {
             self.go_to(Location::Outline(Some(to)));
-            self.focus = focus;
+            self.pane.focus = focus;
         }
     }
 }

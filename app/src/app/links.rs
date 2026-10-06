@@ -12,7 +12,8 @@ impl State {
     /// Asks the frontend to open the focused block's link, if it has one, also while blocks are
     /// selected (FR-BLK-06).
     pub(super) fn open_url(&self) -> Vec<Effect> {
-        self.focus
+        self.pane
+            .focus
             .and_then(|id| {
                 let kind = blocks::block(&self.document, id)?.kind();
                 address(self.document.get(id)?, Syntax::of(kind))

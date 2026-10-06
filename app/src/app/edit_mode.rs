@@ -443,7 +443,7 @@ impl State {
         if !self.rows().iter().any(|row| row.id == resume.id) {
             return;
         }
-        self.focus = Some(resume.id);
+        self.pane.focus = Some(resume.id);
         self.start_editing();
         if let Some(session) = &mut self.edit {
             session.field = TextField::at_column(session.field.text().to_owned(), resume.column);
@@ -476,7 +476,7 @@ impl State {
             return;
         };
         self.stop_editing();
-        self.focus = Some(target);
+        self.pane.focus = Some(target);
         self.start_editing();
         if let Some(session) = &mut self.edit {
             let column = column.min(session.field.column());
@@ -521,7 +521,7 @@ impl State {
             .chain(session.applied())
             .collect();
         self.edits.record(Transaction::new(ops, before, after));
-        self.focus = Some(session.id);
+        self.pane.focus = Some(session.id);
     }
 
     /// Records the creation of the block being edited as a step of its own, so that a step

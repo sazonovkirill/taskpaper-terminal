@@ -73,7 +73,7 @@ impl State {
     /// Applies `ops` as one undoable step that keeps the focus where it is, after what an edit
     /// session has done so far, unless the file is read-only, which only says so.
     pub(super) fn commit(&mut self, ops: Vec<Op>) {
-        self.commit_focusing(ops, self.focus);
+        self.commit_focusing(ops, self.pane.focus);
     }
 
     /// Applies `ops` as one undoable step, as [`State::commit`] does, that ends with the focus on
@@ -84,10 +84,12 @@ impl State {
             return;
         }
         self.record_edit_so_far();
-        let before = Restore { focus: self.focus };
+        let before = Restore {
+            focus: self.pane.focus,
+        };
         let transaction = Transaction::new(ops, before, Restore { focus });
         match self.edits.commit(&mut self.document, transaction) {
-            Ok(()) => self.focus = focus,
+            Ok(()) => self.pane.focus = focus,
             Err(error) => self.edit_failed(&error),
         }
     }
@@ -106,7 +108,7 @@ impl State {
         step: fn(&mut History, &mut Document) -> Result<Option<Restore>, EditError>,
     ) {
         match step(&mut self.edits, &mut self.document) {
-            Ok(Some(restore)) => self.focus = restore.focus,
+            Ok(Some(restore)) => self.pane.focus = restore.focus,
             Ok(None) => {}
             Err(error) => self.edit_failed(&error),
         }

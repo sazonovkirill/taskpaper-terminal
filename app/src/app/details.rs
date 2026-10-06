@@ -9,7 +9,7 @@ impl State {
     #[must_use]
     pub fn details(&self) -> Option<Details> {
         self.details
-            .then_some(self.focus?)
+            .then_some(self.pane.focus?)
             .and_then(|id| blocks::details(self.document(), id))
     }
 
@@ -58,7 +58,7 @@ mod tests {
         empty.update(Message::OpenDetails);
         assert_eq!(empty.details(), None);
         empty.document = format::parse("a");
-        empty.focus = empty.rows().first().map(|row| row.id);
+        empty.pane.focus = empty.rows().first().map(|row| row.id);
         assert_eq!(empty.details(), None, "opening found nothing to show");
     }
 }

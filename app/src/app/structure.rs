@@ -100,8 +100,8 @@ impl State {
         self.document
             .apply(&mut transaction)
             .expect("the ops are built from the document as it is, with a fresh id");
-        let before = self.focus;
-        self.focus = Some(id);
+        let before = self.pane.focus;
+        self.pane.focus = Some(id);
         self.edit_new_block(id, transaction.ops().to_vec(), before);
     }
 
@@ -164,7 +164,7 @@ impl State {
             self.stop_editing();
             self.delete_blocks(&[block], Some(previous));
         }
-        self.focus = Some(previous);
+        self.pane.focus = Some(previous);
         self.start_editing();
     }
 

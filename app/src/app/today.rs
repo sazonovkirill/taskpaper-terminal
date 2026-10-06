@@ -5,7 +5,7 @@
 
 use jiff::civil::Date;
 
-use super::{Location, Message, Row, State};
+use super::{Location, Message, Row, State, pane::Pane};
 use crate::document::{Block, ItemId, blocks};
 
 /// Whether the Today view lists `block` on `today`: it has `@today`, or a start or due date on or
@@ -19,20 +19,20 @@ fn for_today(block: &Block, today: Date) -> bool {
 }
 
 impl State {
-    /// The Today view's entries in document order, each at depth 0 with the path of the blocks
+    /// The Today view's entries in `pane` in document order, each at depth 0 with the path of the blocks
     /// above it. Completed blocks, each with everything inside it, are left out while hidden, as
     /// in the outline (FR-DONE-02); special nodes never show (FR-SPC-01).
-    pub(super) fn today_rows(&self) -> Vec<Row> {
+    pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut rows = Vec::new();
-        self.push_today_rows(self.document.root(), false, &mut rows);
+        self.push_today_rows(pane, self.document.root(), false, &mut rows);
         rows
     }
 
-    /// Appends the entries below the line `line`, which is done or inside a done block when
+    /// Appends `pane`'s entries below the line `line`, which is done or inside a done block when
     /// `inside_done` says so.
-    fn push_today_rows(&self, line: ItemId, inside_done: bool, out: &mut Vec<Row>) {
+    fn push_today_rows(&self, pane: &Pane, line: ItemId, inside_done: bool, out: &mut Vec<Row>) {
         for block in blocks::children(&self.document, line) {
-            if !self.shows(&block) {
+            if !pane.shows(&block) {
                 continue;
             }
             if for_today(&block, self.today) {
@@ -41,10 +41,10 @@ impl State {
                 out.push(Row {
                     path,
                     hidden_children: 0,
-                    ..self.row(&block, 0, false, inside_done)
+                    ..self.row(pane, &block, 0, false, inside_done)
                 });
             }
-            self.push_today_rows(block.id(), inside_done || block.done(), out);
+            self.push_today_rows(pane, block.id(), inside_done || block.done(), out);
         }
     }
 
@@ -53,7 +53,7 @@ impl State {
     /// sibling, or adding, pasting, indenting or moving blocks, is `None`, as is a paste outside
     /// edit mode, and ending an edit with `Enter` only stops editing (navigation.md §7).
     pub(super) fn as_located(&self, message: Message) -> Option<Message> {
-        if self.location != Location::Today {
+        if self.pane.location != Location::Today {
             return Some(message);
         }
         match message {
@@ -155,7 +155,7 @@ impl State {
     pub(super) fn go_to_entry(&mut self, block: &Block) {
         let parent = blocks::parent(&self.document, block.id()).map(|parent| parent.id());
         self.go_to(Location::Outline(parent));
-        self.focus = Some(block.id());
+        self.pane.focus = Some(block.id());
     }
 }
 
@@ -479,7 +479,11 @@ Work: @done
             "the block zoomed out of is an entry"
         );
         state.go_to(Location::Today);
-        assert_eq!(state.history.len(), 3, "staying put is not a new entry");
+        assert_eq!(
+            state.pane.history.len(),
+            3,
+            "staying put is not a new entry"
+        );
         state.update(Message::FocusLast);
         state.update(Message::Back);
         assert_eq!(state.breadcrumbs(), ["Home", "Errands", "Post office"]);

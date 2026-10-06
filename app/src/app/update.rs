@@ -540,14 +540,14 @@ impl State {
             Message::CollapseLevel => self.collapse_level(),
             Message::ExpandAll => self.expand_all(),
             Message::CollapseAll => self.collapse_all(),
-            Message::ToggleShowDone => self.show_done = !self.show_done,
+            Message::ToggleShowDone => self.pane.show_done = !self.pane.show_done,
             Message::ToggleShortcuts => self.shortcuts = !self.shortcuts,
             Message::CloseShortcuts => self.shortcuts = false,
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(Location::Outline(None)),
-            Message::Back => self.walk_history(self.history_at.checked_sub(1)),
-            Message::Forward => self.walk_history(self.history_at.checked_add(1)),
+            Message::Back => self.walk_history(self.pane.history_at.checked_sub(1)),
+            Message::Forward => self.walk_history(self.pane.history_at.checked_add(1)),
             Message::ToggleSidebar => self.toggle_sidebar(),
             Message::FocusSidebar => self.focus_sidebar(),
             Message::Sidebar(input) => self.sidebar_input(input),
@@ -617,7 +617,7 @@ impl State {
 
     /// The focused block and whether it is the title row.
     pub(super) fn focused(&self) -> Option<(Block, bool)> {
-        let id = self.focus?;
+        let id = self.pane.focus?;
         Some((blocks::block(self.document(), id)?, Some(id) == self.zoom()))
     }
 
@@ -643,7 +643,7 @@ impl State {
         let Some(block) = self.focused_block() else {
             return;
         };
-        match self.location {
+        match self.pane.location {
             Location::Outline(_) => self.go_to(Location::Outline(Some(block.id()))),
             Location::Today => self.go_to_entry(&block),
         }
@@ -659,21 +659,21 @@ impl State {
 
     /// Shows `location`, a new entry in the history that drops any forward entries.
     pub(super) fn go_to(&mut self, location: Location) {
-        if location == self.location {
+        if location == self.pane.location {
             return;
         }
-        self.history.truncate(self.history_at + 1);
-        self.history.push(location);
-        self.history_at = self.history.len() - 1;
+        self.pane.history.truncate(self.pane.history_at + 1);
+        self.pane.history.push(location);
+        self.pane.history_at = self.pane.history.len() - 1;
         self.show(location);
     }
 
     /// Shows the history entry at `at`, if there is one.
     fn walk_history(&mut self, at: Option<usize>) {
         if let Some(at) = at
-            && let Some(&location) = self.history.get(at)
+            && let Some(&location) = self.pane.history.get(at)
         {
-            self.history_at = at;
+            self.pane.history_at = at;
             self.show(location);
         }
     }
@@ -682,13 +682,13 @@ impl State {
     /// or the focused entry when leaving the Today view; else the first block under the title,
     /// else the title.
     fn show(&mut self, location: Location) {
-        let left = match self.location {
+        let left = match self.pane.location {
             Location::Outline(zoom) => zoom,
-            Location::Today => self.focus,
+            Location::Today => self.pane.focus,
         };
-        self.location = location;
+        self.pane.location = location;
         let rows = self.rows();
-        self.focus = left
+        self.pane.focus = left
             .filter(|&id| rows.iter().any(|row| row.id == id))
             .or_else(|| {
                 rows.iter()
@@ -703,7 +703,7 @@ impl State {
             .focused_block()
             .and_then(|block| blocks::parent(self.document(), block.id()))
         {
-            self.focus = Some(parent.id());
+            self.pane.focus = Some(parent.id());
         }
     }
 
@@ -718,7 +718,7 @@ impl State {
         if let Some(at) = siblings.iter().position(|block| block.id() == id)
             && let Some(sibling) = to(at).and_then(|index| siblings.get(index))
         {
-            self.focus = Some(sibling.id());
+            self.pane.focus = Some(sibling.id());
         }
     }
 
@@ -731,7 +731,7 @@ impl State {
             if !title {
                 self.folds.remove(&block.id());
             }
-            self.focus = Some(child.id());
+            self.pane.focus = Some(child.id());
         }
     }
 
@@ -753,7 +753,7 @@ impl State {
         if (title || !self.folds.remove(&block.id()))
             && let Some(child) = self.shown_children(&block).first()
         {
-            self.focus = Some(child.id());
+            self.pane.focus = Some(child.id());
         }
     }
 
@@ -856,8 +856,8 @@ impl State {
     /// no focus, as when every block was hidden, focuses the first row if one is back.
     fn repair_focus(&mut self) {
         let visible: Vec<_> = self.rows().into_iter().map(|row| row.id).collect();
-        let Some(focus) = self.focus else {
-            self.focus = visible.first().copied();
+        let Some(focus) = self.pane.focus else {
+            self.pane.focus = visible.first().copied();
             return;
         };
         if visible.contains(&focus) {
@@ -869,7 +869,7 @@ impl State {
             .map(|(block, _)| block.id())
             .collect();
         let at = order.iter().position(|&id| id == focus).unwrap_or_default();
-        self.focus = order
+        self.pane.focus = order
             .iter()
             .skip(at)
             .chain(order.iter().take(at).rev())
@@ -892,11 +892,11 @@ impl State {
     /// a focus there are no rows, so there is nothing to move.
     fn move_focus(&mut self, to: impl FnOnce(usize, usize) -> usize) {
         let rows = self.rows();
-        let Some(at) = rows.iter().position(|row| Some(row.id) == self.focus) else {
+        let Some(at) = rows.iter().position(|row| Some(row.id) == self.pane.focus) else {
             return;
         };
         if let Some(row) = rows.get(to(at, rows.len() - 1)) {
-            self.focus = Some(row.id);
+            self.pane.focus = Some(row.id);
         }
     }
 }
@@ -1365,11 +1365,15 @@ mod tests {
         assert_eq!(zoom_text(&state), "c");
         state.update(Message::Back);
         state.update(Message::GoHome);
-        assert_eq!(state.history.len(), 3);
+        assert_eq!(state.pane.history.len(), 3);
         state.update(Message::Forward);
         assert_eq!(zoom_text(&state), "Home");
         state.update(Message::GoHome);
-        assert_eq!(state.history.len(), 3, "staying put is not a new entry");
+        assert_eq!(
+            state.pane.history.len(),
+            3,
+            "staying put is not a new entry"
+        );
     }
 
     // FR-NAV-02, FR-NAV-03

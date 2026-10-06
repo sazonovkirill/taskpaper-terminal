@@ -19,6 +19,7 @@ mod go_to_symbol;
 pub mod history;
 mod links;
 mod move_to;
+mod pane;
 mod picker;
 mod save_as;
 pub mod saving;

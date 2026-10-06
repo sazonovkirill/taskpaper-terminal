@@ -314,13 +314,14 @@ impl State {
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
         let nearest = |id: ItemId| rematch(&old, &self.document, id).map(|(id, _)| id);
-        self.location = self.location.rematched(nearest);
-        self.history = self
+        self.pane.location = self.pane.location.rematched(nearest);
+        self.pane.history = self
+            .pane
             .history
             .iter()
             .map(|location| location.rematched(nearest))
             .collect();
-        self.focus = self.focus.and_then(nearest);
+        self.pane.focus = self.pane.focus.and_then(nearest);
         let exact = |id: ItemId| {
             rematch(&old, &self.document, id).and_then(|(id, exact)| exact.then_some(id))
         };
@@ -329,10 +330,10 @@ impl State {
             .iter()
             .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
-        self.selection = self.selection.mapped(exact);
+        self.pane.selection = self.pane.selection.mapped(exact);
         self.sidebar.rematch_folds(exact);
-        if self.focus.is_none() {
-            self.focus = self.rows().first().map(|row| row.id);
+        if self.pane.focus.is_none() {
+            self.pane.focus = self.rows().first().map(|row| row.id);
         }
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());

@@ -15,10 +15,10 @@ use super::{
     edit_mode::{Resume, Session},
     external::External,
     finder::Finder,
+    pane::Pane,
     picker::Picker,
     save_as,
     saving::Autosave,
-    selection::Selection,
     sidebar::Sidebar,
     type_picker::Conversion,
 };
@@ -31,9 +31,8 @@ use crate::document::{
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
-/// whether it is saved, the focused row and any edit session on it, the selected blocks, the
-/// collapsed blocks, whether completed blocks show, the zoom with its history, the sidebar and
-/// the status-line notice.
+/// whether it is saved, the pane with its focus, selection and zoom, any edit session on the
+/// focused block, the collapsed blocks, the sidebar and the status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -51,9 +50,8 @@ pub struct State {
     pub(super) today: Date,
     /// The notice the status line shows, and until when.
     notice: Option<(Notice, Duration)>,
-    pub(super) focus: Option<ItemId>,
-    /// The selected blocks (FR-OPS-01).
-    pub(super) selection: Selection,
+    /// The focused pane (FR-UI-02).
+    pub(super) pane: Pane,
     /// The edit session of the focused block, in edit mode (FR-MODE-01).
     pub(super) edit: Option<Session>,
     /// The color picker over the focused block, while it is open (FR-TAG-05).
@@ -78,16 +76,8 @@ pub struct State {
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
     pub(super) folds: HashSet<ItemId>,
-    /// Whether done blocks show, with everything inside them (FR-DONE-02).
-    pub(super) show_done: bool,
     /// Whether the shortcuts panel is open (FR-KEY-04).
     pub(super) shortcuts: bool,
-    /// What the pane shows: the outline below a zoom, or the Today view (FR-NAV-03, D-7).
-    pub(super) location: Location,
-    /// Every location visited, oldest first, for back and forward (FR-NAV-04).
-    pub(super) history: Vec<Location>,
-    /// The position of the current location in `history`.
-    pub(super) history_at: usize,
     /// The navigation sidebar (FR-UI-01).
     pub(super) sidebar: Sidebar,
 }
@@ -273,8 +263,7 @@ impl State {
             now: Duration::ZERO,
             today: Date::default(),
             notice: None,
-            focus: None,
-            selection: Selection::default(),
+            pane: Pane::at(Location::Outline(None)),
             edit: None,
             color_picker: None,
             date_prompt: None,
@@ -287,14 +276,10 @@ impl State {
             context_menu: None,
             resume: None,
             folds: HashSet::new(),
-            show_done: true,
             shortcuts: false,
-            location: Location::Outline(None),
-            history: vec![Location::Outline(None)],
-            history_at: 0,
             sidebar: Sidebar::default(),
         };
-        state.focus = state.rows().first().map(|row| row.id);
+        state.pane.focus = state.rows().first().map(|row| row.id);
         state
     }
 
@@ -386,22 +371,19 @@ impl State {
     /// (FR-NAV-01).
     #[must_use]
     pub fn focus(&self) -> Option<ItemId> {
-        self.focus
+        self.pane.focus
     }
 
     /// The block shown as the root, or `None` at home and in the Today view (FR-NAV-03).
     #[must_use]
     pub fn zoom(&self) -> Option<ItemId> {
-        match self.location {
-            Location::Outline(zoom) => zoom,
-            Location::Today => None,
-        }
+        self.pane.zoom()
     }
 
     /// What the pane shows (navigation.md §4, §7).
     #[must_use]
     pub fn location(&self) -> Location {
-        self.location
+        self.pane.location
     }
 
     /// The text of each block from the top level down to the zoom block as shown, without the
@@ -409,7 +391,7 @@ impl State {
     /// FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
-        self.zoom_block()
+        self.zoom_block_of(&self.pane)
             .map(|block| self.path_to(&block))
             .unwrap_or_default()
     }
@@ -440,25 +422,30 @@ impl State {
     /// The visible rows: the outline's, or in the Today view its entries (D-7).
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        match self.location {
-            Location::Outline(_) => self.outline_rows(),
-            Location::Today => self.today_rows(),
+        self.rows_of(&self.pane)
+    }
+
+    /// The visible rows of `pane`: its outline's, or in the Today view its entries (D-7).
+    pub(super) fn rows_of(&self, pane: &Pane) -> Vec<Row> {
+        match pane.location {
+            Location::Outline(_) => self.outline_rows(pane),
+            Location::Today => self.today_rows(pane),
         }
     }
 
-    /// The outline's rows: when zoomed, a title row for the zoom block at depth 0, then its child
+    /// The rows of `pane`'s outline: when zoomed, a title row for the zoom block at depth 0, then its child
     /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
     /// their children, done blocks are hidden with theirs while completed blocks are, and special
     /// nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row inside a done
     /// block, also one above the zoom, says so (D-40).
-    fn outline_rows(&self) -> Vec<Row> {
-        let title = self.zoom_block().map(|block| {
+    fn outline_rows(&self, pane: &Pane) -> Vec<Row> {
+        let title = self.zoom_block_of(pane).map(|block| {
             let inside_done =
                 std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
                     blocks::parent(&self.document, above.id())
                 })
                 .any(|above| above.done());
-            self.row(&block, 0, true, inside_done)
+            self.row(pane, &block, 0, true, inside_done)
         });
         let below = usize::from(title.is_some());
         let top_done = title
@@ -466,17 +453,27 @@ impl State {
             .is_some_and(|row| row.done || row.inside_done);
         // Whether each block on the path to the current one is done or inside a done block.
         let mut path: Vec<bool> = Vec::new();
-        let rows = self.blocks(true).into_iter().map(|(block, depth)| {
-            path.truncate(depth);
-            let inside_done = path.last().copied().unwrap_or(top_done);
-            path.push(inside_done || block.done());
-            self.row(&block, depth + below, false, inside_done)
-        });
+        let rows = self
+            .blocks_of(pane, true)
+            .into_iter()
+            .map(|(block, depth)| {
+                path.truncate(depth);
+                let inside_done = path.last().copied().unwrap_or(top_done);
+                path.push(inside_done || block.done());
+                self.row(pane, &block, depth + below, false, inside_done)
+            });
         title.into_iter().chain(rows).collect()
     }
 
-    /// The row of `block` at `depth` in an outline, the title row with `title`.
-    pub(super) fn row(&self, block: &Block, depth: usize, title: bool, inside_done: bool) -> Row {
+    /// The row of `block` at `depth` in `pane`'s outline, the title row with `title`.
+    pub(super) fn row(
+        &self,
+        pane: &Pane,
+        block: &Block,
+        depth: usize,
+        title: bool,
+        inside_done: bool,
+    ) -> Row {
         Row {
             id: block.id(),
             depth,
@@ -502,52 +499,62 @@ impl State {
             bookmark: block.bookmark(),
             color: block.color(),
             url: block.url(),
-            selected: self.selection.contains(block.id()),
+            selected: pane.selection.contains(block.id()),
             path: Vec::new(),
         }
     }
 
     /// The zoom block, or `None` at home.
     pub(super) fn zoom_block(&self) -> Option<Block> {
-        blocks::block(&self.document, self.zoom()?)
+        self.zoom_block_of(&self.pane)
+    }
+
+    /// `pane`'s zoom block, or `None` at home.
+    fn zoom_block_of(&self, pane: &Pane) -> Option<Block> {
+        blocks::block(&self.document, pane.zoom()?)
     }
 
     /// Every block below the zoom in order with its depth; with `visible`, only those the rows
     /// show: none hidden by a collapsed ancestor or, while completed blocks are hidden, by being
     /// done or inside a done block. The zoom block's own fold hides nothing.
     pub(super) fn blocks(&self, visible: bool) -> Vec<(Block, usize)> {
+        self.blocks_of(&self.pane, visible)
+    }
+
+    /// Every block below `pane`'s zoom, as [`State::blocks`] gives them.
+    pub(super) fn blocks_of(&self, pane: &Pane, visible: bool) -> Vec<(Block, usize)> {
         let top = self
-            .zoom_block()
+            .zoom_block_of(pane)
             .map_or(self.document.root(), |block| block.id());
         let mut out = Vec::new();
-        self.push_blocks(top, 0, visible, &mut out);
+        self.push_blocks(pane, top, 0, visible, &mut out);
         out
     }
 
     fn push_blocks(
         &self,
+        pane: &Pane,
         line: ItemId,
         depth: usize,
         visible: bool,
         out: &mut Vec<(Block, usize)>,
     ) {
         for block in blocks::children(&self.document, line) {
-            if visible && !self.shows(&block) {
+            if visible && !pane.shows(&block) {
                 continue;
             }
             let id = block.id();
             let open = !(visible && self.folds.contains(&id));
             out.push((block, depth));
             if open {
-                self.push_blocks(id, depth + 1, visible, out);
+                self.push_blocks(pane, id, depth + 1, visible, out);
             }
         }
     }
 
-    /// Whether `block` shows where the blocks around it do: not when it is done while completed
-    /// blocks are hidden (FR-DONE-02).
+    /// Whether `block` shows in the pane where the blocks around it do (FR-DONE-02).
     pub(super) fn shows(&self, block: &Block) -> bool {
-        self.show_done || !block.done()
+        self.pane.shows(block)
     }
 
     /// The child blocks of `block` that show when it is expanded (FR-DONE-02).

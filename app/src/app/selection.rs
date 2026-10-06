@@ -69,14 +69,14 @@ impl State {
     /// `J`/`K`: moves the focus a row down or up and selects every row from where the run began
     /// to the focus; a run begins at the focus unless the focus is where the latest one ended.
     fn extend_selection(&mut self, down: bool) {
-        let Some(focus) = self.focus else { return };
+        let Some(focus) = self.pane.focus else { return };
         let rows: Vec<ItemId> = self.rows().into_iter().map(|row| row.id).collect();
-        let run = match self.selection.run.take() {
+        let run = match self.pane.selection.run.take() {
             Some(run) if run.head == focus => run,
             _ => Run {
                 anchor: focus,
                 head: focus,
-                before: self.selection.picked.clone(),
+                before: self.pane.selection.picked.clone(),
             },
         };
         let at = rows.iter().position(|&id| id == focus).unwrap_or_default();
@@ -95,23 +95,23 @@ impl State {
                 picked.push(id);
             }
         }
-        self.focus = rows.get(to).copied();
-        self.selection = Selection {
+        self.pane.focus = rows.get(to).copied();
+        self.pane.selection = Selection {
             picked,
-            run: self.focus.map(|head| Run { head, ..run }),
+            run: self.pane.focus.map(|head| Run { head, ..run }),
         };
     }
 
     /// `v`: selects the focused block, or unselects it when it is selected.
     fn toggle_selected(&mut self) {
-        let Some(focus) = self.focus else { return };
-        let picked = &mut self.selection.picked;
+        let Some(focus) = self.pane.focus else { return };
+        let picked = &mut self.pane.selection.picked;
         if let Some(at) = picked.iter().position(|&id| id == focus) {
             picked.remove(at);
         } else {
             picked.push(focus);
         }
-        self.selection.run = None;
+        self.pane.selection.run = None;
     }
 
     /// `Ctrl+A`: selects every row below the title (FR-OPS-01).
@@ -122,12 +122,12 @@ impl State {
             .filter(|row| !row.title)
             .map(|row| row.id)
             .collect();
-        self.selection = Selection { picked, run: None };
+        self.pane.selection = Selection { picked, run: None };
     }
 
     /// `Esc`: selects nothing.
     pub(super) fn clear_selection(&mut self) {
-        self.selection = Selection::default();
+        self.pane.selection = Selection::default();
     }
 
     /// Unselects the blocks no row shows any more, because they were deleted, folded away or
@@ -137,21 +137,22 @@ impl State {
             return;
         }
         let rows: Vec<ItemId> = self.rows().into_iter().map(|row| row.id).collect();
-        self.selection.picked.retain(|id| rows.contains(id));
+        self.pane.selection.picked.retain(|id| rows.contains(id));
         // A run whose head is hidden ends anyway, because the focus left it.
         if self
+            .pane
             .selection
             .run
             .as_ref()
             .is_some_and(|run| !rows.contains(&run.anchor))
         {
-            self.selection.run = None;
+            self.pane.selection.run = None;
         }
     }
 
     /// Whether any block is selected.
     pub(super) fn selecting(&self) -> bool {
-        !self.selection.picked.is_empty()
+        !self.pane.selection.picked.is_empty()
     }
 
     /// The blocks a block command acts on: the selected ones in the order the rows show them,
@@ -160,7 +161,7 @@ impl State {
         let selected: Vec<Block> = self
             .rows()
             .into_iter()
-            .filter(|row| self.selection.contains(row.id))
+            .filter(|row| self.pane.selection.contains(row.id))
             .filter_map(|row| blocks::block(self.document(), row.id))
             .collect();
         if selected.is_empty() {
@@ -177,7 +178,7 @@ impl State {
         if !self.selecting() {
             return self.focused_block().into_iter().collect();
         }
-        let selected = |id: ItemId| self.selection.contains(id);
+        let selected = |id: ItemId| self.pane.selection.contains(id);
         self.rows()
             .into_iter()
             .filter(|row| !row.title && selected(row.id))

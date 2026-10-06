@@ -10,7 +10,7 @@ impl State {
     /// and folded ones included; none when nothing is focused. A divider's `---` is no word.
     pub(super) fn count(&mut self) {
         let (mut count, mut words) = (0, 0);
-        let mut pending: Vec<ItemId> = self.focus.into_iter().collect();
+        let mut pending: Vec<ItemId> = self.pane.focus.into_iter().collect();
         while let Some(line) = pending.pop() {
             for block in blocks::children(&self.document, line) {
                 count += 1;

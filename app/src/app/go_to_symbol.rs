@@ -76,7 +76,7 @@ impl State {
         {
             let parent = blocks::parent(&self.document, id).map(|parent| parent.id());
             self.go_to(Location::Outline(parent));
-            self.focus = Some(block.id());
+            self.pane.focus = Some(block.id());
         }
     }
 }
