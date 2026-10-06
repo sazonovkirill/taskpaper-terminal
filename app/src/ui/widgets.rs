@@ -1168,7 +1168,7 @@ fn current_line_style() -> Style {
 mod tests {
     use super::*;
     use crate::{
-        app::{Message, SelectionChange, State},
+        app::{Menu, Message, SelectionChange, State},
         document::format,
     };
 
@@ -1378,7 +1378,7 @@ mod tests {
             today: jiff::civil::date(2026, 10, 6),
         });
         for key in keys {
-            state.update(Message::CommandMenu(*key));
+            state.update(Message::Menu(Menu::CommandMenu, *key));
         }
         let menu = state.command_menu().unwrap();
         let popup = Popup::commands(&menu);
@@ -1516,7 +1516,10 @@ mod tests {
         expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         for c in "rem".chars() {
-            state.update(Message::TypePicker(crate::app::MenuInput::Type(c)));
+            state.update(Message::Menu(
+                Menu::TypePicker,
+                crate::app::MenuInput::Type(c),
+            ));
         }
         let mut buf = Buffer::empty(Rect::new(0, 0, 18, 3));
         Popup::block_types(&state.type_picker().unwrap()).render(buf.area, &mut buf);
@@ -1605,7 +1608,10 @@ mod tests {
         }
         expected.set_style(Rect::new(1, 5, 10, 1), Style::new().reversed());
         assert_eq!(buf, expected);
-        state.update(Message::ColorPicker(crate::app::MenuInput::Type('v')));
+        state.update(Message::Menu(
+            Menu::ColorPicker,
+            crate::app::MenuInput::Type('v'),
+        ));
         let picker = state.color_picker().unwrap();
         let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
         Popup::colors(&picker).render(buf.area, &mut buf);

@@ -7,8 +7,8 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::app::{
-    Command, DateInput, Inputs, MenuInput, Message, Mode, Motion, Paste, SidebarInput, TextEdit,
-    commands::REGISTRY,
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, Paste, SidebarInput,
+    TextEdit, commands::REGISTRY,
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -213,16 +213,18 @@ const MENU: &[(Key, MenuInput)] = &[
     (key!(Backspace), MenuInput::Erase),
 ];
 
-/// The message of the open command menu or a picker for `key`, made by `to`: `Ctrl+Q` quits, a
-/// menu binding, else typing the character it is, as in edit mode.
-fn menu_message(key: Key, to: fn(MenuInput) -> Message) -> Option<Message> {
+/// The message of the open `menu` for `key`: `Ctrl+Q` quits, a menu binding, else typing the
+/// character it is, as in edit mode.
+fn menu_message(key: Key, menu: Menu) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
     }
-    if let Some((_, input)) = MENU.iter().find(|(bound, _)| *bound == key) {
-        return Some(to(*input));
-    }
-    typed_char(key).map(|c| to(MenuInput::Type(c)))
+    let input = MENU
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| input)
+        .or_else(|| typed_char(key).map(MenuInput::Type))?;
+    Some(Message::Menu(menu, input))
 }
 
 /// Bindings of the open date prompt ([keybindings.md §3]) besides the [`TEXT`] keys; characters
@@ -539,11 +541,11 @@ impl Keymap {
             self.pending.clear();
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
-                Overlay::ColorPicker => menu_message(pressed, Message::ColorPicker),
-                Overlay::TypePicker => menu_message(pressed, Message::TypePicker),
-                Overlay::GoToSymbol => menu_message(pressed, Message::GoToSymbol),
-                Overlay::MoveTo => menu_message(pressed, Message::MoveTo),
-                Overlay::GoToCommand => menu_message(pressed, Message::GoToCommand),
+                Overlay::ColorPicker => menu_message(pressed, Menu::ColorPicker),
+                Overlay::TypePicker => menu_message(pressed, Menu::TypePicker),
+                Overlay::GoToSymbol => menu_message(pressed, Menu::GoToSymbol),
+                Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
+                Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
                 Overlay::Details => Some(Message::CloseDetails),
             };
@@ -556,7 +558,7 @@ impl Keymap {
         if context.mode == Mode::Edit {
             self.pending.clear();
             let message = if context.command_menu {
-                menu_message(pressed, Message::CommandMenu)
+                menu_message(pressed, Menu::CommandMenu)
             } else {
                 self.edit_message(pressed, context)
             };
@@ -1338,7 +1340,7 @@ mod tests {
         let mut keymap = Keymap::default();
         assert_eq!(
             keymap.message_for(&key(code, modifiers), ms(0), IN_MENU),
-            expected.map(Message::CommandMenu),
+            expected.map(|input| Message::Menu(Menu::CommandMenu, input)),
             "{modifiers:?} {code:?}"
         );
     }
@@ -1448,7 +1450,7 @@ mod tests {
         let mut press =
             |code, modifiers, context| keymap.message_for(&key(code, modifiers), ms(0), context);
         let none = KeyModifiers::NONE;
-        let picker = |input| Some(Message::ColorPicker(input));
+        let picker = |input| Some(Message::Menu(Menu::ColorPicker, input));
         assert_eq!(press(KeyCode::Char('g'), none, CONTEXT), None);
         assert_eq!(
             press(KeyCode::Char('g'), none, IN_PICKER),
@@ -1498,7 +1500,7 @@ mod tests {
             overlay: Some(Overlay::TypePicker),
             ..*CONTEXT
         };
-        let picker = |input| Some(Message::TypePicker(input));
+        let picker = |input| Some(Message::Menu(Menu::TypePicker, input));
         assert_eq!(messages("t", open), [picker(MenuInput::Type('t'))]);
         let mut keymap = Keymap::default();
         let mut press = |code, modifiers| keymap.message_for(&key(code, modifiers), ms(0), open);
@@ -1957,7 +1959,7 @@ mod tests {
         );
         assert_eq!(
             keymap.message_for(&colon, ms(3), finding),
-            Some(Message::GoToCommand(MenuInput::Type(':')))
+            Some(Message::Menu(Menu::GoToCommand, MenuInput::Type(':')))
         );
     }
 
@@ -2016,11 +2018,11 @@ mod tests {
         };
         assert_eq!(
             keymap.message_for(&ctrl_p, ms(0), finding),
-            Some(Message::GoToSymbol(MenuInput::Previous))
+            Some(Message::Menu(Menu::GoToSymbol, MenuInput::Previous))
         );
         assert_eq!(
             keymap.message_for(&char('g'), ms(3), finding),
-            Some(Message::GoToSymbol(MenuInput::Type('g')))
+            Some(Message::Menu(Menu::GoToSymbol, MenuInput::Type('g')))
         );
     }
 
@@ -2040,11 +2042,11 @@ mod tests {
         };
         assert_eq!(
             keymap.message_for(&key(KeyCode::Enter, KeyModifiers::NONE), ms(2), moving),
-            Some(Message::MoveTo(MenuInput::Choose))
+            Some(Message::Menu(Menu::MoveTo, MenuInput::Choose))
         );
         assert_eq!(
             keymap.message_for(&char('g'), ms(3), moving),
-            Some(Message::MoveTo(MenuInput::Type('g')))
+            Some(Message::Menu(Menu::MoveTo, MenuInput::Type('g')))
         );
     }
 }

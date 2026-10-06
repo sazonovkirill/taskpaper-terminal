@@ -168,8 +168,6 @@ pub enum Message {
     /// with `false` plain text by removing it; a task or project is left as it is, with a notice
     /// (FR-BLK-04, FR-OPS-07, D-52).
     SetSection(bool),
-    /// A key of the open color picker (FR-TAG-05).
-    ColorPicker(MenuInput),
     /// Open the prompt for the focused block's `tag` date, resolving what is typed against
     /// `today`, the frontend's local date (FR-TAG-03).
     OpenDatePrompt {
@@ -184,27 +182,21 @@ pub enum Message {
     ClearDate(DateTag),
     /// Open the type picker on the focused block (FR-BLK-08).
     OpenTypePicker,
-    /// A key of the open type picker (FR-BLK-08).
-    TypePicker(MenuInput),
     /// Open the details popup on the focused block (D-3).
     OpenDetails,
     /// Close the details popup.
     CloseDetails,
     /// Open Go to Symbol (FR-NAV-05).
     OpenGoToSymbol,
-    /// A key of the open Go to Symbol (FR-NAV-05).
-    GoToSymbol(MenuInput),
     /// Open Move to over the selected blocks, else the focused block (FR-OPS-05).
     OpenMoveTo,
-    /// A key of the open Move to (FR-OPS-05).
-    MoveTo(MenuInput),
     /// Open Go to Command over the commands of navigate mode, each shown with its bindings as
     /// the frontend writes them, for the commands it binds (FR-NAV-06).
     OpenGoToCommand(Vec<(Command, String)>),
-    /// A key of the open Go to Command (FR-NAV-06).
-    GoToCommand(MenuInput),
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
+    /// A key of the open menu or picker that `Menu` names.
+    Menu(Menu, MenuInput),
     /// Revert the latest edit (FR-OPS-08); in edit mode, the latest change to the text.
     Undo,
     /// Replay the latest undone edit (FR-OPS-08); in edit mode, the latest undone change to the
@@ -222,8 +214,6 @@ pub enum Message {
         /// The local date.
         today: Date,
     },
-    /// A key of the open command menu (D-50).
-    CommandMenu(MenuInput),
     /// Give the block being edited the next type of project, section, task and note, as `Ctrl+T`
     /// does (D-50).
     CycleType,
@@ -287,6 +277,23 @@ pub enum Message {
     Group,
 }
 
+/// A menu or picker that takes the keys while it is open, which [`Message::Menu`] names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Menu {
+    /// The color picker (FR-TAG-05).
+    ColorPicker,
+    /// The type picker (FR-BLK-08).
+    TypePicker,
+    /// Go to Symbol (FR-NAV-05).
+    GoToSymbol,
+    /// Move to (FR-OPS-05).
+    MoveTo,
+    /// Go to Command (FR-NAV-06).
+    GoToCommand,
+    /// The command menu of edit mode (D-50).
+    CommandMenu,
+}
+
 impl Message {
     /// Whether this intent belongs to navigate mode, so that it ends an edit session first,
     /// rather than to edit mode or the frontend's reports, which leave the session alone.
@@ -310,7 +317,7 @@ impl Message {
             | Self::Text(_)
             | Self::StopEditing
             | Self::OpenCommandMenu { .. }
-            | Self::CommandMenu(_)
+            | Self::Menu(Menu::CommandMenu, _)
             | Self::CycleType
             | Self::DatePrompt(_)
             | Self::NewNext
@@ -362,19 +369,22 @@ impl Message {
             | Self::SetColor(_)
             | Self::SetSection(_)
             | Self::OpenColorPicker
-            | Self::ColorPicker(_)
             | Self::OpenDatePrompt { .. }
             | Self::ClearDate(_)
             | Self::OpenTypePicker
-            | Self::TypePicker(_)
             | Self::OpenDetails
             | Self::CloseDetails
             | Self::OpenGoToSymbol
-            | Self::GoToSymbol(_)
             | Self::OpenMoveTo
-            | Self::MoveTo(_)
             | Self::OpenGoToCommand(_)
-            | Self::GoToCommand(_)
+            | Self::Menu(
+                Menu::ColorPicker
+                | Menu::TypePicker
+                | Menu::GoToSymbol
+                | Menu::MoveTo
+                | Menu::GoToCommand,
+                _,
+            )
             | Self::Count
             | Self::New(..)
             | Self::Delete
@@ -519,28 +529,23 @@ impl State {
             Message::SetColor(color) => self.set_color(color),
             Message::SetSection(on) => self.set_section(on),
             Message::OpenColorPicker => self.open_color_picker(),
-            Message::ColorPicker(input) => self.color_picker_input(input),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
             Message::DatePrompt(input) => self.date_prompt_input(input),
             Message::ClearDate(tag) => self.clear_date(tag),
             Message::OpenTypePicker => self.open_type_picker(),
-            Message::TypePicker(input) => self.type_picker_input(input),
             Message::OpenDetails => self.open_details(),
             Message::CloseDetails => self.close_details(),
             Message::OpenGoToSymbol => self.open_go_to_symbol(),
-            Message::GoToSymbol(input) => self.go_to_symbol_input(input),
             Message::OpenMoveTo => self.open_move_to(),
-            Message::MoveTo(input) => self.move_to_input(input),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
-            Message::GoToCommand(input) => effects.extend(self.go_to_command_input(input)),
             Message::Count => self.count(),
+            Message::Menu(menu, input) => effects = self.menu_input(menu, input),
             Message::Undo => self.undo(),
             Message::Redo => self.redo(),
             Message::EditAtEnd => self.start_editing(),
             Message::Text(edit) => self.edit_text(edit),
             Message::StopEditing => self.stop_editing(),
             Message::OpenCommandMenu { today } => self.open_command_menu(today),
-            Message::CommandMenu(input) => effects = self.command_menu_input(input),
             Message::CycleType => self.cycle_type(),
             Message::New(at, typed) => self.add_block(at, typed),
             Message::NewNext => self.new_next(),
@@ -562,6 +567,20 @@ impl State {
             Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
         }
         effects
+    }
+
+    /// Hands a key of the open `menu` to the feature that owns it and returns the effects that
+    /// asks for.
+    fn menu_input(&mut self, menu: Menu, input: MenuInput) -> Vec<Effect> {
+        match menu {
+            Menu::ColorPicker => self.color_picker_input(input),
+            Menu::TypePicker => self.type_picker_input(input),
+            Menu::GoToSymbol => self.go_to_symbol_input(input),
+            Menu::MoveTo => self.move_to_input(input),
+            Menu::GoToCommand => return self.go_to_command_input(input).into_iter().collect(),
+            Menu::CommandMenu => return self.command_menu_input(input),
+        }
+        Vec::new()
     }
 
     /// The focused block and whether it is the title row.

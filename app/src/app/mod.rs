@@ -44,4 +44,4 @@ pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};
 pub use type_picker::Conversion;
-pub use update::{Disk, Effect, Message};
+pub use update::{Disk, Effect, Menu, Message};

@@ -621,7 +621,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{DateInput, Disk, Effect, Message, Motion, Version},
+        app::{DateInput, Disk, Effect, Menu, Message, Motion, Version},
         document::format,
     };
 
@@ -1375,7 +1375,7 @@ Site @url(https://x.y)",
     const TODAY: Date = jiff::civil::date(2026, 10, 6);
 
     fn menu(state: &mut State, input: MenuInput) -> Vec<Effect> {
-        state.update(Message::CommandMenu(input))
+        state.update(Message::Menu(Menu::CommandMenu, input))
     }
 
     /// Opens the command menu and types `keys` into it.

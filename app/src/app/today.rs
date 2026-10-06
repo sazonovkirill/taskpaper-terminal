@@ -116,20 +116,15 @@ impl State {
             | Message::SetColor(_)
             | Message::OpenColorPicker
             | Message::SetSection(_)
-            | Message::ColorPicker(_)
             | Message::OpenDatePrompt { .. }
             | Message::DatePrompt(_)
             | Message::ClearDate(_)
             | Message::OpenTypePicker
-            | Message::TypePicker(_)
             | Message::OpenDetails
             | Message::CloseDetails
             | Message::OpenGoToSymbol
-            | Message::GoToSymbol(_)
             | Message::OpenMoveTo
-            | Message::MoveTo(_)
             | Message::OpenGoToCommand(_)
-            | Message::GoToCommand(_)
             | Message::Count
             | Message::Undo
             | Message::Redo
@@ -137,7 +132,7 @@ impl State {
             | Message::Text(_)
             | Message::StopEditing
             | Message::OpenCommandMenu { .. }
-            | Message::CommandMenu(_)
+            | Message::Menu(..)
             | Message::CycleType
             | Message::EditPrevious
             | Message::EditNext
@@ -170,7 +165,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Effect, Mode, NewBlock, Paste, SelectionChange, TextEdit},
+        app::{Effect, Menu, Mode, NewBlock, Paste, SelectionChange, TextEdit},
         document::{DateChange, DateTag, Flag, format},
     };
 
@@ -434,8 +429,11 @@ Work: @done
     fn move_to_moves_an_entry_and_the_list_shows_its_new_path() {
         let mut state = today("A:\n\t- a @today\nB:\n");
         state.update(Message::OpenMoveTo);
-        state.update(Message::MoveTo(crate::app::MenuInput::Type('B')));
-        state.update(Message::MoveTo(crate::app::MenuInput::Choose));
+        state.update(Message::Menu(
+            Menu::MoveTo,
+            crate::app::MenuInput::Type('B'),
+        ));
+        state.update(Message::Menu(Menu::MoveTo, crate::app::MenuInput::Choose));
         assert_eq!(state.location(), Location::Today);
         assert_eq!(listed(&state), ["B › a"]);
     }

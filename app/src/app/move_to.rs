@@ -88,7 +88,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, SelectionChange},
+        app::{Menu, Message, SelectionChange},
         document::format,
     };
 
@@ -131,9 +131,9 @@ mod tests {
     /// Types `query` into Move to and chooses the first match.
     fn choose(state: &mut State, query: &str) {
         for c in query.chars() {
-            state.update(Message::MoveTo(MenuInput::Type(c)));
+            state.update(Message::Menu(Menu::MoveTo, MenuInput::Type(c)));
         }
-        state.update(Message::MoveTo(MenuInput::Choose));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
     }
 
     // FR-OPS-05, navigation.md §8
@@ -295,7 +295,7 @@ mod tests {
     fn dismissing_or_choosing_nothing_moves_nothing() {
         let mut state = open(TEXT, 5);
         state.update(Message::OpenMoveTo);
-        state.update(Message::MoveTo(MenuInput::Dismiss));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Dismiss));
         assert_eq!(state.move_to(), None);
         state.update(Message::OpenMoveTo);
         choose(&mut state, "zzz");
@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn keys_without_move_to_open_do_nothing() {
         let mut state = open(TEXT, 5);
-        state.update(Message::MoveTo(MenuInput::Choose));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
         assert_eq!(state.document().revision(), 0);
     }
 
@@ -339,10 +339,10 @@ mod tests {
         let mut state = open(TEXT, 5);
         state.update(Message::OpenMoveTo);
         for c in "ann".chars() {
-            state.update(Message::MoveTo(MenuInput::Type(c)));
+            state.update(Message::Menu(Menu::MoveTo, MenuInput::Type(c)));
         }
         state.document = format::parse("Other:\n\t- Task");
-        state.update(Message::MoveTo(MenuInput::Choose));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
         assert_eq!(lines(&state), ["Other:", "\t- Task"]);
     }
 }

@@ -414,7 +414,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, SelectionChange, state::NOTICE_TIME},
+        app::{Menu, MenuInput, Message, SelectionChange, state::NOTICE_TIME},
         document::{Op, Transaction},
     };
 
@@ -783,10 +783,10 @@ mod tests {
     fn a_reload_closes_go_to_symbol() {
         let mut state = opened("A\nB\nC\n");
         state.update(Message::OpenGoToSymbol);
-        state.update(Message::GoToSymbol(crate::app::MenuInput::Type('c')));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type('c')));
         state.update(found("X\nA\nB\nC\n"));
         assert_eq!(state.go_to_symbol(), None);
-        state.update(Message::GoToSymbol(crate::app::MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(
             state.focus(),
             Some(state.rows()[1].id),
@@ -799,10 +799,10 @@ mod tests {
     fn a_reload_closes_move_to() {
         let mut state = opened("A\nB\nC\n");
         state.update(Message::OpenMoveTo);
-        state.update(Message::MoveTo(crate::app::MenuInput::Type('c')));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Type('c')));
         state.update(found("X\nA\nB\nC\n"));
         assert_eq!(state.move_to(), None);
-        state.update(Message::MoveTo(crate::app::MenuInput::Choose));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
         assert_eq!(format::serialize(state.document()), "X\nA\nB\nC\n");
     }
 
@@ -815,9 +815,9 @@ mod tests {
             today: jiff::civil::date(2026, 10, 5),
         });
         for c in "set due".chars() {
-            state.update(Message::CommandMenu(crate::app::MenuInput::Type(c)));
+            state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type(c)));
         }
-        state.update(Message::CommandMenu(crate::app::MenuInput::Choose));
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Choose));
         assert!(state.date_prompt().is_some());
         state.update(found("- x\n- y\n"));
         state.update(Message::FocusLast);

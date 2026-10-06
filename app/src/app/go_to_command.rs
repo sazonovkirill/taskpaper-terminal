@@ -53,7 +53,10 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{app::Message, document::format};
+    use crate::{
+        app::{Menu, Message},
+        document::format,
+    };
 
     fn state() -> State {
         State::new(format::parse("- a\n"), None)
@@ -61,7 +64,10 @@ mod tests {
 
     fn typed(state: &mut State, text: &str) {
         for c in text.chars() {
-            assert_eq!(state.update(Message::GoToCommand(MenuInput::Type(c))), []);
+            assert_eq!(
+                state.update(Message::Menu(Menu::GoToCommand, MenuInput::Type(c))),
+                []
+            );
         }
     }
 
@@ -115,7 +121,7 @@ mod tests {
         state.update(Message::OpenGoToCommand(Vec::new()));
         typed(&mut state, "zoom in");
         assert_eq!(
-            state.update(Message::GoToCommand(MenuInput::Choose)),
+            state.update(Message::Menu(Menu::GoToCommand, MenuInput::Choose)),
             [Effect::Run(Command::ZoomIn)]
         );
         assert_eq!(state.go_to_command(), None);
@@ -125,11 +131,17 @@ mod tests {
     fn dismissing_or_choosing_nothing_gives_no_command() {
         let mut state = state();
         state.update(Message::OpenGoToCommand(Vec::new()));
-        assert_eq!(state.update(Message::GoToCommand(MenuInput::Dismiss)), []);
+        assert_eq!(
+            state.update(Message::Menu(Menu::GoToCommand, MenuInput::Dismiss)),
+            []
+        );
         assert_eq!(state.go_to_command(), None);
         state.update(Message::OpenGoToCommand(Vec::new()));
         typed(&mut state, "zzzz");
-        assert_eq!(state.update(Message::GoToCommand(MenuInput::Choose)), []);
+        assert_eq!(
+            state.update(Message::Menu(Menu::GoToCommand, MenuInput::Choose)),
+            []
+        );
         assert!(
             state.go_to_command().is_some(),
             "nothing to choose keeps it open"
@@ -139,7 +151,10 @@ mod tests {
     #[test]
     fn keys_without_go_to_command_open_do_nothing() {
         let mut state = state();
-        assert_eq!(state.update(Message::GoToCommand(MenuInput::Choose)), []);
+        assert_eq!(
+            state.update(Message::Menu(Menu::GoToCommand, MenuInput::Choose)),
+            []
+        );
         assert_eq!(state.go_to_command(), None);
     }
 }

@@ -88,7 +88,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Access, Message, Notice, SelectionChange},
+        app::{Access, Menu, Message, Notice, SelectionChange},
         document::{Document, format},
     };
 
@@ -100,7 +100,7 @@ mod tests {
     }
 
     fn pick(state: &mut State, input: MenuInput) {
-        state.update(Message::ColorPicker(input));
+        state.update(Message::Menu(Menu::ColorPicker, input));
     }
 
     /// The names the open picker lists and the highlighted one.

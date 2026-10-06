@@ -85,7 +85,7 @@ impl State {
 mod tests {
     use super::*;
     use crate::{
-        app::Message,
+        app::{Menu, Message},
         document::{Document, format},
     };
 
@@ -109,7 +109,7 @@ mod tests {
 
     fn typed(state: &mut State, text: &str) {
         for c in text.chars() {
-            state.update(Message::GoToSymbol(MenuInput::Type(c)));
+            state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type(c)));
         }
     }
 
@@ -149,7 +149,7 @@ mod tests {
         state.update(Message::OpenGoToSymbol);
         typed(&mut state, "ann");
         assert_eq!(listed(&state).0.len(), 1);
-        state.update(Message::GoToSymbol(MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(state.go_to_symbol(), None);
         assert_eq!(text(state.document(), state.zoom()).unwrap(), "Later");
         assert_eq!(text(state.document(), state.focus()).unwrap(), "Call Ann");
@@ -178,7 +178,7 @@ mod tests {
         state.update(Message::ZoomIn);
         state.update(Message::OpenGoToSymbol);
         typed(&mut state, "work");
-        state.update(Message::GoToSymbol(MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(state.zoom(), None);
         assert_eq!(text(state.document(), state.focus()).unwrap(), "Work");
     }
@@ -187,12 +187,12 @@ mod tests {
     fn dismissing_or_choosing_nothing_leaves_the_view_as_it_was() {
         let mut state = state();
         state.update(Message::OpenGoToSymbol);
-        state.update(Message::GoToSymbol(MenuInput::Dismiss));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Dismiss));
         assert_eq!(state.go_to_symbol(), None);
         assert_eq!(text(state.document(), state.focus()).unwrap(), "Home");
         state.update(Message::OpenGoToSymbol);
         typed(&mut state, "zzz");
-        state.update(Message::GoToSymbol(MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert!(
             state.go_to_symbol().is_some(),
             "nothing to choose keeps it open"
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn keys_without_go_to_symbol_open_do_nothing() {
         let mut state = state();
-        state.update(Message::GoToSymbol(MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(state.go_to_symbol(), None);
         assert_eq!(text(state.document(), state.focus()).unwrap(), "Home");
     }
@@ -214,7 +214,7 @@ mod tests {
         state.update(Message::OpenGoToSymbol);
         typed(&mut state, "ann");
         state.document = format::parse("Other:\n\t- Task");
-        state.update(Message::GoToSymbol(MenuInput::Choose));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(state.zoom(), None);
     }
 }
