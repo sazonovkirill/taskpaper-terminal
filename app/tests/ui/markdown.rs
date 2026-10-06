@@ -6,7 +6,7 @@ use ratatui::style::{Color, Modifier};
 
 use crate::support::{Harness, line, outline_rows};
 
-// FR-FMT-03, D-45
+// FR-FMT-03, D-45, D-49
 #[test]
 fn blocks_draw_headings_and_links_without_markers_and_edit_mode_shows_them() {
     let mut app = Harness::with_text(
@@ -24,11 +24,7 @@ fn blocks_draw_headings_and_links_without_markers_and_edit_mode_shows_them() {
         heading.modifier.contains(Modifier::BOLD),
         "a heading is bold"
     );
-    assert_eq!(
-        heading.fg,
-        Color::LightMagenta,
-        "level 2 in the headers color"
-    );
+    assert_eq!(heading.fg, Color::Gray, "in the text block's own color");
     let title = &buffer[(8, 3)];
     assert!(
         title.modifier.contains(Modifier::UNDERLINED),

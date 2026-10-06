@@ -19,7 +19,7 @@ fn focused_rows(buffer: &Buffer) -> Vec<u16> {
         .collect()
 }
 
-// FR-BLK-01, FR-BLK-02, FR-BLK-04, FR-BLK-06, FR-BLK-07, FR-SPC-01, D-43
+// FR-BLK-01, FR-BLK-02, FR-BLK-04, FR-BLK-06, FR-BLK-07, FR-SPC-01, D-43, D-49
 #[test]
 fn draws_every_block_type_and_hides_special_nodes() {
     let mut app = Harness::open("blocks.taskpaper", 40, 14);
@@ -44,8 +44,8 @@ fn draws_every_block_type_and_hides_special_nodes() {
     );
     let section = &buffer[(4, 6)];
     assert!(
-        section.modifier.contains(Modifier::BOLD),
-        "section label is bold"
+        section.modifier.contains(Modifier::BOLD | Modifier::ITALIC),
+        "section label is bold and italic"
     );
     assert_eq!(
         section.fg,

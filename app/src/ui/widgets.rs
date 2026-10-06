@@ -564,9 +564,10 @@ fn mine_style() -> Style {
 }
 
 /// The spans of `row`'s text in `style` with its formatting applied over it, the delimiters
-/// hidden: a heading bold, level 1 in the accent and level 2 in the headers color unless a color
-/// tag tints the row; bold; code in the code color; and links, the whole text of a row with
-/// `@url`, underlined in the link color (FR-FMT-01, FR-FMT-03, D-45).
+/// hidden. Only links, the whole text of a row with `@url` included, take a color of their own,
+/// underlined in the link color (D-45); the rest keeps the row's color and only adds modifiers
+/// (D-49): a heading bold, level 1 also underlined; bold; and code dimmed (FR-FMT-01,
+/// FR-FMT-03).
 fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
     inline::runs(&row.text, Syntax::of(row.kind))
         .into_iter()
@@ -580,17 +581,15 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
             let mut style = style;
             if let Some(level) = heading {
                 style = style.bold();
-                match level {
-                    1 => style = style.fg(PRIMARY),
-                    2 => style = style.fg(SECONDARY),
-                    _ => {}
+                if level == 1 {
+                    style = style.underlined();
                 }
             }
             if bold {
                 style = style.bold();
             }
             if code {
-                style = style.fg(CODE);
+                style = style.dim();
             }
             if link || row.url {
                 style = style.underlined().fg(LINK);
@@ -710,14 +709,14 @@ fn overdue_style() -> Style {
     due_style().bold().reversed()
 }
 
-/// The marker of a block with its style, and the style of its text, by its type, its color and
-/// whether it is done or inside a done block (ui.md §2).
+/// The marker of a block with its style, and the style of its text, by its type and whether it
+/// is done or inside a done block (ui.md §2).
 fn row_style(row: &Row) -> (&'static str, Style, Style) {
     let (marker, style) = match row.kind {
         BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
         BlockKind::Task if row.done => ("✔ ", Style::new()),
         BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Section => ("", Style::new().bold().fg(SECONDARY)),
+        BlockKind::Section => ("", Style::new().bold().italic().fg(SECONDARY)),
         BlockKind::Text => ("", Style::new().fg(TEXT)),
         BlockKind::Divider => ("", divider_style()),
     };
@@ -849,9 +848,6 @@ const TEXT: Color = Color::Gray;
 /// The theme's link color, for every link (ui.md §2, D-45); themes arrive in step 6.2.
 const LINK: Color = Color::Cyan;
 
-/// Inline code (FR-FMT-01); themes arrive in step 6.2.
-const CODE: Color = Color::LightYellow;
-
 /// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
 const SECONDARY: Color = Color::LightMagenta;
 
@@ -969,7 +965,7 @@ mod tests {
         let mut expected = Buffer::with_lines(["S     ", "u     ", "──────", "f()   "]);
         expected.set_style(
             Rect::new(0, 0, 1, 1),
-            struck(Style::new().bold().fg(SECONDARY)),
+            struck(Style::new().bold().italic().fg(SECONDARY)),
         );
         expected.set_style(
             Rect::new(0, 1, 1, 1),
@@ -1010,7 +1006,7 @@ mod tests {
         expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(TEXT).dim());
         expected.set_style(
             Rect::new(2, 3, 1, 1),
-            Style::new().bold().fg(SECONDARY).dim(),
+            Style::new().bold().italic().fg(SECONDARY).dim(),
         );
         expected.set_style(
             Rect::new(2, 4, 1, 1),
@@ -1259,7 +1255,10 @@ mod tests {
         expected.set_style(Rect::new(0, 1, 6, 1), tint(TagColor::Orange));
         expected.set_style(Rect::new(0, 1, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(2, 2, 4, 1), tint(TagColor::Yellow));
-        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().bold().fg(SECONDARY));
+        expected.set_style(
+            Rect::new(2, 2, 1, 1),
+            Style::new().bold().italic().fg(SECONDARY),
+        );
         expected.set_style(Rect::new(0, 3, 6, 1), tint(TagColor::Green));
         expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(TEXT));
         expected.set_style(Rect::new(0, 4, 6, 1), tint(TagColor::Blue));
@@ -1375,7 +1374,10 @@ mod tests {
         expected.set_style(Rect::new(2, 0, 4, 1), dim);
         expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(TEXT));
         expected.set_style(Rect::new(1, 2, 4, 1), dim);
-        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().bold().fg(SECONDARY));
+        expected.set_style(
+            Rect::new(0, 3, 1, 1),
+            Style::new().bold().italic().fg(SECONDARY),
+        );
         expected.set_style(Rect::new(1, 3, 4, 1), dim);
         expected.set_style(Rect::new(0, 4, 4, 1), dim);
         expected.set_style(Rect::new(5, 4, 9, 1), divider_style());
@@ -1384,7 +1386,7 @@ mod tests {
         assert_eq!(buf, expected);
     }
 
-    // FR-FMT-01, D-45
+    // FR-FMT-01, D-45, D-49
     #[test]
     fn inline_formatting_is_drawn_over_the_block_style_with_its_delimiters_hidden() {
         let mut expected = Buffer::with_lines([
@@ -1394,11 +1396,11 @@ mod tests {
             "n `                 ",
         ]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
-        expected.set_style(Rect::new(4, 0, 1, 1), Style::new().fg(CODE));
+        expected.set_style(Rect::new(4, 0, 1, 1), Style::new().dim());
         expected.set_style(Rect::new(8, 0, 11, 1), Style::new().underlined().fg(LINK));
         let project = Style::new().bold().fg(PRIMARY);
         expected.set_style(Rect::new(0, 1, 4, 1), project);
-        expected.set_style(Rect::new(2, 1, 1, 1), project.fg(CODE));
+        expected.set_style(Rect::new(2, 1, 1, 1), project.dim());
         expected.set_style(Rect::new(0, 2, 2, 1), Style::new().dim());
         expected.set_style(
             Rect::new(2, 2, 1, 1),
@@ -1415,7 +1417,7 @@ mod tests {
         );
     }
 
-    // FR-FMT-03, D-45
+    // FR-FMT-03, D-45, D-49
     #[test]
     fn text_blocks_draw_headings_and_links_with_their_markers_hidden() {
         let mut expected = Buffer::with_lines([
@@ -1427,10 +1429,10 @@ mod tests {
             "- # i       ",
         ]);
         let text = Style::new().fg(TEXT);
-        expected.set_style(Rect::new(0, 0, 1, 1), text.bold().fg(PRIMARY));
-        expected.set_style(Rect::new(0, 1, 1, 1), text.bold().fg(SECONDARY));
+        expected.set_style(Rect::new(0, 0, 1, 1), text.bold().underlined());
+        expected.set_style(Rect::new(0, 1, 1, 1), text.bold());
         expected.set_style(Rect::new(0, 2, 3, 1), text.bold());
-        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(CODE));
+        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().dim());
         let link = text.underlined().fg(LINK);
         expected.set_style(Rect::new(0, 3, 4, 1), text);
         expected.set_style(Rect::new(0, 3, 1, 1), link);
@@ -1439,7 +1441,7 @@ mod tests {
             Rect::new(0, 4, 12, 1),
             Style::new().bg(tag_tint(TagColor::Red, false)),
         );
-        expected.set_style(Rect::new(0, 4, 10, 1), text.bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 4, 10, 1), text.bold().underlined());
         expected.set_style(Rect::new(2, 4, 8, 1), Style::new().fg(LINK).underlined());
         expected.set_style(Rect::new(4, 5, 1, 1), Style::new().fg(LINK).underlined());
         assert_eq!(
@@ -1466,7 +1468,7 @@ mod tests {
         let project = Style::new().bold().fg(PRIMARY);
         expected.set_style(Rect::new(0, 0, 4, 1), project);
         expected.set_style(Rect::new(2, 0, 1, 1), project.patch(link));
-        let section = Style::new().bold().fg(SECONDARY);
+        let section = Style::new().bold().italic().fg(SECONDARY);
         expected.set_style(Rect::new(0, 1, 11, 1), section);
         expected.set_style(Rect::new(2, 1, 9, 1), section.patch(link));
         expected.set_style(Rect::new(4, 2, 1, 1), link);
