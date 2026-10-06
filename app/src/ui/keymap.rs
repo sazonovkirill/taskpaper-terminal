@@ -7,7 +7,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 
 use crate::app::{
-    Command, DateInput, Inputs, MenuInput, Message, Mode, Motion, Paste, TextEdit,
+    Command, DateInput, Inputs, MenuInput, Message, Mode, Motion, Paste, SidebarInput, TextEdit,
     commands::REGISTRY,
 };
 
@@ -35,6 +35,8 @@ pub struct Context {
     pub overlay: Option<Overlay>,
     /// Whether the shortcuts panel is open, which `Esc` closes in navigate mode (FR-KEY-04).
     pub shortcuts: bool,
+    /// Whether the sidebar is drawn and has the keys (FR-UI-01).
+    pub sidebar: bool,
 }
 
 impl Context {
@@ -238,6 +240,37 @@ fn date_prompt_message(key: Key) -> Option<Message> {
         .map(|&(_, input)| input)
         .or_else(|| text_edit(key).map(DateInput::Edit))?;
     Some(Message::DatePrompt(input))
+}
+
+/// Bindings of the focused sidebar ([keybindings.md §4]); other keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const SIDEBAR: &[(Key, SidebarInput)] = &[
+    (key!('j'), SidebarInput::Next),
+    (key!(Down), SidebarInput::Next),
+    (key!('k'), SidebarInput::Previous),
+    (key!(Up), SidebarInput::Previous),
+    (key!('h'), SidebarInput::Collapse),
+    (key!(Left), SidebarInput::Collapse),
+    (key!('l'), SidebarInput::Expand),
+    (key!(Right), SidebarInput::Expand),
+    (key!(Enter), SidebarInput::Choose),
+    (key!(Esc), SidebarInput::Leave),
+];
+
+/// The message of the focused sidebar for `key`: `Ctrl+Q` quits, `Ctrl+B` hides the sidebar,
+/// else a sidebar binding.
+fn sidebar_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'b') {
+        return Some(Message::ToggleSidebar);
+    }
+    SIDEBAR
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| Message::Sidebar(input))
 }
 
 /// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
@@ -450,7 +483,7 @@ impl Keymap {
                 self.replay = true;
                 return Some(action);
             }
-            let menu = context.command_menu || context.overlay.is_some();
+            let menu = context.command_menu || context.overlay.is_some() || context.sidebar;
             return (!menu).then(|| {
                 KeyAction::Send(Message::Pasted {
                     text: text.clone(),
@@ -490,6 +523,10 @@ impl Keymap {
                 Overlay::Details => Some(Message::CloseDetails),
             };
             return message.map(KeyAction::Send);
+        }
+        if context.sidebar {
+            self.pending.clear();
+            return sidebar_message(pressed).map(KeyAction::Send);
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
@@ -593,6 +630,7 @@ mod tests {
         command_menu: false,
         overlay: None,
         shortcuts: false,
+        sidebar: false,
     };
 
     const EDITING: &Context = &Context {
@@ -1256,7 +1294,11 @@ mod tests {
         check_editing(KeyCode::Char('b'), KeyModifiers::CONTROL, Some(&bold));
         check_editing(KeyCode::Char('`'), KeyModifiers::ALT, Some(&code));
         check_editing(KeyCode::Char('e'), KeyModifiers::CONTROL, Some(&code));
-        check(KeyCode::Char('b'), KeyModifiers::CONTROL, None);
+        check(
+            KeyCode::Char('b'),
+            KeyModifiers::CONTROL,
+            Some(&Message::ToggleSidebar),
+        );
         check(KeyCode::Char('`'), KeyModifiers::ALT, None);
     }
 
@@ -1749,8 +1791,63 @@ mod tests {
                 overlay: Some(Overlay::DatePrompt),
                 ..*CONTEXT
             },
+            *IN_SIDEBAR,
         ] {
             assert_eq!(keymap.message_for(&pasted, ms(0), &context), None);
+        }
+    }
+
+    // FR-UI-01, D-42: `Alt+0` has the classic variant `g0`.
+    #[test]
+    fn ctrl_b_toggles_the_sidebar_and_alt_0_and_g_0_focus_it() {
+        check(
+            KeyCode::Char('b'),
+            KeyModifiers::CONTROL,
+            Some(&Message::ToggleSidebar),
+        );
+        check(
+            KeyCode::Char('0'),
+            KeyModifiers::ALT,
+            Some(&Message::FocusSidebar),
+        );
+        assert_eq!(messages("g0", CONTEXT), [None, Some(Message::FocusSidebar)]);
+    }
+
+    const IN_SIDEBAR: &Context = &Context {
+        sidebar: true,
+        ..*CONTEXT
+    };
+
+    // FR-UI-01, keybindings.md §4
+    #[test]
+    fn the_focused_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_b() {
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        let sidebar = |input| Some(Message::Sidebar(input));
+        for (code, modifiers, expected) in [
+            (KeyCode::Char('j'), none, sidebar(SidebarInput::Next)),
+            (KeyCode::Down, none, sidebar(SidebarInput::Next)),
+            (KeyCode::Char('k'), none, sidebar(SidebarInput::Previous)),
+            (KeyCode::Up, none, sidebar(SidebarInput::Previous)),
+            (KeyCode::Char('h'), none, sidebar(SidebarInput::Collapse)),
+            (KeyCode::Left, none, sidebar(SidebarInput::Collapse)),
+            (KeyCode::Char('l'), none, sidebar(SidebarInput::Expand)),
+            (KeyCode::Right, none, sidebar(SidebarInput::Expand)),
+            (KeyCode::Enter, none, sidebar(SidebarInput::Choose)),
+            (KeyCode::Esc, none, sidebar(SidebarInput::Leave)),
+            (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
+            (KeyCode::Char('b'), ctrl, Some(Message::ToggleSidebar)),
+            (KeyCode::Char('x'), none, None),
+            (KeyCode::Char('g'), none, None),
+            (KeyCode::Char('j'), ctrl, None),
+        ] {
+            let mut keymap = Keymap::default();
+            assert_eq!(
+                keymap.message_for(&key(code, modifiers), ms(0), IN_SIDEBAR),
+                expected,
+                "{modifiers:?} {code:?}"
+            );
+            assert_eq!(keymap.pending(), "", "nothing waits for a sequence");
         }
     }
 

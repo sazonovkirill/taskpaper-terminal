@@ -280,7 +280,7 @@ impl State {
     }
 
     /// Replaces the document with `document`, keeping the zoom, the focus, the history, the
-    /// selection and the collapsed blocks on the blocks they were on. An edit session ends with
+    /// selection and the collapsed blocks and project entries on the blocks they were on. An edit session ends with
     /// the document it edited, whose text is saved or in a conflict copy, and the date prompt
     /// closes with it, as does an edit a command of the command menu would resume (D-50) and Go
     /// to Symbol, whose candidates name blocks of the old document.
@@ -307,6 +307,7 @@ impl State {
             .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
         self.selection = self.selection.mapped(exact);
+        self.sidebar.rematch_folds(exact);
         if self.focus.is_none() {
             self.focus = self.rows().first().map(|row| row.id);
         }
@@ -575,6 +576,41 @@ mod tests {
             [],
             "a reload is not a change to save"
         );
+    }
+
+    /// Each project entry of the sidebar with its fold.
+    fn project_folds(state: &State) -> Vec<(String, crate::app::Fold)> {
+        let view = state.sidebar().expect("shown");
+        view.entries
+            .into_iter()
+            .filter_map(|entry| match entry {
+                crate::app::SidebarEntry::Project { text, fold, .. } => Some((text, fold)),
+                crate::app::SidebarEntry::Bookmark { .. } | crate::app::SidebarEntry::Today => None,
+            })
+            .collect()
+    }
+
+    // F-FILE-06, FR-UI-01
+    #[test]
+    fn a_reload_keeps_folded_project_entries_on_their_projects() {
+        use crate::app::{Fold, SidebarInput};
+        let mut state = opened("A:\n\tA1:\nB:\n\tB1:\nC:\n\tC1:\n");
+        state.update(Message::FocusSidebar);
+        for input in [SidebarInput::Next; 3] {
+            state.update(Message::Sidebar(input));
+        }
+        state.update(Message::Sidebar(SidebarInput::Collapse));
+        state.update(found("B:\n\tB1:\nA:\n\tA1:\nC2:\n\tC1:\n"));
+        let folds = project_folds(&state);
+        let fold = |name: &str| {
+            folds
+                .iter()
+                .find(|(text, _)| text == name)
+                .map(|&(_, fold)| fold)
+        };
+        assert_eq!(fold("B"), Some(Fold::Collapsed), "{folds:?}");
+        assert_eq!(fold("A"), Some(Fold::Expanded));
+        assert_eq!(fold("C2"), Some(Fold::Expanded));
     }
 
     #[test]

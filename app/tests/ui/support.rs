@@ -243,6 +243,12 @@ impl Harness {
         }
     }
 
+    /// Hides the sidebar, which a screen 80 columns wide or wider shows, for a test of the pane
+    /// alone on a wide screen.
+    pub fn hide_sidebar(&mut self) {
+        self.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
+    }
+
     /// Lets `duration` pass without input.
     pub fn wait(&mut self, duration: Duration) {
         CLOCK.with_borrow_mut(|clock| {

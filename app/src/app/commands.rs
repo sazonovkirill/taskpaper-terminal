@@ -75,6 +75,10 @@ pub enum Command {
     Back,
     /// Go forward in the zoom history.
     Forward,
+    /// Show or hide the sidebar.
+    ToggleSidebar,
+    /// Give the sidebar the keys.
+    FocusSidebar,
     /// Complete or uncomplete.
     ToggleDone,
     /// Change a date without a prompt.
@@ -204,6 +208,8 @@ impl Command {
             Self::GoHome => "Go Home".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
+            Self::ToggleSidebar => "Toggle Sidebar".into(),
+            Self::FocusSidebar => "Focus Sidebar".into(),
             Self::ToggleDone => "Toggle Done".into(),
             Self::ToggleFlag(Flag::Today) => "Toggle Today".into(),
             Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
@@ -286,6 +292,8 @@ impl Command {
             Self::GoHome => Message::GoHome,
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
+            Self::ToggleSidebar => Message::ToggleSidebar,
+            Self::FocusSidebar => Message::FocusSidebar,
             Self::ToggleDone => Message::ToggleDone { today },
             Self::ChangeDate(tag, change) => Message::ChangeDate { tag, change, today },
             Self::ClearDate(tag) => Message::ClearDate(tag),

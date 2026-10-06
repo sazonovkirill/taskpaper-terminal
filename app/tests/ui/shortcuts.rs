@@ -67,6 +67,7 @@ const NAVIGATE: [&str; 29] = [
 #[test]
 fn question_mark_opens_the_shortcuts_panel_at_the_right_and_closes_it_again() {
     let mut app = Harness::with_text(OUTLINE, 80, 30);
+    app.hide_sidebar();
     let before = screen(&mut app);
     app.type_keys("?");
     assert_eq!(right_of(&mut app, 48)[..29], NAVIGATE);
@@ -91,6 +92,7 @@ fn question_mark_opens_the_shortcuts_panel_at_the_right_and_closes_it_again() {
 #[test]
 fn esc_closes_the_panel_before_clearing_the_selection() {
     let mut app = Harness::with_text(OUTLINE, 80, 30);
+    app.hide_sidebar();
     app.type_keys("J?");
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     let rows = screen(&mut app);

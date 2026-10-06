@@ -6,8 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    DateInput, MenuInput, Paste, SelectionChange, State, TextEdit, Version, saving::Ending,
-    structure::NewBlock,
+    DateInput, MenuInput, Paste, SelectionChange, SidebarInput, State, TextEdit, Version,
+    saving::Ending, structure::NewBlock,
 };
 use crate::document::{
     Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
@@ -128,6 +128,12 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
+    /// Show the sidebar, or hide it and give the pane the keys (FR-UI-01).
+    ToggleSidebar,
+    /// Show the sidebar and give it the keys (FR-UI-01).
+    FocusSidebar,
+    /// A key of the focused sidebar (FR-UI-01).
+    Sidebar(SidebarInput),
     /// Complete the selected blocks, else the focused block, dating them `today`, or uncomplete
     /// them when all are done (FR-DONE-01, FR-OPS-07).
     ToggleDone {
@@ -332,6 +338,9 @@ impl Message {
             | Self::GoHome
             | Self::Back
             | Self::Forward
+            | Self::ToggleSidebar
+            | Self::FocusSidebar
+            | Self::Sidebar(_)
             | Self::ToggleDone { .. }
             | Self::ChangeDate { .. }
             | Self::ToggleFlag(_)
@@ -464,6 +473,9 @@ impl State {
             Message::GoHome => self.go_to(None),
             Message::Back => self.walk_history(self.history_at.checked_sub(1)),
             Message::Forward => self.walk_history(self.history_at.checked_add(1)),
+            Message::ToggleSidebar => self.toggle_sidebar(),
+            Message::FocusSidebar => self.focus_sidebar(),
+            Message::Sidebar(input) => self.sidebar_input(input),
             Message::ToggleDone { today } => self.toggle_done(today),
             Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),
             Message::ToggleFlag(flag) => self.toggle_flag(flag),

@@ -34,6 +34,10 @@ use crate::{
     },
 };
 
+mod sidebar;
+
+pub use sidebar::SidebarPanel;
+
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
 /// the selected blocks, then each block, 2 columns of indent per level, a marker and the text,
 /// with its date chips at the right edge of its first line. Text too long for its line wraps

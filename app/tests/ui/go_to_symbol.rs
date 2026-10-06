@@ -129,6 +129,7 @@ fn a_query_that_matches_nothing_says_so() {
 fn a_long_list_scrolls_with_the_highlight_in_a_box_at_most_80_by_20() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 100, 30);
+    app.hide_sidebar();
     app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     let rows = screen(&mut app);
     let top = rows

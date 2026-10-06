@@ -25,6 +25,7 @@ mod saving;
 mod selection;
 mod shortcuts;
 mod show_completed;
+mod sidebar;
 mod support;
 mod tags;
 mod typed_creation;

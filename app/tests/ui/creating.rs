@@ -141,6 +141,7 @@ fn dd_and_delete_remove_a_block_with_its_subtree_and_z_brings_it_back() {
 #[test]
 fn deleting_the_block_between_two_text_lines_leaves_them_apart() {
     let mut app = Harness::with_text("One note\n- task\nAnother note\n", 200, 6);
+    app.hide_sidebar();
     app.type_keys("jdd");
     assert_eq!(outline_rows(&mut app)[..2], ["One note", "Another note"]);
     assert_eq!(focused_rows(&mut app), ["Another note"]);
@@ -150,6 +151,7 @@ fn deleting_the_block_between_two_text_lines_leaves_them_apart() {
 #[test]
 fn an_empty_new_last_block_below_the_top_level_is_saved_at_the_top_level() {
     let mut app = Harness::with_text("Trip:\n\tFlights:\n", 200, 6);
+    app.hide_sidebar();
     app.settle();
     app.type_keys("jo");
     assert_eq!(outline_rows(&mut app)[..3], ["Trip:", "  Flights:", ""]);

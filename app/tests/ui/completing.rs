@@ -119,6 +119,7 @@ fn a_read_only_file_refuses_to_complete() {
     fs::write(&path, "- Milk\n").unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
     let mut app = Harness::open_path(dir, &path, 90, 4);
+    app.hide_sidebar();
     app.type_keys("x");
     assert_eq!(outline_rows(&mut app), ["- Milk"]);
     assert_eq!(

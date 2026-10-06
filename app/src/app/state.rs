@@ -17,6 +17,7 @@ use super::{
     picker::Picker,
     saving::Autosave,
     selection::Selection,
+    sidebar::Sidebar,
     type_picker::Conversion,
 };
 use crate::document::{
@@ -29,8 +30,8 @@ pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
 /// whether it is saved, the focused row and any edit session on it, the selected blocks, the
-/// collapsed blocks, whether completed blocks show, the zoom with its history and the status-line
-/// notice.
+/// collapsed blocks, whether completed blocks show, the zoom with its history, the sidebar and
+/// the status-line notice.
 #[derive(Debug, Clone)]
 pub struct State {
     pub(super) document: Document,
@@ -75,6 +76,8 @@ pub struct State {
     pub(super) history: Vec<Option<ItemId>>,
     /// The position of the current zoom in `history`.
     pub(super) history_at: usize,
+    /// The navigation sidebar (FR-UI-01).
+    pub(super) sidebar: Sidebar,
 }
 
 /// Whether the open file may be written.
@@ -242,6 +245,7 @@ impl State {
             zoom: None,
             history: vec![None],
             history_at: 0,
+            sidebar: Sidebar::default(),
         };
         state.focus = state.rows().first().map(|row| row.id);
         state

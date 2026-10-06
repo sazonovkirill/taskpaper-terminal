@@ -19,11 +19,12 @@ use ratatui::{
     text::Line,
 };
 
-use crate::app::{Effect, Message, Mode, Origin, State};
+use crate::app::{Effect, Message, Mode, Origin, SidebarInput, State};
 use effects::{Browser, Clipboard, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use widgets::{
     ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, ShortcutsPanel,
+    SidebarPanel,
 };
 
 /// What the event loop waits for.
@@ -62,6 +63,10 @@ pub struct Tui {
     /// Where the next draw puts the focused block's first line, counted from the top of the
     /// screen: where it was before a page motion.
     page_anchor: Option<usize>,
+    /// The screen's width at the last draw, which decides whether the sidebar has room.
+    width: u16,
+    /// The first sidebar line on screen.
+    sidebar_scroll: usize,
     /// Whether the process was told to end, so only saving is left.
     ending: bool,
     /// The first line of the conflict prompt's diff on screen.
@@ -98,6 +103,8 @@ impl Tui {
             page_rows: 0,
             focus_line: None,
             page_anchor: None,
+            width: 0,
+            sidebar_scroll: 0,
             ending: false,
             diff_scroll: 0,
             diff_rows: 0,
@@ -139,6 +146,10 @@ impl Tui {
             self.handle_prompt_key(event, now);
             return;
         }
+        // A sidebar the screen became too narrow for gives the keys back to the pane.
+        if self.state.sidebar_focused() && layout::sidebar_width(self.width).is_none() {
+            self.send(Message::Sidebar(SidebarInput::Leave), now);
+        }
         let Some(action) = self.keymap.action_for(event, now, &self.context()) else {
             return;
         };
@@ -165,6 +176,7 @@ impl Tui {
             command_menu: self.state.command_menu().is_some(),
             overlay: self.overlay(),
             shortcuts: self.state.shortcuts().is_some(),
+            sidebar: self.state.sidebar_focused(),
         }
     }
 
@@ -302,12 +314,13 @@ impl Tui {
     /// while open, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
         let screen = frame.area();
+        self.width = screen.width;
         let [main, status] = screen.layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
         // The outline gives up the panel's rows rather than lying under it, so the focus scrolls
-        // into view above it (D-54).
+        // into view above it; the panel spans the screen, below the sidebar too (D-54).
         let panel_height = if self.state.date_prompt().is_some() {
             DatePromptPanel::HEIGHT
         } else {
@@ -317,6 +330,7 @@ impl Tui {
             Constraint::Fill(1),
             Constraint::Length(panel_height),
         ]));
+        let body = self.draw_sidebar(frame, body);
         let (pane, sidebar) = match self.state.shortcuts() {
             Some(_) => layout::secondary_sidebar(screen, body),
             None => (body, None),
@@ -445,6 +459,27 @@ impl Tui {
                 frame.render_widget(popup, anchored);
             }
         }
+    }
+
+    /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
+    /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1).
+    fn draw_sidebar(
+        &mut self,
+        frame: &mut Frame,
+        area: ratatui::layout::Rect,
+    ) -> ratatui::layout::Rect {
+        let (Some(view), Some(width)) = (self.state.sidebar(), layout::sidebar_width(area.width))
+        else {
+            return area;
+        };
+        let [sidebar, pane] = area.layout(&Layout::horizontal([
+            Constraint::Length(width),
+            Constraint::Fill(1),
+        ]));
+        let panel = SidebarPanel::new(&view);
+        self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(sidebar.height));
+        frame.render_widget(panel.offset(self.sidebar_scroll), sidebar);
+        pane
     }
 
     /// The date prompt's panel over `area` with its caret, if it is open, and the rest of the

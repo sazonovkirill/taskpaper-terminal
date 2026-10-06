@@ -10,9 +10,11 @@ pub enum Icon {
     Due,
     /// An overdue due date chip.
     Overdue,
-    /// A block with `@today`, after its text, and the command menu's Toggle Today.
+    /// A block with `@today`, after its text, the command menu's Toggle Today and the sidebar's
+    /// Today entry.
     Today,
-    /// A bookmarked block, after its text, and the command menu's bookmark entries.
+    /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
+    /// bookmarks.
     Bookmark,
     /// The command menu's entry that makes a block a project.
     Project,

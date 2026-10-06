@@ -123,7 +123,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 |---|---|
 | Show/hide completed in this pane (FR-DONE-02) | `Ctrl+O`, `gc` |
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
-| Toggle sidebar / focus sidebar (FR-UI-01) | `Ctrl+B` / `Alt+0` |
+| Toggle sidebar / focus sidebar, showing it (FR-UI-01) | `Ctrl+B` / `Alt+0`, `g0` (the non-`Alt` route of §1) |
 | Shortcuts panel (FR-KEY-04) | `?` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |
 | Go to Command (FR-NAV-06) | `Ctrl+K`, `:` (was `Ctrl+P`) |
@@ -167,7 +167,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
-- **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry, `Alt+Enter` opens it in a new pane, `h`/`l` fold project entries, `Esc` returns to the pane.
+- **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and returns to the pane, `Alt+Enter` opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` returns to the pane, `Ctrl+B` hides the sidebar. Below 80 columns, where the sidebar hides, the pane keeps the keys.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` opens the choice in a new pane where that applies, `Esc` cancels.
 - **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03).
