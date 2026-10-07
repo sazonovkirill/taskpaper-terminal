@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{Location, Message, Row, State, pane::Pane};
-use crate::document::{Block, ItemId, blocks};
+use crate::document::{Block, ItemId, TagColor, blocks};
 
 /// A special view, in the order the sidebar lists them (D-80).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,22 +14,60 @@ use crate::document::{Block, ItemId, blocks};
 pub enum SpecialView {
     /// The blocks for today (FR-TAG-04, D-7).
     Today,
+    /// The blocks with a color tag, grouped by color (FR-TAG-10, D-83).
+    Colors,
     /// The starred blocks (FR-TAG-13, D-92).
     Starred,
 }
 
 impl SpecialView {
     /// Every special view, in the sidebar's order (D-80).
-    pub const ALL: [Self; 2] = [Self::Today, Self::Starred];
+    pub const ALL: [Self; 3] = [Self::Today, Self::Colors, Self::Starred];
 
     /// The view's name, as its header, sidebar entry and Go to command show it.
     #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::Today => "Today",
+            Self::Colors => "Colors",
             Self::Starred => "Starred",
         }
     }
+}
+
+/// What the entries of a group of a special view have in common, which its heading names
+/// (D-80).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewGroup {
+    /// The blocks with this color tag (D-83).
+    Color(TagColor),
+}
+
+/// The heading a special view's entry starts its group under: a line above the entry, not a row
+/// of its own, so focus, selection and motion never reach it (navigation.md §7.1, D-80).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Heading {
+    /// The group it names.
+    pub group: ViewGroup,
+    /// Whether it is the view's first heading, which has no blank line above it (ui.md §2).
+    pub first: bool,
+}
+
+/// `entries`, each with its group and sorted by group, as rows: each group's first entry under the
+/// group's heading.
+pub(super) fn under_headings(entries: impl IntoIterator<Item = (ViewGroup, Row)>) -> Vec<Row> {
+    let mut previous = None;
+    entries
+        .into_iter()
+        .map(|(group, row)| {
+            let heading = (previous != Some(group)).then_some(Heading {
+                group,
+                first: previous.is_none(),
+            });
+            previous = Some(group);
+            Row { heading, ..row }
+        })
+        .collect()
 }
 
 impl State {
@@ -37,6 +75,7 @@ impl State {
     pub(super) fn view_rows(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
         match view {
             SpecialView::Today => self.today_rows(pane),
+            SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Starred => self.matching_rows(pane, Block::starred),
         }
     }
@@ -107,7 +146,7 @@ impl State {
     pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
         match view {
             SpecialView::Today => self.reorder_entries(down),
-            SpecialView::Starred => {}
+            SpecialView::Colors | SpecialView::Starred => {}
         }
     }
 }
@@ -263,8 +302,15 @@ Work: @done @star
 
     // D-80, D-92
     #[test]
-    fn starred_follows_today_in_every_list_of_the_views() {
-        assert_eq!(SpecialView::ALL, [SpecialView::Today, SpecialView::Starred]);
+    fn starred_follows_the_other_views_in_every_list_of_them() {
+        assert_eq!(
+            SpecialView::ALL,
+            [
+                SpecialView::Today,
+                SpecialView::Colors,
+                SpecialView::Starred
+            ]
+        );
         assert_eq!(SpecialView::Starred.name(), "Starred");
     }
 

@@ -916,11 +916,14 @@ impl Tui {
             return FocusedPane::default();
         }
         self.focus_line = focus_line;
-        let line = u16::try_from(focus_line.unwrap_or_default()).unwrap_or(u16::MAX);
         // A focus the wheel scrolled out of view anchors no caret or menu.
         let row = focused
             .filter(|_| focus_line.is_some())
             .and_then(|index| rows.get(index));
+        // The focused block's text starts below its group's heading, if it has one (D-80).
+        let text_line =
+            focus_line.unwrap_or_default() + row.map_or_default(widgets::heading_height);
+        let line = u16::try_from(text_line).unwrap_or(u16::MAX);
         let caret = editor
             .as_ref()
             .filter(|_| !self.state.in_conflict())

@@ -7,7 +7,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Modifier};
 use taskpaper_terminal::ui::Input;
 
-use crate::support::{BOOKMARK, Harness, NAVIGATE, STAR, SUN, line};
+use crate::support::{BOOKMARK, Harness, NAVIGATE, PALETTE, STAR, SUN, line};
 
 const OUTLINE: &str = "\
 Work:
@@ -79,6 +79,7 @@ fn ctrl_g(app: &mut Harness) {
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
         (format!("{SUN} Today"), None),
+        (format!("{PALETTE} Colors"), None),
         (format!("{STAR} Starred"), None),
         (String::new(), None),
         ("Bookmarks".to_owned(), None),
@@ -127,7 +128,7 @@ fn the_pane_takes_the_screen_and_ctrl_g_opens_the_window_over_it() {
     let buffer = app.render().buffer().clone();
     assert_eq!(
         corner(&buffer),
-        Some((16, 3)),
+        Some((16, 2)),
         "centered below the pane's header"
     );
     assert!(
@@ -171,19 +172,19 @@ fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
     let mut app = app(80);
     app.type_keys(".");
     ctrl_g(&mut app);
-    assert_eq!(window(&mut app), Some(listed(Some(7))), "Work");
+    assert_eq!(window(&mut app), Some(listed(Some(8))), "Work");
     press(&mut app, KeyCode::Esc);
     app.type_keys("j..");
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports › Draft");
     ctrl_g(&mut app);
     assert_eq!(
         window(&mut app),
-        Some(listed(Some(8))),
+        Some(listed(Some(9))),
         "Reports, above the zoomed task"
     );
     press(&mut app, KeyCode::Up);
-    let mut lines = listed(Some(7));
-    lines[8] = format!("{:44}1", "▌   Reports");
+    let mut lines = listed(Some(8));
+    lines[9] = format!("{:44}1", "▌   Reports");
     assert_eq!(
         window(&mut app),
         Some(lines),
@@ -192,7 +193,7 @@ fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
     let buffer = app.render().buffer().clone();
     let (x, y) = corner(&buffer).expect("open");
     assert!(
-        buffer[(x + 1, y + 9)].modifier.contains(Modifier::DIM),
+        buffer[(x + 1, y + 10)].modifier.contains(Modifier::DIM),
         "a selected block's marker"
     );
 }
@@ -205,13 +206,13 @@ fn the_arrows_and_ctrl_n_and_ctrl_p_move_in_the_window_skipping_headings() {
     press(&mut app, KeyCode::Down);
     assert_eq!(window(&mut app), Some(listed(Some(1))));
     press(&mut app, KeyCode::Down);
+    assert_eq!(window(&mut app), Some(listed(Some(2))));
+    app.press(KeyCode::Char('n'), KeyModifiers::CONTROL);
     assert_eq!(
         window(&mut app),
-        Some(listed(Some(4))),
+        Some(listed(Some(5))),
         "headings and blank lines are skipped"
     );
-    app.press(KeyCode::Char('n'), KeyModifiers::CONTROL);
-    assert_eq!(window(&mut app), Some(listed(Some(7))));
     app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Up);
     press(&mut app, KeyCode::Up);
@@ -242,13 +243,14 @@ fn the_keys_that_focus_a_pane_and_the_sidebars_old_keys_do_nothing() {
 fn enter_zooms_the_pane_to_the_entry_and_closes_the_window() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    press(&mut app, KeyCode::Down);
-    press(&mut app, KeyCode::Down);
+    for _ in 0..3 {
+        press(&mut app, KeyCode::Down);
+    }
     press(&mut app, KeyCode::Enter);
     assert_eq!(window(&mut app), None);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
     ctrl_g(&mut app);
-    assert_eq!(window(&mut app), Some(listed(Some(4))), "on its entry");
+    assert_eq!(window(&mut app), Some(listed(Some(5))), "on its entry");
     press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Enter);
@@ -281,16 +283,16 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
 fn the_left_and_right_arrows_fold_project_entries() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    press(&mut app, KeyCode::Down);
-    press(&mut app, KeyCode::Down);
-    press(&mut app, KeyCode::Down);
+    for _ in 0..4 {
+        press(&mut app, KeyCode::Down);
+    }
     press(&mut app, KeyCode::Left);
-    let mut folded = listed(Some(7));
-    folded[7] = format!("{:44}2", "▌▸Work");
-    folded.remove(8);
+    let mut folded = listed(Some(8));
+    folded[8] = format!("{:44}2", "▌▸Work");
+    folded.remove(9);
     assert_eq!(window(&mut app), Some(folded));
     press(&mut app, KeyCode::Right);
-    assert_eq!(window(&mut app), Some(listed(Some(7))));
+    assert_eq!(window(&mut app), Some(listed(Some(8))));
     press(&mut app, KeyCode::Esc);
     assert_eq!(
         pane(&mut app)[3],
@@ -323,10 +325,10 @@ fn a_narrow_screen_draws_the_window_as_wide_as_the_pane() {
     let mut app = app(30);
     ctrl_g(&mut app);
     let buffer = app.render().buffer().clone();
-    assert_eq!(corner(&buffer), Some((0, 3)));
-    assert_eq!(columns(&buffer, 3, 0, 30).chars().last(), Some('┐'));
+    assert_eq!(corner(&buffer), Some((0, 2)));
+    assert_eq!(columns(&buffer, 2, 0, 30).chars().last(), Some('┐'));
     assert_eq!(
-        columns(&buffer, 4, 0, 30),
+        columns(&buffer, 3, 0, 30),
         format!("│▌ {SUN} Today{:19}│", "")
     );
 }
@@ -345,13 +347,13 @@ fn the_window_scrolls_to_keep_its_focused_entry_visible() {
         window(&mut app).expect("open"),
         [
             format!("▌ {SUN} Today"),
+            format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             String::new(),
             "  Projects".to_owned(),
-            "  P1".to_owned(),
         ]
     );
-    for _ in 0..6 {
+    for _ in 0..7 {
         press(&mut app, KeyCode::Down);
     }
     assert_eq!(
@@ -367,13 +369,13 @@ fn a_projects_count_of_open_tasks_follows_completing_them() {
     app.type_keys("jx");
     ctrl_g(&mut app);
     let mut listed = listed(Some(0));
-    listed[7] = format!("{:44}1", " ▾Work");
+    listed[8] = format!("{:44}1", " ▾Work");
     assert_eq!(window(&mut app), Some(listed.clone()), "Launch plan done");
     press(&mut app, KeyCode::Esc);
     app.type_keys("jjx");
     ctrl_g(&mut app);
-    listed[7] = " ▾Work".to_owned();
-    listed[8] = "    Reports".to_owned();
+    listed[8] = " ▾Work".to_owned();
+    listed[9] = "    Reports".to_owned();
     assert_eq!(window(&mut app), Some(listed), "no open tasks, no count");
 }
 
@@ -393,6 +395,7 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
         [
             format!("{:44}1", "▌ ⊔ INBOX"),
             format!("  {SUN} Today"),
+            format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             String::new(),
             "  Projects".to_owned(),
@@ -405,6 +408,7 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
         window(&mut app).expect("open"),
         [
             format!("▌ {SUN} Today"),
+            format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             String::new(),
             "  Projects".to_owned(),
@@ -423,6 +427,7 @@ fn the_today_entry_leaves_the_window_with_its_setting_off_and_gt_still_opens_tod
         window(&mut app).expect("open"),
         [
             format!("{:44}1", "▌ ⊔ INBOX"),
+            format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             String::new(),
             "  Projects".to_owned(),
@@ -493,7 +498,7 @@ fn typing_filters_the_window_shown_in_its_bottom_border_and_enter_goes_to_the_ma
     ctrl_g(&mut app);
     assert_eq!(
         window(&mut app).map(|lines| lines.len()),
-        Some(10),
+        Some(11),
         "the filter is gone"
     );
 }

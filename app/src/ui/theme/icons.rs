@@ -23,6 +23,9 @@ pub enum Icon {
     Flag,
     /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,
+    /// The Colors view's sidebar entry, header and Go to command, and the settings window's
+    /// setting that lists it (D-80).
+    Colors,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
     /// bookmarks.
     Bookmark,
@@ -36,7 +39,7 @@ pub enum Icon {
     Section,
     /// The command menu's entry that completes or uncompletes a block.
     Complete,
-    /// The command menu's color entries.
+    /// The command menu's color entries, and the Colors view's group headings (D-83).
     Color,
     /// The command menu's entry that shows a block's details.
     Details,
@@ -170,6 +173,8 @@ impl Icon {
             Self::Flag => ("\u{f023b}", "⚐", "F"),
             // nf-md-inbox
             Self::Inbox => ("\u{f0687}", "⊔", "I"),
+            // nf-md-palette_outline; the command menu's color entries have the filled palette.
+            Self::Colors => ("\u{f0e0c}", "◐", "c"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -234,7 +239,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 33] = [
+    const ICONS: [Icon; 34] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -242,6 +247,7 @@ mod tests {
         Icon::Today,
         Icon::Flag,
         Icon::Inbox,
+        Icon::Colors,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,
@@ -352,6 +358,7 @@ mod tests {
         assert_eq!(unicode(Icon::Flag), "⚐");
         assert_eq!(unicode(Icon::Bookmark), "⚑");
         assert_eq!(unicode(Icon::Inbox), "⊔");
+        assert_eq!(unicode(Icon::Colors), "◐");
     }
 
     // FR-UI-10

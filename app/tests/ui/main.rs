@@ -2,6 +2,7 @@
 
 mod blocks;
 mod clipboard;
+mod colors;
 mod command_menu;
 mod completing;
 mod config;

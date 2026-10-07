@@ -3,6 +3,7 @@
 
 mod clipboard;
 mod color_picker;
+mod colors;
 mod command_menu;
 pub mod commands;
 mod context_menu;
@@ -61,7 +62,7 @@ pub use settings::{
     Typed,
 };
 pub use sidebar::{Fold, SidebarEntry, SidebarInput, SidebarView};
-pub use special_view::SpecialView;
+pub use special_view::{Heading, SpecialView, ViewGroup};
 pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};

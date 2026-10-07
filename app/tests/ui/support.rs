@@ -126,6 +126,9 @@ pub const SUN: &str = "☼";
 /// The flag after the text of a block with `@flag` (D-91), as drawn with icons off.
 pub const FLAG: &str = "⚐";
 
+/// The Colors view's icon (ui.md §7), as drawn with icons off.
+pub const PALETTE: &str = "◐";
+
 /// The color of text blocks, dimmed less than done tasks (D-37), in Terminal Dark, the theme of a
 /// terminal without truecolor.
 pub const TEXT: Color = Color::Indexed(248);

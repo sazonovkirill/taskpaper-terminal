@@ -43,10 +43,11 @@ fn g_star_lists_every_starred_block_with_its_path_under_the_starred_header() {
     }
 }
 
-/// The pane's header after choosing the Navigator's second entry in `app`.
-fn second_entry(app: &mut Harness) -> String {
+/// The pane's header after choosing the Navigator's third entry in `app`, past Today and Colors.
+fn third_entry(app: &mut Harness) -> String {
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Down, KeyModifiers::NONE);
     app.press(KeyCode::Down, KeyModifiers::NONE);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     outline_line(app.render().buffer(), 0)
@@ -54,11 +55,11 @@ fn second_entry(app: &mut Harness) -> String {
 
 // FR-TAG-13, D-92, navigation §6
 #[test]
-fn the_navigator_lists_starred_after_today_unless_its_setting_is_off() {
+fn the_navigator_lists_starred_after_the_other_views_unless_its_setting_is_off() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
-    assert_eq!(second_entry(&mut app), format!("{STAR} Starred"));
+    assert_eq!(third_entry(&mut app), format!("{STAR} Starred"));
     let mut app = Harness::with_config(OUTLINE, "sidebar_starred = false\n", 80, 16);
-    assert_eq!(second_entry(&mut app), "⌂ › Home", "the Home project");
+    assert_eq!(third_entry(&mut app), "⌂ › Home", "the Home project");
     app.type_keys("g*");
     let buffer = app.render().buffer().clone();
     assert_eq!(

@@ -212,7 +212,7 @@ impl Command {
             Self::ChangeDate(tag, change) => change_date_name(tag, change).into(),
             Self::ClearDate(tag) => format!("Clear {} Date", date_name(tag)).into(),
             Self::OpenDatePrompt(tag) => format!("Set {} Date", date_name(tag)).into(),
-            Self::SetColor(Some(color)) => format!("Color: {}", color_name(color)).into(),
+            Self::SetColor(Some(color)) => format!("Color: {}", color.name()).into(),
             Self::New(at, typed) => new_name(at, typed).into(),
             Self::Quit => "Quit".into(),
             Self::FocusNext => "Next Block".into(),
@@ -430,18 +430,6 @@ fn pane_name(change: PaneChange) -> Cow<'static, str> {
         PaneChange::FocusLeft => "Focus Pane Left".into(),
         PaneChange::FocusRight => "Focus Pane Right".into(),
         PaneChange::Close => "Close Pane".into(),
-    }
-}
-
-/// How a color is named in command names.
-fn color_name(color: TagColor) -> &'static str {
-    match color {
-        TagColor::Red => "Red",
-        TagColor::Orange => "Orange",
-        TagColor::Yellow => "Yellow",
-        TagColor::Green => "Green",
-        TagColor::Blue => "Blue",
-        TagColor::Violet => "Violet",
     }
 }
 

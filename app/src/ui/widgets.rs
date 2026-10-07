@@ -26,7 +26,7 @@ use super::{
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Notice, PickerView, Row, SaveState, SidebarInput, SpecialView, commands::Group,
+        Notice, PickerView, Row, SaveState, SidebarInput, SpecialView, ViewGroup, commands::Group,
     },
     document::{
         BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
@@ -124,7 +124,7 @@ impl<'a> OutlineView<'a> {
     pub fn heights(&self, width: u16) -> Vec<usize> {
         let width = usize::from(width.saturating_sub(GUTTER_WIDTH));
         self.blocks(width)
-            .map(|(_, _, lines, _)| lines.len())
+            .map(|(_, row, lines, _)| heading_height(row) + lines.len())
             .collect()
     }
 
@@ -137,6 +137,8 @@ impl<'a> OutlineView<'a> {
         let width = usize::from(width.saturating_sub(GUTTER_WIDTH));
         let mut line = self.offset.checked_add(line)?;
         for (index, row, lines, _) in self.blocks(width) {
+            // A group's heading is not a row (D-80).
+            line = line.checked_sub(heading_height(row))?;
             if line < lines.len() {
                 let edited = self.editor.is_some_and(|editor| editor.id == row.id);
                 let fold = !edited
@@ -185,17 +187,24 @@ impl Widget for OutlineView<'_> {
             Constraint::Length(GUTTER_WIDTH),
             Constraint::Fill(1),
         ]));
-        let lines = self
-            .blocks(usize::from(text.width))
-            .flat_map(|(index, row, lines, chips)| {
-                let mut chips = Some(chips);
-                lines
-                    .into_iter()
-                    .map(move |line| (index, row, line, chips.take().unwrap_or_default()))
-            });
-        for ((index, row, line, chips), (gutter_area, line_area)) in
+        let lines =
+            self.blocks(usize::from(text.width))
+                .flat_map(|(index, row, lines, chips)| {
+                    let mut chips = Some(chips);
+                    let heading = heading_lines(row, self.icons, self.theme)
+                        .into_iter()
+                        .map(|line| (None, line, Line::default()));
+                    heading.chain(lines.into_iter().map(move |line| {
+                        (Some((index, row)), line, chips.take().unwrap_or_default())
+                    }))
+                });
+        for ((shown, line, chips), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
+            let Some((index, row)) = shown else {
+                line.render(line_area, buf);
+                continue;
+            };
             let focused = Some(index) == self.focused;
             // The line patches its own styles over the band and the tint, so every foreground
             // color and modifier survives on the focused and colored rows.
@@ -225,6 +234,34 @@ impl Widget for OutlineView<'_> {
             }
         }
     }
+}
+
+/// How many screen lines the heading above `row` takes: none when it starts no group of a special
+/// view, else the heading and a blank line above it unless it is the view's first (ui.md §2,
+/// D-80).
+#[must_use]
+pub fn heading_height(row: &Row) -> usize {
+    row.heading
+        .map_or_default(|heading| 1 + usize::from(!heading.first))
+}
+
+/// The lines [`heading_height`] counts for `row` in `theme`: a blank line, then the heading in bold
+/// without indent, naming its group with its icons from `icons`.
+fn heading_lines(row: &Row, icons: IconSet, theme: &Theme) -> Vec<Line<'static>> {
+    let Some(heading) = row.heading else {
+        return Vec::new();
+    };
+    let name = match heading.group {
+        ViewGroup::Color(color) => Line::from(vec![
+            Span::styled(Icon::Color.glyph(icons), Style::new().fg(theme.tag(color))),
+            Span::raw(format!(" {}", color.name())),
+        ]),
+    };
+    (!heading.first)
+        .then(Line::default)
+        .into_iter()
+        .chain([name.bold()])
+        .collect()
 }
 
 /// Columns left of the outline for the focus marker; the breadcrumbs start after it too, so the
@@ -312,6 +349,7 @@ pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'st
 pub fn view_icon(view: SpecialView) -> Icon {
     match view {
         SpecialView::Today => Icon::Today,
+        SpecialView::Colors => Icon::Colors,
         SpecialView::Starred => Icon::Star,
     }
 }
@@ -320,6 +358,7 @@ pub fn view_icon(view: SpecialView) -> Icon {
 fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     match view {
         SpecialView::Today | SpecialView::Starred => today_style(theme),
+        SpecialView::Colors => Style::new(),
     }
 }
 

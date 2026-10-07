@@ -230,14 +230,14 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
     ctrl_g(&mut app);
-    // The window's inside starts at column 17, row 5: Today, a blank line, Projects, Work, Home,
-    // Garden.
+    // The window's inside starts at column 17, row 4: Today, Colors, Starred, a blank line,
+    // Projects, Work, Home, Garden.
     let rows = screen(&mut app);
-    assert!(rows[10].contains("│    Garden "), "{rows:?}");
-    app.click(25, 10);
+    assert!(rows[11].contains("│    Garden "), "{rows:?}");
+    app.click(25, 11);
     assert_eq!(screen(&mut app)[0], "  ⌂ › Home › Garden", "and closed");
     ctrl_g(&mut app);
-    app.click(18, 9);
+    app.click(18, 10);
     let rows = screen(&mut app);
     assert!(
         rows.iter().any(|row| row.contains("│▌▸Home ")),
@@ -377,8 +377,8 @@ fn a_right_click_on_a_crumb_a_pane_header_or_a_sidebar_entry_opens_its_menu() {
     );
     press(&mut app, KeyCode::Esc);
     ctrl_g(&mut app);
-    // Work's entry, on the window's fourth row inside.
-    right_click(&mut app, 25, 8);
+    // Work's entry, on the window's sixth row inside.
+    right_click(&mut app, 25, 9);
     let rows = menu(&mut app);
     assert!(
         rows.iter().any(|row| row.contains("Go to Entry")),

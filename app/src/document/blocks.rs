@@ -60,6 +60,19 @@ impl TagColor {
         }
     }
 
+    /// The color's name as the app shows it, such as `Red`.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Red => "Red",
+            Self::Orange => "Orange",
+            Self::Yellow => "Yellow",
+            Self::Green => "Green",
+            Self::Blue => "Blue",
+            Self::Violet => "Violet",
+        }
+    }
+
     /// The color's number, 1 for red to 6 for violet in the order of [`Self::ALL`], by which
     /// commands such as `c1` choose it (D-48).
     #[must_use]
@@ -652,6 +665,15 @@ P: @blue @red
     fn colors_are_numbered_from_one_in_their_order() {
         let numbers: Vec<u32> = TagColor::ALL.into_iter().map(TagColor::number).collect();
         assert_eq!(numbers, [1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn colors_are_named_for_the_app_to_show() {
+        let names: Vec<&str> = TagColor::ALL.into_iter().map(TagColor::name).collect();
+        assert_eq!(
+            names,
+            ["Red", "Orange", "Yellow", "Green", "Blue", "Violet"]
+        );
     }
 
     // D-26, editing.md §5

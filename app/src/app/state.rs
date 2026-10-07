@@ -26,7 +26,7 @@ use super::{
     selection::Selection,
     settings,
     sidebar::Sidebar,
-    special_view::SpecialView,
+    special_view::{Heading, SpecialView},
     today_order::TodayOrder,
     type_picker::Conversion,
 };
@@ -292,6 +292,9 @@ pub struct Row {
     /// The text of each block above it, from the top level down, as an entry of a special view
     /// shows it; empty in an outline (D-7, D-80).
     pub path: Vec<String>,
+    /// The heading drawn above it when it is the first entry of a group of a special view; `None`
+    /// elsewhere (D-80).
+    pub heading: Option<Heading>,
 }
 
 impl Row {
@@ -674,6 +677,7 @@ impl State {
             url: block.url(),
             selected: pane.selection.contains(block.id()),
             path: Vec::new(),
+            heading: None,
         }
     }
 

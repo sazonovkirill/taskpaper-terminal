@@ -82,7 +82,7 @@ Upcoming, Overdue, Colors, Logbook and Starred are special views like Today: eve
 |---|---|---|---|---|
 | Upcoming (D-81) | blocks with `@start` or `@due` from tomorrow to a week from today, once, under the earliest such date; done blocks per show-completed | days, earliest first; heading `Tomorrow · Thu 8 Oct` | `gn` | `sidebar_upcoming` |
 | Overdue (D-82) | open blocks (not done, not inside a done block) with `@due` before today | due dates, oldest first; heading `3 days ago · Sun 4 Oct` | `go` | `sidebar_overdue` |
-| Colors (D-83) | blocks with a color tag; done blocks per show-completed | red, orange, yellow, green, blue, violet; heading the color's flag and name | `gf` | `sidebar_colors` |
+| Colors (D-83) | blocks with a color tag; done blocks per show-completed | red, orange, yellow, green, blue, violet; heading the color's swatch and name | `gC` | `sidebar_colors` |
 | Logbook (D-84) | blocks with `@done(DATE)` from six days ago to today, inside done blocks too, whatever show-completed says | days, newest first; heading `Yesterday · Tue 6 Oct` | `gD` | `sidebar_logbook` |
 | Starred (D-92) | starred blocks (`@star`, D-88), ungrouped; done blocks per show-completed | none | `g*` | `sidebar_starred` |
 

@@ -481,11 +481,11 @@ mod tests {
         assert_eq!(
             draw_without(&[SpecialView::Today], "A:"),
             [
-                format!("▌ {} Starred", Icon::Star.glyph(IconSet::Unicode)),
+                format!("▌ {} Colors", Icon::Colors.glyph(IconSet::Unicode)),
+                format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
                 "  A".to_owned(),
-                String::new(),
             ]
         );
         let draw_without_today = |text: &str| draw_without(&SpecialView::ALL, text);

@@ -1146,7 +1146,7 @@ INBOX:",
     // FR-UI-01
     #[test]
     fn an_outline_without_bookmarks_or_projects_lists_only_the_special_views() {
-        let views = ["today", "starred"];
+        let views = ["today", "colors", "starred"];
         assert_eq!(listed(&State::new(format::parse("- a\nb"), None)), views);
         assert_eq!(listed(&State::new(Document::default(), None)), views);
     }
@@ -1159,15 +1159,27 @@ INBOX:",
         assert!(state.sidebar_lists(SpecialView::Starred), "on by default");
         assert_eq!(
             listed(&state),
-            ["inbox INBOX", "today", "starred", "bookmark A", "Leaf A"]
+            [
+                "inbox INBOX",
+                "today",
+                "colors",
+                "starred",
+                "bookmark A",
+                "Leaf A"
+            ]
         );
         state.update(Message::ToggleSidebar);
         input(
             &mut state,
-            &[SidebarInput::Next, SidebarInput::Next, SidebarInput::Choose],
+            &[
+                SidebarInput::Next,
+                SidebarInput::Next,
+                SidebarInput::Next,
+                SidebarInput::Choose,
+            ],
         );
         assert_eq!(state.location(), Location::View(SpecialView::Starred));
-        assert_eq!(current(&state), Some(2), "its entry is current");
+        assert_eq!(current(&state), Some(3), "its entry is current");
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Starred,
             false,
@@ -1176,7 +1188,39 @@ INBOX:",
         assert!(state.sidebar_lists(SpecialView::Today));
         assert_eq!(
             listed(&state),
-            ["inbox INBOX", "today", "bookmark A", "Leaf A"]
+            ["inbox INBOX", "today", "colors", "bookmark A", "Leaf A"]
+        );
+    }
+
+    // FR-TAG-07, D-80: the special views stand in the sidebar's order after the inbox, each
+    // unless its setting leaves it out, and choosing one shows it.
+    #[test]
+    fn the_special_views_follow_the_inbox_each_unless_its_setting_is_off() {
+        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        assert_eq!(
+            listed(&state),
+            [
+                "inbox INBOX",
+                "today",
+                "colors",
+                "starred",
+                "bookmark A",
+                "Leaf A"
+            ]
+        );
+        state.update(Message::ToggleSidebar);
+        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
+        input(&mut state, &[SidebarInput::Choose]);
+        assert_eq!(state.location(), Location::View(SpecialView::Colors));
+        state.update(Message::Configure(Configuration::SidebarView(
+            SpecialView::Today,
+            false,
+        )));
+        assert!(!state.sidebar_lists(SpecialView::Today));
+        assert!(state.sidebar_lists(SpecialView::Colors));
+        assert_eq!(
+            listed(&state),
+            ["inbox INBOX", "colors", "starred", "bookmark A", "Leaf A"]
         );
     }
 
