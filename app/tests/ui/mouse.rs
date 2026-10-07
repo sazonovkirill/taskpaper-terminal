@@ -230,13 +230,13 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
     let rows = screen(&mut app);
-    assert!(rows[4].starts_with("    ▾ Home "), "{rows:?}");
+    assert!(rows[4].starts_with("  ▾ Home "), "{rows:?}");
     app.click(10, 5);
     assert!(screen(&mut app)[0].ends_with("⌂ › Home › Garden"));
-    app.click(4, 4);
+    app.click(2, 4);
     let rows = screen(&mut app);
     assert!(
-        rows[4].starts_with("▌   ▸ Home"),
+        rows[4].starts_with("▌ ▸ Home"),
         "the sidebar has the keys on Home: {rows:?}"
     );
     assert!(rows[5].starts_with("        "), "Garden folded away");

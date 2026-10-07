@@ -183,11 +183,9 @@ impl Icon {
             Self::Command => ("\u{f0142}", "›", ">"),
             // nf-md-home
             Self::Home => ("\u{f02dc}", "⌂", "~"),
-            // nf-md-menu_down
-            Self::Expanded => ("\u{f035d}", "▾", "v"),
-            // nf-md-menu_right
-            Self::Collapsed => ("\u{f035f}", "▸", ">"),
-            // The task markers stay plain with Nerd Font icons too (D-59).
+            // The fold markers and the task markers stay plain with Nerd Font icons too (D-59, D-60).
+            Self::Expanded => ("▾", "▾", "v"),
+            Self::Collapsed => ("▸", "▸", ">"),
             Self::TaskMarker => ("-", "-", "-"),
             Self::DoneTask => ("✔", "✔", "[x]"),
             // nf-md-cursor_default_outline
@@ -266,12 +264,17 @@ mod tests {
         }
     }
 
-    /// The task markers, drawn the same with Nerd Font icons as without (D-59).
-    const MARKERS: [Icon; 2] = [Icon::TaskMarker, Icon::DoneTask];
+    /// The fold and task markers, drawn the same with Nerd Font icons as without (D-59, D-60).
+    const MARKERS: [Icon; 4] = [
+        Icon::Expanded,
+        Icon::Collapsed,
+        Icon::TaskMarker,
+        Icon::DoneTask,
+    ];
 
-    // D-59
+    // D-59, D-60
     #[test]
-    fn the_task_markers_are_the_unicode_ones_with_nerd_font_icons_too() {
+    fn the_fold_and_task_markers_are_the_unicode_ones_with_nerd_font_icons_too() {
         for icon in MARKERS {
             assert_eq!(icon.glyph(IconSet::Nerd), icon.glyph(IconSet::Unicode));
         }

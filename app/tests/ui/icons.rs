@@ -19,13 +19,11 @@ Later:
 
 /// Each Nerd Font glyph the screen of [`OUTLINE`] shows, with the Unicode marker drawn in its
 /// place when icons are off (ui.md §2, §7).
-const NERD_TO_UNICODE: [(&str, &str); 8] = [
+const NERD_TO_UNICODE: [(&str, &str); 6] = [
     ("\u{f02dc}", "⌂"),
     ("\u{f04ce}", "★"),
     ("\u{f00c0}", "⚑"),
     ("\u{f166c}", "⇥"),
-    ("\u{f035d}", "▾"),
-    ("\u{f035f}", "▸"),
     ("\u{f01bf}", "↕"),
     ("\u{f09de}", "●"),
 ];
@@ -95,7 +93,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         assert!(rows[0].contains("│  ~"), "{settings}: {rows:#?}");
         assert!(rows[1].contains("  # Work"), "{settings}: {rows:#?}");
         assert!(rows[2].contains("  * Today"), "{settings}: {rows:#?}");
-        assert!(rows[5].starts_with("    v Work"), "{settings}: {rows:#?}");
+        assert!(rows[5].starts_with("  v Work"), "{settings}: {rows:#?}");
         assert!(rows.iter().any(|row| row.ends_with("│  Work: #")));
         assert!(
             rows.iter()

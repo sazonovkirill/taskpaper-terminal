@@ -3109,7 +3109,7 @@ mod tests {
             [
                 at_right("✔ d", "\u{f166c} today", 30),
                 "- t \u{f04ce} \u{f00c0}".to_owned(),
-                "P: \u{f035f} 1".to_owned(),
+                "P: ▸ 1".to_owned(),
                 String::new(),
             ]
         );
