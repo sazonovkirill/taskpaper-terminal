@@ -37,6 +37,9 @@ fn main() -> anyhow::Result<()> {
         bail!("usage: tpt [path]");
     }
     let home = std::env::home_dir();
+    let config = ui::config::file(std::env::var_os("XDG_CONFIG_HOME"), home.clone())
+        .map(|file| ui::config::load(&file))
+        .unwrap_or_default();
     let recovery = Recovery::new(
         ui::effects::recovery_folder(std::env::var_os("XDG_STATE_HOME"), home.clone()),
         || jiff::Zoned::now().datetime(),
@@ -89,7 +92,7 @@ fn main() -> anyhow::Result<()> {
     // Asked before the event thread starts, which would otherwise read the terminal's answer; a
     // terminal that does not answer is taken not to speak the protocol.
     let kitty = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
-    let mut tui = tui.with_kitty_keyboard(kitty);
+    let mut tui = tui.with_kitty_keyboard(kitty).with_config(config);
     // Terminals that cannot report focus, bracket pasted text or speak the kitty keyboard protocol
     // ignore the requests, so keys arrive as legacy reporting sends them (keybindings.md §1).
     let _ = execute!(

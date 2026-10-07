@@ -15,3 +15,5 @@ Agents start with [AGENTS.md](AGENTS.md), which links the workflow and quality r
 cd app
 cargo run
 ```
+
+Settings, such as key bindings, live in `~/.config/taskpaper-terminal/config.toml` (`$XDG_CONFIG_HOME` respected, also on macOS); see [keybindings.md §5](docs/specs/keybindings.md#5-configuration).

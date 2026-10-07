@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
+    Command, DateInput, Location, MenuInput, Notice, PaneChange, Paste, SaveAs, SelectionChange,
     SidebarInput, State, TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
@@ -71,6 +71,9 @@ pub enum Message {
         /// Why, for the status line.
         reason: String,
     },
+    /// The frontend's settings file has these problems, each ignored; shown once, at start
+    /// (FR-SET-04).
+    ConfigProblems(Vec<String>),
     /// Leave the app, saving first; if that save fails, ask (file-io.md §2).
     Quit,
     /// The process is told to end (`SIGTERM`, `SIGHUP`): save first and end even if that fails.
@@ -327,6 +330,7 @@ impl Message {
             | Self::ConflictCopied { .. }
             | Self::ConflictCopyFailed { .. }
             | Self::BackupFailed { .. }
+            | Self::ConfigProblems(_)
             | Self::OpenUrlFailed { .. }
             | Self::Undo
             | Self::Redo
@@ -539,6 +543,7 @@ impl State {
             Message::ConflictCopied { copy } => self.conflict_copied(copy),
             Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
+            Message::ConfigProblems(problems) => self.notify(Notice::ConfigProblems(problems)),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),
             Message::FocusNext => self.focus_down(1),
@@ -1513,5 +1518,16 @@ mod tests {
             assert_eq!(state.update(message.clone()), [], "{message:?}");
             assert_eq!(state.focus(), None, "{message:?}");
         }
+    }
+
+    // FR-SET-04
+    #[test]
+    fn config_problems_show_in_the_status_line_for_a_while_and_leave_editing_alone() {
+        let mut state = state();
+        state.update(Message::EditAtEnd);
+        let problems = vec!["unknown setting `theme`".to_owned()];
+        assert_eq!(state.update(Message::ConfigProblems(problems.clone())), []);
+        assert_eq!(state.notice(), Some(&Notice::ConfigProblems(problems)));
+        assert!(state.editor().is_some(), "still editing");
     }
 }

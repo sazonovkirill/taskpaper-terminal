@@ -19,12 +19,11 @@ mod finder;
 
 pub use finder::FinderPopup;
 
-use super::{keymap, layout, theme::Icon};
+use super::{layout, theme::Icon};
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Notice, PickerView, Row, SaveState,
-        commands::{Entry, Group},
+        Notice, PickerView, Row, SaveState, commands::Group,
     },
     document::{
         BlockKind, DateTag, Details, Flag, TagColor,
@@ -276,6 +275,10 @@ fn notice_span(notice: &Notice) -> Span<'static> {
         Notice::BackupFailed { reason } => {
             Span::styled(format!("backup failed: {reason}"), warning_style())
         }
+        Notice::ConfigProblems(problems) => Span::styled(
+            format!("config.toml: {}", problems.join("; ")),
+            warning_style(),
+        ),
         Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style()),
         Notice::TypedTag => Span::styled("Tags are set with commands", warning_style()),
         Notice::EditFailed { reason } => {
@@ -426,12 +429,10 @@ impl Popup {
         Self::command_list(menu, |_| String::new(), filter)
     }
 
-    /// The context menu: the command menu's box, with each command's keys right-aligned in the
-    /// primary color, those of the focused sidebar when the `sidebar` has the keys, and its
-    /// filter as typed (FR-KEY-06, ui.md §5).
+    /// The context menu: the command menu's box, with each command's keys as `keys` gives them
+    /// right-aligned in the primary color, and its filter as typed (FR-KEY-06, ui.md §5).
     #[must_use]
-    pub fn context_menu(menu: &CommandMenuView, sidebar: bool) -> Self {
-        let keys = |command| keymap::bindings(command, sidebar);
+    pub fn context_menu(menu: &CommandMenuView, keys: impl Fn(Command) -> String) -> Self {
         Self::command_list(menu, keys, menu.filter.to_owned())
     }
 
@@ -681,7 +682,7 @@ pub struct Keyboard {
 /// arrives, and whether the kitty protocol is on.
 #[derive(Debug)]
 pub struct ShortcutsPanel<'a> {
-    groups: &'a [(Group, Vec<&'static Entry>)],
+    groups: &'a [(Group, Vec<(Command, String)>)],
     keyboard: Keyboard,
     scroll: usize,
     keys: [&'a str; 2],
@@ -698,9 +699,10 @@ struct Window {
 }
 
 impl<'a> ShortcutsPanel<'a> {
-    /// The panel listing `groups` from the top, noting what `keyboard` reports.
+    /// The panel listing `groups`, each command with how its keys read, from the top, noting
+    /// what `keyboard` reports.
     #[must_use]
-    pub fn new(groups: &'a [(Group, Vec<&'static Entry>)], keyboard: Keyboard) -> Self {
+    pub fn new(groups: &'a [(Group, Vec<(Command, String)>)], keyboard: Keyboard) -> Self {
         Self {
             groups,
             keyboard,
@@ -781,10 +783,10 @@ impl<'a> ShortcutsPanel<'a> {
                 Line::styled(group.name(), Style::new().fg(SECONDARY).bold()),
                 Line::default(),
             ));
-            for entry in entries {
+            for (command, keys) in entries {
                 rows.push((
-                    Line::from(format!(" {}", entry.command.name())),
-                    Line::styled(keymap::labels(entry.keys), Style::new().fg(PRIMARY)),
+                    Line::from(format!(" {}", command.name())),
+                    Line::styled(keys.clone(), Style::new().fg(PRIMARY)),
                 ));
             }
         }
@@ -1298,6 +1300,7 @@ fn current_line_style() -> Style {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::keymap::Keymap;
     use crate::{
         app::{Menu, Message, SelectionChange, State},
         document::format,
@@ -1562,7 +1565,10 @@ mod tests {
                 crate::app::MenuInput::Type(c),
             ));
         }
-        let popup = Popup::context_menu(&state.context_menu().unwrap(), false);
+        let keymap = Keymap::default();
+        let popup = Popup::context_menu(&state.context_menu().unwrap(), |command| {
+            keymap.bindings(command, false)
+        });
         assert_eq!(popup.size(), (23, 4));
         let mut buf = Buffer::empty(Rect::new(0, 0, 23, 4));
         popup.render(buf.area, &mut buf);
@@ -2580,6 +2586,10 @@ mod tests {
         let copy = std::path::PathBuf::from("/b/c.taskpaper");
         for (notice, expected) in [
             (Notice::Reloaded, plain("Reloaded (changed on disk)")),
+            (
+                Notice::ConfigProblems(vec!["a".to_owned(), "b".to_owned()]),
+                ("config.toml: a; b".to_owned(), warning_style()),
+            ),
             (
                 Notice::BlanksLifted,
                 plain("Empty lines at the end moved to the top level"),

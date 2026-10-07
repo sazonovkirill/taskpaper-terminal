@@ -5,6 +5,7 @@ use std::{mem, time::Duration};
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
+use thiserror::Error;
 
 use crate::app::{
     Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
@@ -373,55 +374,76 @@ fn parse_sequence(text: &str) -> Option<Vec<Key>> {
     text.split(' ').map(parse_key).collect()
 }
 
-/// How the binding `keys`, written in the config file's notation, reads on screen: as
-/// [keybindings.md] writes keys, such as `Ctrl+D`, `Alt+k`, `Ctrl+Shift+Z`, `Shift+↓`, `Space`, a
-/// sequence of characters run together (`gg`) and other sequences spaced (`Ctrl+W v`). The same on
-/// every platform, unlike crossterm's `Display`, which names `Ctrl` "Control" on Unix. `None`
-/// when `keys` is not in the notation.
+/// How the key sequence `keys` reads on screen: as [keybindings.md] writes keys, such as
+/// `Ctrl+D`, `Alt+k`, `Ctrl+Shift+Z`, `Shift+↓`, `Space`, a sequence of characters run together
+/// (`gg`) and other sequences spaced (`Ctrl+W v`). The same on every platform, unlike crossterm's
+/// `Display`, which names `Ctrl` "Control" on Unix.
 ///
 /// [keybindings.md]: ../../../docs/specs/keybindings.md
-#[must_use]
-pub fn label(keys: &str) -> Option<String> {
-    let sequence = parse_sequence(keys)?;
-    let plain = sequence.iter().all(|&(modifiers, code)| {
+fn sequence_label(keys: &[Key]) -> String {
+    let plain = keys.iter().all(|&(modifiers, code)| {
         modifiers.is_empty() && matches!(code, KeyCode::Char(c) if c != ' ')
     });
-    let presses: Vec<String> = sequence.into_iter().map(key_label).collect();
-    Some(presses.join(if plain { "" } else { " " }))
+    let presses: Vec<String> = keys.iter().copied().map(key_label).collect();
+    presses.join(if plain { "" } else { " " })
 }
 
-/// How the bindings `keys` read on screen, each as [`label`] writes it, separated by commas.
-#[must_use]
-pub fn labels(keys: &[&str]) -> String {
-    keys.iter()
-        .filter_map(|keys| label(keys))
+/// `name` as the config file may write a command's name: in lower case, with each run of
+/// other characters than letters and digits as one `_`, so that `Move Up`, `move up` and
+/// `move_up` are one name ([keybindings.md §5]).
+///
+/// [keybindings.md §5]: ../../../docs/specs/keybindings.md#5-configuration
+fn config_name(name: &str) -> String {
+    name.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|word| !word.is_empty())
         .collect::<Vec<_>>()
-        .join(", ")
+        .join("_")
 }
 
-/// How the keys that give `command` read on screen, each as [`label`] writes it, separated by
-/// commas: its navigate-mode bindings, else its bindings in the focused sidebar, or the other way
-/// round where the `sidebar` has the keys.
-#[must_use]
-pub fn bindings(command: Command, sidebar: bool) -> String {
-    let navigate = || {
-        REGISTRY
-            .iter()
-            .find(|entry| entry.mode == Mode::Navigate && entry.command == command)
-            .map(|entry| entry.keys)
-    };
-    let focused_sidebar = || {
-        SIDEBAR
-            .iter()
-            .find(|&&(bound, _)| bound == command)
-            .map(|&(_, keys)| keys)
-    };
-    let keys = if sidebar {
-        focused_sidebar().or_else(navigate)
-    } else {
-        navigate().or_else(focused_sidebar)
-    };
-    keys.map(labels).unwrap_or_default()
+/// The command of `mode` named `name`, as the command palette names it or written as
+/// [`config_name`] allows. Keys cannot give [`Command::Retype`], which changes an edit session
+/// and only the command menu offers (D-44).
+fn command_named(mode: Mode, name: &str) -> Option<Command> {
+    let name = config_name(name);
+    REGISTRY
+        .iter()
+        .filter(|entry| entry.mode == mode && !matches!(entry.command, Command::Retype(_)))
+        .map(|entry| entry.command)
+        .find(|command| config_name(&command.name()) == name)
+}
+
+/// Why a key binding the config file asks for was ignored ([keybindings.md §5]).
+///
+/// [keybindings.md §5]: ../../../docs/specs/keybindings.md#5-configuration
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum BindingError {
+    /// The keys are not written in the notation of keybindings.md §5.
+    #[error("\"{keys}\" is not a key")]
+    NotAKey {
+        /// The keys as written.
+        keys: String,
+    },
+    /// Edit mode types characters, so it binds single keys, not sequences.
+    #[error("\"{keys}\": edit mode binds single keys, not sequences")]
+    Sequence {
+        /// The keys as written.
+        keys: String,
+    },
+    /// No command of the mode has this name.
+    #[error("\"{keys}\": no command \"{command}\" here")]
+    UnknownCommand {
+        /// The keys as written.
+        keys: String,
+        /// The name as written.
+        command: String,
+    },
+    /// Another binding of the same table names the same keys, written differently.
+    #[error("\"{keys}\" is bound twice")]
+    BoundTwice {
+        /// The keys as written.
+        keys: String,
+    },
 }
 
 /// What giving `command` asks for, its message carrying what it needs of `context`, as its keys
@@ -529,6 +551,115 @@ impl Default for Keymap {
 }
 
 impl Keymap {
+    /// Applies the config file's `bindings` of `mode`, each keys written in the notation of
+    /// [keybindings.md §5] with the name of the command they give there, or `none` to unbind
+    /// them. A binding takes its keys from the command they gave and puts them first among its
+    /// command's keys; the command's other keys stay. A binding that cannot be applied is left
+    /// out, and so are bindings that name the same keys, and the default stays.
+    ///
+    /// [keybindings.md §5]: ../../../docs/specs/keybindings.md#5-configuration
+    pub fn bind(&mut self, mode: Mode, bindings: &[(&str, &str)]) -> Vec<BindingError> {
+        let mut errors = Vec::new();
+        let mut parsed = Vec::new();
+        for &(keys, name) in bindings {
+            let Some(sequence) = parse_sequence(keys) else {
+                errors.push(BindingError::NotAKey { keys: keys.into() });
+                continue;
+            };
+            if mode == Mode::Edit && sequence.len() > 1 {
+                errors.push(BindingError::Sequence { keys: keys.into() });
+                continue;
+            }
+            let command = command_named(mode, name);
+            if command.is_none() && name != "none" {
+                errors.push(BindingError::UnknownCommand {
+                    keys: keys.into(),
+                    command: name.into(),
+                });
+                continue;
+            }
+            parsed.push((sequence, keys, command));
+        }
+        let twice = |sequence: &Vec<Key>| {
+            parsed
+                .iter()
+                .filter(|(other, ..)| other == sequence)
+                .count()
+                > 1
+        };
+        errors.extend(
+            parsed
+                .iter()
+                .filter(|(sequence, ..)| twice(sequence))
+                .map(|&(_, keys, _)| BindingError::BoundTwice { keys: keys.into() }),
+        );
+        // Each goes first among its command's keys, so going backwards keeps the file's order.
+        for (sequence, _, command) in parsed.iter().rev() {
+            if twice(sequence) {
+                continue;
+            }
+            let bound = match mode {
+                Mode::Navigate => &mut self.navigate,
+                Mode::Edit => &mut self.edit,
+            };
+            bound.retain(|(other, _)| other != sequence);
+            if let Some(command) = *command {
+                let at = bound
+                    .iter()
+                    .position(|&(_, other)| other == command)
+                    .unwrap_or(bound.len());
+                bound.insert(at, (sequence.clone(), command));
+            }
+        }
+        errors
+    }
+
+    /// How the keys that give `command` in `mode` read on screen, each sequence as
+    /// [keybindings.md] writes keys, separated by commas; empty when none does.
+    ///
+    /// [keybindings.md]: ../../../docs/specs/keybindings.md
+    #[must_use]
+    pub fn labels(&self, command: Command, mode: Mode) -> String {
+        let bound = match mode {
+            Mode::Navigate => &self.navigate,
+            Mode::Edit => &self.edit,
+        };
+        bound
+            .iter()
+            .filter(|&&(_, bound)| bound == command)
+            .map(|(keys, _)| sequence_label(keys))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// How the keys that give `command` read on screen, as [`Keymap::labels`] writes them: its
+    /// navigate-mode keys if it is a command of navigate mode, else its keys in the focused
+    /// sidebar, or the other way round where the `sidebar` has the keys.
+    #[must_use]
+    pub fn bindings(&self, command: Command, sidebar: bool) -> String {
+        let navigate = || {
+            REGISTRY
+                .iter()
+                .any(|entry| entry.mode == Mode::Navigate && entry.command == command)
+                .then(|| self.labels(command, Mode::Navigate))
+        };
+        let focused_sidebar = || {
+            let keys: Vec<String> = self
+                .sidebar
+                .iter()
+                .filter(|&&(_, bound)| bound == command)
+                .map(|&(key, _)| key_label(key))
+                .collect();
+            (!keys.is_empty()).then(|| keys.join(", "))
+        };
+        let keys = if sidebar {
+            focused_sidebar().or_else(navigate)
+        } else {
+            navigate().or_else(focused_sidebar)
+        };
+        keys.unwrap_or_default()
+    }
+
     /// What the navigate-mode binding whose keys are `keys` asks for, if any.
     fn bound(&self, keys: &[Key], context: &Context) -> Option<KeyAction> {
         let (_, command) = self.navigate.iter().find(|(bound, _)| bound == keys)?;
@@ -708,6 +839,11 @@ mod tests {
                     | KeyAction::ScrollShortcutsUp => None,
                 })
         }
+    }
+
+    /// How the sequence `keys`, in the config file's notation, reads on screen.
+    fn label(keys: &str) -> Option<String> {
+        parse_sequence(keys).map(|keys| sequence_label(&keys))
     }
 
     const PAGE: usize = 7;
@@ -1261,6 +1397,9 @@ mod tests {
             ("+", "+"),
             ("ctrl+w v", "Ctrl+W v"),
             ("?", "?"),
+            ("f1", "F1"),
+            ("ctrl+f12", "Ctrl+F12"),
+            ("menu", "Menu"),
         ] {
             assert_eq!(label(keys).as_deref(), Some(expected), "{keys}");
         }
@@ -2103,22 +2242,179 @@ mod tests {
         assert_eq!(action(Command::Retype(Typed::Task), CONTEXT), None);
     }
 
+    // keybindings.md §5
+    #[test]
+    fn config_bindings_give_keys_to_commands_and_take_them_from_others() {
+        let mut keymap = Keymap::default();
+        let errors = keymap.bind(
+            Mode::Navigate,
+            &[("ctrl+d", "toggle_done"), ("x", "none"), ("j", "Move Down")],
+        );
+        assert_eq!(errors, []);
+        let press = |c, modifiers| key(KeyCode::Char(c), modifiers);
+        assert_eq!(
+            keymap.message_for(&press('d', KeyModifiers::CONTROL), ms(0), CONTEXT),
+            Some(Message::ToggleDone { today: TODAY })
+        );
+        assert_eq!(
+            keymap.message_for(&press('x', KeyModifiers::NONE), ms(1), CONTEXT),
+            None,
+            "unbound"
+        );
+        assert_eq!(
+            keymap.message_for(&press('j', KeyModifiers::NONE), ms(2), CONTEXT),
+            Some(Message::MoveDown)
+        );
+        assert_eq!(
+            keymap.labels(Command::ToggleDone, Mode::Navigate),
+            "Ctrl+D, Ctrl+Enter"
+        );
+        assert_eq!(keymap.labels(Command::PageDown, Mode::Navigate), "PgDn");
+        assert_eq!(keymap.labels(Command::FocusNext, Mode::Navigate), "↓");
+        assert_eq!(
+            keymap.labels(Command::MoveDown, Mode::Navigate),
+            "j, Alt+j, Alt+↓"
+        );
+        let errors = keymap.bind(Mode::Edit, &[("ctrl+g", "INLINE CODE")]);
+        assert_eq!(errors, []);
+        assert_eq!(
+            keymap.message_for(&press('g', KeyModifiers::CONTROL), ms(3), EDITING),
+            Some(Message::Text(TextEdit::Toggle(Marker::Code)))
+        );
+    }
+
+    // keybindings.md §5, D-53
+    #[test]
+    fn a_config_binding_may_start_a_longer_sequence_and_acts_once_it_times_out() {
+        let mut keymap = Keymap::default();
+        assert_eq!(keymap.bind(Mode::Navigate, &[("g", "go_home")]), []);
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&g, ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.message_for(&g, ms(1), CONTEXT),
+            Some(Message::FocusFirst),
+            "gg stays"
+        );
+        assert_eq!(keymap.message_for(&g, ms(2), CONTEXT), None);
+        assert_eq!(
+            keymap.expire(ms(1002), CONTEXT),
+            Some(KeyAction::Send(Message::GoHome))
+        );
+    }
+
+    // keybindings.md §5
+    #[test]
+    fn config_bindings_that_cannot_apply_are_reported_and_leave_the_defaults() {
+        let mut keymap = Keymap::default();
+        let errors = keymap.bind(
+            Mode::Navigate,
+            &[
+                ("hyper+x", "undo"),
+                ("Ctrl+Q", "undo"),
+                ("u", "frobnicate"),
+                ("v", "stop_editing"),
+                ("G", "undo"),
+                ("shift+g", "redo"),
+                ("u u", "undo"),
+            ],
+        );
+        let keys = |keys: &str| keys.to_owned();
+        assert_eq!(
+            errors,
+            [
+                BindingError::NotAKey {
+                    keys: keys("hyper+x")
+                },
+                BindingError::NotAKey {
+                    keys: keys("Ctrl+Q")
+                },
+                BindingError::UnknownCommand {
+                    keys: keys("u"),
+                    command: keys("frobnicate")
+                },
+                BindingError::UnknownCommand {
+                    keys: keys("v"),
+                    command: keys("stop_editing")
+                },
+                BindingError::BoundTwice { keys: keys("G") },
+                BindingError::BoundTwice {
+                    keys: keys("shift+g")
+                },
+            ]
+        );
+        assert_eq!(keymap.labels(Command::FocusLast, Mode::Navigate), "G, End");
+        assert_eq!(
+            keymap.labels(Command::Undo, Mode::Navigate),
+            "uu, z, Ctrl+Z"
+        );
+        let errors = keymap.bind(
+            Mode::Edit,
+            &[
+                ("ctrl+w x", "bold"),
+                ("ctrl+p", "project"),
+                ("ctrl+n", "none"),
+            ],
+        );
+        assert_eq!(
+            errors,
+            [
+                BindingError::Sequence {
+                    keys: keys("ctrl+w x")
+                },
+                BindingError::UnknownCommand {
+                    keys: keys("ctrl+p"),
+                    command: keys("project")
+                },
+            ],
+            "the command menu's types are not keys' to give"
+        );
+        assert_eq!(
+            BindingError::Sequence { keys: keys("a b") }.to_string(),
+            "\"a b\": edit mode binds single keys, not sequences"
+        );
+        assert_eq!(
+            BindingError::UnknownCommand {
+                keys: keys("u"),
+                command: keys("nope")
+            }
+            .to_string(),
+            "\"u\": no command \"nope\" here"
+        );
+        assert_eq!(
+            BindingError::NotAKey { keys: keys("q+") }.to_string(),
+            "\"q+\" is not a key"
+        );
+    }
+
+    // keybindings.md §5
+    #[test]
+    fn every_command_keys_can_give_has_a_config_name_of_its_own_in_its_mode() {
+        for mode in [Mode::Navigate, Mode::Edit] {
+            for entry in REGISTRY.iter().filter(|entry| entry.mode == mode) {
+                let name = config_name(&entry.command.name());
+                let expected =
+                    (!matches!(entry.command, Command::Retype(_))).then_some(entry.command);
+                assert_eq!(command_named(mode, &name), expected, "{name} in {mode:?}");
+            }
+        }
+        assert_eq!(config_name("Move to…"), "move_to");
+        assert_eq!(config_name("Show/Hide Completed"), "show_hide_completed");
+        assert_eq!(config_name("Color: Red"), "color_red");
+        assert_eq!(config_name("  Focus Pane 1 "), "focus_pane_1");
+    }
+
     // FR-KEY-04, FR-NAV-06
     #[test]
-    fn labels_join_each_bindings_label() {
-        assert_eq!(labels(&["ctrl+k", ":"]), "Ctrl+K, :");
+    fn labels_join_the_labels_of_a_commands_keys_in_a_mode() {
+        let keymap = Keymap::default();
         assert_eq!(
-            labels(&["hyper+x", "g s"]),
-            "gs",
-            "what is not a key is left out"
+            keymap.labels(Command::GoToCommand, Mode::Navigate),
+            "Ctrl+K, :"
         );
-        assert_eq!(labels(&[]), "");
-        assert_eq!(labels(&["f1", "ctrl+f12", "menu"]), "F1, Ctrl+F12, Menu");
-        assert_eq!(
-            labels(&["fx", "f"]),
-            "f",
-            "only a number makes a function key"
-        );
+        assert_eq!(keymap.labels(Command::Count, Mode::Navigate), "");
+        assert_eq!(keymap.labels(Command::StopEditing, Mode::Edit), "Esc");
+        assert_eq!(keymap.labels(Command::StopEditing, Mode::Navigate), "");
+        assert_eq!(label("fx"), None, "only a number makes a function key");
     }
 
     // FR-KEY-06, keybindings.md §1, §2 and §4, D-42
@@ -2194,6 +2490,8 @@ mod tests {
     // FR-KEY-06, ui.md §5
     #[test]
     fn a_commands_bindings_are_its_navigate_keys_or_its_sidebar_keys() {
+        let keymap = Keymap::default();
+        let bindings = |command, sidebar| keymap.bindings(command, sidebar);
         assert_eq!(bindings(Command::ContextMenu, false), "\\, Shift+F10, Menu");
         assert_eq!(bindings(Command::Count, false), "");
         assert_eq!(

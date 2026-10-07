@@ -25,6 +25,7 @@ use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
         Input, Tui,
+        config::{self, Config},
         effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
     },
 };
@@ -166,6 +167,17 @@ impl Harness {
         Self::start(state, dir, width, height)
     }
 
+    /// Starts on `text` as a file in a temporary folder, with `settings` as the settings file.
+    pub fn with_config(text: &str, settings: &str, width: u16, height: u16) -> Self {
+        let dir = tempfile::tempdir().expect("a temporary folder");
+        let path = dir.path().join("outline.taskpaper");
+        std::fs::write(&path, text).expect("the temporary folder is writable");
+        let file = dir.path().join("config.toml");
+        std::fs::write(&file, settings).expect("the temporary folder is writable");
+        let state = effects::open(&path).expect("the file opens");
+        Self::start_with(state, dir, config::load(&file), width, height)
+    }
+
     /// Starts on `text` as a file in a temporary folder, opened with `recovered`, the text of a
     /// recovery file of it.
     pub fn recovered(text: &str, recovered: &str, width: u16, height: u16) -> Self {
@@ -204,6 +216,11 @@ impl Harness {
     /// Starts the app on `state` with its backups in `dir/backups` and its layouts in
     /// `dir/state/views.json`.
     fn start(state: State, dir: TempDir, width: u16, height: u16) -> Self {
+        Self::start_with(state, dir, Config::default(), width, height)
+    }
+
+    /// Starts the app as [`Harness::start`] does, with the settings `config`.
+    fn start_with(state: State, dir: TempDir, config: Config, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
         let views = dir.path().join("state/views.json");
         let state = Views::new(Some(views.clone())).restore(state);
@@ -228,7 +245,8 @@ impl Harness {
                 Clipboard::new(None, terminal_output.clone()),
                 || CLOCK.with_borrow(Zoned::clone),
                 Some(home.clone()),
-            ),
+            )
+            .with_config(config),
             home,
             terminal_output,
             terminal: Terminal::new(TestBackend::new(width, height)).expect("a test terminal"),

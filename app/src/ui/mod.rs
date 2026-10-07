@@ -1,6 +1,7 @@
 //! The terminal frontend: turns crossterm events into app messages, carries out effects and
 //! draws the state with Ratatui.
 
+pub mod config;
 pub mod effects;
 pub mod keymap;
 pub mod layout;
@@ -23,8 +24,9 @@ use ratatui::{
 
 use crate::app::{
     Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
-    commands::{Command, REGISTRY},
+    commands::{Command, Group, REGISTRY},
 };
+use config::Config;
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use layout::Scroll;
@@ -152,6 +154,18 @@ impl Tui {
     #[must_use]
     pub fn with_kitty_keyboard(mut self, kitty: bool) -> Self {
         self.keyboard.kitty = kitty;
+        self
+    }
+
+    /// The frontend running with the settings `config` holds, reporting once what it ignored of
+    /// the settings file (FR-SET-04).
+    #[must_use]
+    pub fn with_config(mut self, config: Config) -> Self {
+        let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
+        self.keymap = config.keymap;
+        if !problems.is_empty() {
+            self.send(Message::ConfigProblems(problems), Duration::ZERO);
+        }
         self
     }
 
@@ -318,7 +332,10 @@ impl Tui {
                 let bindings = REGISTRY
                     .iter()
                     .filter(|entry| entry.mode == Mode::Navigate)
-                    .map(|entry| (entry.command, keymap::labels(entry.keys)))
+                    .map(|entry| {
+                        let keys = self.keymap.labels(entry.command, Mode::Navigate);
+                        (entry.command, keys)
+                    })
                     .collect();
                 self.send(Message::OpenGoToCommand(bindings), now);
             }
@@ -484,7 +501,9 @@ impl Tui {
                 focused.block
             };
             if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
-                let popup = Popup::context_menu(&menu, self.state.sidebar_focused());
+                let sidebar = self.state.sidebar_focused();
+                let popup =
+                    Popup::context_menu(&menu, |command| self.keymap.bindings(command, sidebar));
                 draw_anchored(frame, popup, screen_body, anchor);
             }
         }
@@ -637,11 +656,24 @@ impl Tui {
         let [up, down] =
             [Command::ScrollShortcutsUp, Command::ScrollShortcutsDown].map(|command| {
                 if scrolls {
-                    keymap::bindings(command, false)
+                    self.keymap.bindings(command, false)
                 } else {
                     String::new()
                 }
             });
+        // The keys are the keymap's, so the panel shows the config file's bindings (ui.md §4); a
+        // command the config file left without keys is not listed.
+        let groups: Vec<(Group, Vec<(Command, String)>)> = groups
+            .into_iter()
+            .map(|(group, entries)| {
+                let keys = entries
+                    .into_iter()
+                    .map(|entry| (entry.command, self.keymap.labels(entry.command, entry.mode)))
+                    .filter(|(_, keys)| !keys.is_empty())
+                    .collect();
+                (group, keys)
+            })
+            .collect();
         let panel = ShortcutsPanel::new(&groups, self.keyboard);
         let (last, page) = panel.scroll_range(area);
         self.shortcuts_scroll = self.shortcuts_scroll.min(last);

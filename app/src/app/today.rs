@@ -90,6 +90,7 @@ impl State {
             | Message::ConflictCopied { .. }
             | Message::ConflictCopyFailed { .. }
             | Message::BackupFailed { .. }
+            | Message::ConfigProblems(_)
             | Message::Quit
             | Message::Terminate
             | Message::FocusNext

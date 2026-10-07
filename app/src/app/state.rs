@@ -162,6 +162,8 @@ pub enum Notice {
         /// What the frontend reported.
         reason: String,
     },
+    /// The frontend's settings file has these problems, each ignored (FR-SET-04).
+    ConfigProblems(Vec<String>),
     /// An edit was refused because the file is read-only (file-io.md §1).
     ReadOnly,
     /// Typing would have made a tag, which TaskPaper has no way to escape; tags are set with

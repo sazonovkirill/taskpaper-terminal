@@ -203,7 +203,7 @@ fn access(path: &Path) -> Access {
 /// `base` is the directory's variable, or `fallback` under the home folder when that is unset or
 /// not absolute, as the XDG base directory specification says; also on macOS. `None` when
 /// neither is known.
-fn app_folder(
+pub(super) fn app_folder(
     variable: Option<OsString>,
     home: Option<PathBuf>,
     fallback: &str,
