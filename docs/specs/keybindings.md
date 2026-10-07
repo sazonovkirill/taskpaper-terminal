@@ -140,6 +140,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Follow link / copy link / show backlinks (Later, FR-OPS-10, [links.md](links.md)) | `gd` / `gy` / `gb` |
 | Count blocks and words | command palette |
 | Save As (FR-DOC-06) | command palette |
+| Choose Theme (FR-UI-06) | command palette |
 | Quit | `Ctrl+Q` (`ZZ` is gone, `Z` is redo) |
 
 ## 3. Edit mode
@@ -169,7 +170,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and returns to the pane, `Alt+Enter` or `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` returns to the pane, `Ctrl+B` hides the sidebar. Below 80 columns, where the sidebar hides, the pane keeps the keys.
-- **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` or `Ctrl+V` opens the choice in a new pane where that applies (Go to Symbol), `Esc` cancels.
+- **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` or `Ctrl+V` opens the choice in a new pane where that applies (Go to Symbol), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.

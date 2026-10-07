@@ -99,9 +99,14 @@ fn main() -> anyhow::Result<()> {
         std::env::var_os("LC_CTYPE").as_deref(),
         std::env::var_os("LANG").as_deref(),
     );
+    let colors = ui::ColorSupport::detect(
+        std::env::var_os("NO_COLOR").as_deref(),
+        std::env::var_os("COLORTERM").as_deref(),
+    );
     let mut tui = tui
         .with_kitty_keyboard(kitty)
         .with_locale(utf8)
+        .with_colors(colors)
         .with_config(config);
     // Terminals that cannot report focus or the mouse, bracket pasted text or speak the kitty
     // keyboard protocol ignore the requests, so keys arrive as legacy reporting sends them

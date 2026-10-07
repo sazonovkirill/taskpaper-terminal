@@ -50,6 +50,7 @@ Weekend errands:
 	Find any command by name with Ctrl+K or :, such as Count Blocks and Words for what is under the focused block, or Save As to keep this file somewhere of your own.
 	Icons need a Nerd Font: if they show as boxes, set icons = "none" in ~/.config/taskpaper-terminal/config.toml.
 	The mouse works too: click a block, the count of its folded children, a crumb or a sidebar entry, Alt+click to open it in a new pane, right-click for its menu.
+	Change the colors with Ctrl+K and Choose Theme: each theme shows as you move to it, Enter keeps it and Esc goes back.
 Packing list template:
 	- Toothbrush
 	- Socks

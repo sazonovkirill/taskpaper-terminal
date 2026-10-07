@@ -71,7 +71,8 @@ pub enum Message {
         /// Why, for the status line.
         reason: String,
     },
-    /// The frontend's settings file has these problems, each ignored; shown once, at start
+    /// The frontend's settings file has these problems: at start, the settings it ignored; later,
+    /// a setting changed in the app that it could not write, which holds for the session
     /// (FR-SET-04).
     ConfigProblems(Vec<String>),
     /// Save this long after the last change from now on, as the frontend's settings say
@@ -208,6 +209,14 @@ pub enum Message {
     /// Open Go to Command over the commands of navigate mode, each shown with its bindings as
     /// the frontend writes them, for the commands it binds (FR-NAV-06).
     OpenGoToCommand(Vec<(Command, String)>),
+    /// Open the theme picker over the frontend's themes, by name, the one at `current`
+    /// highlighted (FR-UI-06).
+    OpenThemePicker {
+        /// The themes' names, in the frontend's order.
+        names: Vec<String>,
+        /// The position in `names` of the theme in use.
+        current: usize,
+    },
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
     /// Open the context menu on the focused sidebar entry while the sidebar has the keys, else
@@ -324,6 +333,8 @@ pub enum Menu {
     CommandMenu,
     /// The context menu (FR-KEY-06).
     ContextMenu,
+    /// The theme picker (FR-UI-06).
+    ThemePicker,
 }
 
 impl Message {
@@ -413,6 +424,7 @@ impl Message {
             | Self::OpenGoToSymbol
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
+            | Self::OpenThemePicker { .. }
             | Self::Count
             | Self::SaveAs(_)
             | Self::OpenContextMenu
@@ -442,7 +454,8 @@ impl Menu {
             | Self::GoToSymbol
             | Self::MoveTo
             | Self::GoToCommand
-            | Self::ContextMenu => true,
+            | Self::ContextMenu
+            | Self::ThemePicker => true,
         }
     }
 }
@@ -465,6 +478,9 @@ pub enum Effect {
     /// Give this command, chosen in Go to Command, as its keys would: its message carries what
     /// the frontend knows, or the frontend carries it out (FR-NAV-06).
     Run(Command),
+    /// Use the frontend's theme at this position in the names it gave the theme picker from now
+    /// on, and keep it in its settings (FR-UI-06, FR-SET-04).
+    SetTheme(usize),
     /// Complete the folder that ends this path as typed, `~` standing for the home folder, and
     /// report the result as [`SaveAs::Completed`] when there is one (file-io.md §2).
     CompletePath(String),
@@ -607,6 +623,7 @@ impl State {
             Message::OpenGoToSymbol => self.open_go_to_symbol(),
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
+            Message::OpenThemePicker { names, current } => self.open_theme_picker(names, current),
             Message::Count => self.count(),
             Message::OpenContextMenu => self.open_context_menu(),
             Message::OpenPaneMenu(crumb) => self.open_pane_menu(crumb),
@@ -631,8 +648,7 @@ impl State {
             Message::Pasted { text, at } => self.pasted(&text, at),
             Message::Indent => self.shift_selected(Shift::Indent),
             Message::Outdent => self.shift_selected(Shift::Outdent),
-            Message::MoveUp => self.move_blocks(false),
-            Message::MoveDown => self.move_blocks(true),
+            Message::MoveUp | Message::MoveDown => self.move_blocks(message == Message::MoveDown),
             Message::Select(change) => self.change_selection(change),
             Message::Group => self.group(),
             Message::OpenUrl => effects = self.open_url(),
@@ -660,6 +676,7 @@ impl State {
             Menu::GoToCommand => return self.go_to_command_input(input).into_iter().collect(),
             Menu::CommandMenu => return self.command_menu_input(input),
             Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),
+            Menu::ThemePicker => return self.theme_picker_input(input).into_iter().collect(),
         }
         Vec::new()
     }
@@ -1644,5 +1661,19 @@ mod tests {
         assert_eq!(zoom_text(&state), "c");
         state.update(Message::GoToCrumb(0));
         assert_eq!(zoom_text(&state), "Home");
+    }
+
+    // FR-UI-06
+    #[test]
+    fn a_theme_picker_key_ends_editing_and_a_command_menu_key_does_not() {
+        let mut state = state();
+        state.update(Message::EditAtEnd);
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Dismiss));
+        assert!(
+            state.editor().is_some(),
+            "the command menu belongs to edit mode"
+        );
+        state.update(Message::Menu(Menu::ThemePicker, MenuInput::Dismiss));
+        assert_eq!(state.editor(), None);
     }
 }

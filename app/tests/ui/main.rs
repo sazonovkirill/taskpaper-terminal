@@ -36,6 +36,7 @@ mod show_completed;
 mod sidebar;
 mod support;
 mod tags;
+mod themes;
 mod today;
 mod typed_creation;
 mod word_wrap;

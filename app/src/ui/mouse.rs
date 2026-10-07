@@ -279,8 +279,9 @@ impl Tui {
         match spot {
             Spot::Sidebar { line, column } => {
                 let view = self.state.sidebar()?;
+                let theme = self.palette();
                 let (at, fold) =
-                    widgets::SidebarPanel::new(&view, self.icons).entry_at(line, column)?;
+                    widgets::SidebarPanel::new(&view, self.icons, &theme).entry_at(line, column)?;
                 Some(Target::Entry { at, fold })
             }
             Spot::Header { pane, column } => {
@@ -308,7 +309,8 @@ impl Tui {
                 let scroll = self.scrolls.get(&view.id).copied().unwrap_or_default();
                 let editor = self.state.editor().filter(|_| view.focused);
                 let shown = view.rows.get(scroll.row..).unwrap_or_default();
-                let (index, fold) = widgets::OutlineView::new(shown, (self.clock)().date())
+                let theme = self.palette();
+                let (index, fold) = widgets::OutlineView::new(shown, (self.clock)().date(), &theme)
                     .editor(editor.as_ref())
                     .wrap(self.wrap)
                     .icons(self.icons)

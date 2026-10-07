@@ -307,10 +307,7 @@ fn the_focus_marker_is_a_half_block_in_the_primary_color_and_the_accent_while_ed
     };
     assert_eq!(marker(&mut app), ("▌".to_owned(), Color::LightBlue));
     app.press(KeyCode::Enter, NONE);
-    assert_eq!(
-        marker(&mut app),
-        ("▌".to_owned(), Color::Rgb(0xff, 0xa6, 0x2b))
-    );
+    assert_eq!(marker(&mut app), ("▌".to_owned(), Color::Yellow));
     app.press(KeyCode::Esc, NONE);
     assert_eq!(marker(&mut app), ("▌".to_owned(), Color::LightBlue));
 }

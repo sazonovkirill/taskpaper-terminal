@@ -40,8 +40,8 @@ fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
             "┌Go to Command─────────────────────────────────────────────┐",
             "│›                                                         │",
             "│ › Back  H, Alt+Shift+←                                   │",
+            "│ ● Choose Theme                                           │",
             "│ ⇥ Clear Due Date                                         │",
-            "│ › Clear Selection  Esc                                   │",
         ]
     );
     let buffer = app.render().buffer().clone();

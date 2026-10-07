@@ -31,6 +31,7 @@ pub mod state;
 mod structure;
 pub mod text_field;
 mod text_path;
+mod theme_picker;
 mod today;
 mod today_order;
 mod type_picker;

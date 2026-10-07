@@ -8,7 +8,7 @@ use jiff::civil::Date;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Padding, Widget},
 };
@@ -21,7 +21,7 @@ pub use finder::FinderPopup;
 
 use super::{
     layout,
-    theme::{Icon, IconSet},
+    theme::{Icon, IconSet, Theme},
 };
 use crate::{
     app::{
@@ -52,6 +52,7 @@ pub use sidebar::SidebarPanel;
 pub struct OutlineView<'a> {
     rows: &'a [Row],
     today: Date,
+    theme: &'a Theme,
     offset: usize,
     focused: Option<usize>,
     editor: Option<&'a Editor<'a>>,
@@ -60,13 +61,14 @@ pub struct OutlineView<'a> {
 }
 
 impl<'a> OutlineView<'a> {
-    /// A view of `rows` on `today`, the local date, drawn from the top of its area with no row
-    /// focused, wrap off and Nerd Font icons.
+    /// A view of `rows` on `today`, the local date, in `theme`, drawn from the top of its area
+    /// with no row focused, wrap off and Nerd Font icons.
     #[must_use]
-    pub fn new(rows: &'a [Row], today: Date) -> Self {
+    pub fn new(rows: &'a [Row], today: Date, theme: &'a Theme) -> Self {
         Self {
             rows,
             today,
+            theme,
             offset: 0,
             focused: None,
             editor: None,
@@ -158,13 +160,13 @@ impl<'a> OutlineView<'a> {
                 return (
                     index,
                     row,
-                    vec![editor_line(row, editor, width, self.icons).0],
+                    vec![editor_line(row, editor, width, self.icons, self.theme).0],
                     Line::default(),
                 );
             }
-            let chips = chips(row, self.today, self.icons);
+            let chips = chips(row, self.today, self.icons, self.theme);
             let room = width.saturating_sub(chips.width());
-            let line = row_line(row, room, self.icons);
+            let line = row_line(row, room, self.icons, self.theme);
             let lines = if self.wrap {
                 wrap::wrap(&line, text_column(row, self.icons), room, width)
             } else {
@@ -196,7 +198,7 @@ impl Widget for OutlineView<'_> {
             // The line patches its own styles over the band and the tint, so every foreground
             // color and modifier survives on the focused and colored rows.
             if focused {
-                buf.set_style(gutter_area.union(line_area), current_line_style());
+                buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
             }
             if let Some(color) = row.color {
                 let indent = u16::try_from(row.depth.saturating_mul(2)).unwrap_or(u16::MAX);
@@ -205,19 +207,19 @@ impl Widget for OutlineView<'_> {
                     width: line_area.width.saturating_sub(indent),
                     ..line_area
                 };
-                buf.set_style(tinted, Style::new().bg(tag_tint(color, focused)));
+                buf.set_style(tinted, Style::new().bg(self.theme.tint(color, focused)));
             }
             line.render(line_area, buf);
             chips.render(line_area, buf);
             if focused {
                 let color = if self.editor.is_some() {
-                    ACCENT
+                    self.theme.accent
                 } else {
-                    PRIMARY
+                    self.theme.focus
                 };
                 Span::styled(FOCUS_MARKER, Style::new().fg(color)).render(gutter_area, buf);
             } else if row.selected {
-                Span::styled(FOCUS_MARKER, selection_style()).render(gutter_area, buf);
+                Span::styled(FOCUS_MARKER, selection_style(self.theme)).render(gutter_area, buf);
             }
         }
     }
@@ -298,9 +300,9 @@ fn shown_crumbs(crumbs: &[String], width: usize, icons: IconSet) -> (bool, Vec<(
 /// The header of the Today view in place of breadcrumbs: its icon, as in the sidebar, and its name,
 /// bold as the focused pane's header (navigation.md §7, ui.md §1).
 #[must_use]
-pub fn today_header(icons: IconSet) -> Line<'static> {
+pub fn today_header(icons: IconSet, theme: &Theme) -> Line<'static> {
     Line::from(vec![
-        Span::styled(Icon::Today.glyph(icons), today_style()),
+        Span::styled(Icon::Today.glyph(icons), today_style(theme)),
         Span::raw(" Today"),
     ])
     .bold()
@@ -309,7 +311,7 @@ pub fn today_header(icons: IconSet) -> Line<'static> {
 /// What the status line says after the file's path (ui.md §1, file-io.md §1–3): the unsaved icon
 /// of `icons` while changes are unsaved, an error badge when the last save failed, `read-only`,
 /// `not on disk` when the file was deleted or moved away, the question a failed save on quit
-/// asks, and the current notice.
+/// asks, and the current notice, errors and warnings in `theme`'s colors.
 #[must_use]
 pub fn file_status(
     save: SaveState,
@@ -318,14 +320,16 @@ pub fn file_status(
     confirming_quit: bool,
     notice: Option<&Notice>,
     icons: IconSet,
+    theme: &Theme,
 ) -> Vec<Span<'static>> {
     let unsaved = Icon::Unsaved.glyph(icons);
+    let error_style = error_style(theme);
     let mut spans = match save {
         SaveState::Saved => Vec::new(),
         SaveState::Unsaved => vec![Span::raw(format!(" {unsaved}"))],
         SaveState::Failed { reason } => vec![
             Span::raw(format!(" {unsaved} ")),
-            Span::styled(format!("save failed: {reason}"), error_style()),
+            Span::styled(format!("save failed: {reason}"), error_style),
         ],
     };
     if access == Access::ReadOnly {
@@ -343,25 +347,26 @@ pub fn file_status(
     }
     if let Some(notice) = notice {
         spans.push(Span::raw(" · "));
-        spans.push(notice_span(notice));
+        spans.push(notice_span(notice, theme));
     }
     spans
 }
 
 /// The status line's words for `notice`.
-fn notice_span(notice: &Notice) -> Span<'static> {
+fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
+    let (error_style, warning_style) = (error_style(theme), warning_style(theme));
     match notice {
         Notice::BackupFailed { reason } => {
-            Span::styled(format!("backup failed: {reason}"), warning_style())
+            Span::styled(format!("backup failed: {reason}"), warning_style)
         }
         Notice::ConfigProblems(problems) => Span::styled(
             format!("config.toml: {}", problems.join("; ")),
-            warning_style(),
+            warning_style,
         ),
-        Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style()),
-        Notice::TypedTag => Span::styled("Tags are set with commands", warning_style()),
+        Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style),
+        Notice::TypedTag => Span::styled("Tags are set with commands", warning_style),
         Notice::EditFailed { reason } => {
-            Span::styled(format!("edit failed: {reason}"), error_style())
+            Span::styled(format!("edit failed: {reason}"), error_style)
         }
         Notice::Reloaded => Span::raw("Reloaded (changed on disk)"),
         Notice::KeptMine { copy } => Span::raw(format!(
@@ -373,21 +378,21 @@ fn notice_span(notice: &Notice) -> Span<'static> {
             copy.display()
         )),
         Notice::ConflictCopyFailed { reason } => {
-            Span::styled(format!("conflict copy failed: {reason}"), error_style())
+            Span::styled(format!("conflict copy failed: {reason}"), error_style)
         }
         Notice::CannotTakeTheirs { reason } => Span::styled(
             format!("cannot take the version on disk: {reason}"),
-            error_style(),
+            error_style,
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
         Notice::NotSections { skipped } => Span::styled(
             format!("Only text can be a section: {skipped} skipped"),
-            warning_style(),
+            warning_style,
         ),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::OpenUrlFailed { url, reason } => {
-            Span::styled(format!("cannot open {url}: {reason}"), error_style())
+            Span::styled(format!("cannot open {url}: {reason}"), error_style)
         }
         Notice::Count { blocks, words } => {
             let plural = |n: usize, one: &str| match n {
@@ -413,13 +418,18 @@ const PROMPT_SIZE: (u16, u16) = (80, 20);
 pub struct ConflictPrompt<'a> {
     diff: Option<&'a [DiffLine]>,
     scroll: usize,
+    theme: &'a Theme,
 }
 
 impl<'a> ConflictPrompt<'a> {
-    /// The prompt, showing `diff` from line `scroll` on when there is one.
+    /// The prompt in `theme`, showing `diff` from line `scroll` on when there is one.
     #[must_use]
-    pub fn new(diff: Option<&'a [DiffLine]>, scroll: usize) -> Self {
-        Self { diff, scroll }
+    pub fn new(diff: Option<&'a [DiffLine]>, scroll: usize, theme: &'a Theme) -> Self {
+        Self {
+            diff,
+            scroll,
+            theme,
+        }
     }
 
     /// How many diff lines fit at once when the prompt is drawn over `area`.
@@ -456,13 +466,13 @@ impl Widget for ConflictPrompt<'_> {
             }
             Some(diff) => {
                 Line::from(vec![
-                    Span::styled("- on disk", disk_style()),
+                    Span::styled("- on disk", disk_style(self.theme)),
                     Span::raw("  "),
-                    Span::styled("+ yours", mine_style()),
+                    Span::styled("+ yours", mine_style(self.theme)),
                 ])
                 .render(top, buf);
                 for (line, row) in diff.iter().skip(self.scroll).zip(body.rows()) {
-                    diff_line(line).render(row, buf);
+                    diff_line(line, self.theme).render(row, buf);
                 }
                 "hide diff"
             }
@@ -499,13 +509,13 @@ impl Popup {
     /// after its icon and padded by 2 columns on each side, with a line across it between groups
     /// and `/` before its filter (D-50, D-54).
     #[must_use]
-    pub fn commands(menu: &CommandMenuView, icons: IconSet) -> Self {
+    pub fn commands(menu: &CommandMenuView, icons: IconSet, theme: &Theme) -> Self {
         let filter = if menu.filter.is_empty() {
             String::new()
         } else {
             format!("/{}", menu.filter)
         };
-        Self::command_list(menu, |_| String::new(), filter, icons)
+        Self::command_list(menu, |_| String::new(), filter, icons, theme)
     }
 
     /// The context menu: the command menu's box, with each command's keys as `keys` gives them
@@ -515,8 +525,9 @@ impl Popup {
         menu: &CommandMenuView,
         keys: impl Fn(Command) -> String,
         icons: IconSet,
+        theme: &Theme,
     ) -> Self {
-        Self::command_list(menu, keys, menu.filter.to_owned(), icons)
+        Self::command_list(menu, keys, menu.filter.to_owned(), icons, theme)
     }
 
     /// A menu of commands titled "Commands:" in the accent color like its border, each entry
@@ -528,6 +539,7 @@ impl Popup {
         keys: impl Fn(Command) -> String,
         filter: String,
         icons: IconSet,
+        theme: &Theme,
     ) -> Self {
         const PAD: &str = "  ";
         let title = "Commands:";
@@ -536,7 +548,7 @@ impl Popup {
             .iter()
             .map(|row| match row {
                 MenuRow::Command { label, command } => {
-                    let (icon, style) = command_icon(*command);
+                    let (icon, style) = command_icon(*command, theme);
                     let line = Line::from(vec![
                         Span::raw(PAD),
                         Span::styled(icon.glyph(icons), style),
@@ -565,7 +577,7 @@ impl Popup {
                 };
                 let fill = columns.saturating_sub(line.width() + Line::from(keys.as_str()).width());
                 line.push_span(" ".repeat(fill));
-                line.push_span(Span::styled(keys, Style::new().fg(PRIMARY)));
+                line.push_span(Span::styled(keys, Style::new().fg(theme.primary)));
                 line.push_span(PAD);
                 if index == menu.selected {
                     line.reversed()
@@ -576,7 +588,7 @@ impl Popup {
             .collect();
         Self {
             title,
-            frame: Style::new().fg(ACCENT),
+            frame: Style::new().fg(theme.accent),
             entries,
             selected: menu.selected,
             filter,
@@ -586,12 +598,12 @@ impl Popup {
     /// The color picker, titled "Color:", each color's name in that color after its icon and
     /// its number, which chooses it (D-48).
     #[must_use]
-    pub fn colors(picker: &PickerView<Option<TagColor>>, icons: IconSet) -> Self {
+    pub fn colors(picker: &PickerView<Option<TagColor>>, icons: IconSet, theme: &Theme) -> Self {
         let names: Vec<(String, Style)> = picker
             .entries
             .iter()
             .map(|&(color, name)| {
-                let (icon, style) = command_icon(Command::SetColor(color));
+                let (icon, style) = command_icon(Command::SetColor(color), theme);
                 let number =
                     color.map_or_else(|| " ".to_owned(), |color| color.number().to_string());
                 (format!("{} {number} {name}", icon.glyph(icons)), style)
@@ -688,27 +700,27 @@ impl Popup {
 
 /// The icon of the command menu's entry for `command`, in its style: the colors of the matching
 /// chips and icons of the outline (D-46, D-47), a color entry in its color, and a command without
-/// an icon of its own the generic one (D-54); also Go to Command's.
+/// an icon of its own the generic one (D-54); also Go to Command's. Colors are `theme`'s.
 #[must_use]
-pub fn command_icon(command: Command) -> (Icon, Style) {
+pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
     let plain = |icon| (icon, Style::new());
     let date = |tag| match tag {
-        DateTag::Start => (Icon::Start, start_style()),
-        DateTag::Due => (Icon::Due, due_style()),
+        DateTag::Start => (Icon::Start, start_style(theme)),
+        DateTag::Due => (Icon::Due, due_style(theme)),
     };
     match command {
         Command::Retype(Typed::Project) => plain(Icon::Project),
         Command::Retype(Typed::Task) => plain(Icon::Task),
         Command::Retype(Typed::Text) => plain(Icon::Note),
         Command::Retype(Typed::Section) => plain(Icon::Section),
-        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style()),
-        Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style()),
+        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style(theme)),
+        Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
             date(tag)
         }
         Command::ToggleDone => plain(Icon::Complete),
-        Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(tag_color(color))),
-        Command::SetColor(None) => plain(Icon::Color),
+        Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
+        Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -796,6 +808,7 @@ pub struct ShortcutsPanel<'a> {
     groups: &'a [(Group, Vec<(Command, String)>)],
     keyboard: Keyboard,
     icons: IconSet,
+    theme: &'a Theme,
     scroll: usize,
     keys: [&'a str; 2],
 }
@@ -811,18 +824,20 @@ struct Window {
 }
 
 impl<'a> ShortcutsPanel<'a> {
-    /// The panel listing `groups`, each command with how its keys read, from the top, noting
-    /// what `keyboard` reports and how to turn off the `icons` drawn.
+    /// The panel in `theme` listing `groups`, each command with how its keys read, from the top,
+    /// noting what `keyboard` reports and how to turn off the `icons` drawn.
     #[must_use]
     pub fn new(
         groups: &'a [(Group, Vec<(Command, String)>)],
         keyboard: Keyboard,
         icons: IconSet,
+        theme: &'a Theme,
     ) -> Self {
         Self {
             groups,
             keyboard,
             icons,
+            theme,
             scroll: 0,
             keys: ["", ""],
         }
@@ -852,7 +867,7 @@ impl<'a> ShortcutsPanel<'a> {
     /// The list's area when the panel is drawn over `area`: inside the frame, above the notes.
     fn list(&self, area: Rect) -> Rect {
         let height = u16::try_from(self.notes().len()).unwrap_or(u16::MAX);
-        let [list, _] = Self::frame().inner(area).layout(&Layout::vertical([
+        let [list, _] = self.frame().inner(area).layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(height),
         ]));
@@ -884,10 +899,10 @@ impl<'a> ShortcutsPanel<'a> {
     }
 
     /// The panel's frame: a rule down its left edge, its title and padding.
-    fn frame() -> Block<'static> {
+    fn frame(&self) -> Block<'static> {
         Block::new()
             .borders(Borders::LEFT)
-            .border_style(rule_style())
+            .border_style(rule_style(self.theme))
             .padding(Padding::horizontal(1))
             .title(Line::from("Shortcuts").bold())
     }
@@ -897,13 +912,13 @@ impl<'a> ShortcutsPanel<'a> {
         let mut rows = Vec::new();
         for (group, entries) in self.groups {
             rows.push((
-                Line::styled(group.name(), Style::new().fg(SECONDARY).bold()),
+                Line::styled(group.name(), Style::new().fg(self.theme.headers).bold()),
                 Line::default(),
             ));
             for (command, keys) in entries {
                 rows.push((
                     Line::from(format!(" {}", command.name())),
-                    Line::styled(keys.clone(), Style::new().fg(PRIMARY)),
+                    Line::styled(keys.clone(), Style::new().fg(self.theme.primary)),
                 ));
             }
         }
@@ -911,10 +926,10 @@ impl<'a> ShortcutsPanel<'a> {
     }
 
     /// The row saying more lines are hidden, `↑` above or `↓` below, with the keys that show them.
-    fn more(arrow: &str, keys: &str) -> (Line<'static>, Line<'static>) {
+    fn more(&self, arrow: &str, keys: &str) -> (Line<'static>, Line<'static>) {
         (
             Line::from(format!("{arrow} more")).dim(),
-            Line::styled(keys.to_owned(), Style::new().fg(PRIMARY)),
+            Line::styled(keys.to_owned(), Style::new().fg(self.theme.primary)),
         )
     }
 
@@ -939,7 +954,7 @@ impl<'a> ShortcutsPanel<'a> {
 impl Widget for ShortcutsPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
-        let frame = Self::frame();
+        let frame = self.frame();
         let inner = frame.inner(area);
         frame.render(area, buf);
         let list = self.list(area);
@@ -947,7 +962,7 @@ impl Widget for ShortcutsPanel<'_> {
         let [up, down] = self.keys;
         let rows = window
             .above
-            .then(|| Self::more("↑", up))
+            .then(|| self.more("↑", up))
             .into_iter()
             .chain(
                 self.rows()
@@ -955,7 +970,7 @@ impl Widget for ShortcutsPanel<'_> {
                     .skip(window.first)
                     .take(window.shown),
             )
-            .chain(window.below.then(|| Self::more("↓", down)));
+            .chain(window.below.then(|| self.more("↓", down)));
         for ((name, keys), row) in rows.zip(list.rows()) {
             let width = u16::try_from(keys.width()).unwrap_or(u16::MAX);
             let [name_area, keys_area] = row.layout(
@@ -979,16 +994,17 @@ impl Widget for ShortcutsPanel<'_> {
 #[derive(Debug)]
 pub struct DatePromptPanel<'a> {
     prompt: &'a DatePromptView<'a>,
+    theme: &'a Theme,
 }
 
 impl<'a> DatePromptPanel<'a> {
     /// The panel's height, the border included.
     pub const HEIGHT: u16 = 4;
 
-    /// The panel showing `prompt`.
+    /// The panel showing `prompt` in `theme`.
     #[must_use]
-    pub fn new(prompt: &'a DatePromptView<'a>) -> Self {
-        Self { prompt }
+    pub fn new(prompt: &'a DatePromptView<'a>, theme: &'a Theme) -> Self {
+        Self { prompt, theme }
     }
 
     /// The caret's cell when the panel is drawn over `area`, on the text's line, the first inside
@@ -1020,7 +1036,7 @@ impl<'a> DatePromptPanel<'a> {
     /// text stops being a date.
     fn preview(&self) -> Line<'static> {
         let from = |offset: usize| self.prompt.text.get(offset..).unwrap_or_default();
-        let error = |why: String| Line::styled(format!(" {why}"), error_style());
+        let error = |why: String| Line::styled(format!(" {why}"), error_style(self.theme));
         match self.prompt.date {
             Ok(Some(date)) => Line::from(format!(" {}", date.strftime("%a %-d %b %Y"))),
             Ok(None) | Err(DateError::Empty) => {
@@ -1047,7 +1063,7 @@ impl Widget for DatePromptPanel<'_> {
             DateTag::Start => " Start date ",
             DateTag::Due => " Due date ",
         };
-        let accent = Style::new().fg(ACCENT);
+        let accent = Style::new().fg(self.theme.accent);
         let frame = Block::bordered()
             .border_style(accent)
             .title_style(accent)
@@ -1065,24 +1081,24 @@ impl Widget for DatePromptPanel<'_> {
 
 /// One line of the diff, marked and colored by the version it is in, with each tab of its
 /// indentation drawn as 2 columns like a level of the outline.
-fn diff_line(line: &DiffLine) -> Line<'static> {
+fn diff_line(line: &DiffLine, theme: &Theme) -> Line<'static> {
     let shown = |text: &str| text.replace('\t', "  ");
     match line {
         DiffLine::Same(text) => Line::from(format!("  {}", shown(text))),
-        DiffLine::Disk(text) => Line::styled(format!("- {}", shown(text)), disk_style()),
-        DiffLine::Mine(text) => Line::styled(format!("+ {}", shown(text)), mine_style()),
-        DiffLine::Gap => Line::styled("⋯", rule_style()),
+        DiffLine::Disk(text) => Line::styled(format!("- {}", shown(text)), disk_style(theme)),
+        DiffLine::Mine(text) => Line::styled(format!("+ {}", shown(text)), mine_style(theme)),
+        DiffLine::Gap => Line::styled("⋯", rule_style(theme)),
     }
 }
 
-/// Lines only the file on disk has; themes arrive in step 6.2.
-fn disk_style() -> Style {
-    Style::new().fg(Color::Red)
+/// Lines only the file on disk has: red, as due dates.
+fn disk_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.due)
 }
 
-/// Lines only the local version has; themes arrive in step 6.2.
-fn mine_style() -> Style {
-    Style::new().fg(Color::Green)
+/// Lines only the local version has: green, as start dates.
+fn mine_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.start)
 }
 
 /// The spans of `row`'s text in `style` with its formatting applied over it, the delimiters
@@ -1090,7 +1106,8 @@ fn mine_style() -> Style {
 /// underlined in the link color (D-45); the rest keeps the row's color and only adds modifiers
 /// (D-49): a heading bold, level 1 also underlined; bold; and code dimmed (FR-FMT-01,
 /// FR-FMT-03).
-fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
+fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Item = Span<'a>> {
+    let link_color = theme.link;
     inline::runs(&row.text, Syntax::of(row.kind))
         .into_iter()
         .map(move |run| {
@@ -1114,7 +1131,7 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
                 style = style.dim();
             }
             if link || row.url {
-                style = style.underlined().fg(LINK);
+                style = style.underlined().fg(link_color);
             }
             Span::styled(run.text, style)
         })
@@ -1126,17 +1143,17 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
 /// dimmed with a done block or one inside it. A collapsed block with children shows `▸ n` after
 /// them (ui.md §2), and an entry of the Today view the path of the blocks above it, dimmed
 /// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34). Markers and icons
-/// come from `icons`.
-fn row_line(row: &Row, width: usize, icons: IconSet) -> Line<'_> {
-    let (mut line, style) = lead(row, icons);
+/// come from `icons`, colors from `theme`.
+fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Line<'a> {
+    let (mut line, style) = lead(row, icons, theme);
     match row.kind {
         _ if row.divider => {}
         // TaskPaper marks a project with a trailing colon, which the display text drops.
         BlockKind::Project => {
-            line.extend(formatted(row, style));
+            line.extend(formatted(row, style, theme));
             line.push_span(Span::styled(":", style));
         }
-        BlockKind::Task | BlockKind::Text => line.extend(formatted(row, style)),
+        BlockKind::Task | BlockKind::Text => line.extend(formatted(row, style, theme)),
     }
     let recede = |style: Style| {
         if row.done || row.inside_done {
@@ -1146,8 +1163,8 @@ fn row_line(row: &Row, width: usize, icons: IconSet) -> Line<'_> {
         }
     };
     for (marked, icon, style) in [
-        (row.today, Icon::Today, today_style()),
-        (row.bookmark, Icon::Bookmark, bookmark_style()),
+        (row.today, Icon::Today, today_style(theme)),
+        (row.bookmark, Icon::Bookmark, bookmark_style(theme)),
     ] {
         if marked {
             line.push_span(" ");
@@ -1170,7 +1187,7 @@ fn row_line(row: &Row, width: usize, icons: IconSet) -> Line<'_> {
         if row.today || row.bookmark || row.hidden_children > 0 {
             line.push_span(" ");
         }
-        line.push_span(rule(&line, width));
+        line.push_span(rule(&line, width, theme));
     }
     line
 }
@@ -1203,8 +1220,9 @@ fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Rang
 /// The date chips of `row` on `today`, right-aligned, each after a space: its start date in green
 /// and its due date in red, each as its icon and the date named relative to `today`, such as
 /// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
-/// block or one inside it (ui.md §2, FR-TAG-03). The icons come from `icons`.
-fn chips(row: &Row, today: Date, icons: IconSet) -> Line<'static> {
+/// block or one inside it (ui.md §2, FR-TAG-03). The icons come from `icons`, colors from
+/// `theme`.
+fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
     let chip = |icon: Icon, date: Date, style: Style| {
@@ -1218,13 +1236,14 @@ fn chips(row: &Row, today: Date, icons: IconSet) -> Line<'static> {
     };
     let due = |date| {
         if row.overdue(today) {
-            chip(Icon::Overdue, date, overdue_style())
+            chip(Icon::Overdue, date, overdue_style(theme))
         } else {
-            chip(Icon::Due, date, due_style())
+            chip(Icon::Due, date, due_style(theme))
         }
     };
     let spans: Vec<Span> = [
-        row.start.map(|date| chip(Icon::Start, date, start_style())),
+        row.start
+            .map(|date| chip(Icon::Start, date, start_style(theme))),
         row.due.map(due),
     ]
     .into_iter()
@@ -1234,85 +1253,95 @@ fn chips(row: &Row, today: Date, icons: IconSet) -> Line<'static> {
     Line::from(spans).right_aligned()
 }
 
-/// The `@today` star (FR-TAG-04); themes arrive in step 6.2.
-fn today_style() -> Style {
-    Style::new().fg(Color::Yellow)
+/// The `@today` star (FR-TAG-04), in the yellow tag's color.
+fn today_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.warning())
 }
 
-/// The bookmark icon (D-47), in the primary color; themes arrive in step 6.2.
-fn bookmark_style() -> Style {
-    Style::new().fg(PRIMARY)
+/// The bookmark icon (D-47), in the primary color.
+fn bookmark_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.primary)
 }
 
-/// Start date chips, always green (D-46); themes arrive in step 6.2.
-fn start_style() -> Style {
-    Style::new().fg(Color::Green)
+/// Start date chips (D-46).
+fn start_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.start)
 }
 
-/// Due date chips, always red (D-46); themes arrive in step 6.2.
-fn due_style() -> Style {
-    Style::new().fg(Color::Red)
+/// Due date chips (D-46).
+fn due_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.due)
 }
 
-/// Overdue due date chips: red and reversed, so they stand out from other due dates (FR-TAG-03,
-/// D-46); themes arrive in step 6.2.
-fn overdue_style() -> Style {
-    due_style().bold().reversed()
+/// Overdue due date chips: bold and reversed, so they stand out from other due dates
+/// (FR-TAG-03, D-46).
+fn overdue_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.overdue).bold().reversed()
 }
 
 /// The column of `row`'s line where its text starts, after its indent and its marker from
 /// `icons`.
 #[must_use]
 pub fn text_column(row: &Row, icons: IconSet) -> usize {
-    lead(row, icons).0.width()
+    let marker = marker(row).map_or(0, |marker| Span::raw(marker.glyph(icons)).width() + 1);
+    row.depth * 2 + marker
 }
 
-/// What comes before `row`'s text: its indent, then its marker from `icons` and a space, styled;
-/// with the style of its text.
-fn lead(row: &Row, icons: IconSet) -> (Line<'static>, Style) {
-    let (marker, marker_style, style) = row_style(row);
+/// What comes before `row`'s text: its indent, then its marker from `icons` and a space, styled
+/// in `theme`; with the style of its text.
+fn lead(row: &Row, icons: IconSet, theme: &Theme) -> (Line<'static>, Style) {
+    let (marker_style, style) = row_style(row, theme);
     let mut line = Line::from(Span::raw("  ".repeat(row.depth)));
-    if let Some(marker) = marker {
+    if let Some(marker) = marker(row) {
         line.push_span(Span::styled(marker.glyph(icons), marker_style));
         line.push_span(Span::styled(" ", marker_style));
     }
     (line, style)
 }
 
-/// The marker of a block with its style, and the style of its text, by its type and whether it
-/// is done or inside a done block (ui.md §2).
-fn row_style(row: &Row) -> (Option<Icon>, Style, Style) {
-    let (marker, style) = match row.kind {
-        BlockKind::Project => (None, Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => (Some(Icon::DoneTask), Style::new()),
-        BlockKind::Task => (Some(Icon::TaskMarker), Style::new()),
-        BlockKind::Text if row.section => (None, Style::new().bold().italic().fg(SECONDARY)),
-        BlockKind::Text => (None, Style::new().fg(TEXT)),
+/// The marker of a block: a task's, done or not; other blocks have none (ui.md §2).
+fn marker(row: &Row) -> Option<Icon> {
+    match row.kind {
+        BlockKind::Task if row.done => Some(Icon::DoneTask),
+        BlockKind::Task => Some(Icon::TaskMarker),
+        BlockKind::Project | BlockKind::Text => None,
+    }
+}
+
+/// The style of a block's marker and of its text in `theme`, by its type and whether it is done
+/// or inside a done block (ui.md §2).
+fn row_style(row: &Row, theme: &Theme) -> (Style, Style) {
+    let style = match row.kind {
+        BlockKind::Project => Style::new().bold().fg(theme.primary),
+        BlockKind::Task => Style::new(),
+        BlockKind::Text if row.section => Style::new().bold().italic().fg(theme.headers),
+        BlockKind::Text => Style::new().fg(theme.dim_text),
     };
     let style = if row.title { style.bold() } else { style };
     // A done block recedes and is struck through, and everything inside it recedes; markers
     // recede with their text (D-36, D-40).
     if row.done {
-        (marker, Style::new().dim(), style.dim().crossed_out())
+        (Style::new().dim(), style.dim().crossed_out())
     } else if row.inside_done {
-        (marker, Style::new().dim(), style.dim())
+        (Style::new().dim(), style.dim())
     } else {
-        (marker, Style::new(), style)
+        (Style::new(), style)
     }
 }
 
 /// The screen line of `row` while `editor` edits it, `width` columns wide, and the caret's column
 /// on it: the row's indent and marker from `icons`, then the text with the selection reversed,
 /// styled as the row (FR-MODE-02). When the caret would be past the right edge,
-/// the text scrolls left by whole graphemes to keep it in view.
+/// the text scrolls left by whole graphemes to keep it in view. Colors are `theme`'s.
 #[must_use]
 pub fn editor_line<'a>(
     row: &Row,
     editor: &'a Editor,
     width: usize,
     icons: IconSet,
+    theme: &Theme,
 ) -> (Line<'a>, usize) {
-    let (mut line, style) = lead(row, icons);
+    let (mut line, style) = lead(row, icons, theme);
     let field = Field {
         text: editor.text,
         caret: editor.caret,
@@ -1414,106 +1443,63 @@ impl<'a> Field<'a> {
 }
 
 /// A horizontal rule from the end of `line` to the right edge, very dim.
-fn rule(line: &Line, width: usize) -> Span<'static> {
+fn rule(line: &Line, width: usize, theme: &Theme) -> Span<'static> {
     Span::styled(
         "─".repeat(width.saturating_sub(line.width())),
-        divider_style(),
+        divider_style(theme),
     )
-}
-
-/// A color tag's own color, in which the color picker names it (FR-TAG-05); themes arrive in
-/// step 6.2, until when orange is the 256-color orange 208 and violet the terminal's magenta.
-fn tag_color(color: TagColor) -> Color {
-    match color {
-        TagColor::Red => Color::Red,
-        TagColor::Orange => Color::Indexed(208),
-        TagColor::Yellow => Color::Yellow,
-        TagColor::Green => Color::Green,
-        TagColor::Blue => Color::Blue,
-        TagColor::Violet => Color::Magenta,
-    }
-}
-
-/// The background a color tag gives its block's row (D-48): a very dim shade of the color, a step
-/// brighter on the focused row, as the current-line band is brighter than the background (D-39).
-/// Themes arrive in step 6.2, until when these shades are picked for dark terminals.
-fn tag_tint(color: TagColor, focused: bool) -> Color {
-    let ((r, g, b), (focused_r, focused_g, focused_b)) = match color {
-        TagColor::Red => ((0x3b, 0x22, 0x24), (0x4c, 0x2b, 0x2e)),
-        TagColor::Orange => ((0x3b, 0x2a, 0x1c), (0x4c, 0x36, 0x24)),
-        TagColor::Yellow => ((0x36, 0x32, 0x1c), (0x45, 0x40, 0x24)),
-        TagColor::Green => ((0x21, 0x33, 0x22), (0x2a, 0x42, 0x2c)),
-        TagColor::Blue => ((0x1f, 0x2a, 0x3d), (0x28, 0x36, 0x4e)),
-        TagColor::Violet => ((0x30, 0x23, 0x3d), (0x3d, 0x2d, 0x4e)),
-    };
-    if focused {
-        Color::Rgb(focused_r, focused_g, focused_b)
-    } else {
-        Color::Rgb(r, g, b)
-    }
 }
 
 /// Divider blocks: the rule-lines color, dimmed further so they recede behind the header rule
 /// (D-33).
-fn divider_style() -> Style {
-    rule_style().dim()
+fn divider_style(theme: &Theme) -> Style {
+    rule_style(theme).dim()
 }
 
-/// The theme's primary color (Textual's `$primary`), for projects and the focus marker in
-/// navigate mode; themes arrive in step 6.2.
-const PRIMARY: Color = Color::LightBlue;
-
-/// The theme's accent (Textual's `$accent`), for the focus marker while editing (D-51); themes
-/// arrive in step 6.2, until when it is Textual's default accent.
-const ACCENT: Color = Color::Rgb(0xff, 0xa6, 0x2b);
-
-/// Plain text: dimmed, but less than done tasks and the other dim blocks (D-37); themes arrive in
-/// step 6.2. A fixed grey, `#a8a8a8`, because many terminals draw the ANSI gray as their default
-/// foreground, which left text undimmed.
-const TEXT: Color = Color::Indexed(248);
-
-/// The theme's link color, for every link (ui.md §2, D-45); themes arrive in step 6.2.
-const LINK: Color = Color::Cyan;
-
-/// The theme's headers color (Textual's `$secondary`), for sections; themes arrive in step 6.2.
-const SECONDARY: Color = Color::LightMagenta;
-
-/// Rule lines: dividers and the line under the header; themes arrive in step 6.2.
+/// Rule lines: dividers, the line under the header and between panes.
 #[must_use]
-pub fn rule_style() -> Style {
-    Style::new().fg(Color::DarkGray)
+pub fn rule_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.rule)
 }
 
-/// Errors, such as a failed save; themes arrive in step 6.2.
-fn error_style() -> Style {
-    Style::new().fg(Color::Red).bold()
+/// Errors, such as a failed save.
+fn error_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.error).bold()
 }
 
-/// Warnings, such as a failed backup; themes arrive in step 6.2.
-fn warning_style() -> Style {
-    Style::new().fg(Color::Yellow)
+/// Warnings, such as a failed backup.
+fn warning_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.warning())
 }
 
-/// The marker of a selected block that is not focused: the focus marker, dimmer (ui.md §2);
-/// themes arrive in step 6.2.
-fn selection_style() -> Style {
-    Style::new().fg(PRIMARY).dim()
+/// The marker of a selected block that is not focused: the focus marker in the selection color,
+/// dimmer (ui.md §2).
+fn selection_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.selection).dim()
 }
 
-/// The band behind every line of the focused block, the full width of the pane, a step brighter
-/// than a dark terminal's background (D-39); themes arrive in step 6.2.
-fn current_line_style() -> Style {
-    Style::new().bg(Color::Indexed(235))
+/// The band behind every line of the focused block, the full width of the pane (D-39).
+fn current_line_style(theme: &Theme) -> Style {
+    Style::new().bg(theme.current_line)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
+    use ratatui::style::Color;
+
     use super::*;
     use crate::ui::keymap::Keymap;
     use crate::{
         app::{Menu, Message, SelectionChange, State},
         document::format,
+        ui::theme::{BuiltIn, ColorSupport},
     };
+
+    /// The theme the widgets are drawn in: Terminal Dark, the default theme without truecolor.
+    pub(super) static THEME: LazyLock<Theme> =
+        LazyLock::new(|| BuiltIn::DEFAULT.colors(ColorSupport::Ansi));
 
     const TODAY: Date = jiff::civil::date(2026, 10, 5);
 
@@ -1522,7 +1508,7 @@ mod tests {
 
     /// A view of `rows` on [`TODAY`] drawing [`ICONS`].
     fn outline(rows: &[Row]) -> OutlineView<'_> {
-        OutlineView::new(rows, TODAY).icons(ICONS)
+        OutlineView::new(rows, TODAY, &THEME).icons(ICONS)
     }
 
     /// Draws `rows` with nothing focused and returns the `width` × `height` columns right of
@@ -1573,9 +1559,9 @@ mod tests {
             "    on sale  ",
             "note         ",
         ]);
-        expected.set_style(Rect::new(0, 0, 5, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().fg(TEXT));
-        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 0, 5, 1), Style::new().bold().fg(THEME.primary));
+        expected.set_style(Rect::new(4, 2, 7, 1), Style::new().fg(THEME.dim_text));
+        expected.set_style(Rect::new(0, 3, 4, 1), Style::new().fg(THEME.dim_text));
         assert_eq!(
             render("Home:\n\t- Milk\n\t\ton sale\nnote", 13, 4),
             expected
@@ -1591,9 +1577,12 @@ mod tests {
         let struck = |style: Style| style.dim().crossed_out();
         expected.set_style(
             Rect::new(0, 2, 2, 1),
-            struck(Style::new().bold().fg(PRIMARY)),
+            struck(Style::new().bold().fg(THEME.primary)),
         );
-        expected.set_style(Rect::new(0, 3, 1, 1), struck(Style::new().fg(TEXT)));
+        expected.set_style(
+            Rect::new(0, 3, 1, 1),
+            struck(Style::new().fg(THEME.dim_text)),
+        );
         assert_eq!(
             render("- a @done\n- b\nP: @done\nn @done(2026-10-01)", 4, 4),
             expected
@@ -1601,14 +1590,17 @@ mod tests {
         let mut expected = Buffer::with_lines(["S     ", "u     ", "──────", "f()   "]);
         expected.set_style(
             Rect::new(0, 0, 1, 1),
-            struck(Style::new().bold().italic().fg(SECONDARY)),
+            struck(Style::new().bold().italic().fg(THEME.headers)),
         );
         expected.set_style(
             Rect::new(0, 1, 1, 1),
             struck(Style::new().underlined().cyan()),
         );
-        expected.set_style(Rect::new(0, 2, 6, 1), divider_style());
-        expected.set_style(Rect::new(0, 3, 3, 1), struck(Style::new().fg(TEXT)));
+        expected.set_style(Rect::new(0, 2, 6, 1), divider_style(&THEME));
+        expected.set_style(
+            Rect::new(0, 3, 3, 1),
+            struck(Style::new().fg(THEME.dim_text)),
+        );
         assert_eq!(
             render(
                 "S @section @done\nu @url(x) @done\n--- @done\nf() @code @done",
@@ -1636,20 +1628,20 @@ mod tests {
         let dim = Style::new().dim();
         expected.set_style(
             Rect::new(0, 0, 2, 1),
-            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+            Style::new().bold().fg(THEME.primary).dim().crossed_out(),
         );
         expected.set_style(Rect::new(2, 1, 3, 1), dim);
-        expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(TEXT).dim());
+        expected.set_style(Rect::new(4, 2, 1, 1), Style::new().fg(THEME.dim_text).dim());
         expected.set_style(
             Rect::new(2, 3, 1, 1),
-            Style::new().bold().italic().fg(SECONDARY).dim(),
+            Style::new().bold().italic().fg(THEME.headers).dim(),
         );
         expected.set_style(
             Rect::new(2, 4, 1, 1),
             Style::new().dim().underlined().cyan(),
         );
-        expected.set_style(Rect::new(2, 5, 6, 1), divider_style());
-        expected.set_style(Rect::new(2, 6, 3, 1), Style::new().fg(TEXT).dim());
+        expected.set_style(Rect::new(2, 5, 6, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(2, 6, 3, 1), Style::new().fg(THEME.dim_text).dim());
         assert_eq!(render(text, 8, 8), expected);
     }
 
@@ -1663,7 +1655,7 @@ mod tests {
             selection: Some(0..text.len()),
             date,
         };
-        let panel = DatePromptPanel::new(&view);
+        let panel = DatePromptPanel::new(&view, &THEME);
         let area = Rect::new(0, 0, 30, DatePromptPanel::HEIGHT);
         let mut buf = Buffer::empty(area);
         assert_eq!(panel.caret(area), (2 + text_width(text), 1));
@@ -1684,7 +1676,7 @@ mod tests {
             "│ Fri 9 Oct 2026             │",
             "└────────────────────────────┘",
         ]);
-        let accent = Style::new().fg(ACCENT);
+        let accent = Style::new().fg(THEME.accent);
         expected.set_style(Rect::new(0, 0, 30, 1), accent);
         expected.set_style(Rect::new(0, 3, 30, 1), accent);
         expected.set_style(Rect::new(0, 1, 1, 2), accent);
@@ -1732,7 +1724,7 @@ mod tests {
             state.update(Message::Menu(Menu::CommandMenu, *key));
         }
         let menu = state.command_menu().unwrap();
-        let popup = Popup::commands(&menu, ICONS);
+        let popup = Popup::commands(&menu, ICONS, &THEME);
         let (width, full) = popup.size();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, full.min(height)));
         popup.render(buf.area, &mut buf);
@@ -1741,7 +1733,7 @@ mod tests {
 
     /// `expected` with the border and title of a `width` × `height` popup in the accent color.
     fn accent_frame(expected: &mut Buffer, width: u16, height: u16) {
-        let accent = Style::new().fg(ACCENT);
+        let accent = Style::new().fg(THEME.accent);
         expected.set_style(Rect::new(0, 0, width, 1), accent);
         expected.set_style(Rect::new(0, height - 1, width, 1), accent);
         expected.set_style(Rect::new(0, 1, 1, height - 2), accent);
@@ -1763,7 +1755,7 @@ mod tests {
         accent_frame(&mut expected, 20, 5);
         expected.set_style(Rect::new(1, 2, 18, 1), Style::new().reversed());
         for y in 1..4 {
-            expected.set_style(Rect::new(3, y, 1, 1), due_style());
+            expected.set_style(Rect::new(3, y, 1, 1), due_style(&THEME));
         }
         assert_eq!(
             command_menu(&[Type('d'), Type('u'), Type('e'), Next], 20),
@@ -1787,6 +1779,7 @@ mod tests {
             &state.context_menu().unwrap(),
             |command| keymap.bindings(command, false),
             ICONS,
+            &THEME,
         );
         assert_eq!(popup.size(), (23, 4));
         let mut buf = Buffer::empty(Rect::new(0, 0, 23, 4));
@@ -1801,8 +1794,8 @@ mod tests {
         accent_frame(&mut expected, 23, 4);
         expected.set_style(Rect::new(1, 1, 21, 1), Style::new().reversed());
         for y in 1..3 {
-            expected.set_style(Rect::new(3, y, 1, 1), due_style());
-            expected.set_style(Rect::new(19, y, 1, 1), Style::new().fg(PRIMARY));
+            expected.set_style(Rect::new(3, y, 1, 1), due_style(&THEME));
+            expected.set_style(Rect::new(19, y, 1, 1), Style::new().fg(THEME.primary));
         }
         assert_eq!(buf, expected);
     }
@@ -1826,8 +1819,8 @@ mod tests {
             expected.set_style(Rect::new(1, y, 20, 1), Style::new().dim());
         }
         expected.set_style(Rect::new(1, 3, 20, 1), Style::new().reversed());
-        expected.set_style(Rect::new(3, 3, 1, 1), today_style());
-        expected.set_style(Rect::new(3, 4, 1, 1), bookmark_style());
+        expected.set_style(Rect::new(3, 3, 1, 1), today_style(&THEME));
+        expected.set_style(Rect::new(3, 4, 1, 1), bookmark_style(&THEME));
         assert_eq!(
             command_menu(&[crate::app::MenuInput::Next; 4], 7),
             expected,
@@ -1844,26 +1837,30 @@ mod tests {
             (Command::Retype(Typed::Text), Icon::Note, Style::new()),
             (Command::Retype(Typed::Section), Icon::Section, Style::new()),
             (Command::ToggleDone, Icon::Complete, Style::new()),
-            (Command::ToggleFlag(Flag::Today), Icon::Today, today_style()),
+            (
+                Command::ToggleFlag(Flag::Today),
+                Icon::Today,
+                today_style(&THEME),
+            ),
             (
                 Command::ToggleFlag(Flag::Bookmark),
                 Icon::Bookmark,
-                bookmark_style(),
+                bookmark_style(&THEME),
             ),
             (
                 Command::OpenDatePrompt(DateTag::Start),
                 Icon::Start,
-                start_style(),
+                start_style(&THEME),
             ),
             (
                 Command::ChangeDate(DateTag::Due, crate::document::DateChange::Today),
                 Icon::Due,
-                due_style(),
+                due_style(&THEME),
             ),
             (
                 Command::ClearDate(DateTag::Start),
                 Icon::Start,
-                start_style(),
+                start_style(&THEME),
             ),
             (
                 Command::SetColor(Some(TagColor::Blue)),
@@ -1878,7 +1875,7 @@ mod tests {
             (Command::Undo, Icon::Command, Style::new()),
         ];
         for (command, icon, style) in cases {
-            assert_eq!(command_icon(command), (icon, style), "{command:?}");
+            assert_eq!(command_icon(command, &THEME), (icon, style), "{command:?}");
         }
     }
 
@@ -1964,7 +1961,7 @@ mod tests {
         let mut state = State::new(format::parse("- a @blue"), None);
         state.update(Message::OpenColorPicker);
         let picker = state.color_picker().unwrap();
-        let popup = Popup::colors(&picker, ICONS);
+        let popup = Popup::colors(&picker, ICONS, &THEME);
         assert_eq!(popup.size(), (14, 9));
         let mut buf = Buffer::empty(Rect::new(0, 0, 14, 9));
         popup.render(buf.area, &mut buf);
@@ -1981,7 +1978,7 @@ mod tests {
         ]);
         for (y, color) in [
             Color::Red,
-            Color::Indexed(208),
+            Color::LightRed,
             Color::Yellow,
             Color::Green,
             Color::Blue,
@@ -2001,7 +1998,7 @@ mod tests {
         ));
         let picker = state.color_picker().unwrap();
         let mut buf = Buffer::empty(Rect::new(0, 0, 14, 3));
-        Popup::colors(&picker, ICONS).render(buf.area, &mut buf);
+        Popup::colors(&picker, ICONS, &THEME).render(buf.area, &mut buf);
         let mut expected =
             Buffer::with_lines(["┌Color:──────┐", "│ ● 6 Violet │", "└v───────────┘"]);
         expected.set_style(
@@ -2014,18 +2011,18 @@ mod tests {
     // FR-TAG-05, D-48
     #[test]
     fn a_color_tag_tints_the_background_of_any_block_after_its_indent() {
-        let tint = |color| Style::new().bg(tag_tint(color, false));
+        let tint = |color| Style::new().bg(THEME.tint(color, false));
         let mut expected = Buffer::with_lines(["- a   ", "P:    ", "  S   ", "n     ", "✔ d   "]);
         expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Red));
         expected.set_style(Rect::new(0, 1, 6, 1), tint(TagColor::Orange));
-        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().bold().fg(THEME.primary));
         expected.set_style(Rect::new(2, 2, 4, 1), tint(TagColor::Yellow));
         expected.set_style(
             Rect::new(2, 2, 1, 1),
-            Style::new().bold().italic().fg(SECONDARY),
+            Style::new().bold().italic().fg(THEME.headers),
         );
         expected.set_style(Rect::new(0, 3, 6, 1), tint(TagColor::Green));
-        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 3, 1, 1), Style::new().fg(THEME.dim_text));
         expected.set_style(Rect::new(0, 4, 6, 1), tint(TagColor::Blue));
         expected.set_style(Rect::new(0, 4, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 4, 1, 1), Style::new().dim().crossed_out());
@@ -2039,7 +2036,10 @@ mod tests {
         );
         let mut expected = Buffer::with_lines(["u     "]);
         expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Violet));
-        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().underlined().fg(LINK));
+        expected.set_style(
+            Rect::new(0, 0, 1, 1),
+            Style::new().underlined().fg(THEME.link),
+        );
         assert_eq!(
             render("u @url(x) @violet", 6, 1),
             expected,
@@ -2050,23 +2050,28 @@ mod tests {
     // D-39, D-48
     #[test]
     fn a_focused_colored_row_gets_a_brighter_tint_after_the_band() {
+        // A truecolor theme, as the 16 colors have no brighter shade of a tint.
+        let theme = BuiltIn::named("nord")
+            .unwrap()
+            .colors(ColorSupport::TrueColor);
         let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
-        outline(&rows)
+        OutlineView::new(&rows, TODAY, &theme)
+            .icons(ICONS)
             .focused(Some(1))
             .render(Rect::new(0, 0, 8, 3), &mut buf);
-        let band = Color::Indexed(235);
+        let band = theme.current_line;
         let bg = |x, y| buf[(x, y)].bg;
         assert_eq!(buf[(0, 1)].symbol(), FOCUS_MARKER);
         assert_eq!([bg(0, 1), bg(1, 1), bg(2, 1), bg(3, 1)], [band; 4]);
-        assert_eq!(bg(4, 1), tag_tint(TagColor::Green, true));
-        assert_eq!(bg(7, 1), tag_tint(TagColor::Green, true));
-        assert_eq!(bg(4, 2), tag_tint(TagColor::Green, false));
+        assert_eq!(bg(4, 1), theme.tint(TagColor::Green, true));
+        assert_eq!(bg(7, 1), theme.tint(TagColor::Green, true));
+        assert_eq!(bg(4, 2), theme.tint(TagColor::Green, false));
         assert_eq!(bg(3, 2), Color::Reset, "no tint in the indent");
         assert_eq!(bg(8, 2), Color::Reset, "no tint past the pane");
         assert_ne!(
-            tag_tint(TagColor::Green, true),
-            tag_tint(TagColor::Green, false)
+            theme.tint(TagColor::Green, true),
+            theme.tint(TagColor::Green, false)
         );
     }
 
@@ -2082,19 +2087,19 @@ mod tests {
             format!("{:<20}", format!("  - c {bookmark}")),
             format!(" {bookmark} {}", "─".repeat(17)),
         ]);
-        expected.set_style(Rect::new(4, 0, 1, 1), today_style());
-        expected.set_style(Rect::new(15, 0, 5, 1), due_style());
-        expected.set_style(Rect::new(4, 1, 1, 1), today_style());
-        expected.set_style(Rect::new(6, 1, 1, 1), bookmark_style());
+        expected.set_style(Rect::new(4, 0, 1, 1), today_style(&THEME));
+        expected.set_style(Rect::new(15, 0, 5, 1), due_style(&THEME));
+        expected.set_style(Rect::new(4, 1, 1, 1), today_style(&THEME));
+        expected.set_style(Rect::new(6, 1, 1, 1), bookmark_style(&THEME));
         expected.set_style(
             Rect::new(0, 2, 2, 1),
-            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+            Style::new().bold().fg(THEME.primary).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(3, 2, 1, 1), today_style().dim());
+        expected.set_style(Rect::new(3, 2, 1, 1), today_style(&THEME).dim());
         expected.set_style(Rect::new(2, 3, 3, 1), Style::new().dim());
-        expected.set_style(Rect::new(6, 3, 1, 1), bookmark_style().dim());
-        expected.set_style(Rect::new(1, 4, 1, 1), bookmark_style());
-        expected.set_style(Rect::new(3, 4, 17, 1), divider_style());
+        expected.set_style(Rect::new(6, 3, 1, 1), bookmark_style(&THEME).dim());
+        expected.set_style(Rect::new(1, 4, 1, 1), bookmark_style(&THEME));
+        expected.set_style(Rect::new(3, 4, 17, 1), divider_style(&THEME));
         assert_eq!(
             render(
                 "- a @due(2026-10-09) @today\n- b @bookmark @today(x)\nP: @today @done\n\t- c @bookmark\n--- @bookmark",
@@ -2112,8 +2117,8 @@ mod tests {
         state.update(Message::CollapseAll);
         let mut expected =
             Buffer::with_lines([format!("Q: {} ▸ 1  ", Icon::Bookmark.glyph(ICONS))]);
-        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
-        expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style());
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
+        expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style(&THEME));
         expected.set_style(Rect::new(4, 0, 4, 1), Style::new().dim());
         assert_eq!(draw(&state.rows(), 10, 1), expected);
     }
@@ -2136,18 +2141,18 @@ mod tests {
             "              ",
         ]);
         let dim = Style::new().dim();
-        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
         expected.set_style(Rect::new(2, 0, 4, 1), dim);
-        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 1, 1, 2), Style::new().fg(THEME.dim_text));
         expected.set_style(Rect::new(1, 2, 4, 1), dim);
         expected.set_style(
             Rect::new(0, 3, 1, 1),
-            Style::new().bold().italic().fg(SECONDARY),
+            Style::new().bold().italic().fg(THEME.headers),
         );
         expected.set_style(Rect::new(1, 3, 4, 1), dim);
         expected.set_style(Rect::new(0, 4, 4, 1), dim);
-        expected.set_style(Rect::new(5, 4, 9, 1), divider_style());
-        expected.set_style(Rect::new(0, 5, 3, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(5, 4, 9, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(0, 5, 3, 1), Style::new().fg(THEME.dim_text));
         expected.set_style(Rect::new(3, 5, 4, 1), dim);
         assert_eq!(buf, expected);
     }
@@ -2163,8 +2168,11 @@ mod tests {
         ]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
         expected.set_style(Rect::new(4, 0, 1, 1), Style::new().dim());
-        expected.set_style(Rect::new(8, 0, 11, 1), Style::new().underlined().fg(LINK));
-        let project = Style::new().bold().fg(PRIMARY);
+        expected.set_style(
+            Rect::new(8, 0, 11, 1),
+            Style::new().underlined().fg(THEME.link),
+        );
+        let project = Style::new().bold().fg(THEME.primary);
         expected.set_style(Rect::new(0, 1, 4, 1), project);
         expected.set_style(Rect::new(2, 1, 1, 1), project.dim());
         expected.set_style(Rect::new(0, 2, 2, 1), Style::new().dim());
@@ -2172,7 +2180,7 @@ mod tests {
             Rect::new(2, 2, 1, 1),
             Style::new().dim().crossed_out().bold(),
         );
-        expected.set_style(Rect::new(0, 3, 3, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 3, 3, 1), Style::new().fg(THEME.dim_text));
         assert_eq!(
             render(
                 "- **a** `b` c https://x.y\nP `q`:\n- **d** @done\nn `",
@@ -2194,22 +2202,28 @@ mod tests {
             "H mailto:g  ",
             "- # i       ",
         ]);
-        let text = Style::new().fg(TEXT);
+        let text = Style::new().fg(THEME.dim_text);
         expected.set_style(Rect::new(0, 0, 1, 1), text.bold().underlined());
         expected.set_style(Rect::new(0, 1, 1, 1), text.bold());
         expected.set_style(Rect::new(0, 2, 3, 1), text.bold());
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().dim());
-        let link = text.underlined().fg(LINK);
+        let link = text.underlined().fg(THEME.link);
         expected.set_style(Rect::new(0, 3, 4, 1), text);
         expected.set_style(Rect::new(0, 3, 1, 1), link);
         expected.set_style(Rect::new(4, 3, 8, 1), link);
         expected.set_style(
             Rect::new(0, 4, 12, 1),
-            Style::new().bg(tag_tint(TagColor::Red, false)),
+            Style::new().bg(THEME.tint(TagColor::Red, false)),
         );
         expected.set_style(Rect::new(0, 4, 10, 1), text.bold().underlined());
-        expected.set_style(Rect::new(2, 4, 8, 1), Style::new().fg(LINK).underlined());
-        expected.set_style(Rect::new(4, 5, 1, 1), Style::new().fg(LINK).underlined());
+        expected.set_style(
+            Rect::new(2, 4, 8, 1),
+            Style::new().fg(THEME.link).underlined(),
+        );
+        expected.set_style(
+            Rect::new(4, 5, 1, 1),
+            Style::new().fg(THEME.link).underlined(),
+        );
         assert_eq!(
             render(
                 "# A\n## B\n### C `d`\n[e](f) f <https://g.h>\n# H <mailto:g> @red\n- # [i](j)",
@@ -2230,16 +2244,19 @@ mod tests {
             "- e         ",
             "f           ",
         ]);
-        let link = Style::new().underlined().fg(LINK);
-        let project = Style::new().bold().fg(PRIMARY);
+        let link = Style::new().underlined().fg(THEME.link);
+        let project = Style::new().bold().fg(THEME.primary);
         expected.set_style(Rect::new(0, 0, 4, 1), project);
         expected.set_style(Rect::new(2, 0, 1, 1), project.patch(link));
-        let section = Style::new().bold().italic().fg(SECONDARY);
+        let section = Style::new().bold().italic().fg(THEME.headers);
         expected.set_style(Rect::new(0, 1, 11, 1), section);
         expected.set_style(Rect::new(2, 1, 9, 1), section.patch(link));
         expected.set_style(Rect::new(4, 2, 1, 1), link);
         expected.set_style(Rect::new(2, 3, 1, 1), link);
-        expected.set_style(Rect::new(0, 4, 1, 1), Style::new().fg(TEXT).patch(link));
+        expected.set_style(
+            Rect::new(0, 4, 1, 1),
+            Style::new().fg(THEME.dim_text).patch(link),
+        );
         assert_eq!(
             render(
                 "P [a](https://x.y):\nS <https://b> @section\n- c [d](u)\n- e @url(https://x.y)\nf @url",
@@ -2253,13 +2270,13 @@ mod tests {
     // D-7, navigation §7
     #[test]
     fn the_today_header_names_the_view_after_its_icon_in_bold() {
-        let header = today_header(ICONS);
+        let header = today_header(ICONS, &THEME);
         assert_eq!(
             header.to_string(),
             format!("{} Today", Icon::Today.glyph(ICONS))
         );
         assert_eq!(header.style, Style::new().bold());
-        assert_eq!(header.spans[0].style, today_style());
+        assert_eq!(header.spans[0].style, today_style(&THEME));
     }
 
     // D-7, ui.md §2
@@ -2281,9 +2298,9 @@ mod tests {
             &chip(Icon::Due, "today"),
             24,
         )]);
-        expected.set_style(Rect::new(4, 0, 1, 1), today_style());
+        expected.set_style(Rect::new(4, 0, 1, 1), today_style(&THEME));
         expected.set_style(Rect::new(5, 0, 7, 1), Style::new().dim());
-        expected.set_style(Rect::new(17, 0, 7, 1), due_style());
+        expected.set_style(Rect::new(17, 0, 7, 1), due_style(&THEME));
         assert_eq!(draw(&state.rows(), 24, 1), expected);
     }
 
@@ -2337,10 +2354,13 @@ mod tests {
             draw(&state.rows(), 6, 3)
         };
         let mut expected = Buffer::with_lines(["m     ", "  - t ", "      "]);
-        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().bold().fg(TEXT));
+        expected.set_style(
+            Rect::new(0, 0, 1, 1),
+            Style::new().bold().fg(THEME.dim_text),
+        );
         assert_eq!(title("P:\n\tm\n\t\t- t"), expected, "text is dim");
         let mut expected = Buffer::with_lines(["Q:    ", "  - t ", "      "]);
-        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
         assert_eq!(title("P:\n\tQ:\n\t\t- t"), expected, "a project is colored");
         let mut expected = Buffer::with_lines(["- t   ", "  - u ", "      "]);
         expected.set_style(Rect::new(2, 0, 1, 1), Style::new().bold());
@@ -2356,7 +2376,7 @@ mod tests {
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
         let rows = State::new(format::parse(text), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
-        let (line, caret) = editor_line(&rows[0], editor, usize::from(width), ICONS);
+        let (line, caret) = editor_line(&rows[0], editor, usize::from(width), ICONS, &THEME);
         line.render(buf.area, &mut buf);
         (buf, caret)
     }
@@ -2385,7 +2405,7 @@ mod tests {
     fn the_editor_shows_a_dividers_dashes_as_text() {
         let (buf, _) = edited("--- @x", &editor("---", 3, None), 5);
         let mut expected = Buffer::with_lines(["---  "]);
-        expected.set_style(Rect::new(0, 0, 3, 1), Style::new().fg(TEXT));
+        expected.set_style(Rect::new(0, 0, 3, 1), Style::new().fg(THEME.dim_text));
         assert_eq!(buf, expected);
     }
 
@@ -2394,7 +2414,7 @@ mod tests {
     fn the_editor_shows_a_projects_colon_as_text_styled_as_the_project() {
         let (buf, caret) = edited("Inbox:", &editor("Inbox:", 5, None), 8);
         let mut expected = Buffer::with_lines(["Inbox:  "]);
-        expected.set_style(Rect::new(0, 0, 6, 1), Style::new().bold().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 0, 6, 1), Style::new().bold().fg(THEME.primary));
         assert_eq!(buf, expected);
         assert_eq!(caret, 5);
     }
@@ -2540,10 +2560,10 @@ mod tests {
             at_right("- c", &chip(Icon::Start, "in 361 days"), 34),
             "- d                               ".to_owned(),
         ]);
-        expected.set_style(Rect::new(21, 0, 7, 1), start_style());
-        expected.set_style(Rect::new(29, 0, 5, 1), due_style());
-        expected.set_style(Rect::new(23, 1, 11, 1), overdue_style());
-        expected.set_style(Rect::new(21, 2, 13, 1), start_style());
+        expected.set_style(Rect::new(21, 0, 7, 1), start_style(&THEME));
+        expected.set_style(Rect::new(29, 0, 5, 1), due_style(&THEME));
+        expected.set_style(Rect::new(23, 1, 11, 1), overdue_style(&THEME));
+        expected.set_style(Rect::new(21, 2, 13, 1), start_style(&THEME));
         assert_eq!(
             render(
                 "- a @due(2026-10-09) @start(2026-10-05)\n- b @due(2026-10-04)\n- c @start(2027-10-01) @due(x)\n- d @start",
@@ -2563,11 +2583,11 @@ mod tests {
         ]);
         expected.set_style(
             Rect::new(0, 0, 2, 1),
-            Style::new().bold().fg(PRIMARY).dim().crossed_out(),
+            Style::new().bold().fg(THEME.primary).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(8, 0, 11, 1), due_style().dim());
+        expected.set_style(Rect::new(8, 0, 11, 1), due_style(&THEME).dim());
         expected.set_style(Rect::new(2, 1, 3, 1), Style::new().dim());
-        expected.set_style(Rect::new(8, 1, 11, 1), due_style().dim());
+        expected.set_style(Rect::new(8, 1, 11, 1), due_style(&THEME).dim());
         assert_eq!(
             render("P: @done @due(2026-10-04)\n\t- a @due(2026-10-04)", 19, 2),
             expected
@@ -2582,9 +2602,9 @@ mod tests {
         outline(&rows).focused(Some(0)).render(buf.area, &mut buf);
         let mut expected =
             Buffer::with_lines([at_right("▌ - a", &chip(Icon::Overdue, "yesterday"), 20)]);
-        expected.set_style(expected.area, current_line_style());
-        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(9, 0, 11, 1), overdue_style());
+        expected.set_style(expected.area, current_line_style(&THEME));
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(THEME.primary));
+        expected.set_style(Rect::new(9, 0, 11, 1), overdue_style(&THEME));
         assert_eq!(buf, expected);
     }
 
@@ -2607,9 +2627,9 @@ mod tests {
             "▌ - a               ".to_owned(),
             at_right("  - b", &chip(Icon::Due, "today"), 20),
         ]);
-        expected.set_style(Rect::new(0, 0, 20, 1), current_line_style());
-        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(ACCENT));
-        expected.set_style(Rect::new(13, 1, 7, 1), due_style());
+        expected.set_style(Rect::new(0, 0, 20, 1), current_line_style(&THEME));
+        expected.set_style(Rect::new(0, 0, 1, 1), Style::new().fg(THEME.accent));
+        expected.set_style(Rect::new(13, 1, 7, 1), due_style(&THEME));
         assert_eq!(
             buf, expected,
             "the marker is in the accent while editing (D-51)"
@@ -2627,8 +2647,8 @@ mod tests {
     #[test]
     fn marks_the_focused_row_in_the_gutter_on_a_band_without_changing_its_text() {
         let mut expected = Buffer::with_lines(["  - a", "▌ - b", "  - c"]);
-        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
-        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
+        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style(&THEME));
+        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(THEME.primary));
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
 
@@ -2657,7 +2677,7 @@ mod tests {
                         before.symbol(),
                         before.fg,
                         before.modifier,
-                        Color::Indexed(235)
+                        THEME.current_line
                     ),
                     "row {index}, column {x}"
                 );
@@ -2670,8 +2690,8 @@ mod tests {
         let area = Rect::new(2, 1, 6, 2);
         let mut expected = Buffer::with_lines(["  - c ", "▌ - d "]);
         expected.area = area;
-        expected.set_style(Rect::new(2, 2, 6, 1), current_line_style());
-        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(PRIMARY));
+        expected.set_style(Rect::new(2, 2, 6, 1), current_line_style(&THEME));
+        expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(THEME.primary));
         assert_eq!(render_scrolled(2, Some(3), area), expected);
     }
 
@@ -2685,9 +2705,9 @@ mod tests {
         let mut buf = Buffer::empty(area);
         outline(&rows).focused(Some(1)).render(area, &mut buf);
         let mut expected = Buffer::with_lines(["▌ - a", "▌ - b", "  - c"]);
-        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
-        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
-        expected.set_style(Rect::new(0, 0, 1, 1), selection_style());
+        expected.set_style(Rect::new(0, 1, 5, 1), current_line_style(&THEME));
+        expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(THEME.primary));
+        expected.set_style(Rect::new(0, 0, 1, 1), selection_style(&THEME));
         assert_eq!(buf, expected);
     }
 
@@ -2759,9 +2779,9 @@ mod tests {
         let buf = wrapped("- aaa bbb @red\n- c", 9, 3, 0, 0);
         assert_eq!(lines(&buf), ["▌ - aaa", "▌   bbb", "  - c"]);
         for y in 0..2 {
-            assert_eq!(buf[(0, y)].fg, PRIMARY, "line {y}");
-            assert_eq!(buf[(0, y)].bg, Color::Indexed(235), "line {y}");
-            assert_eq!(buf[(4, y)].bg, tag_tint(TagColor::Red, true), "line {y}");
+            assert_eq!(buf[(0, y)].fg, THEME.primary, "line {y}");
+            assert_eq!(buf[(0, y)].bg, THEME.current_line, "line {y}");
+            assert_eq!(buf[(4, y)].bg, THEME.tint(TagColor::Red, true), "line {y}");
         }
         assert_eq!(buf[(0, 2)].bg, Color::Reset);
     }
@@ -2806,7 +2826,7 @@ mod tests {
         confirming_quit: bool,
         notice: Option<&Notice>,
     ) -> Vec<(String, Style)> {
-        file_status(save, access, false, confirming_quit, notice, ICONS)
+        file_status(save, access, false, confirming_quit, notice, ICONS, &THEME)
             .into_iter()
             .map(|span| (span.content.into_owned(), span.style))
             .collect()
@@ -2829,7 +2849,7 @@ mod tests {
             status(failed, rw, false, None),
             [
                 plain(" ● "),
-                ("save failed: disk full".to_owned(), error_style())
+                ("save failed: disk full".to_owned(), error_style(&THEME))
             ]
         );
         assert_eq!(
@@ -2855,11 +2875,11 @@ mod tests {
             [
                 plain(" · read-only"),
                 plain(" · "),
-                ("backup failed: no space".to_owned(), warning_style())
+                ("backup failed: no space".to_owned(), warning_style(&THEME))
             ]
         );
-        assert_eq!(error_style(), Style::new().red().bold());
-        assert_eq!(warning_style(), Style::new().yellow());
+        assert_eq!(error_style(&THEME), Style::new().red().bold());
+        assert_eq!(warning_style(&THEME), Style::new().yellow());
     }
 
     // OQ-25
@@ -2874,7 +2894,10 @@ mod tests {
             ),
             [
                 plain(" · "),
-                ("Tags are set with commands".to_owned(), warning_style())
+                (
+                    "Tags are set with commands".to_owned(),
+                    warning_style(&THEME)
+                )
             ]
         );
     }
@@ -2887,7 +2910,10 @@ mod tests {
             status(SaveState::Saved, rw, false, Some(&Notice::ReadOnly)),
             [
                 plain(" · "),
-                ("cannot edit a read-only file".to_owned(), warning_style())
+                (
+                    "cannot edit a read-only file".to_owned(),
+                    warning_style(&THEME)
+                )
             ]
         );
         let failed = Notice::EditFailed {
@@ -2897,7 +2923,7 @@ mod tests {
             status(SaveState::Saved, rw, false, Some(&failed)),
             [
                 plain(" · "),
-                ("edit failed: it changed".to_owned(), error_style())
+                ("edit failed: it changed".to_owned(), error_style(&THEME))
             ]
         );
     }
@@ -2907,7 +2933,7 @@ mod tests {
     fn the_file_status_marks_a_file_gone_from_disk_and_external_change_notices() {
         let rw = Access::ReadWrite;
         assert_eq!(
-            file_status(SaveState::Saved, rw, true, false, None, ICONS)
+            file_status(SaveState::Saved, rw, true, false, None, ICONS, &THEME)
                 .into_iter()
                 .map(|span| span.content.into_owned())
                 .collect::<Vec<_>>(),
@@ -2918,7 +2944,7 @@ mod tests {
             (Notice::Reloaded, plain("Reloaded (changed on disk)")),
             (
                 Notice::ConfigProblems(vec!["a".to_owned(), "b".to_owned()]),
-                ("config.toml: a; b".to_owned(), warning_style()),
+                ("config.toml: a; b".to_owned(), warning_style(&THEME)),
             ),
             (
                 Notice::BlanksLifted,
@@ -2944,7 +2970,7 @@ mod tests {
                 Notice::NotSections { skipped: 2 },
                 (
                     "Only text can be a section: 2 skipped".to_owned(),
-                    warning_style(),
+                    warning_style(&THEME),
                 ),
             ),
             (
@@ -2959,7 +2985,10 @@ mod tests {
                 Notice::ConflictCopyFailed {
                     reason: "disk full".to_owned(),
                 },
-                ("conflict copy failed: disk full".to_owned(), error_style()),
+                (
+                    "conflict copy failed: disk full".to_owned(),
+                    error_style(&THEME),
+                ),
             ),
             (
                 Notice::OpenUrlFailed {
@@ -2968,7 +2997,7 @@ mod tests {
                 },
                 (
                     "cannot open https://a.b: not found".to_owned(),
-                    error_style(),
+                    error_style(&THEME),
                 ),
             ),
             (
@@ -2977,7 +3006,7 @@ mod tests {
                 },
                 (
                     "cannot take the version on disk: not UTF-8".to_owned(),
-                    error_style(),
+                    error_style(&THEME),
                 ),
             ),
         ] {
@@ -2991,7 +3020,7 @@ mod tests {
     /// Draws the conflict prompt over a blank `width` × `height` screen.
     fn prompt(diff: Option<&[DiffLine]>, scroll: usize, width: u16, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        ConflictPrompt::new(diff, scroll).render(buf.area, &mut buf);
+        ConflictPrompt::new(diff, scroll, &THEME).render(buf.area, &mut buf);
         buf
     }
 
@@ -3011,7 +3040,7 @@ mod tests {
         }
         assert_eq!(prompt(None, 0, 82, 6), expected);
         let mut covered = Buffer::with_lines(vec!["x".repeat(82); 6]);
-        ConflictPrompt::new(None, 0).render(covered.area, &mut covered);
+        ConflictPrompt::new(None, 0, &THEME).render(covered.area, &mut covered);
         assert_eq!(covered[(0, 0)].symbol(), "x");
         assert_eq!(
             covered[(50, 2)].symbol(),
@@ -3056,7 +3085,7 @@ mod tests {
         state.update(Message::CollapseAll);
         let rows = state.rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, 30 + GUTTER_WIDTH, 4));
-        OutlineView::new(&rows, TODAY)
+        OutlineView::new(&rows, TODAY, &THEME)
             .icons(icons)
             .render(buf.area, &mut buf);
         let lines = lines(&buf)
@@ -3106,7 +3135,7 @@ mod tests {
             breadcrumbs(&crumbs, 20, IconSet::Ascii).to_string(),
             "~ › Work"
         );
-        assert_eq!(today_header(IconSet::Ascii).to_string(), "* Today");
+        assert_eq!(today_header(IconSet::Ascii, &THEME).to_string(), "* Today");
         let unsaved = |icons| {
             file_status(
                 SaveState::Unsaved,
@@ -3115,6 +3144,7 @@ mod tests {
                 false,
                 None,
                 icons,
+                &THEME,
             )
             .iter()
             .map(|span| span.content.to_string())

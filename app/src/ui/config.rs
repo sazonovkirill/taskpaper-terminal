@@ -1,7 +1,7 @@
 //! The settings file `config.toml`: where it is and the settings it sets, each left at its
 //! default where the file does not set it or sets it in a way the app cannot use, which is
-//! reported rather than refused (FR-SET-01, FR-SET-04,
-//! [keybindings.md §5](../../../docs/specs/keybindings.md#5-configuration)).
+//! reported rather than refused, and writing a setting changed in the app back to it (FR-SET-01,
+//! FR-SET-04, [keybindings.md §5](../../../docs/specs/keybindings.md#5-configuration)).
 
 use std::{
     ffi::OsString,
@@ -11,12 +11,12 @@ use std::{
 };
 
 use thiserror::Error;
-use toml_edit::{Document, Item, TableLike};
+use toml_edit::{Document, DocumentMut, Item, Table, TableLike, Value};
 
 use super::{
-    effects::{self, BackupSettings},
+    effects::{self, BackupSettings, atomic},
     keymap::{BindingError, Keymap},
-    theme::IconSetting,
+    theme::{BuiltIn, IconSetting},
 };
 use crate::app::Mode;
 
@@ -80,8 +80,12 @@ pub struct Config {
     pub(super) autosave_delay: Option<Duration>,
     /// Which icons to draw, when the file says (`icons`, ui.md §7).
     pub(super) icons: Option<IconSetting>,
+    /// The theme, when the file names one (`theme`, FR-UI-06).
+    pub(super) theme: Option<BuiltIn>,
     backups: BackupSettings,
     problems: Vec<Problem>,
+    /// The file the settings come from, where settings changed in the app are written.
+    file: Option<PathBuf>,
 }
 
 impl Config {
@@ -89,6 +93,12 @@ impl Config {
     #[must_use]
     pub fn problems(&self) -> &[Problem] {
         &self.problems
+    }
+
+    /// The file the settings come from, if its place is known.
+    #[must_use]
+    pub fn file(&self) -> Option<&Path> {
+        self.file.as_deref()
     }
 
     /// The backups the file asks for (`[backups]`).
@@ -118,6 +128,17 @@ impl Config {
             _ => self.problems.push(Problem::InvalidValue {
                 key: "icons".to_owned(),
                 expected: "\"nerd\" or \"none\"",
+            }),
+        }
+    }
+
+    /// Takes `theme` from `item`: the name of a built-in theme.
+    fn read_theme(&mut self, item: &Item) {
+        match item.as_str().and_then(BuiltIn::named) {
+            Some(theme) => self.theme = Some(theme),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "theme".to_owned(),
+                expected: "a built-in theme's name, such as \"nord\"",
             }),
         }
     }
@@ -223,12 +244,16 @@ fn table<'a>(item: &'a Item, key: &str, problems: &mut Vec<Problem>) -> Option<&
 /// with `~` is under `home`.
 #[must_use]
 pub fn load(path: &Path, home: Option<&Path>) -> Config {
-    match fs::read_to_string(path) {
+    let config = match fs::read_to_string(path) {
         Ok(text) => read(&text, home),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Config::default(),
         Err(error) => Config::failed(Problem::Unreadable {
             reason: error.to_string(),
         }),
+    };
+    Config {
+        file: Some(path.to_owned()),
+        ..config
     }
 }
 
@@ -253,12 +278,96 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "autosave_delay_ms" => config.read_autosave_delay(item),
             "backups" => config.read_backups(item, home),
             "icons" => config.read_icons(item),
+            "theme" => config.read_theme(item),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
         }
     }
     config
+}
+
+/// Why a setting changed in the app could not be written to the settings file (FR-SET-04).
+#[derive(Debug, Error)]
+pub enum WriteError {
+    /// Neither `$XDG_CONFIG_HOME` nor a home folder says where the file goes.
+    #[error("no place for it: neither $XDG_CONFIG_HOME nor a home folder is set")]
+    NoFile,
+    /// The file is not TOML, so writing it would lose what it holds.
+    #[error("not valid TOML: {message}")]
+    NotToml {
+        /// What the parser reported.
+        message: String,
+    },
+    /// The file has something other than a table where the setting's key needs one, or a table
+    /// where it needs a value.
+    #[error("`{key}` is in the way")]
+    InTheWay {
+        /// The dotted key of what is in the way.
+        key: String,
+    },
+    /// Reading or writing the file failed.
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
+
+impl WriteError {
+    /// The settings file's problem that the setting `key` was not written for this reason, as
+    /// the status line lists it after `config.toml:` (FR-SET-04).
+    #[must_use]
+    pub fn problem(&self, key: &str) -> String {
+        format!("`{key}` not saved: {self}")
+    }
+}
+
+/// Sets the setting `key`, dotted for a key in a table such as `backups.keep`, to `value` in the
+/// settings file at `path`, keeping its comments, order and other settings, and creating the
+/// file and its folder when they do not exist (FR-SET-01, FR-SET-04). A value already there
+/// keeps its comment. The file is replaced at once, never seen half written.
+///
+/// # Errors
+///
+/// [`WriteError`] when the file is not TOML, holds something else where `key` goes, or cannot
+/// be read or written; it is then left as it was.
+pub fn set(path: &Path, key: &str, value: impl Into<Value>) -> Result<(), WriteError> {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    let mut document: DocumentMut =
+        text.parse()
+            .map_err(|error: toml_edit::TomlError| WriteError::NotToml {
+                message: error.message().to_owned(),
+            })?;
+    let in_the_way = |end: usize| WriteError::InTheWay {
+        key: key.get(..end).unwrap_or(key).to_owned(),
+    };
+    let (tables, name) = key.rsplit_once('.').unwrap_or(("", key));
+    let mut table: &mut dyn TableLike = document.as_table_mut();
+    let mut end = 0;
+    for part in tables.split('.').filter(|part| !part.is_empty()) {
+        end += part.len() + usize::from(end > 0);
+        table = table
+            .entry(part)
+            .or_insert_with(|| Item::Table(Table::new()))
+            .as_table_like_mut()
+            .ok_or_else(|| in_the_way(end))?;
+    }
+    let mut value = value.into();
+    match table.get_mut(name) {
+        Some(Item::Value(old)) => {
+            *value.decor_mut() = old.decor().clone();
+            *old = value;
+        }
+        Some(Item::None) | None => {
+            table.insert(name, Item::Value(value));
+        }
+        Some(_) => return Err(in_the_way(key.len())),
+    }
+    path.parent().map(fs::create_dir_all).transpose()?;
+    atomic::prepare(path, document.to_string().as_bytes())?.commit()?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -359,7 +468,7 @@ mod tests {
     #[test]
     fn unknown_settings_and_values_of_the_wrong_kind_are_reported_and_the_rest_applies() {
         let config = read(
-            "theme = \"nord\"\n\
+            "font = \"mono\"\n\
              [keymap.navigate]\n\
              x = 3\n\
              \"ctrl+d\" = \"toggle_done\"\n\
@@ -370,9 +479,7 @@ mod tests {
         assert_eq!(
             config.problems(),
             [
-                Problem::UnknownSetting {
-                    key: "theme".into()
-                },
+                Problem::UnknownSetting { key: "font".into() },
                 Problem::InvalidValue {
                     key: "keymap.navigate.\"x\"".into(),
                     expected: "a command name or \"none\"",
@@ -610,5 +717,139 @@ mod tests {
         ] {
             assert_eq!(problem.to_string(), text);
         }
+    }
+
+    // FR-UI-06, FR-SET-04
+    #[test]
+    fn the_theme_is_a_built_in_themes_name() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "theme = \"nord\"\n")?;
+        let config = load(&path, None);
+        assert_eq!(config.problems(), []);
+        assert_eq!(config.theme, BuiltIn::named("nord"));
+        assert_eq!(config.file(), Some(path.as_path()));
+        assert_eq!(read("", None).theme, None);
+        assert_eq!(Config::default().file(), None);
+        for text in ["theme = \"Nord\"", "theme = 3"] {
+            let config = read(text, None);
+            assert_eq!(config.theme, None, "{text}");
+            assert_eq!(
+                config.problems(),
+                [Problem::InvalidValue {
+                    key: "theme".into(),
+                    expected: "a built-in theme's name, such as \"nord\"",
+                }],
+                "{text}"
+            );
+        }
+        Ok(())
+    }
+
+    // FR-SET-01, FR-SET-04
+    #[test]
+    fn setting_a_value_creates_the_file_and_its_folder() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("taskpaper-terminal/config.toml");
+        set(&path, "theme", "nord")?;
+        assert_eq!(fs::read_to_string(&path)?, "theme = \"nord\"\n");
+        set(&path, "backups.keep", 3)?;
+        assert_eq!(
+            fs::read_to_string(&path)?,
+            "theme = \"nord\"\n\n[backups]\nkeep = 3\n"
+        );
+        assert_eq!(load(&path, None).problems(), [], "it reads back");
+        Ok(())
+    }
+
+    // FR-SET-04
+    #[test]
+    fn setting_a_value_keeps_comments_order_and_other_settings() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("config.toml");
+        let text = "# My settings\n\
+             theme = \"dracula\"  # dark at night\n\
+             autosave_delay_ms = 500\n\
+             \n\
+             [backups]\n\
+             # how many\n\
+             keep = 5\n\
+             \n\
+             [keymap.navigate]\n\
+             x = \"none\"\n";
+        fs::write(&path, text)?;
+        set(&path, "theme", "nord")?;
+        set(&path, "backups.enabled", false)?;
+        set(&path, "backups.keep", 9)?;
+        assert_eq!(
+            fs::read_to_string(&path)?,
+            "# My settings\n\
+             theme = \"nord\"  # dark at night\n\
+             autosave_delay_ms = 500\n\
+             \n\
+             [backups]\n\
+             # how many\n\
+             keep = 9\n\
+             enabled = false\n\
+             \n\
+             [keymap.navigate]\n\
+             x = \"none\"\n"
+        );
+        Ok(())
+    }
+
+    // FR-SET-04
+    #[test]
+    fn setting_a_value_through_a_link_replaces_the_file_it_points_to() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let target = dir.path().join("dotfiles.toml");
+        fs::write(&target, "theme = \"dracula\"\n")?;
+        let path = dir.path().join("config.toml");
+        std::os::unix::fs::symlink(&target, &path)?;
+        set(&path, "theme", "nord")?;
+        assert!(fs::symlink_metadata(&path)?.file_type().is_symlink());
+        assert_eq!(fs::read_to_string(&target)?, "theme = \"nord\"\n");
+        Ok(())
+    }
+
+    // FR-SET-04
+    #[test]
+    fn a_file_that_cannot_take_the_value_is_left_as_it_was() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("config.toml");
+        for (text, key, error) in [
+            ("theme = \n", "theme", "not valid TOML"),
+            ("backups = 3\n", "backups.keep", "`backups` is in the way"),
+            ("[a.b]\nc = 1\n", "a.b.c.d", "`a.b.c` is in the way"),
+            ("[theme]\nx = 1\n", "theme", "`theme` is in the way"),
+        ] {
+            fs::write(&path, text)?;
+            let written = set(&path, key, "nord");
+            let message = written.as_ref().map_err(ToString::to_string).err();
+            assert!(
+                message.as_deref().is_some_and(|m| m.starts_with(error)),
+                "{text:?}: {message:?}"
+            );
+            assert_eq!(fs::read_to_string(&path)?, text, "unchanged");
+        }
+        assert!(matches!(
+            set(&path, "theme", "nord"),
+            Err(WriteError::InTheWay { .. })
+        ));
+        assert!(
+            matches!(set(dir.path(), "theme", "nord"), Err(WriteError::Io(_))),
+            "a folder cannot be read as the file"
+        );
+        fs::write(&path, b"theme = \"\xff\"\n")?;
+        assert!(
+            matches!(set(&path, "theme", "nord"), Err(WriteError::Io(_))),
+            "a file that is not UTF-8 cannot be read"
+        );
+        assert_eq!(fs::read(&path)?, b"theme = \"\xff\"\n", "unchanged");
+        assert_eq!(
+            WriteError::NoFile.problem("theme"),
+            "`theme` not saved: no place for it: neither $XDG_CONFIG_HOME nor a home folder is set"
+        );
+        Ok(())
     }
 }

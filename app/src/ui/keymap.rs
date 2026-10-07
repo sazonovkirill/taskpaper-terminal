@@ -60,6 +60,8 @@ pub enum KeyAction {
     ToggleWrap,
     /// Opens Go to Command, listing the bindings the frontend shows (FR-NAV-06).
     GoToCommand,
+    /// Opens the theme picker over the frontend's themes (FR-UI-06).
+    ChooseTheme,
     /// Makes the focused pane narrower, as widths are the frontend's to choose (FR-UI-03).
     NarrowPane,
     /// Makes the focused pane wider.
@@ -87,6 +89,8 @@ pub enum Overlay {
     MoveTo,
     /// Go to Command (FR-NAV-06).
     GoToCommand,
+    /// The theme picker (FR-UI-06).
+    ThemePicker,
     /// The Save As prompt (FR-DOC-06).
     SaveAs,
     /// The context menu (FR-KEY-06).
@@ -453,6 +457,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
     match command {
         Command::ToggleWrap => Some(KeyAction::ToggleWrap),
         Command::GoToCommand => Some(KeyAction::GoToCommand),
+        Command::ChooseTheme => Some(KeyAction::ChooseTheme),
         Command::NarrowPane => Some(KeyAction::NarrowPane),
         Command::WidenPane => Some(KeyAction::WidenPane),
         Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
@@ -733,6 +738,7 @@ impl Keymap {
                 Overlay::GoToSymbol => menu_message(pressed, Menu::GoToSymbol),
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
+                Overlay::ThemePicker => menu_message(pressed, Menu::ThemePicker),
                 Overlay::SaveAs => save_as_message(pressed),
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
@@ -833,6 +839,7 @@ mod tests {
                     KeyAction::Send(message) => Some(message),
                     KeyAction::ToggleWrap
                     | KeyAction::GoToCommand
+                    | KeyAction::ChooseTheme
                     | KeyAction::NarrowPane
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown
@@ -2183,6 +2190,21 @@ mod tests {
         assert_eq!(
             keymap.message_for(&colon, ms(3), finding),
             Some(Message::Menu(Menu::GoToCommand, MenuInput::Type(':')))
+        );
+    }
+
+    // FR-UI-06
+    #[test]
+    fn the_theme_picker_takes_the_keys_of_a_finder() {
+        let mut keymap = Keymap::default();
+        let choosing = &Context {
+            overlay: Some(Overlay::ThemePicker),
+            ..*CONTEXT
+        };
+        let n = key(KeyCode::Char('n'), KeyModifiers::NONE);
+        assert_eq!(
+            keymap.message_for(&n, ms(0), choosing),
+            Some(Message::Menu(Menu::ThemePicker, MenuInput::Type('n')))
         );
     }
 

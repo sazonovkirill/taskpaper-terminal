@@ -77,6 +77,9 @@ pub struct State {
     pub(super) destinations: Option<Finder<ItemId>>,
     /// Go to Command, while it is open (FR-NAV-06).
     pub(super) commands: Option<Finder<Command>>,
+    /// The theme picker over the frontend's themes, each by its position, while it is open
+    /// (FR-UI-06).
+    pub(super) themes: Option<Finder<usize>>,
     /// The Save As prompt, while it is open (FR-DOC-06).
     pub(super) save_as: Option<save_as::Prompt>,
     /// The context menu, while it is open (FR-KEY-06).
@@ -162,7 +165,8 @@ pub enum Notice {
         /// What the frontend reported.
         reason: String,
     },
-    /// The frontend's settings file has these problems, each ignored (FR-SET-04).
+    /// The frontend's settings file has these problems: settings it ignored, or a setting
+    /// changed in the app it could not write, which holds for the session (FR-SET-04).
     ConfigProblems(Vec<String>),
     /// An edit was refused because the file is read-only (file-io.md §1).
     ReadOnly,
@@ -310,6 +314,7 @@ impl State {
             symbols: None,
             destinations: None,
             commands: None,
+            themes: None,
             save_as: None,
             context_menu: None,
             resume: None,

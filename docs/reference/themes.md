@@ -61,8 +61,31 @@ Palette names behind the less obvious cells:
 - **Nord**: Muted is *nord3*, which is low-contrast for text; the implementation may lighten it for readability.
 - **One Dark**: Surface is the selection color, `lighten(background, 10%)`.
 
+## Names and roles
+
+`config.toml` names each theme in lower case with hyphens and without accents: `terminal-dark`, `terminal-light`, `catppuccin-mocha`, `catppuccin-latte`, `tokyo-night`, `dracula`, `nord`, `gruvbox-dark`, `rose-pine`, `rose-pine-dawn`, `kanagawa-wave`, `everforest-dark`, `one-dark` and `solarized-light`. The theme picker lists them in that order.
+
+The roles of [the UI spec](../specs/ui.md#3-themes-fr-ui-0608) come from a palette's columns as follows: text and background as named; the palette's Accent is the primary color (projects, the focus and selection markers, keys in menus); Orange is the accent (the focus marker while editing, finder and prompt borders), as Textual's default accent is orange; Violet the headers; Blue the links; Muted the rule lines; Surface the current line; Green the start chips and Red the due and overdue chips and errors; Yellow the `@today` star and warnings. Dim text (notes) is the text color mixed with 25% of the background; a tag's row tint is the background mixed with 15% of the tag's color, 25% on the focused row.
+
+The two 16-color themes use only the terminal's ANSI colors, so they follow its palette:
+
+| Role | Terminal Dark | Terminal Light |
+|---|---|---|
+| Text, background | the terminal's | the terminal's |
+| Dim text | gray | dark gray |
+| Primary, focus, selection | light blue | blue |
+| Accent | yellow | yellow |
+| Current line | black | white |
+| Headers | light magenta | magenta |
+| Rule lines | dark gray | dark gray |
+| Links | cyan | cyan |
+| Red, orange, yellow, green, blue, violet | red, light red, yellow, green, blue, magenta | the same |
+| Start, due and overdue chips, errors | green, red, red, red | the same |
+
+Sixteen colors have no dim shades, so a color tag's row tint is the tag's own color, the same on the focused row, where the band in the gutter and indentation and the focus marker still show focus.
+
 ## Notes for implementation
 
 - The hex values assume a 24-bit-color terminal. [The UI spec](../specs/ui.md#3-themes-fr-ui-0608) uses them only when `COLORTERM` indicates truecolor; behavior in 16-color terminals follows N-UX-03 in [requirements.md](../requirements.md).
 - Each origin's license requires keeping its copyright and permission notice, so the shipped binary's license notices list these twelve. Tokyo Night's values come from an Apache-2.0 port, which also asks for its license text; Gruvbox states MIT in its README without a copyright line.
-- The default theme is not yet decided; Catppuccin Mocha is suggested.
+- The default theme is Catppuccin Mocha, as suggested here; without truecolor it is drawn as Terminal Dark. Open question for the owner.

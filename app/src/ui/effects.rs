@@ -2,7 +2,7 @@
 //! opening files, watching them, saving, checking and backing them up on the disk worker,
 //! keeping their layouts, recovery files and the clipboard.
 
-mod atomic;
+pub(super) mod atomic;
 mod backup;
 mod browser;
 mod clipboard;

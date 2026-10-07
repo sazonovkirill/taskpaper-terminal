@@ -8,10 +8,12 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+use toml_edit::Value;
+
 use super::{Backups, Views, atomic};
 use crate::{
     app::{Disk, Message, SaveAs, Version, ViewState},
-    ui::Input,
+    ui::{Input, config},
 };
 
 /// The queue of disk work and the thread that does it. Dropping it waits for the queued work.
@@ -27,6 +29,8 @@ enum Job {
     Disk(Disk),
     /// Keep this layout for the file at this path.
     StoreView(PathBuf, ViewState),
+    /// Write this value for this setting, a dotted key, to the settings file at this path.
+    StoreSetting(PathBuf, &'static str, Value),
     /// Answers once every job before it is done and its result sent.
     Flush(Sender<()>),
 }
@@ -53,6 +57,13 @@ impl Io {
     /// it (file-io.md §5).
     pub fn store_view(&self, path: PathBuf, view: ViewState) {
         self.send(Job::StoreView(path, view));
+    }
+
+    /// Queues writing `value` for the setting `key`, dotted as in `backups.keep`, to the settings
+    /// file at `path` behind the work queued before it; a write that fails comes back as
+    /// [`Message::ConfigProblems`] (FR-SET-04).
+    pub fn store_setting(&self, path: PathBuf, key: &'static str, value: impl Into<Value>) {
+        self.send(Job::StoreSetting(path, key, value.into()));
     }
 
     /// Waits until the work queued so far is done and its results are sent.
@@ -133,6 +144,9 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
                 let _ = views.store(&path, &view);
                 None
             }
+            Job::StoreSetting(path, key, value) => config::set(&path, key, value)
+                .err()
+                .map(|error| Message::ConfigProblems(vec![error.problem(key)])),
             Job::Flush(done) => {
                 // The flusher waits for this answer and only stops waiting by being dropped.
                 let _ = done.send(());
@@ -298,6 +312,23 @@ mod tests {
             fs::read_to_string(folder.join("2026-10-05.taskpaper"))?,
             "on disk"
         );
+        Ok(())
+    }
+
+    // FR-SET-04, N-UX-01
+    #[test]
+    fn stores_a_setting_and_reports_one_it_cannot_store() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("settings/config.toml");
+        io.store_setting(path.clone(), "theme", "nord");
+        io.store_setting(dir.path().to_owned(), "theme", "nord");
+        io.flush();
+        assert!(
+            matches!(&results(&inputs)[..], [Input::Core(Message::ConfigProblems(problems))] if problems.len() == 1 && problems[0].starts_with("`theme` not saved: ")),
+            "only the folder that is no file is reported"
+        );
+        assert_eq!(fs::read_to_string(&path)?, "theme = \"nord\"\n");
         Ok(())
     }
 

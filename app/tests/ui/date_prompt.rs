@@ -111,7 +111,7 @@ fn the_panel_is_in_the_accent_color_and_the_rest_of_the_screen_is_dimmed() {
     assert!(dimmed(4, 2), "outline");
     assert!(dimmed(0, 9), "status line");
     assert!(!dimmed(0, 5) && !dimmed(2, 6), "panel");
-    let accent = Color::Rgb(0xff, 0xa6, 0x2b);
+    let accent = Color::Yellow;
     assert_eq!(buffer[(0, 5)].fg, accent, "border");
     assert_eq!(buffer[(3, 5)].fg, accent, "title");
     press(&mut app, KeyCode::Esc);

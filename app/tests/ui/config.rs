@@ -85,18 +85,18 @@ fn the_shortcuts_panel_go_to_command_and_the_context_menu_show_the_config_files_
 #[test]
 fn what_the_config_file_sets_wrongly_is_reported_once_and_the_rest_applies() {
     let settings = "\
-theme = \"nord\"
+theme = \"neon\"
 [keymap.navigate]
 \"ctrl+d\" = \"toggle_done\"
 q = \"frobnicate\"
 ";
-    let mut app = Harness::with_config(OUTLINE, settings, 140, 8);
+    let mut app = Harness::with_config(OUTLINE, settings, 180, 8);
     let status = line(app.render().buffer(), 7);
     assert_eq!(
         status,
         format!(
-            "{} · config.toml: unknown setting `theme`; [keymap.navigate] \"q\": no command \"frobnicate\" here",
-            app.status(140).trim_end()
+            "{} · config.toml: `theme` must be a built-in theme's name, such as \"nord\"; [keymap.navigate] \"q\": no command \"frobnicate\" here",
+            app.status(180).trim_end()
         )
     );
     app.press(KeyCode::Char('d'), KeyModifiers::CONTROL);
@@ -110,7 +110,7 @@ q = \"frobnicate\"
     let status = line(app.render().buffer(), 7);
     assert_eq!(
         status,
-        app.status(140).trim_end(),
+        app.status(180).trim_end(),
         "reported once, for a while"
     );
 }

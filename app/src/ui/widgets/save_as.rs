@@ -11,7 +11,10 @@ use ratatui::{
 };
 
 use super::{Field, error_style, warning_style};
-use crate::app::{SaveAsStatus, SaveAsView};
+use crate::{
+    app::{SaveAsStatus, SaveAsView},
+    ui::theme::Theme,
+};
 
 /// The prompt's size, the border included.
 const SIZE: (u16, u16) = (80, 4);
@@ -20,13 +23,14 @@ const SIZE: (u16, u16) = (80, 4);
 #[derive(Debug)]
 pub struct SaveAsPrompt<'a> {
     view: &'a SaveAsView<'a>,
+    theme: &'a Theme,
 }
 
 impl<'a> SaveAsPrompt<'a> {
-    /// The prompt showing `view`.
+    /// The prompt showing `view` in `theme`.
     #[must_use]
-    pub fn new(view: &'a SaveAsView<'a>) -> Self {
-        Self { view }
+    pub fn new(view: &'a SaveAsView<'a>, theme: &'a Theme) -> Self {
+        Self { view, theme }
     }
 
     /// Where the prompt goes in `area`: centered, as wide as it can be up to 80 columns.
@@ -66,11 +70,11 @@ impl<'a> SaveAsPrompt<'a> {
                 Line::styled(" Tab completes a folder, Enter saves", Style::new().dim())
             }
             SaveAsStatus::Failed(reason) => {
-                Line::styled(format!(" Cannot save: {reason}"), error_style())
+                Line::styled(format!(" Cannot save: {reason}"), error_style(self.theme))
             }
             SaveAsStatus::Replacing => Line::styled(
                 " The file exists: Enter replaces it, Esc goes back",
-                warning_style(),
+                warning_style(self.theme),
             ),
             SaveAsStatus::Saving => Line::styled(" Saving…", Style::new().dim()),
         }
@@ -95,6 +99,7 @@ impl Widget for SaveAsPrompt<'_> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests::THEME;
     use super::*;
 
     /// The prompt's rows for `status` over a 40×6 area, with the path `~/a`.
@@ -107,7 +112,7 @@ mod tests {
         };
         let area = Rect::new(0, 0, 40, 6);
         let mut buf = Buffer::empty(area);
-        SaveAsPrompt::new(&view).render(area, &mut buf);
+        SaveAsPrompt::new(&view, &THEME).render(area, &mut buf);
         (1..5)
             .map(|y| (0..40).map(|x| buf[(x, y)].symbol()).collect())
             .collect()
@@ -144,7 +149,7 @@ mod tests {
             status: SaveAsStatus::Typing,
         };
         assert_eq!(
-            SaveAsPrompt::new(&view).caret(Rect::new(0, 0, 40, 6)),
+            SaveAsPrompt::new(&view, &THEME).caret(Rect::new(0, 0, 40, 6)),
             (5, 2)
         );
     }

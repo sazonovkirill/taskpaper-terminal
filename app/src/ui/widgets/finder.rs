@@ -9,12 +9,9 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{
-    super::{
-        layout,
-        theme::{Icon, IconSet},
-    },
-    ACCENT,
+use super::super::{
+    layout,
+    theme::{Icon, IconSet, Theme},
 };
 use crate::app::FinderView;
 
@@ -33,6 +30,7 @@ pub struct FinderPopup<'a, T> {
     view: &'a FinderView<'a, T>,
     icons: IconSet,
     icon: &'a dyn Fn(&T) -> (Icon, Style),
+    theme: &'a Theme,
 }
 
 impl<T> std::fmt::Debug for FinderPopup<'_, T> {
@@ -45,20 +43,22 @@ impl<T> std::fmt::Debug for FinderPopup<'_, T> {
 }
 
 impl<'a, T> FinderPopup<'a, T> {
-    /// The overlay of `view` titled `title`, each entry after the icon `icon` gives its value,
-    /// drawn from `icons` in the style it gives.
+    /// The overlay of `view` titled `title`, in `theme`, each entry after the icon `icon` gives
+    /// its value, drawn from `icons` in the style it gives.
     #[must_use]
     pub fn new(
         title: &'static str,
         view: &'a FinderView<'a, T>,
         icons: IconSet,
         icon: &'a dyn Fn(&T) -> (Icon, Style),
+        theme: &'a Theme,
     ) -> Self {
         Self {
             title,
             view,
             icons,
             icon,
+            theme,
         }
     }
 
@@ -90,7 +90,7 @@ impl<T> Widget for FinderPopup<'_, T> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = self.area(area);
         Clear.render(area, buf);
-        let accent = Style::new().fg(ACCENT);
+        let accent = Style::new().fg(self.theme.accent);
         let frame = Block::bordered()
             .border_style(accent)
             .title_style(accent)
@@ -140,6 +140,7 @@ impl<T> Widget for FinderPopup<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests::THEME;
     use ratatui::style::Color;
 
     use super::*;
@@ -166,7 +167,7 @@ mod tests {
             entries: vec![&one],
             selected: 0,
         };
-        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON);
+        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
         assert_eq!(
             finder.area(Rect::new(0, 0, 100, 30)),
             Rect::new(10, 13, 80, 4)
@@ -178,7 +179,7 @@ mod tests {
             entries: many.iter().collect(),
             selected: 0,
         };
-        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON);
+        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
         assert_eq!(finder.area(Rect::new(0, 0, 100, 30)).height, 20);
     }
 
@@ -189,7 +190,7 @@ mod tests {
             entries: Vec::new(),
             selected: 0,
         };
-        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON);
+        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
         assert_eq!(finder.caret(Rect::new(0, 0, 100, 30)), (16, 14));
         let long = "x".repeat(200);
         let view = FinderView::<u8> {
@@ -197,7 +198,7 @@ mod tests {
             entries: Vec::new(),
             selected: 0,
         };
-        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON);
+        let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
         assert_eq!(finder.caret(Rect::new(0, 0, 100, 30)), (88, 14));
     }
 
@@ -215,7 +216,7 @@ mod tests {
             selected: 1,
         };
         let mut buf = Buffer::empty(Rect::new(0, 0, 16, 5));
-        FinderPopup::new("Find", &view, IconSet::Unicode, &ICON).render(buf.area, &mut buf);
+        FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME).render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
             "┌Find──────────┐",
             "│›             │",
@@ -223,7 +224,7 @@ mod tests {
             "│ › Two  Path  │",
             "└──────────────┘",
         ]);
-        expected.set_style(expected.area, Style::new().fg(ACCENT));
+        expected.set_style(expected.area, Style::new().fg(THEME.accent));
         expected.set_style(Rect::new(1, 1, 14, 3), Style::new().fg(Color::Reset));
         expected.set_style(Rect::new(2, 2, 1, 1), Style::new().fg(Color::Indexed(0)));
         expected.set_style(Rect::new(1, 3, 14, 1), Style::new().reversed());
@@ -239,7 +240,7 @@ mod tests {
             entries: Vec::new(),
             selected: 0,
         };
-        let finder = FinderPopup::new("Find", &view, IconSet::Ascii, &ICON);
+        let finder = FinderPopup::new("Find", &view, IconSet::Ascii, &ICON, &THEME);
         assert_eq!(
             format!("{finder:?}"),
             "FinderPopup { title: \"Find\", icons: Ascii, .. }"

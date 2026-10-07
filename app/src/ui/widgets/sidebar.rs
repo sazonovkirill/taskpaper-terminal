@@ -10,14 +10,13 @@ use ratatui::{
 };
 
 use super::{
-    FOCUS_MARKER, GUTTER_WIDTH, PRIMARY, bookmark_style, current_line_style, rule_style,
-    today_style,
+    FOCUS_MARKER, GUTTER_WIDTH, bookmark_style, current_line_style, rule_style, today_style,
 };
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
     ui::{
         layout,
-        theme::{Icon, IconSet},
+        theme::{Icon, IconSet, Theme},
     },
 };
 
@@ -30,16 +29,19 @@ pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
     offset: usize,
     icons: IconSet,
+    theme: &'a Theme,
 }
 
 impl<'a> SidebarPanel<'a> {
-    /// A panel of `view` drawn from its first line, its icons and fold markers from `icons`.
+    /// A panel of `view` in `theme` drawn from its first line, its icons and fold markers from
+    /// `icons`.
     #[must_use]
-    pub fn new(view: &'a SidebarView, icons: IconSet) -> Self {
+    pub fn new(view: &'a SidebarView, icons: IconSet, theme: &'a Theme) -> Self {
         Self {
             view,
             offset: 0,
             icons,
+            theme,
         }
     }
 
@@ -130,26 +132,26 @@ enum SidebarLine<'a> {
 }
 
 impl<'a> SidebarLine<'a> {
-    /// The line as drawn, its icons from `icons`.
-    fn line(self, icons: IconSet) -> Line<'a> {
+    /// The line as drawn in `theme`, its icons from `icons`.
+    fn line(self, icons: IconSet, theme: &Theme) -> Line<'a> {
         match self {
             Self::Blank => Line::default(),
             Self::Heading(heading) => Line::styled(heading, heading_style()),
-            Self::Entry(entry) => entry_line(entry, icons),
+            Self::Entry(entry) => entry_line(entry, icons, theme),
         }
     }
 }
 
-/// An entry's line: its icon or fold marker from `icons` and its text.
-fn entry_line(entry: &SidebarEntry, icons: IconSet) -> Line<'_> {
+/// An entry's line in `theme`: its icon or fold marker from `icons` and its text.
+fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
     match entry {
         SidebarEntry::Bookmark { text, .. } => Line::from(vec![
-            Span::styled(Icon::Bookmark.glyph(icons), bookmark_style()),
+            Span::styled(Icon::Bookmark.glyph(icons), bookmark_style(theme)),
             Span::raw(" "),
             Span::raw(text.as_str()),
         ]),
         SidebarEntry::Today => Line::from(vec![
-            Span::styled(Icon::Today.glyph(icons), today_style()),
+            Span::styled(Icon::Today.glyph(icons), today_style(theme)),
             Span::raw(" Today"),
         ]),
         SidebarEntry::Project {
@@ -168,7 +170,7 @@ fn entry_line(entry: &SidebarEntry, icons: IconSet) -> Line<'_> {
     }
 }
 
-/// The section headings; themes arrive in step 6.2.
+/// The section headings: bold and dimmed, in no color of their own.
 fn heading_style() -> Style {
     Style::new().bold().dim()
 }
@@ -177,7 +179,7 @@ impl Widget for SidebarPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border = Block::new()
             .borders(Borders::RIGHT)
-            .border_style(rule_style());
+            .border_style(rule_style(self.theme));
         let inner = border.inner(area);
         border.render(area, buf);
         let [gutter, text] = inner.layout(&Layout::horizontal([
@@ -190,16 +192,18 @@ impl Widget for SidebarPanel<'_> {
             .zip(gutter.rows().zip(text.rows()))
         {
             if focused {
-                buf.set_style(gutter_area.union(line_area), current_line_style());
-                Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
+                buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
+                Span::styled(FOCUS_MARKER, Style::new().fg(self.theme.focus))
+                    .render(gutter_area, buf);
             }
-            line.line(self.icons).render(line_area, buf);
+            line.line(self.icons, self.theme).render(line_area, buf);
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests::THEME;
     use ratatui::style::Modifier;
 
     use super::*;
@@ -211,7 +215,7 @@ mod tests {
             .sidebar()
             .expect("shown by default");
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
-        SidebarPanel::new(&view, IconSet::Unicode).render(buf.area, &mut buf);
+        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
         buf
     }
 
@@ -251,7 +255,7 @@ mod tests {
         let view = State::new(format::parse("A: @bookmark\n\tB:\nC:"), None)
             .sidebar()
             .expect("shown by default");
-        let panel = SidebarPanel::new(&view, IconSet::Unicode);
+        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         // Bookmarks, A, Today, blank, Projects, ▾ A, B, C.
         assert_eq!(panel.entry_at(0, 0), None, "a heading");
         assert_eq!(panel.entry_at(1, 0), Some((0, None)));

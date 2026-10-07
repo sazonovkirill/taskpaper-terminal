@@ -18,7 +18,7 @@ use ratatui::{
     backend::Backend,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
+    style::{Color, Style, Stylize},
     text::Line,
     widgets::{Block, Borders, Widget},
 };
@@ -31,12 +31,13 @@ use crate::{
     },
     document::ItemId,
 };
-use config::Config;
+use config::{Config, WriteError};
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use layout::Scroll;
 pub use mouse::acts_on;
-use theme::{Icon, IconSet, IconSetting};
+pub use theme::ColorSupport;
+use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
     ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
     ShortcutsPanel, SidebarPanel,
@@ -105,6 +106,12 @@ pub struct Tui {
     diff_rows: usize,
     /// What the terminal has shown of its keyboard, which the shortcuts panel notes.
     keyboard: Keyboard,
+    /// The theme chosen, drawn unless the theme picker previews another (FR-UI-06).
+    theme: BuiltIn,
+    /// What colors the terminal and the user allow, which decide how the theme is drawn.
+    colors: ColorSupport,
+    /// The settings file, where settings changed in the app are kept (FR-SET-04).
+    settings: Option<PathBuf>,
     /// The first line of the shortcuts panel's list on screen (D-55).
     shortcuts_scroll: usize,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
@@ -159,6 +166,9 @@ impl Tui {
             diff_scroll: 0,
             diff_rows: 0,
             keyboard: Keyboard::default(),
+            theme: BuiltIn::DEFAULT,
+            colors: ColorSupport::default(),
+            settings: None,
             shortcuts_scroll: 0,
             shortcuts_page: 0,
             drawn: mouse::Drawn::default(),
@@ -196,12 +206,23 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the key bindings, autosave delay and icons `config` holds,
-    /// reporting once what it ignored of the settings file (FR-SET-04). Its backups are the disk
-    /// worker's.
+    /// The frontend drawing in the colors `colors` allows (ui.md §3, N-UX-03).
+    #[must_use]
+    pub fn with_colors(mut self, colors: ColorSupport) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    /// The frontend running with the key bindings, autosave delay, icons and theme `config`
+    /// holds, keeping settings changed in the app in its file and reporting once what it ignored
+    /// of the file (FR-SET-04). Its backups are the disk worker's.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
+        self.settings = config.file().map(ToOwned::to_owned);
+        if let Some(theme) = config.theme {
+            self.theme = theme;
+        }
         self.keymap = config.keymap;
         if let Some(setting) = config.icons {
             self.icons = self.icons.with_setting(setting);
@@ -393,6 +414,13 @@ impl Tui {
                     .collect();
                 self.send(Message::OpenGoToCommand(bindings), now);
             }
+            KeyAction::ChooseTheme => {
+                let names = BuiltIn::all()
+                    .map(|theme| theme.name().to_owned())
+                    .collect();
+                let current = self.theme.position();
+                self.send(Message::OpenThemePicker { names, current }, now);
+            }
         }
     }
 
@@ -454,8 +482,37 @@ impl Tui {
                         self.act(action, now);
                     }
                 }
+                Effect::SetTheme(position) => {
+                    if let Some(theme) = BuiltIn::nth(position) {
+                        self.theme = theme;
+                        self.keep_setting("theme", theme.id(), now);
+                    }
+                }
             }
         }
+    }
+
+    /// Has the disk worker write `value` for the setting `key` to the settings file, or reports
+    /// at time `now` that there is none, the setting holding for the session either way
+    /// (FR-SET-04).
+    fn keep_setting(&mut self, key: &'static str, value: &str, now: Duration) {
+        if let Some(file) = &self.settings {
+            self.io.store_setting(file.clone(), key, value);
+        } else {
+            let problem = WriteError::NoFile.problem(key);
+            self.send(Message::ConfigProblems(vec![problem]), now);
+        }
+    }
+
+    /// The colors to draw in: the theme the theme picker highlights while it is open, so that
+    /// it previews it (FR-UI-06), else the theme chosen, as the terminal can show them.
+    fn palette(&self) -> Theme {
+        self.state
+            .theme_picker()
+            .and_then(|view| view.entries.get(view.selected).map(|entry| entry.value))
+            .and_then(BuiltIn::nth)
+            .unwrap_or(self.theme)
+            .colors(self.colors)
     }
 
     /// Keeps the layout of the open file, when it has one to keep, for its next launch: on every
@@ -479,6 +536,7 @@ impl Tui {
     /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
     /// while open, the date prompt's panel below them while open, and the status line.
     pub fn draw(&mut self, frame: &mut Frame) {
+        let theme = self.palette();
         let screen = frame.area();
         self.width = screen.width;
         let icons = self.icons;
@@ -515,13 +573,13 @@ impl Tui {
         if let Some(caret) = focused.caret {
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.command_menu() {
-                draw_anchored(frame, Popup::commands(&menu, icons), outline, caret);
+                draw_anchored(frame, Popup::commands(&menu, icons, &theme), outline, caret);
             }
         }
         let centered = self
             .state
             .color_picker()
-            .map(|picker| Popup::colors(&picker, icons))
+            .map(|picker| Popup::colors(&picker, icons, &theme))
             .or_else(|| {
                 self.state
                     .type_picker()
@@ -533,23 +591,10 @@ impl Tui {
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
             frame.render_widget(popup, area);
         }
-        let finder = self
-            .state
-            .go_to_symbol()
-            .map(|view| ("Go to Symbol", view))
-            .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
         if !self.state.in_conflict() {
-            if let Some((title, view)) = finder {
-                let icon = |id: &ItemId| widgets::block_icon(self.state.document(), *id);
-                draw_finder(frame, FinderPopup::new(title, &view, icons, &icon), outline);
-            }
-            if let Some(view) = self.state.go_to_command() {
-                let icon = |command: &Command| widgets::command_icon(*command);
-                let finder = FinderPopup::new("Go to Command", &view, icons, &icon);
-                draw_finder(frame, finder, outline);
-            }
+            self.draw_finders(frame, outline, &theme);
             if let Some(view) = self.state.save_as() {
-                let prompt = SaveAsPrompt::new(&view);
+                let prompt = SaveAsPrompt::new(&view, &theme);
                 frame.set_cursor_position(prompt.caret(outline));
                 frame.render_widget(prompt, outline);
             }
@@ -567,6 +612,7 @@ impl Tui {
                     &menu,
                     |command| self.keymap.bindings(command, sidebar),
                     icons,
+                    &theme,
                 );
                 draw_anchored(frame, popup, screen_body, anchor);
             }
@@ -576,6 +622,7 @@ impl Tui {
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
         }
+        paint_defaults(frame.buffer_mut(), &theme);
     }
 
     /// The panes side by side in `strip`, each as wide as [`layout::pane_widths`] makes it, the
@@ -671,10 +718,11 @@ impl Tui {
         pane: &PaneView,
         divider: bool,
     ) -> FocusedPane {
+        let theme = self.palette();
         let area = if divider {
             let rule = Block::new()
                 .borders(Borders::RIGHT)
-                .border_style(widgets::rule_style());
+                .border_style(widgets::rule_style(&theme));
             let inner = rule.inner(area);
             rule.render(area, buf);
             inner
@@ -694,7 +742,7 @@ impl Tui {
             Location::Outline(_) => {
                 widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width), self.icons)
             }
-            Location::Today => widgets::today_header(self.icons),
+            Location::Today => widgets::today_header(self.icons, &theme),
         };
         line.render(crumbs, buf);
         if !pane.focused {
@@ -702,7 +750,7 @@ impl Tui {
         }
         Line::styled(
             "─".repeat(usize::from(separator.width)),
-            widgets::rule_style(),
+            widgets::rule_style(&theme),
         )
         .render(separator, buf);
         self.draw_outline(buf, outline, pane)
@@ -714,7 +762,11 @@ impl Tui {
         self.diff_rows = ConflictPrompt::diff_rows(area);
         let lines = diff.as_ref().map_or(0, Vec::len);
         self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
-        frame.render_widget(ConflictPrompt::new(diff.as_deref(), self.diff_scroll), area);
+        let theme = self.palette();
+        frame.render_widget(
+            ConflictPrompt::new(diff.as_deref(), self.diff_scroll, &theme),
+            area,
+        );
     }
 
     /// The shortcuts panel in the secondary sidebar's `area`, while it is open and has room
@@ -751,7 +803,8 @@ impl Tui {
                 (group, keys)
             })
             .collect();
-        let panel = ShortcutsPanel::new(&groups, self.keyboard, self.icons);
+        let theme = self.palette();
+        let panel = ShortcutsPanel::new(&groups, self.keyboard, self.icons, &theme);
         let (last, page) = panel.scroll_range(area);
         self.shortcuts_scroll = self.shortcuts_scroll.min(last);
         self.shortcuts_page = page;
@@ -768,7 +821,8 @@ impl Tui {
             .and_then(|focus| rows.iter().position(|row| row.id == focus));
         let editor = self.state.editor().filter(|_| pane.focused);
         let icons = self.icons;
-        let view = OutlineView::new(rows, (self.clock)().date())
+        let theme = self.palette();
+        let view = OutlineView::new(rows, (self.clock)().date(), &theme)
             .editor(editor.as_ref())
             .wrap(self.wrap)
             .icons(icons);
@@ -821,7 +875,8 @@ impl Tui {
             .zip(row)
             .map(|(editor, row)| {
                 let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
-                let (_, column) = widgets::editor_line(row, editor, usize::from(text_width), icons);
+                let (_, column) =
+                    widgets::editor_line(row, editor, usize::from(text_width), icons, &theme);
                 let x = u16::try_from(column)
                     .unwrap_or(u16::MAX)
                     .min(text_width.saturating_sub(1));
@@ -842,6 +897,38 @@ impl Tui {
         FocusedPane { caret, block }
     }
 
+    /// The open finder, Go to Symbol, Move to, Go to Command or the theme picker, over `area`
+    /// in `theme` (navigation.md §8, ui.md §3).
+    fn draw_finders(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
+        let icons = self.icons;
+        let finder = self
+            .state
+            .go_to_symbol()
+            .map(|view| ("Go to Symbol", view))
+            .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
+        if let Some((title, view)) = finder {
+            let icon = |id: &ItemId| widgets::block_icon(self.state.document(), *id);
+            draw_finder(
+                frame,
+                FinderPopup::new(title, &view, icons, &icon, theme),
+                area,
+            );
+        }
+        if let Some(view) = self.state.go_to_command() {
+            let icon = |command: &Command| widgets::command_icon(*command, theme);
+            let finder = FinderPopup::new("Go to Command", &view, icons, &icon, theme);
+            draw_finder(frame, finder, area);
+        }
+        if let Some(view) = self.state.theme_picker() {
+            let icon = |_: &usize| widgets::command_icon(Command::ChooseTheme, theme);
+            draw_finder(
+                frame,
+                FinderPopup::new("Theme", &view, icons, &icon, theme),
+                area,
+            );
+        }
+    }
+
     /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
     /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1), and
     /// where the focused entry starts on screen, if one is focused.
@@ -859,7 +946,8 @@ impl Tui {
             Constraint::Length(width),
             Constraint::Fill(1),
         ]));
-        let panel = SidebarPanel::new(&view, self.icons);
+        let theme = self.palette();
+        let panel = SidebarPanel::new(&view, self.icons, &theme);
         self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(sidebar.height));
         let entry = panel.focused_line().map(|line| {
             let line = u16::try_from(line.saturating_sub(self.sidebar_scroll)).unwrap_or(u16::MAX);
@@ -881,7 +969,8 @@ impl Tui {
         {
             let screen = frame.area();
             frame.buffer_mut().set_style(screen, Style::new().dim());
-            let panel = DatePromptPanel::new(&prompt);
+            let theme = self.palette();
+            let panel = DatePromptPanel::new(&prompt, &theme);
             frame.set_cursor_position(panel.caret(area));
             frame.render_widget(panel, area);
         }
@@ -909,6 +998,7 @@ impl Tui {
             self.state.confirming_quit(),
             self.state.notice(),
             icons,
+            &self.palette(),
         ));
         frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a
@@ -933,6 +1023,8 @@ impl Tui {
             Some(Overlay::MoveTo)
         } else if self.state.go_to_command().is_some() {
             Some(Overlay::GoToCommand)
+        } else if self.state.theme_picker().is_some() {
+            Some(Overlay::ThemePicker)
         } else if self.state.save_as().is_some() {
             Some(Overlay::SaveAs)
         } else if self.state.context_menu().is_some() {
@@ -955,6 +1047,19 @@ impl Tui {
 struct FocusedPane {
     caret: Option<(u16, u16)>,
     block: Option<(u16, u16)>,
+}
+
+/// Gives every cell of `buf` drawn in the terminal's own colors the theme's text color and
+/// background instead, so that a theme with colors of its own covers the whole screen.
+fn paint_defaults(buf: &mut Buffer, theme: &Theme) {
+    for cell in &mut buf.content {
+        if cell.fg == Color::Reset {
+            cell.fg = theme.text;
+        }
+        if cell.bg == Color::Reset {
+            cell.bg = theme.background;
+        }
+    }
 }
 
 /// Copies the columns of `from` starting `skipped` columns from its left onto `area` of `to`.

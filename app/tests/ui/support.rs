@@ -26,7 +26,7 @@ use ratatui::{
 use taskpaper_terminal::{
     app::{Origin, State},
     ui::{
-        Input, Tui,
+        ColorSupport, Input, Tui,
         config::{self, Config},
         effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
         theme::IconSetting,
@@ -120,11 +120,12 @@ pub const OVERDUE: &str = "!";
 pub const STAR: &str = "★";
 pub const BOOKMARK: &str = "⚑";
 
-/// The color of text blocks, dimmed less than done tasks (D-37).
-pub const TEXT: Color = Color::Indexed(248);
+/// The color of text blocks, dimmed less than done tasks (D-37), in Terminal Dark, the theme of a
+/// terminal without truecolor.
+pub const TEXT: Color = Color::Gray;
 
-/// The background of every line of the focused block (D-39).
-pub const CURRENT_LINE: Color = Color::Indexed(235);
+/// The background of every line of the focused block (D-39), in Terminal Dark.
+pub const CURRENT_LINE: Color = Color::Black;
 
 /// A running app with its terminal, the temporary folder holding its file, its backups folder
 /// and its `views.json`, and a clock that only moves when the test says so.
@@ -186,6 +187,23 @@ impl Harness {
         let state = effects::open(&path).expect("the file opens");
         let config = config::load(&file, Some(&dir.path().join("home")));
         Self::start_with(state, dir, config, width, height)
+    }
+
+    /// The same app drawing in the colors `colors` allows, as `COLORTERM` and `NO_COLOR` would
+    /// say.
+    pub fn with_colors(self, colors: ColorSupport) -> Self {
+        Self {
+            tui: self.tui.with_colors(colors),
+            ..self
+        }
+    }
+
+    /// The settings file [`Harness::with_config`] starts with.
+    pub fn config_file(&self) -> PathBuf {
+        self.path
+            .as_ref()
+            .expect("a file was opened")
+            .with_file_name("config.toml")
     }
 
     /// Starts on `text` as a file in a temporary folder, opened with `recovered`, the text of a

@@ -83,6 +83,20 @@ impl<T: Clone> Finder<T> {
             .map(|candidate| &candidate.value)
     }
 
+    /// Highlights the candidate whose value is `value`, when the query matches it.
+    pub(super) fn highlight(&mut self, value: &T)
+    where
+        T: PartialEq,
+    {
+        if let Some(at) = self.ranked.iter().position(|&index| {
+            self.candidates
+                .get(index)
+                .is_some_and(|candidate| candidate.value == *value)
+        }) {
+            self.selected = at;
+        }
+    }
+
     /// Ranks the candidates the query matches: by tier, then by how well their text matches,
     /// then in the order given. Each word of the query must match, fuzzily, ignoring case unless
     /// it has a capital (navigation.md §8); characters such as `!` or `^` match themselves.
@@ -264,5 +278,17 @@ mod tests {
     #[test]
     fn dismissing_cancels() {
         assert_eq!(sample().input(MenuInput::Dismiss), Some(Picked::Cancelled));
+    }
+
+    #[test]
+    fn highlighting_a_value_highlights_its_match_and_ignores_values_not_matched() {
+        let mut finder = sample();
+        finder.highlight(&1);
+        assert_eq!(listed(&finder), (vec![4, 2, 1, 3], 2));
+        typed(&mut finder, "rep");
+        finder.highlight(&3);
+        assert_eq!(listed(&finder).1, 0, "3 does not match");
+        finder.highlight(&1);
+        assert_eq!(listed(&finder).1, 1);
     }
 }
