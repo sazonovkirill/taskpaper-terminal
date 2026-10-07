@@ -55,14 +55,22 @@ impl State {
     /// `Ctrl+K`: opens Go to Symbol over every block in document order but dividers, or `gP`
     /// over the projects among them, as Go to Project.
     pub(super) fn open_go_to_symbol(&mut self, listed: Symbols) {
-        let mut candidates = self.block_candidates(&[]);
-        if listed == Symbols::Projects {
-            candidates.retain(|candidate| {
-                blocks::block(&self.document, candidate.value)
-                    .is_some_and(|block| block.kind() == BlockKind::Project)
-            });
-        }
+        let candidates = match listed {
+            Symbols::All => self.block_candidates(&[]),
+            Symbols::Projects => self.project_candidates(),
+        };
         self.symbols = Some((listed, Finder::new(candidates)));
+    }
+
+    /// The candidates of [`State::block_candidates`] that are projects, as Go to Project and
+    /// Quick Add's project picker list them (D-65, D-93).
+    pub(super) fn project_candidates(&self) -> Vec<Candidate<ItemId>> {
+        let mut candidates = self.block_candidates(&[]);
+        candidates.retain(|candidate| {
+            blocks::block(&self.document, candidate.value)
+                .is_some_and(|block| block.kind() == BlockKind::Project)
+        });
+        candidates
     }
 
     /// A candidate for each block in document order, with the path of the blocks above it and

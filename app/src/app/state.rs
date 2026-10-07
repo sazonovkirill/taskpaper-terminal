@@ -20,6 +20,7 @@ use super::{
     memo::Memo,
     pane::Pane,
     picker::Picker,
+    quick_add::QuickAdd,
     rows::{Builder, OldSiblings, Rows},
     save_as,
     saving::Autosave,
@@ -40,6 +41,10 @@ pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 /// the focused pane's focused block, the collapsed blocks, the sidebar and the status-line
 /// notice.
 #[derive(Debug, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent settings and open panels, not states of one machine"
+)]
 pub struct State {
     pub(super) document: Document,
     /// The edits to undo and redo (FR-OPS-08).
@@ -70,6 +75,10 @@ pub struct State {
     pub(super) color_picker: Option<Picker<Option<TagColor>>>,
     /// The prompt for a block's start or due date, while it is open (FR-TAG-03).
     pub(super) date_prompt: Option<DatePrompt>,
+    /// Quick Add, while it is open (FR-MODE-07).
+    pub(super) quick_add: Option<QuickAdd>,
+    /// Whether `qt` adds to the `TODAY` project (`special_today`, D-95).
+    pub(super) special_today: bool,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// Whether the details popup is open over the focused block (D-3).
@@ -227,6 +236,14 @@ pub enum Notice {
     /// `gi` found no inbox: no top-level `INBOX` project is shown, or the setting that lists it
     /// apart is off (D-78).
     NoInbox,
+    /// `qt` found no `TODAY` project: no top-level `TODAY` project is shown, or the setting
+    /// that makes it special is off (D-95).
+    NoTodayProject,
+    /// Quick Add added a block to the project with this text (D-93).
+    QuickAdded {
+        /// The project's text.
+        project: String,
+    },
     /// How many blocks are under the focused block and how many words they hold (FR-OPS-09).
     Count {
         /// The blocks.
@@ -326,6 +343,8 @@ impl State {
             edit: None,
             color_picker: None,
             date_prompt: None,
+            quick_add: None,
+            special_today: true,
             type_picker: None,
             details: false,
             symbols: None,

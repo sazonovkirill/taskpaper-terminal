@@ -40,8 +40,8 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
-    SettingsWindow, ShortcutsPanel, SidebarPanel,
+    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, QuickAddPanel,
+    SaveAsPrompt, SettingsWindow, ShortcutsPanel, SidebarPanel,
 };
 
 /// What the event loop waits for.
@@ -259,6 +259,12 @@ impl Tui {
         for &(view, on) in &config.sidebar_views {
             self.send(
                 Message::Configure(Configuration::SidebarView(view, on)),
+                Duration::ZERO,
+            );
+        }
+        if let Some(on) = config.special_today {
+            self.send(
+                Message::Configure(Configuration::SpecialToday(on)),
                 Duration::ZERO,
             );
         }
@@ -583,6 +589,8 @@ impl Tui {
         // into view above it; the panel spans the screen (D-54).
         let panel_height = if self.state.date_prompt().is_some() {
             DatePromptPanel::HEIGHT
+        } else if self.state.quick_add().is_some() {
+            QuickAddPanel::HEIGHT
         } else {
             0
         };
@@ -665,6 +673,7 @@ impl Tui {
             }
         }
         self.draw_date_prompt(frame, panel);
+        self.draw_quick_add(frame, panel, screen_body, &theme);
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
         }
@@ -1055,6 +1064,32 @@ impl Tui {
         }
     }
 
+    /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
+    /// `body`, just above the panel, while they are open (D-93). The conflict prompt covers
+    /// them.
+    fn draw_quick_add(&self, frame: &mut Frame, panel: Rect, body: Rect, theme: &Theme) {
+        let Some(view) = self.state.quick_add().filter(|_| !self.state.in_conflict()) else {
+            return;
+        };
+        let widget = QuickAddPanel::new(&view, self.icons, theme);
+        frame.set_cursor_position(widget.caret(panel));
+        frame.render_widget(widget, panel);
+        if let Some(picker) = self.state.quick_add_picker() {
+            let document = self.state.document();
+            let icon = |id: &ItemId| widgets::block_icon(document, *id);
+            let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
+            let finder =
+                FinderPopup::new("Project", &picker, self.icons, &icon, theme).text_style(&text);
+            let height = finder.area(body).height;
+            let above = Rect {
+                y: body.bottom().saturating_sub(height),
+                height,
+                ..body
+            };
+            draw_finder(frame, finder, above);
+        }
+    }
+
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending
     /// key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
     fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
@@ -1092,6 +1127,10 @@ impl Tui {
     fn overlay(&self) -> Option<Overlay> {
         if self.state.date_prompt().is_some() {
             Some(Overlay::DatePrompt)
+        } else if self.state.quick_add_picker().is_some() {
+            Some(Overlay::QuickAddPicker)
+        } else if self.state.quick_add().is_some() {
+            Some(Overlay::QuickAdd)
         } else if self.state.color_picker().is_some() {
             Some(Overlay::ColorPicker)
         } else if self.state.type_picker().is_some() {

@@ -8,8 +8,8 @@ use jiff::civil::Date;
 use thiserror::Error;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
-    SettingsInput, SidebarInput, TextEdit,
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste,
+    QuickAddInput, SaveAs, SettingsInput, SidebarInput, TextEdit,
     commands::{REGISTRY, SIDEBAR},
 };
 
@@ -81,6 +81,10 @@ pub enum Overlay {
     ColorPicker,
     /// The date prompt (FR-TAG-03).
     DatePrompt,
+    /// The Quick Add panel (D-93).
+    QuickAdd,
+    /// Quick Add's project picker (D-93).
+    QuickAddPicker,
     /// The type picker (FR-BLK-08).
     TypePicker,
     /// The details popup, which any key closes (D-3).
@@ -347,6 +351,29 @@ fn date_prompt_message(key: Key) -> Option<Message> {
         .map(|&(_, input)| input)
         .or_else(|| text_edit(key).map(DateInput::Edit))?;
     Some(Message::DatePrompt(input))
+}
+
+/// Bindings of the Quick Add panel ([keybindings.md §4]) besides the [`TEXT`] keys; characters
+/// without other bindings are typed, `/` among them, and other keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const QUICK_ADD: &[(Key, QuickAddInput)] = &[
+    (key!(Enter), QuickAddInput::Add),
+    (key!(Esc), QuickAddInput::Cancel),
+];
+
+/// The Quick Add message for `key`: `Ctrl+Q` quits, a panel binding, else the change to the
+/// text it asks for.
+fn quick_add_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    let input = QUICK_ADD
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| input)
+        .or_else(|| text_edit(key).map(QuickAddInput::Edit))?;
+    Some(Message::QuickAdd(input))
 }
 
 /// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
@@ -829,6 +856,8 @@ impl Keymap {
             self.pending.clear();
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
+                Overlay::QuickAdd => quick_add_message(pressed),
+                Overlay::QuickAddPicker => menu_message(pressed, Menu::QuickAdd),
                 Overlay::ColorPicker => menu_message(pressed, Menu::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Menu::TypePicker),
                 Overlay::GoToSymbol if OPEN_IN_NEW_PANE.contains(&pressed) => {
@@ -2187,7 +2216,11 @@ mod tests {
     #[test]
     fn unbound_keys_leave_nothing_pending() {
         let mut keymap = Keymap::default();
-        keymap.message_for(&key(KeyCode::Char('q'), KeyModifiers::NONE), ms(0), CONTEXT);
+        keymap.message_for(
+            &key(KeyCode::Char('Q'), KeyModifiers::SHIFT),
+            ms(0),
+            CONTEXT,
+        );
         assert_eq!(keymap.pending(), "");
         assert_eq!(keymap.deadline(), None);
     }
@@ -2675,6 +2708,48 @@ mod tests {
                 keymap.message_for(&key(code, modifiers), ms(0), saving),
                 expected,
                 "{code:?}"
+            );
+        }
+    }
+
+    // FR-MODE-07, keybindings.md §4
+    #[test]
+    fn quick_add_takes_text_keys_enter_and_esc_and_its_picker_the_keys_of_a_picker() {
+        let none = KeyModifiers::NONE;
+        let panel = |code| overlay_message(Overlay::QuickAdd, code, none);
+        for (code, input) in [
+            (KeyCode::Enter, QuickAddInput::Add),
+            (KeyCode::Esc, QuickAddInput::Cancel),
+            (
+                KeyCode::Char('/'),
+                QuickAddInput::Edit(TextEdit::Insert('/')),
+            ),
+            (
+                KeyCode::Backspace,
+                QuickAddInput::Edit(TextEdit::DeleteBackward),
+            ),
+        ] {
+            assert_eq!(panel(code), Some(Message::QuickAdd(input)), "{code:?}");
+        }
+        assert_eq!(panel(KeyCode::F(2)), None);
+        let pick = |code| overlay_message(Overlay::QuickAddPicker, code, none);
+        for (code, input) in [
+            (KeyCode::Char('l'), MenuInput::Type('l')),
+            (KeyCode::Down, MenuInput::Next),
+            (KeyCode::Enter, MenuInput::Choose),
+            (KeyCode::Esc, MenuInput::Dismiss),
+        ] {
+            assert_eq!(
+                pick(code),
+                Some(Message::Menu(Menu::QuickAdd, input)),
+                "{code:?}"
+            );
+        }
+        for overlay in [Overlay::QuickAdd, Overlay::QuickAddPicker] {
+            assert_eq!(
+                overlay_message(overlay, KeyCode::Char('q'), KeyModifiers::CONTROL),
+                Some(Message::Quit),
+                "{overlay:?}"
             );
         }
     }

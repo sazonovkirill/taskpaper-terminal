@@ -191,7 +191,10 @@ fn the_panel_notes_once_alt_arrives_and_whether_the_kitty_protocol_is_on() {
         ],
         "the Alt note is gone, so the list is longer"
     );
-    assert_eq!(panel[25], "│  Extend Selection… J, Shift+↓");
+    assert_eq!(
+        panel[24..26],
+        ["│  Quick Add                 qq", "│ Selection"]
+    );
 }
 
 // D-54: the date prompt's panel spans the screen under the shortcuts panel.

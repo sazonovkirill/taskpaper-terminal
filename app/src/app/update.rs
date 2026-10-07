@@ -6,8 +6,9 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
-    SettingValue, SettingsInput, SidebarInput, SpecialView, State, Symbols, TextEdit, Version,
+    Command, DateInput, Location, MenuInput, PaneChange, Paste, QuickAddInput, SaveAs,
+    SelectionChange, SettingValue, SettingsInput, SidebarInput, SpecialView, State, Symbols,
+    TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
     structure::NewBlock,
@@ -32,6 +33,8 @@ pub enum Configuration {
     /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
     /// (`today_starred`, navigation.md §7, D-88).
     TodayStarred(bool),
+    /// Let `qt` add to the `TODAY` project, or not when `false` (`special_today`, D-95).
+    SpecialToday(bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -211,6 +214,8 @@ pub enum Message {
     },
     /// A key of the open date prompt (FR-TAG-03).
     DatePrompt(DateInput),
+    /// Open Quick Add, or a key of its open panel (`qq`, `qi`, `qt`, D-93).
+    QuickAdd(QuickAddInput),
     /// Remove the `tag` date of the selected blocks, else the focused block (FR-TAG-03, D-50).
     ClearDate(DateTag),
     /// Open the type picker on the focused block (FR-BLK-08).
@@ -356,6 +361,8 @@ pub enum Menu {
     ContextMenu,
     /// The theme picker (FR-UI-06).
     ThemePicker,
+    /// Quick Add's project picker (D-93).
+    QuickAdd,
 }
 
 impl Message {
@@ -437,6 +444,7 @@ impl Message {
             | Self::SetSection(_)
             | Self::OpenColorPicker
             | Self::OpenDatePrompt { .. }
+            | Self::QuickAdd(_)
             | Self::ClearDate(_)
             | Self::OpenTypePicker
             | Self::OpenDetails
@@ -476,7 +484,8 @@ impl Menu {
             | Self::MoveTo
             | Self::GoToCommand
             | Self::ContextMenu
-            | Self::ThemePicker => true,
+            | Self::ThemePicker
+            | Self::QuickAdd => true,
         }
     }
 }
@@ -591,6 +600,7 @@ impl State {
             Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
             Configuration::SidebarView(view, on) => self.sidebar.set_listed(view, on),
             Configuration::TodayStarred(on) => self.today_starred = on,
+            Configuration::SpecialToday(on) => self.special_today = on,
         }
     }
 
@@ -653,6 +663,7 @@ impl State {
             Message::OpenColorPicker => self.open_color_picker(),
             Message::OpenDatePrompt { tag, today } => self.open_date_prompt(tag, today),
             Message::DatePrompt(input) => self.date_prompt_input(input),
+            Message::QuickAdd(input) => self.quick_add_input(input),
             Message::ClearDate(tag) => self.clear_date(tag),
             Message::OpenTypePicker => self.open_type_picker(),
             Message::OpenDetails => self.open_details(),
@@ -715,6 +726,7 @@ impl State {
             Menu::CommandMenu => return self.command_menu_input(input),
             Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),
             Menu::ThemePicker => return self.theme_picker_input(input).into_iter().collect(),
+            Menu::QuickAdd => self.quick_add_picker_input(input),
         }
         Vec::new()
     }

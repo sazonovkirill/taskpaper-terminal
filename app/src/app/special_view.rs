@@ -175,6 +175,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::CycleColor
         | Message::SetColor(_)
         | Message::OpenColorPicker
+        | Message::QuickAdd(_)
         | Message::SetSection(_)
         | Message::OpenDatePrompt { .. }
         | Message::DatePrompt(_)

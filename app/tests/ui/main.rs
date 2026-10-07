@@ -28,6 +28,7 @@ mod moving;
 mod open_file;
 mod open_url;
 mod panes;
+mod quick_add;
 mod quick_dates;
 mod save_as;
 mod saving;

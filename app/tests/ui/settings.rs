@@ -99,10 +99,10 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Show INBOX: above Today, not under Projects    │",
             "│               │   ☼ Show Today in Navigator                    on  │",
             "│               │     List the Today view in the Navigator           │",
+            "│               │   ☼ Special handling of TODAY project          on  │",
+            "│               │     qt adds to TODAY:, as qi adds to INBOX:        │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
-            "│               │   ★ Show Starred in Navigator                  on  │",
-            "│               │     List the Starred view in the Navigator         │",
         ]
     );
     assert!(

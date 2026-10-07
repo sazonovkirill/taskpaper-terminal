@@ -23,6 +23,8 @@ pub enum Icon {
     Flag,
     /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,
+    /// Quick Add in Go to Command (D-93).
+    QuickAdd,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
     /// bookmarks.
     Bookmark,
@@ -170,6 +172,8 @@ impl Icon {
             Self::Flag => ("\u{f023b}", "⚐", "F"),
             // nf-md-inbox
             Self::Inbox => ("\u{f0687}", "⊔", "I"),
+            // nf-md-plus
+            Self::QuickAdd => ("\u{f0415}", "+", "+"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -234,7 +238,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 33] = [
+    const ICONS: [Icon; 34] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -242,6 +246,7 @@ mod tests {
         Icon::Today,
         Icon::Flag,
         Icon::Inbox,
+        Icon::QuickAdd,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,

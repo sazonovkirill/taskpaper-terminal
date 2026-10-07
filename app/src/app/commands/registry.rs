@@ -5,7 +5,9 @@
 
 use super::Command;
 use crate::{
-    app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput, SpecialView},
+    app::{
+        Mode, NewBlock, PaneChange, Paste, QuickAddTo, SelectionChange, SidebarInput, SpecialView,
+    },
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -230,6 +232,21 @@ pub const REGISTRY: &[Entry] = &[
         Command::New(NewBlock::Start, Some(Typed::Text)),
         Mode::Navigate,
         &["A n"],
+    ),
+    entry!(
+        Command::QuickAdd(QuickAddTo::Chosen),
+        Mode::Navigate,
+        &["q q"]
+    ),
+    entry!(
+        Command::QuickAdd(QuickAddTo::Inbox),
+        Mode::Navigate,
+        &["q i"]
+    ),
+    entry!(
+        Command::QuickAdd(QuickAddTo::Today),
+        Mode::Navigate,
+        &["q t"]
     ),
     entry!(
         Command::Select(SelectionChange::ExtendDown),
@@ -620,6 +637,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::Edit,
             Command::New(NewBlock::Below, None),
             Command::New(NewBlock::LastChild, None),
+            Command::QuickAdd(QuickAddTo::Chosen),
         ],
     ),
     (
@@ -794,7 +812,7 @@ mod tests {
                 ("Moving", 6),
                 ("Folding", 3),
                 ("Zoom and History", 7),
-                ("Editing and Creating", 3),
+                ("Editing and Creating", 4),
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 7),
