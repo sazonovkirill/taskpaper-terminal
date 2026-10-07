@@ -56,6 +56,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Zoom into focused block | `.`, `Alt+l`, `Alt+→`, `gz` |
 | Zoom out | `>` (`Shift+.`), `Alt+h`, `Alt+←`, `gu` |
 | Go home | `Ctrl+'` (kitty keyboard protocol only, §1), `gh` |
+| Go to Today: show the Today view, as choosing it in the sidebar does (D-64) | `gt` |
 | Back / forward | `H` / `L`, `Alt+Shift+←` / `Alt+Shift+→` |
 
 ### Editing and creating (FR-MODE)

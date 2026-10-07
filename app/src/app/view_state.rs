@@ -272,7 +272,7 @@ mod tests {
         state.update(Message::ToggleShowDone);
         focus(&mut state, "Home");
         state.update(Message::Pane(PaneChange::Focus(1)));
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Back);
         state.update(Message::ToggleSidebar);
         state
@@ -388,7 +388,7 @@ mod tests {
         for project in ["Work", "Later"] {
             focus(&mut state, project);
             state.update(Message::ZoomIn);
-            state.update(Message::GoHome);
+            state.update(Message::GoTo(Location::Outline(None)));
         }
         focus(&mut state, "Later");
         state.update(Message::ZoomIn);

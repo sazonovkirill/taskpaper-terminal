@@ -71,6 +71,7 @@ pub const REGISTRY: &[Entry] = &[
         &[">", "alt+h", "alt+left", "g u"],
     ),
     entry!(Command::GoHome, Mode::Navigate, &["ctrl+'", "g h"]),
+    entry!(Command::GoToToday, Mode::Navigate, &["g t"]),
     entry!(Command::Back, Mode::Navigate, &["H", "alt+shift+left"]),
     entry!(Command::Forward, Mode::Navigate, &["L", "alt+shift+right"]),
     entry!(Command::Edit, Mode::Navigate, &["enter"]),
@@ -576,6 +577,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ZoomOut,
             Command::Back,
             Command::Forward,
+            Command::GoToToday,
         ],
     ),
     (
@@ -757,7 +759,7 @@ mod tests {
             [
                 ("Moving", 6),
                 ("Folding", 3),
-                ("Zoom and History", 4),
+                ("Zoom and History", 5),
                 ("Editing and Creating", 3),
                 ("Selection", 2),
                 ("Structure", 9),

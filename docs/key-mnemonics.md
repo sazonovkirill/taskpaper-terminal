@@ -50,6 +50,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 |---|---|
 | `gg` / `gp` / `gl` | **g**o top / **p**arent / **l**ast child |
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
+| `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
 | `gs` | **s**ymbol (= `Ctrl+P`) |
 | `gm` | **m**ove block to… |
 | `gG` | **G**roup the selection |

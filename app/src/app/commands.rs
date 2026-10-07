@@ -16,7 +16,7 @@ pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
 
 use super::{
-    Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit,
+    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
@@ -85,6 +85,8 @@ pub enum Command {
     ZoomOut,
     /// Show the whole document.
     GoHome,
+    /// Show the Today view in the focused pane (D-64).
+    GoToToday,
     /// Show the focused pane's breadcrumb at this depth as its root, as
     /// [`Message::GoToCrumb`] counts it; only a breadcrumb's context menu offers it.
     GoToCrumb(usize),
@@ -240,6 +242,7 @@ impl Command {
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
+            Self::GoToToday => "Go to Today".into(),
             Self::GoToCrumb(_) => "Zoom Here".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
@@ -342,7 +345,8 @@ impl Command {
             Self::ToggleShortcuts => Message::ToggleShortcuts,
             Self::ZoomIn => Message::ZoomIn,
             Self::ZoomOut => Message::ZoomOut,
-            Self::GoHome => Message::GoHome,
+            Self::GoHome => Message::GoTo(Location::Outline(None)),
+            Self::GoToToday => Message::GoTo(Location::Today),
             Self::GoToCrumb(depth) => Message::GoToCrumb(depth),
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
@@ -549,6 +553,7 @@ mod tests {
             (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
             (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
             (Command::GoToCrumb(1), "Zoom Here"),
+            (Command::GoToToday, "Go to Today"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
             (
@@ -617,6 +622,8 @@ mod tests {
                 Message::Pane(PaneChange::Focus(2)),
             ),
             (Command::GoToCrumb(1), Message::GoToCrumb(1)),
+            (Command::GoHome, Message::GoTo(Location::Outline(None))),
+            (Command::GoToToday, Message::GoTo(Location::Today)),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

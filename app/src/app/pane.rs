@@ -490,7 +490,7 @@ mod tests {
             "completed blocks hidden as in the pane it came from"
         );
         pane(&mut state, PaneChange::FocusLeft);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Pane(PaneChange::FocusRight));
         state.update(Message::FocusSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
@@ -601,12 +601,12 @@ mod tests {
         focus(&mut state, "Report");
         state.update(Message::ZoomIn);
         pane(&mut state, PaneChange::OpenLocation);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         focus(&mut state, "Report");
         state.update(Message::Delete);
         pane(&mut state, PaneChange::FocusLeft);
         assert_eq!(panes(&state)[0], "*Work: Slides");
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Back);
         assert_eq!(panes(&state)[0], "*Work: Slides");
     }
@@ -618,7 +618,7 @@ mod tests {
         for project in ["Work", "Home", "Later"] {
             focus(&mut state, project);
             state.update(Message::ZoomIn);
-            state.update(Message::GoHome);
+            state.update(Message::GoTo(Location::Outline(None)));
         }
         pane(&mut state, PaneChange::OpenLocation);
         focus(&mut state, "Home");

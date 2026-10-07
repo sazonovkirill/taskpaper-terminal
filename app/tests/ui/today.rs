@@ -72,6 +72,50 @@ fn choosing_today_in_the_sidebar_lists_the_blocks_for_today_with_their_paths() {
     );
 }
 
+// D-64, navigation §7: `gt` shows the Today view in the focused pane as choosing it in the
+// sidebar does, and Back returns to the outline.
+#[test]
+fn g_t_shows_the_today_view_and_back_returns() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    app.hide_sidebar();
+    app.type_keys("gt");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_eq!(shown(&mut app).len(), 3);
+    assert_eq!(
+        focused_rows(&mut app),
+        [format!("- Water plants {STAR}  Home")]
+    );
+    app.type_keys("H");
+    let buffer = app.render().buffer().clone();
+    assert_ne!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_eq!(
+        focused_rows(&mut app),
+        [format!("  - Water plants {STAR}")],
+        "the focused entry shows in the outline"
+    );
+}
+
+// D-64, FR-NAV-06
+#[test]
+fn go_to_command_lists_go_to_today_with_its_key_and_gives_it() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    app.hide_sidebar();
+    app.type_keys(":go to today");
+    let buffer = app.render().buffer().clone();
+    let rows: Vec<String> = (0..buffer.area.height)
+        .map(|y| crate::support::line(&buffer, y))
+        .collect();
+    assert!(
+        rows.iter()
+            .any(|row| row.contains(&format!("│ {STAR} Go to Today  gt "))),
+        "{rows:#?}"
+    );
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    let buffer = app.render().buffer().clone();
+    assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
+}
+
 // D-7, FR-DONE-01, FR-TAG-04, FR-TAG-06
 #[test]
 fn block_commands_act_on_the_focused_entry_and_the_list_follows() {

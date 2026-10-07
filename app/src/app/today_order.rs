@@ -280,7 +280,7 @@ mod tests {
         assert_eq!(state.document().revision(), revision, "nothing to save");
         state.update(Message::Undo);
         assert_eq!(listed(&state), ["a", "c", "b"], "not a step to undo");
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(listed(&state), ["P", "a", "b", "c", "x"], "the outline");
     }
 
@@ -321,7 +321,7 @@ mod tests {
         state.update(Message::FocusFirst);
         state.update(Message::ToggleFlag(Flag::Today));
         assert_eq!(listed(&state), ["c", "b"]);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         for _ in 0..3 {
             state.update(Message::FocusNext);
         }

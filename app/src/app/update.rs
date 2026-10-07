@@ -138,8 +138,9 @@ pub enum Message {
     ZoomIn,
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
     ZoomOut,
-    /// Show the whole document.
-    GoHome,
+    /// Show `location` in the focused pane as a step of its history: the whole document with
+    /// `Location::Outline(None)`, or the Today view, as choosing it in the sidebar does (D-64).
+    GoTo(Location),
     /// Show the focused pane's breadcrumb at `depth` as its root: 0 is the whole document, 1 the
     /// zoom block's top-level ancestor, and so on down to the zoom block (FR-KEY-05).
     GoToCrumb(usize),
@@ -405,7 +406,7 @@ impl Message {
             | Self::ToggleShowDone
             | Self::ZoomIn
             | Self::ZoomOut
-            | Self::GoHome
+            | Self::GoTo(_)
             | Self::GoToCrumb(_)
             | Self::Back
             | Self::Forward
@@ -612,7 +613,7 @@ impl State {
             Message::CloseShortcuts => self.shortcuts = false,
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
-            Message::GoHome => self.go_to(Location::Outline(None)),
+            Message::GoTo(location) => self.go_to(location),
             Message::GoToCrumb(depth) => self.go_to_crumb(depth),
             Message::Back | Message::Forward => self.walk_history(message == Message::Forward),
             Message::ToggleSidebar => self.toggle_sidebar(),
@@ -1461,7 +1462,7 @@ mod tests {
         assert_eq!(zoom_text(&state), "Home");
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(focus_text(&state), "b");
     }
 
@@ -1474,7 +1475,7 @@ mod tests {
         state.update(Message::ZoomIn);
         assert_eq!(zoom_text(&state), "c");
         state.folds.insert(b);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(
             focus_text(&state),
             "A",
@@ -1500,11 +1501,11 @@ mod tests {
         state.update(Message::Forward);
         assert_eq!(zoom_text(&state), "c");
         state.update(Message::Back);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(state.pane.history.len(), 3);
         state.update(Message::Forward);
         assert_eq!(zoom_text(&state), "Home");
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(
             state.pane.history.len(),
             3,
@@ -1552,7 +1553,7 @@ mod tests {
         );
         state.update(Message::ToggleSubtree);
         assert_eq!(state.folds.len(), 1);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::FocusLast);
         state.update(Message::Collapse);
         state.update(Message::Collapse);
@@ -1596,7 +1597,7 @@ mod tests {
             Message::CollapseAll,
             Message::ZoomIn,
             Message::ZoomOut,
-            Message::GoHome,
+            Message::GoTo(Location::Outline(None)),
             Message::Back,
             Message::Forward,
         ] {

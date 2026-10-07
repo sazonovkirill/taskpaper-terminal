@@ -901,7 +901,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{NewBlock, PaneChange, SelectionChange, SidebarInput},
+        app::{Location, NewBlock, PaneChange, SelectionChange, SidebarInput},
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
 
@@ -2519,7 +2519,7 @@ mod tests {
         assert_eq!(keymap.message_for(&g, ms(2), CONTEXT), None);
         assert_eq!(
             keymap.expire(ms(1002), CONTEXT),
-            Some(KeyAction::Send(Message::GoHome))
+            Some(KeyAction::Send(Message::GoTo(Location::Outline(None))))
         );
     }
 
@@ -2833,6 +2833,22 @@ mod tests {
             check(KeyCode::Char(digit), KeyModifiers::ALT, focus.as_ref());
             assert_eq!(messages(&format!("g{digit}"), CONTEXT), [None, focus]);
         }
+    }
+
+    // D-64, D-42: `gt` is plain characters, which both key reportings send alike; `t` alone still
+    // sets the start date to today.
+    #[test]
+    fn g_t_goes_to_today_and_t_alone_still_starts_today() {
+        assert_eq!(
+            messages("gt", CONTEXT),
+            [None, Some(Message::GoTo(Location::Today))]
+        );
+        let start = Message::ChangeDate {
+            tag: DateTag::Start,
+            change: DateChange::Today,
+            today: TODAY,
+        };
+        assert_eq!(messages("t", CONTEXT), [Some(start)]);
     }
 
     // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with

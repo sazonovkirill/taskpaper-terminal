@@ -715,7 +715,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::Retype(Typed::Task) => plain(Icon::Task),
         Command::Retype(Typed::Text) => plain(Icon::Note),
         Command::Retype(Typed::Section) => plain(Icon::Section),
-        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style(theme)),
+        Command::ToggleFlag(Flag::Today) | Command::GoToToday => (Icon::Today, today_style(theme)),
         Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
             date(tag)
@@ -1871,6 +1871,7 @@ mod tests {
                 Style::new().fg(Color::Blue),
             ),
             (Command::SetColor(None), Icon::Color, Style::new()),
+            (Command::GoToToday, Icon::Today, today_style(&THEME)),
             (Command::OpenSettings, Icon::Settings, Style::new()),
             (Command::OpenDetails, Icon::Details, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),

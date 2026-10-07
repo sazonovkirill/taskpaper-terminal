@@ -127,7 +127,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::CloseShortcuts
         | Message::ZoomIn
         | Message::ZoomOut
-        | Message::GoHome
+        | Message::GoTo(_)
         | Message::Back
         | Message::Forward
         | Message::ToggleSidebar
@@ -482,6 +482,27 @@ Work: @done
         assert_eq!(empty.location(), Location::Today, "no entry to go to");
     }
 
+    // D-64, navigation.md §7
+    #[test]
+    fn go_to_today_shows_the_today_view_as_a_step_of_the_history() {
+        let mut state = State::new(format::parse(OUTLINE), None);
+        state.update(Message::Tick {
+            now: Duration::ZERO,
+            today: TODAY,
+        });
+        state.update(Message::GoTo(Location::Today));
+        assert_eq!(state.location(), Location::Today);
+        assert_eq!(focused(&state), "Water plants");
+        state.update(Message::GoTo(Location::Today));
+        assert_eq!(
+            state.pane.history.len(),
+            2,
+            "staying put is not a new entry"
+        );
+        state.update(Message::Back);
+        assert_eq!(state.location(), Location::Outline(None));
+    }
+
     // FR-NAV-04, D-7
     #[test]
     fn today_is_a_step_of_the_history() {
@@ -523,7 +544,7 @@ Work: @done
         state.update(Message::Forward);
         state.update(Message::Forward);
         state.update(Message::FocusNext);
-        state.update(Message::GoHome);
+        state.update(Message::GoTo(Location::Outline(None)));
         assert_eq!(state.location(), Location::Outline(None));
         assert_eq!(focused(&state), "Bank", "the focused entry shows at home");
         state.update(Message::Back);
