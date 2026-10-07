@@ -41,16 +41,8 @@ pub fn needs_repair(text: &str, has_children: bool, only_line: bool) -> bool {
 /// would be read back at the top level (rule 3); none when the rule holds.
 #[must_use]
 pub fn trailing_blanks(document: &Document) -> Vec<ItemId> {
-    let lines: Vec<ItemId> = document
-        .descendants(document.root())
-        .map(|(id, _)| id)
-        .collect();
-    let blank = |id: &&ItemId| {
-        document
-            .get(**id)
-            .is_some_and(|item| item.text().is_empty())
-    };
-    let run: Vec<ItemId> = lines.iter().rev().take_while(blank).copied().collect();
+    let blank = |id: &ItemId| document.get(*id).is_some_and(|item| item.text().is_empty());
+    let run: Vec<ItemId> = from_the_end(document).take_while(blank).collect();
     let below_top = run.iter().any(|&id| {
         document
             .get(id)
@@ -63,14 +55,43 @@ pub fn trailing_blanks(document: &Document) -> Vec<ItemId> {
     }
 }
 
+/// Every line of `document` from the last one up, one at a time, so that looking at the last
+/// few does not go through the whole document.
+fn from_the_end(document: &Document) -> impl Iterator<Item = ItemId> + '_ {
+    let children = |id| {
+        document
+            .get(id)
+            .map_or(&[][..], |item| item.children())
+            .iter()
+            .map(|&child| (child, false))
+    };
+    // Lines still to go, the last on top, each with whether its children are already on the
+    // stack above it.
+    let mut stack: Vec<(ItemId, bool)> = children(document.root()).collect();
+    std::iter::from_fn(move || {
+        loop {
+            let (id, expanded) = stack.pop()?;
+            if expanded {
+                return Some(id);
+            }
+            stack.push((id, true));
+            stack.extend(children(id));
+        }
+    })
+}
+
 /// The ops that move each of the [`trailing_blanks`] to the end of the top level, in order and
 /// without extra indent, so that the file reads them back where they are.
 #[must_use]
 pub fn lift_trailing_blanks(document: &Document) -> Vec<Op> {
     let root = document.root();
+    let blanks = trailing_blanks(document);
+    if blanks.is_empty() {
+        return Vec::new();
+    }
     let mut lifted = document.clone();
     let mut ops = Vec::new();
-    let blanks = trailing_blanks(document)
+    let blanks = blanks
         .into_iter()
         .filter_map(|id| Some((id, document.get(id)?)));
     for (id, item) in blanks {
@@ -150,6 +171,18 @@ mod tests {
     /// The texts of the trailing blanks of `text`.
     fn blanks(text: &str) -> usize {
         trailing_blanks(&parse(text)).len()
+    }
+
+    // N-PERF-02
+    #[test]
+    fn lines_from_the_end_are_the_document_order_backwards() {
+        let document = parse("A:\n\t- a\n\t\t- b\n\tc\nB:\n- d\n\t\te\n\tf");
+        let mut order: Vec<ItemId> = document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .collect();
+        order.reverse();
+        assert_eq!(from_the_end(&document).collect::<Vec<_>>(), order);
     }
 
     // file-format §3.1
