@@ -508,17 +508,18 @@ pub const REGISTRY: &[Entry] = &[
 ///
 /// [keybindings.md §4]: ../../../../docs/specs/keybindings.md#4-other-contexts
 pub const SIDEBAR: &[(Command, &[&str])] = &[
-    (Command::Sidebar(SidebarInput::Next), &["j", "down"]),
-    (Command::Sidebar(SidebarInput::Previous), &["k", "up"]),
-    (Command::Sidebar(SidebarInput::Collapse), &["h", "left"]),
-    (Command::Sidebar(SidebarInput::Expand), &["l", "right"]),
+    (Command::Sidebar(SidebarInput::Next), &["down", "ctrl+n"]),
+    (Command::Sidebar(SidebarInput::Previous), &["up", "ctrl+p"]),
+    (Command::Sidebar(SidebarInput::Collapse), &["left"]),
+    (Command::Sidebar(SidebarInput::Expand), &["right"]),
     (Command::Sidebar(SidebarInput::Choose), &["enter"]),
     (
         Command::Pane(PaneChange::Open),
         &["alt+enter", "ctrl+v", "ctrl+t"],
     ),
+    (Command::Sidebar(SidebarInput::Erase), &["backspace"]),
     (Command::Sidebar(SidebarInput::Leave), &["esc"]),
-    (Command::ContextMenu, &["\\", "shift+f10", "menu"]),
+    (Command::ContextMenu, &["shift+f10", "menu"]),
     (Command::ToggleSidebar, &["ctrl+g"]),
     (Command::Quit, &["ctrl+q"]),
 ];
@@ -825,8 +826,9 @@ mod tests {
                 .iter()
                 .find(|(command, _)| *command == Command::ContextMenu)
                 .map(|&(_, keys)| keys),
-            context_menu,
-            "the context menu opens with the same keys everywhere"
+            context_menu.map(|keys| &keys[1..]),
+            "the context menu opens with the same keys everywhere, but for the \\ the Navigator's \
+             filter takes (D-86)"
         );
     }
 

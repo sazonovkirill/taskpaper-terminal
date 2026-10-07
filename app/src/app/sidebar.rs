@@ -27,6 +27,8 @@ pub(super) struct Sidebar {
     /// The index of the focused entry, while the sidebar is open, which it is only while it has
     /// the keys (D-79).
     focus: Option<usize>,
+    /// What was typed to filter the entries while it is open (D-86).
+    filter: String,
     folds: HashSet<ItemId>,
     entries: Memo<EntriesKey, Rc<[SidebarEntry]>>,
     current: Memo<CurrentKey, Option<usize>>,
@@ -36,7 +38,9 @@ pub(super) struct Sidebar {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct EntriesKey {
     document: Stamp,
+    /// The folded entries, none while a filter is typed.
     folds: HashSet<ItemId>,
+    filter: String,
     show_done: bool,
     special_inbox: bool,
     unlisted: HashSet<SpecialView>,
@@ -85,6 +89,7 @@ impl Default for Sidebar {
             special_inbox: true,
             unlisted: HashSet::new(),
             focus: None,
+            filter: String::new(),
             folds: HashSet::new(),
             entries: Memo::default(),
             current: Memo::default(),
@@ -110,6 +115,10 @@ pub enum SidebarInput {
     /// Focus the entry at this index while the sidebar is open, as a click on it does
     /// (FR-KEY-05).
     Focus(usize),
+    /// Add a character to the filter (D-86).
+    Type(char),
+    /// Erase the filter's last character (D-86).
+    Erase,
     /// `gi`: zoom the pane to the inbox entry's project, from anywhere, or say there is none
     /// (D-78).
     GoToInbox,
@@ -171,6 +180,17 @@ impl SidebarEntry {
         }
     }
 
+    /// Whether the entry's text holds `filter`, which is in lower case (D-86).
+    fn matches(&self, filter: &str) -> bool {
+        let text = match self {
+            Self::Inbox { text, .. } | Self::Bookmark { text, .. } | Self::Project { text, .. } => {
+                text.as_str()
+            }
+            Self::View { view, .. } => view.name(),
+        };
+        text.to_lowercase().contains(filter)
+    }
+
     /// How many open tasks the entry holds or lists (D-73, D-85).
     #[must_use]
     pub fn open_tasks(&self) -> usize {
@@ -203,6 +223,8 @@ pub struct SidebarView {
     pub focused: Option<usize>,
     /// The index of the entry of where the focused pane is, if one goes there (D-68).
     pub current: Option<usize>,
+    /// What was typed to filter the entries (D-86).
+    pub filter: String,
 }
 
 impl State {
@@ -218,6 +240,7 @@ impl State {
             entries,
             focused,
             current,
+            filter: self.sidebar.filter.clone(),
         })
     }
 
@@ -244,7 +267,7 @@ impl State {
     /// the focused pane is, else on its first entry (D-68, D-79).
     pub(super) fn toggle_sidebar(&mut self) {
         if self.sidebar_focused() {
-            self.sidebar.focus = None;
+            self.close_sidebar();
         } else {
             let entries = self.sidebar_entries();
             self.sidebar.focus = Some(self.sidebar_current(&entries).unwrap_or(0));
@@ -270,7 +293,9 @@ impl State {
             | SidebarInput::Collapse
             | SidebarInput::Expand
             | SidebarInput::Choose
-            | SidebarInput::Leave => self.sidebar_focus(&entries),
+            | SidebarInput::Leave
+            | SidebarInput::Type(_)
+            | SidebarInput::Erase => self.sidebar_focus(&entries),
         };
         let Some(at) = at else {
             return;
@@ -288,24 +313,56 @@ impl State {
                     fold: Fold::Expanded,
                     ..
                 }) = focused
+                    && self.sidebar.filter.is_empty()
                 {
                     self.sidebar.folds.insert(id);
                 }
             }
             SidebarInput::Expand => {
-                if let Some(SidebarEntry::Project { id, .. }) = focused {
+                if let Some(SidebarEntry::Project { id, .. }) = focused
+                    && self.sidebar.filter.is_empty()
+                {
                     self.sidebar.folds.remove(id);
                 }
             }
             SidebarInput::Choose | SidebarInput::GoToInbox => {
                 if let Some(location) = focused.map(SidebarEntry::location) {
-                    self.sidebar.focus = None;
+                    self.close_sidebar();
                     self.go_to(location);
                 }
             }
-            SidebarInput::Leave => self.sidebar.focus = None,
+            SidebarInput::Leave => self.close_sidebar(),
             SidebarInput::Focus(_) => self.sidebar.focus = Some(at),
+            SidebarInput::Type(_) | SidebarInput::Erase => self.filter_sidebar(input),
         }
+    }
+
+    /// Changes the filter while the sidebar is open, focusing the first entry it matches, or,
+    /// with no filter left, the entry of where the focused pane is, else the first (D-86).
+    fn filter_sidebar(&mut self, input: SidebarInput) {
+        match input {
+            SidebarInput::Type(c) => self.sidebar.filter.push(c),
+            // `Backspace` on an empty filter leaves the focus where it is.
+            _ => {
+                if self.sidebar.filter.pop().is_none() {
+                    return;
+                }
+            }
+        }
+        let entries = self.sidebar_entries();
+        let filter = self.sidebar.filter.to_lowercase();
+        let at = if filter.is_empty() {
+            self.sidebar_current(&entries)
+        } else {
+            entries.iter().position(|entry| entry.matches(&filter))
+        };
+        self.sidebar.focus = Some(at.unwrap_or(0));
+    }
+
+    /// Closes the sidebar, dropping its filter.
+    fn close_sidebar(&mut self) {
+        self.sidebar.focus = None;
+        self.sidebar.filter.clear();
     }
 
     /// Where the focused entry goes, while the sidebar is open.
@@ -387,9 +444,17 @@ impl State {
     /// The inbox while it is apart, each special view it lists, then every bookmarked block in
     /// document order, then the project tree without the inbox (D-68, D-75, D-77, D-80).
     fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
+        let filter = self.sidebar.filter.to_lowercase();
+        // A filter looks through folded entries.
+        let folds = if filter.is_empty() {
+            self.sidebar.folds.clone()
+        } else {
+            HashSet::new()
+        };
         let key = EntriesKey {
             document: self.document().stamp(),
-            folds: self.sidebar.folds.clone(),
+            folds: folds.clone(),
+            filter: filter.clone(),
             show_done: self.pane.show_done,
             special_inbox: self.sidebar.special_inbox,
             unlisted: self.sidebar.unlisted.clone(),
@@ -404,7 +469,7 @@ impl State {
             let mut every = Pane::first();
             every.show_done = self.pane.show_done;
             let rows = self.rows_folded(&every, &HashSet::new());
-            inbox
+            let entries: Vec<_> = inbox
                 .into_iter()
                 .chain(
                     SpecialView::ALL
@@ -420,8 +485,13 @@ impl State {
                         }),
                 )
                 .chain(self.bookmarks(&rows))
-                .chain(self.projects(&rows, apart))
-                .collect()
+                .chain(self.projects(&rows, apart, &folds))
+                .collect();
+            if filter.is_empty() {
+                entries.into()
+            } else {
+                filtered(entries, &filter).into()
+            }
         })
     }
 
@@ -474,7 +544,12 @@ impl State {
 
     /// The project entries of `rows`, each nested under the closest project above it, without
     /// the projects inside folded entries or the block `apart` with what it holds.
-    fn projects(&self, rows: &Rows, apart: Option<ItemId>) -> Vec<SidebarEntry> {
+    fn projects(
+        &self,
+        rows: &Rows,
+        apart: Option<ItemId>,
+        folds: &HashSet<ItemId>,
+    ) -> Vec<SidebarEntry> {
         let mut out = Vec::new();
         // The projects above the current row.
         let mut above: Vec<Above> = Vec::new();
@@ -529,7 +604,7 @@ impl State {
             above.push(Above {
                 depth: row.depth,
                 entry,
-                folded: self.sidebar.folds.contains(&row.id),
+                folded: folds.contains(&row.id),
                 open_before: open,
             });
         }
@@ -538,6 +613,42 @@ impl State {
         }
         out
     }
+}
+
+/// The entries of `entries` that match `filter`, which is in lower case, and the project entries
+/// above a matching one, so the tree around it stays; none has a fold, as folding does nothing
+/// while a filter is typed (D-86).
+fn filtered(entries: Vec<SidebarEntry>, filter: &str) -> Vec<SidebarEntry> {
+    let mut kept: Vec<bool> = Vec::with_capacity(entries.len());
+    // The project entries above the current one: their index and depth.
+    let mut above: Vec<(usize, usize)> = Vec::new();
+    for (at, entry) in entries.iter().enumerate() {
+        let matches = entry.matches(filter);
+        if let &SidebarEntry::Project { depth, .. } = entry {
+            while above.last().is_some_and(|&(_, above)| above >= depth) {
+                above.pop();
+            }
+            if matches {
+                for &(project, _) in &above {
+                    if let Some(kept) = kept.get_mut(project) {
+                        *kept = true;
+                    }
+                }
+            }
+            above.push((at, depth));
+        }
+        kept.push(matches);
+    }
+    entries
+        .into_iter()
+        .zip(kept)
+        .filter_map(|(mut entry, kept)| {
+            if let SidebarEntry::Project { fold, .. } = &mut entry {
+                *fold = Fold::Leaf;
+            }
+            kept.then_some(entry)
+        })
+        .collect()
 }
 
 /// Whether `row` is an open task: neither done nor inside a done block (D-67), so a done block
@@ -909,6 +1020,104 @@ INBOX:",
         assert_eq!(counts(&state)[0], 0, "and Today's starred setting");
     }
 
+    fn typed(state: &mut State, text: &str) {
+        for c in text.chars() {
+            state.update(Message::Sidebar(SidebarInput::Type(c)));
+        }
+    }
+
+    // D-86
+    #[test]
+    fn typing_lists_the_entries_holding_it_with_the_projects_above_them() {
+        let mut state = open(OUTLINE);
+        state.update(Message::ToggleSidebar);
+        typed(&mut state, "DR");
+        assert_eq!(
+            listed(&state),
+            ["Leaf Work", "  Leaf Drafts"],
+            "ignoring case, without folds"
+        );
+        assert_eq!(
+            focused(&state),
+            Some(1),
+            "on the first match, not the project above it"
+        );
+        assert_eq!(view(&state).filter, "DR");
+        typed(&mut state, "x");
+        assert_eq!(listed(&state), Vec::<String>::new());
+        assert_eq!(focused(&state), None);
+        input(&mut state, &[SidebarInput::Erase; 3]);
+        typed(&mut state, "o");
+        assert_eq!(
+            listed(&state),
+            [
+                "today",
+                "bookmark Home",
+                "Leaf Work",
+                "  Leaf Drafts",
+                "    Leaf Old",
+                "Leaf Home"
+            ],
+            "Today, a bookmark and projects"
+        );
+        assert_eq!(focused(&state), Some(0));
+        input(&mut state, &[SidebarInput::Erase]);
+        assert_eq!(listed(&state), listed(&open(OUTLINE)), "no filter left");
+        assert_eq!(view(&state).filter, "");
+        input(&mut state, &[SidebarInput::Next, SidebarInput::Erase]);
+        assert_eq!(
+            focused(&state),
+            Some(1),
+            "erasing an empty filter leaves the focus"
+        );
+    }
+
+    // D-86
+    #[test]
+    fn a_filter_looks_through_folds_which_it_leaves_alone_and_closing_drops_it() {
+        let mut state = open(OUTLINE);
+        state.update(Message::ToggleSidebar);
+        input(
+            &mut state,
+            &[SidebarInput::Focus(3), SidebarInput::Collapse],
+        );
+        typed(&mut state, "old");
+        assert_eq!(
+            listed(&state),
+            ["Leaf Work", "  Leaf Drafts", "    Leaf Old"]
+        );
+        input(
+            &mut state,
+            &[
+                SidebarInput::Focus(0),
+                SidebarInput::Collapse,
+                SidebarInput::Expand,
+            ],
+        );
+        input(&mut state, &[SidebarInput::Erase; 3]);
+        assert_eq!(
+            listed(&state)[3],
+            "Collapsed Work",
+            "folding while filtering does nothing"
+        );
+        typed(&mut state, "home");
+        input(&mut state, &[SidebarInput::Leave]);
+        state.update(Message::ToggleSidebar);
+        assert_eq!(view(&state).filter, "");
+        assert_eq!(
+            listed(&state).len(),
+            5,
+            "everything but what Work's fold hides"
+        );
+        input(&mut state, &[SidebarInput::Leave]);
+        typed(&mut state, "a");
+        assert_eq!(
+            view(&state).filter,
+            "",
+            "typing does nothing while it is closed"
+        );
+    }
+
     // FR-KEY-05
     #[test]
     fn focusing_an_entry_moves_the_focus_there_while_the_sidebar_is_open() {
@@ -1214,8 +1423,20 @@ INBOX:",
         input(&mut state, &[SidebarInput::Next]);
         assert_eq!(
             entry_commands(&state),
-            Some(vec!["Go to Entry, Open in New Pane".to_owned(), leave]),
+            Some(vec![
+                "Go to Entry, Open in New Pane".to_owned(),
+                leave.clone()
+            ]),
             "a project without child projects"
+        );
+        typed(&mut state, "drafts");
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec![
+                "Go to Entry, Open in New Pane".to_owned(),
+                leave.clone()
+            ]),
+            "no folding while a filter is typed (D-86)"
         );
         let groups = state.sidebar_commands().unwrap();
         assert_eq!(groups[1][0].command, Command::Sidebar(SidebarInput::Leave));

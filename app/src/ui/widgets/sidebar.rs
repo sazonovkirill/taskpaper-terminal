@@ -25,7 +25,8 @@ const WIDTH: u16 = 48;
 /// The window's title.
 const TITLE: &str = "Navigator";
 
-/// The sidebar's window, framed and titled in the accent color like the finders, and its lines:
+/// The sidebar's window, framed and titled in the accent color like the finders, with its filter
+/// in the bottom border as the context menu has it (D-86), and its lines:
 /// the inbox and the special views, then for each of the bookmarks and the projects that
 /// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77, D-80). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
@@ -224,11 +225,17 @@ impl Widget for SidebarPanel<'_> {
         let frame = Block::bordered()
             .border_style(accent)
             .title_style(accent)
-            .title(TITLE);
+            .title(TITLE)
+            .title_bottom(self.view.filter.as_str());
         let inner = frame.inner(area);
         frame.render(area, buf);
         if self.view.entries.is_empty() {
-            Line::from(" Nothing to go to").dim().render(inner, buf);
+            let empty = if self.view.filter.is_empty() {
+                " Nothing to go to"
+            } else {
+                " Nothing matches"
+            };
+            Line::from(empty).dim().render(inner, buf);
             return;
         }
         // The text keeps a column clear of the right border, as the gutter does of the left.
@@ -386,6 +393,19 @@ mod tests {
         assert_eq!(panel.focused_line(), None);
         assert_eq!(panel.scroll(3, 2), 0);
         assert_eq!(panel.area(Rect::new(0, 0, 60, 20)).height, 3, "one line");
+    }
+
+    // D-86
+    #[test]
+    fn a_filter_matching_nothing_says_so_and_shows_in_the_bottom_border() {
+        let mut state = opened("- a");
+        state.update(Message::Sidebar(SidebarInput::Type('z')));
+        let buf = render(&view(&state), 1);
+        assert_eq!(rows(&buf), [" Nothing matches"]);
+        assert_eq!(
+            (0..4).map(|x| buf[(x, 2)].symbol()).collect::<String>(),
+            "└z──"
+        );
     }
 
     // FR-UI-01, D-68

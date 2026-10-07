@@ -48,7 +48,7 @@ Weekend errands:
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.
 	Open Today with gt for what is due or started by today; Alt+l or gz on one of its blocks goes to it in the outline.
 	Jump to any block by name with Ctrl+K, or to a project with gP; Alt+Enter or Ctrl+V there opens it in a new pane.
-	Press Ctrl+G for the Navigator, a window of Today, your bookmarks and projects: j, k and Enter go to one, and Ctrl+G or Esc closes it.
+	Press Ctrl+G for the Navigator, a window of Today, your bookmarks and projects: type to filter it, ↑, ↓ and Enter go to one, and Ctrl+G or Esc closes it.
 	Move between the panes with Ctrl+Shift+← and Ctrl+Shift+→, or Ctrl+W ← and Ctrl+W →.
 	Find any command by name with Ctrl+P or :, such as Count Blocks and Words for what is under the focused block, or Save As to keep this file somewhere of your own.
 	Press g, for the settings: theme, icons, word wrap, autosave delay and backups, each kept in ~/.config/taskpaper-terminal/config.toml as you change it.

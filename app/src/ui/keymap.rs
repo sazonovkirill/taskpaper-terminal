@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::app::{
     Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
-    SettingsInput, TextEdit,
+    SettingsInput, SidebarInput, TextEdit,
     commands::{REGISTRY, SIDEBAR},
 };
 
@@ -750,8 +750,11 @@ impl Keymap {
     /// What `pressed` asks for while the sidebar is open: its own keys alone (keybindings.md §4,
     /// D-79).
     fn sidebar_action(&self, pressed: Key, context: &Context) -> Option<KeyAction> {
-        let (_, command) = self.sidebar.iter().find(|(key, _)| *key == pressed)?;
-        action(*command, context)
+        match self.sidebar.iter().find(|(key, _)| *key == pressed) {
+            Some((_, command)) => action(*command, context),
+            None => typed_char(pressed)
+                .map(|c| KeyAction::Send(Message::Sidebar(SidebarInput::Type(c)))),
+        }
     }
 
     /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
@@ -2342,7 +2345,8 @@ mod tests {
     // keybindings.md §4, D-79: the open sidebar is a window that keeps the keys.
     #[test]
     fn the_open_sidebar_takes_no_keys_that_focus_a_pane() {
-        assert_eq!(messages("g1", IN_SIDEBAR), [None, None]);
+        let typed = |c| Some(Message::Sidebar(SidebarInput::Type(c)));
+        assert_eq!(messages("g1", IN_SIDEBAR), [typed('g'), typed('1')]);
         let mut keymap = Keymap::default();
         for (code, modifiers) in [
             (KeyCode::Char('2'), KeyModifiers::ALT),
@@ -2356,11 +2360,7 @@ mod tests {
             assert_eq!(keymap.pending(), "", "nothing waits for a sequence");
         }
         assert_eq!(
-            keymap.message_for(
-                &key(KeyCode::Char('j'), KeyModifiers::NONE),
-                ms(1),
-                IN_SIDEBAR
-            ),
+            keymap.message_for(&key(KeyCode::Down, KeyModifiers::NONE), ms(1), IN_SIDEBAR),
             Some(Message::Sidebar(SidebarInput::Next)),
         );
     }
@@ -2370,27 +2370,32 @@ mod tests {
         ..*CONTEXT
     };
 
-    // FR-UI-01, keybindings.md §4
+    // FR-UI-01, keybindings.md §4, D-86
     #[test]
-    fn the_open_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_g() {
+    fn the_open_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_g_and_other_characters_filter() {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
         let sidebar = |input| Some(Message::Sidebar(input));
         for (code, modifiers, expected) in [
-            (KeyCode::Char('j'), none, sidebar(SidebarInput::Next)),
             (KeyCode::Down, none, sidebar(SidebarInput::Next)),
-            (KeyCode::Char('k'), none, sidebar(SidebarInput::Previous)),
+            (KeyCode::Char('n'), ctrl, sidebar(SidebarInput::Next)),
             (KeyCode::Up, none, sidebar(SidebarInput::Previous)),
-            (KeyCode::Char('h'), none, sidebar(SidebarInput::Collapse)),
+            (KeyCode::Char('p'), ctrl, sidebar(SidebarInput::Previous)),
             (KeyCode::Left, none, sidebar(SidebarInput::Collapse)),
-            (KeyCode::Char('l'), none, sidebar(SidebarInput::Expand)),
             (KeyCode::Right, none, sidebar(SidebarInput::Expand)),
             (KeyCode::Enter, none, sidebar(SidebarInput::Choose)),
+            (KeyCode::Backspace, none, sidebar(SidebarInput::Erase)),
             (KeyCode::Esc, none, sidebar(SidebarInput::Leave)),
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
             (KeyCode::Char('g'), ctrl, Some(Message::ToggleSidebar)),
             (KeyCode::Char('b'), ctrl, None),
-            (KeyCode::Char('x'), none, None),
+            (KeyCode::Char('j'), none, sidebar(SidebarInput::Type('j'))),
+            (
+                KeyCode::Char('W'),
+                KeyModifiers::SHIFT,
+                sidebar(SidebarInput::Type('W')),
+            ),
+            (KeyCode::Char(' '), none, sidebar(SidebarInput::Type(' '))),
             (KeyCode::Char('j'), ctrl, None),
         ] {
             let mut keymap = Keymap::default();
@@ -2856,7 +2861,8 @@ mod tests {
 
     // FR-KEY-06, keybindings.md §1, §2 and §4, D-42
     #[test]
-    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_sidebar() {
+    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_sidebar_without_backslash()
+     {
         let open = Some(&Message::OpenContextMenu);
         check(KeyCode::Char('\\'), KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::SHIFT, open);
@@ -2868,7 +2874,6 @@ mod tests {
             ..*CONTEXT
         };
         for (at, (code, modifiers)) in [
-            (KeyCode::Char('\\'), KeyModifiers::NONE),
             (KeyCode::F(10), KeyModifiers::SHIFT),
             (KeyCode::Menu, KeyModifiers::NONE),
         ]
@@ -2884,9 +2889,13 @@ mod tests {
             );
         }
         assert_eq!(
-            keymap.message_for(&key(KeyCode::Char('j'), KeyModifiers::NONE), ms(9), sidebar),
-            Some(Message::Sidebar(SidebarInput::Next)),
-            "other keys stay the sidebar's"
+            keymap.message_for(
+                &key(KeyCode::Char('\\'), KeyModifiers::NONE),
+                ms(9),
+                sidebar
+            ),
+            Some(Message::Sidebar(SidebarInput::Type('\\'))),
+            "the Navigator's filter takes \\ as typed (D-86)"
         );
         assert_eq!(
             keymap.message_for(
@@ -2942,7 +2951,7 @@ mod tests {
         );
         assert_eq!(
             bindings(Command::Sidebar(SidebarInput::Next), false),
-            "j, ↓"
+            "↓, Ctrl+N"
         );
         let open = Command::Pane(PaneChange::Open);
         assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v");

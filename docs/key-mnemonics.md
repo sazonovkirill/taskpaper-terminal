@@ -109,6 +109,7 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 - `?` shortcuts panel; `(`/`)` page it.
 - `Enter` edits; `Esc` clears the selection.
 - `Tab`/`Shift+Tab` indent/outdent, in both modes.
+- The **Navigator** (`Ctrl+G`) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Shift+F10` or the Menu key opens the context menu, `Esc` or `Ctrl+G` closes, `Ctrl+Q` quits.
 - **Edit mode** uses normal text-editor keys, plus `/` command menu, `Ctrl+T` cycle **t**ype, `Ctrl+B` **b**old, `Ctrl+E` inline cod**e** (or `` Alt+` ``), `↑`/`↓` edit the neighbor block.
 
 ## Where the logic breaks

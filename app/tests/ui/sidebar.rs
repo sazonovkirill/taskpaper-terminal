@@ -180,13 +180,13 @@ fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
         Some(listed(Some(7))),
         "Reports, above the zoomed task"
     );
-    press(&mut app, KeyCode::Char('k'));
+    press(&mut app, KeyCode::Up);
     let mut lines = listed(Some(6));
     lines[7] = format!("{:44}1", "▌   Reports");
     assert_eq!(
         window(&mut app),
         Some(lines),
-        "k moves the focus, the current entry keeps its marker"
+        "↑ moves the focus, the current entry keeps its marker"
     );
     let buffer = app.render().buffer().clone();
     let (x, y) = corner(&buffer).expect("open");
@@ -196,20 +196,20 @@ fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
     );
 }
 
-// FR-UI-01, keybindings.md §4
+// FR-UI-01, keybindings.md §4, D-86
 #[test]
-fn j_k_and_the_arrows_move_in_the_window_skipping_headings() {
+fn the_arrows_and_ctrl_n_and_ctrl_p_move_in_the_window_skipping_headings() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    press(&mut app, KeyCode::Char('j'));
+    press(&mut app, KeyCode::Down);
     assert_eq!(
         window(&mut app),
         Some(listed(Some(3))),
         "headings and blank lines are skipped"
     );
-    press(&mut app, KeyCode::Down);
+    app.press(KeyCode::Char('n'), KeyModifiers::CONTROL);
     assert_eq!(window(&mut app), Some(listed(Some(6))));
-    press(&mut app, KeyCode::Char('k'));
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Up);
     assert_eq!(window(&mut app), Some(listed(Some(0))));
     press(&mut app, KeyCode::Esc);
@@ -221,7 +221,6 @@ fn j_k_and_the_arrows_move_in_the_window_skipping_headings() {
 fn the_keys_that_focus_a_pane_and_the_sidebars_old_keys_do_nothing() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    app.type_keys("g1");
     app.press(KeyCode::Char('1'), KeyModifiers::ALT);
     app.press(KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
@@ -239,13 +238,14 @@ fn the_keys_that_focus_a_pane_and_the_sidebars_old_keys_do_nothing() {
 fn enter_zooms_the_pane_to_the_entry_and_closes_the_window() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    press(&mut app, KeyCode::Char('j'));
+    press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Enter);
     assert_eq!(window(&mut app), None);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
     ctrl_g(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(3))), "on its entry");
-    app.type_keys("jj");
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         pane(&mut app)[..4],
@@ -271,19 +271,17 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
     assert_eq!(window(&mut app), Some(listed(Some(0))), "on its entry");
 }
 
-// keybindings.md §4
+// keybindings.md §4, D-86
 #[test]
-fn h_and_l_and_the_arrows_fold_project_entries() {
+fn the_left_and_right_arrows_fold_project_entries() {
     let mut app = app(80);
     ctrl_g(&mut app);
-    app.type_keys("jjh");
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Left);
     let mut folded = listed(Some(6));
     folded[6] = format!("{:44}2", "▌▸Work");
     folded.remove(7);
-    assert_eq!(window(&mut app), Some(folded.clone()));
-    press(&mut app, KeyCode::Char('l'));
-    assert_eq!(window(&mut app), Some(listed(Some(6))));
-    press(&mut app, KeyCode::Left);
     assert_eq!(window(&mut app), Some(folded));
     press(&mut app, KeyCode::Right);
     assert_eq!(window(&mut app), Some(listed(Some(6))));
@@ -347,7 +345,9 @@ fn the_window_scrolls_to_keep_its_focused_entry_visible() {
             "  P2".to_owned(),
         ]
     );
-    app.type_keys("jjjjj");
+    for _ in 0..5 {
+        press(&mut app, KeyCode::Down);
+    }
     assert_eq!(
         window(&mut app).expect("open"),
         ["  P3", "  P4", "▌ P5", "  P6", "  P7"]
@@ -450,5 +450,41 @@ fn g_i_zooms_to_the_inbox_and_says_so_when_there_is_none() {
     assert!(
         status.ends_with("· No INBOX project in the Navigator"),
         "{status}"
+    );
+}
+
+// D-86, ui.md §1
+#[test]
+fn typing_filters_the_window_shown_in_its_bottom_border_and_enter_goes_to_the_match() {
+    let mut app = app(80);
+    ctrl_g(&mut app);
+    app.type_keys("rep");
+    assert_eq!(
+        window(&mut app),
+        Some(vec![
+            "  Projects".to_owned(),
+            format!("{:44}2", "  Work"),
+            format!("{:44}1", "▌   Reports"),
+        ]),
+        "the project above the match stays, without fold markers"
+    );
+    let buffer = app.render().buffer().clone();
+    let (x, top) = corner(&buffer).expect("open");
+    assert_eq!(columns(&buffer, top + 4, x, x + 6), "└rep──");
+    press(&mut app, KeyCode::Backspace);
+    app.type_keys("z");
+    assert_eq!(window(&mut app), Some(vec![" Nothing matches".to_owned()]));
+    for _ in 0..3 {
+        press(&mut app, KeyCode::Backspace);
+    }
+    app.type_keys("home");
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(window(&mut app), None);
+    assert_eq!(pane(&mut app)[0], "  ⌂ › Home");
+    ctrl_g(&mut app);
+    assert_eq!(
+        window(&mut app).map(|lines| lines.len()),
+        Some(9),
+        "the filter is gone"
     );
 }
