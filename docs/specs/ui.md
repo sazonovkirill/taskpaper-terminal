@@ -1,6 +1,6 @@
 # Spec: Screen layout and styling
 
-Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11, FR-SET-02–03 and N-PORT-02.
+Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11, FR-SET-02–03, N-PORT-02 and N-PORT-04.
 
 ## 1. Layout
 
