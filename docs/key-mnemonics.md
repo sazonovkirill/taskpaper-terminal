@@ -56,6 +56,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `gx` | open link (vim's `gx`) |
 | `gc` / `gw` | show **c**ompleted / word **w**rap |
 | `g0` / `g1`…`g9` | sidebar / pane N (numbers = places, like `Alt+1` tabs) |
+| `g,` | settings (`,` is preferences, as `Cmd+,` on macOS) |
 
 ## 5. The `m` family: metadata with a prompt or picker
 

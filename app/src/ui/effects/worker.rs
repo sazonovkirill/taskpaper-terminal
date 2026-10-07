@@ -10,7 +10,7 @@ use std::{
 
 use toml_edit::Value;
 
-use super::{Backups, Views, atomic};
+use super::{BackupSettings, Backups, Views, atomic};
 use crate::{
     app::{Disk, Message, SaveAs, Version, ViewState},
     ui::{Input, config},
@@ -29,8 +29,11 @@ enum Job {
     Disk(Disk),
     /// Keep this layout for the file at this path.
     StoreView(PathBuf, ViewState),
-    /// Write this value for this setting, a dotted key, to the settings file at this path.
-    StoreSetting(PathBuf, &'static str, Value),
+    /// Write this value for this setting, a dotted key, to the settings file at this path, or
+    /// remove the setting when there is none.
+    StoreSetting(PathBuf, &'static str, Option<Value>),
+    /// Make backups as these settings say from now on.
+    SetBackups(BackupSettings),
     /// Answers once every job before it is done and its result sent.
     Flush(Sender<()>),
 }
@@ -60,10 +63,16 @@ impl Io {
     }
 
     /// Queues writing `value` for the setting `key`, dotted as in `backups.keep`, to the settings
-    /// file at `path` behind the work queued before it; a write that fails comes back as
-    /// [`Message::ConfigProblems`] (FR-SET-04).
-    pub fn store_setting(&self, path: PathBuf, key: &'static str, value: impl Into<Value>) {
-        self.send(Job::StoreSetting(path, key, value.into()));
+    /// file at `path`, or removing the setting from it when `value` is `None`, behind the work
+    /// queued before it; a write that fails comes back as [`Message::ConfigProblems`] (FR-SET-04).
+    pub fn store_setting(&self, path: PathBuf, key: &'static str, value: Option<Value>) {
+        self.send(Job::StoreSetting(path, key, value));
+    }
+
+    /// Queues making backups as `settings` say from then on, behind the work queued before it
+    /// (file-io.md §2).
+    pub fn set_backups(&self, settings: BackupSettings) {
+        self.send(Job::SetBackups(settings));
     }
 
     /// Waits until the work queued so far is done and its results are sent.
@@ -144,9 +153,16 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
                 let _ = views.store(&path, &view);
                 None
             }
-            Job::StoreSetting(path, key, value) => config::set(&path, key, value)
-                .err()
-                .map(|error| Message::ConfigProblems(vec![error.problem(key)])),
+            Job::StoreSetting(path, key, value) => match value {
+                Some(value) => config::set(&path, key, value),
+                None => config::remove(&path, key),
+            }
+            .err()
+            .map(|error| Message::ConfigProblems(vec![error.problem(key)])),
+            Job::SetBackups(settings) => {
+                backups.set(&settings);
+                None
+            }
             Job::Flush(done) => {
                 // The flusher waits for this answer and only stops waiting by being dropped.
                 let _ = done.send(());
@@ -321,14 +337,46 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let (io, inputs) = start(dir.path());
         let path = dir.path().join("settings/config.toml");
-        io.store_setting(path.clone(), "theme", "nord");
-        io.store_setting(dir.path().to_owned(), "theme", "nord");
+        io.store_setting(path.clone(), "theme", Some("nord".into()));
+        io.store_setting(dir.path().to_owned(), "theme", Some("nord".into()));
         io.flush();
         assert!(
             matches!(&results(&inputs)[..], [Input::Core(Message::ConfigProblems(problems))] if problems.len() == 1 && problems[0].starts_with("`theme` not saved: ")),
             "only the folder that is no file is reported"
         );
         assert_eq!(fs::read_to_string(&path)?, "theme = \"nord\"\n");
+        Ok(())
+    }
+
+    // FR-SET-02, file-io.md §2
+    #[test]
+    fn makes_backups_as_the_settings_changed_later_say() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "- a\n")?;
+        io.set_backups(BackupSettings {
+            enabled: false,
+            ..BackupSettings::default()
+        });
+        io.submit(Disk::Backup { path });
+        io.flush();
+        assert_eq!(results(&inputs), []);
+        assert!(!fs::exists(dir.path().join("backups"))?, "no copy made");
+        Ok(())
+    }
+
+    // FR-SET-04, ui.md §8
+    #[test]
+    fn removes_a_setting() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "theme = \"nord\"\nicons = \"none\"\n")?;
+        io.store_setting(path.clone(), "theme", None);
+        io.flush();
+        assert_eq!(results(&inputs), []);
+        assert_eq!(fs::read_to_string(&path)?, "icons = \"none\"\n");
         Ok(())
     }
 

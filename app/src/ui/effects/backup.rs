@@ -79,11 +79,11 @@ impl Default for BackupSettings {
 /// was checked on which day, so each file is checked once a day.
 #[derive(Debug)]
 pub struct Backups {
-    folder: Option<PathBuf>,
+    /// The folder copies go to unless the settings name another.
+    default: Option<PathBuf>,
     now: fn() -> DateTime,
     checked: Option<(PathBuf, Date)>,
-    enabled: bool,
-    keep: usize,
+    settings: BackupSettings,
 }
 
 impl Backups {
@@ -91,24 +91,33 @@ impl Backups {
     #[must_use]
     pub fn new(folder: Option<PathBuf>, now: fn() -> DateTime) -> Self {
         Self {
-            folder,
+            default: folder,
             now,
             checked: None,
-            enabled: true,
-            keep: KEEP,
+            settings: BackupSettings::default(),
         }
     }
 
-    /// These backups as `settings` say: on or off, in their folder if they name one, keeping
-    /// their number of copies.
+    /// These backups as `settings` say.
     #[must_use]
-    pub fn with_settings(self, settings: &BackupSettings) -> Self {
-        Self {
-            folder: settings.folder.clone().or(self.folder),
-            enabled: settings.enabled,
-            keep: settings.keep,
-            ..self
-        }
+    pub fn with_settings(mut self, settings: &BackupSettings) -> Self {
+        self.set(settings);
+        self
+    }
+
+    /// Makes backups as `settings` say from now on: on or off, in their folder if they name one,
+    /// else the default one, keeping their number of copies (file-io.md §2).
+    pub fn set(&mut self, settings: &BackupSettings) {
+        self.settings = settings.clone();
+    }
+
+    /// The folder copies go to.
+    fn folder(&self) -> Result<&Path, BackupError> {
+        self.settings
+            .folder
+            .as_deref()
+            .or(self.default.as_deref())
+            .ok_or(BackupError::NoFolder)
     }
 
     /// Makes sure today's copy of `file` exists, unless `file` was checked today already. A
@@ -118,16 +127,16 @@ impl Backups {
     ///
     /// [`BackupError`] when the copy could not be made.
     pub fn ensure(&mut self, file: &Path) -> Result<(), BackupError> {
-        if !self.enabled {
+        if !self.settings.enabled {
             return Ok(());
         }
         let check = (file.to_owned(), (self.now)().date());
         if self.checked.as_ref() == Some(&check) {
             return Ok(());
         }
-        let (file, today) = self.checked.insert(check);
-        let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
-        Ok(daily(file, folder, *today, self.keep)?)
+        self.checked = Some(check.clone());
+        let (file, today) = check;
+        Ok(daily(&file, self.folder()?, today, self.settings.keep)?)
     }
 
     /// Writes `contents` to a new conflict copy of `file` and returns its path.
@@ -136,8 +145,8 @@ impl Backups {
     ///
     /// [`BackupError`] when the copy could not be written.
     pub fn conflict(&self, file: &Path, contents: &[u8]) -> Result<PathBuf, BackupError> {
-        let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
-        let keep = self.enabled.then_some(self.keep);
+        let folder = self.folder()?;
+        let keep = self.settings.enabled.then_some(self.settings.keep);
         Ok(conflict(file, folder, (self.now)(), contents, keep)?)
     }
 }
@@ -564,6 +573,32 @@ mod tests {
             3,
             "both conflict copies and the source"
         );
+        Ok(())
+    }
+
+    // FR-SET-02, file-io.md §2
+    #[test]
+    fn settings_changed_later_apply_from_then_on_and_no_folder_goes_back_to_the_default()
+    -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "today")?;
+        let chosen = dir.path().join("chosen");
+        let mut session =
+            Backups::new(Some(backups.clone()), || NOW).with_settings(&BackupSettings {
+                enabled: false,
+                ..BackupSettings::default()
+            });
+        session.ensure(&file)?;
+        session.set(&BackupSettings {
+            folder: Some(chosen.clone()),
+            ..BackupSettings::default()
+        });
+        session.ensure(&file)?;
+        let copy = backup_folder(&file, &chosen)?.join("2026-10-05.taskpaper");
+        assert!(fs::exists(copy)?);
+        session.set(&BackupSettings::default());
+        session.conflict(&file, b"a")?;
+        assert!(fs::exists(&backups)?, "back in the default folder");
         Ok(())
     }
 

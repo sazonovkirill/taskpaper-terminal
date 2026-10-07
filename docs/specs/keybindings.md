@@ -128,7 +128,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Scroll the shortcuts panel down / up a page, while it is open (D-55) | `)` / `(` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |
 | Go to Command (FR-NAV-06) | `Ctrl+K`, `:` (was `Ctrl+P`) |
-| Settings window (FR-SET-02) | `g,` |
+| Settings window (FR-SET-02); also Open Settings in the command palette | `g,` |
 | Context menu for the focused element (FR-KEY-06) | `\`, `Shift+F10`, the Menu key (was `M`) |
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
 | Open this pane's location in a new pane | `Ctrl+W s` |
@@ -172,7 +172,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and returns to the pane, `Alt+Enter` or `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` returns to the pane, `Ctrl+B` hides the sidebar. Below 80 columns, where the sidebar hides, the pane keeps the keys.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` or `Ctrl+V` opens the choice in a new pane where that applies (Go to Symbol), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Comments panel:** keys as in [special-nodes.md §2.3](special-nodes.md#23-commands).
-- **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03).
+- **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.
 - **External-change conflict prompt** ([file-io.md §3](file-io.md#3-external-changes)): `m` keeps mine, `t` takes theirs, `d` shows or hides the diff, `j`/`k`/arrows scroll the diff a line and `Ctrl+D`/`Ctrl+U`/`PageDown`/`PageUp` a page, `Ctrl+Q` quits. Other keys do nothing; the prompt has no `Esc`, because saving stays paused until a choice is made.
 

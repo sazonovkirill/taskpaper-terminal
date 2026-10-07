@@ -6,6 +6,7 @@ pub mod effects;
 pub mod keymap;
 pub mod layout;
 mod mouse;
+mod settings;
 pub mod theme;
 pub mod widgets;
 
@@ -25,14 +26,14 @@ use ratatui::{
 
 use crate::{
     app::{
-        Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput,
-        State,
+        Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SettingsInput,
+        SidebarInput, State,
         commands::{Command, Group, REGISTRY},
     },
     document::ItemId,
 };
 use config::{Config, WriteError};
-use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
+use effects::{BackupSettings, Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use layout::Scroll;
 pub use mouse::acts_on;
@@ -40,7 +41,7 @@ pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
     ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
-    ShortcutsPanel, SidebarPanel,
+    SettingsWindow, ShortcutsPanel, SidebarPanel,
 };
 
 /// What the event loop waits for.
@@ -77,6 +78,11 @@ pub struct Tui {
     /// The glyphs icons are drawn with: as the `icons` setting asks, or ASCII without a UTF-8
     /// locale (ui.md §3, §7).
     icons: IconSet,
+    /// The `icons` setting, which the settings window shows and changes (ui.md §7).
+    icon_setting: IconSetting,
+    /// The backups the disk worker makes, which the settings window shows and changes
+    /// (file-io.md §2).
+    backups: BackupSettings,
     /// Where each pane's outline starts on screen: its top row stays put when rows above it
     /// change height.
     scrolls: HashMap<PaneId, Scroll>,
@@ -153,6 +159,8 @@ impl Tui {
             keymap: Keymap::default(),
             wrap: true,
             icons: IconSet::default(),
+            icon_setting: IconSetting::default(),
+            backups: BackupSettings::default(),
             scrolls: HashMap::new(),
             strip_scroll: 0,
             pane_width: 0,
@@ -202,6 +210,7 @@ impl Tui {
     /// file says otherwise (ui.md §7).
     #[must_use]
     pub fn with_icons(mut self, setting: IconSetting) -> Self {
+        self.icon_setting = setting;
         self.icons = self.icons.with_setting(setting);
         self
     }
@@ -213,19 +222,24 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the key bindings, autosave delay, icons and theme `config`
-    /// holds, keeping settings changed in the app in its file and reporting once what it ignored
-    /// of the file (FR-SET-04). Its backups are the disk worker's.
+    /// The frontend running with the key bindings, autosave delay, icons, word wrap, theme and
+    /// backups `config` holds, keeping settings changed in the app in its file and reporting once
+    /// what it ignored of the file (FR-SET-04). The disk worker makes its backups as `config`
+    /// says until the settings window changes them.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
         self.settings = config.file().map(ToOwned::to_owned);
+        self.backups = config.backups().clone();
         if let Some(theme) = config.theme {
             self.theme = theme;
         }
         self.keymap = config.keymap;
         if let Some(setting) = config.icons {
-            self.icons = self.icons.with_setting(setting);
+            self = self.with_icons(setting);
+        }
+        if let Some(wrap) = config.wrap {
+            self.wrap = wrap;
         }
         if let Some(delay) = config.autosave_delay {
             self.send(Message::SetAutosaveDelay(delay), Duration::ZERO);
@@ -414,6 +428,10 @@ impl Tui {
                     .collect();
                 self.send(Message::OpenGoToCommand(bindings), now);
             }
+            KeyAction::OpenSettings => {
+                let settings = self.listed_settings();
+                self.send(Message::Settings(SettingsInput::Open(settings)), now);
+            }
             KeyAction::ChooseTheme => {
                 let names = BuiltIn::all()
                     .map(|theme| theme.name().to_owned())
@@ -485,17 +503,18 @@ impl Tui {
                 Effect::SetTheme(position) => {
                     if let Some(theme) = BuiltIn::nth(position) {
                         self.theme = theme;
-                        self.keep_setting("theme", theme.id(), now);
+                        self.keep_setting("theme", Some(theme.id().into()), now);
                     }
                 }
+                Effect::ChangeSetting { at, value } => self.change_setting(at, value, now),
             }
         }
     }
 
-    /// Has the disk worker write `value` for the setting `key` to the settings file, or reports
-    /// at time `now` that there is none, the setting holding for the session either way
-    /// (FR-SET-04).
-    fn keep_setting(&mut self, key: &'static str, value: &str, now: Duration) {
+    /// Has the disk worker write `value` for the setting `key` to the settings file, or remove
+    /// the setting when there is no value, or reports at time `now` that there is no file, the
+    /// setting holding for the session either way (FR-SET-04).
+    fn keep_setting(&mut self, key: &'static str, value: Option<toml_edit::Value>, now: Duration) {
         if let Some(file) = &self.settings {
             self.io.store_setting(file.clone(), key, value);
         } else {
@@ -504,13 +523,15 @@ impl Tui {
         }
     }
 
-    /// The colors to draw in: the theme the theme picker highlights while it is open, so that
-    /// it previews it (FR-UI-06), else the theme chosen, as the terminal can show them.
+    /// The colors to draw in: the theme the theme picker or the settings window's picker
+    /// highlights while it is open, so that it previews it (FR-UI-06, ui.md §8), else the theme
+    /// chosen, as the terminal can show them.
     fn palette(&self) -> Theme {
         self.state
             .theme_picker()
             .and_then(|view| view.entries.get(view.selected).map(|entry| entry.value))
             .and_then(BuiltIn::nth)
+            .or_else(|| self.previewed_theme())
             .unwrap_or(self.theme)
             .colors(self.colors)
     }
@@ -593,6 +614,7 @@ impl Tui {
         }
         if !self.state.in_conflict() {
             self.draw_finders(frame, outline, &theme);
+            self.draw_settings(frame, screen_body, &theme);
             if let Some(view) = self.state.save_as() {
                 let prompt = SaveAsPrompt::new(&view, &theme);
                 frame.set_cursor_position(prompt.caret(outline));
@@ -929,6 +951,34 @@ impl Tui {
         }
     }
 
+    /// The settings window over `area` in `theme`, with its value picker over it while open, and
+    /// the caret in the text it takes, if any (ui.md §8).
+    fn draw_settings(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
+        let Some(view) = self.state.settings() else {
+            return;
+        };
+        let window = SettingsWindow::new(
+            &view,
+            self.settings.as_deref(),
+            self.icons,
+            settings::icon,
+            theme,
+        );
+        if let Some(caret) = window.caret(area) {
+            frame.set_cursor_position(caret);
+        }
+        frame.render_widget(window, area);
+        if let Some((name, picker)) = &view.picker {
+            let at = view.rows.get(view.selected).map(|row| row.at);
+            let icon = |_: &usize| (at.map_or(Icon::Command, settings::icon), Style::new());
+            draw_finder(
+                frame,
+                FinderPopup::new(name, picker, self.icons, &icon, theme),
+                area,
+            );
+        }
+    }
+
     /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
     /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1), and
     /// where the focused entry starts on screen, if one is focused.
@@ -1025,6 +1075,16 @@ impl Tui {
             Some(Overlay::GoToCommand)
         } else if self.state.theme_picker().is_some() {
             Some(Overlay::ThemePicker)
+        } else if let Some(view) = self.state.settings() {
+            Some(if view.picker.is_some() {
+                Overlay::SettingsPicker
+            } else if view.prompt.is_some()
+                || view.filter.as_ref().is_some_and(|(_, typing)| *typing)
+            {
+                Overlay::SettingsText
+            } else {
+                Overlay::Settings
+            })
         } else if self.state.save_as().is_some() {
             Some(Overlay::SaveAs)
         } else if self.state.context_menu().is_some() {

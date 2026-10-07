@@ -264,7 +264,7 @@ fn parentheses_scroll_the_list_a_page_at_a_time_and_more_lines_say_what_is_hidde
         panel[1..7],
         [
             "│ ↑ more                      (",
-            "│  Go to Command      Ctrl+K, :",
+            "│  Open Settings             g,",
             "│  Context … \\, Shift+F10, Menu",
             "│  Open in Ne… Ctrl+\\, Ctrl+W v",
             "│  Close Pane          Ctrl+W c",

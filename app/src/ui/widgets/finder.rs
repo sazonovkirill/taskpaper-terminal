@@ -26,7 +26,7 @@ const PROMPT: &str = "› ";
 /// then each matching entry's icon, its text and, dimmed after it, its detail, the highlighted
 /// one reversed and kept in view, or a dimmed line saying nothing matches.
 pub struct FinderPopup<'a, T> {
-    title: &'static str,
+    title: &'a str,
     view: &'a FinderView<'a, T>,
     icons: IconSet,
     icon: &'a dyn Fn(&T) -> (Icon, Style),
@@ -47,7 +47,7 @@ impl<'a, T> FinderPopup<'a, T> {
     /// its value, drawn from `icons` in the style it gives.
     #[must_use]
     pub fn new(
-        title: &'static str,
+        title: &'a str,
         view: &'a FinderView<'a, T>,
         icons: IconSet,
         icon: &'a dyn Fn(&T) -> (Icon, Style),

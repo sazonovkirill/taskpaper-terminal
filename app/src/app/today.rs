@@ -150,6 +150,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::OpenMoveTo
         | Message::OpenGoToCommand(_)
         | Message::OpenThemePicker { .. }
+        | Message::Settings(_)
         | Message::Count
         | Message::SaveAs(_)
         | Message::OpenContextMenu

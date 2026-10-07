@@ -31,6 +31,7 @@ mod quick_dates;
 mod save_as;
 mod saving;
 mod selection;
+mod settings;
 mod shortcuts;
 mod show_completed;
 mod sidebar;

@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::app::{
     Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
-    TextEdit,
+    SettingsInput, TextEdit,
     commands::{REGISTRY, SIDEBAR},
 };
 
@@ -62,6 +62,8 @@ pub enum KeyAction {
     GoToCommand,
     /// Opens the theme picker over the frontend's themes (FR-UI-06).
     ChooseTheme,
+    /// Opens the settings window over the frontend's settings (FR-SET-02).
+    OpenSettings,
     /// Makes the focused pane narrower, as widths are the frontend's to choose (FR-UI-03).
     NarrowPane,
     /// Makes the focused pane wider.
@@ -91,6 +93,12 @@ pub enum Overlay {
     GoToCommand,
     /// The theme picker (FR-UI-06).
     ThemePicker,
+    /// The settings window while it browses its settings (FR-SET-02).
+    Settings,
+    /// The settings window while its filter or a setting's prompt takes text.
+    SettingsText,
+    /// The settings window while a setting's value picker is open.
+    SettingsPicker,
     /// The Save As prompt (FR-DOC-06).
     SaveAs,
     /// The context menu (FR-KEY-06).
@@ -243,12 +251,79 @@ fn menu_message(key: Key, menu: Menu) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
     }
-    let input = MENU
-        .iter()
+    Some(Message::Menu(menu, menu_input(key)?))
+}
+
+/// What `key` does in a menu or picker: its binding, else typing the character it is.
+fn menu_input(key: Key) -> Option<MenuInput> {
+    MENU.iter()
         .find(|(bound, _)| *bound == key)
         .map(|&(_, input)| input)
-        .or_else(|| typed_char(key).map(MenuInput::Type))?;
-    Some(Message::Menu(menu, input))
+        .or_else(|| typed_char(key).map(MenuInput::Type))
+}
+
+/// Bindings of the settings window while it browses its settings ([ui.md §8]); other keys do
+/// nothing.
+///
+/// [ui.md §8]: ../../../docs/specs/ui.md#8-settings-window-fr-set-02-fr-set-03
+const SETTINGS: &[(Key, SettingsInput)] = &[
+    (key!('j'), SettingsInput::Next),
+    (key!(Down), SettingsInput::Next),
+    (key!('k'), SettingsInput::Previous),
+    (key!(Up), SettingsInput::Previous),
+    (key!(Tab), SettingsInput::SwitchColumn),
+    (key!(Enter), SettingsInput::Change),
+    (key!(' '), SettingsInput::Change),
+    (key!('h'), SettingsInput::Cycle(false)),
+    (key!(Left), SettingsInput::Cycle(false)),
+    (key!('l'), SettingsInput::Cycle(true)),
+    (key!(Right), SettingsInput::Cycle(true)),
+    (key!('r'), SettingsInput::Reset),
+    (key!('/'), SettingsInput::Filter),
+    (key!(Esc), SettingsInput::Close),
+];
+
+/// The settings window's message for `key` while it browses: `Ctrl+Q` quits, else its binding.
+fn settings_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    SETTINGS
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|(_, input)| Message::Settings(input.clone()))
+}
+
+/// Bindings of the settings window's filter and prompt besides the [`TEXT`] keys; characters
+/// without other bindings are typed.
+const SETTINGS_TEXT: &[(Key, SettingsInput)] = &[
+    (key!(Enter), SettingsInput::Accept),
+    (key!(Esc), SettingsInput::Cancel),
+    (key!(Down), SettingsInput::Next),
+    (key!(Up), SettingsInput::Previous),
+];
+
+/// The settings window's message for `key` while its filter or a prompt takes text: `Ctrl+Q`
+/// quits, a binding, else the change to the text it asks for.
+fn settings_text_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    let input = SETTINGS_TEXT
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|(_, input)| input.clone())
+        .or_else(|| text_edit(key).map(SettingsInput::Edit))?;
+    Some(Message::Settings(input))
+}
+
+/// The settings window's message for `key` while a value picker is open: `Ctrl+Q` quits, else
+/// the key of a picker it is.
+fn settings_picker_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    Some(Message::Settings(SettingsInput::Pick(menu_input(key)?)))
 }
 
 /// Bindings of the open date prompt ([keybindings.md §3]) besides the [`TEXT`] keys; characters
@@ -458,6 +533,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
         Command::ToggleWrap => Some(KeyAction::ToggleWrap),
         Command::GoToCommand => Some(KeyAction::GoToCommand),
         Command::ChooseTheme => Some(KeyAction::ChooseTheme),
+        Command::OpenSettings => Some(KeyAction::OpenSettings),
         Command::NarrowPane => Some(KeyAction::NarrowPane),
         Command::WidenPane => Some(KeyAction::WidenPane),
         Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
@@ -739,6 +815,9 @@ impl Keymap {
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
                 Overlay::ThemePicker => menu_message(pressed, Menu::ThemePicker),
+                Overlay::Settings => settings_message(pressed),
+                Overlay::SettingsText => settings_text_message(pressed),
+                Overlay::SettingsPicker => settings_picker_message(pressed),
                 Overlay::SaveAs => save_as_message(pressed),
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
@@ -840,6 +919,7 @@ mod tests {
                     KeyAction::ToggleWrap
                     | KeyAction::GoToCommand
                     | KeyAction::ChooseTheme
+                    | KeyAction::OpenSettings
                     | KeyAction::NarrowPane
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown
@@ -2206,6 +2286,115 @@ mod tests {
             keymap.message_for(&n, ms(0), choosing),
             Some(Message::Menu(Menu::ThemePicker, MenuInput::Type('n')))
         );
+    }
+
+    // FR-SET-02, keybindings.md §2
+    #[test]
+    fn g_comma_opens_the_settings_window() {
+        let mut keymap = Keymap::default();
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        assert_eq!(keymap.action_for(&press('g'), ms(0), CONTEXT), None);
+        assert_eq!(
+            keymap.action_for(&press(','), ms(1), CONTEXT),
+            Some(KeyAction::OpenSettings)
+        );
+        assert_eq!(
+            action(Command::OpenSettings, CONTEXT),
+            Some(KeyAction::OpenSettings)
+        );
+    }
+
+    /// The message `code` with `modifiers` sends while `overlay` is open.
+    fn overlay_message(
+        overlay: Overlay,
+        code: KeyCode,
+        modifiers: KeyModifiers,
+    ) -> Option<Message> {
+        let context = &Context {
+            overlay: Some(overlay),
+            ..*CONTEXT
+        };
+        Keymap::default().message_for(&key(code, modifiers), ms(0), context)
+    }
+
+    // ui.md §8
+    #[test]
+    fn the_settings_window_takes_its_keys() {
+        let none = KeyModifiers::NONE;
+        let settings = |code| overlay_message(Overlay::Settings, code, none);
+        for (code, input) in [
+            (KeyCode::Char('j'), SettingsInput::Next),
+            (KeyCode::Down, SettingsInput::Next),
+            (KeyCode::Char('k'), SettingsInput::Previous),
+            (KeyCode::Up, SettingsInput::Previous),
+            (KeyCode::Tab, SettingsInput::SwitchColumn),
+            (KeyCode::Enter, SettingsInput::Change),
+            (KeyCode::Char(' '), SettingsInput::Change),
+            (KeyCode::Char('h'), SettingsInput::Cycle(false)),
+            (KeyCode::Left, SettingsInput::Cycle(false)),
+            (KeyCode::Char('l'), SettingsInput::Cycle(true)),
+            (KeyCode::Right, SettingsInput::Cycle(true)),
+            (KeyCode::Char('r'), SettingsInput::Reset),
+            (KeyCode::Char('/'), SettingsInput::Filter),
+            (KeyCode::Esc, SettingsInput::Close),
+        ] {
+            assert_eq!(settings(code), Some(Message::Settings(input)), "{code:?}");
+        }
+        assert_eq!(settings(KeyCode::Char('x')), None, "other keys do nothing");
+        for overlay in [
+            Overlay::Settings,
+            Overlay::SettingsText,
+            Overlay::SettingsPicker,
+        ] {
+            assert_eq!(
+                overlay_message(overlay, KeyCode::Char('q'), KeyModifiers::CONTROL),
+                Some(Message::Quit),
+                "{overlay:?}"
+            );
+        }
+    }
+
+    // ui.md §8
+    #[test]
+    fn the_settings_windows_filter_and_prompt_take_text_keys() {
+        let text = |code, modifiers| overlay_message(Overlay::SettingsText, code, modifiers);
+        let none = KeyModifiers::NONE;
+        for (code, input) in [
+            (KeyCode::Enter, SettingsInput::Accept),
+            (KeyCode::Esc, SettingsInput::Cancel),
+            (KeyCode::Down, SettingsInput::Next),
+            (KeyCode::Up, SettingsInput::Previous),
+            (
+                KeyCode::Char('j'),
+                SettingsInput::Edit(TextEdit::Insert('j')),
+            ),
+            (
+                KeyCode::Backspace,
+                SettingsInput::Edit(TextEdit::DeleteBackward),
+            ),
+        ] {
+            assert_eq!(text(code, none), Some(Message::Settings(input)), "{code:?}");
+        }
+        assert_eq!(text(KeyCode::F(2), none), None);
+    }
+
+    // ui.md §8
+    #[test]
+    fn the_settings_windows_value_picker_takes_the_keys_of_a_picker() {
+        let pick = |code| overlay_message(Overlay::SettingsPicker, code, KeyModifiers::NONE);
+        for (code, input) in [
+            (KeyCode::Char('n'), MenuInput::Type('n')),
+            (KeyCode::Down, MenuInput::Next),
+            (KeyCode::Enter, MenuInput::Choose),
+            (KeyCode::Esc, MenuInput::Dismiss),
+        ] {
+            assert_eq!(
+                pick(code),
+                Some(Message::Settings(SettingsInput::Pick(input))),
+                "{code:?}"
+            );
+        }
+        assert_eq!(pick(KeyCode::F(2)), None);
     }
 
     // FR-DOC-06, keybindings.md §4

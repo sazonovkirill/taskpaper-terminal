@@ -37,9 +37,11 @@ use crate::{
 };
 
 mod save_as;
+mod settings;
 mod sidebar;
 
 pub use save_as::SaveAsPrompt;
+pub use settings::SettingsWindow;
 pub use sidebar::SidebarPanel;
 
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
@@ -721,6 +723,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::ToggleDone => plain(Icon::Complete),
         Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
         Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
+        Command::OpenSettings => plain(Icon::Settings),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -1868,6 +1871,7 @@ mod tests {
                 Style::new().fg(Color::Blue),
             ),
             (Command::SetColor(None), Icon::Color, Style::new()),
+            (Command::OpenSettings, Icon::Settings, Style::new()),
             (Command::OpenDetails, Icon::Details, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),
             (Command::Duplicate, Icon::Duplicate, Style::new()),

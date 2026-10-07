@@ -69,6 +69,9 @@ pub enum Command {
     /// Pick the theme from the frontend's themes, which it previews and keeps itself, since colors
     /// are presentation (FR-UI-06).
     ChooseTheme,
+    /// Open the settings window over the frontend's settings, which it applies and keeps itself
+    /// (FR-SET-02).
+    OpenSettings,
     /// Open or close the shortcuts panel.
     ToggleShortcuts,
     /// Scroll the shortcuts panel down a page, which the frontend carries out, since scrolling
@@ -230,6 +233,7 @@ impl Command {
             Self::ToggleShowDone => "Show/Hide Completed".into(),
             Self::ToggleWrap => "Toggle Word Wrap".into(),
             Self::ChooseTheme => "Choose Theme".into(),
+            Self::OpenSettings => "Open Settings".into(),
             Self::ToggleShortcuts => "Shortcuts".into(),
             Self::ScrollShortcutsDown => "Scroll Shortcuts Down".into(),
             Self::ScrollShortcutsUp => "Scroll Shortcuts Up".into(),
@@ -304,9 +308,9 @@ impl Command {
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
     /// [`Command::ToggleWrap`], [`Command::NarrowPane`], [`Command::WidenPane`] and the scrolling
-    /// of the shortcuts panel, which the frontend carries out, and for [`Command::GoToCommand`]
-    /// and [`Command::ChooseTheme`], whose messages carry the bindings and the themes the
-    /// frontend shows.
+    /// of the shortcuts panel, which the frontend carries out, and for [`Command::GoToCommand`],
+    /// [`Command::ChooseTheme`] and [`Command::OpenSettings`], whose messages carry the bindings,
+    /// the themes and the settings the frontend shows.
     #[must_use]
     pub fn message(self, inputs: &Inputs) -> Option<Message> {
         let today = inputs.today;
@@ -357,6 +361,7 @@ impl Command {
             Self::Retype(_)
             | Self::ToggleWrap
             | Self::ChooseTheme
+            | Self::OpenSettings
             | Self::GoToCommand
             | Self::NarrowPane
             | Self::WidenPane
@@ -619,14 +624,15 @@ mod tests {
 
     // D-44: a type change is a change of the edit session, which no message makes; wrapping is
     // the frontend's (FR-UI-05), and so are the bindings Go to Command shows (FR-NAV-06), the
-    // widths of panes (navigation.md §5), the scrolling of the shortcuts panel (D-55) and the
-    // themes (FR-UI-06).
+    // widths of panes (navigation.md §5), the scrolling of the shortcuts panel (D-55), the
+    // themes (FR-UI-06) and the settings (FR-SET-02).
     #[test]
     fn retyping_toggling_wrap_going_to_a_command_resizing_and_scrolling_send_no_message() {
         assert_eq!(Command::Retype(Typed::Project).message(&INPUTS), None);
         assert_eq!(Command::ToggleWrap.message(&INPUTS), None);
         assert_eq!(Command::GoToCommand.message(&INPUTS), None);
         assert_eq!(Command::ChooseTheme.message(&INPUTS), None);
+        assert_eq!(Command::OpenSettings.message(&INPUTS), None);
         assert_eq!(Command::NarrowPane.message(&INPUTS), None);
         assert_eq!(Command::WidenPane.message(&INPUTS), None);
         assert_eq!(Command::ScrollShortcutsDown.message(&INPUTS), None);
@@ -642,6 +648,7 @@ mod tests {
                     | Command::ToggleWrap
                     | Command::GoToCommand
                     | Command::ChooseTheme
+                    | Command::OpenSettings
                     | Command::NarrowPane
                     | Command::WidenPane
                     | Command::ScrollShortcutsDown

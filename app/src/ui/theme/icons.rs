@@ -58,6 +58,18 @@ pub enum Icon {
     Edit,
     /// The status line's mark of changes not saved yet.
     Unsaved,
+    /// Go to Command's Open Settings.
+    Settings,
+    /// The settings window's icons setting.
+    Glyphs,
+    /// The settings window's word wrap setting.
+    Wrap,
+    /// The settings window's autosave delay setting.
+    Autosave,
+    /// The settings window's settings of whether and how many backups are kept.
+    Backup,
+    /// The settings window's backup folder setting.
+    Folder,
 }
 
 /// The `icons` setting (ui.md §7): Nerd Font glyphs, or none, which draws the Unicode markers.
@@ -185,6 +197,18 @@ impl Icon {
             Self::Edit => ("\u{f03eb}", "✎", "/"),
             // nf-md-circle_medium
             Self::Unsaved => ("\u{f09de}", "●", "*"),
+            // nf-md-cog_outline
+            Self::Settings => ("\u{f08bb}", "⚙", "%"),
+            // nf-md-shape_outline
+            Self::Glyphs => ("\u{f0832}", "◇", "o"),
+            // nf-md-wrap
+            Self::Wrap => ("\u{f05b6}", "↩", "/"),
+            // nf-md-timer_outline
+            Self::Autosave => ("\u{f051b}", "◷", "t"),
+            // nf-md-backup_restore
+            Self::Backup => ("\u{f006f}", "↺", "b"),
+            // nf-md-folder_cog_outline
+            Self::Folder => ("\u{f1080}", "▭", "d"),
         };
         Glyphs {
             nerd,
@@ -200,7 +224,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 24] = [
+    const ICONS: [Icon; 30] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -225,6 +249,12 @@ mod tests {
         Icon::Navigate,
         Icon::Edit,
         Icon::Unsaved,
+        Icon::Settings,
+        Icon::Glyphs,
+        Icon::Wrap,
+        Icon::Autosave,
+        Icon::Backup,
+        Icon::Folder,
     ];
 
     // FR-UI-10, ui.md §7

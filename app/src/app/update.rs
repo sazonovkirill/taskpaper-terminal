@@ -6,8 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, Notice, PaneChange, Paste, SaveAs, SelectionChange,
-    SidebarInput, State, TextEdit, Version,
+    Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
+    SettingValue, SettingsInput, SidebarInput, State, TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
     structure::NewBlock,
@@ -217,6 +217,9 @@ pub enum Message {
         /// The position in `names` of the theme in use.
         current: usize,
     },
+    /// Open the settings window over the frontend's settings, or a key of it (FR-SET-02,
+    /// ui.md §8).
+    Settings(SettingsInput),
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
     /// Open the context menu on the focused sidebar entry while the sidebar has the keys, else
@@ -425,6 +428,7 @@ impl Message {
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
             | Self::OpenThemePicker { .. }
+            | Self::Settings(_)
             | Self::Count
             | Self::SaveAs(_)
             | Self::OpenContextMenu
@@ -481,6 +485,14 @@ pub enum Effect {
     /// Use the frontend's theme at this position in the names it gave the theme picker from now
     /// on, and keep it in its settings (FR-UI-06, FR-SET-04).
     SetTheme(usize),
+    /// Apply this value of the setting at this position in the settings the frontend gave the
+    /// settings window, and keep it in its settings (FR-SET-02, FR-SET-04).
+    ChangeSetting {
+        /// The setting's position.
+        at: usize,
+        /// Its new value.
+        value: SettingValue,
+    },
     /// Complete the folder that ends this path as typed, `~` standing for the home folder, and
     /// report the result as [`SaveAs::Completed`] when there is one (file-io.md §2).
     CompletePath(String),
@@ -572,7 +584,7 @@ impl State {
             Message::ConflictCopied { copy } => self.conflict_copied(copy),
             Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
-            Message::ConfigProblems(problems) => self.notify(Notice::ConfigProblems(problems)),
+            Message::ConfigProblems(problems) => self.config_problems(problems),
             Message::SetAutosaveDelay(delay) => self.set_autosave_delay(delay),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),
@@ -602,8 +614,7 @@ impl State {
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(Location::Outline(None)),
             Message::GoToCrumb(depth) => self.go_to_crumb(depth),
-            Message::Back => self.walk_history(false),
-            Message::Forward => self.walk_history(true),
+            Message::Back | Message::Forward => self.walk_history(message == Message::Forward),
             Message::ToggleSidebar => self.toggle_sidebar(),
             Message::FocusSidebar => self.focus_sidebar(),
             Message::Sidebar(input) => self.sidebar_input(input),
@@ -624,6 +635,7 @@ impl State {
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::OpenThemePicker { names, current } => self.open_theme_picker(names, current),
+            Message::Settings(input) => effects.extend(self.settings_input(input)),
             Message::Count => self.count(),
             Message::OpenContextMenu => self.open_context_menu(),
             Message::OpenPaneMenu(crumb) => self.open_pane_menu(crumb),
@@ -1023,6 +1035,7 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::Notice;
     use std::collections::HashSet;
 
     use crate::document::{Document, format};

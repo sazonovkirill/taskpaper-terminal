@@ -313,6 +313,12 @@ impl State {
         self.found(contents);
     }
 
+    /// How long after the last change a save starts (`autosave_delay_ms`).
+    #[must_use]
+    pub fn autosave_delay(&self) -> Duration {
+        self.autosave.delay
+    }
+
     /// Saves `delay` after the last change from now on (`autosave_delay_ms`).
     pub(super) fn set_autosave_delay(&mut self, delay: Duration) {
         self.autosave.delay = delay;
@@ -671,7 +677,9 @@ mod tests {
     #[test]
     fn the_frontend_sets_how_long_after_the_last_change_a_save_starts() {
         let mut state = opened();
+        assert_eq!(state.autosave_delay(), DELAY);
         assert_eq!(state.update(Message::SetAutosaveDelay(ms(300))), []);
+        assert_eq!(state.autosave_delay(), ms(300));
         assert_eq!(edit(&mut state, "b", ms(100)), []);
         assert_eq!(state.deadline(), Some(ms(400)));
         assert_eq!(tick(&mut state, ms(399)), []);

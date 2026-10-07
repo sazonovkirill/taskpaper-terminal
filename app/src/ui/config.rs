@@ -69,7 +69,7 @@ pub enum Problem {
 }
 
 /// The least `autosave_delay_ms` may be (file-io.md §2).
-const MIN_AUTOSAVE_DELAY: Duration = Duration::from_millis(100);
+pub(super) const MIN_AUTOSAVE_DELAY: Duration = Duration::from_millis(100);
 
 /// The settings the frontend runs with, and what it ignored of the file.
 #[derive(Debug, Default)]
@@ -82,6 +82,8 @@ pub struct Config {
     pub(super) icons: Option<IconSetting>,
     /// The theme, when the file names one (`theme`, FR-UI-06).
     pub(super) theme: Option<BuiltIn>,
+    /// Whether text wraps, when the file says (`word_wrap`, FR-UI-05).
+    pub(super) wrap: Option<bool>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -128,6 +130,17 @@ impl Config {
             _ => self.problems.push(Problem::InvalidValue {
                 key: "icons".to_owned(),
                 expected: "\"nerd\" or \"none\"",
+            }),
+        }
+    }
+
+    /// Takes `word_wrap` from `item`: `true` or `false`.
+    fn read_wrap(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(wrap) => self.wrap = Some(wrap),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "word_wrap".to_owned(),
+                expected: "true or false",
             }),
         }
     }
@@ -279,6 +292,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "backups" => config.read_backups(item, home),
             "icons" => config.read_icons(item),
             "theme" => config.read_theme(item),
+            "word_wrap" => config.read_wrap(item),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
@@ -330,16 +344,7 @@ impl WriteError {
 /// [`WriteError`] when the file is not TOML, holds something else where `key` goes, or cannot
 /// be read or written; it is then left as it was.
 pub fn set(path: &Path, key: &str, value: impl Into<Value>) -> Result<(), WriteError> {
-    let text = match fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => String::new(),
-        Err(error) => return Err(error.into()),
-    };
-    let mut document: DocumentMut =
-        text.parse()
-            .map_err(|error: toml_edit::TomlError| WriteError::NotToml {
-                message: error.message().to_owned(),
-            })?;
+    let mut document = parse(path)?;
     let in_the_way = |end: usize| WriteError::InTheWay {
         key: key.get(..end).unwrap_or(key).to_owned(),
     };
@@ -366,6 +371,47 @@ pub fn set(path: &Path, key: &str, value: impl Into<Value>) -> Result<(), WriteE
         Some(_) => return Err(in_the_way(key.len())),
     }
     path.parent().map(fs::create_dir_all).transpose()?;
+    write(path, &document)
+}
+
+/// Removes the setting `key`, dotted as for [`set`], from the settings file at `path`, so that
+/// it takes its default again, keeping everything else; a file that does not set it is left as
+/// it is (FR-SET-04).
+///
+/// # Errors
+///
+/// [`WriteError`] when the file is not TOML or cannot be read or written; it is then left as it
+/// was.
+pub fn remove(path: &Path, key: &str) -> Result<(), WriteError> {
+    let mut document = parse(path)?;
+    let (tables, name) = key.rsplit_once('.').unwrap_or(("", key));
+    let mut table: Option<&mut dyn TableLike> = Some(document.as_table_mut());
+    for part in tables.split('.').filter(|part| !part.is_empty()) {
+        table = table
+            .and_then(|table| table.get_mut(part))
+            .and_then(Item::as_table_like_mut);
+    }
+    match table.and_then(|table| table.remove(name)) {
+        Some(_) => write(path, &document),
+        None => Ok(()),
+    }
+}
+
+/// The settings file at `path` to edit, empty when it does not exist.
+fn parse(path: &Path) -> Result<DocumentMut, WriteError> {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    text.parse()
+        .map_err(|error: toml_edit::TomlError| WriteError::NotToml {
+            message: error.message().to_owned(),
+        })
+}
+
+/// Replaces the settings file at `path` with `document` at once, never seen half written.
+fn write(path: &Path, document: &DocumentMut) -> Result<(), WriteError> {
     atomic::prepare(path, document.to_string().as_bytes())?.commit()?;
     Ok(())
 }
@@ -592,6 +638,22 @@ mod tests {
         }
     }
 
+    // FR-UI-05, FR-SET-04
+    #[test]
+    fn word_wrap_is_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).wrap, None);
+        assert_eq!(read("word_wrap = false\n", None).wrap, Some(false));
+        let config = read("word_wrap = \"off\"\n", None);
+        assert_eq!(config.wrap, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "word_wrap".to_owned(),
+                expected: "true or false",
+            }]
+        );
+    }
+
     // FR-SET-01, file-io.md §2
     #[test]
     fn the_autosave_delay_and_backups_are_read_with_their_limits() {
@@ -809,6 +871,53 @@ mod tests {
         set(&path, "theme", "nord")?;
         assert!(fs::symlink_metadata(&path)?.file_type().is_symlink());
         assert_eq!(fs::read_to_string(&target)?, "theme = \"nord\"\n");
+        Ok(())
+    }
+
+    // FR-SET-04, ui.md §8
+    #[test]
+    fn removing_a_setting_keeps_everything_else() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("config.toml");
+        remove(&path, "backups.dir")?;
+        assert!(!path.exists(), "no file is made to remove nothing");
+        let text = "# Mine\n\
+             theme = \"nord\"\n\
+             \n\
+             [backups]\n\
+             dir = \"~/copies\" # synced\n\
+             keep = 5\n";
+        fs::write(&path, text)?;
+        remove(&path, "backups.dir")?;
+        assert_eq!(
+            fs::read_to_string(&path)?,
+            "# Mine\ntheme = \"nord\"\n\n[backups]\nkeep = 5\n"
+        );
+        remove(&path, "theme")?;
+        let left = "\n[backups]\nkeep = 5\n";
+        assert_eq!(
+            fs::read_to_string(&path)?,
+            left,
+            "the comment above it goes with it"
+        );
+        for key in [
+            "backups.dir",
+            "icons",
+            "keymap.navigate.x",
+            "backups.keep.x",
+        ] {
+            remove(&path, key)?;
+            assert_eq!(fs::read_to_string(&path)?, left, "{key}");
+        }
+        fs::write(&path, "theme = \n")?;
+        assert!(matches!(
+            remove(&path, "theme"),
+            Err(WriteError::NotToml { .. })
+        ));
+        assert!(matches!(
+            remove(dir.path(), "theme"),
+            Err(WriteError::Io(_))
+        ));
         Ok(())
     }
 

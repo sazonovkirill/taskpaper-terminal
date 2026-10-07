@@ -23,6 +23,7 @@ use super::{
     save_as,
     saving::Autosave,
     selection::Selection,
+    settings,
     sidebar::Sidebar,
     today_order::TodayOrder,
     type_picker::Conversion,
@@ -80,6 +81,8 @@ pub struct State {
     /// The theme picker over the frontend's themes, each by its position, while it is open
     /// (FR-UI-06).
     pub(super) themes: Option<Finder<usize>>,
+    /// The settings window, while it is open (FR-SET-02).
+    pub(super) settings: Option<settings::Window>,
     /// The Save As prompt, while it is open (FR-DOC-06).
     pub(super) save_as: Option<save_as::Prompt>,
     /// The context menu, while it is open (FR-KEY-06).
@@ -315,6 +318,7 @@ impl State {
             destinations: None,
             commands: None,
             themes: None,
+            settings: None,
             save_as: None,
             context_menu: None,
             resume: None,

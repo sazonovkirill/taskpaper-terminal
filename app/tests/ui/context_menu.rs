@@ -195,9 +195,10 @@ fn the_shortcuts_panel_lists_it() {
         .iter()
         .position(|row| row.ends_with("Go to Command      Ctrl+K, :"))
         .expect("Go to Command is listed");
+    assert!(rows[at + 1].ends_with("  Open Settings             g,"));
     assert!(
-        rows[at + 1].ends_with("  Context … \\, Shift+F10, Menu"),
+        rows[at + 2].ends_with("  Context … \\, Shift+F10, Menu"),
         "{}",
-        rows[at + 1]
+        rows[at + 2]
     );
 }

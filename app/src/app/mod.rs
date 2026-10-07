@@ -25,6 +25,7 @@ mod picker;
 mod save_as;
 pub mod saving;
 mod selection;
+mod settings;
 mod shortcuts;
 mod sidebar;
 pub mod state;
@@ -51,6 +52,10 @@ pub use picker::PickerView;
 pub use save_as::{SaveAs, SaveAsStatus, SaveAsView};
 pub use saving::SaveState;
 pub use selection::SelectionChange;
+pub use settings::{
+    Setting, SettingKind, SettingRow, SettingValue, SettingsColumn, SettingsInput, SettingsView,
+    Typed,
+};
 pub use sidebar::{Fold, SidebarEntry, SidebarInput, SidebarView};
 pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;
