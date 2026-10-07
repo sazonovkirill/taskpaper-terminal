@@ -271,13 +271,7 @@ impl Command {
             Self::Count => "Count Blocks and Words".into(),
             Self::SaveAs => "Save As".into(),
             Self::ContextMenu => "Context Menu".into(),
-            Self::Sidebar(SidebarInput::Next) => "Next Entry".into(),
-            Self::Sidebar(SidebarInput::Previous) => "Previous Entry".into(),
-            Self::Sidebar(SidebarInput::Collapse) => "Collapse Entry".into(),
-            Self::Sidebar(SidebarInput::Expand) => "Expand Entry".into(),
-            Self::Sidebar(SidebarInput::Choose) => "Go to Entry".into(),
-            Self::Sidebar(SidebarInput::Leave) => "Return to Outline".into(),
-            Self::Sidebar(SidebarInput::Focus(at)) => format!("Focus Entry {}", at + 1).into(),
+            Self::Sidebar(input) => sidebar_name(input),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -451,6 +445,19 @@ fn color_name(color: TagColor) -> &'static str {
         TagColor::Green => "Green",
         TagColor::Blue => "Blue",
         TagColor::Violet => "Violet",
+    }
+}
+
+/// The name of [`Command::Sidebar`] with `input`.
+fn sidebar_name(input: SidebarInput) -> Cow<'static, str> {
+    match input {
+        SidebarInput::Next => "Next Entry".into(),
+        SidebarInput::Previous => "Previous Entry".into(),
+        SidebarInput::Collapse => "Collapse Entry".into(),
+        SidebarInput::Expand => "Expand Entry".into(),
+        SidebarInput::Choose => "Go to Entry".into(),
+        SidebarInput::Leave => "Return to Outline".into(),
+        SidebarInput::Focus(at) => format!("Focus Entry {}", at + 1).into(),
     }
 }
 
