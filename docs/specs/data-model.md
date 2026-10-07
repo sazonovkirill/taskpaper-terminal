@@ -99,7 +99,7 @@ struct Workspace {
     panes: Vec<Pane>,            // left to right (FR-UI-02)
     focused: usize,
     sidebar: SidebarState,       // navigation sidebar on the left: visible, focus (FR-UI-01)
-    secondary: Option<Panel>,    // right sidebar: Shortcuts | Comments(block) (D-28)
+    secondary: Option<Panel>,    // right sidebar: Shortcuts (D-28, D-66)
 }
 
 struct Pane {

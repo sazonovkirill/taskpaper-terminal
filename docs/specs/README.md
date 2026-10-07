@@ -13,7 +13,7 @@
 | [file-io.md](file-io.md) | Opening, `/tmp` documents, Save As, atomic autosave, backups, external changes, crash recovery, pane layout persistence. |
 | [navigation.md](navigation.md) | Visible rows, focus, folding, zoom, panes, sidebar, Today view, Go to Symbol and Go to Command. |
 | [editing.md](editing.md) | Navigate and edit modes, creating blocks, structural operations, clipboard, block type, done, dates, colors, bookmarks. |
-| [special-nodes.md](special-nodes.md) | Hidden `@hidden` lines that store feature data; comments. |
+| [special-nodes.md](special-nodes.md) | Hidden `@hidden` lines that store feature data. |
 | [links.md](links.md) | Internal links and backlinks (Later): `@uid` targets, `[[ID\|Title]]` links, display, commands. |
 | [search.md](search.md) | Date parsing (v1); search syntax and bookmarked searches (Later). |
 | [keybindings.md](keybindings.md) | Terminal key constraints, navigate and edit mode bindings, configuration. |

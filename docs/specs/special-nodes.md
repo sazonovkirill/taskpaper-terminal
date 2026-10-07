@@ -1,17 +1,17 @@
-# Spec: Special nodes and comments
+# Spec: Special nodes
 
-Covers FR-SPC (D-23). A **special node** is a line the app keeps in the `.taskpaper` file to store a feature's data but never shows as a block. Comments are the first feature built on it. Other TaskPaper apps see special nodes as ordinary lines, so the data survives any editor.
+Covers FR-SPC (D-23). A **special node** is a line the app keeps in the `.taskpaper` file to store a feature's data but never shows as a block. No feature of v1 writes one; the app hides and preserves those other apps or hand edits leave (D-66). Other TaskPaper apps see special nodes as ordinary lines, so the data survives any editor.
 
 ## 1. Special nodes (FR-SPC-01)
 
-A special node is any line carrying the `@hidden` tag, together with its whole subtree. Inside a special node `@hidden` has no further meaning: only the outermost `@hidden` line starts a node. Its other tags name the feature that owns it, for example `@comments`. The line's text is a label for people reading the file in another app; the app identifies the node by its tags only.
+A special node is any line carrying the `@hidden` tag, together with its whole subtree. Inside a special node `@hidden` has no further meaning: only the outermost `@hidden` line starts a node. Its other tags name the feature that owns it, for example `@log`. The line's text is a label for people reading the file in another app; the app identifies the node by its tags only.
 
 ```
 Project 1:
 	- Task A
 	- Task B
-		COMMENTS @hidden @comments
-			[2026-10-04 12:09] Comment 1 **text** text text. http://some-url.com
+		LOG @hidden @log
+			[2026-10-04 12:09] Started
 ```
 
 Rules:
@@ -27,61 +27,12 @@ Rules:
 
 `@hidden` is reserved for this mechanism. The type converter (FR-BLK-08) and the other metadata commands never set or clear it.
 
-## 2. Comments (FR-SPC-02)
+## 2. Later features
 
-### 2.1 Storage
+Further features may store their data as special nodes with their own feature tag, for example comments (dropped from v1 by D-66), an activity log, attachments or links, or recurrence rules. Each needs its own requirement; until then such nodes are unknown features (§1).
 
-Comments on a block live in a special node tagged `@hidden @comments` under the block's last line. The app creates the node with the text `COMMENTS @hidden @comments` when the first comment is added, and deletes it when the last comment is deleted.
-
-Each child line of the node starts one comment:
-
-```
-[YYYY-MM-DD HH:MM] first line of the comment
-	continuation line
-	continuation line
-```
-
-- **Timestamp:** local time when the comment was added, 24-hour, no time zone, ISO date as in `@done`. On read the app also accepts a 12-hour time with `am`/`pm` (`[2026-10-04 12:09pm]`) and a date alone (`[2026-10-04]`); it never rewrites a timestamp it did not write.
-- **Multi-line comments:** the first line holds the timestamp; each further line is a child of the comment's line, one level deeper. Leading and trailing blank lines are trimmed when the app writes a comment, and leading whitespace of each line is dropped, as for every line ([file-format.md §3.1](file-format.md#31-canonical-outlines), rule 4). Blank lines inside the comment are kept.
-- **Comments typed elsewhere:** any non-blank child line of the node is a comment, with its subtree as continuation lines; blank child lines are skipped. A line without a leading timestamp shows with no date.
-- **Several comment nodes** under one block (possible after editing in another app) are shown together in file order; new comments go into the last one.
-- Comment text is stored verbatim. Tags and TaskPaper line types inside a comment have no meaning: `@due(2026-10-05)` in a comment is text, and a comment line ending in `:` is not a project. A comment's text is the raw body of its lines without the timestamp; nothing such as a leading `- ` is stripped.
-
-### 2.2 Display
-
-- **Badge:** a block with comments shows a comment icon and the count as a chip (`󰅺 3`), after its date chips (FR-UI-09). Without icons it shows `✎3`, or `c3` when the locale is not UTF-8 (FR-UI-10).
-- **Comments panel:** its key in navigate mode, chosen with step 8.2 ([keybindings.md §2](keybindings.md#block-metadata-fr-blk-08-fr-tag-fr-done-01), D-48), the context menu (FR-KEY-06) and Go to Command open a panel in the secondary sidebar on the right ([ui.md §1](ui.md#1-layout), D-28), Todoist style, replacing the shortcuts panel if it is open. Its header shows the block's display text. It lists the comments oldest first, each with its timestamp in a compact local form (`Today 12:09`, `Fri 12:09`, `4 Oct 2026 12:09`) above the text, wrapped to the panel width. An input at the bottom adds a comment.
-- **Formatting:** comment text renders `**bold**` and `` `code` `` (FR-FMT-01), and URLs are underlined. `gx` on a comment opens its URL, or offers a picker when it has several (D-45). Tags inside comments are shown as typed, since they mean nothing there.
-- Clicking the badge opens the panel (FR-KEY-05).
-
-### 2.3 Commands
-
-Inside the panel, focus moves between the comment list and the input with `Tab`; `Esc` closes the panel and returns focus to the block.
-
-| Command | Keys in the panel | Effect |
-|---|---|---|
-| Add | type in the input, `Enter` | Appends a comment stamped with the current local time. `Shift+Enter` or `Alt+Enter` inserts a line break. |
-| Edit | `Enter` on a comment | Edits its text in place with the same keys as edit mode (FR-MODE-03); the timestamp is kept. |
-| Delete | `dd` or `Delete` on a comment | Removes the comment and its continuation lines; removing the last one removes the node. |
-| Move between comments | `j` / `k`, `↓` / `↑` | |
-| Copy text | `yy` | Copies the comment's text without the timestamp. |
-
-Unlike block editing, `@` can be typed freely in the input and while editing a comment, because tags inside comments are text (§2.1) and the app never reads them as metadata.
-
-Adding, editing or deleting a comment is one undo step (FR-OPS-08), undoable from the panel or the outline. Saving the file follows [file-io.md §2](file-io.md#2-saving) as for any edit.
-
-### 2.4 Selections
-
-With several blocks selected, the panel opens for the focused block only; comments are per block.
-
-## 3. Later features
-
-Further features may store their data as special nodes with their own feature tag, for example an activity log, attachments or links, or recurrence rules. Each needs its own requirement; until then such nodes are unknown features (§1).
-
-## 4. Tests
+## 3. Tests
 
 - Parsing: special nodes and their subtrees produce no blocks; a block whose only children are special nodes is a leaf; tags inside them do not change block metadata; round-trip is byte-for-byte.
 - Placement: new child, indent, move and paste insert before trailing special nodes; a node placed elsewhere by another app stays put.
 - Edits: editing a block's text or type leaves its special nodes where they are.
-- Comments: add, edit and delete write the format in §2.1 and are single undo steps; the node is created on the first comment and removed with the last; timestamps in every accepted form parse; untimestamped lines and several nodes display as §2.1 says.
-- UI (`TestBackend`): the badge with and without icons, and the panel listing, adding and editing comments.

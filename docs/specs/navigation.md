@@ -64,7 +64,7 @@ A panel on the left with three sections, top to bottom:
 2. **Today**: the built-in view (§7).
 3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper.
 
-`Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` shows or hides it; it hides automatically below 80 columns. The `?` shortcuts panel and the comments panel open in a secondary sidebar on the right instead ([ui.md §1](ui.md#1-layout), D-28).
+`Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` shows or hides it; it hides automatically below 80 columns. The `?` shortcuts panel opens in a secondary sidebar on the right instead ([ui.md §1](ui.md#1-layout), D-28).
 
 ## 7. Today view (FR-TAG-04, D-7)
 

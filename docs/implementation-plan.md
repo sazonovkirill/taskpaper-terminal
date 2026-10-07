@@ -1,7 +1,7 @@
 # Implementation plan
 
 - Status: Draft
-- Last updated: 2026-10-06
+- Last updated: 2026-10-07
 
 The order in which v1 is built. The app starts almost trivial and gains one feature per step; after every step it starts, shows the file and does everything earlier steps added, with no half-finished feature reachable by the user. Each step is sized to be one Todoist task for one agent and lists what it covers, what it needs first and what the owner can try when it lands. What each feature does is in the [functional requirements](functional-requirements.md) and the [specs](specs/README.md); this file only orders the work.
 
@@ -122,18 +122,11 @@ From here the app changes files, so file safety comes first: the serializer, ato
 | 7.4 | **Terminal support.** Kitty variants and classic fallbacks for the keys added since D-42 checked, the `Alt` hint in `?`, wide characters, small terminals. | N-PORT-01–04, FR-KEY-03, keybindings §1 | 6.5 | Run in tmux at 80×24 |
 | 7.5 | **Keymap validation** (owner, by hand). Every binding in the terminals of N-PORT-01, with and without the kitty protocol and inside tmux; swallowed keys get new bindings. | keybindings §6 | 7.4 | — |
 
-## M8 · Comments
-
-The owner moved Comments to the end on 2026-10-06 to think more about it; no Polish step needs it.
-
-| # | Step | Covers | After | Try it |
-|---|---|---|---|---|
-| 8.1 | **Special-node placement.** Operations that insert at the end keep special nodes last; copy, move and delete carry them. Until this step, hand-written special nodes are preserved but may stop being the last child. | FR-SPC-01, special-nodes §1 | 3.6 | (tests with hand-made files) |
-| 8.2 | **Comments.** Reading and writing the comment format, the count badge (clickable), the comments panel and its key (`C` went to removing a color, D-48) with add, edit, delete and copy, single undo steps. | FR-SPC-02, special-nodes §2 | 8.1, 4.8, 4.9, 6.5 | Comment on a task |
+Milestone 8, Comments, was deleted by the owner on 2026-10-07 (D-66). Its step 8.1, special-node placement, had already landed with the editing steps of M2–M4.
 
 Cross-cutting Musts (FR-KEY-01, FR-KEY-02, FR-UI-07, FR-DOC-04) are checked in every step's review rather than owned by one step.
 
-**v1 is complete** when M1–M8 are on `main` and `validate.sh trace` lists no untested Must requirement.
+**v1 is complete** when M1–M7 are on `main` and `validate.sh trace` lists no untested Must requirement.
 
 ## Later
 
@@ -152,4 +145,3 @@ Parallel work stays inside the current milestone; a step of a later milestone wa
 - **M5:** in order.
 - **M6:** 6.1 and 6.5 together; then 6.2 and 6.3; then 6.4.
 - **M7:** 7.1, 7.3 and 7.4 together; then 7.2 and 7.5.
-- **M8:** in order.

@@ -55,7 +55,7 @@ Every block supports these links, and text blocks, sections included (D-52), als
 - In navigate mode the markers are hidden and the result is rendered ([ui.md §2](ui.md#2-blocks)). In edit mode the raw text is shown and edited (FR-MODE-02).
 - Anything else, including italic, lists, quotes, tables and fenced code, is ordinary text (D-14, D-43).
 - A hidden `@url(…)` tag on a line of any type is a link too: the block's whole title is drawn as one, and `open_url` opens its address before any link in the text (FR-BLK-06, D-45).
-- `open_url` (§5) opens the link of a block: the only one in the block, or one chosen from a picker when the block has several, as for comments ([special-nodes.md §2.2](special-nodes.md#22-display)). Until the picker of step 4.2, it opens the `@url` address, else the first link in the text whose address has a scheme, so `[notes](notes.txt)` is skipped.
+- `open_url` (§5) opens the link of a block: the only one in the block, or one chosen from a picker when the block has several. Until the picker of step 4.2, it opens the `@url` address, else the first link in the text whose address has a scheme, so `[notes](notes.txt)` is skipped.
 
 ### 2.3 Command menu
 

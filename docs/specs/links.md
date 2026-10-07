@@ -20,7 +20,7 @@ All four link to a stable identifier rather than to a title, so renames and move
 
 **Target.** A linked block carries a hidden tag `@uid(ID)` on its line. The tag is hidden and preserved like every other tag (FR-TAG-01, FR-DOC-03). It is not `@id`, because TaskPaper 3 reserves `@id`, `@text` and `@type` and treats them as plain text ([file-format.md §5](file-format.md#5-tags)).
 
-**Link.** `[[ID|Title]]` anywhere in a block's text, including text blocks and comments:
+**Link.** `[[ID|Title]]` anywhere in a block's text, including text blocks:
 
 ```
 - Ship the release @uid(k3x9q2ab)
@@ -55,14 +55,10 @@ All four link to a stable identifier rather than to a title, so renames and move
 | `copy_link` | `gy` | Copies `[[ID\|Title]]` for the focused block to the clipboard, giving it an ID if it has none (Workflowy's "copy internal link"). |
 | `follow_link` | `gd` | Follows the link in the focused block, or picks one if the block has several. The focused pane zooms to the target's parent and focuses the target, as Go to Symbol does, and pushes the pane's history so `back` returns. Broken links report "Link target not found". |
 | `open_in_new_pane` | `Alt+click` on a link | Opens the target in a new pane ([navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13)). |
-| `show_backlinks` | `gb` | A picker of the blocks linking to the focused block, each with its breadcrumb path; choosing one goes there like `follow_link`. A link inside a comment goes to the block that owns the comment and opens its comments. |
+| `show_backlinks` | `gb` | A picker of the blocks linking to the focused block, each with its breadcrumb path; choosing one goes there like `follow_link`. |
 
 ## 6. Renames and deletes
 
 - **Rename.** When editing a block that has an ID changes its display text, the cached titles of all links to it are updated in the same undoable edit. Undo reverts both. A cached title left stale by another app is not rewritten on load, so unedited lines still round-trip byte for byte (F-FILE-03). It is refreshed the next time the target is renamed or the linking block is edited.
 - **Delete.** Deleting a block (or its ancestor) that has backlinks is not blocked. The status message says how many links are now broken, and undo restores them.
 - Removing a link from a block's text does not remove the target's `@uid`.
-
-## 7. Comments
-
-Comments are stored in a block's hidden `@hidden @comments` node ([FR-SPC-02](../functional-requirements.md#fr-spc--special-nodes-and-comments), [special-nodes.md](special-nodes.md)). Links inside comment lines work like links in blocks and count toward the backlinks of their target. The hidden node and its comment lines are never link targets: `insert_link` and `copy_link` do not offer them.
