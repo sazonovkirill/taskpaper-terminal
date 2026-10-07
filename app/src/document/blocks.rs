@@ -91,12 +91,19 @@ impl TagColor {
 
 /// One block: a line of the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Block {
+    id: ItemId,
+    facts: Facts,
+}
+
+/// What a line says about its block, read from its type, tags and text; its line keeps it
+/// until the text changes (data-model.md §1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent facts read from a line's tags, not states of one machine"
 )]
-pub struct Block {
-    id: ItemId,
+pub(super) struct Facts {
     kind: BlockKind,
     done: bool,
     start: Option<Date>,
@@ -109,15 +116,14 @@ pub struct Block {
     divider: bool,
 }
 
-impl Block {
-    /// The block of the line `item`, whose id is `id`.
-    fn of(id: ItemId, item: &Item) -> Self {
-        let kind = kind(item);
+impl Facts {
+    /// What the line `item` says.
+    pub(super) fn of(item: &Item) -> Self {
+        let kind = BlockKind::from(item.kind());
         let text = kind == BlockKind::Text;
         let tags = item.tags();
         let has = |name| tags.iter().any(|tag| tag.name == name);
         Self {
-            id,
             kind,
             done: has("done"),
             start: date_tag(tags, "start"),
@@ -130,6 +136,16 @@ impl Block {
             divider: text && item.display_text().trim() == "---",
         }
     }
+}
+
+impl Block {
+    /// The block of the line `item`, whose id is `id`.
+    fn of(id: ItemId, item: &Item) -> Self {
+        Self {
+            id,
+            facts: *item.facts(),
+        }
+    }
 
     /// The block's id: the id of its line.
     #[must_use]
@@ -140,62 +156,62 @@ impl Block {
     /// Its type.
     #[must_use]
     pub fn kind(&self) -> BlockKind {
-        self.kind
+        self.facts.kind
     }
 
     /// Whether its line carries `@done`, with or without a date (D-17).
     #[must_use]
     pub fn done(&self) -> bool {
-        self.done
+        self.facts.done
     }
 
     /// The date of its `@start`, or `None` without one or when its value is not a date.
     #[must_use]
     pub fn start(&self) -> Option<Date> {
-        self.start
+        self.facts.start
     }
 
     /// The date of its `@due`, or `None` without one or when its value is not a date.
     #[must_use]
     pub fn due(&self) -> Option<Date> {
-        self.due
+        self.facts.due
     }
 
     /// Whether its line carries `@today`, with or without a value (FR-TAG-04).
     #[must_use]
     pub fn today(&self) -> bool {
-        self.today
+        self.facts.today
     }
 
     /// Whether its line carries `@bookmark`, with or without a value (D-11).
     #[must_use]
     pub fn bookmark(&self) -> bool {
-        self.bookmark
+        self.facts.bookmark
     }
 
     /// Its color: that of the first color tag on its line (D-5).
     #[must_use]
     pub fn color(&self) -> Option<TagColor> {
-        self.color
+        self.facts.color
     }
 
     /// Whether its line carries `@url`, the address its title links to (FR-BLK-06, D-45).
     #[must_use]
     pub fn url(&self) -> bool {
-        self.url
+        self.facts.url
     }
 
     /// Whether it is a section: a text block carrying `@section`, which a task or project
     /// carries without effect (FR-BLK-04, D-52).
     #[must_use]
     pub fn section(&self) -> bool {
-        self.section
+        self.facts.section
     }
 
     /// Whether it is a divider: a text block whose text, tags aside, is `---` (FR-BLK-07, D-52).
     #[must_use]
     pub fn divider(&self) -> bool {
-        self.divider
+        self.facts.divider
     }
 }
 
@@ -203,6 +219,12 @@ impl Block {
 /// (`@hidden` lines and their subtrees) form no block.
 #[must_use]
 pub fn children(document: &Document, parent: ItemId) -> Vec<Block> {
+    each_child(document, parent).collect()
+}
+
+/// The blocks [`children`] gives, one at a time, for walks over the whole outline that would
+/// otherwise collect each line's children.
+pub fn each_child(document: &Document, parent: ItemId) -> impl Iterator<Item = Block> + '_ {
     document
         .get(parent)
         .map(Item::children)
@@ -211,7 +233,6 @@ pub fn children(document: &Document, parent: ItemId) -> Vec<Block> {
         .filter_map(|&id| Some((id, document.get(id)?)))
         .filter(|(_, item)| !is_special(item))
         .map(|(id, item)| Block::of(id, item))
-        .collect()
 }
 
 /// The block of the line `id`, or `None` for the root, a special node or a line not in
@@ -297,11 +318,14 @@ pub fn is_special(item: &Item) -> bool {
 }
 
 /// The type of the line `item` (data-model §3).
-fn kind(item: &Item) -> BlockKind {
-    match item.kind() {
-        ItemKind::Task => BlockKind::Task,
-        ItemKind::Project => BlockKind::Project,
-        ItemKind::Note => BlockKind::Text,
+impl From<ItemKind> for BlockKind {
+    /// The block type of a line of TaskPaper type `kind`.
+    fn from(kind: ItemKind) -> Self {
+        match kind {
+            ItemKind::Task => Self::Task,
+            ItemKind::Project => Self::Project,
+            ItemKind::Note => Self::Text,
+        }
     }
 }
 

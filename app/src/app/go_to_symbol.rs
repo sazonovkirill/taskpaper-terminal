@@ -46,7 +46,7 @@ impl State {
     /// Appends a candidate for each block below `line`, depth first, as
     /// [`State::block_candidates`] lists them.
     fn push_candidates(&self, line: ItemId, excluded: &[Block], out: &mut Vec<Candidate<ItemId>>) {
-        for block in blocks::children(&self.document, line) {
+        for block in blocks::each_child(&self.document, line) {
             if !self.shows(&block) || excluded.iter().any(|gone| gone.id() == block.id()) {
                 continue;
             }
@@ -115,7 +115,7 @@ mod tests {
 
     /// The text of the block `id`.
     fn text(document: &Document, id: Option<ItemId>) -> Option<String> {
-        Some(document.get(id?)?.display_text())
+        Some(document.get(id?)?.display_text().to_owned())
     }
 
     // FR-NAV-05

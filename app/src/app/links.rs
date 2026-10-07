@@ -40,7 +40,7 @@ fn address(item: &Item, syntax: Syntax) -> Option<String> {
         .map(|value| value.trim().to_owned())
         .filter(|value| inline::has_scheme(value))
         .or_else(|| {
-            inline::urls(&item.display_text(), syntax)
+            inline::urls(item.display_text(), syntax)
                 .into_iter()
                 .find(|url| inline::has_scheme(url))
                 .map(str::to_owned)

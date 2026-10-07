@@ -132,7 +132,12 @@ mod tests {
 
     /// The text of the block `id`.
     fn text(state: &State, id: Option<ItemId>) -> String {
-        state.document().get(id.unwrap()).unwrap().display_text()
+        state
+            .document()
+            .get(id.unwrap())
+            .unwrap()
+            .display_text()
+            .to_owned()
     }
 
     /// The text of each entry Move to lists.

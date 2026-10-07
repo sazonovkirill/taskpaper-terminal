@@ -12,7 +12,7 @@ impl State {
         let (mut count, mut words) = (0, 0);
         let mut pending: Vec<ItemId> = self.pane.focus.into_iter().collect();
         while let Some(line) = pending.pop() {
-            for block in blocks::children(&self.document, line) {
+            for block in blocks::each_child(&self.document, line) {
                 count += 1;
                 if !block.divider() {
                     words += self.shown_text(&block).split_whitespace().count();

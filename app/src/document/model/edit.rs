@@ -1,7 +1,7 @@
 //! Edits as primitive line operations that can be applied and inverted
 //! ([data-model.md §4–5](../../../../docs/specs/data-model.md#4-edits)).
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use slotmap::SecondaryMap;
 use thiserror::Error;
@@ -372,13 +372,13 @@ impl Document {
         let top = subtree.id();
         for (id, item) in subtree.lines() {
             if let Some(slot) = self.items.get_mut(*id) {
-                *slot = Some(item.clone());
+                *slot = Some(Arc::new(item.clone()));
             }
         }
-        if let Some(Some(item)) = self.items.get_mut(top) {
+        if let Some(item) = self.item_mut(top) {
             item.parent = Some(parent);
         }
-        if let Some(Some(item)) = self.items.get_mut(parent) {
+        if let Some(item) = self.item_mut(parent) {
             item.children.insert(index, top);
         }
         Ok(())
@@ -401,7 +401,7 @@ impl Document {
                 *slot = None;
             }
         }
-        if let Some(Some(item)) = self.items.get_mut(parent) {
+        if let Some(item) = self.item_mut(parent) {
             item.children.remove(index);
         }
         Ok(())
@@ -429,13 +429,13 @@ impl Document {
         if std::iter::successors(Some(parent), |&above| self.get(above)?.parent).any(|a| a == id) {
             return Err(EditError::IntoOwnSubtree { id });
         }
-        if let Some(Some(item)) = self.items.get_mut(from.0) {
+        if let Some(item) = self.item_mut(from.0) {
             item.children.remove(from.1);
         }
-        if let Some(Some(item)) = self.items.get_mut(parent) {
+        if let Some(item) = self.item_mut(parent) {
             item.children.insert(index, id);
         }
-        if let Some(Some(item)) = self.items.get_mut(id) {
+        if let Some(item) = self.item_mut(id) {
             item.parent = Some(parent);
         }
         Ok(())
@@ -465,7 +465,7 @@ impl Document {
                     before: extra_indent,
                     after: 0,
                 });
-                if let Some(Some(item)) = self.items.get_mut(id) {
+                if let Some(item) = self.item_mut(id) {
                     item.extra_indent = 0;
                 }
                 depth = base;
@@ -485,11 +485,10 @@ impl Document {
     }
 
     fn line_mut(&mut self, id: ItemId) -> Result<&mut Item, EditError> {
-        self.items
-            .get_mut(id)
-            .and_then(Option::as_mut)
-            .filter(|_| id != self.root)
-            .ok_or(EditError::Missing { id })
+        if id == self.root {
+            return Err(EditError::Missing { id });
+        }
+        self.item_mut(id).ok_or(EditError::Missing { id })
     }
 }
 
@@ -587,6 +586,38 @@ mod tests {
             index,
             subtree: document.snapshot(id).unwrap(),
         }
+    }
+
+    // N-PERF-02: a copy shares the lines it has not changed, and neither side sees the other's
+    // changes.
+    #[test]
+    fn a_copy_and_its_original_change_apart() {
+        let mut document = parse("- a\n- b");
+        let copy = document.clone();
+        let mut change = transaction(vec![set_text(&document, "- a", "- c")]);
+        document.apply(&mut change).unwrap();
+        assert_eq!(show(&document), ["- c", "- b"]);
+        assert_eq!(show(&copy), ["- a", "- b"]);
+        let mut copy = copy;
+        let mut change = transaction(vec![set_text(&copy, "- b", "- d")]);
+        copy.apply(&mut change).unwrap();
+        assert_eq!(show(&copy), ["- a", "- d"]);
+        assert_eq!(show(&document), ["- c", "- b"]);
+    }
+
+    // N-PERF-02: what is derived from a line's text on its first read follows a new text.
+    #[test]
+    fn what_a_line_says_follows_its_new_text() {
+        let mut document = parse("- **a**");
+        let a = id(&document, "- **a**");
+        let block = |document: &Document| crate::document::blocks::block(document, a).unwrap();
+        assert_eq!(document.get(a).unwrap().plain_text(), "a");
+        assert!(!block(&document).done());
+        let mut change = transaction(vec![set_text(&document, "- **a**", "Plan: @done")]);
+        document.apply(&mut change).unwrap();
+        assert_eq!(document.get(a).unwrap().plain_text(), "Plan");
+        assert!(block(&document).done());
+        assert_eq!(block(&document).kind(), crate::document::BlockKind::Project);
     }
 
     #[test]

@@ -268,7 +268,7 @@ impl State {
     /// Appends an entry for each bookmarked block below `line`, depth first, but not for
     /// completed blocks and what they hold while those are hidden (FR-DONE-02).
     fn push_bookmarks(&self, line: ItemId, out: &mut Vec<SidebarEntry>) {
-        for block in blocks::children(self.document(), line) {
+        for block in blocks::each_child(self.document(), line) {
             if !self.shows(&block) {
                 continue;
             }
@@ -287,7 +287,7 @@ impl State {
     /// while those are hidden (FR-DONE-02).
     fn projects(&self, line: ItemId, depth: usize) -> Vec<SidebarEntry> {
         let mut out = Vec::new();
-        for block in blocks::children(self.document(), line) {
+        for block in blocks::each_child(self.document(), line) {
             if !self.shows(&block) {
                 continue;
             }

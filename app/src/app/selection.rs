@@ -236,7 +236,14 @@ mod tests {
     fn texts(blocks: &[Block], state: &State) -> Vec<String> {
         blocks
             .iter()
-            .map(|block| state.document().get(block.id()).unwrap().display_text())
+            .map(|block| {
+                state
+                    .document()
+                    .get(block.id())
+                    .unwrap()
+                    .display_text()
+                    .to_owned()
+            })
             .collect()
     }
 

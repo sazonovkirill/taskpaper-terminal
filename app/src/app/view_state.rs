@@ -210,6 +210,7 @@ mod tests {
     fn text(state: &State, id: Option<ItemId>) -> String {
         id.and_then(|id| state.document().get(id))
             .map(Item::display_text)
+            .map(str::to_owned)
             .unwrap_or_default()
     }
 

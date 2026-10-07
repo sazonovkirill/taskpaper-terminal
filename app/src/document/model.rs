@@ -2,11 +2,16 @@
 
 mod edit;
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use slotmap::{SlotMap, new_key_type};
 
-use super::format::{self, LineOrigin};
+use super::{
+    BlockKind,
+    blocks::Facts,
+    format::{self, LineOrigin},
+    inline::{self, Syntax},
+};
 
 pub use edit::{EditError, Op, Snapshot, Transaction};
 
@@ -20,7 +25,7 @@ new_key_type! {
 pub struct Document {
     /// Every line of the session; a removed line's slot is emptied, not freed, so undo can put
     /// the line back under the same id.
-    items: SlotMap<ItemId, Option<Item>>,
+    items: SlotMap<ItemId, Option<Arc<Item>>>,
     root: ItemId,
     format: FileFormat,
     revision: u64,
@@ -135,13 +140,13 @@ impl Document {
     #[must_use]
     pub fn new(format: FileFormat) -> Self {
         let mut items = SlotMap::with_key();
-        let root = items.insert(Some(Item {
+        let root = items.insert(Some(Arc::new(Item {
             parent: None,
             children: Vec::new(),
             text: Line::new(String::new()),
             extra_indent: 0,
             original: None,
-        }));
+        })));
         Self {
             items,
             root,
@@ -160,7 +165,7 @@ impl Document {
     /// The item with this id, or `None` if it does not exist.
     #[must_use]
     pub fn get(&self, id: ItemId) -> Option<&Item> {
-        self.items.get(id)?.as_ref()
+        self.items.get(id)?.as_deref()
     }
 
     /// How the file was written.
@@ -211,14 +216,14 @@ impl Document {
         text: String,
         extra_indent: usize,
     ) -> ItemId {
-        let id = self.items.insert(Some(Item {
+        let id = self.items.insert(Some(Arc::new(Item {
             parent: Some(parent),
             children: Vec::new(),
             text: Line::new(text),
             extra_indent,
             original: None,
-        }));
-        if let Some(Some(parent)) = self.items.get_mut(parent) {
+        })));
+        if let Some(parent) = self.item_mut(parent) {
             parent.children.push(id);
         }
         id
@@ -226,9 +231,14 @@ impl Document {
 
     /// Records the line `id` was read from; used while parsing.
     pub(crate) fn set_original(&mut self, id: ItemId, original: LineOrigin) {
-        if let Some(Some(item)) = self.items.get_mut(id) {
+        if let Some(item) = self.item_mut(id) {
             item.original = Some(original);
         }
+    }
+
+    /// The item with this id to change, copied first while a copy of the document shares it.
+    fn item_mut(&mut self, id: ItemId) -> Option<&mut Item> {
+        self.items.get_mut(id)?.as_mut().map(Arc::make_mut)
     }
 
     fn children_of(&self, id: ItemId) -> &[ItemId] {
@@ -274,8 +284,8 @@ impl Item {
 
     /// The text without the task's `- `, the project's `:` and every tag.
     #[must_use]
-    pub fn display_text(&self) -> String {
-        self.text.display_text.clone()
+    pub fn display_text(&self) -> &str {
+        &self.text.display_text
     }
 
     /// The tags on this line, first occurrence per name.
@@ -283,16 +293,38 @@ impl Item {
     pub fn tags(&self) -> &[format::tags::Tag] {
         &self.text.tags
     }
+
+    /// What the line says about its block, worked out the first time it is read.
+    pub(super) fn facts(&self) -> &Facts {
+        self.text.facts.get_or_init(|| Facts::of(self))
+    }
+
+    /// The display text without the delimiters of its formatting, as lists of blocks such as the
+    /// sidebar show it; worked out the first time it is read.
+    #[must_use]
+    pub fn plain_text(&self) -> &str {
+        self.text.plain.get_or_init(|| {
+            let syntax = Syntax::of(BlockKind::from(self.text.kind));
+            inline::runs(&self.text.display_text, syntax)
+                .iter()
+                .map(|run| run.text)
+                .collect()
+        })
+    }
 }
 
 /// A line's text with what it says, derived when the text is set rather than each time it is
 /// read, since every view reads it for every line (data-model.md §1).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 struct Line {
     text: String,
     kind: ItemKind,
     tags: Vec<format::tags::Tag>,
     display_text: String,
+    /// Only some views read these, so they are derived on the first read rather than for every
+    /// line.
+    plain: OnceLock<String>,
+    facts: OnceLock<Facts>,
 }
 
 impl Line {
@@ -303,9 +335,20 @@ impl Line {
             kind,
             tags,
             display_text,
+            plain: OnceLock::new(),
+            facts: OnceLock::new(),
         }
     }
 }
+
+impl PartialEq for Line {
+    /// Lines are equal when their texts are, since everything else is derived from the text.
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl Eq for Line {}
 
 #[cfg(test)]
 mod tests {

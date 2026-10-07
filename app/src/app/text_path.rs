@@ -61,7 +61,7 @@ fn step(document: &Document, id: ItemId) -> Option<(String, usize)> {
 
 /// The text of block `id` as shown.
 fn shown_text(document: &Document, id: ItemId) -> Option<String> {
-    document.get(id).map(Item::display_text)
+    document.get(id).map(Item::display_text).map(str::to_owned)
 }
 
 #[cfg(test)]

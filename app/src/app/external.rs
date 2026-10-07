@@ -453,6 +453,7 @@ mod tests {
             .document()
             .get(id?)
             .map(crate::document::Item::display_text)
+            .map(str::to_owned)
     }
 
     fn copy(contents: &str) -> Vec<Effect> {

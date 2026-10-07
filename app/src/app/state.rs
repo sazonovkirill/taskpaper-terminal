@@ -26,10 +26,7 @@ use super::{
     today_order::TodayOrder,
     type_picker::Conversion,
 };
-use crate::document::{
-    Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks,
-    inline::{self, Syntax},
-};
+use crate::document::{Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
@@ -455,13 +452,11 @@ impl State {
 
     /// The text of `block` as shown, without the delimiters of its formatting.
     pub(super) fn shown_text(&self, block: &Block) -> String {
-        let text = self
-            .document
+        self.document
             .get(block.id())
-            .map(Item::display_text)
-            .unwrap_or_default();
-        let runs = inline::runs(&text, Syntax::of(block.kind()));
-        runs.iter().map(|run| run.text).collect()
+            .map(Item::plain_text)
+            .unwrap_or_default()
+            .to_owned()
     }
 
     /// The visible rows: the outline's, or in the Today view its entries (D-7).
@@ -538,6 +533,7 @@ impl State {
                 .document
                 .get(block.id())
                 .map(Item::display_text)
+                .map(str::to_owned)
                 .unwrap_or_default(),
             done: block.done(),
             inside_done,
@@ -593,7 +589,7 @@ impl State {
         visible: bool,
         out: &mut Vec<(Block, usize)>,
     ) {
-        for block in blocks::children(&self.document, line) {
+        for block in blocks::each_child(&self.document, line) {
             if visible && !pane.shows(&block) {
                 continue;
             }

@@ -33,7 +33,7 @@ impl State {
     /// Appends `pane`'s entries below the line `line`, which is done or inside a done block when
     /// `inside_done` says so.
     fn push_today_rows(&self, pane: &Pane, line: ItemId, inside_done: bool, out: &mut Vec<Row>) {
-        for block in blocks::children(&self.document, line) {
+        for block in blocks::each_child(&self.document, line) {
             if !pane.shows(&block) {
                 continue;
             }
@@ -231,6 +231,7 @@ Work: @done
             .focus()
             .and_then(|id| state.document().get(id))
             .map(crate::document::Item::display_text)
+            .map(str::to_owned)
             .unwrap_or_default()
     }
 
