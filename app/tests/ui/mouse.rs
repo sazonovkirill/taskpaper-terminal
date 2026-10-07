@@ -264,7 +264,7 @@ fn the_wheel_does_nothing_while_the_sidebars_window_is_open() {
     let mut app = Harness::with_text(&text, 80, 14);
     ctrl_g(&mut app);
     let before = screen(&mut app);
-    wheel(&mut app, 25, 8, true);
+    wheel(&mut app, 25, 7, true);
     wheel(&mut app, 2, 3, true);
     wheel(&mut app, 2, 0, true);
     assert_eq!(
@@ -278,6 +278,28 @@ fn the_wheel_does_nothing_while_the_sidebars_window_is_open() {
         outline_rows(&mut app)[0],
         "- Task 4",
         "the wheel works again once it closes"
+    );
+}
+
+// FR-KEY-05, D-55, ui.md §6
+#[test]
+fn the_wheel_leaves_the_shortcuts_panel_still_while_the_sidebars_window_is_open() {
+    let mut app = Harness::with_text(OUTLINE, 100, 12);
+    press(&mut app, KeyCode::Char('?'));
+    ctrl_g(&mut app);
+    let before = screen(&mut app);
+    wheel(&mut app, 90, 5, true);
+    assert_eq!(
+        screen(&mut app),
+        before,
+        "the panel behind the window stays"
+    );
+    press(&mut app, KeyCode::Esc);
+    wheel(&mut app, 90, 5, true);
+    let after = screen(&mut app);
+    assert!(
+        after.iter().any(|row| row.contains("↑ more")),
+        "the wheel scrolls it again once the window closes: {after:?}"
     );
 }
 
