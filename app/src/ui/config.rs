@@ -90,6 +90,8 @@ pub struct Config {
     /// Whether the sidebar lists the `INBOX` project apart, when the file says
     /// (`special_inbox`, D-75).
     pub(super) special_inbox: Option<bool>,
+    /// Whether the sidebar lists Today, when the file says (`sidebar_today`, D-77).
+    pub(super) sidebar_today: Option<bool>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -169,6 +171,17 @@ impl Config {
             Some(on) => self.special_inbox = Some(on),
             None => self.problems.push(Problem::InvalidValue {
                 key: "special_inbox".to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `sidebar_today` from `item`: `true` or `false`.
+    fn read_sidebar_today(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.sidebar_today = Some(on),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "sidebar_today".to_owned(),
                 expected: "true or false",
             }),
         }
@@ -324,6 +337,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
             "special_inbox" => config.read_special_inbox(item),
+            "sidebar_today" => config.read_sidebar_today(item),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
@@ -710,6 +724,25 @@ mod tests {
             config.problems(),
             [Problem::InvalidValue {
                 key: "special_inbox".to_owned(),
+                expected: "true or false",
+            }]
+        );
+    }
+
+    // D-77, FR-SET-04
+    #[test]
+    fn sidebar_today_is_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).sidebar_today, None);
+        assert_eq!(
+            read("sidebar_today = false\n", None).sidebar_today,
+            Some(false)
+        );
+        let config = read("sidebar_today = \"no\"\n", None);
+        assert_eq!(config.sidebar_today, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "sidebar_today".to_owned(),
                 expected: "true or false",
             }]
         );

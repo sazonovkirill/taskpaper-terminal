@@ -60,7 +60,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 ## 6. Sidebar (FR-UI-01, D-7, D-11, D-28)
 
 A panel on the left with three sections, top to bottom:
-1. **Today**: the built-in view (§7).
+1. **Today**: the built-in view (§7), unless `sidebar_today = false` in `config.toml`, or **Show Today in sidebar** turned off in the settings window (ui.md §8), leaves it out; it is on by default, and the Today view still opens by `gt` and Go to Today (D-77).
 2. **Bookmarks**: every block tagged `@bookmark`, in document order; later also bookmarked searches (FR-SRCH-03).
 3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper, each with how many open tasks it holds at any depth, counted as for a collapsed block (D-67, D-73).
 

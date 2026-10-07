@@ -15,12 +15,13 @@ use crate::document::{BlockKind, ItemId, Stamp, blocks};
 const INBOX: &str = "INBOX";
 
 /// Whether the sidebar is shown, its focused entry while it has the keys, its folded project
-/// entries, which are its own and not the outline's, and whether it lists the `INBOX` project
-/// apart.
+/// entries, which are its own and not the outline's, whether it lists the `INBOX` project apart
+/// and whether it lists Today.
 #[derive(Debug, Clone)]
 pub(super) struct Sidebar {
     shown: bool,
     special_inbox: bool,
+    today: bool,
     /// The index of the focused entry, while the sidebar has the keys.
     focus: Option<usize>,
     folds: HashSet<ItemId>,
@@ -35,6 +36,7 @@ struct EntriesKey {
     folds: HashSet<ItemId>,
     show_done: bool,
     special_inbox: bool,
+    today: bool,
 }
 
 /// Everything the entry of where the focused pane is comes from: the entries, the blocks above
@@ -64,6 +66,11 @@ impl Sidebar {
         self.special_inbox = on;
     }
 
+    /// Lists the Today view, or not when `on` is false (navigation.md §6).
+    pub(super) fn set_today(&mut self, on: bool) {
+        self.today = on;
+    }
+
     /// Keeps each folded project entry folded on the block `rematch` finds for its block in a
     /// reloaded document, and drops the fold when it finds none (file-io.md §3).
     pub(super) fn rematch_folds(&mut self, rematch: impl Fn(ItemId) -> Option<ItemId>) {
@@ -72,11 +79,13 @@ impl Sidebar {
 }
 
 impl Default for Sidebar {
-    /// Shown, without the keys, every project entry expanded, the `INBOX` project apart.
+    /// Shown, without the keys, every project entry expanded, the `INBOX` project apart, Today
+    /// listed.
     fn default() -> Self {
         Self {
             shown: true,
             special_inbox: true,
+            today: true,
             focus: None,
             folds: HashSet::new(),
             entries: Memo::default(),
@@ -168,7 +177,7 @@ pub enum Fold {
 /// The shown sidebar as a frontend draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SidebarView {
-    /// Its entries in order; Today is always among them.
+    /// Its entries in order.
     pub entries: Rc<[SidebarEntry]>,
     /// The index of the focused entry, while the sidebar has the keys.
     pub focused: Option<usize>,
@@ -201,6 +210,12 @@ impl State {
     #[must_use]
     pub fn special_inbox(&self) -> bool {
         self.sidebar.special_inbox
+    }
+
+    /// Whether the sidebar lists the Today view (`sidebar_today`, D-77).
+    #[must_use]
+    pub fn sidebar_today(&self) -> bool {
+        self.sidebar.today
     }
 
     /// Whether the sidebar has the keys rather than the pane.
@@ -355,21 +370,22 @@ impl State {
         })
     }
 
-    /// The inbox while it is apart, Today, then every bookmarked block in document order, then the
-    /// project tree without the inbox (D-68, D-75).
+    /// The inbox while it is apart, Today while it is listed, then every bookmarked block in
+    /// document order, then the project tree without the inbox (D-68, D-75, D-77).
     fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
         let key = EntriesKey {
             document: self.document().stamp(),
             folds: self.sidebar.folds.clone(),
             show_done: self.pane.show_done,
             special_inbox: self.sidebar.special_inbox,
+            today: self.sidebar.today,
         };
         self.sidebar.entries.get(key, || {
             let root = self.document().root();
             let inbox = self.sidebar.special_inbox.then(|| self.inbox()).flatten();
             let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
             let mut entries: Vec<_> = inbox.into_iter().collect();
-            entries.push(SidebarEntry::Today);
+            entries.extend(self.sidebar.today.then_some(SidebarEntry::Today));
             self.push_bookmarks(root, &mut entries);
             entries.extend(self.projects(root, 0, false, apart));
             entries.into()
@@ -595,6 +611,27 @@ INBOX:",
         state.update(Message::Configure(Configuration::SpecialInbox(true)));
         assert_eq!(listed(&state), listed(&open(INBOXED)));
         assert_eq!(counts(&state)[0], ("INBOX".to_owned(), 2), "its open tasks");
+    }
+
+    // D-77
+    #[test]
+    fn with_the_today_setting_off_the_sidebar_lists_no_today_but_the_view_still_opens() {
+        let mut state = open(INBOXED);
+        assert!(state.sidebar_today(), "on by default");
+        state.update(Message::Configure(Configuration::SidebarToday(false)));
+        assert!(!state.sidebar_today());
+        let mut without = listed(&open(INBOXED));
+        without.retain(|entry| entry != "today");
+        assert_eq!(listed(&state), without);
+        state.update(Message::GoTo(Location::Today));
+        assert_eq!(state.location(), Location::Today);
+        assert_eq!(current(&state), None, "no entry goes there");
+        state.update(Message::FocusSidebar);
+        assert_eq!(focused(&state), Some(0), "the first entry");
+        input(&mut state, &[SidebarInput::Choose]);
+        assert_eq!(state.breadcrumbs(), ["INBOX"]);
+        state.update(Message::Configure(Configuration::SidebarToday(true)));
+        assert_eq!(listed(&state), listed(&open(INBOXED)));
     }
 
     // D-75, D-68

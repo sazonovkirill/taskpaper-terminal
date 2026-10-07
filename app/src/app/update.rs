@@ -26,6 +26,9 @@ pub enum Configuration {
     /// List the `INBOX` project above Today in the sidebar, or among the projects when `false`
     /// (`special_inbox`, navigation.md §6).
     SpecialInbox(bool),
+    /// List the Today view in the sidebar, or not when `false` (`sidebar_today`,
+    /// navigation.md §6).
+    SidebarToday(bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -585,6 +588,7 @@ impl State {
         match setting {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
             Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
+            Configuration::SidebarToday(on) => self.sidebar.set_today(on),
         }
     }
 

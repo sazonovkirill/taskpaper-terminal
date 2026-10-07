@@ -226,7 +226,7 @@ impl Tui {
     }
 
     /// The frontend running with the key bindings, autosave delay, icons, color tags, word wrap,
-    /// theme, inbox handling and backups `config` holds, keeping settings changed in the app in its
+    /// theme, inbox handling, sidebar Today and backups `config` holds, keeping settings changed in the app in its
     /// file and reporting once what it ignored of the file (FR-SET-04). The disk worker makes its
     /// backups as `config` says until the settings window changes them.
     #[must_use]
@@ -256,6 +256,12 @@ impl Tui {
         if let Some(on) = config.special_inbox {
             self.send(
                 Message::Configure(Configuration::SpecialInbox(on)),
+                Duration::ZERO,
+            );
+        }
+        if let Some(on) = config.sidebar_today {
+            self.send(
+                Message::Configure(Configuration::SidebarToday(on)),
                 Duration::ZERO,
             );
         }

@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// The sidebar's lines: the inbox and Today, then for each of the bookmarks and the projects that
-/// has entries, a blank line, a heading and its entries (D-68). Bookmarks are their text alone;
+/// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; while the pane has the keys, the entry
@@ -107,22 +107,17 @@ impl<'a> SidebarPanel<'a> {
         entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
             let heading = match (entry, previous) {
-                (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Today)) => Some("Bookmarks"),
-                (
-                    SidebarEntry::Project { .. },
-                    Some(SidebarEntry::Today | SidebarEntry::Bookmark { .. }),
-                ) => Some("Projects"),
-                (
-                    SidebarEntry::Inbox { .. }
-                    | SidebarEntry::Today
-                    | SidebarEntry::Bookmark { .. }
-                    | SidebarEntry::Project { .. },
-                    _,
-                ) => None,
+                (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Bookmark { .. }))
+                | (SidebarEntry::Project { .. }, Some(SidebarEntry::Project { .. }))
+                | (SidebarEntry::Inbox { .. } | SidebarEntry::Today, _) => None,
+                (SidebarEntry::Bookmark { .. }, _) => Some("Bookmarks"),
+                (SidebarEntry::Project { .. }, _) => Some("Projects"),
             };
+            // The sidebar's first line is never blank (D-77).
+            let blank = previous.map(|_| SidebarLine::Blank);
             heading
                 .into_iter()
-                .flat_map(|heading| [SidebarLine::Blank, SidebarLine::Heading(heading)])
+                .flat_map(move |heading| blank.into_iter().chain([SidebarLine::Heading(heading)]))
                 .map(|line| (line, Mark::None))
                 .chain([(SidebarLine::Entry(entry), Mark::of(index, focused, current))])
         })
@@ -349,6 +344,36 @@ mod tests {
             .expect("shown by default");
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
+    }
+
+    // D-77
+    #[test]
+    fn without_today_the_first_section_starts_at_the_top_or_below_the_inbox() {
+        let draw_without_today = |text: &str| {
+            let mut state = State::new(format::parse(text), None);
+            state.update(Message::Configure(crate::app::Configuration::SidebarToday(
+                false,
+            )));
+            let view = state.sidebar().expect("shown by default");
+            let mut buf = Buffer::empty(Rect::new(0, 0, 20, 5));
+            SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+            rows(&buf)
+        };
+        assert_eq!(
+            draw_without_today("A: @bookmark"),
+            ["  Bookmarks", "  A", "", "  Projects", "  A"]
+        );
+        assert_eq!(draw_without_today("A:"), ["  Projects", "  A", "", "", ""]);
+        assert_eq!(
+            draw_without_today("INBOX:\nA:"),
+            [
+                format!("  {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
+                String::new(),
+                "  Projects".to_owned(),
+                "  A".to_owned(),
+                String::new(),
+            ]
+        );
     }
 
     // FR-KEY-05

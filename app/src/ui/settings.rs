@@ -19,6 +19,7 @@ enum Listed {
     Wrap,
     ColorTags,
     SpecialInbox,
+    SidebarToday,
     AutosaveDelay,
     Backups,
     BackupFolder,
@@ -27,12 +28,13 @@ enum Listed {
 
 /// The settings the window lists, in order. Animations join when they reach the settings file
 /// (ui.md §9.3).
-const LISTED: [Listed; 9] = [
+const LISTED: [Listed; 10] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
     Listed::ColorTags,
     Listed::SpecialInbox,
+    Listed::SidebarToday,
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -57,6 +59,7 @@ impl Listed {
             Self::Wrap => "word_wrap",
             Self::ColorTags => "color_tags",
             Self::SpecialInbox => "special_inbox",
+            Self::SidebarToday => "sidebar_today",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -72,6 +75,7 @@ impl Listed {
             Self::Wrap => Icon::Wrap,
             Self::ColorTags => Icon::Flag,
             Self::SpecialInbox => Icon::Inbox,
+            Self::SidebarToday => Icon::Today,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -181,6 +185,12 @@ impl Tui {
                 "Show INBOX: above Today, not under Projects",
                 self.state.special_inbox(),
             ),
+            Listed::SidebarToday => switch_on_by_default(
+                "Appearance",
+                "Show Today in sidebar",
+                "List the Today view in the sidebar",
+                self.state.sidebar_today(),
+            ),
             Listed::AutosaveDelay => (
                 "Files",
                 "Autosave delay",
@@ -266,6 +276,10 @@ impl Tui {
             }
             (Listed::SpecialInbox, SettingValue::Switch(on)) => {
                 self.send(Message::Configure(Configuration::SpecialInbox(on)), now);
+                Some(on.into())
+            }
+            (Listed::SidebarToday, SettingValue::Switch(on)) => {
+                self.send(Message::Configure(Configuration::SidebarToday(on)), now);
                 Some(on.into())
             }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
@@ -367,6 +381,7 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Choice(1),
             SettingValue::Switch(false),
+            SettingValue::Switch(false),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -377,9 +392,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(7, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(8, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[7].value,
+            tui.listed_settings()[8].value,
             SettingValue::Text(String::new())
         );
         assert!(

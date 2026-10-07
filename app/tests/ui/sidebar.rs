@@ -483,3 +483,32 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
         ]
     );
 }
+
+// D-77
+#[test]
+fn the_today_entry_leaves_the_sidebar_with_its_setting_off_and_gt_still_opens_today() {
+    let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 80, 10);
+    assert_eq!(
+        sidebar(&mut app),
+        [
+            format!("{:22}1", "  ⊔ INBOX"),
+            String::new(),
+            "  Projects".to_owned(),
+            "  Work".to_owned(),
+        ]
+    );
+    app.type_keys("gt");
+    assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
+    app.type_keys("g,jjjjj ");
+    app.settle();
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        sidebar(&mut app)[1],
+        format!("▌ {STAR} Today"),
+        "back on, marked as where the pane is"
+    );
+    assert_eq!(
+        std::fs::read_to_string(app.config_file()).expect("written"),
+        "sidebar_today = true\n"
+    );
+}
