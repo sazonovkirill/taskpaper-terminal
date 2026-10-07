@@ -747,6 +747,27 @@ impl Keymap {
         action(*command, context)
     }
 
+    /// What `pressed` asks for while the sidebar has the keys: its own keys, or the keys that
+    /// focus a pane, sequences such as `g1` included (keybindings.md §4).
+    fn sidebar_action(&mut self, pressed: Key, context: &Context) -> Option<KeyAction> {
+        if self.pending.is_empty()
+            && let Some((_, command)) = self.sidebar.iter().find(|(key, _)| *key == pressed)
+        {
+            return action(*command, context);
+        }
+        self.pending.push(pressed);
+        let mut focus = self.navigate.iter().filter(|(keys, command)| {
+            matches!(command, Command::Pane(PaneChange::Focus(_)))
+                && keys.starts_with(&self.pending)
+        });
+        let bound = focus.clone().find(|(keys, _)| *keys == self.pending);
+        if bound.is_none() && focus.next().is_some() {
+            return None;
+        }
+        self.pending.clear();
+        action(bound?.1, context)
+    }
+
     /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
     fn edit_message(&self, key: Key, context: &Context) -> Option<Message> {
         if let Some((_, command)) = self.edit.iter().find(|(bound, _)| *bound == [key]) {
@@ -826,9 +847,7 @@ impl Keymap {
             return message.map(KeyAction::Send);
         }
         if context.sidebar {
-            self.pending.clear();
-            let (_, command) = self.sidebar.iter().find(|(key, _)| *key == pressed)?;
-            return action(*command, context);
+            return self.sidebar_action(pressed, context);
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
@@ -2209,6 +2228,28 @@ mod tests {
         assert_eq!(messages("g0", CONTEXT), [None, Some(Message::FocusSidebar)]);
     }
 
+    // keybindings.md §4, D-42: the panes' keys work from the sidebar too.
+    #[test]
+    fn the_focused_sidebar_takes_the_keys_that_focus_a_pane() {
+        let focus = |at| Some(Message::Pane(PaneChange::Focus(at)));
+        assert_eq!(messages("g1", IN_SIDEBAR), [None, focus(0)]);
+        assert_eq!(messages("g9", IN_SIDEBAR), [None, focus(8)]);
+        assert_eq!(messages("gj", IN_SIDEBAR), [None, None]);
+        let mut keymap = Keymap::default();
+        let alt_2 = key(KeyCode::Char('2'), KeyModifiers::ALT);
+        assert_eq!(keymap.message_for(&alt_2, ms(0), IN_SIDEBAR), focus(1));
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+        let j = key(KeyCode::Char('j'), KeyModifiers::NONE);
+        keymap.message_for(&g, ms(0), IN_SIDEBAR);
+        assert_eq!(keymap.message_for(&j, ms(1), IN_SIDEBAR), None);
+        assert_eq!(keymap.pending(), "", "the sequence ends");
+        assert_eq!(
+            keymap.message_for(&j, ms(2), IN_SIDEBAR),
+            Some(Message::Sidebar(SidebarInput::Next)),
+            "and the sidebar's own keys work again"
+        );
+    }
+
     const IN_SIDEBAR: &Context = &Context {
         sidebar: true,
         ..*CONTEXT
@@ -2234,7 +2275,6 @@ mod tests {
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
             (KeyCode::Char('b'), ctrl, Some(Message::ToggleSidebar)),
             (KeyCode::Char('x'), none, None),
-            (KeyCode::Char('g'), none, None),
             (KeyCode::Char('j'), ctrl, None),
         ] {
             let mut keymap = Keymap::default();

@@ -174,6 +174,24 @@ fn alt_0_and_g_0_focus_the_sidebar_where_j_k_and_the_arrows_move() {
     assert_eq!(sidebar(&mut app), listed(Some(1)));
 }
 
+// FR-UI-02, keybindings.md §4, D-42
+#[test]
+fn g_1_and_alt_1_give_the_keys_from_the_sidebar_to_the_pane() {
+    let mut app = app(80);
+    app.type_keys("g0");
+    app.type_keys("g1");
+    assert_eq!(sidebar(&mut app), listed(None), "the sidebar lets go");
+    press(&mut app, KeyCode::Char('j'));
+    assert_eq!(
+        pane(&mut app)[3],
+        "▌   - Launch plan ⚑".replace('⚑', BOOKMARK),
+        "j moves in the pane"
+    );
+    alt_0(&mut app);
+    app.press(KeyCode::Char('1'), KeyModifiers::ALT);
+    assert_eq!(sidebar(&mut app), listed(None));
+}
+
 // FR-UI-01
 #[test]
 fn alt_0_shows_a_hidden_sidebar() {

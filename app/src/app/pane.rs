@@ -267,6 +267,10 @@ impl State {
 
     /// Gives the keys to the pane at `at`, counted from 0 at the left, if there is one.
     fn focus_pane(&mut self, at: usize) {
+        if at > self.others.len() {
+            return;
+        }
+        self.sidebar_input(SidebarInput::Leave);
         // The other panes leave out the focused one, so those right of it sit one place left of
         // their position, and the focused one goes back between those left and right of it.
         let (index, back) = match at.cmp(&self.pane_at) {
@@ -274,9 +278,6 @@ impl State {
             Ordering::Less => (at, self.pane_at - 1),
             Ordering::Greater => (at - 1, self.pane_at),
         };
-        if index >= self.others.len() {
-            return;
-        }
         let target = self.others.remove(index);
         let left = std::mem::replace(&mut self.pane, target);
         self.others.insert(back, left);
