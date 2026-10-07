@@ -104,6 +104,34 @@ fn chosen<T: Copy + PartialEq>(choices: &[(T, &str)], value: T) -> SettingValue 
     )
 }
 
+/// A setting's group, name, description, kind, value and default, as [`Setting`] has them.
+type Listing = (
+    &'static str,
+    &'static str,
+    &'static str,
+    SettingKind,
+    SettingValue,
+    SettingValue,
+);
+
+/// A switch in `group` named `name` that does what `description` says, `on` now and on by
+/// default.
+fn switch_on_by_default(
+    group: &'static str,
+    name: &'static str,
+    description: &'static str,
+    on: bool,
+) -> Listing {
+    (
+        group,
+        name,
+        description,
+        SettingKind::Switch,
+        SettingValue::Switch(on),
+        SettingValue::Switch(true),
+    )
+}
+
 impl Tui {
     /// The settings the window lists, with the values the frontend runs with.
     pub(super) fn listed_settings(&self) -> Vec<Setting> {
@@ -112,7 +140,7 @@ impl Tui {
 
     /// The setting `listed` as the window lists it.
     fn setting(&self, listed: Listed) -> Setting {
-        let (group, name, description, kind, value, default) = match listed {
+        let (group, name, description, kind, value, default): Listing = match listed {
             Listed::Theme => (
                 "Appearance",
                 "Theme",
@@ -133,13 +161,11 @@ impl Tui {
                 chosen(&ICONS, self.icon_setting),
                 SettingValue::Choice(0),
             ),
-            Listed::Wrap => (
+            Listed::Wrap => switch_on_by_default(
                 "Appearance",
                 "Word wrap",
                 "Wrap long text, or end it in … on one line",
-                SettingKind::Switch,
-                SettingValue::Switch(self.wrap),
-                SettingValue::Switch(true),
+                self.wrap,
             ),
             Listed::ColorTags => (
                 "Appearance",
@@ -149,13 +175,11 @@ impl Tui {
                 chosen(&COLOR_TAGS, self.color_tags),
                 SettingValue::Choice(0),
             ),
-            Listed::SpecialInbox => (
+            Listed::SpecialInbox => switch_on_by_default(
                 "Appearance",
                 "Special handling of INBOX project",
                 "Show INBOX: above Today, not under Projects",
-                SettingKind::Switch,
-                SettingValue::Switch(self.state.special_inbox()),
-                SettingValue::Switch(true),
+                self.state.special_inbox(),
             ),
             Listed::AutosaveDelay => (
                 "Files",
@@ -168,13 +192,11 @@ impl Tui {
                 SettingValue::Number(count(self.state.autosave_delay().as_millis())),
                 SettingValue::Number(count(saving::DELAY.as_millis())),
             ),
-            Listed::Backups => (
+            Listed::Backups => switch_on_by_default(
                 "Files",
                 "Backups",
                 "Keep a copy of each file as it was each day",
-                SettingKind::Switch,
-                SettingValue::Switch(self.backups.enabled),
-                SettingValue::Switch(true),
+                self.backups.enabled,
             ),
             Listed::BackupFolder => (
                 "Files",
