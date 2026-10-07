@@ -1,6 +1,6 @@
 # Spec: Key bindings
 
-Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow-key equivalents (FR-KEY-02); edit mode uses standard text keys (FR-MODE-03, [editing.md §2](editing.md#2-edit-mode)).
+Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow-key equivalents (FR-KEY-02); edit mode uses standard text keys (FR-MODE-03, [editing.md §2](editing.md#2-edit-mode)). [key-mnemonics.md](../key-mnemonics.md) explains the logic of the keys as memory aids.
 
 ## 1. Terminal constraints
 
