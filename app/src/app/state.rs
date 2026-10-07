@@ -219,6 +219,9 @@ pub enum Notice {
         /// Whether the block is bookmarked now.
         added: bool,
     },
+    /// `gi` found no inbox: no top-level `INBOX` project is shown, or the setting that lists it
+    /// apart is off (D-78).
+    NoInbox,
     /// How many blocks are under the focused block and how many words they hold (FR-OPS-09).
     Count {
         /// The blocks.

@@ -512,3 +512,18 @@ fn the_today_entry_leaves_the_sidebar_with_its_setting_off_and_gt_still_opens_to
         "sidebar_today = true\n"
     );
 }
+
+// D-78
+#[test]
+fn g_i_zooms_to_the_inbox_and_says_so_when_there_is_none() {
+    let mut app = Harness::with_text(INBOXED, 80, 10);
+    app.type_keys("gi");
+    assert_eq!(pane(&mut app)[0], "  ⌂ › INBOX", "the breadcrumbs");
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    app.type_keys("gi");
+    let status = line(app.render().buffer(), 9);
+    assert!(
+        status.ends_with("· No INBOX project in the sidebar"),
+        "{status}"
+    );
+}

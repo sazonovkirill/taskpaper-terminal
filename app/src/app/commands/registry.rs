@@ -72,6 +72,11 @@ pub const REGISTRY: &[Entry] = &[
     ),
     entry!(Command::GoHome, Mode::Navigate, &["ctrl+'", "g h"]),
     entry!(Command::GoToToday, Mode::Navigate, &["g t"]),
+    entry!(
+        Command::Sidebar(SidebarInput::GoToInbox),
+        Mode::Navigate,
+        &["g i"]
+    ),
     entry!(Command::Back, Mode::Navigate, &["H", "alt+shift+left"]),
     entry!(Command::Forward, Mode::Navigate, &["L", "alt+shift+right"]),
     entry!(Command::Edit, Mode::Navigate, &["enter"]),
@@ -579,6 +584,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::Back,
             Command::Forward,
             Command::GoToToday,
+            Command::Sidebar(SidebarInput::GoToInbox),
         ],
     ),
     (
@@ -761,7 +767,7 @@ mod tests {
             [
                 ("Moving", 6),
                 ("Folding", 3),
-                ("Zoom and History", 5),
+                ("Zoom and History", 6),
                 ("Editing and Creating", 3),
                 ("Selection", 2),
                 ("Structure", 9),

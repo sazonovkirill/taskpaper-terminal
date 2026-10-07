@@ -458,6 +458,7 @@ fn sidebar_name(input: SidebarInput) -> Cow<'static, str> {
         SidebarInput::Choose => "Go to Entry".into(),
         SidebarInput::Leave => "Return to Outline".into(),
         SidebarInput::Focus(at) => format!("Focus Entry {}", at + 1).into(),
+        SidebarInput::GoToInbox => "Go to Inbox".into(),
     }
 }
 
@@ -564,6 +565,7 @@ mod tests {
             (Command::Sidebar(SidebarInput::Choose), "Go to Entry"),
             (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
             (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
+            (Command::Sidebar(SidebarInput::GoToInbox), "Go to Inbox"),
             (Command::GoToCrumb(1), "Zoom Here"),
             (Command::GoToToday, "Go to Today"),
             (Command::GoToProject, "Go to Project"),

@@ -5,7 +5,7 @@
 use std::{collections::HashSet, rc::Rc};
 
 use super::{
-    Location, PaneChange, State,
+    Location, Notice, PaneChange, State,
     commands::{Command, NodeCommand},
     memo::Memo,
 };
@@ -111,6 +111,9 @@ pub enum SidebarInput {
     Leave,
     /// Give the sidebar the keys on the entry at this index, as a click on it does (FR-KEY-05).
     Focus(usize),
+    /// `gi`: zoom the pane to the inbox entry's project, from anywhere, or say there is none
+    /// (D-78).
+    GoToInbox,
 }
 
 /// One entry of the sidebar, in its sections' order: the inbox, Today, bookmarks, projects
@@ -249,6 +252,14 @@ impl State {
         let entries = self.sidebar_entries();
         // Focusing picks the entry the others act on.
         let at = match input {
+            // The inbox entry comes first while the sidebar lists it (D-75).
+            SidebarInput::GoToInbox => {
+                let inbox = matches!(entries.first(), Some(SidebarEntry::Inbox { .. }));
+                if !inbox {
+                    self.notify(Notice::NoInbox);
+                }
+                inbox.then_some(0)
+            }
             SidebarInput::Focus(at) => (self.sidebar.shown && at < entries.len()).then_some(at),
             SidebarInput::Next
             | SidebarInput::Previous
@@ -282,7 +293,7 @@ impl State {
                     self.sidebar.folds.remove(id);
                 }
             }
-            SidebarInput::Choose => {
+            SidebarInput::Choose | SidebarInput::GoToInbox => {
                 if let Some(location) = focused.map(SidebarEntry::location) {
                     self.sidebar.focus = None;
                     self.go_to(location);
@@ -659,6 +670,32 @@ INBOX:",
         state.update(Message::ZoomIn);
         assert_eq!(state.breadcrumbs(), ["INBOX", "Later", "soon"]);
         assert_eq!(current(&state), Some(0), "inside the inbox");
+    }
+
+    // D-78
+    #[test]
+    fn go_to_inbox_zooms_to_the_inbox_entrys_project_or_says_there_is_none() {
+        let mut state = open(INBOXED);
+        input(&mut state, &[SidebarInput::GoToInbox]);
+        assert_eq!(state.breadcrumbs(), ["INBOX"]);
+        assert_eq!(state.notice(), None);
+        state.update(Message::Back);
+        assert_eq!(
+            state.breadcrumbs(),
+            Vec::<String>::new(),
+            "a step of the history"
+        );
+        state.update(Message::Configure(Configuration::SpecialInbox(false)));
+        input(&mut state, &[SidebarInput::GoToInbox]);
+        assert_eq!(
+            state.breadcrumbs(),
+            Vec::<String>::new(),
+            "the setting is off"
+        );
+        assert_eq!(state.notice(), Some(&Notice::NoInbox));
+        let mut state = open("Work:\n\tINBOX:");
+        input(&mut state, &[SidebarInput::GoToInbox]);
+        assert_eq!(state.notice(), Some(&Notice::NoInbox), "not top-level");
     }
 
     // FR-UI-01, FR-DONE-02

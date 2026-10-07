@@ -26,7 +26,7 @@ use super::{
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Notice, PickerView, Row, SaveState, commands::Group,
+        Notice, PickerView, Row, SaveState, SidebarInput, commands::Group,
     },
     document::{
         BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
@@ -420,6 +420,7 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
         ),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
+        Notice::NoInbox => Span::raw("No INBOX project in the sidebar"),
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style)
         }
@@ -751,6 +752,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
         Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
         Command::OpenSettings => plain(Icon::Settings),
+        Command::Sidebar(SidebarInput::GoToInbox) => plain(Icon::Inbox),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -1953,6 +1955,11 @@ mod tests {
             ),
             (Command::SetColor(None), Icon::Color, Style::new()),
             (Command::GoToToday, Icon::Today, today_style(&THEME)),
+            (
+                Command::Sidebar(SidebarInput::GoToInbox),
+                Icon::Inbox,
+                Style::new(),
+            ),
             (Command::GoToProject, Icon::Project, Style::new()),
             (Command::OpenSettings, Icon::Settings, Style::new()),
             (Command::OpenDetails, Icon::Details, Style::new()),
@@ -3136,6 +3143,7 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
+            (Notice::NoInbox, plain("No INBOX project in the sidebar")),
             (
                 Notice::Count {
                     blocks: 1,
