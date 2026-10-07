@@ -402,6 +402,7 @@ mod tests {
         let (io, inputs) = start(dir.path());
         let path = dir.path().join("todo.taskpaper");
         let mut state = super::super::open(&path)?;
+        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
         io.submit(save_job(&path, "Work:\n"));
         io.store_view(path.clone(), state.view_state().expect("a layout"));

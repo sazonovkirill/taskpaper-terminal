@@ -5,21 +5,22 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 ## 1. Layout
 
 ```
-┌ Bookmarks ─────────┬ ⌂ › Work ─────────────────────────┬ ⌂ › Ideas ────────────────────┐
-│ ★ Launch plan      │ Work                              │ Ideas                         │
-│ Today          3   │   Launch:                         │ • Terminal outliner           │
-│ Projects           │   - Draft announcement  Fri 8 Oct │ • Plain-text sync             │
-│ ▾ Work             │   ✔ Book venue                    │                               │
-│   ▸ Launch         │   - Budget review  ▸ 3            │                               │
-│ ▸ Ideas            │     Notes about the venue wrap    │                               │
-│                    │     under the text like this.     │                               │
-│                    │   Later                           │                               │
+┌────────────────────┬ ⌂ › Work ─────────────────────────┬ ⌂ › Ideas ────────────────────┐
+│  ★ Today           │ Work                              │ Ideas                         │
+│                    │   Launch:                         │ • Terminal outliner           │
+│           Bookmarks│   - Draft announcement  Fri 8 Oct │ • Plain-text sync             │
+│  Launch plan       │   ✔ Book venue                    │                               │
+│                    │   - Budget review  ▸ 3            │                               │
+│            Projects│     Notes about the venue wrap    │                               │
+│▌▾Work              │     under the text like this.     │                               │
+│   ▸Launch          │   Later                           │                               │
+│ ▸Ideas             │                                   │                               │
 ├────────────────────┴───────────────────────────────────┴───────────────────────────────┤
 │ NAVIGATE · ~/notes.taskpaper · saved · ? shortcuts                                       │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (FR-UI-01) on the left, 24–32 columns: the Today entry, then a blank line and the bookmarks, each its text alone, under a Bookmarks heading, then a blank line and the project tree under a Projects heading; a section without entries has no heading. The headings end against the sidebar's rule; bookmarks and top-level projects start in the same column, projects 2 columns more per level, each right behind its fold marker, which for a top-level entry stands in the gutter (D-60, D-61, D-68).
+- **Sidebar** (FR-UI-01) on the left, 24–32 columns: the Today entry, then a blank line and the bookmarks, each its text alone, under a Bookmarks heading, then a blank line and the project tree under a Projects heading; a section without entries has no heading. The headings end against the sidebar's rule; bookmarks and top-level projects start in the same column, projects 2 columns more per level, each right behind its fold marker, which for a top-level entry stands in the gutter (D-60, D-61, D-68). While the sidebar has the keys, its focused entry is marked like the outline's focused block (§2); while the pane has them, the entry of where the focused pane is gets a selected block's dimmed marker instead and is scrolled into view (D-68).
 - **Panes** (FR-UI-02) to its right as columns, each with a breadcrumb header (its first row, a house icon `⌂` for the document root followed by the path to the zoom block, D-32, starting after the focus gutter of §2 so the root crumb lines up with top-level blocks, D-35) or, in the Today view, the Today icon and the name `Today` in its place ([navigation.md §7](navigation.md#7-today-view-fr-tag-04-d-7)) separated from the outline by a dim horizontal rule, like Workflowy (D-29), and, when zoomed, a title row showing the zoom block styled as in §2 for its type (marker, color, dimming, a project's `:`), in bold and without indent, so its type is clear (D-34). Panes are separated by a dim vertical rule; only the focused pane shows its focus marker (§2), and the other panes' breadcrumbs are dimmed, so the focused pane's header stands out.
 - **Status line** at the bottom: mode, file path (marked when it is a `/tmp` file not yet saved elsewhere), save state or error, pending key prefix, transient messages.
 - **Secondary sidebar** on the right, 32–40 columns, shown only while it holds the `?` shortcuts panel (§4) (D-28, D-66). It takes its width from the panes, which keep their minimum and scroll horizontally as in [navigation.md §5](navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13). Below 80 columns it is drawn over the right part of the focused pane.

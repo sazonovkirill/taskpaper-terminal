@@ -123,7 +123,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 |---|---|
 | Show/hide completed in this pane (FR-DONE-02) | `Ctrl+O`, `gc` |
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
-| Toggle sidebar / focus sidebar, showing it (FR-UI-01) | `Ctrl+B` / `Alt+0`, `g0` (the non-`Alt` route of §1) |
+| Toggle sidebar: focus it, showing it, or hide it while it has the keys / focus sidebar, showing it; either focuses the entry of where the pane is, else the first (FR-UI-01, D-68) | `Ctrl+B` / `Alt+0`, `g0` (the non-`Alt` route of §1) |
 | Shortcuts panel (FR-KEY-04) | `?` |
 | Scroll the shortcuts panel down / up a page, while it is open (D-55) | `)` / `(` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |

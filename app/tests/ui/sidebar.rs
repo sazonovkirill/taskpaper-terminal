@@ -3,7 +3,7 @@
 use std::fmt::Write as _;
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
-use ratatui::buffer::Buffer;
+use ratatui::{buffer::Buffer, style::Modifier};
 use taskpaper_terminal::ui::Input;
 
 use crate::support::{BOOKMARK, Harness, NAVIGATE, STAR, line};
@@ -72,7 +72,7 @@ fn heading(text: &str) -> String {
     format!("{text:>21}")
 }
 
-/// The sidebar's lines as listed before any key, `▌` marking the focused one.
+/// The sidebar's lines as listed before any key, `▌` marking the focused or current one.
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
         format!("{STAR} Today"),
@@ -142,10 +142,12 @@ fn below_80_columns_the_sidebar_hides_and_cannot_take_the_keys() {
     assert_eq!(line(&buffer, 0), "  ⌂", "still hidden");
 }
 
-// FR-UI-01
+// FR-UI-01, D-68
 #[test]
-fn ctrl_b_hides_and_shows_the_sidebar() {
+fn ctrl_b_gives_the_sidebar_the_keys_showing_it_and_hides_it_from_there() {
     let mut app = app(80);
+    ctrl_b(&mut app);
+    assert_eq!(sidebar(&mut app), listed(Some(0)), "the shown sidebar");
     ctrl_b(&mut app);
     assert_eq!(
         line(app.render().buffer(), 2),
@@ -153,7 +155,44 @@ fn ctrl_b_hides_and_shows_the_sidebar() {
         "the pane takes the screen"
     );
     ctrl_b(&mut app);
-    assert_eq!(sidebar(&mut app), listed(None));
+    assert_eq!(sidebar(&mut app), listed(Some(0)));
+    press(&mut app, KeyCode::Char('j'));
+    assert_eq!(sidebar(&mut app), listed(Some(3)), "j moves in the sidebar");
+}
+
+// D-68
+#[test]
+fn the_entry_of_the_panes_zoom_is_marked_as_selected_and_focused_by_ctrl_b() {
+    let mut app = app(80);
+    app.type_keys(".");
+    assert_eq!(sidebar(&mut app), listed(Some(6)), "Work");
+    let buffer = app.render().buffer().clone();
+    assert!(
+        buffer[(0, 6)].modifier.contains(Modifier::DIM),
+        "a selected block's marker"
+    );
+    assert_eq!(buffer[(2, 6)].bg, buffer[(2, 7)].bg, "without the band");
+    app.type_keys("j.");
+    assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports");
+    assert_eq!(sidebar(&mut app), listed(Some(7)), "the marker follows");
+    app.type_keys(".");
+    assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports › Draft");
+    assert_eq!(
+        sidebar(&mut app),
+        listed(Some(7)),
+        "Reports, above the zoomed task"
+    );
+    ctrl_b(&mut app);
+    let buffer = app.render().buffer().clone();
+    assert!(!buffer[(0, 7)].modifier.contains(Modifier::DIM), "focused");
+    press(&mut app, KeyCode::Char('k'));
+    assert_eq!(
+        sidebar(&mut app),
+        listed(Some(6)),
+        "k moves the focus freely"
+    );
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(sidebar(&mut app), listed(Some(7)), "the marker is back");
 }
 
 // FR-UI-01, keybindings.md §2, §4, D-42
@@ -206,7 +245,7 @@ fn ctrl_shift_and_ctrl_w_arrows_move_between_the_sidebar_and_the_leftmost_pane()
     app.press(KeyCode::Left, ctrl_shift);
     assert_eq!(
         sidebar(&mut app),
-        listed(Some(1)),
+        listed(Some(0)),
         "the sidebar takes the keys"
     );
     app.press(KeyCode::Right, ctrl_shift);
@@ -219,11 +258,11 @@ fn ctrl_shift_and_ctrl_w_arrows_move_between_the_sidebar_and_the_leftmost_pane()
     );
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Left);
-    assert_eq!(sidebar(&mut app), listed(Some(1)), "Ctrl+W ← too");
+    assert_eq!(sidebar(&mut app), listed(Some(0)), "Ctrl+W ← too");
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Right);
     assert_eq!(sidebar(&mut app), listed(None), "and Ctrl+W →");
-    ctrl_b(&mut app);
+    app.hide_sidebar();
     app.press(KeyCode::Left, ctrl_shift);
     press(&mut app, KeyCode::Char('j'));
     assert_eq!(
@@ -250,8 +289,8 @@ fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
-    assert_eq!(sidebar(&mut app), listed(None));
-    app.type_keys("g0jjj");
+    assert_eq!(sidebar(&mut app), listed(Some(3)), "the entry marked");
+    app.type_keys("g0jj");
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         pane(&mut app)[..4],
@@ -273,7 +312,7 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
     alt_0(&mut app);
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
-    assert_eq!(sidebar(&mut app), listed(None));
+    assert_eq!(sidebar(&mut app), listed(Some(0)), "the entry marked");
 }
 
 // keybindings.md §4

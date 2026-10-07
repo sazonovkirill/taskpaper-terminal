@@ -9,7 +9,9 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, rule_style, today_style};
+use super::{
+    FOCUS_MARKER, GUTTER_WIDTH, current_line_style, rule_style, selection_style, today_style,
+};
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
     ui::{
@@ -22,7 +24,8 @@ use crate::{
 /// blank line, a heading at the right edge and its entries (D-68). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
-/// outline's focused block and gets the current-line band.
+/// outline's focused block and gets the current-line band; while the pane has the keys, the entry
+/// of where it is gets a selected block's marker instead (D-68).
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -51,12 +54,12 @@ impl<'a> SidebarPanel<'a> {
     }
 
     /// The first line to draw in `height` rows from `offset` on, scrolling as little as possible
-    /// to keep the focused entry visible and never past the last line.
+    /// to keep the focused or current entry visible and never past the last line.
     #[must_use]
     pub fn scroll(&self, offset: usize, height: usize) -> usize {
         let lines = self.lines().count();
-        match self.focused_line() {
-            Some(focused) => layout::scroll_offset(offset, focused..focused + 1, height, lines),
+        match self.lines().position(|(_, mark)| mark != Mark::None) {
+            Some(marked) => layout::scroll_offset(offset, marked..marked + 1, height, lines),
             None => offset.min(lines.saturating_sub(height)),
         }
     }
@@ -64,7 +67,7 @@ impl<'a> SidebarPanel<'a> {
     /// The line of the focused entry, counted from the first, while the sidebar has the keys.
     #[must_use]
     pub fn focused_line(&self) -> Option<usize> {
-        self.lines().position(|(_, focused)| focused)
+        self.lines().position(|(_, mark)| mark == Mark::Focused)
     }
 
     /// The index of the entry on line `line`, counted from the first, with its fold when column
@@ -92,11 +95,13 @@ impl<'a> SidebarPanel<'a> {
         Some((entries, fold))
     }
 
-    /// Each line with whether it shows the focused entry, built only when drawn since a large
+    /// Each line with how it is marked, built only when drawn since a large
     /// outline has many more than fit.
-    fn lines(&self) -> impl Iterator<Item = (SidebarLine<'a>, bool)> {
+    fn lines(&self) -> impl Iterator<Item = (SidebarLine<'a>, Mark)> {
         let entries = &self.view.entries[..];
-        let focused = self.view.focused;
+        let SidebarView {
+            focused, current, ..
+        } = *self.view;
         entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
             let heading = match (entry, previous) {
@@ -115,9 +120,33 @@ impl<'a> SidebarPanel<'a> {
             heading
                 .into_iter()
                 .flat_map(|heading| [SidebarLine::Blank, SidebarLine::Heading(heading)])
-                .map(|line| (line, false))
-                .chain([(SidebarLine::Entry(entry), Some(index) == focused)])
+                .map(|line| (line, Mark::None))
+                .chain([(SidebarLine::Entry(entry), Mark::of(index, focused, current))])
         })
+    }
+}
+
+/// How a line of the sidebar is marked in its gutter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mark {
+    /// Not at all.
+    None,
+    /// As the focused entry.
+    Focused,
+    /// As the entry of where the focused pane is.
+    Current,
+}
+
+impl Mark {
+    /// The mark of the entry at `index` when `focused` and `current` are those entries' indices.
+    fn of(index: usize, focused: Option<usize>, current: Option<usize>) -> Self {
+        if Some(index) == focused {
+            Self::Focused
+        } else if Some(index) == current {
+            Self::Current
+        } else {
+            Self::None
+        }
     }
 }
 
@@ -183,15 +212,22 @@ impl Widget for SidebarPanel<'_> {
             Constraint::Length(GUTTER_WIDTH),
             Constraint::Fill(1),
         ]));
-        for ((line, focused), (gutter_area, line_area)) in self
+        for ((line, mark), (gutter_area, line_area)) in self
             .lines()
             .skip(self.offset)
             .zip(gutter.rows().zip(text.rows()))
         {
-            if focused {
-                buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
-                Span::styled(FOCUS_MARKER, Style::new().fg(self.theme.focus))
-                    .render(gutter_area, buf);
+            match mark {
+                Mark::Focused => {
+                    buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
+                    Span::styled(FOCUS_MARKER, Style::new().fg(self.theme.focus))
+                        .render(gutter_area, buf);
+                }
+                Mark::Current => {
+                    Span::styled(FOCUS_MARKER, selection_style(self.theme))
+                        .render(gutter_area, buf);
+                }
+                Mark::None => {}
             }
             // A project's line starts a column early, so its fold marker stands right before its
             // text (D-61).
@@ -212,10 +248,13 @@ impl Widget for SidebarPanel<'_> {
 #[cfg(test)]
 mod tests {
     use super::super::tests::THEME;
-    use ratatui::style::Modifier;
+    use ratatui::style::{Color, Modifier};
 
     use super::*;
-    use crate::{app::State, document::format};
+    use crate::{
+        app::{Message, State},
+        document::format,
+    };
 
     /// Draws the sidebar of `text` 20 columns wide and returns its rows, without the rule.
     fn draw(text: &str) -> Buffer {
@@ -311,6 +350,36 @@ mod tests {
         // Today, blank, Projects, ▾ A, ▾ B, C.
         assert_eq!(panel.entry_at(4, 3), Some((2, Some(Fold::Expanded))));
         assert_eq!(panel.entry_at(4, 1), Some((2, None)));
+    }
+
+    // D-68
+    #[test]
+    fn the_current_entry_gets_a_selected_blocks_marker_and_is_scrolled_to() {
+        let mut state = State::new(format::parse("A:\nB:\nC:\nD:"), None);
+        state.update(Message::FocusLast);
+        state.update(Message::ZoomIn);
+        let view = state.sidebar().expect("shown by default");
+        assert_eq!(view.current, Some(4), "D");
+        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        // Today, blank, Projects, A, B, C, D.
+        assert_eq!(panel.scroll(0, 4), 3, "D on the last row");
+        assert_eq!(panel.scroll(0, 7), 0);
+        assert_eq!(panel.focused_line(), None, "nothing focused");
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
+        panel.render(buf.area, &mut buf);
+        assert_eq!(rows(&buf)[6], "▌ D");
+        assert_eq!(
+            Style::new()
+                .fg(buf[(0, 6)].fg)
+                .add_modifier(buf[(0, 6)].modifier),
+            selection_style(&THEME)
+        );
+        assert_eq!(buf[(2, 6)].bg, Color::Reset, "no band");
+        state.update(Message::FocusSidebar);
+        let view = state.sidebar().expect("shown");
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
+        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+        assert_eq!(buf[(0, 6)].fg, THEME.focus, "the focus marker instead");
     }
 
     // FR-UI-01

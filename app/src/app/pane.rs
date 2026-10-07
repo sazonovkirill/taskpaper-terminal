@@ -497,7 +497,7 @@ mod tests {
         pane(&mut state, PaneChange::FocusLeft);
         state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Pane(PaneChange::FocusRight));
-        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(crate::app::SidebarInput::Focus(0)));
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
         pane(&mut state, PaneChange::OpenLocation);
         assert_eq!(panes(&state)[3], "*Today: ", "the Today view opens too");
@@ -658,6 +658,7 @@ mod tests {
     #[test]
     fn focusing_a_pane_by_number_or_neighbor_keeps_their_order() {
         let mut state = open(OUTLINE);
+        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
         for project in ["Work", "Home", "Later"] {
             pane(&mut state, PaneChange::Focus(0));
@@ -734,6 +735,7 @@ mod tests {
             ["*⌂: Home", "Home: Plants"],
             "the leftmost one had the keys before"
         );
+        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
         pane(&mut state, PaneChange::FocusLeft);
         assert!(!state.sidebar_focused(), "a hidden sidebar is no stop");

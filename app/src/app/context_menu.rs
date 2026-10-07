@@ -314,7 +314,7 @@ mod tests {
                 "Close Pane"
             ]
         );
-        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(SidebarInput::Focus(0)));
         state.update(Message::Sidebar(SidebarInput::Choose));
         assert_eq!(state.pane.location, Location::Today);
         assert_eq!(

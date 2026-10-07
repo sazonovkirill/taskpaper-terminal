@@ -228,6 +228,7 @@ mod tests {
         let views = views(dir.path());
         let path = dir.path().join("new.taskpaper");
         let mut state = super::super::open(&path)?;
+        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
         store(&views, &state)?;
         assert_eq!(views.restore(super::super::open(&path)?).sidebar(), None);

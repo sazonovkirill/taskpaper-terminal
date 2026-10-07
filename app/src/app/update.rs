@@ -148,7 +148,8 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
-    /// Show the sidebar, or hide it and give the pane the keys (FR-UI-01).
+    /// Hide the sidebar and give the pane the keys while the sidebar has them, else show it and
+    /// give it the keys (FR-UI-01, D-68).
     ToggleSidebar,
     /// Show the sidebar and give it the keys (FR-UI-01).
     FocusSidebar,

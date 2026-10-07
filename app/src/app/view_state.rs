@@ -266,7 +266,7 @@ mod tests {
         state.update(Message::Pane(PaneChange::Open));
         state.update(Message::ResizePane(44));
         state.update(Message::Pane(PaneChange::OpenLocation));
-        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(SidebarInput::Focus(0)));
         state.update(Message::Sidebar(SidebarInput::Choose));
         state.update(Message::Pane(PaneChange::Focus(0)));
         state.update(Message::ToggleShowDone);
@@ -274,6 +274,7 @@ mod tests {
         state.update(Message::Pane(PaneChange::Focus(1)));
         state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Back);
+        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
         state
     }

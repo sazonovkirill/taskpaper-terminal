@@ -353,6 +353,10 @@ impl Harness {
     /// Hides the sidebar, which a screen 80 columns wide or wider shows, for a test of the pane
     /// alone on a wide screen.
     pub fn hide_sidebar(&mut self) {
+        // `Ctrl+B` hides the sidebar only while it has the keys (D-68), which it keeps only once
+        // the screen is known to be wide enough for it.
+        self.render();
+        self.type_keys("g0");
         self.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
     }
 
