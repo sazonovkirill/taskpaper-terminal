@@ -1,9 +1,11 @@
 //! Edits as primitive line operations that can be applied and inverted
 //! ([data-model.md §4–5](../../../../docs/specs/data-model.md#4-edits)).
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-use slotmap::SecondaryMap;
 use thiserror::Error;
 
 use super::{Document, Item, ItemId, Line};
@@ -309,7 +311,8 @@ impl Document {
                 return Err(error);
             }
         }
-        transaction.ops.extend(self.repair_placement());
+        let repairs = self.repair_placement(&transaction.ops);
+        transaction.ops.extend(repairs);
         if !transaction.ops.is_empty() {
             self.revision += 1;
         }
@@ -441,40 +444,66 @@ impl Document {
         Ok(())
     }
 
-    /// One forward pass in document order: a line whose nearest preceding shallower line is not
-    /// its parent gets extra indent 0, which places it right under its parent; that can only
-    /// change the depth of lines after it.
-    fn repair_placement(&mut self) -> Vec<Op> {
-        let lines: Vec<(ItemId, ItemId, usize)> = self
-            .descendants(self.root)
-            .filter_map(|(id, _)| {
-                let item = self.get(id)?;
-                Some((id, item.parent?, item.extra_indent))
+    /// Resets the extra indent of each line an earlier sibling has less extra indent than, the
+    /// lines whose nearest preceding shallower line is not their parent; that can only change
+    /// the depth of lines after it. Only the children of lines whose children `ops` changed or
+    /// put in, and the siblings of lines whose extra indent they changed, can have become such
+    /// lines, since every other line was placed before.
+    fn repair_placement(&mut self, ops: &[Op]) -> Vec<Op> {
+        let mut checked = HashSet::new();
+        let parents: Vec<ItemId> = ops
+            .iter()
+            .flat_map(|op| match op {
+                Op::SetText { .. } => Vec::new(),
+                Op::SetExtraIndent { id, .. } => self
+                    .get(*id)
+                    .and_then(|item| item.parent)
+                    .into_iter()
+                    .collect(),
+                Op::Insert {
+                    parent, subtree, ..
+                } => std::iter::once(*parent)
+                    .chain(subtree.lines().map(|&(id, _)| id))
+                    .collect(),
+                Op::Remove { parent, .. } => vec![*parent],
+                Op::Move { from, to, .. } => vec![from.0, to.0],
             })
+            .filter(|&parent| checked.insert(parent))
             .collect();
-        let mut depths: SecondaryMap<ItemId, usize> = SecondaryMap::new();
-        let mut open: Vec<(ItemId, usize)> = Vec::new();
-        let mut repairs = Vec::new();
-        for (id, parent, extra_indent) in lines {
-            let base = depths.get(parent).map_or(0, |depth| depth + 1);
-            let mut depth = base + extra_indent;
-            close_lines_at_or_below(&mut open, depth);
-            if open.last().map_or(self.root, |&(line, _)| line) != parent {
-                repairs.push(Op::SetExtraIndent {
-                    id,
-                    before: extra_indent,
-                    after: 0,
-                });
+        let misplaced: Vec<(ItemId, usize)> = parents
+            .into_iter()
+            .flat_map(|parent| self.misplaced_children(parent))
+            .collect();
+        misplaced
+            .into_iter()
+            .map(|(id, extra_indent)| {
                 if let Some(item) = self.item_mut(id) {
                     item.extra_indent = 0;
                 }
-                depth = base;
-                close_lines_at_or_below(&mut open, depth);
+                Op::SetExtraIndent {
+                    id,
+                    before: extra_indent,
+                    after: 0,
+                }
+            })
+            .collect()
+    }
+
+    /// The children of `parent` with more extra indent than an earlier sibling once each such
+    /// child before them has none, with their extra indent.
+    fn misplaced_children(&self, parent: ItemId) -> Vec<(ItemId, usize)> {
+        let mut least = usize::MAX;
+        let mut misplaced = Vec::new();
+        for &id in self.children_of(parent) {
+            let extra_indent = self.get(id).map_or(0, Item::extra_indent);
+            if extra_indent > least {
+                misplaced.push((id, extra_indent));
+                least = 0;
+            } else {
+                least = extra_indent;
             }
-            depths.insert(id, depth);
-            open.push((id, depth));
         }
-        repairs
+        misplaced
     }
 
     /// The line `id`, refusing the virtual root.
@@ -490,14 +519,6 @@ impl Document {
         }
         self.item_mut(id).ok_or(EditError::Missing { id })
     }
-}
-
-/// Drops the open lines at `depth` or deeper, which cannot be the parent of a line at `depth`.
-fn close_lines_at_or_below(open: &mut Vec<(ItemId, usize)>, depth: usize) {
-    while open
-        .pop_if(|&mut (_, open_depth)| open_depth >= depth)
-        .is_some()
-    {}
 }
 
 #[cfg(test)]
@@ -542,6 +563,31 @@ mod tests {
         assert_eq!(show(&reread), show(document), "placement");
     }
 
+    /// The placement repair as one pass over every line in document order, which resets the
+    /// extra indent of each line whose nearest preceding shallower line is not its parent.
+    fn repair_everywhere(document: &mut Document) {
+        let mut depths: HashMap<ItemId, usize> = HashMap::new();
+        let mut open: Vec<(ItemId, usize)> = Vec::new();
+        let lines: Vec<ItemId> = document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .collect();
+        for id in lines {
+            let item = document.get(id).unwrap();
+            let parent = item.parent().unwrap();
+            let base = depths.get(&parent).map_or(0, |depth| depth + 1);
+            let mut depth = base + item.extra_indent();
+            open.retain(|&(_, open_depth)| open_depth < depth);
+            if open.last().map_or(document.root(), |&(line, _)| line) != parent {
+                document.item_mut(id).unwrap().extra_indent = 0;
+                depth = base;
+                open.retain(|&(_, open_depth)| open_depth < depth);
+            }
+            depths.insert(id, depth);
+            open.push((id, depth));
+        }
+    }
+
     fn id(document: &Document, text: &str) -> ItemId {
         document
             .descendants(document.root())
@@ -559,8 +605,18 @@ mod tests {
     #[track_caller]
     fn apply_and_undo(document: &Document, ops: Vec<Op>) -> Document {
         let mut changed = document.clone();
+        let mut expected = document.clone();
+        for op in &ops {
+            expected.apply_op(op).unwrap();
+        }
+        repair_everywhere(&mut expected);
         let mut forward = transaction(ops);
         changed.apply(&mut forward).unwrap();
+        assert_eq!(
+            show(&changed),
+            show(&expected),
+            "repairs as a pass over every line would"
+        );
         assert_placed(&changed);
         let after = show(&changed);
         let mut backward = forward.inverse();
