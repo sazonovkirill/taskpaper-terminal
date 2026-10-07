@@ -619,7 +619,7 @@ mod tests {
                 crate::app::SidebarEntry::Project { text, fold, .. } => Some((text.clone(), *fold)),
                 crate::app::SidebarEntry::Inbox { .. }
                 | crate::app::SidebarEntry::Bookmark { .. }
-                | crate::app::SidebarEntry::View(_) => None,
+                | crate::app::SidebarEntry::View { .. } => None,
             })
             .collect()
     }

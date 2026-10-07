@@ -4,8 +4,10 @@
 
 use std::{collections::HashSet, rc::Rc};
 
+use jiff::civil::Date;
+
 use super::{
-    Location, Notice, PaneChange, Rows, SpecialView, State,
+    Location, Notice, PaneChange, Row, Rows, SpecialView, State,
     commands::{Command, NodeCommand},
     memo::Memo,
     pane::Pane,
@@ -38,6 +40,10 @@ struct EntriesKey {
     show_done: bool,
     special_inbox: bool,
     unlisted: HashSet<SpecialView>,
+    /// The local date and whether Today lists starred blocks, which the special views' counts
+    /// follow (D-85).
+    today: Date,
+    today_starred: bool,
 }
 
 /// Everything the entry of where the focused pane is comes from: the entries, the blocks above
@@ -128,9 +134,16 @@ pub enum SidebarEntry {
         id: ItemId,
         /// Its text as shown, without formatting delimiters.
         text: String,
+        /// How many open tasks it holds, as a project entry counts them (D-85).
+        open_tasks: usize,
     },
-    /// A special view, such as Today (D-7, D-80).
-    View(SpecialView),
+    /// A special view, such as Today, with how many open tasks it lists (D-7, D-80, D-85).
+    View {
+        /// The view.
+        view: SpecialView,
+        /// How many open tasks it lists (D-85).
+        open_tasks: usize,
+    },
     /// A project, nested under the closest project above it.
     Project {
         /// The block.
@@ -154,7 +167,18 @@ impl SidebarEntry {
             Self::Inbox { id, .. } | Self::Bookmark { id, .. } | Self::Project { id, .. } => {
                 Location::Outline(Some(*id))
             }
-            Self::View(view) => Location::View(*view),
+            Self::View { view, .. } => Location::View(*view),
+        }
+    }
+
+    /// How many open tasks the entry holds or lists (D-73, D-85).
+    #[must_use]
+    pub fn open_tasks(&self) -> usize {
+        match *self {
+            Self::Inbox { open_tasks, .. }
+            | Self::Bookmark { open_tasks, .. }
+            | Self::View { open_tasks, .. }
+            | Self::Project { open_tasks, .. } => open_tasks,
         }
     }
 }
@@ -312,7 +336,7 @@ impl State {
             }
             | SidebarEntry::Inbox { .. }
             | SidebarEntry::Bookmark { .. }
-            | SidebarEntry::View(_) => None,
+            | SidebarEntry::View { .. } => None,
         };
         let entry = [NodeCommand::named(Command::Sidebar(SidebarInput::Choose))]
             .into_iter()
@@ -369,6 +393,8 @@ impl State {
             show_done: self.pane.show_done,
             special_inbox: self.sidebar.special_inbox,
             unlisted: self.sidebar.unlisted.clone(),
+            today: self.today,
+            today_starred: self.today_starred,
         };
         self.sidebar.entries.get(key, || {
             let inbox = self.sidebar.special_inbox.then(|| self.inbox()).flatten();
@@ -378,22 +404,22 @@ impl State {
             let mut every = Pane::first();
             every.show_done = self.pane.show_done;
             let rows = self.rows_folded(&every, &HashSet::new());
-            let bookmarks =
-                rows.iter()
-                    .filter(|row| row.bookmark)
-                    .map(|row| SidebarEntry::Bookmark {
-                        id: row.id,
-                        text: self.shown_text(row.id),
-                    });
             inbox
                 .into_iter()
                 .chain(
                     SpecialView::ALL
                         .into_iter()
                         .filter(|&view| self.sidebar_lists(view))
-                        .map(SidebarEntry::View),
+                        .map(|view| SidebarEntry::View {
+                            view,
+                            open_tasks: self
+                                .view_rows(&every, view)
+                                .iter()
+                                .filter(|row| open_task(row))
+                                .count(),
+                        }),
                 )
-                .chain(bookmarks)
+                .chain(self.bookmarks(&rows))
                 .chain(self.projects(&rows, apart))
                 .collect()
         })
@@ -410,6 +436,40 @@ impl State {
                 text,
                 open_tasks: self.open_tasks(&block, false),
             })
+    }
+
+    /// The bookmark entries of `rows` in document order, each with the open tasks it holds.
+    fn bookmarks(&self, rows: &Rows) -> Vec<SidebarEntry> {
+        let mut out = Vec::new();
+        // The bookmarks above the current row: their depth, entry and the open tasks before them.
+        let mut above: Vec<(usize, usize, usize)> = Vec::new();
+        let mut open_so_far = 0;
+        let end = |above: &mut Vec<(usize, usize, usize)>, out: &mut Vec<SidebarEntry>, open| {
+            if let Some((_, entry, before)) = above.pop()
+                && let Some(SidebarEntry::Bookmark { open_tasks, .. }) = out.get_mut(entry)
+            {
+                *open_tasks = open - before;
+            }
+        };
+        for row in rows {
+            while above.last().is_some_and(|&(depth, ..)| depth >= row.depth) {
+                end(&mut above, &mut out, open_so_far);
+            }
+            // A bookmarked task holds the tasks below it, not itself.
+            open_so_far += usize::from(open_task(row));
+            if row.bookmark {
+                above.push((row.depth, out.len(), open_so_far));
+                out.push(SidebarEntry::Bookmark {
+                    id: row.id,
+                    text: self.shown_text(row.id),
+                    open_tasks: 0,
+                });
+            }
+        }
+        while !above.is_empty() {
+            end(&mut above, &mut out, open_so_far);
+        }
+        out
     }
 
     /// The project entries of `rows`, each nested under the closest project above it, without
@@ -437,9 +497,7 @@ impl State {
             {
                 end_project(&mut above, &mut out, open);
             }
-            if row.kind == BlockKind::Task && !row.done && !row.inside_done {
-                open += 1;
-            }
+            open += usize::from(open_task(row));
             if row.kind != BlockKind::Project {
                 continue;
             }
@@ -480,6 +538,12 @@ impl State {
         }
         out
     }
+}
+
+/// Whether `row` is an open task: neither done nor inside a done block (D-67), so a done block
+/// holds none.
+fn open_task(row: &Row) -> bool {
+    row.kind == BlockKind::Task && !row.done && !row.inside_done
 }
 
 /// A project above a row of the outline.
@@ -554,7 +618,7 @@ Home: @bookmark
             .map(|entry| match entry {
                 SidebarEntry::Inbox { text, .. } => format!("inbox {text}"),
                 SidebarEntry::Bookmark { text, .. } => format!("bookmark {text}"),
-                SidebarEntry::View(view) => view.name().to_lowercase(),
+                SidebarEntry::View { view, .. } => view.name().to_lowercase(),
                 SidebarEntry::Project {
                     text, depth, fold, ..
                 } => format!("{}{fold:?} {text}", "  ".repeat(*depth)),
@@ -771,7 +835,7 @@ INBOX:",
                 | SidebarEntry::Project {
                     text, open_tasks, ..
                 } => Some((text.clone(), *open_tasks)),
-                SidebarEntry::Bookmark { .. } | SidebarEntry::View(_) => None,
+                SidebarEntry::Bookmark { .. } | SidebarEntry::View { .. } => None,
             })
             .collect()
     }
@@ -806,6 +870,43 @@ INBOX:",
             counts(&state),
             [all[0].clone(), all[1].clone(), all[4].clone()]
         );
+    }
+
+    // D-85, D-67
+    #[test]
+    fn bookmarks_count_the_open_tasks_they_hold_and_a_view_the_open_tasks_it_lists() {
+        let mut state = open(
+            "Plan @bookmark\n\t- a\n\t- b @done\n\t\t- c\n\t- d @bookmark\n\t\t- e @due(2026-10-05)\n\
+             - f @star\n\tnote @star\n- g @star @done\nLast @bookmark",
+        );
+        state.update(Message::Tick {
+            now: std::time::Duration::ZERO,
+            today: Date::constant(2026, 10, 5),
+        });
+        let counts = |state: &State| -> Vec<usize> {
+            view(state)
+                .entries
+                .iter()
+                .map(SidebarEntry::open_tasks)
+                .collect()
+        };
+        assert_eq!(
+            listed(&state)[..4],
+            ["today", "bookmark Plan", "bookmark d", "bookmark Last"]
+        );
+        assert_eq!(
+            counts(&state)[..4],
+            [2, 3, 1, 0],
+            "Today lists e and f, not the note or done g; Plan holds a, d and e, not done b's c; d \
+             holds e, not itself"
+        );
+        state.update(Message::Tick {
+            now: std::time::Duration::from_secs(1),
+            today: Date::constant(2026, 10, 4),
+        });
+        assert_eq!(counts(&state)[0], 1, "the count follows the date");
+        state.update(Message::Configure(Configuration::TodayStarred(false)));
+        assert_eq!(counts(&state)[0], 0, "and Today's starred setting");
     }
 
     // FR-KEY-05

@@ -31,8 +31,8 @@ const TITLE: &str = "Navigator";
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; any other entry of where the focused
-/// pane is gets a selected block's marker (D-68). A project or the inbox with open tasks has their
-/// count dimmed at the right, its text cut off a space before it (D-73).
+/// pane is gets a selected block's marker (D-68). An entry with open tasks has their count dimmed
+/// at the right, its text cut off a space before it (D-73, D-85).
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -106,7 +106,7 @@ impl<'a> SidebarPanel<'a> {
             }
             SidebarEntry::Inbox { .. }
             | SidebarEntry::Bookmark { .. }
-            | SidebarEntry::View(_)
+            | SidebarEntry::View { .. }
             | SidebarEntry::Project { .. } => None,
         };
         Some((entries, fold))
@@ -124,7 +124,7 @@ impl<'a> SidebarPanel<'a> {
             let heading = match (entry, previous) {
                 (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Bookmark { .. }))
                 | (SidebarEntry::Project { .. }, Some(SidebarEntry::Project { .. }))
-                | (SidebarEntry::Inbox { .. } | SidebarEntry::View(_), _) => None,
+                | (SidebarEntry::Inbox { .. } | SidebarEntry::View { .. }, _) => None,
                 (SidebarEntry::Bookmark { .. }, _) => Some("Bookmarks"),
                 (SidebarEntry::Project { .. }, _) => Some("Projects"),
             };
@@ -195,7 +195,7 @@ fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Lin
             Span::raw(text.as_str()),
         ]),
         SidebarEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
-        SidebarEntry::View(view) => view_title(*view, icons, theme),
+        SidebarEntry::View { view, .. } => view_title(*view, icons, theme),
         SidebarEntry::Project {
             text, depth, fold, ..
         } => {
@@ -266,10 +266,9 @@ impl Widget for SidebarPanel<'_> {
                 line_area
             };
             let line_area = match line {
-                SidebarLine::Entry(
-                    &(SidebarEntry::Project { open_tasks, .. }
-                    | SidebarEntry::Inbox { open_tasks, .. }),
-                ) if open_tasks > 0 => render_count(open_tasks, line_area, buf),
+                SidebarLine::Entry(entry) if entry.open_tasks() > 0 => {
+                    render_count(entry.open_tasks(), line_area, buf)
+                }
                 SidebarLine::Blank | SidebarLine::Heading(_) | SidebarLine::Entry(_) => line_area,
             };
             line.line(self.icons, self.theme).render(line_area, buf);
@@ -534,6 +533,21 @@ mod tests {
             selection_style(&THEME)
         );
         assert_eq!(cell(&buf, 2, 6).bg, Color::Reset, "no band");
+    }
+
+    // D-85
+    #[test]
+    fn bookmarks_and_today_show_their_counts_as_projects_do() {
+        assert_eq!(
+            rows(&draw("- a @star\nNote @bookmark\n\t- b\nEmpty @bookmark"))[..5],
+            [
+                format!("▌ {} Today         1", Icon::Today.glyph(IconSet::Unicode)),
+                String::new(),
+                "  Bookmarks".to_owned(),
+                "  Note            1".to_owned(),
+                "  Empty".to_owned(),
+            ]
+        );
     }
 
     // D-73
