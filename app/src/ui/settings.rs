@@ -9,7 +9,7 @@ use super::{
     theme::{BuiltIn, Icon, IconSetting},
     widgets::ColorTagDisplay,
 };
-use crate::app::{Message, Setting, SettingKind, SettingValue, saving};
+use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, saving};
 
 /// A setting the window lists, in the window's order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -232,7 +232,7 @@ impl Tui {
             }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
                 let delay = Duration::from_millis(ms.into());
-                self.send(Message::SetAutosaveDelay(delay), now);
+                self.send(Message::Configure(Configuration::AutosaveDelay(delay)), now);
                 Some(i64::from(ms).into())
             }
             (Listed::Backups, SettingValue::Switch(on)) => {

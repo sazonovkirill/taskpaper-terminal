@@ -26,8 +26,8 @@ use ratatui::{
 
 use crate::{
     app::{
-        Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SettingsInput,
-        SidebarInput, State,
+        Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs,
+        SettingsInput, SidebarInput, State,
         commands::{Command, Group, REGISTRY},
     },
     document::ItemId,
@@ -248,7 +248,10 @@ impl Tui {
             self.wrap = wrap;
         }
         if let Some(delay) = config.autosave_delay {
-            self.send(Message::SetAutosaveDelay(delay), Duration::ZERO);
+            self.send(
+                Message::Configure(Configuration::AutosaveDelay(delay)),
+                Duration::ZERO,
+            );
         }
         if !problems.is_empty() {
             self.send(Message::ConfigProblems(problems), Duration::ZERO);

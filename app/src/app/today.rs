@@ -110,7 +110,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::ConflictCopyFailed { .. }
         | Message::BackupFailed { .. }
         | Message::ConfigProblems(_)
-        | Message::SetAutosaveDelay(_)
+        | Message::Configure(_)
         | Message::Quit
         | Message::Terminate
         | Message::FocusNext

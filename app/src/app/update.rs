@@ -17,6 +17,14 @@ use crate::document::{
     structure::Shift,
 };
 
+/// A setting of the frontend's settings file that the core carries out, as the file or the
+/// settings window says (FR-SET-01).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Configuration {
+    /// Save this long after the last change from now on (`autosave_delay_ms`, file-io.md §2).
+    AutosaveDelay(Duration),
+}
+
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
@@ -75,9 +83,8 @@ pub enum Message {
     /// a setting changed in the app that it could not write, which holds for the session
     /// (FR-SET-04).
     ConfigProblems(Vec<String>),
-    /// Save this long after the last change from now on, as the frontend's settings say
-    /// (`autosave_delay_ms`, file-io.md §2).
-    SetAutosaveDelay(Duration),
+    /// Apply this setting of the frontend's that the core carries out (FR-SET-01).
+    Configure(Configuration),
     /// Leave the app, saving first; if that save fails, ask (file-io.md §2).
     Quit,
     /// The process is told to end (`SIGTERM`, `SIGHUP`): save first and end even if that fails.
@@ -360,7 +367,7 @@ impl Message {
             | Self::ConflictCopyFailed { .. }
             | Self::BackupFailed { .. }
             | Self::ConfigProblems(_)
-            | Self::SetAutosaveDelay(_)
+            | Self::Configure(_)
             | Self::OpenUrlFailed { .. }
             | Self::Undo
             | Self::Redo
@@ -570,6 +577,13 @@ impl State {
         effects
     }
 
+    /// Carries out `setting` of the frontend's.
+    fn configure(&mut self, setting: Configuration) {
+        match setting {
+            Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
+        }
+    }
+
     /// Hands `message` to the feature that handles it and returns the effects that asks for.
     fn dispatch(&mut self, message: Message) -> Vec<Effect> {
         let mut effects = Vec::new();
@@ -588,7 +602,7 @@ impl State {
             Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::ConfigProblems(problems) => self.config_problems(problems),
-            Message::SetAutosaveDelay(delay) => self.set_autosave_delay(delay),
+            Message::Configure(setting) => self.configure(setting),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),
             Message::FocusNext => self.focus_down(1),

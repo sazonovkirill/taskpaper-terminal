@@ -386,7 +386,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, Version, state::NOTICE_TIME},
+        app::{Configuration, Message, Version, state::NOTICE_TIME},
         document::{Op, Transaction},
     };
 
@@ -678,7 +678,10 @@ mod tests {
     fn the_frontend_sets_how_long_after_the_last_change_a_save_starts() {
         let mut state = opened();
         assert_eq!(state.autosave_delay(), DELAY);
-        assert_eq!(state.update(Message::SetAutosaveDelay(ms(300))), []);
+        assert_eq!(
+            state.update(Message::Configure(Configuration::AutosaveDelay(ms(300)))),
+            []
+        );
         assert_eq!(state.autosave_delay(), ms(300));
         assert_eq!(edit(&mut state, "b", ms(100)), []);
         assert_eq!(state.deadline(), Some(ms(400)));
