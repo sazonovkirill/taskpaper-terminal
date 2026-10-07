@@ -113,6 +113,9 @@ pub enum SidebarEntry {
         depth: usize,
         /// Whether its child projects are listed.
         fold: Fold,
+        /// How many open tasks it holds at any depth, counted as a collapsed block's are (D-67,
+        /// D-73).
+        open_tasks: usize,
     },
 }
 
@@ -328,7 +331,7 @@ impl State {
             let root = self.document().root();
             let mut entries = vec![SidebarEntry::Today];
             self.push_bookmarks(root, &mut entries);
-            entries.extend(self.projects(root, 0));
+            entries.extend(self.projects(root, 0, false));
             entries.into()
         })
     }
@@ -352,18 +355,20 @@ impl State {
 
     /// The project entries below the line `line` at `depth`, skipping the blocks between
     /// projects, the projects inside folded entries, and completed blocks with what they hold
-    /// while those are hidden (FR-DONE-02).
-    fn projects(&self, line: ItemId, depth: usize) -> Vec<SidebarEntry> {
+    /// while those are hidden (FR-DONE-02); `inside_done` says whether `line` or a block above it
+    /// is done.
+    fn projects(&self, line: ItemId, depth: usize, inside_done: bool) -> Vec<SidebarEntry> {
         let mut out = Vec::new();
         for block in blocks::each_child(self.document(), line) {
             if !self.shows(&block) {
                 continue;
             }
+            let done = inside_done || block.done();
             if block.kind() != BlockKind::Project {
-                out.extend(self.projects(block.id(), depth));
+                out.extend(self.projects(block.id(), depth, done));
                 continue;
             }
-            let below = self.projects(block.id(), depth + 1);
+            let below = self.projects(block.id(), depth + 1, done);
             let fold = if below.is_empty() {
                 Fold::Leaf
             } else if self.sidebar.folds.contains(&block.id()) {
@@ -376,6 +381,7 @@ impl State {
                 text: self.shown_text(&block),
                 depth,
                 fold,
+                open_tasks: self.open_tasks(&block, inside_done),
             });
             if fold == Fold::Expanded {
                 out.extend(below);
@@ -468,6 +474,51 @@ Home: @bookmark
         state.update(Message::ToggleShowDone);
         assert_eq!(listed(&state), all);
         assert_eq!(all.len(), 7, "{all:?}");
+    }
+
+    /// Each project entry's text with its count of open tasks.
+    fn counts(state: &State) -> Vec<(String, usize)> {
+        let view = state.sidebar().expect("the sidebar is shown");
+        view.entries
+            .iter()
+            .filter_map(|entry| match entry {
+                SidebarEntry::Project {
+                    text, open_tasks, ..
+                } => Some((text.clone(), *open_tasks)),
+                SidebarEntry::Bookmark { .. } | SidebarEntry::Today => None,
+            })
+            .collect()
+    }
+
+    // D-73, D-67, D-40
+    #[test]
+    fn a_project_entry_counts_the_open_tasks_in_its_whole_subtree() {
+        let mut state = open(
+            "A:\n\t- a\n\tnote\n\t- b @done\n\t\t- c\n\tB:\n\t\tx\n\t\t\t- d\n\tC: @done\n\t\t- e\n\t\tD:\n\t\t\t- f\nE:",
+        );
+        let all = [
+            ("A".to_owned(), 2),
+            ("B".to_owned(), 1),
+            ("C".to_owned(), 0),
+            ("D".to_owned(), 0),
+            ("E".to_owned(), 0),
+        ];
+        assert_eq!(
+            counts(&state),
+            all,
+            "sub-projects count, done blocks do not"
+        );
+        input(
+            &mut state,
+            &[SidebarInput::Focus(1), SidebarInput::Collapse],
+        );
+        assert_eq!(counts(&state), [all[0].clone(), all[4].clone()], "folded");
+        input(&mut state, &[SidebarInput::Expand]);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(
+            counts(&state),
+            [all[0].clone(), all[1].clone(), all[4].clone()]
+        );
     }
 
     // FR-KEY-05

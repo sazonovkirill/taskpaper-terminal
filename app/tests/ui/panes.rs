@@ -410,7 +410,7 @@ fn alt_enter_and_ctrl_v_open_the_focused_sidebar_entry_in_a_new_pane() {
                 "  ★ Today               │  ⌂                                  │  ⌂ › Home",
                 "                        │─────────────────────────────────────│─────────────────────────────────────",
                 "  Projects              │  Work:                              │  Home:",
-                "  Work                  │    - Report                         │▌   - Water plants",
+                "  Work                 1│    - Report                         │▌   - Water plants",
             ]
         );
     }

@@ -552,13 +552,7 @@ impl State {
                 && blocks::each_child(&self.document, block.id())
                     .next()
                     .is_some())
-            .then(|| {
-                if block.done() || inside_done {
-                    0
-                } else {
-                    self.open_tasks(block)
-                }
-            }),
+            .then(|| self.open_tasks(block, inside_done)),
             title,
             start: block.start(),
             due: block.due(),
@@ -635,9 +629,12 @@ impl State {
         children
     }
 
-    /// How many tasks below `block`, at any depth, are neither done nor inside a done block
-    /// (D-67).
-    fn open_tasks(&self, block: &Block) -> usize {
+    /// How many tasks below `block`, at any depth, are neither done nor inside a done block, when
+    /// `inside_done` says whether a block above it is done (D-67).
+    pub(super) fn open_tasks(&self, block: &Block, inside_done: bool) -> usize {
+        if block.done() || inside_done {
+            return 0;
+        }
         let mut open = 0;
         let mut below: Vec<Block> = blocks::each_child(&self.document, block.id()).collect();
         while let Some(block) = below.pop() {

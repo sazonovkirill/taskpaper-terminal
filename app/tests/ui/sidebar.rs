@@ -67,22 +67,23 @@ fn ctrl_b(app: &mut Harness) {
     app.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
 }
 
-/// The sidebar's lines as listed before any key, `▌` marking the focused or current one.
+/// The sidebar's lines as listed before any key, `▌` marking the focused or current one, each
+/// project's count of open tasks against the rule (D-73).
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
-        format!("{STAR} Today"),
-        String::new(),
-        "Bookmarks".to_owned(),
-        "Launch plan".to_owned(),
-        String::new(),
-        "Projects".to_owned(),
-        "▾Work".to_owned(),
-        "  Reports".to_owned(),
-        "Home".to_owned(),
+        (format!("{STAR} Today"), None),
+        (String::new(), None),
+        ("Bookmarks".to_owned(), None),
+        ("Launch plan".to_owned(), None),
+        (String::new(), None),
+        ("Projects".to_owned(), None),
+        ("▾Work".to_owned(), Some(2)),
+        ("  Reports".to_owned(), Some(1)),
+        ("Home".to_owned(), Some(1)),
     ]
     .into_iter()
     .enumerate()
-    .map(|(at, text)| {
+    .map(|(at, (text, count))| {
         // A top-level project's fold marker stands in the gutter's second column (D-61).
         let gutter = match (Some(at) == focused, text.starts_with(['▾', '▸'])) {
             (true, false) => "▌ ",
@@ -90,7 +91,11 @@ fn listed(focused: Option<usize>) -> Vec<String> {
             (false, false) => "  ",
             (false, true) => " ",
         };
-        format!("{gutter}{text}").trim_end().to_owned()
+        let line = format!("{gutter}{text}");
+        match count {
+            Some(count) => format!("{line:22}{count}"),
+            None => line.trim_end().to_owned(),
+        }
     })
     .collect()
 }
@@ -317,7 +322,7 @@ fn h_and_l_and_the_arrows_fold_project_entries() {
     alt_0(&mut app);
     app.type_keys("jjh");
     let mut folded = listed(Some(6));
-    folded[6] = "▌▸Work".to_owned();
+    folded[6] = format!("{:22}2", "▌▸Work");
     folded.remove(7);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Char('l'));
@@ -430,4 +435,18 @@ fn the_shortcuts_panel_opens_at_the_right_with_the_sidebar_at_the_left() {
     assert_eq!(columns(&buffer, 2, 0, 25), "  Bookmarks             │");
     assert_eq!(columns(&buffer, 2, 25, 68), "▌ Work:");
     assert_eq!(columns(&buffer, 0, 68, 100), "│Shortcuts");
+}
+
+// D-73, D-67
+#[test]
+fn a_projects_count_of_open_tasks_follows_completing_them() {
+    let mut app = app(80);
+    app.type_keys("jx");
+    let mut listed = listed(None);
+    listed[6] = format!("{:22}1", " ▾Work");
+    assert_eq!(sidebar(&mut app), listed, "Launch plan done");
+    app.type_keys("jjx");
+    listed[6] = " ▾Work".to_owned();
+    listed[7] = "    Reports".to_owned();
+    assert_eq!(sidebar(&mut app), listed, "no open tasks, no count");
 }

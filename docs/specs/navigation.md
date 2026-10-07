@@ -62,7 +62,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 A panel on the left with three sections, top to bottom:
 1. **Today**: the built-in view (§7).
 2. **Bookmarks**: every block tagged `@bookmark`, in document order; later also bookmarked searches (FR-SRCH-03).
-3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper.
+3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper, each with how many open tasks it holds at any depth, counted as for a collapsed block (D-67, D-73).
 
 `Enter` (or a click) zooms the focused pane to the entry; `Alt+Enter` (or Alt+click) opens it in a new pane. `toggle_sidebar` gives it the keys, showing it, and hides it while it has them; it hides automatically below 80 columns. The sidebar's selection follows the focused pane, as an editor's file tree follows the open file (D-68): while the pane has the keys, the entry of where the pane is, its Today view or zoom block, is marked, else the entry of the closest block above the zoom block that has one, such as the project holding a zoomed task or a folded entry over a zoomed project; a block with both a bookmark and a project entry marks the project entry. Giving the sidebar the keys focuses that entry, or the first when there is none; while the sidebar has the keys its focus moves only by its own keys. The `?` shortcuts panel opens in a secondary sidebar on the right instead ([ui.md §1](ui.md#1-layout), D-28).
 

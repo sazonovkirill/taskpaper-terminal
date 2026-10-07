@@ -25,7 +25,8 @@ use crate::{
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; while the pane has the keys, the entry
-/// of where it is gets a selected block's marker instead (D-68).
+/// of where it is gets a selected block's marker instead (D-68). A project with open tasks has
+/// their count dimmed at the right, its text cut off a space before it (D-73).
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -240,9 +241,28 @@ impl Widget for SidebarPanel<'_> {
             } else {
                 line_area
             };
+            let line_area = match line {
+                SidebarLine::Entry(&SidebarEntry::Project { open_tasks, .. }) if open_tasks > 0 => {
+                    render_count(open_tasks, line_area, buf)
+                }
+                SidebarLine::Blank | SidebarLine::Heading(_) | SidebarLine::Entry(_) => line_area,
+            };
             line.line(self.icons, self.theme).render(line_area, buf);
         }
     }
+}
+
+/// Draws `count` dimmed at the right of `area` and returns what is left of `area` for the text, a
+/// space short of the count (D-73).
+fn render_count(count: usize, area: Rect, buf: &mut Buffer) -> Rect {
+    let count = count.to_string();
+    let [text, _, count_area] = area.layout(&Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(1),
+        Constraint::Length(u16::try_from(count.len()).expect("a usize has at most 20 digits")),
+    ]));
+    Span::styled(count, Style::new().dim()).render(count_area, buf);
+    text
 }
 
 #[cfg(test)]
@@ -380,6 +400,41 @@ mod tests {
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
         SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
         assert_eq!(buf[(0, 6)].fg, THEME.focus, "the focus marker instead");
+    }
+
+    // D-73
+    #[test]
+    fn a_projects_open_task_count_is_dim_against_the_rule_and_cuts_its_text_off() {
+        let buf =
+            draw("Work:\n\t- a\n\tSub:\n\t\t- b\nABCDEFGHIJKLMNOPQ:\n\t- c\nNone:\n\t- d @done");
+        assert_eq!(
+            rows(&buf)[2..7],
+            [
+                "  Projects",
+                " ▾Work            2",
+                "    Sub           1",
+                "  ABCDEFGHIJKLMNO 1",
+                "  None",
+            ]
+        );
+        assert_eq!(buf[(18, 3)].modifier, Modifier::DIM);
+        assert_eq!(buf[(17, 3)].symbol(), " ", "a space before the count");
+        assert!(buf[(2, 3)].modifier.is_empty(), "the text is plain");
+    }
+
+    // D-73, D-68
+    #[test]
+    fn the_focused_band_covers_the_count() {
+        let mut state = State::new(format::parse("Work:\n\t- a"), None);
+        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(crate::app::SidebarInput::Focus(1)));
+        let view = state.sidebar().expect("shown");
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 4));
+        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+        assert_eq!(rows(&buf)[3], "▌ Work            1");
+        let band = current_line_style(&THEME).bg;
+        assert_eq!(Some(buf[(18, 3)].bg), band);
+        assert_eq!(buf[(18, 3)].modifier, Modifier::DIM);
     }
 
     // FR-UI-01
