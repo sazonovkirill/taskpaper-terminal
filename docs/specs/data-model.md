@@ -59,7 +59,7 @@ Two kinds of text block are drawn differently, as attributes rather than types (
 
 The type is changed with the type converter (FR-BLK-08), which rewrites the line's syntax and drops `@section`, and a text block is made a section or plain text again by adding or removing `@section` ([editing.md §5](editing.md#5-block-commands)). Because the type is derived from the text, text typed in edit mode can also change a line's TaskPaper type (OQ-27).
 
-**Block attributes**: `id` (its line's `ItemId`), `children` (the blocks of its line's children), `type`, `section` and `divider` (above), and metadata read from the line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `starred` (`@star`, D-88), `color` (first of `@red @orange @yellow @green @blue @violet`, D-48), `bookmark`, `url: bool` (the line carries `@url`, D-45), and the list of unsupported tags (D-3).
+**Block attributes**: `id` (its line's `ItemId`), `children` (the blocks of its line's children), `type`, `section` and `divider` (above), and metadata read from the line's tags: `done: bool` with `done_date: Option<Date>` (a bare or non-date `@done` counts as done), `start`, `due`, `starred` (`@star`, D-88), `color` (first of `@red @orange @yellow @green @blue @violet`, D-48), `bookmark`, `flag` (`@flag`, D-91), `url: bool` (the line carries `@url`, D-45), and the list of unsupported tags (D-3).
 
 ## 4. Edits
 

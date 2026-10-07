@@ -119,6 +119,8 @@ pub enum Flag {
     Star,
     /// `@bookmark`, which lists a block in the sidebar (D-11).
     Bookmark,
+    /// `@flag`, which marks a block with a red flag (D-91).
+    Flagged,
 }
 
 /// The op that adds the bare tag `flag` to `block`, or, when it has the tag, removes it with any
@@ -129,6 +131,7 @@ pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op>
     let name = match flag {
         Flag::Star => "star",
         Flag::Bookmark => "bookmark",
+        Flag::Flagged => "flag",
     };
     let after = if flagged(block, flag) {
         kept(tags::remove(before, name))
@@ -159,6 +162,7 @@ fn flagged(block: &Block, flag: Flag) -> bool {
     match flag {
         Flag::Star => block.starred(),
         Flag::Bookmark => block.bookmark(),
+        Flag::Flagged => block.flag(),
     }
 }
 
@@ -478,7 +482,7 @@ mod tests {
         Some(document.get(block.id()).unwrap().text().to_owned())
     }
 
-    // FR-TAG-04, D-11, editing.md §5
+    // FR-TAG-04, D-11, D-91, editing.md §5
     #[test]
     fn toggling_a_flag_adds_it_bare_or_removes_it_with_any_value() {
         let check = |text: &str, flag, expected: &str| {
@@ -494,6 +498,8 @@ mod tests {
         check("- a @star(x) @y @star", Flag::Star, "- a @y");
         check("- a @bookmark @star", Flag::Bookmark, "- a @star");
         check("- a @star", Flag::Bookmark, "- a @star @bookmark");
+        check("- a @red", Flag::Flagged, "- a @red @flag");
+        check("- a @flag(x) @red", Flag::Flagged, "- a @red");
         check("@bookmark", Flag::Bookmark, PLACEHOLDER);
     }
 

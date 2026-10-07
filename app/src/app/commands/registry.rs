@@ -369,6 +369,11 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["m b"],
     ),
+    entry!(
+        Command::ToggleFlag(Flag::Flagged),
+        Mode::Navigate,
+        &["m f", "!"],
+    ),
     entry!(Command::OpenTypePicker, Mode::Navigate, &["m y"]),
     entry!(Command::SetSection(true), Mode::Navigate, &["S"]),
     entry!(Command::SetSection(false), Mode::Navigate, &["s"]),

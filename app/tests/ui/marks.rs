@@ -1,6 +1,6 @@
-//! Step 3.4: `@star` with its marker chip, color tags set with `c1` to `c6`, `cc` and the `mc`
-//! picker and gone with `C` (D-48), shown as a flag or a tinted row (D-74), and bookmarks with
-//! `mb`.
+//! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with `c1` to
+//! `c6`, `cc` and the `mc` picker and go with `C` (D-48), bookmarks with `mb`, and flags with `mf`
+//! and `!` (D-91).
 
 use std::{fs, time::Duration};
 
@@ -45,11 +45,10 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-05, FR-TAG-06, D-48, D-74, FR-OPS-08
+// FR-TAG-05, FR-TAG-06, D-48, D-91, FR-OPS-08
 #[test]
 fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() {
-    let highlight = "color_tags = \"line highlight\"\n";
-    let mut app = Harness::with_config("- Milk\n- Bread\n", highlight, 30, 5);
+    let mut app = Harness::with_text("- Milk\n- Bread\n", 30, 5);
     app.type_keys("jc");
     let status = line(app.render().buffer(), 4);
     assert!(status.ends_with(" c"), "the pending prefix shows: {status}");
@@ -97,7 +96,7 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     assert_eq!(
         screen(&mut app)[2..12],
         [
-            "▌ - Milk ●",
+            "▌ - Milk",
             "        ┌Color:──────┐",
             "        │ ● 1 Red    │",
             "        │ ● 2 Orange │",
@@ -193,7 +192,7 @@ fn m_b_bookmarks_the_focused_block_and_says_so() {
     assert_eq!(outline_rows(&mut app)[0], "Plans:");
 }
 
-// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11, D-47, D-74
+// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11, D-47, D-91
 #[test]
 fn the_demo_shows_today_and_colors() {
     let mut app = Harness::demo(70, 40);
@@ -211,10 +210,24 @@ fn the_demo_shows_today_and_colors() {
         outline_line(&buffer, row("Trip to Lisbon:")),
         format!("Trip to Lisbon: {BOOKMARK}")
     );
-    let y = row("  - Fix the broken contact form");
-    let text = format!("  - Fix the broken contact form {FLAG}");
-    assert!(outline_line(&buffer, y).starts_with(&format!("{text} ")));
-    let x = u16::try_from(text.chars().count() + 1).expect("a narrow row");
-    assert_eq!(buffer[(x, y)].fg, Color::Red, "the flag in the tag's color");
-    assert_eq!(background(&buffer, y, 4), Some(Color::Reset), "no tint");
+    assert_eq!(
+        background(&buffer, row("  - Fix the broken contact form"), 4),
+        Some(RED_TINT)
+    );
+}
+
+// FR-TAG-05, D-91, ui.md §2
+#[test]
+fn m_f_and_bang_flag_the_focused_block_with_a_red_flag_after_its_text() {
+    let mut app = Harness::with_text("- Milk @blue\n", 30, 4);
+    app.type_keys("mf");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(outline_line(&buffer, 2), format!("- Milk {FLAG}"));
+    assert_eq!(buffer[(9, 2)].fg, Color::Red, "a red flag on a blue row");
+    assert_eq!(saved(&mut app), "- Milk @blue @flag\n");
+    app.type_keys("!");
+    assert_eq!(outline_rows(&mut app)[0], "- Milk");
+    assert_eq!(saved(&mut app), "- Milk @blue\n");
+    app.type_keys("!");
+    assert_eq!(saved(&mut app), "- Milk @blue @flag\n");
 }

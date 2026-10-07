@@ -44,16 +44,6 @@ pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
 pub use sidebar::SidebarPanel;
 
-/// How a block's color tag shows in the outline (`color_tags`, ui.md §2).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum ColorTagDisplay {
-    /// A flag in the tag's color right after the block's text, the default (D-74).
-    #[default]
-    Icon,
-    /// A tint behind the block's row (D-48).
-    Highlight,
-}
-
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
 /// the selected blocks, then each block, 2 columns of indent per level, a marker and the text,
 /// with its date chips at the right edge of its first line. Text too long for its line wraps
@@ -70,12 +60,11 @@ pub struct OutlineView<'a> {
     editor: Option<&'a Editor<'a>>,
     wrap: bool,
     icons: IconSet,
-    color_tags: ColorTagDisplay,
 }
 
 impl<'a> OutlineView<'a> {
     /// A view of `rows` on `today`, the local date, in `theme`, drawn from the top of its area
-    /// with no row focused, wrap off, Nerd Font icons and color tags tinting their rows.
+    /// with no row focused, wrap off and Nerd Font icons.
     #[must_use]
     pub fn new(rows: &'a [Row], today: Date, theme: &'a Theme) -> Self {
         Self {
@@ -87,7 +76,6 @@ impl<'a> OutlineView<'a> {
             editor: None,
             wrap: false,
             icons: IconSet::Nerd,
-            color_tags: ColorTagDisplay::Highlight,
         }
     }
 
@@ -128,15 +116,6 @@ impl<'a> OutlineView<'a> {
     #[must_use]
     pub fn icons(self, icons: IconSet) -> Self {
         Self { icons, ..self }
-    }
-
-    /// Shows color tags as `display` asks (ui.md §2).
-    #[must_use]
-    pub fn color_tags(self, display: ColorTagDisplay) -> Self {
-        Self {
-            color_tags: display,
-            ..self
-        }
     }
 
     /// How many screen lines each row takes in an area `width` columns wide, the gutter
@@ -189,10 +168,7 @@ impl<'a> OutlineView<'a> {
             }
             let chips = chips(row, self.today, self.icons, self.theme);
             let room = width.saturating_sub(chips.width());
-            let flag = row
-                .color
-                .filter(|_| self.color_tags == ColorTagDisplay::Icon);
-            let line = row_line(row, room, flag, self.icons, self.theme);
+            let line = row_line(row, room, self.icons, self.theme);
             let lines = if self.wrap {
                 wrap::wrap(&line, text_column(row, self.icons), room, width)
             } else {
@@ -226,10 +202,7 @@ impl Widget for OutlineView<'_> {
             if focused {
                 buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
             }
-            if let Some(color) = row
-                .color
-                .filter(|_| self.color_tags == ColorTagDisplay::Highlight)
-            {
+            if let Some(color) = row.color {
                 let indent = u16::try_from(row.depth.saturating_mul(2)).unwrap_or(u16::MAX);
                 let tinted = Rect {
                     x: line_area.x.saturating_add(indent),
@@ -767,6 +740,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::ToggleFlag(Flag::Star) => (Icon::Star, today_style(theme)),
         Command::GoToView(view) => (view_icon(view), view_icon_style(view, theme)),
         Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
+        Command::ToggleFlag(Flag::Flagged) => (Icon::Flag, flag_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
             date(tag)
         }
@@ -1206,19 +1180,13 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the flag of
-/// the color tag `flag`, in its color (D-74), the `@star` star and the bookmark icon, each after a
+/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the
+/// `@flag` flag in red (D-91), the `@star` star and the bookmark icon, each after a
 /// space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
 /// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
 /// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
 /// (D-34). Markers and icons come from `icons`, colors from `theme`.
-fn row_line<'a>(
-    row: &'a Row,
-    width: usize,
-    flag: Option<TagColor>,
-    icons: IconSet,
-    theme: &Theme,
-) -> Line<'a> {
+fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Line<'a> {
     let (mut line, style) = lead(row, icons, theme);
     let before_title = line.spans.len();
     let title = row
@@ -1246,7 +1214,7 @@ fn row_line<'a>(
             style
         }
     };
-    let flag = flag.map(|color| (Icon::Flag, Style::new().fg(theme.tag(color))));
+    let flag = row.flag.then(|| (Icon::Flag, flag_style(theme)));
     let star = row.starred.then(|| (Icon::Star, today_style(theme)));
     let bookmark = row
         .bookmark
@@ -1352,6 +1320,11 @@ fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static>
 /// The `@star` star (FR-TAG-04) and the Today view's sun (D-88), in the yellow tag's color.
 fn today_style(theme: &Theme) -> Style {
     Style::new().fg(theme.warning())
+}
+
+/// The `@flag` flag and the command menu's Toggle Flag, in the red of the color tags (D-91).
+fn flag_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.tag(TagColor::Red))
 }
 
 /// The bookmark icon (D-47) and a bookmarked block's icon and text in the finders (D-70), in the primary
@@ -1911,24 +1884,23 @@ mod tests {
     // D-50, D-54, ui.md §5
     #[test]
     fn a_command_menu_taller_than_its_room_scrolls_to_keep_the_highlight_in_view() {
-        let [complete, star, bookmark] =
-            [Icon::Complete, Icon::Star, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
+        let [complete, star, flag, bookmark] =
+            [Icon::Complete, Icon::Star, Icon::Flag, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut expected = Buffer::with_lines([
             "┌Commands:───────────┐".to_owned(),
             "│────────────────────│".to_owned(),
             format!("│  {complete} Complete        │"),
             format!("│  {star} Toggle Star     │"),
+            format!("│  {flag} Toggle Flag     │"),
             format!("│  {bookmark} Bookmark        │"),
-            "│────────────────────│".to_owned(),
             "└────────────────────┘".to_owned(),
         ]);
         accent_frame(&mut expected, 22, 7);
-        for y in [1, 5] {
-            expected.set_style(Rect::new(1, y, 20, 1), Style::new().dim());
-        }
+        expected.set_style(Rect::new(1, 1, 20, 1), Style::new().dim());
         expected.set_style(Rect::new(1, 3, 20, 1), Style::new().reversed());
         expected.set_style(Rect::new(3, 3, 1, 1), today_style(&THEME));
-        expected.set_style(Rect::new(3, 4, 1, 1), bookmark_style(&THEME));
+        expected.set_style(Rect::new(3, 4, 1, 1), flag_style(&THEME));
+        expected.set_style(Rect::new(3, 5, 1, 1), bookmark_style(&THEME));
         assert_eq!(
             command_menu(&[crate::app::MenuInput::Next; 4], 7),
             expected,
@@ -1954,6 +1926,11 @@ mod tests {
                 Command::ToggleFlag(Flag::Bookmark),
                 Icon::Bookmark,
                 bookmark_style(&THEME),
+            ),
+            (
+                Command::ToggleFlag(Flag::Flagged),
+                Icon::Flag,
+                flag_style(&THEME),
             ),
             (
                 Command::OpenDatePrompt(DateTag::Start),
@@ -2261,14 +2238,14 @@ mod tests {
         );
     }
 
-    // D-74, ui.md §2
+    // D-91, ui.md §2
     #[test]
-    fn color_tags_shown_as_icons_put_a_flag_in_their_color_after_the_text_and_tint_nothing() {
+    fn a_flagged_block_shows_a_red_flag_before_its_other_icons() {
         let [flag, star, bookmark] =
             [Icon::Flag, Icon::Star, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut state = State::new(
             format::parse(
-                "- a @star @red @bookmark\nP: @orange @done\n--- @blue\nQ: @green\n\t- d",
+                "- a @star @flag @bookmark\nP: @flag @done\n--- @flag\nQ: @flag(x)\n\t- d",
             ),
             None,
         );
@@ -2280,21 +2257,20 @@ mod tests {
             format!(" {flag} {}", "─".repeat(9)),
             format!("{:<12}", format!("Q: {flag} ▸ 1")),
         ]);
-        let tag = |color| Style::new().fg(THEME.tag(color));
-        expected.set_style(Rect::new(4, 0, 1, 1), tag(TagColor::Red));
+        expected.set_style(Rect::new(4, 0, 1, 1), flag_style(&THEME));
         expected.set_style(Rect::new(6, 0, 1, 1), today_style(&THEME));
         expected.set_style(Rect::new(8, 0, 1, 1), bookmark_style(&THEME));
         expected.set_style(
             Rect::new(0, 1, 2, 1),
             Style::new().bold().fg(THEME.primary).dim().crossed_out(),
         );
-        expected.set_style(Rect::new(3, 1, 1, 1), tag(TagColor::Orange).dim());
-        expected.set_style(Rect::new(1, 2, 1, 1), tag(TagColor::Blue));
+        expected.set_style(Rect::new(3, 1, 1, 1), flag_style(&THEME).dim());
+        expected.set_style(Rect::new(1, 2, 1, 1), flag_style(&THEME));
         expected.set_style(Rect::new(3, 2, 9, 1), divider_style(&THEME));
         expected.set_style(Rect::new(0, 3, 2, 1), Style::new().bold().fg(THEME.primary));
-        expected.set_style(Rect::new(3, 3, 1, 1), tag(TagColor::Green));
+        expected.set_style(Rect::new(3, 3, 1, 1), flag_style(&THEME));
         expected.set_style(Rect::new(4, 3, 4, 1), Style::new().dim());
-        let view = outline(&rows).color_tags(ColorTagDisplay::Icon);
+        let view = outline(&rows);
         assert_eq!(draw_view(view, 12, 4), expected);
         assert_eq!(
             view.hit(14, 3, 7),

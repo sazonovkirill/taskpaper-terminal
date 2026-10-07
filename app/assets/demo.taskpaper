@@ -9,7 +9,7 @@ Trip to Lisbon: @travel @bookmark
 		- Phone charger @star
 Website release 2.0:
 	- Write the release notes @done({today-1})
-	- Fix the broken contact form @bug @due({today-2}) @red
+	- Fix the broken contact form @bug @due({today-2}) @red @flag
 		Submitting the form twice shows a blank page.
 		COMMENTS @hidden @comments
 			[{today-1} 09:30] Only happens in Safari.

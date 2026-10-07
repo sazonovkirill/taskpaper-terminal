@@ -1883,10 +1883,10 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48: plain characters, which both key
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91: plain characters, which both key
     // reportings send alike, and `C`, which the kitty protocol sends as `c` with `Shift`.
     #[test]
-    fn color_star_and_bookmark_keys() {
+    fn color_star_flag_and_bookmark_keys() {
         check(KeyCode::Char('c'), KeyModifiers::NONE, None);
         assert_eq!(messages("cc", CONTEXT), [None, Some(Message::CycleColor)]);
         for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
@@ -1912,6 +1912,7 @@ mod tests {
         for (second, expected) in [
             ('c', Message::OpenColorPicker),
             ('b', Message::ToggleFlag(Flag::Bookmark)),
+            ('f', Message::ToggleFlag(Flag::Flagged)),
         ] {
             assert_eq!(
                 messages(&format!("m{second}"), CONTEXT),
@@ -1919,6 +1920,9 @@ mod tests {
             );
         }
         assert_eq!(messages("mx", CONTEXT), [None, None]);
+        let flag = Message::ToggleFlag(Flag::Flagged);
+        check(KeyCode::Char('!'), KeyModifiers::NONE, Some(&flag));
+        check(KeyCode::Char('!'), KeyModifiers::SHIFT, Some(&flag));
         assert_eq!(
             messages("mt", CONTEXT),
             [None, None],

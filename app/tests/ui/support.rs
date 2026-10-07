@@ -123,8 +123,8 @@ pub const BOOKMARK: &str = "⚑";
 /// The Today view's sun (D-88), as drawn with icons off.
 pub const SUN: &str = "☼";
 
-/// The flag after the text of a block with a color tag (D-74), as drawn with icons off.
-pub const FLAG: &str = "●";
+/// The flag after the text of a block with `@flag` (D-91), as drawn with icons off.
+pub const FLAG: &str = "⚐";
 
 /// The color of text blocks, dimmed less than done tasks (D-37), in Terminal Dark, the theme of a
 /// terminal without truecolor.

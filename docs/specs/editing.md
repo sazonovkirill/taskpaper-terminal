@@ -67,6 +67,7 @@ Typing `/` in edit mode opens a menu at the caret listing every command that app
 | | Make Section on a text block, or Remove Section on a section | Add or remove `@section` (D-52), as `S` and `s` do (§5) |
 | Status | Complete, or Uncomplete when the block is done | `toggle_done` (§5) |
 | | Toggle Star | `toggle_star` (§5) |
+| | Toggle Flag | `toggle_flag` (§5) |
 | | Bookmark, or Remove Bookmark when the block has one | `toggle_bookmark` (§5) |
 | Dates | Set Start Date, Set Due Date | `set_start` / `set_due`: the date prompt (§5) |
 | | Start Today, Start Tomorrow, Due Today, Due Tomorrow | `start_today`, `start_tomorrow`, `due_today`, `due_tomorrow` (§5) |
@@ -150,6 +151,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, each color with its number 1 to 6, opening with the block's color (or "none") highlighted; typing a number chooses that color at once, and other typing filters it by name (D-48). Removes every other color tag; the chosen one stays where it is or is added. The chosen color goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). |
 | `color_1` … `color_6` / `remove_color` (D-48) | Give the targets red, orange, yellow, green, blue or violet, or remove their color, without the picker, as one undo step. |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
+| `toggle_flag` (FR-TAG-12, D-91) | Add bare `@flag` to the targets without it; if every target has it, remove it, with any value. A flagged block shows a red flag after its text ([ui.md §2](ui.md#2-blocks)). |
 | `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which; a bookmarked block shows a bookmark icon after its text (D-47). |
 | `open_url` (FR-BLK-06) | Open the focused block's link in the system browser (`open` on macOS, `xdg-open` on Linux; N-PORT-01): its `@url` address first, else the first link in its text (§2.2, D-45). It acts on the focused block also while blocks are selected. |
 | `details` (D-3) | Read-only popup titled "Details:" listing the focused block's tags as written, in order, each unsupported one marked "unsupported" (FR-TAG-02), then each special node the block owns as hidden data with its tags and line count ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)); "No tags" when there is nothing to list. Any key closes it. |

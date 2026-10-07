@@ -251,6 +251,7 @@ impl Command {
             Self::ToggleDone => "Toggle Done".into(),
             Self::ToggleFlag(Flag::Star) => "Toggle Star".into(),
             Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
+            Self::ToggleFlag(Flag::Flagged) => "Toggle Flag".into(),
             Self::CycleColor => "Cycle Color".into(),
             Self::SetColor(None) => "Remove Color".into(),
             Self::OpenColorPicker => "Pick Color".into(),

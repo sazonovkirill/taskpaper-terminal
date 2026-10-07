@@ -19,8 +19,7 @@ pub enum Icon {
     /// The Today view, in its header, the sidebar's entry, Go to Today and the settings window's
     /// setting that lists it in the sidebar (D-88).
     Today,
-    /// A block's color tag, in its color after its text, when color tags are shown as icons, and
-    /// the settings window's color tags setting.
+    /// A block with `@flag`, in red after its text, and the command menu's Toggle Flag (D-91).
     Flag,
     /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,
@@ -167,8 +166,8 @@ impl Icon {
             Self::Star => ("\u{f04ce}", "★", "*"),
             // nf-md-weather_sunny
             Self::Today => ("\u{f0599}", "☼", "O"),
-            // nf-md-flag; the Unicode flag is the bookmark's fallback.
-            Self::Flag => ("\u{f023b}", "●", "o"),
+            // nf-md-flag; the filled Unicode flag is the bookmark's fallback.
+            Self::Flag => ("\u{f023b}", "⚐", "F"),
             // nf-md-inbox
             Self::Inbox => ("\u{f0687}", "⊔", "I"),
             // nf-md-bookmark
@@ -350,6 +349,7 @@ mod tests {
         assert_eq!(unicode(Icon::DoneTask), "✔");
         assert_eq!(unicode(Icon::Star), "★");
         assert_eq!(unicode(Icon::Today), "☼");
+        assert_eq!(unicode(Icon::Flag), "⚐");
         assert_eq!(unicode(Icon::Bookmark), "⚑");
         assert_eq!(unicode(Icon::Inbox), "⊔");
     }

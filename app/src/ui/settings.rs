@@ -7,7 +7,7 @@ use std::time::Duration;
 use super::{
     Tui, config, effects,
     theme::{BuiltIn, Icon, IconSetting},
-    widgets::{self, ColorTagDisplay},
+    widgets,
 };
 use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving};
 
@@ -17,7 +17,6 @@ enum Listed {
     Theme,
     Icons,
     Wrap,
-    ColorTags,
     SpecialInbox,
     /// Whether the sidebar lists this special view (D-77, D-80).
     SidebarView(SpecialView),
@@ -31,11 +30,10 @@ enum Listed {
 
 /// The settings the window lists, in order. Animations join when they reach the settings file
 /// (ui.md §9.3).
-const LISTED: [Listed; 11] = [
+const LISTED: [Listed; 10] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
-    Listed::ColorTags,
     Listed::SpecialInbox,
     Listed::SidebarView(SpecialView::Today),
     Listed::TodayStarred,
@@ -48,12 +46,6 @@ const LISTED: [Listed; 11] = [
 /// The `icons` setting's choices, as the settings file names them (ui.md §7).
 const ICONS: [(IconSetting, &str); 2] = [(IconSetting::Nerd, "nerd"), (IconSetting::Off, "none")];
 
-/// The `color_tags` setting's choices, as the settings file names them (D-74).
-const COLOR_TAGS: [(ColorTagDisplay, &str); 2] = [
-    (ColorTagDisplay::Icon, "icon"),
-    (ColorTagDisplay::Highlight, "line highlight"),
-];
-
 impl Listed {
     /// The setting's key in the settings file.
     fn key(self) -> &'static str {
@@ -61,7 +53,6 @@ impl Listed {
             Self::Theme => "theme",
             Self::Icons => "icons",
             Self::Wrap => "word_wrap",
-            Self::ColorTags => "color_tags",
             Self::SpecialInbox => "special_inbox",
             Self::SidebarView(view) => config::sidebar_key(view),
             Self::TodayStarred => "today_starred",
@@ -78,7 +69,6 @@ impl Listed {
             Self::Theme => Icon::Color,
             Self::Icons => Icon::Glyphs,
             Self::Wrap => Icon::Wrap,
-            Self::ColorTags => Icon::Flag,
             Self::SpecialInbox => Icon::Inbox,
             Self::SidebarView(view) => widgets::view_icon(view),
             Self::TodayStarred => Icon::Star,
@@ -178,14 +168,6 @@ impl Tui {
                 SettingKind::Switch,
                 SettingValue::Switch(self.wrap),
                 SettingValue::Switch(false),
-            ),
-            Listed::ColorTags => (
-                "Appearance",
-                "Color tags",
-                "A colored flag after the text, or a tinted line",
-                choices(&COLOR_TAGS),
-                chosen(&COLOR_TAGS, self.color_tags),
-                SettingValue::Choice(0),
             ),
             Listed::SpecialInbox => switch_on_by_default(
                 "Appearance",
@@ -300,13 +282,6 @@ impl Tui {
                 self.wrap = on;
                 Some(on.into())
             }
-            (Listed::ColorTags, SettingValue::Choice(choice)) => {
-                let Some(&(display, name)) = COLOR_TAGS.get(choice) else {
-                    return;
-                };
-                self.color_tags = display;
-                Some(name.into())
-            }
             (Listed::SpecialInbox, SettingValue::Switch(on)) => {
                 self.send(Message::Configure(Configuration::SpecialInbox(on)), now);
                 Some(on.into())
@@ -401,7 +376,6 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
-            (3, SettingValue::Choice(2)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
@@ -419,7 +393,6 @@ mod tests {
             SettingValue::Choice(1),
             SettingValue::Choice(1),
             SettingValue::Switch(false),
-            SettingValue::Choice(1),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
@@ -433,9 +406,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(9, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(8, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[9].value,
+            tui.listed_settings()[8].value,
             SettingValue::Text(String::new())
         );
         assert!(

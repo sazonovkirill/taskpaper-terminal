@@ -423,7 +423,7 @@ fn the_today_entry_leaves_the_window_with_its_setting_off_and_gt_still_opens_tod
     press(&mut app, KeyCode::Esc);
     app.type_keys("gt");
     assert_eq!(pane(&mut app)[0], format!("  {SUN} Today"));
-    app.type_keys("g,jjjjj ");
+    app.type_keys("g,jjjj ");
     app.settle();
     press(&mut app, KeyCode::Esc);
     ctrl_g(&mut app);

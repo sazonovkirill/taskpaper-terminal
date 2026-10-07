@@ -86,7 +86,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
     let footer = format!("│ Settings file: {}", file.display());
     let rows = window(&mut app);
     assert_eq!(
-        rows[..15],
+        rows[..13],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
@@ -95,8 +95,6 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Nerd Font icons; choose none if they show as bo│",
             "│               │   ↩ Word wrap                                 off  │",
             "│               │     Wrap long text, or end it in … on one line     │",
-            "│               │   ● Color tags                               icon  │",
-            "│               │     A colored flag after the text, or a tinted line│",
             "│               │   ⊔ Special handling of INBOX project          on  │",
             "│               │     Show INBOX: above Today, not under Projects    │",
             "│               │   ☼ Show Today in Navigator                    on  │",
@@ -106,16 +104,16 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         ]
     );
     assert!(
-        rows[16].starts_with("│ Tab: groups/settings · Enter: change"),
+        rows[14].starts_with("│ Tab: groups/settings · Enter: change"),
         "{}",
-        rows[16]
+        rows[14]
     );
     assert!(
-        rows[17].starts_with(&footer[..footer.len().min(68)]),
+        rows[15].starts_with(&footer[..footer.len().min(68)]),
         "{}",
-        rows[17]
+        rows[15]
     );
-    assert_eq!(rows.len(), 19, "as tall as the Appearance group needs");
+    assert_eq!(rows.len(), 17, "as tall as the Appearance group needs");
     press(&mut app, KeyCode::Esc);
     assert_eq!(window(&mut app), Vec::<String>::new());
 }
@@ -298,35 +296,6 @@ fn word_wrap_toggles_at_once_and_is_kept_for_the_next_start() {
     );
 }
 
-// FR-TAG-05, FR-SET-03, FR-SET-04, D-74, ui.md §2, §8
-#[test]
-fn color_tags_switch_from_a_flag_to_a_tinted_line_and_are_kept_for_the_next_start() {
-    let text = "- milk @red\n";
-    let mut app = Harness::with_config(text, "", 30, 20);
-    let buffer = app.render().buffer().clone();
-    assert_eq!(line(&buffer, 2), "▌ - milk ●", "a flag by default");
-    assert_eq!(
-        (buffer[(9, 2)].fg, buffer[(9, 2)].bg),
-        (Color::Red, Color::Black)
-    );
-    app.type_keys("g,jjj");
-    press(&mut app, KeyCode::Char('l'));
-    app.settle();
-    assert_eq!(config(&app), "color_tags = \"line highlight\"\n");
-    press(&mut app, KeyCode::Esc);
-    let tinted = |app: &mut Harness| {
-        let buffer = app.render().buffer().clone();
-        (line(&buffer, 2), buffer[(9, 2)].bg)
-    };
-    assert_eq!(tinted(&mut app), ("▌ - milk".to_owned(), Color::Red));
-    let mut app = Harness::with_config(text, "color_tags = \"line highlight\"\n", 30, 20);
-    assert_eq!(
-        tinted(&mut app),
-        ("▌ - milk".to_owned(), Color::Red),
-        "tinted from the start"
-    );
-}
-
 // FR-SET-02, FR-DOC-02, file-io.md §2: try it, change the autosave delay.
 #[test]
 fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a_change() {
@@ -334,7 +303,7 @@ fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a
     files(&mut app);
     press(&mut app, KeyCode::Enter);
     assert_eq!(
-        window(&mut app)[16],
+        window(&mut app)[14],
         "│ Autosave delay: 1000                                               │"
     );
     press(&mut app, KeyCode::Backspace);
@@ -343,17 +312,17 @@ fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a
     press(&mut app, KeyCode::Enter);
     let rows = window(&mut app);
     assert_eq!(
-        rows[15], "│ Autosave delay must be a whole number, at least 100                │",
+        rows[13], "│ Autosave delay must be a whole number, at least 100                │",
         "1 ms is refused"
     );
     assert_eq!(
-        rows[16],
+        rows[14],
         "│ Autosave delay: 1                                                  │"
     );
     let top = window_top(&mut app);
     assert_eq!(
         app.terminal.get_cursor_position().map(|p| (p.x, p.y)).ok(),
-        Some((19, top + 16)),
+        Some((19, top + 14)),
         "the caret ends the prompt"
     );
     app.type_keys("300");
@@ -461,14 +430,14 @@ fn slash_filters_the_settings_by_name() {
         "│ Files         │   ↺ Backups                                    on  │"
     );
     assert_eq!(
-        rows[16],
+        rows[14],
         "│ /back                                                              │"
     );
     press(&mut app, KeyCode::Enter);
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
     assert_eq!(
-        window(&mut app)[16],
+        window(&mut app)[14],
         "│ Backup folder:                                                     │"
     );
     press(&mut app, KeyCode::Esc);
@@ -497,19 +466,19 @@ fn a_change_that_cannot_be_written_shows_in_the_window_and_the_status_line_and_h
         "{status}"
     );
     assert!(
-        window(&mut app)[15].starts_with("│ `word_wrap` not saved: not valid TOML"),
+        window(&mut app)[13].starts_with("│ `word_wrap` not saved: not valid TOML"),
         "{:?}",
-        window(&mut app)[15]
+        window(&mut app)[13]
     );
     assert!(window(&mut app)[5].contains("on"), "kept for the session");
     assert_eq!(config(&app), "theme = \n");
     let mut app = Harness::with_text(OUTLINE, 140, 20);
     app.type_keys("g,");
     assert!(
-        window(&mut app)[17]
+        window(&mut app)[15]
             .starts_with("│ No settings file: neither $XDG_CONFIG_HOME nor a home folder is set"),
         "{:?}",
-        window(&mut app)[17]
+        window(&mut app)[15]
     );
 }
 

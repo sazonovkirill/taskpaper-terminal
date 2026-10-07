@@ -114,6 +114,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Pick a color | `mc` |
 | Toggle star (`@star`, D-88; was Toggle today, `mt`) | `*` |
 | Toggle bookmark | `mb` |
+| Toggle flag (D-91) | `mf`, `!` |
 | Convert block type | `my` |
 | Make the selected text blocks sections / plain text again (D-52) | `S` / `s` (were new section at the top / below) |
 | Details (all tags) | `mi` |

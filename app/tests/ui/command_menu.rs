@@ -61,7 +61,7 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
         ],
         "as tall as the room below the caret"
     );
-    for _ in 0..10 {
+    for _ in 0..11 {
         app.press(KeyCode::Char('n'), KeyModifiers::CONTROL);
     }
     assert_eq!(

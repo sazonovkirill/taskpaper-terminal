@@ -281,6 +281,8 @@ pub struct Row {
     pub starred: bool,
     /// Whether it carries `@bookmark` (D-11).
     pub bookmark: bool,
+    /// Whether it carries `@flag` (D-91).
+    pub flag: bool,
     /// The color that tints its row's background (FR-TAG-05, D-48).
     pub color: Option<TagColor>,
     /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
@@ -667,6 +669,7 @@ impl State {
             due: block.due(),
             starred: block.starred(),
             bookmark: block.bookmark(),
+            flag: block.flag(),
             color: block.color(),
             url: block.url(),
             selected: pane.selection.contains(block.id()),

@@ -110,6 +110,7 @@ pub(super) struct Facts {
     due: Option<Date>,
     starred: bool,
     bookmark: bool,
+    flag: bool,
     color: Option<TagColor>,
     url: bool,
     section: bool,
@@ -130,6 +131,7 @@ impl Facts {
             due: date_tag(tags, "due"),
             starred: has("star"),
             bookmark: has("bookmark"),
+            flag: has("flag"),
             color: color(tags),
             url: has("url"),
             section: text && has("section"),
@@ -187,6 +189,12 @@ impl Block {
     #[must_use]
     pub fn bookmark(&self) -> bool {
         self.facts.bookmark
+    }
+
+    /// Whether its line carries `@flag`, with or without a value (D-91).
+    #[must_use]
+    pub fn flag(&self) -> bool {
+        self.facts.flag
     }
 
     /// Its color: that of the first color tag on its line (D-5).
@@ -286,9 +294,9 @@ pub struct HiddenData {
 
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and listed in the
 /// details as unsupported (D-3), as `@section` is on a task or project (D-52).
-const SUPPORTED: [&str; 13] = [
+const SUPPORTED: [&str; 14] = [
     "start", "due", "star", "red", "orange", "yellow", "green", "blue", "violet", "section", "url",
-    "done", "bookmark",
+    "done", "bookmark", "flag",
 ];
 
 /// The details of the block `id`, or `None` when it is no block of `document`.
@@ -589,18 +597,26 @@ mod tests {
         );
     }
 
-    /// Whether each top-level block of `text` has `@star` and `@bookmark`, and its color.
-    fn marks(text: &str) -> Vec<(bool, bool, Option<TagColor>)> {
+    /// Whether each top-level block of `text` has `@star`, `@bookmark` and `@flag`, and its
+    /// color.
+    fn marks(text: &str) -> Vec<(bool, bool, bool, Option<TagColor>)> {
         let document = parse(text);
         children(&document, document.root())
             .iter()
-            .map(|block| (block.starred(), block.bookmark(), block.color()))
+            .map(|block| {
+                (
+                    block.starred(),
+                    block.bookmark(),
+                    block.flag(),
+                    block.color(),
+                )
+            })
             .collect()
     }
 
-    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11, D-88: `@today` means nothing
+    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11, D-88, D-91: `@today` means nothing
     #[test]
-    fn star_bookmark_and_color_come_from_their_tags() {
+    fn star_bookmark_flag_and_color_come_from_their_tags() {
         use TagColor::{Blue, Green, Orange, Red, Violet, Yellow};
         assert_eq!(
             marks(
@@ -610,23 +626,25 @@ P: @blue @red
 - c @violet
 - d @orange @x
 - e @yellow
-- f @green @star @bookmark
-- g @Red @stars @redish
-- h @today"
+- f @green @star @bookmark @flag
+- g @Red @stars @redish @flags
+- h @today
+- i @flag(x)"
             ),
             [
-                (true, false, None),
-                (false, true, None),
-                (false, false, Some(Blue)),
-                (false, false, Some(Violet)),
-                (false, false, Some(Orange)),
-                (false, false, Some(Yellow)),
-                (true, true, Some(Green)),
-                (false, false, None),
-                (false, false, None),
+                (true, false, false, None),
+                (false, true, false, None),
+                (false, false, false, Some(Blue)),
+                (false, false, false, Some(Violet)),
+                (false, false, false, Some(Orange)),
+                (false, false, false, Some(Yellow)),
+                (true, true, true, Some(Green)),
+                (false, false, false, None),
+                (false, false, false, None),
+                (false, false, true, None),
             ]
         );
-        assert_eq!(marks("- a @red(x)"), [(false, false, Some(Red))]);
+        assert_eq!(marks("- a @red(x)"), [(false, false, false, Some(Red))]);
     }
 
     // D-48
@@ -726,7 +744,7 @@ P: @blue @red
         let every = parse(&format!("a @{}", SUPPORTED.join(" @")));
         let first = children(&every, every.root())[0].id();
         let supported = details(&every, first).unwrap().tags;
-        assert_eq!(supported.len(), 13);
+        assert_eq!(supported.len(), 14);
         assert!(supported.iter().all(|&(_, supported)| supported));
     }
 
