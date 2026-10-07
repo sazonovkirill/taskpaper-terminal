@@ -1,5 +1,6 @@
 //! Integration tests: the whole app driven through key events and rendered in a `TestBackend`.
 
+mod animation;
 mod blocks;
 mod clipboard;
 mod command_menu;

@@ -3,7 +3,7 @@
 //! the focused sidebar (§4), and the commands of each mode the shortcuts panel lists, grouped
 //! (FR-KEY-04).
 
-use super::Command;
+use super::{Animations, Command};
 use crate::{
     app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput},
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
@@ -366,6 +366,17 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
     entry!(Command::ChooseTheme, Mode::Navigate, &["ctrl+t"]),
     entry!(Command::OpenSettings, Mode::Navigate, &["g ,"]),
+    entry!(
+        Command::SetAnimations(Animations::Full),
+        Mode::Navigate,
+        &[]
+    ),
+    entry!(
+        Command::SetAnimations(Animations::Reduced),
+        Mode::Navigate,
+        &[]
+    ),
+    entry!(Command::SetAnimations(Animations::Off), Mode::Navigate, &[]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+k", "g s", "/"]),
     entry!(Command::GoToProject, Mode::Navigate, &["g P"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),

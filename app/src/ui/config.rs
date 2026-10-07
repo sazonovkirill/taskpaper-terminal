@@ -14,12 +14,13 @@ use thiserror::Error;
 use toml_edit::{Document, DocumentMut, Item, Table, TableLike, Value};
 
 use super::{
+    animation,
     effects::{self, BackupSettings, atomic},
     keymap::{BindingError, Keymap},
     theme::{BuiltIn, IconSetting},
     widgets::ColorTagDisplay,
 };
-use crate::app::Mode;
+use crate::app::{Animations, Mode};
 
 /// The settings file: `$XDG_CONFIG_HOME/taskpaper-terminal/config.toml`, or under `~/.config`
 /// when that is unset or not absolute; also on macOS (FR-SET-01). `None` when neither is known.
@@ -92,6 +93,8 @@ pub struct Config {
     pub(super) special_inbox: Option<bool>,
     /// Whether the sidebar lists Today, when the file says (`sidebar_today`, D-77).
     pub(super) sidebar_today: Option<bool>,
+    /// How much the app animates, when the file says (`animations`, FR-UI-11).
+    pub(super) animations: Option<Animations>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -183,6 +186,23 @@ impl Config {
             None => self.problems.push(Problem::InvalidValue {
                 key: "sidebar_today".to_owned(),
                 expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `animations` from `item`: `"full"`, `"reduced"` or `"off"`.
+    fn read_animations(&mut self, item: &Item) {
+        let named = item.as_str().and_then(|name| {
+            animation::NAMES
+                .iter()
+                .find(|&&(_, named)| named == name)
+                .map(|&(setting, _)| setting)
+        });
+        match named {
+            Some(setting) => self.animations = Some(setting),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "animations".to_owned(),
+                expected: "\"full\", \"reduced\" or \"off\"",
             }),
         }
     }
@@ -330,6 +350,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
     for (key, item) in document.as_table() {
         match key {
             "keymap" => config.read_keymap(item),
+            "animations" => config.read_animations(item),
             "autosave_delay_ms" => config.read_autosave_delay(item),
             "backups" => config.read_backups(item, home),
             "color_tags" => config.read_color_tags(item),
@@ -704,6 +725,35 @@ mod tests {
                 [Problem::InvalidValue {
                     key: "color_tags".to_owned(),
                     expected: "\"icon\" or \"line highlight\"",
+                }],
+                "{text}"
+            );
+        }
+    }
+
+    // FR-UI-11, ui.md §9.3
+    #[test]
+    fn animations_are_full_reduced_or_off_and_anything_else_is_reported() {
+        assert_eq!(read("", None).animations, None);
+        for (text, setting) in [
+            ("animations = \"full\"\n", Animations::Full),
+            ("animations = \"reduced\"\n", Animations::Reduced),
+            ("animations = \"off\"\n", Animations::Off),
+        ] {
+            let config = read(text, None);
+            assert_eq!(
+                (config.animations, config.problems()),
+                (Some(setting), &[][..])
+            );
+        }
+        for text in ["animations = \"none\"\n", "animations = false\n"] {
+            let config = read(text, None);
+            assert_eq!(config.animations, None, "{text}");
+            assert_eq!(
+                config.problems(),
+                [Problem::InvalidValue {
+                    key: "animations".to_owned(),
+                    expected: "\"full\", \"reduced\" or \"off\"",
                 }],
                 "{text}"
             );

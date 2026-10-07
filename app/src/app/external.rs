@@ -4,7 +4,7 @@
 //! ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes), F-FILE-06, OQ-16).
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     hash::{DefaultHasher, Hasher as _},
     path::PathBuf,
 };
@@ -329,6 +329,7 @@ impl State {
             .collect::<HashSet<_>>();
         self.sidebar.rematch_folds(exact);
         self.today_order.rematch(exact);
+        self.changed = changed_lines(&old, &self.document);
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
     }
@@ -360,6 +361,28 @@ impl State {
     pub fn gone_from_disk(&self) -> bool {
         self.external.gone
     }
+}
+
+/// The lines of `new` that `old` has no line like, at the same depth with the same text, that no
+/// earlier line of `new` was already matched with: what a reload changed, found in one pass
+/// however large the files.
+fn changed_lines(old: &Document, new: &Document) -> Vec<ItemId> {
+    let mut unmatched: HashMap<(usize, &str), usize> = HashMap::new();
+    for (id, depth) in old.descendants(old.root()) {
+        if let Some(item) = old.get(id) {
+            *unmatched.entry((depth, item.text())).or_default() += 1;
+        }
+    }
+    new.descendants(new.root())
+        .filter(|&(id, depth)| {
+            let count = new
+                .get(id)
+                .and_then(|item| unmatched.get_mut(&(depth, item.text())))
+                .filter(|count| **count > 0);
+            count.map(|count| *count -= 1).is_none()
+        })
+        .map(|(id, _)| id)
+        .collect()
 }
 
 /// The lines that differ from `disk` to `mine`, with [`CONTEXT`] unchanged lines around each
@@ -394,6 +417,18 @@ mod tests {
     };
 
     const FILE: &str = "/notes/todo.taskpaper";
+
+    // UI-ANIM-02
+    #[test]
+    fn a_reload_changed_the_lines_its_old_outline_has_fewer_of() {
+        let old = format::parse("- a\n- a\nB:\n\t- a\n");
+        let new = format::parse("- a\n- a\n- a\nB:\n\t- a\n\t- c\n");
+        let texts: Vec<&str> = changed_lines(&old, &new)
+            .into_iter()
+            .filter_map(|id| new.get(id).map(crate::document::Item::text))
+            .collect();
+        assert_eq!(texts, ["- a", "- c"]);
+    }
 
     fn ms(millis: u64) -> Duration {
         Duration::from_millis(millis)
@@ -553,6 +588,20 @@ mod tests {
         assert_eq!(text_of(&state, state.zoom()).as_deref(), Some("A"));
         assert_eq!(text_of(&state, state.focus()).as_deref(), Some("d"));
         assert_eq!(texts(&state), ["A", "new", "b", "d"]);
+        let changed: Vec<_> = state
+            .changed()
+            .iter()
+            .map(|&id| text_of(&state, Some(id)))
+            .collect();
+        assert_eq!(
+            changed,
+            [
+                Some("X".to_owned()),
+                Some("A".to_owned()),
+                Some("new".to_owned())
+            ],
+            "the reload marks what is new on disk (FR-UI-11)"
+        );
         assert_eq!(
             state
                 .rows()

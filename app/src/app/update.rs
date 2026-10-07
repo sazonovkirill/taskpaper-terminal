@@ -569,6 +569,8 @@ pub enum Disk {
 impl State {
     /// Applies `message` and returns the effects the frontend must carry out.
     pub fn update(&mut self, message: Message) -> Vec<Effect> {
+        self.changed.clear();
+        self.refused = false;
         let Some(message) = self.as_located(message) else {
             return Vec::new();
         };
@@ -580,6 +582,12 @@ impl State {
         self.repair_panes(&landmarks);
         self.expire_notice();
         effects.extend(self.save_if_due());
+        let touched = self.document.take_touched();
+        self.changed.extend(
+            touched
+                .into_iter()
+                .filter(|&id| self.document.get(id).is_some()),
+        );
         effects
     }
 

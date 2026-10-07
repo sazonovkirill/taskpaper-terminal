@@ -8,8 +8,8 @@ use jiff::civil::Date;
 use thiserror::Error;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
-    SettingsInput, TextEdit,
+    Animations, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange,
+    Paste, SaveAs, SettingsInput, TextEdit,
     commands::{REGISTRY, SIDEBAR},
 };
 
@@ -64,6 +64,8 @@ pub enum KeyAction {
     ChooseTheme,
     /// Opens the settings window over the frontend's settings (FR-SET-02).
     OpenSettings,
+    /// Animates this much from now on, as animation is the frontend's (FR-UI-11).
+    SetAnimations(Animations),
     /// Makes the focused pane narrower, as widths are the frontend's to choose (FR-UI-03).
     NarrowPane,
     /// Makes the focused pane wider.
@@ -534,6 +536,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
         Command::GoToCommand => Some(KeyAction::GoToCommand),
         Command::ChooseTheme => Some(KeyAction::ChooseTheme),
         Command::OpenSettings => Some(KeyAction::OpenSettings),
+        Command::SetAnimations(setting) => Some(KeyAction::SetAnimations(setting)),
         Command::NarrowPane => Some(KeyAction::NarrowPane),
         Command::WidenPane => Some(KeyAction::WidenPane),
         Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
@@ -944,6 +947,7 @@ mod tests {
                     | KeyAction::GoToCommand
                     | KeyAction::ChooseTheme
                     | KeyAction::OpenSettings
+                    | KeyAction::SetAnimations(_)
                     | KeyAction::NarrowPane
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown

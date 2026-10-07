@@ -5,11 +5,11 @@
 use std::time::Duration;
 
 use super::{
-    Tui, config, effects,
+    Tui, animation, config, effects,
     theme::{BuiltIn, Icon, IconSetting},
     widgets::ColorTagDisplay,
 };
-use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, saving};
+use crate::app::{Animations, Configuration, Message, Setting, SettingKind, SettingValue, saving};
 
 /// A setting the window lists, in the window's order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,21 +20,22 @@ enum Listed {
     ColorTags,
     SpecialInbox,
     SidebarToday,
+    Animations,
     AutosaveDelay,
     Backups,
     BackupFolder,
     BackupsKept,
 }
 
-/// The settings the window lists, in order. Animations join when they reach the settings file
-/// (ui.md §9.3).
-const LISTED: [Listed; 10] = [
+/// The settings the window lists, in order.
+const LISTED: [Listed; 11] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
     Listed::ColorTags,
     Listed::SpecialInbox,
     Listed::SidebarToday,
+    Listed::Animations,
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -51,6 +52,20 @@ const COLOR_TAGS: [(ColorTagDisplay, &str); 2] = [
 ];
 
 impl Listed {
+    /// The group the window lists the setting in.
+    fn group(self) -> &'static str {
+        match self {
+            Self::AutosaveDelay | Self::Backups | Self::BackupFolder | Self::BackupsKept => "Files",
+            Self::Theme
+            | Self::Icons
+            | Self::Wrap
+            | Self::ColorTags
+            | Self::SpecialInbox
+            | Self::SidebarToday
+            | Self::Animations => "Appearance",
+        }
+    }
+
     /// The setting's key in the settings file.
     fn key(self) -> &'static str {
         match self {
@@ -60,6 +75,7 @@ impl Listed {
             Self::ColorTags => "color_tags",
             Self::SpecialInbox => "special_inbox",
             Self::SidebarToday => "sidebar_today",
+            Self::Animations => "animations",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -76,6 +92,7 @@ impl Listed {
             Self::ColorTags => Icon::Flag,
             Self::SpecialInbox => Icon::Inbox,
             Self::SidebarToday => Icon::Today,
+            Self::Animations => Icon::Animations,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -108,9 +125,8 @@ fn chosen<T: Copy + PartialEq>(choices: &[(T, &str)], value: T) -> SettingValue 
     )
 }
 
-/// A setting's group, name, description, kind, value and default, as [`Setting`] has them.
+/// A setting's name, description, kind, value and default, as [`Setting`] has them.
 type Listing = (
-    &'static str,
     &'static str,
     &'static str,
     SettingKind,
@@ -118,16 +134,9 @@ type Listing = (
     SettingValue,
 );
 
-/// A switch in `group` named `name` that does what `description` says, `on` now and on by
-/// default.
-fn switch_on_by_default(
-    group: &'static str,
-    name: &'static str,
-    description: &'static str,
-    on: bool,
-) -> Listing {
+/// A switch named `name` that does what `description` says, `on` now and on by default.
+fn switch_on_by_default(name: &'static str, description: &'static str, on: bool) -> Listing {
     (
-        group,
         name,
         description,
         SettingKind::Switch,
@@ -144,9 +153,8 @@ impl Tui {
 
     /// The setting `listed` as the window lists it.
     fn setting(&self, listed: Listed) -> Setting {
-        let (group, name, description, kind, value, default): Listing = match listed {
+        let (name, description, kind, value, default): Listing = match listed {
             Listed::Theme => (
-                "Appearance",
                 "Theme",
                 "The colors of the whole app",
                 SettingKind::Choice(
@@ -158,7 +166,6 @@ impl Tui {
                 SettingValue::Choice(BuiltIn::DEFAULT.position()),
             ),
             Listed::Icons => (
-                "Appearance",
                 "Icons",
                 "Nerd Font icons; choose none if they show as boxes",
                 choices(&ICONS),
@@ -166,13 +173,11 @@ impl Tui {
                 SettingValue::Choice(0),
             ),
             Listed::Wrap => switch_on_by_default(
-                "Appearance",
                 "Word wrap",
                 "Wrap long text, or end it in … on one line",
                 self.wrap,
             ),
             Listed::ColorTags => (
-                "Appearance",
                 "Color tags",
                 "A colored flag after the text, or a tinted line",
                 choices(&COLOR_TAGS),
@@ -180,19 +185,23 @@ impl Tui {
                 SettingValue::Choice(0),
             ),
             Listed::SpecialInbox => switch_on_by_default(
-                "Appearance",
                 "Special handling of INBOX project",
                 "Show INBOX: above Today, not under Projects",
                 self.state.special_inbox(),
             ),
             Listed::SidebarToday => switch_on_by_default(
-                "Appearance",
                 "Show Today in sidebar",
                 "List the Today view in the sidebar",
                 self.state.sidebar_today(),
             ),
+            Listed::Animations => (
+                "Animations",
+                "Flashes where focus lands and what changed; reduced or off for less motion",
+                choices(&animation::NAMES),
+                chosen(&animation::NAMES, self.animator.setting()),
+                chosen(&animation::NAMES, self.default_animations),
+            ),
             Listed::AutosaveDelay => (
-                "Files",
                 "Autosave delay",
                 "How long after the last change the file is saved",
                 SettingKind::Number {
@@ -203,13 +212,11 @@ impl Tui {
                 SettingValue::Number(count(saving::DELAY.as_millis())),
             ),
             Listed::Backups => switch_on_by_default(
-                "Files",
                 "Backups",
                 "Keep a copy of each file as it was each day",
                 self.backups.enabled,
             ),
             Listed::BackupFolder => (
-                "Files",
                 "Backup folder",
                 "Where the copies go; empty for the default folder",
                 SettingKind::Text { unset: "default" },
@@ -223,7 +230,6 @@ impl Tui {
                 SettingValue::Text(String::new()),
             ),
             Listed::BackupsKept => (
-                "Files",
                 "Backups kept",
                 "How many daily copies of each file are kept",
                 SettingKind::Number { least: 1, unit: "" },
@@ -232,7 +238,7 @@ impl Tui {
             ),
         };
         Setting {
-            group,
+            group: listed.group(),
             name,
             description,
             kind,
@@ -282,6 +288,13 @@ impl Tui {
                 self.send(Message::Configure(Configuration::SidebarToday(on)), now);
                 Some(on.into())
             }
+            (Listed::Animations, SettingValue::Choice(choice)) => {
+                let Some(&(setting, name)) = animation::NAMES.get(choice) else {
+                    return;
+                };
+                self.animator.set(setting);
+                Some(name.into())
+            }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
                 let delay = Duration::from_millis(ms.into());
                 self.send(Message::Configure(Configuration::AutosaveDelay(delay)), now);
@@ -307,6 +320,19 @@ impl Tui {
             _ => return,
         };
         self.keep_setting(listed.key(), kept, now);
+    }
+
+    /// Animates as `setting` allows from now on, as Go to Command's commands ask, and keeps it in
+    /// the settings file at time `now` (ui.md §9.3).
+    pub(super) fn set_animations(&mut self, setting: Animations, now: Duration) {
+        self.change_setting(
+            LISTED
+                .iter()
+                .position(|&listed| listed == Listed::Animations)
+                .unwrap_or_default(),
+            chosen(&animation::NAMES, setting),
+            now,
+        );
     }
 
     /// The theme the settings window's value picker highlights, which the frontend previews
@@ -362,6 +388,7 @@ mod tests {
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
             (3, SettingValue::Choice(2)),
+            (6, SettingValue::Choice(3)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
@@ -382,6 +409,7 @@ mod tests {
             SettingValue::Choice(1),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
+            SettingValue::Choice(2),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -392,9 +420,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(8, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(9, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[8].value,
+            tui.listed_settings()[9].value,
             SettingValue::Text(String::new())
         );
         assert!(

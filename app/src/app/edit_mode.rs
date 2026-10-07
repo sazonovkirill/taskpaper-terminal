@@ -739,6 +739,7 @@ mod tests {
         typed(&mut state, " @");
         assert_eq!(shown(&state), "note |");
         assert_eq!(state.notice(), Some(&Notice::TypedTag));
+        assert!(state.refused(), "FR-UI-11");
         typed(&mut state, "me@example.com");
         assert_eq!(texts(&state), ["note me@example.com"]);
         state.update(Message::Text(TextEdit::Move {

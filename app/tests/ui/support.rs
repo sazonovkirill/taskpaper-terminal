@@ -24,7 +24,7 @@ use ratatui::{
     style::{Color, Modifier},
 };
 use taskpaper_terminal::{
-    app::{Origin, State},
+    app::{Animations, Origin, State},
     ui::{
         ColorSupport, Input, Tui,
         config::{self, Config},
@@ -251,7 +251,8 @@ impl Harness {
     }
 
     /// Starts the app as [`Harness::start`] does, with the settings `config`. Icons are off unless
-    /// `config` turns them on, so screens read as the Unicode markers of ui.md §2.
+    /// `config` turns them on, so screens read as the Unicode markers of ui.md §2, and so are
+    /// animations, so that frames show only what tests not about them check (ui.md §9.4).
     fn start_with(state: State, dir: TempDir, config: Config, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
         let views = dir.path().join("state/views.json");
@@ -279,6 +280,7 @@ impl Harness {
                 Some(home.clone()),
             )
             .with_icons(IconSetting::Off)
+            .with_animations(Animations::Off)
             .with_config(config),
             home,
             terminal_output,

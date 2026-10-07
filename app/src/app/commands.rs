@@ -73,6 +73,9 @@ pub enum Command {
     /// Open the settings window over the frontend's settings, which it applies and keeps itself
     /// (FR-SET-02).
     OpenSettings,
+    /// Animate this much, which the frontend carries out and keeps itself, since animation is
+    /// presentation (FR-UI-11).
+    SetAnimations(Animations),
     /// Open or close the shortcuts panel.
     ToggleShortcuts,
     /// Scroll the shortcuts panel down a page, which the frontend carries out, since scrolling
@@ -197,6 +200,18 @@ pub enum Command {
     WidenPane,
 }
 
+/// How much a frontend animates: the `animations` setting, which the core only names for the
+/// commands that switch it (FR-UI-11, [ui.md §9.3](../../../docs/specs/ui.md#93-setting)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Animations {
+    /// Every animation.
+    Full,
+    /// Only the flashes that inform, each in one step, and a static spinner.
+    Reduced,
+    /// No animation, and a static spinner.
+    Off,
+}
+
 /// What a frontend knows that a command's message carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Inputs {
@@ -239,6 +254,9 @@ impl Command {
             Self::ToggleWrap => "Toggle Word Wrap".into(),
             Self::ChooseTheme => "Choose Theme".into(),
             Self::OpenSettings => "Open Settings".into(),
+            Self::SetAnimations(Animations::Full) => "Animations: Full".into(),
+            Self::SetAnimations(Animations::Reduced) => "Animations: Reduced".into(),
+            Self::SetAnimations(Animations::Off) => "Animations: Off".into(),
             Self::ToggleShortcuts => "Shortcuts".into(),
             Self::ScrollShortcutsDown => "Scroll Shortcuts Down".into(),
             Self::ScrollShortcutsUp => "Scroll Shortcuts Up".into(),
@@ -308,8 +326,9 @@ impl Command {
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
-    /// [`Command::ToggleWrap`], [`Command::NarrowPane`], [`Command::WidenPane`] and the scrolling
-    /// of the shortcuts panel, which the frontend carries out, and for [`Command::GoToCommand`],
+    /// [`Command::ToggleWrap`], [`Command::SetAnimations`], [`Command::NarrowPane`],
+    /// [`Command::WidenPane`] and the scrolling of the shortcuts panel, which the frontend carries
+    /// out, and for [`Command::GoToCommand`],
     /// [`Command::ChooseTheme`] and [`Command::OpenSettings`], whose messages carry the bindings,
     /// the themes and the settings the frontend shows.
     #[must_use]
@@ -364,6 +383,7 @@ impl Command {
             | Self::ToggleWrap
             | Self::ChooseTheme
             | Self::OpenSettings
+            | Self::SetAnimations(_)
             | Self::GoToCommand
             | Self::NarrowPane
             | Self::WidenPane
@@ -660,6 +680,10 @@ mod tests {
         assert_eq!(Command::GoToCommand.message(&INPUTS), None);
         assert_eq!(Command::ChooseTheme.message(&INPUTS), None);
         assert_eq!(Command::OpenSettings.message(&INPUTS), None);
+        assert_eq!(
+            Command::SetAnimations(Animations::Off).message(&INPUTS),
+            None
+        );
         assert_eq!(Command::NarrowPane.message(&INPUTS), None);
         assert_eq!(Command::WidenPane.message(&INPUTS), None);
         assert_eq!(Command::ScrollShortcutsDown.message(&INPUTS), None);
@@ -676,6 +700,7 @@ mod tests {
                     | Command::GoToCommand
                     | Command::ChooseTheme
                     | Command::OpenSettings
+                    | Command::SetAnimations(_)
                     | Command::NarrowPane
                     | Command::WidenPane
                     | Command::ScrollShortcutsDown

@@ -38,6 +38,9 @@ pub struct Document {
     /// Shared only by this document's stamps, so that no other document, a copy included, has
     /// equal ones.
     identity: Arc<()>,
+    /// The lines the transactions applied since [`Document::take_touched`] last took them
+    /// changed, put in place or moved.
+    touched: Vec<ItemId>,
 }
 
 impl Clone for Document {
@@ -51,6 +54,7 @@ impl Clone for Document {
             // Its stamps differ from this one's, so this one's log could never answer for them.
             changes: VecDeque::new(),
             identity: Arc::default(),
+            touched: self.touched.clone(),
         }
     }
 }
@@ -162,6 +166,7 @@ impl Document {
             revision: 0,
             changes: VecDeque::new(),
             identity: Arc::default(),
+            touched: Vec::new(),
         }
     }
 

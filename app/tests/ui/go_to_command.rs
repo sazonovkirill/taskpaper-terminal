@@ -35,13 +35,15 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
     let mut app = Harness::with_text(TEXT, 60, 16);
     app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     assert_eq!(
-        screen(&mut app)[2..7],
+        screen(&mut app)[2..9],
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│›                                                         │",
+            "│ ≈ Animations: Full                                       │",
+            "│ ≈ Animations: Off                                        │",
+            "│ ≈ Animations: Reduced                                    │",
             "│ › Back  H, Alt+Shift+←                                   │",
             "│ ● Choose Theme  Ctrl+T                                   │",
-            "│ ⇥ Clear Due Date                                         │",
         ]
     );
     let buffer = app.render().buffer().clone();
@@ -50,8 +52,8 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
         "the first entry is highlighted"
     );
     assert!(
-        buffer[(10, 4)].modifier.contains(Modifier::DIM),
-        "its keys are dim"
+        buffer[(10, 7)].modifier.contains(Modifier::DIM),
+        "keys are dim"
     );
     app.terminal.backend_mut().assert_cursor_position((3, 3));
     app.type_keys("symbol");
