@@ -21,7 +21,7 @@ Workflowy-style ([reference/workflowy.md §18](../reference/workflowy.md#18-sear
 | `-term` | negation of any term, including operators (`-is:done`) |
 | `a OR b` | either (upper-case `OR`) |
 | `A > B` | blocks matching B that have an ancestor matching A; chainable; spaces around `>` required |
-| `is:done`, `is:today`, `is:bookmarked` | metadata flags |
+| `is:done`, `is:starred`, `is:bookmarked` | metadata flags |
 | `is:task`, `is:project`, `is:text`, `is:section`, `is:divider` | block type (D-43, D-45) |
 | `due:EXPR`, `start:EXPR` | date comparison; `EXPR` is a date (§4) meaning "on that day", or `<EXPR`, `<=EXPR`, `>EXPR`, `>=EXPR`, or `EXPR..EXPR` (inclusive range). `due:` alone means "has a due date". |
 | `color:red` … `color:violet` | color tag |

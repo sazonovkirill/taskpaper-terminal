@@ -489,7 +489,7 @@ fn the_temporary_file_keeps_no_layout() {
 // FR-UI-04, FR-TAG-04, file-io.md §5
 #[test]
 fn reopening_focuses_the_today_entry_that_was_focused() {
-    let text = "Errands:\n\t- Post office @today\n\t- Dentist @due(2026-10-05)\n";
+    let text = "Errands:\n\t- Post office @star\n\t- Dentist @due(2026-10-05)\n";
     let focused = |app: &mut Harness| -> Vec<String> {
         screen(app)
             .into_iter()

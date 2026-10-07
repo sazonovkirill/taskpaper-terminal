@@ -29,6 +29,9 @@ pub enum Configuration {
     /// List this special view in the sidebar, or not when `false` (`sidebar_today` and so on,
     /// navigation.md §6, D-77, D-80).
     SidebarView(SpecialView, bool),
+    /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
+    /// (`today_starred`, navigation.md §7, D-88).
+    TodayStarred(bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -183,7 +186,7 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
-    /// Add the bare tag `@today` or `@bookmark` to the selected blocks, else the focused block, or
+    /// Add the bare tag `@star` or `@bookmark` to the selected blocks, else the focused block, or
     /// remove it when all have it (FR-TAG-04, D-11, FR-OPS-07).
     ToggleFlag(Flag),
     /// Give the selected blocks, else the focused block, the color after the focused block's own:
@@ -587,6 +590,7 @@ impl State {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
             Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
             Configuration::SidebarView(view, on) => self.sidebar.set_listed(view, on),
+            Configuration::TodayStarred(on) => self.today_starred = on,
         }
     }
 

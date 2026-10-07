@@ -115,8 +115,8 @@ pub fn set_date(
 /// A bare tag that a command adds to a block or removes from it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Flag {
-    /// `@today`, which puts a block on today's list (FR-TAG-04).
-    Today,
+    /// `@star`, which stars a block (FR-TAG-04, D-88).
+    Star,
     /// `@bookmark`, which lists a block in the sidebar (D-11).
     Bookmark,
 }
@@ -127,7 +127,7 @@ pub enum Flag {
 pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op> {
     let before = document.get(block.id())?.text();
     let name = match flag {
-        Flag::Today => "today",
+        Flag::Star => "star",
         Flag::Bookmark => "bookmark",
     };
     let after = if flagged(block, flag) {
@@ -157,7 +157,7 @@ pub fn toggle_flag_all(document: &Document, blocks: &[Block], flag: Flag) -> Vec
 /// Whether `block` carries the tag `flag`.
 fn flagged(block: &Block, flag: Flag) -> bool {
     match flag {
-        Flag::Today => block.today(),
+        Flag::Star => block.starred(),
         Flag::Bookmark => block.bookmark(),
     }
 }
@@ -488,12 +488,12 @@ mod tests {
                 "{text:?} {flag:?}"
             );
         };
-        check("- a", Flag::Today, "- a @today");
+        check("- a", Flag::Star, "- a @star");
         check("- a @x", Flag::Bookmark, "- a @x @bookmark");
-        check("P: @today", Flag::Today, "P:");
-        check("- a @today(x) @y @today", Flag::Today, "- a @y");
-        check("- a @bookmark @today", Flag::Bookmark, "- a @today");
-        check("- a @today", Flag::Bookmark, "- a @today @bookmark");
+        check("P: @star", Flag::Star, "P:");
+        check("- a @star(x) @y @star", Flag::Star, "- a @y");
+        check("- a @bookmark @star", Flag::Bookmark, "- a @star");
+        check("- a @star", Flag::Bookmark, "- a @star @bookmark");
         check("@bookmark", Flag::Bookmark, PLACEHOLDER);
     }
 
@@ -501,7 +501,7 @@ mod tests {
     fn a_flag_of_a_block_not_in_the_document_is_not_toggled() {
         let other = parse("- x\n- y");
         let stale = blocks::children(&other, other.root())[1].clone();
-        assert_eq!(toggle_flag(&parse("- a"), &stale, Flag::Today), None);
+        assert_eq!(toggle_flag(&parse("- a"), &stale, Flag::Star), None);
     }
 
     // FR-TAG-05, D-5
@@ -725,13 +725,13 @@ mod tests {
     fn toggling_a_flag_on_many_adds_it_where_missing_unless_all_have_it() {
         let all = |text: &str, flag| all_edited(text, |d, b| toggle_flag_all(d, b, flag));
         assert_eq!(
-            all("- a @today\n- b", Flag::Today),
-            ["- a @today", "- b @today"]
+            all("- a @star\n- b", Flag::Star),
+            ["- a @star", "- b @star"]
         );
-        assert_eq!(all("- a @today\n- b @today", Flag::Today), ["- a", "- b"]);
+        assert_eq!(all("- a @star\n- b @star", Flag::Star), ["- a", "- b"]);
         assert_eq!(
-            all("- a @bookmark\n- b @today", Flag::Bookmark),
-            ["- a @bookmark", "- b @today @bookmark"]
+            all("- a @bookmark\n- b @star", Flag::Bookmark),
+            ["- a @bookmark", "- b @star @bookmark"]
         );
         assert_eq!(all("- a @bookmark", Flag::Bookmark), ["- a"]);
     }
@@ -742,6 +742,6 @@ mod tests {
         let stale = &blocks::children(&other, other.root())[1..];
         let document = parse("- a");
         assert_eq!(toggle_done_all(&document, stale, TODAY), []);
-        assert_eq!(toggle_flag_all(&document, stale, Flag::Today), []);
+        assert_eq!(toggle_flag_all(&document, stale, Flag::Star), []);
     }
 }

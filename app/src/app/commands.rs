@@ -249,7 +249,7 @@ impl Command {
             Self::Forward => "Forward".into(),
             Self::ToggleSidebar => "Open Navigator".into(),
             Self::ToggleDone => "Toggle Done".into(),
-            Self::ToggleFlag(Flag::Today) => "Toggle Today".into(),
+            Self::ToggleFlag(Flag::Star) => "Toggle Star".into(),
             Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
             Self::CycleColor => "Cycle Color".into(),
             Self::SetColor(None) => "Remove Color".into(),

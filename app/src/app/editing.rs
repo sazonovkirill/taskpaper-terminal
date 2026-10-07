@@ -193,14 +193,14 @@ mod tests {
     #[test]
     fn toggle_flag_adds_and_removes_today_and_bookmarks_in_undoable_steps() {
         let mut state = open("- a\n- b", 1);
-        assert_eq!(state.update(Message::ToggleFlag(Flag::Today)), []);
-        assert!(state.rows()[1].today);
+        assert_eq!(state.update(Message::ToggleFlag(Flag::Star)), []);
+        assert!(state.rows()[1].starred);
         assert_eq!(state.notice(), None, "today shows as a chip");
         state.update(Message::ToggleFlag(Flag::Bookmark));
-        assert_eq!(texts(&state), ["- a", "- b @today @bookmark"]);
+        assert_eq!(texts(&state), ["- a", "- b @star @bookmark"]);
         assert_eq!(state.notice(), Some(&Notice::Bookmark { added: true }));
-        state.update(Message::ToggleFlag(Flag::Today));
-        assert!(!state.rows()[1].today);
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert!(!state.rows()[1].starred);
         state.update(Message::ToggleFlag(Flag::Bookmark));
         assert_eq!(texts(&state), ["- a", "- b"]);
         assert_eq!(state.notice(), Some(&Notice::Bookmark { added: false }));
@@ -509,8 +509,8 @@ mod tests {
         state.update(Message::ToggleFlag(Flag::Bookmark));
         assert_eq!(texts(&state), ["- a", "- b", "- c"]);
         assert_eq!(state.notice(), Some(&Notice::Bookmark { added: false }));
-        state.update(Message::ToggleFlag(Flag::Today));
-        assert_eq!(texts(&state), ["- a @today", "- b @today", "- c"]);
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert_eq!(texts(&state), ["- a @star", "- b @star", "- c"]);
     }
 
     // FR-TAG-03, D-50, FR-OPS-07

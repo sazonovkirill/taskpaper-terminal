@@ -86,7 +86,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
     let footer = format!("│ Settings file: {}", file.display());
     let rows = window(&mut app);
     assert_eq!(
-        rows[..13],
+        rows[..15],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
@@ -99,21 +99,23 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     A colored flag after the text, or a tinted line│",
             "│               │   ⊔ Special handling of INBOX project          on  │",
             "│               │     Show INBOX: above Today, not under Projects    │",
-            "│               │   ★ Show Today in Navigator                    on  │",
+            "│               │   ☼ Show Today in Navigator                    on  │",
             "│               │     List the Today view in the Navigator           │",
+            "│               │   ★ Display starred items in Today view        on  │",
+            "│               │     List starred blocks too, not only dated ones   │",
         ]
     );
     assert!(
-        rows[14].starts_with("│ Tab: groups/settings · Enter: change"),
+        rows[16].starts_with("│ Tab: groups/settings · Enter: change"),
         "{}",
-        rows[14]
+        rows[16]
     );
     assert!(
-        rows[15].starts_with(&footer[..footer.len().min(68)]),
+        rows[17].starts_with(&footer[..footer.len().min(68)]),
         "{}",
-        rows[15]
+        rows[17]
     );
-    assert_eq!(rows.len(), 17, "as tall as the Appearance group needs");
+    assert_eq!(rows.len(), 19, "as tall as the Appearance group needs");
     press(&mut app, KeyCode::Esc);
     assert_eq!(window(&mut app), Vec::<String>::new());
 }
@@ -332,7 +334,7 @@ fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a
     files(&mut app);
     press(&mut app, KeyCode::Enter);
     assert_eq!(
-        window(&mut app)[14],
+        window(&mut app)[16],
         "│ Autosave delay: 1000                                               │"
     );
     press(&mut app, KeyCode::Backspace);
@@ -341,17 +343,17 @@ fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a
     press(&mut app, KeyCode::Enter);
     let rows = window(&mut app);
     assert_eq!(
-        rows[13], "│ Autosave delay must be a whole number, at least 100                │",
+        rows[15], "│ Autosave delay must be a whole number, at least 100                │",
         "1 ms is refused"
     );
     assert_eq!(
-        rows[14],
+        rows[16],
         "│ Autosave delay: 1                                                  │"
     );
     let top = window_top(&mut app);
     assert_eq!(
         app.terminal.get_cursor_position().map(|p| (p.x, p.y)).ok(),
-        Some((19, top + 14)),
+        Some((19, top + 16)),
         "the caret ends the prompt"
     );
     app.type_keys("300");
@@ -459,14 +461,14 @@ fn slash_filters_the_settings_by_name() {
         "│ Files         │   ↺ Backups                                    on  │"
     );
     assert_eq!(
-        rows[14],
+        rows[16],
         "│ /back                                                              │"
     );
     press(&mut app, KeyCode::Enter);
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
     assert_eq!(
-        window(&mut app)[14],
+        window(&mut app)[16],
         "│ Backup folder:                                                     │"
     );
     press(&mut app, KeyCode::Esc);
@@ -495,19 +497,19 @@ fn a_change_that_cannot_be_written_shows_in_the_window_and_the_status_line_and_h
         "{status}"
     );
     assert!(
-        window(&mut app)[13].starts_with("│ `word_wrap` not saved: not valid TOML"),
+        window(&mut app)[15].starts_with("│ `word_wrap` not saved: not valid TOML"),
         "{:?}",
-        window(&mut app)[13]
+        window(&mut app)[15]
     );
     assert!(window(&mut app)[5].contains("off"), "kept for the session");
     assert_eq!(config(&app), "theme = \n");
     let mut app = Harness::with_text(OUTLINE, 140, 20);
     app.type_keys("g,");
     assert!(
-        window(&mut app)[15]
+        window(&mut app)[17]
             .starts_with("│ No settings file: neither $XDG_CONFIG_HOME nor a home folder is set"),
         "{:?}",
-        window(&mut app)[15]
+        window(&mut app)[17]
     );
 }
 

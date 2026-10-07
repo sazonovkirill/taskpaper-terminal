@@ -176,7 +176,7 @@ fn on_a_sidebar_entry_it_offers_going_there() {
 // FR-KEY-06, navigation.md §7
 #[test]
 fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
-    let mut app = Harness::with_text("- Call Ann @today\n", 90, 30);
+    let mut app = Harness::with_text("- Call Ann @star\n", 90, 30);
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Enter);

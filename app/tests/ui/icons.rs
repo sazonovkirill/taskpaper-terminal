@@ -9,7 +9,7 @@ use crate::support::{Harness, line};
 /// project to collapse.
 const OUTLINE: &str = "\
 Work: @bookmark
-\t- Draft @today @due(2026-10-05)
+\t- Draft @star @due(2026-10-05)
 \t- Sent @done
 \tPlans:
 \t\t- Ask
@@ -87,7 +87,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
     for settings in ["icons = \"nerd\"\n", "icons = \"none\"\n"] {
         let mut app = started(settings).without_utf8();
         let rows = screen(&mut app);
-        let markers = ['⌂', '✔', '★', '⚑', '▸', '▾', '⇥', '↕', '●'];
+        let markers = ['⌂', '✔', '★', '☼', '⚑', '▸', '▾', '⇥', '↕', '●'];
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
         assert_eq!(rows[0], "  ~", "{settings}: {rows:#?}");
         assert_eq!(rows[2], "  Work: #", "{settings}: {rows:#?}");
@@ -101,7 +101,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
         let rows = screen(&mut app);
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
-        for entry in ["│▌ * Today ", "│  Work ", "│ vWork "] {
+        for entry in ["│▌ O Today ", "│  Work ", "│ vWork "] {
             assert!(
                 rows.iter().any(|row| row.contains(entry)),
                 "{settings}: {entry:?} in the sidebar's window: {rows:#?}"

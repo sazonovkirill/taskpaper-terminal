@@ -355,7 +355,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetColor(None), Mode::Navigate, &["C"]),
     entry!(Command::CycleColor, Mode::Navigate, &["c c"]),
     entry!(Command::OpenColorPicker, Mode::Navigate, &["m c"]),
-    entry!(Command::ToggleFlag(Flag::Today), Mode::Navigate, &["m t"]),
+    entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["*"]),
     entry!(
         Command::ToggleFlag(Flag::Bookmark),
         Mode::Navigate,

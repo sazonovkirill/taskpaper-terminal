@@ -100,6 +100,8 @@ pub struct State {
     pub(super) sidebar: Sidebar,
     /// The order the user gave the Today view's entries (D-57).
     pub(super) today_order: TodayOrder,
+    /// Whether the Today view lists starred blocks besides dated ones (`today_starred`, D-88).
+    pub(super) today_starred: bool,
     /// The rows of the panes, kept while what they show stays the same.
     rows: Memo<RowsKey, Rows>,
 }
@@ -112,8 +114,9 @@ struct RowsKey {
     location: Location,
     show_done: bool,
     selection: Selection,
-    /// The day and order of the Today view; `None` elsewhere, which does not depend on them.
-    today: Option<(Date, TodayOrder)>,
+    /// The day, order and starred setting of the Today view; `None` elsewhere, which does not
+    /// depend on them.
+    today: Option<(Date, TodayOrder, bool)>,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -274,8 +277,8 @@ pub struct Row {
     pub start: Option<Date>,
     /// The date of its `@due`, if it holds one (FR-TAG-03).
     pub due: Option<Date>,
-    /// Whether it carries `@today` (FR-TAG-04).
-    pub today: bool,
+    /// Whether it carries `@star` (FR-TAG-04, D-88).
+    pub starred: bool,
     /// Whether it carries `@bookmark` (D-11).
     pub bookmark: bool,
     /// The color that tints its row's background (FR-TAG-05, D-48).
@@ -335,6 +338,7 @@ impl State {
             shortcuts: false,
             sidebar: Sidebar::default(),
             today_order: TodayOrder::default(),
+            today_starred: true,
             rows: Memo::default(),
         };
         state.pane.focus = state.rows().first().map(|row| row.id);
@@ -500,7 +504,7 @@ impl State {
             show_done: pane.show_done,
             selection: pane.selection.clone(),
             today: (pane.location == Location::View(SpecialView::Today))
-                .then(|| (self.today, self.today_order.clone())),
+                .then(|| (self.today, self.today_order.clone(), self.today_starred)),
         };
         // Rows of the same outline fit, best those with the same folds: the sidebar's rows,
         // with none, and a pane's are each built from their own earlier rows, so a folded
@@ -661,7 +665,7 @@ impl State {
             title,
             start: block.start(),
             due: block.due(),
-            today: block.today(),
+            starred: block.starred(),
             bookmark: block.bookmark(),
             color: block.color(),
             url: block.url(),

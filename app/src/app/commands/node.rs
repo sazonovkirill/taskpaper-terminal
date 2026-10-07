@@ -194,7 +194,7 @@ fn status(blocks: &[Block]) -> Vec<NodeCommand> {
     };
     vec![
         NodeCommand::labelled(done, Command::ToggleDone),
-        NodeCommand::named(Command::ToggleFlag(Flag::Today)),
+        NodeCommand::named(Command::ToggleFlag(Flag::Star)),
         NodeCommand::labelled(bookmark, Command::ToggleFlag(Flag::Bookmark)),
     ]
 }
@@ -266,7 +266,7 @@ mod tests {
             groups("- a", false),
             [
                 vec!["Project", "Task", "Note"],
-                vec!["Complete", "Toggle Today", "Bookmark"],
+                vec!["Complete", "Toggle Star", "Bookmark"],
                 vec![
                     "Set Start Date",
                     "Set Due Date",
@@ -312,7 +312,7 @@ mod tests {
             "- a @done @start(2026-10-01) @due(2026-10-09) @bookmark @blue",
             true,
         );
-        assert_eq!(groups[1], ["Uncomplete", "Toggle Today", "Remove Bookmark"]);
+        assert_eq!(groups[1], ["Uncomplete", "Toggle Star", "Remove Bookmark"]);
         assert_eq!(groups[2][6..], ["Clear Start Date", "Clear Due Date"]);
         assert_eq!(groups[3].last().map(String::as_str), Some("Remove Color"));
         assert_eq!(
@@ -338,7 +338,7 @@ mod tests {
             ("Task", Command::Retype(Typed::Task)),
             ("Note", Command::Retype(Typed::Text)),
             ("Complete", Command::ToggleDone),
-            ("Toggle Today", Command::ToggleFlag(Flag::Today)),
+            ("Toggle Star", Command::ToggleFlag(Flag::Star)),
             ("Bookmark", Command::ToggleFlag(Flag::Bookmark)),
             ("Set Start Date", Command::OpenDatePrompt(DateTag::Start)),
             ("Set Due Date", Command::OpenDatePrompt(DateTag::Due)),
@@ -408,7 +408,7 @@ mod tests {
                 "Edit, New Block Below, New Block Above, New Block as Last Child, Copy, Cut, \
                  Paste Below, Paste Above, Duplicate, Delete",
                 "Indent, Outdent, Move Up, Move Down, Group, Move to…",
-                "Complete, Toggle Today, Bookmark",
+                "Complete, Toggle Star, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \
                  Due Tomorrow",
                 "Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, \
@@ -430,7 +430,7 @@ mod tests {
             "a @done @start(2026-10-01) @due(2026-10-09) @bookmark @blue\n",
             Some(linked),
         );
-        assert_eq!(groups[2], "Uncomplete, Toggle Today, Remove Bookmark");
+        assert_eq!(groups[2], "Uncomplete, Toggle Star, Remove Bookmark");
         assert!(groups[3].ends_with("Due Tomorrow, Clear Start Date, Clear Due Date"));
         assert!(groups[4].ends_with("Color: Violet, Remove Color"));
         assert_eq!(groups[5], "Convert Type, Make Section");
@@ -453,7 +453,7 @@ mod tests {
             [
                 "Copy, Cut, Paste Below, Paste Above, Duplicate, Delete",
                 "Indent, Outdent, Move Up, Move Down, Group, Move to…",
-                "Complete, Toggle Today, Bookmark",
+                "Complete, Toggle Star, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \
                  Due Tomorrow, Clear Due Date",
                 "Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, \
@@ -463,7 +463,7 @@ mod tests {
             "no group of the focused block's own commands is left empty"
         );
         let done = context("- a @done @bookmark\n- b @done @bookmark\n", None);
-        assert_eq!(done[2], "Uncomplete, Toggle Today, Remove Bookmark");
+        assert_eq!(done[2], "Uncomplete, Toggle Star, Remove Bookmark");
         assert_eq!(done.len(), 5, "tasks have no section to make");
     }
 }

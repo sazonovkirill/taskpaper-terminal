@@ -100,6 +100,8 @@ pub struct Config {
     /// Whether the sidebar lists each special view the file says about (`sidebar_today` and so
     /// on, D-77, D-80).
     pub(super) sidebar_views: Vec<(SpecialView, bool)>,
+    /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
+    pub(super) today_starred: Option<bool>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -179,6 +181,17 @@ impl Config {
             Some(on) => self.special_inbox = Some(on),
             None => self.problems.push(Problem::InvalidValue {
                 key: "special_inbox".to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `today_starred` from `item`: `true` or `false`.
+    fn read_today_starred(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.today_starred = Some(on),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "today_starred".to_owned(),
                 expected: "true or false",
             }),
         }
@@ -345,6 +358,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
             "special_inbox" => config.read_special_inbox(item),
+            "today_starred" => config.read_today_starred(item),
             key => match SpecialView::ALL
                 .into_iter()
                 .find(|&view| sidebar_key(view) == key)
@@ -737,6 +751,25 @@ mod tests {
             config.problems(),
             [Problem::InvalidValue {
                 key: "special_inbox".to_owned(),
+                expected: "true or false",
+            }]
+        );
+    }
+
+    // D-88, FR-SET-04
+    #[test]
+    fn today_starred_is_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).today_starred, None);
+        assert_eq!(
+            read("today_starred = false\n", None).today_starred,
+            Some(false)
+        );
+        let config = read("today_starred = 0\n", None);
+        assert_eq!(config.today_starred, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "today_starred".to_owned(),
                 expected: "true or false",
             }]
         );

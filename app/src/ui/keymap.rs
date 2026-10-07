@@ -1767,7 +1767,7 @@ mod tests {
     // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48: plain characters, which both key
     // reportings send alike, and `C`, which the kitty protocol sends as `c` with `Shift`.
     #[test]
-    fn color_today_and_bookmark_keys() {
+    fn color_star_and_bookmark_keys() {
         check(KeyCode::Char('c'), KeyModifiers::NONE, None);
         assert_eq!(messages("cc", CONTEXT), [None, Some(Message::CycleColor)]);
         for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
@@ -1792,7 +1792,6 @@ mod tests {
         );
         for (second, expected) in [
             ('c', Message::OpenColorPicker),
-            ('t', Message::ToggleFlag(Flag::Today)),
             ('b', Message::ToggleFlag(Flag::Bookmark)),
         ] {
             assert_eq!(
@@ -1801,6 +1800,18 @@ mod tests {
             );
         }
         assert_eq!(messages("mx", CONTEXT), [None, None]);
+        assert_eq!(
+            messages("mt", CONTEXT),
+            [None, None],
+            "was Toggle Today (D-88)"
+        );
+        for modifiers in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
+            check(
+                KeyCode::Char('*'),
+                modifiers,
+                Some(&Message::ToggleFlag(Flag::Star)),
+            );
+        }
         assert_eq!(
             messages("mc", EDITING),
             [

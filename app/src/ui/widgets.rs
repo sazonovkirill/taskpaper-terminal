@@ -764,7 +764,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::Retype(Typed::Task) => plain(Icon::Task),
         Command::Retype(Typed::Text) => plain(Icon::Note),
         Command::Retype(Typed::Section) => plain(Icon::Section),
-        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style(theme)),
+        Command::ToggleFlag(Flag::Star) => (Icon::Star, today_style(theme)),
         Command::GoToView(view) => (view_icon(view), view_icon_style(view, theme)),
         Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
@@ -1207,7 +1207,7 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
 /// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the flag of
-/// the color tag `flag`, in its color (D-74), the `@today` star and the bookmark icon, each after a
+/// the color tag `flag`, in its color (D-74), the `@star` star and the bookmark icon, each after a
 /// space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
 /// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
 /// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
@@ -1247,11 +1247,11 @@ fn row_line<'a>(
         }
     };
     let flag = flag.map(|color| (Icon::Flag, Style::new().fg(theme.tag(color))));
-    let today = row.today.then(|| (Icon::Today, today_style(theme)));
+    let star = row.starred.then(|| (Icon::Star, today_style(theme)));
     let bookmark = row
         .bookmark
         .then(|| (Icon::Bookmark, bookmark_style(theme)));
-    let marks = [flag, today, bookmark];
+    let marks = [flag, star, bookmark];
     for (icon, style) in marks.into_iter().flatten() {
         line.push_span(" ");
         line.push_span(Span::styled(icon.glyph(icons), recede(style)));
@@ -1349,7 +1349,7 @@ fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static>
     Line::from(spans).right_aligned()
 }
 
-/// The `@today` star (FR-TAG-04), in the yellow tag's color.
+/// The `@star` star (FR-TAG-04) and the Today view's sun (D-88), in the yellow tag's color.
 fn today_style(theme: &Theme) -> Style {
     Style::new().fg(theme.warning())
 }
@@ -1911,13 +1911,13 @@ mod tests {
     // D-50, D-54, ui.md §5
     #[test]
     fn a_command_menu_taller_than_its_room_scrolls_to_keep_the_highlight_in_view() {
-        let [complete, today, bookmark] =
-            [Icon::Complete, Icon::Today, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
+        let [complete, star, bookmark] =
+            [Icon::Complete, Icon::Star, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut expected = Buffer::with_lines([
             "┌Commands:───────────┐".to_owned(),
             "│────────────────────│".to_owned(),
             format!("│  {complete} Complete        │"),
-            format!("│  {today} Toggle Today    │"),
+            format!("│  {star} Toggle Star     │"),
             format!("│  {bookmark} Bookmark        │"),
             "│────────────────────│".to_owned(),
             "└────────────────────┘".to_owned(),
@@ -1932,7 +1932,7 @@ mod tests {
         assert_eq!(
             command_menu(&[crate::app::MenuInput::Next; 4], 7),
             expected,
-            "groups apart, the highlight on Toggle Today"
+            "groups apart, the highlight on Toggle Star"
         );
     }
 
@@ -1946,8 +1946,8 @@ mod tests {
             (Command::Retype(Typed::Section), Icon::Section, Style::new()),
             (Command::ToggleDone, Icon::Complete, Style::new()),
             (
-                Command::ToggleFlag(Flag::Today),
-                Icon::Today,
+                Command::ToggleFlag(Flag::Star),
+                Icon::Star,
                 today_style(&THEME),
             ),
             (
@@ -2199,8 +2199,8 @@ mod tests {
 
     // FR-TAG-04, D-47, ui.md §2
     #[test]
-    fn today_and_bookmark_icons_follow_the_text() {
-        let star = Icon::Today.glyph(ICONS);
+    fn star_and_bookmark_icons_follow_the_text() {
+        let star = Icon::Star.glyph(ICONS);
         let bookmark = Icon::Bookmark.glyph(ICONS);
         let mut expected = Buffer::with_lines([
             at_right(&format!("- a {star}"), &chip(Icon::Due, "Fri"), 20),
@@ -2224,7 +2224,7 @@ mod tests {
         expected.set_style(Rect::new(3, 4, 17, 1), divider_style(&THEME));
         assert_eq!(
             render(
-                "- a @due(2026-10-09) @today\n- b @bookmark @today(x)\nP: @today @done\n\t- c @bookmark\n--- @bookmark",
+                "- a @due(2026-10-09) @star\n- b @bookmark @star(x)\nP: @star @done\n\t- c @bookmark\n--- @bookmark",
                 20,
                 5
             ),
@@ -2265,10 +2265,10 @@ mod tests {
     #[test]
     fn color_tags_shown_as_icons_put_a_flag_in_their_color_after_the_text_and_tint_nothing() {
         let [flag, star, bookmark] =
-            [Icon::Flag, Icon::Today, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
+            [Icon::Flag, Icon::Star, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut state = State::new(
             format::parse(
-                "- a @today @red @bookmark\nP: @orange @done\n--- @blue\nQ: @green\n\t- d",
+                "- a @star @red @bookmark\nP: @orange @done\n--- @blue\nQ: @green\n\t- d",
             ),
             None,
         );
@@ -2495,7 +2495,7 @@ mod tests {
     #[test]
     fn a_today_entry_shows_its_path_dimmed_after_its_icons_and_before_its_chips() {
         let mut state = State::new(
-            format::parse("A:\n\tB:\n\t\t- c @today @due(2026-10-05)\n"),
+            format::parse("A:\n\tB:\n\t\t- c @star @due(2026-10-05)\n"),
             None,
         );
         state.update(Message::Tick {
@@ -2504,7 +2504,7 @@ mod tests {
         });
         state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
-        let star = Icon::Today.glyph(ICONS);
+        let star = Icon::Star.glyph(ICONS);
         let mut expected = Buffer::with_lines([at_right(
             &format!("- c {star}  A › B"),
             &chip(Icon::Due, "today"),
@@ -2703,9 +2703,7 @@ mod tests {
             Some((0, false)),
             "no hidden children"
         );
-        let rows = State::new(format::parse("- a @today"), None)
-            .rows()
-            .to_vec();
+        let rows = State::new(format::parse("- a @star"), None).rows().to_vec();
         assert_eq!(outline(&rows).hit(20, 0, 2), Some((0, false)));
     }
 
@@ -2828,7 +2826,7 @@ mod tests {
     #[test]
     fn the_edited_block_shows_no_chips_or_icons() {
         let mut state = State::new(
-            format::parse("- a @due(2026-10-05) @today @bookmark\n- b @due(2026-10-05)"),
+            format::parse("- a @due(2026-10-05) @star @bookmark\n- b @due(2026-10-05)"),
             None,
         );
         state.update(Message::EditAtEnd);
@@ -3316,7 +3314,7 @@ mod tests {
     // FR-UI-09, FR-UI-10, ui.md §3, §7
     #[test]
     fn markers_icons_and_chips_come_from_the_icon_set() {
-        let text = "- d @done @due(2026-10-05)\n- t @today @bookmark\nP:\n\t- c";
+        let text = "- d @done @due(2026-10-05)\n- t @star @bookmark\nP:\n\t- c";
         let (nerd, column) = drawn_with(IconSet::Nerd, text);
         assert_eq!(
             nerd,
@@ -3355,7 +3353,7 @@ mod tests {
         );
         assert_eq!(
             view_header(SpecialView::Today, IconSet::Ascii, &THEME).to_string(),
-            "* Today"
+            "O Today"
         );
         let unsaved = |icons| {
             file_status(

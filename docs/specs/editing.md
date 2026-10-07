@@ -66,7 +66,7 @@ Typing `/` in edit mode opens a menu at the caret listing every command that app
 | Type | Project, Task, Note | Give the block that type (FR-BLK-08); "Note" is the menu's label for a text node |
 | | Make Section on a text block, or Remove Section on a section | Add or remove `@section` (D-52), as `S` and `s` do (§5) |
 | Status | Complete, or Uncomplete when the block is done | `toggle_done` (§5) |
-| | Toggle Today | `toggle_today` (§5) |
+| | Toggle Star | `toggle_star` (§5) |
 | | Bookmark, or Remove Bookmark when the block has one | `toggle_bookmark` (§5) |
 | Dates | Set Start Date, Set Due Date | `set_start` / `set_due`: the date prompt (§5) |
 | | Start Today, Start Tomorrow, Due Today, Due Tomorrow | `start_today`, `start_tomorrow`, `due_today`, `due_tomorrow` (§5) |
@@ -146,7 +146,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `set_start` / `set_due` (FR-TAG-03) | Prompt for a date, in a panel at the bottom of the screen ([ui.md §1](ui.md#1-layout), D-54), with live preview of the resolved date, or of why the input is not a date, in which case `Enter` does nothing; accepts `YYYY-MM-DD` and the natural forms in [search.md §4](search.md#4-dates) (`today`, `tomorrow`, `fri`, `next week`, `+3d`). The prompt opens with the block's current date typed and selected, so typing replaces it and `Enter` keeps it. Empty input removes the tag. Stored as `YYYY-MM-DD` (D-6). |
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
 | `start_earlier` / `start_later` / `due_earlier` / `due_later` (D-26) | Move `@start` or `@due` one day back or forward. A block without that date gets yesterday or tomorrow, as if the missing date were today. |
-| `toggle_today` (FR-TAG-04) | Add bare `@today` to the targets without it; if every target has it, remove it. |
+| `toggle_star` (FR-TAG-04, D-88) | Add bare `@star` to the targets without it; if every target has it, remove it. |
 | `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, each color with its number 1 to 6, opening with the block's color (or "none") highlighted; typing a number chooses that color at once, and other typing filters it by name (D-48). Removes every other color tag; the chosen one stays where it is or is added. The chosen color goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). |
 | `color_1` … `color_6` / `remove_color` (D-48) | Give the targets red, orange, yellow, green, blue or violet, or remove their color, without the picker, as one undo step. |
 | `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |

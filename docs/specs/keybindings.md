@@ -112,7 +112,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Remove the color (D-48) | `C` |
 | Cycle color (none, red, orange, yellow, green, blue, violet) | `cc` (was `c`, D-48) |
 | Pick a color | `mc` |
-| Toggle today | `mt` |
+| Toggle star (`@star`, D-88; was Toggle today, `mt`) | `*` |
 | Toggle bookmark | `mb` |
 | Convert block type | `my` |
 | Make the selected text blocks sections / plain text again (D-52) | `S` / `s` (were new section at the top / below) |

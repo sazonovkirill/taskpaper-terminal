@@ -56,7 +56,7 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
             format!("            │  {NOTE} Note            │"),
             "            │────────────────────│".to_owned(),
             format!("            │  {COMPLETE} Complete        │"),
-            format!("            │  {STAR} Toggle Today    │"),
+            format!("            │  {STAR} Toggle Star     │"),
             "            └────────────────────┘".to_owned(),
         ],
         "as tall as the room below the caret"
@@ -163,19 +163,19 @@ fn a_date_prompt_from_the_menu_returns_to_editing() {
 // D-52
 #[test]
 fn slash_make_section_makes_a_text_block_a_section_and_back() {
-    let mut app = Harness::with_text("Later @today\n- Next\n", 30, 8);
+    let mut app = Harness::with_text("Later @star\n- Next\n", 30, 8);
     app.settle();
     press(&mut app, KeyCode::Enter);
     app.type_keys("/make");
     press(&mut app, KeyCode::Enter);
     assert!(status_line(&mut app).starts_with(EDIT));
     press(&mut app, KeyCode::Esc);
-    assert_eq!(saved(&mut app), "Later @today @section\n- Next\n");
+    assert_eq!(saved(&mut app), "Later @star @section\n- Next\n");
     press(&mut app, KeyCode::Enter);
     app.type_keys("/remove");
     press(&mut app, KeyCode::Enter);
     press(&mut app, KeyCode::Esc);
-    assert_eq!(saved(&mut app), "Later @today\n- Next\n");
+    assert_eq!(saved(&mut app), "Later @star\n- Next\n");
     press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Enter);
     app.type_keys("/sec");
@@ -183,7 +183,7 @@ fn slash_make_section_makes_a_text_block_a_section_and_back() {
     press(&mut app, KeyCode::Esc);
     assert_eq!(
         saved(&mut app),
-        "Later @today\n- Next/sec\n",
+        "Later @star\n- Next/sec\n",
         "a task has no section entry"
     );
 }

@@ -202,7 +202,7 @@ fn a_start_date_is_named_relative_to_the_new_day_at_midnight() {
 
 #[test]
 fn without_a_date_midnight_wakes_nothing() {
-    let app = Harness::with_text("- a @today @start(x)\n", 40, 4);
+    let app = Harness::with_text("- a @star @start(x)\n", 40, 4);
     assert_eq!(app.tui.deadline(), None);
 }
 

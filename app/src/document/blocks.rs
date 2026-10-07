@@ -108,7 +108,7 @@ pub(super) struct Facts {
     done: bool,
     start: Option<Date>,
     due: Option<Date>,
-    today: bool,
+    starred: bool,
     bookmark: bool,
     color: Option<TagColor>,
     url: bool,
@@ -128,7 +128,7 @@ impl Facts {
             done: has("done"),
             start: date_tag(tags, "start"),
             due: date_tag(tags, "due"),
-            today: has("today"),
+            starred: has("star"),
             bookmark: has("bookmark"),
             color: color(tags),
             url: has("url"),
@@ -177,10 +177,10 @@ impl Block {
         self.facts.due
     }
 
-    /// Whether its line carries `@today`, with or without a value (FR-TAG-04).
+    /// Whether its line carries `@star`, with or without a value (FR-TAG-04, D-88).
     #[must_use]
-    pub fn today(&self) -> bool {
-        self.facts.today
+    pub fn starred(&self) -> bool {
+        self.facts.starred
     }
 
     /// Whether its line carries `@bookmark`, with or without a value (D-11).
@@ -287,8 +287,8 @@ pub struct HiddenData {
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and listed in the
 /// details as unsupported (D-3), as `@section` is on a task or project (D-52).
 const SUPPORTED: [&str; 13] = [
-    "start", "due", "today", "red", "orange", "yellow", "green", "blue", "violet", "section",
-    "url", "done", "bookmark",
+    "start", "due", "star", "red", "orange", "yellow", "green", "blue", "violet", "section", "url",
+    "done", "bookmark",
 ];
 
 /// The details of the block `id`, or `None` when it is no block of `document`.
@@ -589,30 +589,30 @@ mod tests {
         );
     }
 
-    /// Whether each top-level block of `text` has `@today` and `@bookmark`, and its color.
+    /// Whether each top-level block of `text` has `@star` and `@bookmark`, and its color.
     fn marks(text: &str) -> Vec<(bool, bool, Option<TagColor>)> {
         let document = parse(text);
         children(&document, document.root())
             .iter()
-            .map(|block| (block.today(), block.bookmark(), block.color()))
+            .map(|block| (block.starred(), block.bookmark(), block.color()))
             .collect()
     }
 
-    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11
+    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11, D-88: `@today` means nothing
     #[test]
-    fn today_bookmark_and_color_come_from_their_tags() {
+    fn star_bookmark_and_color_come_from_their_tags() {
         use TagColor::{Blue, Green, Orange, Red, Violet, Yellow};
         assert_eq!(
             marks(
-                "- a @today
+                "- a @star
 - b @bookmark(x)
 P: @blue @red
 - c @violet
 - d @orange @x
 - e @yellow
-- f @green @today @bookmark
-- g @Red @todays @redish
-- h"
+- f @green @star @bookmark
+- g @Red @stars @redish
+- h @today"
             ),
             [
                 (true, false, None),

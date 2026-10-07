@@ -256,6 +256,12 @@ impl Tui {
                 Duration::ZERO,
             );
         }
+        if let Some(on) = config.today_starred {
+            self.send(
+                Message::Configure(Configuration::TodayStarred(on)),
+                Duration::ZERO,
+            );
+        }
         for &(view, on) in &config.sidebar_views {
             self.send(
                 Message::Configure(Configuration::SidebarView(view, on)),

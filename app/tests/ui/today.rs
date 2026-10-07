@@ -6,13 +6,13 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::Modifier;
 
 use crate::support::{
-    DUE, Harness, OVERDUE, STAR, START, focused_rows, outline_line, outline_rows,
+    DUE, Harness, OVERDUE, STAR, START, SUN, focused_rows, outline_line, outline_rows,
 };
 
 /// Blocks for today, 5 October 2026, at several depths, among blocks that are not.
 const OUTLINE: &str = "\
 Home:
-\t- Water plants @today
+\t- Water plants @star
 \t- Paint the hall @due(2026-10-09)
 \tErrands:
 \t\t- Post office @start(2026-10-05)
@@ -49,7 +49,7 @@ fn row(text: &str, chips: &str) -> String {
 fn choosing_today_in_the_sidebar_lists_the_blocks_for_today_with_their_paths() {
     let mut app = today(OUTLINE);
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
     assert!(
         buffer[(4, 0)].modifier.contains(Modifier::BOLD),
         "the header is bold"
@@ -78,7 +78,7 @@ fn g_t_shows_the_today_view_and_back_returns() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     app.type_keys("gt");
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
     assert_eq!(shown(&mut app).len(), 3);
     assert_eq!(
         focused_rows(&mut app),
@@ -86,7 +86,7 @@ fn g_t_shows_the_today_view_and_back_returns() {
     );
     app.type_keys("H");
     let buffer = app.render().buffer().clone();
-    assert_ne!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_ne!(outline_line(&buffer, 0), format!("{SUN} Today"));
     assert_eq!(
         focused_rows(&mut app),
         [format!("  - Water plants {STAR}")],
@@ -105,12 +105,12 @@ fn go_to_command_lists_go_to_today_with_its_key_and_gives_it() {
         .collect();
     assert!(
         rows.iter()
-            .any(|row| row.contains(&format!("│ {STAR} Go to Today  gt "))),
+            .any(|row| row.contains(&format!("│ {SUN} Go to Today  gt "))),
         "{rows:#?}"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
+    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
 }
 
 // D-7, FR-DONE-01, FR-TAG-04, FR-TAG-06
@@ -138,7 +138,7 @@ fn block_commands_act_on_the_focused_entry_and_the_list_follows() {
     );
     app.type_keys("gc");
     assert_eq!(shown(&mut app), [format!("- Water plants {STAR}  Home")]);
-    app.type_keys("mt");
+    app.type_keys("*");
     assert_eq!(shown(&mut app), Vec::<String>::new());
     app.wait(Duration::from_secs(1));
     app.settle();
@@ -185,7 +185,7 @@ fn alt_l_and_gz_go_from_an_entry_to_it_in_the_outline_and_back_returns() {
         app.type_keys("H");
         assert_eq!(
             outline_line(app.render().buffer(), 0),
-            format!("{STAR} Today")
+            format!("{SUN} Today")
         );
         app.type_keys("L");
         assert_eq!(outline_line(app.render().buffer(), 0), "⌂ › Home › Errands");
@@ -255,12 +255,38 @@ fn the_order_of_the_entries_comes_back_on_the_next_launch() {
 // D-7, FR-TAG-04
 #[test]
 fn the_list_changes_at_local_midnight() {
-    let mut app = today("- a @today\n- b @due(2026-10-06)\n");
+    let mut app = today("- a @star\n- b @due(2026-10-06)\n");
     assert_eq!(shown(&mut app), [format!("- a {STAR}")]);
     let deadline = app.tui.deadline().expect("a redraw at midnight");
     app.wait(deadline);
     assert_eq!(
         shown(&mut app),
         [format!("- a {STAR}"), row("- b", &format!("{DUE} today"))]
+    );
+}
+
+// FR-TAG-04, FR-SET-03, D-88, ui.md §8
+#[test]
+fn turning_off_starred_items_in_today_leaves_only_dated_blocks_and_is_kept() {
+    let text = "- a @star\n- b @due(2026-10-05)\n";
+    let mut app = Harness::with_config(text, "", 80, 24);
+    app.type_keys("gt");
+    assert_eq!(
+        shown(&mut app),
+        [format!("- a {STAR}"), row("- b", &format!("{DUE} today"))]
+    );
+    app.type_keys("g,jjjjjj");
+    app.press(KeyCode::Char('l'), KeyModifiers::NONE);
+    app.settle();
+    let config = std::fs::read_to_string(app.config_file()).expect("the settings file");
+    assert_eq!(config, "today_starred = false\n");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(shown(&mut app), [row("- b", &format!("{DUE} today"))]);
+    let mut app = Harness::with_config(text, &config, 80, 24);
+    app.type_keys("gt");
+    assert_eq!(
+        shown(&mut app),
+        [row("- b", &format!("{DUE} today"))],
+        "off from the start"
     );
 }

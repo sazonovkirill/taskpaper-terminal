@@ -265,7 +265,7 @@ mod tests {
     // D-57, navigation §7
     #[test]
     fn moving_an_entry_reorders_the_list_and_leaves_the_document_as_it_is() {
-        let text = "P:\n\t- a @today\n\t- b @today\n- c @due(2026-10-01)\n- x\n";
+        let text = "P:\n\t- a @star\n\t- b @star\n- c @due(2026-10-01)\n- x\n";
         let mut state = today(text);
         let revision = state.document().revision();
         state.update(Message::FocusLast);
@@ -287,7 +287,7 @@ mod tests {
     // D-57, FR-OPS-01
     #[test]
     fn selected_entries_move_together() {
-        let mut state = today("- a @today\n- b @today\n- c @today\n- d @today\n");
+        let mut state = today("- a @star\n- b @star\n- c @star\n- d @star\n");
         state.update(Message::FocusNext);
         state.update(Message::Select(SelectionChange::ExtendDown));
         state.update(Message::MoveDown);
@@ -300,7 +300,7 @@ mod tests {
     // D-57, D-13, FR-DONE-02
     #[test]
     fn panes_share_the_order_and_an_entry_hidden_in_one_keeps_its_place() {
-        let mut state = today("- a @today\n- b @today @done\n- c @today\n- d\n");
+        let mut state = today("- a @star\n- b @star @done\n- c @star\n- d\n");
         state.update(Message::Pane(PaneChange::OpenLocation));
         state.update(Message::ToggleShowDone);
         assert_eq!(listed(&state), ["a", "c"]);
@@ -314,20 +314,20 @@ mod tests {
     // D-57
     #[test]
     fn new_entries_come_last_and_an_entry_that_returns_keeps_its_place() {
-        let mut state = today("- a @today\n- b @today\n- c @today\n- d\n");
+        let mut state = today("- a @star\n- b @star\n- c @star\n- d\n");
         state.update(Message::FocusLast);
         state.update(Message::MoveUp);
         assert_eq!(listed(&state), ["a", "c", "b"]);
         state.update(Message::FocusFirst);
-        state.update(Message::ToggleFlag(Flag::Today));
+        state.update(Message::ToggleFlag(Flag::Star));
         assert_eq!(listed(&state), ["c", "b"]);
         state.update(Message::GoTo(Location::Outline(None)));
         for _ in 0..3 {
             state.update(Message::FocusNext);
         }
-        state.update(Message::ToggleFlag(Flag::Today));
+        state.update(Message::ToggleFlag(Flag::Star));
         state.update(Message::FocusFirst);
-        state.update(Message::ToggleFlag(Flag::Today));
+        state.update(Message::ToggleFlag(Flag::Star));
         state.go_to(Location::View(SpecialView::Today));
         assert_eq!(listed(&state), ["a", "c", "b", "d"]);
     }

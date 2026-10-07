@@ -7,10 +7,10 @@ use jiff::civil::Date;
 use super::{Row, State, pane::Pane};
 use crate::document::Block;
 
-/// Whether the Today view lists `block` on `today`: it has `@today`, or a start or due date on or
-/// before `today` (FR-TAG-04).
-fn for_today(block: &Block, today: Date) -> bool {
-    block.today()
+/// Whether the Today view lists `block` on `today`: it has a start or due date on or before
+/// `today`, or, when `starred` says to list starred blocks, `@star` (FR-TAG-04, D-88).
+fn for_today(block: &Block, today: Date, starred: bool) -> bool {
+    starred && block.starred()
         || [block.start(), block.due()]
             .into_iter()
             .flatten()
@@ -21,9 +21,17 @@ impl State {
     /// The Today view's entries in `pane`, as [`State::matching_rows`] gives them, in the order
     /// the user gave them, else in document order (D-57).
     pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
-        let mut rows = self.matching_rows(pane, |block| for_today(block, self.today));
+        let mut rows = self.matching_rows(pane, |block| {
+            for_today(block, self.today, self.today_starred)
+        });
         self.today_order.arrange(&mut rows, |row| row.id);
         rows
+    }
+
+    /// Whether the Today view lists starred blocks besides dated ones (`today_starred`, D-88).
+    #[must_use]
+    pub fn today_starred(&self) -> bool {
+        self.today_starred
     }
 }
 
@@ -36,8 +44,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Effect, Location, Menu, Message, Mode, NewBlock, Paste, SelectionChange, SpecialView,
-            TextEdit,
+            Configuration, Effect, Location, Menu, Message, Mode, NewBlock, Paste, SelectionChange,
+            SpecialView, TextEdit,
         },
         document::{DateChange, DateTag, Flag, format},
     };
@@ -49,12 +57,12 @@ mod tests {
     /// later, a date that is not one, a special node and a done project.
     const OUTLINE: &str = "\
 Home:
-\t- Water plants @today
+\t- Water plants @star
 \t- Paint the **hall** @due(2026-10-09)
 \tErrands:
 \t\t- Post office @start(2026-10-05)
 \t\t- Bank @due(2026-10-01)
-\t\t\tC @hidden @today
+\t\t\tC @hidden @star
 \t- Call Ann @due(soon)
 Work: @done
 \t- Report @due(2026-10-02)
@@ -111,7 +119,7 @@ Work: @done
 
     // FR-TAG-04, D-7, FR-SPC-01
     #[test]
-    fn lists_blocks_with_today_or_dated_up_to_today_flat_with_their_paths() {
+    fn lists_starred_blocks_or_dated_up_to_today_flat_with_their_paths() {
         let state = today(OUTLINE);
         assert_eq!(
             listed(&state),
@@ -127,6 +135,19 @@ Work: @done
         assert_eq!(focused(&state), "Water plants");
     }
 
+    // FR-TAG-04, D-88
+    #[test]
+    fn with_the_setting_off_only_dated_blocks_are_listed_and_today_tags_never_are() {
+        let mut state = today("- a @star\n- b @star @due(2026-10-05)\n- c @today\n");
+        assert!(state.today_starred(), "on by default");
+        assert_eq!(listed(&state), ["a", "b"]);
+        state.update(Message::Configure(Configuration::TodayStarred(false)));
+        assert!(!state.today_starred());
+        assert_eq!(listed(&state), ["b"]);
+        state.update(Message::Configure(Configuration::TodayStarred(true)));
+        assert_eq!(listed(&state), ["a", "b"]);
+    }
+
     // D-7, D-40
     #[test]
     fn entries_carry_their_block_and_whether_a_block_above_is_done() {
@@ -136,8 +157,8 @@ Work: @done
         assert!(report.inside_done && !report.done);
         assert_eq!(report.due, Some(date(2026, 10, 2)));
         let water = rows.first().expect("an entry");
-        assert!(water.today && !water.inside_done);
-        let mut folded = today("- a @today\n\t- b\n");
+        assert!(water.starred && !water.inside_done);
+        let mut folded = today("- a @star\n\t- b\n");
         folded.folds.insert(folded.focus().expect("a focus"));
         assert_eq!(folded.rows()[0].hidden_tasks, None, "entries do not fold");
     }
@@ -145,7 +166,7 @@ Work: @done
     // FR-DONE-02, D-7
     #[test]
     fn hidden_completed_blocks_leave_the_list_with_everything_inside_them() {
-        let mut state = today("- a @today @done\n- b @today\nP: @done\n\t- c @today\n");
+        let mut state = today("- a @star @done\n- b @star\nP: @done\n\t- c @star\n");
         assert_eq!(listed(&state), ["a", "b", "P › c"]);
         state.update(Message::ToggleShowDone);
         assert_eq!(listed(&state), ["b"]);
@@ -193,8 +214,8 @@ Work: @done
         });
         assert_eq!(listed(&state).len(), 3, "the post office starts tomorrow");
         assert_eq!(focused(&state), "Bank", "the next entry");
-        state.update(Message::ToggleFlag(Flag::Today));
-        assert!(state.rows()[1].today);
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert!(state.rows()[1].starred);
         state.update(Message::SetColor(Some(crate::document::TagColor::Red)));
         assert_eq!(state.rows()[1].color, Some(crate::document::TagColor::Red));
         state.update(Message::FocusLast);
@@ -225,7 +246,7 @@ Work: @done
     // D-7, navigation §7
     #[test]
     fn intents_that_need_the_outlines_tree_do_nothing() {
-        let mut state = today("A:\n\t- a @today\n\t\t- child\n\t- b @today\n- c\n");
+        let mut state = today("A:\n\t- a @star\n\t\t- child\n\t- b @star\n- c\n");
         let before = format::serialize(state.document());
         for message in [
             Message::FocusParent,
@@ -246,7 +267,7 @@ Work: @done
             Message::Outdent,
             Message::Paste(Paste::Below),
             Message::Pasted {
-                text: "- x @today".to_owned(),
+                text: "- x @star".to_owned(),
                 at: Paste::Below,
             },
             Message::ZoomOut,
@@ -267,7 +288,7 @@ Work: @done
     // FR-OPS-06, D-7
     #[test]
     fn pasting_while_editing_an_entry_pastes_into_its_text() {
-        let mut state = today("- a @today\n");
+        let mut state = today("- a @star\n");
         state.update(Message::EditAtEnd);
         assert_eq!(
             state.update(Message::Paste(Paste::Below)),
@@ -284,9 +305,9 @@ Work: @done
     // FR-OPS-06, FR-OPS-01, D-7
     #[test]
     fn selection_delete_and_duplicate_work_on_entries() {
-        let mut state = today("- a @today\n- x\n- b @today\n- c @today\n");
+        let mut state = today("- a @star\n- x\n- b @star\n- c @star\n");
         state.update(Message::Select(SelectionChange::ExtendDown));
-        state.update(Message::ToggleFlag(Flag::Today));
+        state.update(Message::ToggleFlag(Flag::Star));
         assert_eq!(listed(&state), ["c"]);
         assert_eq!(focused(&state), "c");
         state.update(Message::Duplicate);
@@ -303,7 +324,7 @@ Work: @done
     // FR-OPS-05, D-7
     #[test]
     fn move_to_moves_an_entry_and_the_list_shows_its_new_path() {
-        let mut state = today("A:\n\t- a @today\nB:\n");
+        let mut state = today("A:\n\t- a @star\nB:\n");
         state.update(Message::OpenMoveTo);
         state.update(Message::Menu(
             Menu::MoveTo,
@@ -323,7 +344,7 @@ Work: @done
         assert_eq!(state.location(), Location::Outline(state.zoom()));
         assert_eq!(state.breadcrumbs(), ["Home", "Errands"]);
         assert_eq!(focused(&state), "Bank");
-        let mut top = today("- a @today\n- b\n");
+        let mut top = today("- a @star\n- b\n");
         top.update(Message::ZoomIn);
         assert_eq!(
             top.location(),

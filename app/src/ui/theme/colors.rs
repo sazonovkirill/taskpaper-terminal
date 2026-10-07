@@ -63,7 +63,7 @@ impl Theme {
         if focused { bright } else { plain }
     }
 
-    /// Warnings, such as a failed backup, and the `@today` star: the yellow tag's color.
+    /// Warnings, such as a failed backup, and the `@star` star: the yellow tag's color.
     #[must_use]
     pub fn warning(&self) -> Color {
         self.tag(TagColor::Yellow)

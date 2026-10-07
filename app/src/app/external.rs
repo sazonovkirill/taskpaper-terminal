@@ -579,11 +579,11 @@ mod tests {
     // F-FILE-06, D-7
     #[test]
     fn a_reload_keeps_the_today_view_and_its_focus_and_lists_the_new_blocks() {
-        let mut state = opened("- a @today\n- b @today\n");
+        let mut state = opened("- a @star\n- b @star\n");
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
         state.go_to(crate::app::Location::View(SpecialView::Today));
-        state.update(found("- new @today\n- a @today\n- b @today @x\n"));
+        state.update(found("- new @star\n- a @star\n- b @star @x\n"));
         assert_eq!(
             state.location(),
             crate::app::Location::View(SpecialView::Today)
@@ -601,12 +601,12 @@ mod tests {
     // F-FILE-06, D-57
     #[test]
     fn a_reload_keeps_the_today_views_order() {
-        let mut state = opened("- a @today\n- b @today\n");
+        let mut state = opened("- a @star\n- b @star\n");
         state.go_to(crate::app::Location::View(SpecialView::Today));
         state.update(Message::FocusLast);
         state.update(Message::MoveUp);
         assert_eq!(texts(&state), ["b", "a"]);
-        state.update(found("- new @today\n- a @today\n- b @today @x\n"));
+        state.update(found("- new @star\n- a @star\n- b @star @x\n"));
         assert_eq!(texts(&state), ["b", "a", "new"]);
     }
 

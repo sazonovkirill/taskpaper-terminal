@@ -307,8 +307,7 @@ mod tests {
     #[test]
     fn a_new_launch_finds_blocks_that_moved() {
         let state = laid_out();
-        let moved =
-            "Intro\nLater:\nHome:\n\t- Plants\nWork:\n\t- Slides @done\n\t- Report @today\n";
+        let moved = "Intro\nLater:\nHome:\n\t- Plants\nWork:\n\t- Slides @done\n\t- Report @star\n";
         let restored = reopened(&state, moved);
         assert_eq!(
             panes(&restored),
@@ -352,7 +351,7 @@ mod tests {
     // FR-UI-04, FR-TAG-04, file-io.md §5: the date arrives after the layout.
     #[test]
     fn a_today_entry_stays_focused_until_the_date_shows_it() {
-        let text = "Errands:\n\t- Post office @today\n\t- Dentist @due(2026-10-05)\n";
+        let text = "Errands:\n\t- Post office @star\n\t- Dentist @due(2026-10-05)\n";
         let mut state = open(text);
         state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Choose));
@@ -399,7 +398,7 @@ mod tests {
     // FR-UI-04, D-57, file-io.md §5
     #[test]
     fn a_new_launch_restores_the_today_views_order_as_far_as_it_matches() {
-        let text = "Errands:\n\t- Post office @today\n\t- Bank @today\n- Dentist @today\n- Plan\n";
+        let text = "Errands:\n\t- Post office @star\n\t- Bank @star\n- Dentist @star\n- Plan\n";
         let mut state = open(text);
         state.go_to(Location::View(SpecialView::Today));
         state.update(Message::FocusLast);
@@ -409,7 +408,7 @@ mod tests {
         let mut restored = reopened(&state, text);
         restored.go_to(Location::View(SpecialView::Today));
         assert_eq!(rows(&restored, 0), ["Dentist", "Post office", "Bank"]);
-        let changed = "- Plan @today\n- Dentist @today\nErrands:\n\t- Bank @today\n";
+        let changed = "- Plan @star\n- Dentist @star\nErrands:\n\t- Bank @star\n";
         let mut restored = reopened(&state, changed);
         restored.go_to(Location::View(SpecialView::Today));
         assert_eq!(

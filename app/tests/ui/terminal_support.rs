@@ -11,7 +11,7 @@ const NONE: KeyModifiers = KeyModifiers::NONE;
 
 /// An outline of CJK, Hangul, emoji (one of them a ZWJ sequence) and combining marks.
 const WIDE: &str = "日本語の仕事:
-\t- 買い物 👨‍👩‍👧 family @today
+\t- 買い物 👨‍👩‍👧 family @star
 \t- Cafe\u{301} e\u{301}clair @start(2026-10-06)
 \tメモ 🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉 終わり
 \t- 한국어 텍스트가 아주 길어서 줄바꿈이 필요합니다 @due(2026-10-07)

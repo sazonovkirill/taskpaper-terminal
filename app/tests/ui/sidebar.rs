@@ -7,7 +7,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Modifier};
 use taskpaper_terminal::ui::Input;
 
-use crate::support::{BOOKMARK, Harness, NAVIGATE, STAR, line};
+use crate::support::{BOOKMARK, Harness, NAVIGATE, SUN, line};
 
 const OUTLINE: &str = "\
 Work:
@@ -78,7 +78,7 @@ fn ctrl_g(app: &mut Harness) {
 /// project's count of open tasks at the right (D-73).
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
-        (format!("{STAR} Today"), None),
+        (format!("{SUN} Today"), None),
         (String::new(), None),
         ("Bookmarks".to_owned(), None),
         ("Launch plan".to_owned(), None),
@@ -266,7 +266,7 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
     ctrl_g(&mut app);
     press(&mut app, KeyCode::Enter);
-    assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
+    assert_eq!(pane(&mut app)[0], format!("  {SUN} Today"));
     ctrl_g(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(0))), "on its entry");
 }
@@ -323,7 +323,7 @@ fn a_narrow_screen_draws_the_window_as_wide_as_the_pane() {
     assert_eq!(columns(&buffer, 3, 0, 30).chars().last(), Some('┐'));
     assert_eq!(
         columns(&buffer, 4, 0, 30),
-        format!("│▌ {STAR} Today{:19}│", "")
+        format!("│▌ {SUN} Today{:19}│", "")
     );
 }
 
@@ -340,7 +340,7 @@ fn the_window_scrolls_to_keep_its_focused_entry_visible() {
     assert_eq!(
         window(&mut app).expect("open"),
         [
-            format!("▌ {STAR} Today"),
+            format!("▌ {SUN} Today"),
             String::new(),
             "  Projects".to_owned(),
             "  P1".to_owned(),
@@ -386,7 +386,7 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
         window(&mut app).expect("open"),
         [
             format!("{:44}1", "▌ ⊔ INBOX"),
-            format!("  {STAR} Today"),
+            format!("  {SUN} Today"),
             String::new(),
             "  Projects".to_owned(),
             "  Work".to_owned(),
@@ -397,7 +397,7 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
     assert_eq!(
         window(&mut app).expect("open"),
         [
-            format!("▌ {STAR} Today"),
+            format!("▌ {SUN} Today"),
             String::new(),
             "  Projects".to_owned(),
             "  Work".to_owned(),
@@ -422,14 +422,14 @@ fn the_today_entry_leaves_the_window_with_its_setting_off_and_gt_still_opens_tod
     );
     press(&mut app, KeyCode::Esc);
     app.type_keys("gt");
-    assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
+    assert_eq!(pane(&mut app)[0], format!("  {SUN} Today"));
     app.type_keys("g,jjjjj ");
     app.settle();
     press(&mut app, KeyCode::Esc);
     ctrl_g(&mut app);
     assert_eq!(
         window(&mut app).expect("open")[1],
-        format!("▌ {STAR} Today"),
+        format!("▌ {SUN} Today"),
         "back on, focused as where the pane is"
     );
     assert_eq!(

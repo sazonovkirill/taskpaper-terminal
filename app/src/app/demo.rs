@@ -201,7 +201,7 @@ mod tests {
             rows.iter().any(|row| row.overdue(TODAY)),
             "demo lacks an overdue task"
         );
-        assert!(rows.iter().any(|row| row.today), "demo lacks @today");
+        assert!(rows.iter().any(|row| row.starred), "demo lacks @star");
         let colors = rows.iter().filter_map(|row| row.color);
         assert!(colors.count() >= 2, "demo lacks color tags");
         for (syntax, what) in [("**", "bold"), ("`", "code"), ("https://", "a bare URL")] {

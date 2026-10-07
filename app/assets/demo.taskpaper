@@ -6,7 +6,7 @@ Trip to Lisbon: @travel @bookmark
 	Packing @section
 		- Passport @done
 		- Rain jacket @due({today+20})
-		- Phone charger @today
+		- Phone charger @star
 Website release 2.0:
 	- Write the release notes @done({today-1})
 	- Fix the broken contact form @bug @due({today-2}) @red
@@ -16,7 +16,7 @@ Website release 2.0:
 	Launch checklist @section
 		- Back up the database
 		- Deploy to production @start({today+1}) @due({today+3})
-		- Announce it on the blog @today @blue
+		- Announce it on the blog @star @blue
 	---
 	Ship once every checklist item is done.
 	Run `make deploy` only when **all** tests pass; status at https://status.example.com

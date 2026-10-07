@@ -67,7 +67,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 |---|---|
 | `ms` / `md` | **s**tart / **d**ue date, typed |
 | `mc` | **c**olor picker |
-| `mt` / `mb` | **t**oday flag / **b**ookmark |
+| `*` / `mb` | star (`@star`) / **b**ookmark |
 | `my` | t**y**pe (`t` was taken) |
 | `mi` | **i**nfo: all tags |
 

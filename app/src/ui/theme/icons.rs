@@ -13,8 +13,11 @@ pub enum Icon {
     Due,
     /// An overdue due date chip.
     Overdue,
-    /// A block with `@today`, after its text, the command menu's Toggle Today and the sidebar's
-    /// Today entry.
+    /// A block with `@star`, after its text, the command menu's Toggle Star and the settings
+    /// window's setting that lists starred blocks in Today (D-88).
+    Star,
+    /// The Today view, in its header, the sidebar's entry, Go to Today and the settings window's
+    /// setting that lists it in the sidebar (D-88).
     Today,
     /// A block's color tag, in its color after its text, when color tags are shown as icons, and
     /// the settings window's color tags setting.
@@ -161,7 +164,9 @@ impl Icon {
             // nf-md-calendar_alert
             Self::Overdue => ("\u{f0a31}", "!", "!"),
             // nf-md-star
-            Self::Today => ("\u{f04ce}", "★", "*"),
+            Self::Star => ("\u{f04ce}", "★", "*"),
+            // nf-md-weather_sunny
+            Self::Today => ("\u{f0599}", "☼", "O"),
             // nf-md-flag; the Unicode flag is the bookmark's fallback.
             Self::Flag => ("\u{f023b}", "●", "o"),
             // nf-md-inbox
@@ -230,10 +235,11 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 32] = [
+    const ICONS: [Icon; 33] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
+        Icon::Star,
         Icon::Today,
         Icon::Flag,
         Icon::Inbox,
@@ -342,7 +348,8 @@ mod tests {
         assert_eq!(unicode(Icon::Collapsed), "▸");
         assert_eq!(unicode(Icon::TaskMarker), "-");
         assert_eq!(unicode(Icon::DoneTask), "✔");
-        assert_eq!(unicode(Icon::Today), "★");
+        assert_eq!(unicode(Icon::Star), "★");
+        assert_eq!(unicode(Icon::Today), "☼");
         assert_eq!(unicode(Icon::Bookmark), "⚑");
         assert_eq!(unicode(Icon::Inbox), "⊔");
     }

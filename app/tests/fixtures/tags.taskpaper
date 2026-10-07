@@ -2,6 +2,6 @@ Errands: @home @priority(1)
 	- Call @alice about the lease
 	- Post the letter @done(2026-10-01)
 	- Buy stamps @done
-	- Return books @today @done(someday)
+	- Return books @star @done(someday)
 	Paid: @done
 	mail me@example.com about Proj:@x

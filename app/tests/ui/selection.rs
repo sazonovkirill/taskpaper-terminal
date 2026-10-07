@@ -153,13 +153,13 @@ fn structure_keys_move_and_delete_the_whole_selection() {
 fn metadata_keys_mark_every_selected_block() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
     app.type_keys("jJcc");
-    app.type_keys("mt");
+    app.type_keys("*");
     app.type_keys("mb");
     assert_eq!(
         saved(&mut app),
         ERRANDS
-            .replace("\t- Post office", "\t- Post office @red @today @bookmark")
-            .replace("\t- Bank", "\t- Bank @red @today @bookmark")
+            .replace("\t- Post office", "\t- Post office @red @star @bookmark")
+            .replace("\t- Bank", "\t- Bank @red @star @bookmark")
     );
 }
 

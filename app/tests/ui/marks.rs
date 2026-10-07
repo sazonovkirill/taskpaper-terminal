@@ -1,4 +1,4 @@
-//! Step 3.4: `@today` with its marker chip, color tags set with `c1` to `c6`, `cc` and the `mc`
+//! Step 3.4: `@star` with its marker chip, color tags set with `c1` to `c6`, `cc` and the `mc`
 //! picker and gone with `C` (D-48), shown as a flag or a tinted row (D-74), and bookmarks with
 //! `mb`.
 
@@ -153,19 +153,19 @@ fn typing_in_the_picker_filters_it_and_esc_closes_it_unchanged() {
     assert_eq!(saved(&mut app), "- Milk\n");
 }
 
-// FR-TAG-04, D-47, ui.md §2
+// FR-TAG-04, D-47, D-88, ui.md §2
 #[test]
-fn m_t_marks_the_focused_block_for_today_with_a_star_after_its_text() {
+fn star_key_stars_the_focused_block_with_a_star_after_its_text() {
     let mut app = Harness::with_text("- Milk @due(2026-10-09)\n", 40, 4);
-    app.type_keys("mt");
+    app.type_keys("*");
     assert_eq!(
         outline_rows(&mut app)[0],
         format!("- Milk {STAR}{:>30}", format!("{DUE} Fri"))
     );
     let buffer = app.render().buffer().clone();
     assert_eq!(buffer[(9, 2)].fg, Color::Yellow);
-    assert_eq!(saved(&mut app), "- Milk @due(2026-10-09) @today\n");
-    app.type_keys("mt");
+    assert_eq!(saved(&mut app), "- Milk @due(2026-10-09) @star\n");
+    app.type_keys("*");
     assert_eq!(
         outline_rows(&mut app)[0],
         format!("{:<33}{DUE} Fri", "- Milk")

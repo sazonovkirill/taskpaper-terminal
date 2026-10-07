@@ -52,7 +52,7 @@ mod tests {
     // FR-OPS-09
     #[test]
     fn counts_the_blocks_and_words_under_the_focused_block() {
-        let text = "Trip: @today\n\t- Book **the** hotel @due(2026-10-09)\n\t\tNear the station\n\t---\n\t--- Day two ---\n\t- Pack @done\nOther\n";
+        let text = "Trip: @star\n\t- Book **the** hotel @due(2026-10-09)\n\t\tNear the station\n\t---\n\t--- Day two ---\n\t- Pack @done\nOther\n";
         let mut state = State::new(format::parse(text), None);
         assert_eq!(counted(&mut state), count(5, 9), "done ones count too");
         state.update(Message::FocusNext);
@@ -76,7 +76,7 @@ mod tests {
     // FR-OPS-09, navigation.md §7
     #[test]
     fn counts_under_the_focused_entry_of_the_today_view_and_nothing_when_it_is_empty() {
-        let mut state = State::new(format::parse("A\n\t- b @today\n\t\tc d\nE\n"), None);
+        let mut state = State::new(format::parse("A\n\t- b @star\n\t\tc d\nE\n"), None);
         state.go_to(Location::View(SpecialView::Today));
         assert_eq!(counted(&mut state), count(1, 2));
         let mut none = State::new(format::parse("A\n\tb\n"), None);

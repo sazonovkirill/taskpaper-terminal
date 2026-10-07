@@ -115,10 +115,13 @@ pub const START: &str = "↦";
 pub const DUE: &str = "⇥";
 pub const OVERDUE: &str = "!";
 
-/// The icons after the text of a block with `@today` and of a bookmarked one (D-47), as drawn
+/// The icons after the text of a block with `@star` and of a bookmarked one (D-47), as drawn
 /// with icons off.
 pub const STAR: &str = "★";
 pub const BOOKMARK: &str = "⚑";
+
+/// The Today view's sun (D-88), as drawn with icons off.
+pub const SUN: &str = "☼";
 
 /// The flag after the text of a block with a color tag (D-74), as drawn with icons off.
 pub const FLAG: &str = "●";
