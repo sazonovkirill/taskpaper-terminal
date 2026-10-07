@@ -935,10 +935,12 @@ impl Tui {
             })
             .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
         if let Some((title, view)) = finder {
-            let icon = |id: &ItemId| widgets::block_icon(self.state.document(), *id);
+            let document = self.state.document();
+            let icon = |id: &ItemId| widgets::block_icon(document, *id);
+            let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
             draw_finder(
                 frame,
-                FinderPopup::new(title, &view, icons, &icon, theme),
+                FinderPopup::new(title, &view, icons, &icon, theme).text_style(&text),
                 area,
             );
         }

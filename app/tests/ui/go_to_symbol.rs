@@ -1,13 +1,14 @@
 //! Step 4.2: `Ctrl+P`, `gs` and `/` open Go to Symbol, a fuzzy finder over every block,
 //! bookmarks first, then projects and sections; choosing a block zooms to its parent and focuses
-//! it. `gP` opens it over the projects alone, as Go to Project (D-65).
+//! it. `gP` opens it over the projects alone, as Go to Project (D-65). Tasks show their outline
+//! markers and bookmarked blocks' text is in the primary color (D-70).
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use ratatui::style::Modifier;
+use ratatui::style::{Color, Modifier};
 
 use crate::support::{Harness, focused_rows, line};
 
-const TEXT: &str = "Home:\n\t- Paint the hall\n\tNotes @bookmark\nWork:\n\t- Write report\n\tLater @section\n\t\t- Call Ann\n";
+const TEXT: &str = "Home:\n\t- Paint the hall\n\tNotes @bookmark\nWork:\n\t- Write report\n\tLater @section\n\t\t- Call Ann @done\n";
 
 /// Every screen row, without trailing blanks.
 fn screen(app: &mut Harness) -> Vec<String> {
@@ -21,7 +22,7 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-// FR-NAV-05, navigation.md §8, ui.md §1
+// FR-NAV-05, navigation.md §8, ui.md §1, D-70
 #[test]
 fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first() {
     let mut app = Harness::with_text(TEXT, 60, 16);
@@ -35,9 +36,9 @@ fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first(
             "│ ▸ Home                                                   │",
             "│ ▸ Work                                                   │",
             "│ § Later  Work                                            │",
-            "│ ☐ Paint the hall  Home                                   │",
-            "│ ☐ Write report  Work                                     │",
-            "│ ☐ Call Ann  Work › Later                                 │",
+            "│ - Paint the hall  Home                                   │",
+            "│ - Write report  Work                                     │",
+            "│ ✔ Call Ann  Work › Later                                 │",
             "└──────────────────────────────────────────────────────────┘",
         ]
     );
@@ -50,6 +51,12 @@ fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first(
         buffer[(11, 6)].modifier.contains(Modifier::DIM),
         "its path is dim"
     );
+    assert_eq!(
+        buffer[(4, 6)].fg,
+        Color::LightBlue,
+        "a bookmark's text is in the primary color"
+    );
+    assert_eq!(buffer[(4, 7)].fg, Color::Reset, "other text is not");
     app.terminal.backend_mut().assert_cursor_position((3, 5));
 }
 
@@ -64,7 +71,7 @@ fn typing_filters_and_enter_zooms_to_the_parent_and_focuses_the_block() {
         [
             "┌Go to Symbol──────────────────────────────────────────────┐",
             "│› rep                                                     │",
-            "│ ☐ Write report  Work                                     │",
+            "│ - Write report  Work                                     │",
         ]
     );
     app.terminal.backend_mut().assert_cursor_position((6, 8));
@@ -142,8 +149,8 @@ fn a_long_list_scrolls_with_the_highlight_in_a_box_at_most_80_by_20() {
         press(&mut app, KeyCode::Down);
     }
     let rows = screen(&mut app);
-    assert!(rows[top + 2].contains("│ ☐ Task 7 "), "{rows:#?}");
-    assert!(rows[top + 18].contains("│ ☐ Task 23 "), "{rows:#?}");
+    assert!(rows[top + 2].contains("│ - Task 7 "), "{rows:#?}");
+    assert!(rows[top + 18].contains("│ - Task 23 "), "{rows:#?}");
 }
 
 /// Projects at several depths among other blocks.
@@ -169,6 +176,39 @@ fn g_shift_p_lists_only_the_projects_with_their_paths() {
         ]
     );
     app.terminal.backend_mut().assert_cursor_position((3, 6));
+}
+
+// D-65, D-70, navigation.md §8
+#[test]
+fn bookmarked_projects_come_first_in_the_primary_color_also_while_filtering() {
+    let text = "Garden:\nBig Garage: @bookmark\nCar: @bookmark\n";
+    let mut app = Harness::with_text(text, 60, 16);
+    app.type_keys("gP");
+    let rows = screen(&mut app);
+    assert_eq!(
+        rows[7..10],
+        [
+            "│›                                                         │",
+            "│ ▸ Big Garage                                             │",
+            "│ ▸ Car                                                    │",
+        ]
+    );
+    assert_eq!(
+        rows[10],
+        "│ ▸ Garden                                                 │"
+    );
+    let buffer = app.render().buffer().clone();
+    assert_eq!(buffer[(4, 8)].fg, Color::LightBlue);
+    assert_eq!(buffer[(4, 10)].fg, Color::Reset);
+    app.type_keys("gar");
+    assert_eq!(
+        screen(&mut app)[8..10],
+        [
+            "│ ▸ Big Garage                                             │",
+            "│ ▸ Garden                                                 │",
+        ],
+        "a bookmark ranks above a better match"
+    );
 }
 
 // D-65, navigation.md §8

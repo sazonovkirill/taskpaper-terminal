@@ -733,16 +733,29 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
 }
 
 /// The icon of block `id` of `document` in the finders: its type's, as the type picker shows it,
-/// or for the document root, which is no block, the home icon (D-32).
+/// but a task's marker, done or not, as the outline draws it (D-59, D-70), or for the document
+/// root, which is no block, the home icon (D-32).
 #[must_use]
 pub fn block_icon(document: &Document, id: ItemId) -> (Icon, Style) {
     let icon = blocks::block(document, id).map_or(Icon::Home, |block| match block.kind() {
         BlockKind::Project => Icon::Project,
-        BlockKind::Task => Icon::Task,
+        BlockKind::Task if block.done() => Icon::DoneTask,
+        BlockKind::Task => Icon::TaskMarker,
         BlockKind::Text if block.section() => Icon::Section,
         BlockKind::Text => Icon::Note,
     });
     (icon, Style::new())
+}
+
+/// The style of block `id`'s text in the finders in `theme`: a bookmarked block's in the primary
+/// color, as the sidebar marks bookmarks (D-70), any other's plain.
+#[must_use]
+pub fn block_text_style(document: &Document, id: ItemId, theme: &Theme) -> Style {
+    if blocks::block(document, id).is_some_and(|block| block.bookmark()) {
+        bookmark_style(theme)
+    } else {
+        Style::new()
+    }
 }
 
 /// A menu's entry lines: each name padded by a space and in its style, the one at `selected`
@@ -1265,7 +1278,8 @@ fn today_style(theme: &Theme) -> Style {
     Style::new().fg(theme.warning())
 }
 
-/// The bookmark icon (D-47), in the primary color.
+/// The bookmark icon (D-47) and a bookmarked block's text in the finders (D-70), in the primary
+/// color.
 fn bookmark_style(theme: &Theme) -> Style {
     Style::new().fg(theme.primary)
 }
@@ -3183,10 +3197,10 @@ mod tests {
         assert_eq!(unsaved(IconSet::Ascii), " *");
     }
 
-    // FR-NAV-05, FR-OPS-05, ui.md §7
+    // FR-NAV-05, FR-OPS-05, ui.md §7, D-59, D-70
     #[test]
-    fn a_block_in_the_finders_shows_its_types_icon_and_the_root_the_home_icon() {
-        let document = format::parse("P:\n\t- t\n\tn\n\tS @section");
+    fn a_block_in_the_finders_shows_its_types_icon_a_task_its_marker_and_the_root_the_home_icon() {
+        let document = format::parse("P:\n\t- t\n\tn\n\tS @section\n\t- d @done");
         let ids: Vec<ItemId> = blocks::each_child(&document, document.root())
             .flat_map(|project| {
                 std::iter::once(project.id())
@@ -3202,10 +3216,25 @@ mod tests {
             [
                 Icon::Home,
                 Icon::Project,
-                Icon::Task,
+                Icon::TaskMarker,
                 Icon::Note,
-                Icon::Section
+                Icon::Section,
+                Icon::DoneTask
             ]
+        );
+    }
+
+    // D-70
+    #[test]
+    fn a_bookmarked_blocks_text_in_the_finders_is_in_the_primary_color() {
+        let document = format::parse("A: @bookmark\nB:");
+        let styles: Vec<Style> = blocks::each_child(&document, document.root())
+            .map(|block| block_text_style(&document, block.id(), &THEME))
+            .collect();
+        assert_eq!(styles, [Style::new().fg(THEME.primary), Style::new()]);
+        assert_eq!(
+            block_text_style(&document, document.root(), &THEME),
+            Style::new()
         );
     }
 }

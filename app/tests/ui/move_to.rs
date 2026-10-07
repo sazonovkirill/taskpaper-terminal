@@ -41,7 +41,7 @@ fn g_m_lists_every_block_but_the_focused_one_and_what_it_holds() {
             "│ ▸ Home                                                   │",
             "│ ▸ Work                                                   │",
             "│ § Later  Work                                            │",
-            "│ ☐ Paint the hall  Home                                   │",
+            "│ - Paint the hall  Home                                   │",
             "└──────────────────────────────────────────────────────────┘",
         ]
     );

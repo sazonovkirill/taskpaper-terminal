@@ -72,6 +72,6 @@ A built-in list of every block that has `@today`, or `@due` or `@start` on or be
 
 ## 8. Go to Symbol and Go to Command (FR-NAV-05, FR-NAV-06)
 
-- **Go to Symbol**: a fuzzy picker (`nucleo-matcher`) over every block's display text, each shown with its breadcrumb path. Bookmarks rank first, then projects and sections, then the rest. Choosing a block zooms the focused pane to its parent and focuses it; `Alt+Enter` opens it in a new pane.
-- **Go to Project** (D-65): Go to Symbol over the project blocks alone, each with its breadcrumb path, bookmarked projects first, titled "Go to Project". Choosing one and `Alt+Enter` work as in Go to Symbol.
+- **Go to Symbol**: a fuzzy picker (`nucleo-matcher`) over every block's display text, each shown with its breadcrumb path. Bookmarks rank first, in document order as the sidebar lists them, then projects and sections, then the rest, with an empty query and while filtering; within each group, better matches come first. Tasks show their outline markers and a bookmarked block's text is in the primary color (D-70). Choosing a block zooms the focused pane to its parent and focuses it; `Alt+Enter` opens it in a new pane.
+- **Go to Project** (D-65): Go to Symbol over the project blocks alone, each with its breadcrumb path, bookmarked projects first, their text in the primary color (D-70), titled "Go to Project". Choosing one and `Alt+Enter` work as in Go to Symbol.
 - **Go to Command**: a fuzzy picker over every command name with its current binding; `Enter` runs it. The theme picker opened from here previews themes live (FR-UI-06).

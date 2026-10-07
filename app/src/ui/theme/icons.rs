@@ -21,7 +21,7 @@ pub enum Icon {
     Bookmark,
     /// The command menu's entry that makes a block a project, and projects in the finders.
     Project,
-    /// The command menu's entry that makes a block a task, and tasks in the finders.
+    /// The command menu's entry that makes a block a task.
     Task,
     /// The command menu's entries that make a block plain text, and text in the finders.
     Note,
@@ -48,9 +48,9 @@ pub enum Icon {
     /// A sidebar project whose child projects are hidden, and the count of a collapsed block's
     /// hidden children.
     Collapsed,
-    /// The marker of a task that is not done.
+    /// The marker of a task that is not done, in the outline and the finders (D-70).
     TaskMarker,
-    /// The marker of a done task (D-36).
+    /// The marker of a done task (D-36), in the outline and the finders (D-70).
     DoneTask,
     /// The status line's navigate mode.
     Navigate,

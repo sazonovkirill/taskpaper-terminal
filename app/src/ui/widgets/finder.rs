@@ -23,13 +23,15 @@ const PROMPT: &str = "› ";
 
 /// A finder titled with what it finds, such as Go to Symbol, framed in the accent color like the
 /// other menus of commands: the query with the caret after it,
-/// then each matching entry's icon, its text and, dimmed after it, its detail, the highlighted
-/// one reversed and kept in view, or a dimmed line saying nothing matches.
+/// then each matching entry's icon, its text, in the style its value gives if any, and, dimmed
+/// after it, its detail, the highlighted one reversed and kept in view, or a dimmed line saying
+/// nothing matches.
 pub struct FinderPopup<'a, T> {
     title: &'a str,
     view: &'a FinderView<'a, T>,
     icons: IconSet,
     icon: &'a dyn Fn(&T) -> (Icon, Style),
+    text_style: Option<&'a dyn Fn(&T) -> Style>,
     theme: &'a Theme,
 }
 
@@ -58,8 +60,16 @@ impl<'a, T> FinderPopup<'a, T> {
             view,
             icons,
             icon,
+            text_style: None,
             theme,
         }
+    }
+
+    /// The finder with each entry's text in the style `text_style` gives its value.
+    #[must_use]
+    pub fn text_style(mut self, text_style: &'a dyn Fn(&T) -> Style) -> Self {
+        self.text_style = Some(text_style);
+        self
     }
 
     /// Where the overlay goes in `area`: centered, as wide as it can be up to 80 columns and as
@@ -118,10 +128,14 @@ impl<T> Widget for FinderPopup<'_, T> {
         let entries = self.view.entries.iter().enumerate().skip(offset);
         for ((index, entry), row) in entries.zip(rows) {
             let (icon, style) = (self.icon)(&entry.value);
+            let text_style = self
+                .text_style
+                .map_or_else(Style::new, |text_style| text_style(&entry.value));
             let mut line = Line::from(vec![
                 Span::raw(" "),
                 Span::styled(icon.glyph(self.icons), style),
-                Span::raw(format!(" {}", entry.text)),
+                Span::raw(" "),
+                Span::styled(entry.text.as_str(), text_style),
             ]);
             if !entry.detail.is_empty() {
                 line.push_span(Span::styled(
@@ -141,7 +155,7 @@ impl<T> Widget for FinderPopup<'_, T> {
 #[cfg(test)]
 mod tests {
     use super::super::tests::THEME;
-    use ratatui::style::Color;
+    use ratatui::style::{Color, Modifier};
 
     use super::*;
     use crate::app::Candidate;
@@ -231,6 +245,27 @@ mod tests {
         expected.set_style(Rect::new(2, 3, 1, 1), Style::new().fg(Color::Indexed(2)));
         expected.set_style(Rect::new(7, 3, 6, 1), Style::new().dim());
         assert_eq!(buf, expected);
+    }
+
+    #[test]
+    fn draws_each_entrys_text_in_the_style_its_value_gives() {
+        let (one, two) = (candidate("One"), candidate("Two"));
+        let two = Candidate { value: 2, ..two };
+        let view = FinderView {
+            query: "",
+            entries: vec![&one, &two],
+            selected: 1,
+        };
+        let text = |value: &u8| Style::new().fg(Color::Indexed(value + 100));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 10, 5));
+        FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME)
+            .text_style(&text)
+            .render(buf.area, &mut buf);
+        assert_eq!(buf[(4, 2)].fg, Color::Indexed(100));
+        assert_eq!(buf[(6, 2)].fg, Color::Indexed(100));
+        assert_eq!(buf[(3, 2)].fg, Color::Reset, "not the space before it");
+        assert_eq!(buf[(4, 3)].fg, Color::Indexed(102));
+        assert!(buf[(4, 3)].modifier.contains(Modifier::REVERSED));
     }
 
     #[test]
