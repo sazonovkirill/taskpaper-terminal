@@ -77,7 +77,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 7. Modifier keys
 
-- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+B` sidebar and `Ctrl+P` go to symbol (VS Code), `Ctrl+K` command palette, `Ctrl+O` show completed (**O**ld tasks), `Ctrl+↑/↓` jump between siblings.
+- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+B` sidebar and `Ctrl+P` go to symbol (VS Code), `Ctrl+K` command palette, `Ctrl+T` choose **t**heme, `Ctrl+O` show completed (**O**ld tasks), `Ctrl+↑/↓` jump between siblings.
 - **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+h/l` zoom out/in, `Alt+Shift+h/l` narrow/widen the pane, `Alt+Shift+←/→` back/forward, `Alt+z` wrap (as in VS Code), `Alt+0…9` sidebar and panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
 
 ## 8. Panes: `Ctrl+W` then a vim letter

@@ -140,7 +140,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Follow link / copy link / show backlinks (Later, FR-OPS-10, [links.md](links.md)) | `gd` / `gy` / `gb` |
 | Count blocks and words | command palette |
 | Save As (FR-DOC-06) | command palette |
-| Choose Theme (FR-UI-06) | command palette |
+| Choose Theme (FR-UI-06, D-62) | `Ctrl+T` |
 | Quit | `Ctrl+Q` (`ZZ` is gone, `Z` is redo) |
 
 ## 3. Edit mode

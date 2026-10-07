@@ -1576,7 +1576,6 @@ mod tests {
             KeyModifiers::CONTROL,
             Some(&Message::CycleType),
         );
-        check(KeyCode::Char('t'), KeyModifiers::CONTROL, None);
         check_editing(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL,
@@ -2285,6 +2284,17 @@ mod tests {
         assert_eq!(
             keymap.message_for(&n, ms(0), choosing),
             Some(Message::Menu(Menu::ThemePicker, MenuInput::Type('n')))
+        );
+    }
+
+    // FR-UI-06, D-62
+    #[test]
+    fn ctrl_t_chooses_a_theme_in_navigate_mode() {
+        let mut keymap = Keymap::default();
+        let ctrl_t = key(KeyCode::Char('t'), KeyModifiers::CONTROL);
+        assert_eq!(
+            keymap.action_for(&ctrl_t, ms(0), CONTEXT),
+            Some(KeyAction::ChooseTheme)
         );
     }
 

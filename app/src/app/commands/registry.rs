@@ -358,7 +358,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
     entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
-    entry!(Command::ChooseTheme, Mode::Navigate, &[]),
+    entry!(Command::ChooseTheme, Mode::Navigate, &["ctrl+t"]),
     entry!(Command::OpenSettings, Mode::Navigate, &["g ,"]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+p", "g s", "/"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
