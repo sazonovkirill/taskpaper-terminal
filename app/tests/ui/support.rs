@@ -9,7 +9,9 @@ use std::{
     time::Duration,
 };
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use jiff::{
     Zoned,
     civil::{Date, DateTime, date},
@@ -292,6 +294,29 @@ impl Harness {
     pub fn press(&mut self, code: KeyCode, modifiers: KeyModifiers) {
         let key = Event::Key(KeyEvent::new(code, modifiers));
         self.tui.handle(Input::Terminal(key), self.now);
+    }
+
+    /// Draws a frame, as the event loop does before every input, then does `kind` with the mouse
+    /// at column `x` of row `y` with `modifiers` held.
+    pub fn mouse(&mut self, kind: MouseEventKind, x: u16, y: u16, modifiers: KeyModifiers) {
+        self.render();
+        let event = Event::Mouse(MouseEvent {
+            kind,
+            column: x,
+            row: y,
+            modifiers,
+        });
+        self.tui.handle(Input::Terminal(event), self.now);
+    }
+
+    /// Clicks at column `x` of row `y`.
+    pub fn click(&mut self, x: u16, y: u16) {
+        self.mouse(
+            MouseEventKind::Down(MouseButton::Left),
+            x,
+            y,
+            KeyModifiers::NONE,
+        );
     }
 
     /// Presses each character of `keys` without modifiers.

@@ -5,10 +5,11 @@ pub mod config;
 pub mod effects;
 pub mod keymap;
 pub mod layout;
+mod mouse;
 pub mod theme;
 pub mod widgets;
 
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::{collections::HashMap, mem, path::PathBuf, time::Duration};
 
 use crossterm::event::{Event, KeyModifiers};
 use jiff::Zoned;
@@ -107,6 +108,13 @@ pub struct Tui {
     shortcuts_scroll: usize,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
     shortcuts_page: usize,
+    /// Where the last draw put what the mouse acts on.
+    drawn: mouse::Drawn,
+    /// The panes the wheel scrolled, which stay where it left them rather than show their focus
+    /// until a key or a click, with the lines it scrolled since the last draw (ui.md §6).
+    wheel: HashMap<PaneId, isize>,
+    /// Where a right-click opened the context menu, which shows there while it is open (ui.md §5).
+    menu_anchor: Option<(u16, u16)>,
     quit: bool,
 }
 
@@ -152,6 +160,9 @@ impl Tui {
             keyboard: Keyboard::default(),
             shortcuts_scroll: 0,
             shortcuts_page: 0,
+            drawn: mouse::Drawn::default(),
+            wheel: HashMap::new(),
+            menu_anchor: None,
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -229,6 +240,14 @@ impl Tui {
         // A sidebar the screen became too narrow for gives the keys back to the pane.
         if self.state.sidebar_focused() && layout::sidebar_width(self.width).is_none() {
             self.send(Message::Sidebar(SidebarInput::Leave), now);
+        }
+        if let Event::Mouse(mouse) = event {
+            self.handle_mouse(*mouse, now);
+            return;
+        }
+        if event.is_key_press() || matches!(event, Event::Paste(_)) {
+            // A key acts where the panes show their focus again.
+            self.wheel.clear();
         }
         let Some(action) = self.keymap.action_for(event, now, &self.context()) else {
             return;
@@ -533,11 +552,14 @@ impl Tui {
                 frame.set_cursor_position(prompt.caret(outline));
                 frame.render_widget(prompt, outline);
             }
-            let anchor = if self.state.sidebar_focused() {
+            if self.state.context_menu().is_none() {
+                self.menu_anchor = None;
+            }
+            let anchor = self.menu_anchor.or(if self.state.sidebar_focused() {
                 entry
             } else {
                 focused.block
-            };
+            });
             if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
                 let sidebar = self.state.sidebar_focused();
                 let popup = Popup::context_menu(
@@ -559,16 +581,19 @@ impl Tui {
     /// strip scrolled to keep the focused pane fully in view, or on a `small` screen only the
     /// focused pane, across the strip (ui.md §1); returns what overlays need of the focused pane.
     fn draw_panes(&mut self, frame: &mut Frame, strip: Rect, small: bool) -> FocusedPane {
-        let mut panes = self.state.panes();
+        let mut panes: Vec<(usize, PaneView)> =
+            self.state.panes().into_iter().enumerate().collect();
         self.scrolls
-            .retain(|id, _| panes.iter().any(|pane| pane.id == *id));
+            .retain(|id, _| panes.iter().any(|(_, pane)| pane.id == *id));
+        self.wheel
+            .retain(|id, _| panes.iter().any(|(_, pane)| pane.id == *id));
         if small {
-            panes.retain(|pane| pane.focused);
+            panes.retain(|(_, pane)| pane.focused);
         }
         let widths = if small {
             vec![strip.width]
         } else {
-            let chosen: Vec<Option<u16>> = panes.iter().map(|pane| pane.width).collect();
+            let chosen: Vec<Option<u16>> = panes.iter().map(|(_, pane)| pane.width).collect();
             layout::pane_widths(strip.width, &chosen)
         };
         let starts: Vec<u16> = widths
@@ -584,7 +609,7 @@ impl Tui {
             .fold(0u16, |sum, &width| sum.saturating_add(width));
         let at = panes
             .iter()
-            .position(|pane| pane.focused)
+            .position(|(_, pane)| pane.focused)
             .unwrap_or_default();
         let start = starts.get(at).copied().unwrap_or_default();
         let width = widths.get(at).copied().unwrap_or_default();
@@ -593,8 +618,9 @@ impl Tui {
         self.strip_scroll =
             layout::strip_offset(self.strip_scroll, start..start + width, strip.width, total);
         let mut focused = FocusedPane::default();
+        self.drawn.panes.clear();
         let count = panes.len();
-        for (index, (pane, (&start, &width))) in
+        for (index, ((at, pane), (&start, &width))) in
             panes.iter().zip(starts.iter().zip(&widths)).enumerate()
         {
             let divider = index + 1 < count;
@@ -607,6 +633,13 @@ impl Tui {
                 continue;
             }
             let x = strip.x.saturating_add(left);
+            self.drawn.panes.push(mouse::DrawnPane {
+                at: *at,
+                id: pane.id,
+                shown: Rect::new(x, strip.y, shown, strip.height),
+                skipped,
+                width: width.saturating_sub(u16::from(divider)),
+            });
             if shown == width {
                 let area = Rect::new(x, strip.y, width, strip.height);
                 let drawn = self.draw_pane(frame.buffer_mut(), area, pane, divider);
@@ -688,9 +721,11 @@ impl Tui {
     /// scroll it while they do (D-55); a closed panel opens at the top.
     fn draw_shortcuts(&mut self, frame: &mut Frame, area: Option<ratatui::layout::Rect>) {
         let (Some(groups), Some(area)) = (self.state.shortcuts(), area) else {
+            self.drawn.shortcuts = None;
             self.shortcuts_scroll = 0;
             return;
         };
+        self.drawn.shortcuts = Some(area);
         let context = self.context();
         let scrolls =
             context.mode == Mode::Navigate && context.overlay.is_none() && !context.sidebar;
@@ -743,34 +778,42 @@ impl Tui {
         } else {
             None
         };
-        // Only the rows near the focus are measured, so drawing does not grow with the outline.
-        let (scroll, focus_line) = layout::scroll_rows(
-            scroll,
-            focused,
-            anchor,
-            usize::from(area.height),
-            rows.len(),
-            |index| {
-                rows.get(index..=index)
-                    .map_or(1, |row| view.rows(row).heights(area.width).iter().sum())
-            },
-        );
+        // Only the rows near the focus or the view are measured, so drawing does not grow with
+        // the outline.
+        let row_height = |index| {
+            rows.get(index..=index)
+                .map_or(1, |row| view.rows(row).heights(area.width).iter().sum())
+        };
+        let height = usize::from(area.height);
+        let (scroll, focus_line) = if let Some(lines) = self.wheel.get_mut(&pane.id) {
+            let scroll =
+                layout::scroll_by(scroll, mem::take(lines), height, rows.len(), &row_height);
+            let line = focused.and_then(|at| layout::line_of(scroll, at, height, &row_height));
+            (scroll, line)
+        } else {
+            let (scroll, line) =
+                layout::scroll_rows(scroll, focused, anchor, height, rows.len(), &row_height);
+            (scroll, focused.map(|_| line))
+        };
         self.scrolls.insert(pane.id, scroll);
         let shown = rows.get(scroll.row..).unwrap_or_default();
         view.rows(shown)
             .focused(
                 focused
                     .filter(|_| pane.focused)
-                    .map(|index| index - scroll.row),
+                    .and_then(|index| index.checked_sub(scroll.row)),
             )
             .offset(scroll.line)
             .render(area, buf);
         if !pane.focused {
             return FocusedPane::default();
         }
-        self.focus_line = focused.map(|_| focus_line);
-        let line = u16::try_from(focus_line).unwrap_or(u16::MAX);
-        let row = focused.and_then(|index| rows.get(index));
+        self.focus_line = focus_line;
+        let line = u16::try_from(focus_line.unwrap_or_default()).unwrap_or(u16::MAX);
+        // A focus the wheel scrolled out of view anchors no caret or menu.
+        let row = focused
+            .filter(|_| focus_line.is_some())
+            .and_then(|index| rows.get(index));
         let caret = editor
             .as_ref()
             .filter(|_| !self.state.in_conflict())
@@ -806,6 +849,7 @@ impl Tui {
         frame: &mut Frame,
         area: ratatui::layout::Rect,
     ) -> (ratatui::layout::Rect, Option<(u16, u16)>) {
+        self.drawn.sidebar = None;
         let (Some(view), Some(width)) = (self.state.sidebar(), layout::sidebar_width(area.width))
         else {
             return (area, None);
@@ -823,6 +867,7 @@ impl Tui {
                 sidebar.y.saturating_add(line),
             )
         });
+        self.drawn.sidebar = Some((sidebar, self.sidebar_scroll));
         frame.render_widget(panel.offset(self.sidebar_scroll), sidebar);
         (pane, entry)
     }

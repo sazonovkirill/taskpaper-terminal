@@ -124,6 +124,30 @@ impl<'a> OutlineView<'a> {
             .collect()
     }
 
+    /// The row drawn on screen line `line` of an area `width` columns wide, counted as
+    /// [`Widget::render`] draws from its offset, with whether column `column` there, counted
+    /// from the area's left edge, shows the row's `▸ n` of hidden children (FR-KEY-05).
+    #[must_use]
+    pub fn hit(&self, width: u16, line: usize, column: u16) -> Option<(usize, bool)> {
+        let column = column.checked_sub(GUTTER_WIDTH).map(usize::from);
+        let width = usize::from(width.saturating_sub(GUTTER_WIDTH));
+        let mut line = self.offset.checked_add(line)?;
+        for (index, row, lines, _) in self.blocks(width) {
+            if line < lines.len() {
+                let edited = self.editor.is_some_and(|editor| editor.id == row.id);
+                let fold = !edited
+                    && fold_marker(row, &lines, self.icons)
+                        .zip(column)
+                        .is_some_and(|((at, columns), column)| {
+                            at == line && columns.contains(&column)
+                        });
+                return Some((index, fold));
+            }
+            line -= lines.len();
+        }
+        None
+    }
+
     /// Each row with its index, its screen lines `width` columns wide and its chips.
     fn blocks(
         &self,
@@ -214,18 +238,61 @@ const FOCUS_MARKER: &str = "▌";
 /// (ui.md §1).
 #[must_use]
 pub fn breadcrumbs(crumbs: &[String], width: usize, icons: IconSet) -> Line<'static> {
-    let path: Vec<&str> = std::iter::once(Icon::Home.glyph(icons))
-        .chain(crumbs.iter().map(String::as_str))
+    let (cut, shown) = shown_crumbs(crumbs, width, icons);
+    let texts: Vec<&str> = cut
+        .then_some("…")
+        .into_iter()
+        .chain(shown.into_iter().map(|(_, text)| text))
         .collect();
-    let mut line = Line::from(path.join(" › "));
-    for start in 1..path.len() {
-        if line.width() <= width {
-            break;
+    Line::from(texts.join(CRUMB_SEPARATOR)).bold()
+}
+
+/// The depth of the crumb that column `column` of the breadcrumb header [`breadcrumbs`] draws
+/// `width` columns wide with `icons` shows, the home icon being 0, if it shows one there rather than a separator, the
+/// `…` or nothing (FR-KEY-05).
+#[must_use]
+pub fn crumb_at(crumbs: &[String], width: usize, icons: IconSet, column: usize) -> Option<usize> {
+    let (cut, shown) = shown_crumbs(crumbs, width, icons);
+    let separator = Span::raw(CRUMB_SEPARATOR).width();
+    let mut start = if cut {
+        Span::raw("…").width() + separator
+    } else {
+        0
+    };
+    for (depth, text) in shown {
+        let end = start + Span::raw(text).width();
+        if (start..end.min(width)).contains(&column) {
+            return Some(depth);
         }
-        let rest = path.get(start..).unwrap_or_default();
-        line = Line::from(format!("… › {}", rest.join(" › ")));
+        start = end + separator;
     }
-    line.bold()
+    None
+}
+
+/// Goes between the crumbs of the breadcrumb header.
+const CRUMB_SEPARATOR: &str = " › ";
+
+/// Whether the breadcrumb header for `crumbs` drops some from the left to fit in `width`
+/// columns, and the crumbs it shows with their depths, the home icon of `icons` being 0.
+fn shown_crumbs(crumbs: &[String], width: usize, icons: IconSet) -> (bool, Vec<(usize, &str)>) {
+    let path: Vec<(usize, &str)> = std::iter::once(Icon::Home.glyph(icons))
+        .chain(crumbs.iter().map(String::as_str))
+        .enumerate()
+        .collect();
+    let separator = Span::raw(CRUMB_SEPARATOR).width();
+    let line_width = |shown: &[(usize, &str)], cut: bool| {
+        shown
+            .iter()
+            .map(|(_, text)| Span::raw(*text).width())
+            .chain(cut.then(|| Span::raw("…").width()))
+            .map(|text| text + separator)
+            .sum::<usize>()
+            .saturating_sub(separator)
+    };
+    let start = (0..path.len())
+        .find(|&start| line_width(path.get(start..).unwrap_or_default(), start > 0) <= width)
+        .unwrap_or(path.len().saturating_sub(1));
+    (start > 0, path.get(start..).unwrap_or_default().to_vec())
 }
 
 /// The header of the Today view in place of breadcrumbs: its icon, as in the sidebar, and its name,
@@ -1108,6 +1175,31 @@ fn row_line(row: &Row, width: usize, icons: IconSet) -> Line<'_> {
     line
 }
 
+/// Where `lines`, `row`'s screen lines as drawn with `icons`, show its `▸ n` of hidden children:
+/// the line and the columns from the `▸` to the count's last digit, if the count is drawn whole on one
+/// line. It is the last thing drawn of a row but a divider's rule, so it is found from the end,
+/// where a row cut short shows `…` instead.
+fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Range<usize>)> {
+    if row.hidden_children == 0 || !row.path.is_empty() {
+        return None;
+    }
+    let marker = format!("{} {}", Icon::Collapsed.glyph(icons), row.hidden_children);
+    let (at, line) = lines
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, line)| !line.to_string().trim_end().is_empty())?;
+    let text = line.to_string();
+    let drawn = if row.divider {
+        text.trim_end_matches(['─', ' '])
+    } else {
+        text.trim_end()
+    };
+    let before = drawn.strip_suffix(&marker)?;
+    let start = Span::raw(before).width();
+    Some((at, start..start + Span::raw(marker.as_str()).width()))
+}
+
 /// The date chips of `row` on `today`, right-aligned, each after a space: its start date in green
 /// and its due date in red, each as its icon and the date named relative to `today`, such as
 /// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
@@ -1231,6 +1323,25 @@ pub fn editor_line<'a>(
     (line, column)
 }
 
+/// The byte offset of `editor`'s text that column `column` of `row`'s screen line, `width`
+/// columns wide, shows as [`editor_line`] draws it with `icons`, where a click there puts the caret
+/// (FR-KEY-05): the first grapheme shown left of the text, the end right of it.
+#[must_use]
+pub fn editor_offset(
+    row: &Row,
+    editor: &Editor,
+    width: usize,
+    icons: IconSet,
+    column: usize,
+) -> usize {
+    let field = Field {
+        text: editor.text,
+        caret: editor.caret,
+        selection: None,
+    };
+    field.offset_at(text_column(row, icons), width, column)
+}
+
 /// A text being typed, with its caret and selection as byte offsets.
 struct Field<'a> {
     text: &'a str,
@@ -1245,18 +1356,8 @@ impl<'a> Field<'a> {
     fn spans(&self, style: Style, start: usize, width: usize) -> (Vec<Span<'a>>, usize) {
         let text = self.text;
         let selection = self.selection.clone().unwrap_or(self.caret..self.caret);
-        let before_caret = text.get(..self.caret).unwrap_or_default();
-        let column = start + Span::raw(before_caret).width();
-        // The caret takes a column of its own after the text before it.
-        let overflow = (column + 1).saturating_sub(width);
-        let (mut from, mut scrolled) = (0, 0);
-        for (at, grapheme) in text.grapheme_indices(true) {
-            if scrolled >= overflow || at >= before_caret.len() {
-                break;
-            }
-            from = at + grapheme.len();
-            scrolled += Span::raw(grapheme).width();
-        }
+        let column = self.caret_column(start);
+        let (from, scrolled) = self.scrolled(start, width);
         let local = |at: usize| at.min(text.len()).max(from);
         let selected = local(selection.start)..local(selection.end);
         let piece = |range: Range<usize>| text.get(range).unwrap_or_default();
@@ -1266,6 +1367,49 @@ impl<'a> Field<'a> {
             Span::styled(piece(selected.end..text.len()), style),
         ];
         (spans, column - scrolled)
+    }
+
+    /// The caret's column on a line on which the text starts at column `start`, before any
+    /// scrolling.
+    fn caret_column(&self, start: usize) -> usize {
+        start + Span::raw(self.text.get(..self.caret).unwrap_or_default()).width()
+    }
+
+    /// Where the text shown on a line `width` columns wide starting at column `start` begins,
+    /// scrolled left by whole graphemes to keep the caret in view: its byte offset and how many
+    /// columns it scrolled past.
+    fn scrolled(&self, start: usize, width: usize) -> (usize, usize) {
+        // The caret takes a column of its own after the text before it.
+        let overflow = (self.caret_column(start) + 1).saturating_sub(width);
+        let (mut from, mut scrolled) = (0, 0);
+        for (at, grapheme) in self.text.grapheme_indices(true) {
+            if scrolled >= overflow || at >= self.caret {
+                break;
+            }
+            from = at + grapheme.len();
+            scrolled += Span::raw(grapheme).width();
+        }
+        (from, scrolled)
+    }
+
+    /// The byte offset of the grapheme drawn at column `column` of a line `width` columns wide
+    /// on which the text starts at column `start`, as [`Field::spans`] draws it: the first one
+    /// shown left of the text, the end of the text right of it.
+    fn offset_at(&self, start: usize, width: usize, column: usize) -> usize {
+        let (from, _) = self.scrolled(start, width);
+        let mut left = start;
+        for (at, grapheme) in self
+            .text
+            .get(from..)
+            .unwrap_or_default()
+            .grapheme_indices(true)
+        {
+            left += Span::raw(grapheme).width();
+            if column < left {
+                return from + at;
+            }
+        }
+        self.text.len()
     }
 }
 
@@ -2156,6 +2300,33 @@ mod tests {
         assert_eq!(breadcrumbs(&crumbs, 25, ICONS).style, Style::new().bold());
     }
 
+    // FR-KEY-05
+    #[test]
+    fn a_column_of_the_breadcrumbs_names_the_crumb_drawn_there() {
+        let crumbs = ["Work".to_owned(), "日本".to_owned(), "Draft".to_owned()];
+        let at = |width, column| crumb_at(&crumbs, width, ICONS, column);
+        // ⌂ › Work › 日本 › Draft
+        assert_eq!(at(30, 0), Some(0));
+        assert_eq!(at(30, 1), None, "a separator");
+        assert_eq!(at(30, 4), Some(1));
+        assert_eq!(at(30, 7), Some(1));
+        assert_eq!(at(30, 8), None);
+        assert_eq!(at(30, 11), Some(2));
+        assert_eq!(at(30, 14), Some(2), "日本 is 4 columns wide");
+        assert_eq!(at(30, 15), None);
+        assert_eq!(at(30, 18), Some(3));
+        assert_eq!(at(30, 23), None, "past the end");
+        // … › 日本 › Draft
+        assert_eq!(at(20, 0), None, "the … stands for no one crumb");
+        assert_eq!(at(20, 3), None, "a separator after the …");
+        assert_eq!(at(20, 4), Some(2));
+        assert_eq!(at(20, 11), Some(3));
+        // … › Draft, cut at the edge
+        assert_eq!(at(6, 4), Some(3));
+        assert_eq!(at(6, 6), None, "not drawn");
+        assert_eq!(crumb_at(&[], 1, ICONS, 0), Some(0));
+    }
+
     // FR-NAV-03
     #[test]
     fn the_title_row_is_styled_by_its_type_in_bold_over_its_indented_children() {
@@ -2251,6 +2422,91 @@ mod tests {
             "no scrolling while the caret fits"
         );
         assert_eq!(caret, 2);
+    }
+
+    /// The rows of `text` with its first block collapsed.
+    fn collapsed(text: &str) -> std::rc::Rc<[Row]> {
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::Collapse);
+        state.rows()
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn a_screen_line_names_its_row_and_whether_the_column_shows_its_fold_marker() {
+        let rows = collapsed("A:\n\t- b\n\t- c\nwrap this text");
+        let view = outline(&rows).wrap(true);
+        // `▌ A: ▸ 2`, then `wrap this` and `text`.
+        assert_eq!(view.hit(11, 0, 0), Some((0, false)), "the gutter");
+        assert_eq!(view.hit(11, 0, 2), Some((0, false)));
+        assert_eq!(view.hit(11, 0, 4), Some((0, false)), "a space");
+        assert_eq!(view.hit(11, 0, 5), Some((0, true)));
+        assert_eq!(view.hit(11, 0, 7), Some((0, true)));
+        assert_eq!(view.hit(11, 0, 8), Some((0, false)));
+        assert_eq!(view.hit(11, 1, 3), Some((1, false)));
+        assert_eq!(view.hit(11, 2, 3), Some((1, false)), "a wrapped line");
+        assert_eq!(view.hit(11, 3, 3), None, "below the outline");
+        assert_eq!(view.offset(1).hit(11, 0, 3), Some((1, false)));
+        assert_eq!(
+            outline(&rows).hit(7, 0, 5),
+            Some((0, false)),
+            "cut short behind `…`"
+        );
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn a_fold_marker_is_found_after_text_that_reads_like_one_and_before_a_rule() {
+        let rows = collapsed("x ▸ 1:\n\t- b");
+        let view = outline(&rows);
+        assert_eq!(view.hit(20, 0, 3), Some((0, false)), "the text's own `▸`");
+        assert_eq!(view.hit(20, 0, 9), Some((0, true)));
+        let rows = collapsed("---\n\t- b");
+        let view = outline(&rows);
+        assert_eq!(view.hit(12, 0, 3), Some((0, true)));
+        assert_eq!(view.hit(12, 0, 7), Some((0, false)), "the rule");
+        let rows = State::new(format::parse("- a ▸ 0"), None).rows();
+        assert_eq!(
+            outline(&rows).hit(20, 0, 6),
+            Some((0, false)),
+            "no hidden children"
+        );
+        let rows = State::new(format::parse("- a @today"), None).rows();
+        assert_eq!(outline(&rows).hit(20, 0, 2), Some((0, false)));
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn the_edited_row_shows_no_fold_marker() {
+        let mut state = State::new(format::parse("a ▸ 1\n\t- b"), None);
+        state.update(Message::Collapse);
+        state.update(Message::EditAtEnd);
+        let rows = state.rows();
+        let editor = state.editor().expect("editing");
+        let view = outline(&rows).editor(Some(&editor));
+        assert_eq!(view.hit(20, 0, 6), Some((0, false)));
+        assert_eq!(outline(&rows).hit(20, 0, 8), Some((0, true)));
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn a_column_of_the_editor_names_the_offset_of_the_grapheme_drawn_there() {
+        let rows = State::new(format::parse("- a"), None).rows();
+        let at =
+            |editor: &Editor, width, column| editor_offset(&rows[0], editor, width, ICONS, column);
+        let plain = editor("ab日c", 0, None);
+        assert_eq!(at(&plain, 20, 0), 0, "the marker");
+        assert_eq!(at(&plain, 20, 2), 0);
+        assert_eq!(at(&plain, 20, 3), 1);
+        assert_eq!(at(&plain, 20, 4), 2);
+        assert_eq!(at(&plain, 20, 5), 2, "日 is 2 columns wide");
+        assert_eq!(at(&plain, 20, 6), 5);
+        assert_eq!(at(&plain, 20, 7), 6, "past the text");
+        // Scrolled to the caret, the line shows `- ab  `.
+        let scrolled = editor("日本語ab", 11, None);
+        assert_eq!(at(&scrolled, 6, 0), 9, "the first grapheme shown");
+        assert_eq!(at(&scrolled, 6, 3), 10);
+        assert_eq!(at(&scrolled, 6, 5), 11);
     }
 
     // FR-MODE-02

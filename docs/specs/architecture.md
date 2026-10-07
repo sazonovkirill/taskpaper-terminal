@@ -27,7 +27,8 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `app::finder` and one module per finder (`app::go_to_symbol`, …) | App | The fuzzy finder shared by Go to Symbol, Go to Command and Move to: query, ranking with `nucleo-matcher` by tier and score, highlight; each finder module builds its candidates and acts on the choice. |
 | `app::history` | App | The undo/redo history of committed transactions and the focus to restore with each (code-quality.md assigns undo to App). |
 | `app::update` | App | `update(state, message) -> effects`, committing each command's transaction to the history; autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
-| `ui::keymap` | UI | Key and mouse events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
+| `ui::keymap` | UI | Key events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
+| `ui::mouse` | UI | Mouse events → app messages: what the last frame drew under the pointer and what a click, Alt+click, right-click or the wheel there asks for ([ui.md §6](ui.md#6-mouse-fr-key-05-d-16)). |
 | `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
 | `ui::animation` | UI | Animation effects drawn over rendered frames, their triggers and the animation setting ([ui.md §9](ui.md#9-animation-fr-ui-11)). |
 | `ui::effects` | UI | Executes the core's effects: atomic save, Save As, backups, recovery files, view-state files, file watching, clipboard, opening URLs ([file-io.md](file-io.md)). |

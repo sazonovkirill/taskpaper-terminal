@@ -75,7 +75,8 @@ A popup anchored at the focused element (or at the pointer for right-click) list
 - **On the selection:** the same groups without the commands of one block (editing it, adding blocks, the type picker and the view group), labelled for every selected block: Uncomplete only when all are done, Clear Due Date when any has a due date.
 - **In the Today view:** what the view does not take (adding, pasting, indenting, moving, folding) is left out (navigation.md §7).
 - **On a sidebar entry** (while the sidebar has the keys): Go to Entry, Open in New Pane, Collapse or Expand Entry for a project entry with child projects, then Return to Outline and Hide Sidebar.
-- **Crumbs and pane headers** take no keyboard focus, so their menus come with right-click (step 6.5).
+- **On a crumb** (right-click only, since crumbs take no keyboard focus): Zoom Here, or Go Home on `⌂`, unless the pane is there, and Open in New Pane; then Open Location in New Pane and, while there are other panes, Close Pane.
+- **On a pane header** (right-click only, outside the crumbs or in the Today view): Zoom Out while zoomed and Go Home away from home; then the Panes group as on a crumb.
 - Typing a character that would match nothing is not added to the filter; `Backspace` on an empty filter does nothing.
 
 The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D-50) is a smaller popup of the same kind: a bordered box titled "Commands:", its border and title in the accent color (D-54), on the line below the caret, starting at the caret's column, or above the caret's line when there is no room below, moved left to stay on screen. It is as tall as its entries but no taller than the larger room below or above the caret's line, and scrolls to keep the highlighted entry in view. It lists the matching labels one per line, each after its icon (§7) and padded by 2 columns on each side, the highlighted one reversed, with a dim line across the box between groups, and shows `/` and the filter in its bottom border once one is typed.
@@ -86,7 +87,9 @@ The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D
 - Click a fold marker: toggle fold. Click a crumb: zoom the pane there. Click a sidebar entry: go there. Click a pane header: focus that pane.
 - Alt+click a block, an internal link (once links exist, FR-OPS-10) or a crumb: open it in a new pane.
 - Right-click a block, the selection, a sidebar entry, a crumb or a pane header: open its context menu (FR-KEY-06).
-- Wheel: scroll the pane under the pointer without moving focus.
+- Wheel: scroll the pane under the pointer without moving focus, 3 lines a step, no further than the first and last lines; the pane stays where the wheel left it until the next key or click, which bring the focus back into view as any motion does. Over the `?` panel the wheel scrolls the panel (D-55).
+- A block's row counts from the gutter to the right edge. A click on a block of another pane, a crumb or a pane header gives that pane the keys first, and any click on a pane takes them from the sidebar. A right-click on a block that is not selected clears the selection and focuses the block, so the menu is the block's; on a selected block it opens the selection's menu. A click on the `▸`/`▾` of a sidebar project entry folds or unfolds it, giving the sidebar the keys on that entry.
+- While a popup, picker, prompt or the conflict prompt is open, the mouse does nothing.
 - No feature depends on the mouse; every action above has a key.
 
 ## 7. Icons (FR-UI-09, FR-UI-10)

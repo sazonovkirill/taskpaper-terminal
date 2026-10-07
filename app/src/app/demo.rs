@@ -337,4 +337,15 @@ mod tests {
             "demo lacks a hint at the command menu"
         );
     }
+
+    // FR-DOC-05, FR-KEY-05
+    #[test]
+    fn demo_has_a_text_line_that_points_to_the_mouse() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == BlockKind::Text && row.text.contains("right-click")),
+            "demo lacks a hint at the mouse"
+        );
+    }
 }

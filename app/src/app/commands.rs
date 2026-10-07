@@ -79,6 +79,9 @@ pub enum Command {
     ZoomOut,
     /// Show the whole document.
     GoHome,
+    /// Show the focused pane's breadcrumb at this depth as its root, as
+    /// [`Message::GoToCrumb`] counts it; only a breadcrumb's context menu offers it.
+    GoToCrumb(usize),
     /// Go back in the zoom history.
     Back,
     /// Go forward in the zoom history.
@@ -229,6 +232,7 @@ impl Command {
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
+            Self::GoToCrumb(_) => "Zoom Here".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
             Self::ToggleSidebar => "Toggle Sidebar".into(),
@@ -258,6 +262,7 @@ impl Command {
             Self::Sidebar(SidebarInput::Expand) => "Expand Entry".into(),
             Self::Sidebar(SidebarInput::Choose) => "Go to Entry".into(),
             Self::Sidebar(SidebarInput::Leave) => "Return to Outline".into(),
+            Self::Sidebar(SidebarInput::Focus(at)) => format!("Focus Entry {}", at + 1).into(),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -329,6 +334,7 @@ impl Command {
             Self::ZoomIn => Message::ZoomIn,
             Self::ZoomOut => Message::ZoomOut,
             Self::GoHome => Message::GoHome,
+            Self::GoToCrumb(depth) => Message::GoToCrumb(depth),
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
             Self::ToggleSidebar => Message::ToggleSidebar,
@@ -407,7 +413,7 @@ fn change_date_name(tag: DateTag, change: DateChange) -> String {
 /// The name of [`Command::Pane`] making `change`.
 fn pane_name(change: PaneChange) -> Cow<'static, str> {
     match change {
-        PaneChange::Open => "Open in New Pane".into(),
+        PaneChange::Open | PaneChange::OpenCrumb(_) => "Open in New Pane".into(),
         PaneChange::OpenLocation => "Open Location in New Pane".into(),
         PaneChange::Focus(at) => format!("Focus Pane {}", at + 1).into(),
         PaneChange::FocusLeft => "Focus Pane Left".into(),
@@ -530,6 +536,9 @@ mod tests {
             (Command::Sidebar(SidebarInput::Expand), "Expand Entry"),
             (Command::Sidebar(SidebarInput::Choose), "Go to Entry"),
             (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
+            (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
+            (Command::GoToCrumb(1), "Zoom Here"),
+            (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
             (
                 Command::Pane(PaneChange::OpenLocation),
@@ -596,6 +605,7 @@ mod tests {
                 Command::Pane(PaneChange::Focus(2)),
                 Message::Pane(PaneChange::Focus(2)),
             ),
+            (Command::GoToCrumb(1), Message::GoToCrumb(1)),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

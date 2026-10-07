@@ -1,10 +1,11 @@
 //! The context menu: the commands that apply where the keys are, on the focused sidebar entry,
-//! the selection or the focused block, grouped, to filter and choose from
+//! the selection or the focused block, or on the focused pane's header or one of its breadcrumbs,
+//! grouped, to filter and choose from
 //! ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06),
 //! [keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts), FR-KEY-06).
 
 use super::{
-    CommandMenuView, Effect, Inputs, MenuInput, State,
+    Command, CommandMenuView, Effect, Inputs, Location, MenuInput, PaneChange, State,
     command_menu::{CommandMenu, Outcome},
     commands::{Focused, NodeCommand, context_commands},
 };
@@ -26,6 +27,40 @@ impl State {
             self.block_commands()
         };
         self.context_menu = (!groups.is_empty()).then(|| CommandMenu::new(groups));
+    }
+
+    /// Opens the context menu on the focused pane's header, or with a depth on its breadcrumb at
+    /// that depth: going to the breadcrumb unless the pane is there and opening it in a new pane,
+    /// or on the header zooming out and going home where the pane can; then opening the pane's
+    /// location in a new pane and closing the pane when there are others (ui.md §5).
+    pub(super) fn open_pane_menu(&mut self, crumb: Option<usize>) {
+        let here = self.pane.location;
+        let place: Vec<Command> = match crumb {
+            Some(depth) => match self.crumb(depth) {
+                Some(location) => (location != here)
+                    .then_some(if depth == 0 {
+                        Command::GoHome
+                    } else {
+                        Command::GoToCrumb(depth)
+                    })
+                    .into_iter()
+                    .chain([Command::Pane(PaneChange::OpenCrumb(depth))])
+                    .collect(),
+                None => return,
+            },
+            None => self
+                .zoom()
+                .map(|_| Command::ZoomOut)
+                .into_iter()
+                .chain((here != Location::Outline(None)).then_some(Command::GoHome))
+                .collect(),
+        };
+        let place: Vec<NodeCommand> = place.into_iter().map(NodeCommand::named).collect();
+        let groups = [place, self.pane_commands(false)]
+            .into_iter()
+            .filter(|group| !group.is_empty())
+            .collect();
+        self.context_menu = Some(CommandMenu::new(groups));
     }
 
     /// The commands on the selected blocks, else the focused block, that the pane takes where it
@@ -90,7 +125,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Command, Location, Menu, MenuRow, Message, SelectionChange, SidebarInput},
+        app::{
+            Command, Location, Menu, MenuRow, Message, PaneChange, SelectionChange, SidebarInput,
+        },
         document::format,
     };
 
@@ -247,5 +284,71 @@ mod tests {
         assert_eq!(menu(&mut state, MenuInput::Dismiss), []);
         assert_eq!(state.context_menu(), None);
         assert_eq!(menu(&mut state, MenuInput::Choose), [], "no menu is open");
+    }
+
+    /// Opens the menu of the focused pane's header, or of its breadcrumb at `crumb`, and returns
+    /// what it lists, or `None` when nothing opened.
+    fn pane_menu(state: &mut State, crumb: Option<usize>) -> Option<Vec<String>> {
+        state.update(Message::Menu(Menu::ContextMenu, MenuInput::Dismiss));
+        state.update(Message::OpenPaneMenu(crumb));
+        state.context_menu().map(|_| shown(state))
+    }
+
+    // FR-KEY-06, ui.md §5
+    #[test]
+    fn a_pane_header_offers_zooming_out_going_home_and_the_panes() {
+        let mut state = open(TEXT);
+        assert_eq!(
+            pane_menu(&mut state, None).expect("a menu"),
+            ["Open Location in New Pane"]
+        );
+        state.update(Message::ZoomIn);
+        state.update(Message::Pane(PaneChange::OpenLocation));
+        assert_eq!(
+            pane_menu(&mut state, None).expect("a menu"),
+            [
+                "Zoom Out",
+                "Go Home",
+                "|",
+                "Open Location in New Pane",
+                "Close Pane"
+            ]
+        );
+        state.update(Message::FocusSidebar);
+        state.update(Message::Sidebar(SidebarInput::Choose));
+        assert_eq!(state.pane.location, Location::Today);
+        assert_eq!(
+            pane_menu(&mut state, None).expect("a menu"),
+            ["Go Home", "|", "Open Location in New Pane", "Close Pane"]
+        );
+    }
+
+    // FR-KEY-06, ui.md §5
+    #[test]
+    fn a_crumb_offers_going_there_unless_the_pane_is_there_and_opening_it_in_a_new_pane() {
+        let mut state = open(TEXT);
+        state.update(Message::ZoomIn);
+        assert_eq!(
+            pane_menu(&mut state, Some(0)).expect("a menu"),
+            [
+                "Go Home",
+                "Open in New Pane",
+                "|",
+                "Open Location in New Pane"
+            ]
+        );
+        assert_eq!(
+            pane_menu(&mut state, Some(1)).expect("a menu"),
+            ["Open in New Pane", "|", "Open Location in New Pane"]
+        );
+        assert_eq!(pane_menu(&mut state, Some(2)), None, "no crumb that deep");
+        state.update(Message::FocusNext);
+        state.update(Message::ZoomIn);
+        pane_menu(&mut state, Some(1));
+        assert_eq!(
+            menu(&mut state, MenuInput::Choose),
+            [Effect::Run(Command::GoToCrumb(1))]
+        );
+        assert_eq!(state.context_menu(), None);
     }
 }

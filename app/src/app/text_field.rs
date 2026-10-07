@@ -49,6 +49,9 @@ pub enum Motion {
     Start,
     /// To the end of the text.
     End,
+    /// To this byte offset of the text, or the start of the grapheme it falls in, or the end
+    /// when it is past it, as a click places the caret (FR-KEY-05).
+    To(usize),
 }
 
 /// A text with a caret and an optional selection, both at grapheme boundaries.
@@ -202,12 +205,24 @@ impl TextField {
             (Motion::WordRight, _) => self.word_right(),
             (Motion::Start, _) => 0,
             (Motion::End, _) => self.text.len(),
+            (Motion::To(at), _) => self.boundary(at),
         };
         Self {
             text: self.text.clone(),
             caret,
             anchor: select.then(|| self.anchor.unwrap_or(self.caret)),
         }
+    }
+
+    /// The start of the grapheme byte `at` falls in, or the end of the text when it is past it.
+    fn boundary(&self, at: usize) -> usize {
+        self.text
+            .grapheme_indices(true)
+            .map(|(start, _)| start)
+            .chain([self.text.len()])
+            .take_while(|&start| start <= at)
+            .last()
+            .unwrap_or_default()
     }
 
     /// The start of the grapheme before the caret, or the caret at the start.
@@ -354,6 +369,23 @@ mod tests {
     fn moves_to_either_end() {
         check("ab|c", go(Motion::Start), "|abc");
         check("a|bc", go(Motion::End), "abc|");
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn moves_to_an_offset_at_the_start_of_its_grapheme() {
+        let family = "👨‍👩‍👧";
+        check("ab|c", go(Motion::To(0)), "|abc");
+        check("|abc", go(Motion::To(2)), "ab|c");
+        check("|abc", go(Motion::To(3)), "abc|");
+        check("|abc", go(Motion::To(9)), "abc|");
+        check(
+            &format!("|a{family}b"),
+            go(Motion::To(3)),
+            &format!("a|{family}b"),
+        );
+        check("a[b|c", go(Motion::To(3)), "abc|");
+        check("a|bc", select(Motion::To(3)), "a[bc|");
     }
 
     // FR-MODE-03

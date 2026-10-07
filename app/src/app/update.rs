@@ -99,6 +99,9 @@ pub enum Message {
         /// Rows in a page.
         rows: usize,
     },
+    /// Focus the block `id` in the focused pane, if one of its rows shows it, as a click on it
+    /// does (FR-KEY-05).
+    Focus(ItemId),
     /// Focus the parent block.
     FocusParent,
     /// Focus the next sibling block.
@@ -136,6 +139,9 @@ pub enum Message {
     ZoomOut,
     /// Show the whole document.
     GoHome,
+    /// Show the focused pane's breadcrumb at `depth` as its root: 0 is the whole document, 1 the
+    /// zoom block's top-level ancestor, and so on down to the zoom block (FR-KEY-05).
+    GoToCrumb(usize),
     /// Return to the previous zoom in the history.
     Back,
     /// Go to the next zoom in the history.
@@ -207,6 +213,9 @@ pub enum Message {
     /// Open the context menu on the focused sidebar entry while the sidebar has the keys, else
     /// on the selection or the focused block (FR-KEY-06).
     OpenContextMenu,
+    /// Open the context menu on the focused pane's header, or with a depth on its breadcrumb at
+    /// that depth, as [`Message::GoToCrumb`] counts it (FR-KEY-06).
+    OpenPaneMenu(Option<usize>),
     /// A key of the open menu or picker that `Menu` names.
     Menu(Menu, MenuInput),
     /// Save As: a key of its prompt or the frontend's report (FR-DOC-06).
@@ -366,6 +375,7 @@ impl Message {
             | Self::FocusLast
             | Self::PageDown { .. }
             | Self::PageUp { .. }
+            | Self::Focus(_)
             | Self::FocusParent
             | Self::FocusNextSibling
             | Self::FocusPreviousSibling
@@ -382,6 +392,7 @@ impl Message {
             | Self::ZoomIn
             | Self::ZoomOut
             | Self::GoHome
+            | Self::GoToCrumb(_)
             | Self::Back
             | Self::Forward
             | Self::ToggleSidebar
@@ -405,6 +416,7 @@ impl Message {
             | Self::Count
             | Self::SaveAs(_)
             | Self::OpenContextMenu
+            | Self::OpenPaneMenu(_)
             | Self::New(..)
             | Self::Delete
             | Self::Duplicate
@@ -532,10 +544,7 @@ impl State {
         let mut effects = Vec::new();
         match message {
             Message::Started => effects = [self.backup_on_open(), self.watch()].concat(),
-            Message::Tick { now, today } => {
-                self.now = now;
-                self.today = today;
-            }
+            Message::Tick { now, today } => self.set_time(now, today),
             Message::Saved => self.saved(),
             Message::SaveFailed { reason } => self.save_failed(reason),
             Message::SaveRefused { contents } => self.save_refused(contents),
@@ -557,6 +566,7 @@ impl State {
             Message::FocusLast => self.move_focus(|_, last| last),
             Message::PageDown { rows } => self.focus_down(rows),
             Message::PageUp { rows } => self.focus_up(rows),
+            Message::Focus(id) => self.focus_block(id),
             Message::FocusParent => self.focus_parent(),
             Message::FocusNextSibling => self.move_to_sibling(|at| at.checked_add(1)),
             Message::FocusPreviousSibling => self.move_to_sibling(|at| at.checked_sub(1)),
@@ -575,6 +585,7 @@ impl State {
             Message::ZoomIn => self.zoom_in(),
             Message::ZoomOut => self.zoom_out(),
             Message::GoHome => self.go_to(Location::Outline(None)),
+            Message::GoToCrumb(depth) => self.go_to_crumb(depth),
             Message::Back => self.walk_history(false),
             Message::Forward => self.walk_history(true),
             Message::ToggleSidebar => self.toggle_sidebar(),
@@ -598,6 +609,7 @@ impl State {
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::Count => self.count(),
             Message::OpenContextMenu => self.open_context_menu(),
+            Message::OpenPaneMenu(crumb) => self.open_pane_menu(crumb),
             Message::Menu(menu, input) => effects = self.menu_input(menu, input),
             Message::SaveAs(event) => effects = self.save_as_event(event),
             Message::Undo => self.undo(),
@@ -629,6 +641,12 @@ impl State {
             Message::ResizePane(width) => self.resize_pane(width),
         }
         effects
+    }
+
+    /// Takes `now`, the time since the frontend started, and `today`, its local date.
+    fn set_time(&mut self, now: Duration, today: Date) {
+        self.now = now;
+        self.today = today;
     }
 
     /// Hands a key of the open `menu` to the feature that owns it and returns the effects that
@@ -697,6 +715,31 @@ impl State {
         }
     }
 
+    /// Where the focused pane's breadcrumb at `depth` goes, as [`Message::GoToCrumb`] counts
+    /// it, if the pane has one there.
+    pub(super) fn crumb(&self, depth: usize) -> Option<Location> {
+        let Some(above) = depth.checked_sub(1) else {
+            return Some(Location::Outline(None));
+        };
+        let mut line: Vec<ItemId> = std::iter::successors(
+            self.zoom()
+                .and_then(|id| blocks::block(self.document(), id)),
+            |block| blocks::parent(self.document(), block.id()),
+        )
+        .map(|block| block.id())
+        .collect();
+        line.reverse();
+        line.get(above).map(|&id| Location::Outline(Some(id)))
+    }
+
+    /// Shows the focused pane's breadcrumb at `depth`, as [`Message::GoToCrumb`] counts it, if
+    /// it has one there.
+    fn go_to_crumb(&mut self, depth: usize) {
+        if let Some(location) = self.crumb(depth) {
+            self.go_to(location);
+        }
+    }
+
     /// Shows `location`, a new entry in the history that drops any forward entries.
     pub(super) fn go_to(&mut self, location: Location) {
         if location == self.pane.location {
@@ -743,6 +786,13 @@ impl State {
         self.pane.focus = left
             .filter(|&id| rows.iter().any(|row| row.id == id))
             .or_else(|| landing(&rows));
+    }
+
+    /// Focuses the block `id` when one of the focused pane's rows shows it.
+    fn focus_block(&mut self, id: ItemId) {
+        if self.rows().iter().any(|row| row.id == id) {
+            self.pane.focus = Some(id);
+        }
     }
 
     fn focus_parent(&mut self) {
@@ -1534,5 +1584,65 @@ mod tests {
         assert_eq!(state.update(Message::ConfigProblems(problems.clone())), []);
         assert_eq!(state.notice(), Some(&Notice::ConfigProblems(problems)));
         assert!(state.editor().is_some(), "still editing");
+    }
+
+    /// The id of the row reading `text`.
+    fn row_id(state: &State, text: &str) -> ItemId {
+        state
+            .rows()
+            .iter()
+            .find(|row| &*row.text == text)
+            .map(|row| row.id)
+            .expect("a row reads the text")
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn focus_goes_to_a_shown_block_and_keeps_the_selection() {
+        let mut state = open(TREE, 0);
+        state.update(Message::Select(SelectionChange::Toggle));
+        let d = row_id(&state, "d");
+        assert_eq!(state.update(Message::Focus(d)), []);
+        assert_eq!(focus_text(&state), "d");
+        assert!(state.pane.selection.contains(row_id(&state, "A")));
+        let c = row_id(&state, "c");
+        state.update(Message::Focus(row_id(&state, "b")));
+        state.update(Message::Collapse);
+        state.update(Message::Focus(c));
+        assert_eq!(focus_text(&state), "b", "c is folded away");
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn focus_ends_editing() {
+        let mut state = open(TREE, 0);
+        state.update(Message::EditAtEnd);
+        state.update(Message::Focus(row_id(&state, "e")));
+        assert_eq!(state.editor(), None);
+        assert_eq!(focus_text(&state), "e");
+    }
+
+    // FR-KEY-05, navigation.md §4
+    #[test]
+    fn a_crumb_zooms_to_its_depth_as_a_step_in_the_history() {
+        let mut state = open(TREE, 1);
+        state.update(Message::ZoomIn);
+        state.update(Message::ZoomIn);
+        assert_eq!(state.breadcrumbs(), ["A", "b", "c"]);
+        state.update(Message::GoToCrumb(3));
+        assert_eq!(
+            state.pane.history.len(),
+            3,
+            "the zoom block is where the pane is"
+        );
+        state.update(Message::GoToCrumb(4));
+        assert_eq!(zoom_text(&state), "c", "no crumb that deep");
+        state.update(Message::GoToCrumb(1));
+        assert_eq!(state.breadcrumbs(), ["A"]);
+        assert_eq!(focus_text(&state), "c", "the block zoomed out of");
+        state.update(Message::Back);
+        assert_eq!(zoom_text(&state), "c");
+        state.update(Message::GoToCrumb(0));
+        assert_eq!(zoom_text(&state), "Home");
     }
 }

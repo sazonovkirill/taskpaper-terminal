@@ -100,6 +100,11 @@ pub enum PaneChange {
     Open,
     /// Open the focused pane's location in a new pane right of it, and give that pane the keys.
     OpenLocation,
+    /// Open the focused pane's breadcrumb at this depth, as [`Message::GoToCrumb`] counts it, in
+    /// a new pane right of it, and give that pane the keys (FR-KEY-05).
+    ///
+    /// [`Message::GoToCrumb`]: super::Message::GoToCrumb
+    OpenCrumb(usize),
     /// Give the keys to the pane at this position, counted from 0 at the left, if there is one.
     Focus(usize),
     /// Give the keys to the pane left of the focused one.
@@ -196,6 +201,11 @@ impl State {
         match change {
             PaneChange::Open => self.open_chosen(),
             PaneChange::OpenLocation => self.open_pane(self.pane.location, self.pane.focus),
+            PaneChange::OpenCrumb(depth) => {
+                if let Some(location) = self.crumb(depth) {
+                    self.open_pane(location, None);
+                }
+            }
             PaneChange::Focus(at) => self.focus_pane(at),
             PaneChange::FocusLeft => {
                 if let Some(at) = self.pane_at.checked_sub(1) {
@@ -486,6 +496,22 @@ mod tests {
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
         pane(&mut state, PaneChange::OpenLocation);
         assert_eq!(panes(&state)[3], "*Today: ", "the Today view opens too");
+    }
+
+    // FR-KEY-05, FR-UI-03
+    #[test]
+    fn opening_a_crumb_zooms_a_new_pane_there() {
+        let mut state = open(OUTLINE);
+        focus(&mut state, "Work");
+        state.update(Message::ZoomIn);
+        focus(&mut state, "Report");
+        state.update(Message::ZoomIn);
+        pane(&mut state, PaneChange::OpenCrumb(1));
+        assert_eq!(panes(&state), ["Report: Report", "*Work: Report"]);
+        pane(&mut state, PaneChange::OpenCrumb(0));
+        assert_eq!(panes(&state)[2], "*⌂: Work");
+        pane(&mut state, PaneChange::OpenCrumb(1));
+        assert_eq!(panes(&state).len(), 3, "home has no deeper crumb");
     }
 
     // FR-UI-02, FR-DONE-02, FR-NAV-04, FR-OPS-01, D-13

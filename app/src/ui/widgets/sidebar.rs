@@ -66,6 +66,31 @@ impl<'a> SidebarPanel<'a> {
         self.lines().position(|(_, focused)| focused)
     }
 
+    /// The index of the entry on line `line`, counted from the first, with its fold when column
+    /// `column`, counted from where the lines start after the gutter, shows a project entry's
+    /// fold marker (FR-KEY-05).
+    #[must_use]
+    pub fn entry_at(&self, line: usize, column: u16) -> Option<(usize, Option<Fold>)> {
+        let mut entries = 0;
+        for (shown, _) in self.lines().take(line) {
+            entries += usize::from(matches!(shown, SidebarLine::Entry(_)));
+        }
+        let (SidebarLine::Entry(entry), _) = self.lines().nth(line)? else {
+            return None;
+        };
+        let fold = match *entry {
+            SidebarEntry::Project { depth, fold, .. }
+                if fold != Fold::Leaf && usize::from(column) == (depth + 1) * 2 =>
+            {
+                Some(fold)
+            }
+            SidebarEntry::Bookmark { .. } | SidebarEntry::Today | SidebarEntry::Project { .. } => {
+                None
+            }
+        };
+        Some((entries, fold))
+    }
+
     /// Each line with whether it shows the focused entry, built only when drawn since a large
     /// outline has many more than fit.
     fn lines(&self) -> impl Iterator<Item = (SidebarLine<'a>, bool)> {
@@ -218,6 +243,29 @@ mod tests {
                 "      A".to_owned(),
             ]
         );
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn a_line_names_its_entry_and_a_column_its_fold_marker() {
+        let view = State::new(format::parse("A: @bookmark\n\tB:\nC:"), None)
+            .sidebar()
+            .expect("shown by default");
+        let panel = SidebarPanel::new(&view, IconSet::Unicode);
+        // Bookmarks, A, Today, blank, Projects, ▾ A, B, C.
+        assert_eq!(panel.entry_at(0, 0), None, "a heading");
+        assert_eq!(panel.entry_at(1, 0), Some((0, None)));
+        assert_eq!(panel.entry_at(2, 2), Some((1, None)));
+        assert_eq!(panel.entry_at(3, 0), None, "the blank line");
+        assert_eq!(panel.entry_at(5, 2), Some((2, Some(Fold::Expanded))));
+        assert_eq!(panel.entry_at(5, 3), Some((2, None)));
+        assert_eq!(
+            panel.entry_at(6, 4),
+            Some((3, None)),
+            "a leaf has no marker"
+        );
+        assert_eq!(panel.entry_at(7, 2), Some((4, None)));
+        assert_eq!(panel.entry_at(8, 0), None, "past the last entry");
     }
 
     // FR-UI-01

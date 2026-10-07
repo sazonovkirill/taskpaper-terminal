@@ -61,98 +61,8 @@ impl State {
         match message {
             Message::NewNext => Some(Message::StopEditing),
             Message::Paste(_) | Message::Pasted { .. } if self.edit.is_none() => None,
-            Message::FocusParent
-            | Message::FocusNextSibling
-            | Message::FocusPreviousSibling
-            | Message::FocusLastChild
-            | Message::Collapse
-            | Message::Expand
-            | Message::ToggleFold
-            | Message::ToggleSubtree
-            | Message::ExpandLevel
-            | Message::CollapseLevel
-            | Message::ExpandAll
-            | Message::CollapseAll
-            | Message::New(..)
-            | Message::Group
-            | Message::Indent
-            | Message::Outdent => None,
-            Message::Started
-            | Message::Tick { .. }
-            | Message::Saved
-            | Message::SaveFailed { .. }
-            | Message::SaveRefused { .. }
-            | Message::CheckFile
-            | Message::FileChecked { .. }
-            | Message::KeepMine
-            | Message::TakeTheirs
-            | Message::ToggleDiff
-            | Message::ConflictCopied { .. }
-            | Message::ConflictCopyFailed { .. }
-            | Message::BackupFailed { .. }
-            | Message::ConfigProblems(_)
-            | Message::SetAutosaveDelay(_)
-            | Message::Quit
-            | Message::Terminate
-            | Message::FocusNext
-            | Message::FocusPrevious
-            | Message::FocusFirst
-            | Message::FocusLast
-            | Message::PageDown { .. }
-            | Message::PageUp { .. }
-            | Message::ToggleShowDone
-            | Message::ToggleShortcuts
-            | Message::CloseShortcuts
-            | Message::ZoomIn
-            | Message::ZoomOut
-            | Message::GoHome
-            | Message::Back
-            | Message::Forward
-            | Message::ToggleSidebar
-            | Message::FocusSidebar
-            | Message::Sidebar(_)
-            | Message::ToggleDone { .. }
-            | Message::ChangeDate { .. }
-            | Message::ToggleFlag(_)
-            | Message::CycleColor
-            | Message::SetColor(_)
-            | Message::OpenColorPicker
-            | Message::SetSection(_)
-            | Message::OpenDatePrompt { .. }
-            | Message::DatePrompt(_)
-            | Message::ClearDate(_)
-            | Message::OpenTypePicker
-            | Message::OpenDetails
-            | Message::CloseDetails
-            | Message::OpenGoToSymbol
-            | Message::OpenMoveTo
-            | Message::OpenGoToCommand(_)
-            | Message::Count
-            | Message::SaveAs(_)
-            | Message::OpenContextMenu
-            | Message::Undo
-            | Message::Redo
-            | Message::EditAtEnd
-            | Message::Text(_)
-            | Message::StopEditing
-            | Message::OpenCommandMenu { .. }
-            | Message::Menu(..)
-            | Message::CycleType
-            | Message::EditPrevious
-            | Message::EditNext
-            | Message::Delete
-            | Message::Copy
-            | Message::Cut
-            | Message::Paste(_)
-            | Message::Pasted { .. }
-            | Message::Duplicate
-            | Message::MoveUp
-            | Message::MoveDown
-            | Message::OpenUrl
-            | Message::OpenUrlFailed { .. }
-            | Message::Select(_)
-            | Message::Pane(_)
-            | Message::ResizePane(_) => Some(message),
+            message if needs_the_tree(&message) => None,
+            message => Some(message),
         }
     }
 
@@ -162,6 +72,109 @@ impl State {
         let parent = blocks::parent(&self.document, block.id()).map(|parent| parent.id());
         self.go_to(Location::Outline(parent));
         self.pane.focus = Some(block.id());
+    }
+}
+
+/// Whether `message` needs the outline's tree around the focused block, which the Today view does
+/// not show (navigation.md §7).
+fn needs_the_tree(message: &Message) -> bool {
+    match message {
+        Message::FocusParent
+        | Message::FocusNextSibling
+        | Message::FocusPreviousSibling
+        | Message::FocusLastChild
+        | Message::Collapse
+        | Message::Expand
+        | Message::ToggleFold
+        | Message::ToggleSubtree
+        | Message::ExpandLevel
+        | Message::CollapseLevel
+        | Message::ExpandAll
+        | Message::CollapseAll
+        | Message::New(..)
+        | Message::Group
+        | Message::Indent
+        | Message::Outdent => true,
+        Message::NewNext
+        | Message::Started
+        | Message::Tick { .. }
+        | Message::Saved
+        | Message::SaveFailed { .. }
+        | Message::SaveRefused { .. }
+        | Message::CheckFile
+        | Message::FileChecked { .. }
+        | Message::KeepMine
+        | Message::TakeTheirs
+        | Message::ToggleDiff
+        | Message::ConflictCopied { .. }
+        | Message::ConflictCopyFailed { .. }
+        | Message::BackupFailed { .. }
+        | Message::ConfigProblems(_)
+        | Message::SetAutosaveDelay(_)
+        | Message::Quit
+        | Message::Terminate
+        | Message::FocusNext
+        | Message::FocusPrevious
+        | Message::FocusFirst
+        | Message::FocusLast
+        | Message::PageDown { .. }
+        | Message::PageUp { .. }
+        | Message::Focus(_)
+        | Message::GoToCrumb(_)
+        | Message::OpenPaneMenu(_)
+        | Message::ToggleShowDone
+        | Message::ToggleShortcuts
+        | Message::CloseShortcuts
+        | Message::ZoomIn
+        | Message::ZoomOut
+        | Message::GoHome
+        | Message::Back
+        | Message::Forward
+        | Message::ToggleSidebar
+        | Message::FocusSidebar
+        | Message::Sidebar(_)
+        | Message::ToggleDone { .. }
+        | Message::ChangeDate { .. }
+        | Message::ToggleFlag(_)
+        | Message::CycleColor
+        | Message::SetColor(_)
+        | Message::OpenColorPicker
+        | Message::SetSection(_)
+        | Message::OpenDatePrompt { .. }
+        | Message::DatePrompt(_)
+        | Message::ClearDate(_)
+        | Message::OpenTypePicker
+        | Message::OpenDetails
+        | Message::CloseDetails
+        | Message::OpenGoToSymbol
+        | Message::OpenMoveTo
+        | Message::OpenGoToCommand(_)
+        | Message::Count
+        | Message::SaveAs(_)
+        | Message::OpenContextMenu
+        | Message::Undo
+        | Message::Redo
+        | Message::EditAtEnd
+        | Message::Text(_)
+        | Message::StopEditing
+        | Message::OpenCommandMenu { .. }
+        | Message::Menu(..)
+        | Message::CycleType
+        | Message::EditPrevious
+        | Message::EditNext
+        | Message::Delete
+        | Message::Copy
+        | Message::Cut
+        | Message::Paste(_)
+        | Message::Pasted { .. }
+        | Message::Duplicate
+        | Message::MoveUp
+        | Message::MoveDown
+        | Message::OpenUrl
+        | Message::OpenUrlFailed { .. }
+        | Message::Select(_)
+        | Message::Pane(_)
+        | Message::ResizePane(_) => false,
     }
 }
 

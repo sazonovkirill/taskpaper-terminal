@@ -76,6 +76,8 @@ pub enum SidebarInput {
     Choose,
     /// Give the pane the keys.
     Leave,
+    /// Give the sidebar the keys on the entry at this index, as a click on it does (FR-KEY-05).
+    Focus(usize),
 }
 
 /// One entry of the sidebar, in its sections' order: bookmarks, Today, projects.
@@ -165,7 +167,17 @@ impl State {
     /// Applies a key of the focused sidebar.
     pub(super) fn sidebar_input(&mut self, input: SidebarInput) {
         let entries = self.sidebar_entries();
-        let Some(at) = self.sidebar_focus(&entries) else {
+        // Focusing picks the entry the others act on.
+        let at = match input {
+            SidebarInput::Focus(at) => (self.sidebar.shown && at < entries.len()).then_some(at),
+            SidebarInput::Next
+            | SidebarInput::Previous
+            | SidebarInput::Collapse
+            | SidebarInput::Expand
+            | SidebarInput::Choose
+            | SidebarInput::Leave => self.sidebar_focus(&entries),
+        };
+        let Some(at) = at else {
             return;
         };
         let focused = entries.get(at);
@@ -197,6 +209,7 @@ impl State {
                 }
             }
             SidebarInput::Leave => self.sidebar.focus = None,
+            SidebarInput::Focus(_) => self.sidebar.focus = Some(at),
         }
     }
 
@@ -400,6 +413,22 @@ Home: @bookmark
         state.update(Message::ToggleShowDone);
         assert_eq!(listed(&state), all);
         assert_eq!(all.len(), 7, "{all:?}");
+    }
+
+    // FR-KEY-05
+    #[test]
+    fn focusing_an_entry_gives_the_sidebar_the_keys_there_while_it_is_shown() {
+        let mut state = open(OUTLINE);
+        input(&mut state, &[SidebarInput::Focus(3)]);
+        assert_eq!(focused(&state), Some(3));
+        let past = listed(&state).len();
+        input(&mut state, &[SidebarInput::Focus(past)]);
+        assert_eq!(focused(&state), Some(3), "no entry there");
+        input(&mut state, &[SidebarInput::Choose]);
+        assert_eq!(state.breadcrumbs(), ["Work"]);
+        state.update(Message::ToggleSidebar);
+        input(&mut state, &[SidebarInput::Focus(1)]);
+        assert!(!state.sidebar_focused(), "a hidden sidebar takes no keys");
     }
 
     // FR-UI-01

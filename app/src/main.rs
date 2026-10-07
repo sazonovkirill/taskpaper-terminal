@@ -13,8 +13,9 @@ use std::{
 use anyhow::{Context, bail};
 use crossterm::{
     event::{
-        self, DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange,
-        KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        self, DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
     execute,
 };
@@ -102,11 +103,13 @@ fn main() -> anyhow::Result<()> {
         .with_kitty_keyboard(kitty)
         .with_locale(utf8)
         .with_config(config);
-    // Terminals that cannot report focus, bracket pasted text or speak the kitty keyboard protocol
-    // ignore the requests, so keys arrive as legacy reporting sends them (keybindings.md §1).
+    // Terminals that cannot report focus or the mouse, bracket pasted text or speak the kitty
+    // keyboard protocol ignore the requests, so keys arrive as legacy reporting sends them
+    // (keybindings.md §1) and nothing depends on the mouse (D-16).
     let _ = execute!(
         std::io::stdout(),
         EnableFocusChange,
+        EnableMouseCapture,
         EnableBracketedPaste,
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
@@ -118,6 +121,7 @@ fn main() -> anyhow::Result<()> {
         std::io::stdout(),
         PopKeyboardEnhancementFlags,
         DisableBracketedPaste,
+        DisableMouseCapture,
         DisableFocusChange
     );
     ratatui::restore();

@@ -169,6 +169,106 @@ pub fn scroll_rows(
     (scroll, before - start)
 }
 
+/// Where a view `height` lines tall over `rows` rows starts after scrolling `lines` screen lines
+/// down from `scroll`, or up when negative, as the wheel does (ui.md §6): no further up than
+/// the first line, nor down than where the last line is at the bottom, which a view past it
+/// after rows went away comes back to. `row_height` gives a row's screen lines; it is asked only
+/// for rows near the view.
+pub fn scroll_by(
+    scroll: Scroll,
+    lines: isize,
+    height: usize,
+    rows: usize,
+    mut row_height: impl FnMut(usize) -> usize,
+) -> Scroll {
+    let Some(last) = rows.checked_sub(1) else {
+        return Scroll::default();
+    };
+    let height = height.max(1);
+    let mut scroll = if scroll.row > last {
+        Scroll { row: last, line: 0 }
+    } else {
+        scroll
+    };
+    let mut left = lines_below(scroll, height, rows, &mut row_height);
+    for _ in 0..lines.max(0) {
+        if left <= height {
+            break;
+        }
+        scroll = if scroll.line + 1 < row_height(scroll.row) {
+            Scroll {
+                line: scroll.line + 1,
+                ..scroll
+            }
+        } else {
+            Scroll {
+                row: scroll.row + 1,
+                line: 0,
+            }
+        };
+        left = lines_below(scroll, height, rows, &mut row_height);
+    }
+    let mut up = lines.min(0).unsigned_abs();
+    while (up > 0 || left < height)
+        && let Some(earlier) = line_above(scroll, &mut row_height)
+    {
+        scroll = earlier;
+        up = up.saturating_sub(1);
+        left += 1;
+    }
+    scroll
+}
+
+/// The screen lines of `rows` rows from a view's start at `scroll` to the end, counted only until
+/// they are more than `height`.
+fn lines_below(
+    scroll: Scroll,
+    height: usize,
+    rows: usize,
+    row_height: &mut impl FnMut(usize) -> usize,
+) -> usize {
+    let mut lines = row_height(scroll.row).saturating_sub(scroll.line);
+    let mut row = scroll.row + 1;
+    while lines <= height && row < rows {
+        lines += row_height(row);
+        row += 1;
+    }
+    lines
+}
+
+/// The view's start one screen line above `scroll`, unless it is at the first line.
+fn line_above(scroll: Scroll, row_height: &mut impl FnMut(usize) -> usize) -> Option<Scroll> {
+    if let Some(line) = scroll.line.checked_sub(1) {
+        return Some(Scroll { line, ..scroll });
+    }
+    let row = scroll.row.checked_sub(1)?;
+    Some(Scroll {
+        row,
+        line: row_height(row).saturating_sub(1),
+    })
+}
+
+/// The screen line, counted from the top of a view `height` lines tall that starts at
+/// `scroll`, where the row `focus` starts, if the view shows that line.
+pub fn line_of(
+    scroll: Scroll,
+    focus: usize,
+    height: usize,
+    mut row_height: impl FnMut(usize) -> usize,
+) -> Option<usize> {
+    if focus < scroll.row || (focus == scroll.row && scroll.line > 0) {
+        return None;
+    }
+    let mut line = 0;
+    for row in scroll.row..focus {
+        line += row_height(row);
+        if line >= height + scroll.line {
+            return None;
+        }
+    }
+    Some(line - scroll.line)
+}
+
 /// Where a popup of `size` (width, height) anchored at the caret at `caret` goes inside `area`:
 /// from the caret's column on the line below it, or above the caret's line when there is no room
 /// below, moved left or up as far as it must to stay inside `area` (ui.md §5).
@@ -502,6 +602,72 @@ mod tests {
             (Scroll { row: 1, line: 4 }, 2),
             "a start far above the focus scrolls down to it"
         );
+    }
+
+    // ui.md §6
+    #[test]
+    fn the_wheel_scrolls_by_lines_between_the_first_and_the_last_page() {
+        let heights = [1, 3, 1, 2, 1];
+        let within = |rows, row, line, lines| {
+            scroll_by(Scroll { row, line }, lines, 4, rows, |row| heights[row])
+        };
+        let by = |row, line, lines| within(heights.len(), row, line, lines);
+        assert_eq!(by(0, 0, 2), Scroll { row: 1, line: 1 });
+        assert_eq!(by(1, 1, -2), Scroll { row: 0, line: 0 });
+        assert_eq!(by(0, 0, -1), Scroll { row: 0, line: 0 }, "at the top");
+        assert_eq!(by(0, 0, 20), Scroll { row: 2, line: 0 }, "the last page");
+        assert_eq!(
+            by(4, 0, 0),
+            Scroll { row: 2, line: 0 },
+            "back to the last page"
+        );
+        assert_eq!(by(9, 0, 0), Scroll { row: 2, line: 0 }, "rows went away");
+        assert_eq!(within(0, 3, 0, 1), Scroll::default(), "no rows");
+        assert_eq!(within(2, 0, 0, 1), Scroll::default(), "everything fits");
+    }
+
+    // ui.md §6
+    #[test]
+    fn a_rows_line_is_found_while_the_view_shows_its_first_line() {
+        let heights = [1, 3, 1, 2, 1];
+        let of = |row, line, focus| line_of(Scroll { row, line }, focus, 4, |row| heights[row]);
+        assert_eq!(of(0, 0, 0), Some(0));
+        assert_eq!(of(0, 0, 1), Some(1));
+        assert_eq!(of(0, 0, 2), None, "below the view");
+        assert_eq!(of(1, 1, 2), Some(2));
+        assert_eq!(of(1, 1, 3), Some(3));
+        assert_eq!(of(1, 1, 1), None, "its first line is above the view");
+        assert_eq!(of(2, 0, 1), None, "above the view");
+    }
+
+    proptest::proptest! {
+        /// Scrolling by lines measures only rows near the view and lands where counting every
+        /// line would.
+        #[test]
+        fn scrolling_by_lines_matches_counting_every_line(
+            heights in proptest::collection::vec(1..=12usize, 1..80),
+            height in 0..24usize,
+            offset in 0..400usize,
+            lines in -30..30isize,
+        ) {
+            let start = |index: usize| heights.iter().take(index).sum::<usize>();
+            let total = start(heights.len());
+            let offset = offset % total;
+            let row = (0..heights.len()).take_while(|&row| start(row + 1) <= offset).count();
+            let scroll = Scroll { row, line: offset - start(row) };
+            let mut asked = 0;
+            let placed = scroll_by(scroll, lines, height, heights.len(), |row| {
+                asked += 1;
+                heights[row]
+            });
+            let last = total.saturating_sub(height.max(1));
+            let expected = offset.saturating_add_signed(lines).min(last);
+            proptest::prop_assert_eq!(start(placed.row) + placed.line, expected);
+            proptest::prop_assert!(placed.line < heights[placed.row], "{placed:?}");
+            let reach = height.max(1) + 2;
+            let most = (lines.unsigned_abs() + 2) * (reach + 2) + reach * 2;
+            proptest::prop_assert!(asked <= most, "asked {asked} rows");
+        }
     }
 
     proptest::proptest! {

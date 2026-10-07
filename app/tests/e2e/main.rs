@@ -157,6 +157,34 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
     Ok(())
 }
 
+// FR-KEY-05, D-16
+#[test]
+fn a_click_focuses_a_block_and_the_mouse_is_released_on_quit() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "- First\n- Second\n")?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("XDG_DATA_HOME", dir.path().join("data")),
+        env("XDG_STATE_HOME", dir.path().join("state"))
+    )?;
+    terminal.wait_until(|screen| screen.contains("- Second"))?;
+    assert!(
+        !terminal.screen().mouse_modes().is_empty(),
+        "the mouse is reported"
+    );
+    terminal.click(40, 3)?;
+    // Without a UTF-8 locale the done marker is drawn in ASCII.
+    terminal.send(termlens::Key::Char('x'))?;
+    terminal.wait_until(|screen| screen.contains("[x] Second"))?;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    assert!(terminal.screen().mouse_modes().is_empty(), "and released");
+    assert!(std::fs::read_to_string(&path)?.starts_with("- First\n- Second @done("));
+    Ok(())
+}
+
 #[test]
 fn a_pending_key_prefix_times_out_without_further_input() -> TestResult {
     let dir = tempfile::tempdir()?;

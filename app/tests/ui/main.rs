@@ -21,6 +21,7 @@ mod hang_up;
 mod icons;
 mod markdown;
 mod marks;
+mod mouse;
 mod move_to;
 mod moving;
 mod open_file;
