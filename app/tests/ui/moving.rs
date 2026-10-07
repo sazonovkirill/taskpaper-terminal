@@ -4,7 +4,7 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{EDIT, Harness, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -100,7 +100,7 @@ fn tab_while_typing_a_new_block_indents_it_and_keeps_editing() {
     let mut app = Harness::open("groceries.taskpaper", 50, 12);
     app.type_keys("joOat");
     app.press(KeyCode::Tab, KeyModifiers::NONE);
-    assert!(status_line(&mut app).starts_with("EDIT · "));
+    assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     app.type_keys(" milk");
     assert_eq!(outline_rows(&mut app)[2], "    - Oat milk");
     app.render();

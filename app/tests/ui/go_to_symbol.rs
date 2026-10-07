@@ -31,13 +31,13 @@ fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first(
         [
             "┌Go to Symbol──────────────────────────────────────────────┐",
             "│›                                                         │",
-            "│ Notes  Home                                              │",
-            "│ Home                                                     │",
-            "│ Work                                                     │",
-            "│ Later  Work                                              │",
-            "│ Paint the hall  Home                                     │",
-            "│ Write report  Work                                       │",
-            "│ Call Ann  Work › Later                                   │",
+            "│ ¶ Notes  Home                                            │",
+            "│ ▸ Home                                                   │",
+            "│ ▸ Work                                                   │",
+            "│ § Later  Work                                            │",
+            "│ ☐ Paint the hall  Home                                   │",
+            "│ ☐ Write report  Work                                     │",
+            "│ ☐ Call Ann  Work › Later                                 │",
             "└──────────────────────────────────────────────────────────┘",
         ]
     );
@@ -47,7 +47,7 @@ fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first(
         "the first entry is highlighted"
     );
     assert!(
-        buffer[(9, 6)].modifier.contains(Modifier::DIM),
+        buffer[(11, 6)].modifier.contains(Modifier::DIM),
         "its path is dim"
     );
     app.terminal.backend_mut().assert_cursor_position((3, 5));
@@ -64,7 +64,7 @@ fn typing_filters_and_enter_zooms_to_the_parent_and_focuses_the_block() {
         [
             "┌Go to Symbol──────────────────────────────────────────────┐",
             "│› rep                                                     │",
-            "│ Write report  Work                                       │",
+            "│ ☐ Write report  Work                                     │",
         ]
     );
     app.terminal.backend_mut().assert_cursor_position((6, 8));
@@ -142,6 +142,6 @@ fn a_long_list_scrolls_with_the_highlight_in_a_box_at_most_80_by_20() {
         press(&mut app, KeyCode::Down);
     }
     let rows = screen(&mut app);
-    assert!(rows[top + 2].contains("│ Task 7 "), "{rows:#?}");
-    assert!(rows[top + 18].contains("│ Task 23 "), "{rows:#?}");
+    assert!(rows[top + 2].contains("│ ☐ Task 7 "), "{rows:#?}");
+    assert!(rows[top + 18].contains("│ ☐ Task 23 "), "{rows:#?}");
 }

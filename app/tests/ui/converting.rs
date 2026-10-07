@@ -37,13 +37,13 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
         [
             "▌ Groceries",
             "    - Milk",
-            "      ┌Node type:──────┐",
-            "      │ Project        │",
-            "      │ Task           │",
-            "      │ Note           │",
-            "      │ Make Section   │",
-            "      │ Remove Section │",
-            "      └────────────────┘",
+            "     ┌Node type:────────┐",
+            "     │ ▸ Project        │",
+            "     │ ☐ Task           │",
+            "     │ ¶ Note           │",
+            "     │ § Make Section   │",
+            "     │ ¶ Remove Section │",
+            "     └──────────────────┘",
             "",
         ]
     );

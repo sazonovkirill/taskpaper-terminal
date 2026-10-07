@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, line};
+use crate::support::{EDIT, Harness, line};
 
 /// The status line of `app` after a draw.
 fn status_line(app: &mut Harness) -> String {
@@ -73,6 +73,6 @@ fn g_x_in_edit_mode_types_the_letters() {
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.type_keys(" gx");
     let status = status_line(&mut app);
-    assert!(status.starts_with("EDIT"), "{status}");
+    assert!(status.starts_with(EDIT), "{status}");
     assert!(!status.contains("cannot open"), "{status}");
 }

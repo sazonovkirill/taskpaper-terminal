@@ -19,14 +19,17 @@ mod finder;
 
 pub use finder::FinderPopup;
 
-use super::{layout, theme::Icon};
+use super::{
+    layout,
+    theme::{Icon, IconSet},
+};
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
         Notice, PickerView, Row, SaveState, commands::Group,
     },
     document::{
-        BlockKind, DateTag, Details, Flag, TagColor,
+        BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
         dates::{self, DateError},
         format::Typed,
         inline::{self, Format, Syntax},
@@ -53,11 +56,12 @@ pub struct OutlineView<'a> {
     focused: Option<usize>,
     editor: Option<&'a Editor<'a>>,
     wrap: bool,
+    icons: IconSet,
 }
 
 impl<'a> OutlineView<'a> {
     /// A view of `rows` on `today`, the local date, drawn from the top of its area with no row
-    /// focused and wrap off.
+    /// focused, wrap off and Nerd Font icons.
     #[must_use]
     pub fn new(rows: &'a [Row], today: Date) -> Self {
         Self {
@@ -67,6 +71,7 @@ impl<'a> OutlineView<'a> {
             focused: None,
             editor: None,
             wrap: false,
+            icons: IconSet::Nerd,
         }
     }
 
@@ -103,6 +108,12 @@ impl<'a> OutlineView<'a> {
         Self { wrap, ..self }
     }
 
+    /// Draws its markers and icons from `icons` (ui.md §7).
+    #[must_use]
+    pub fn icons(self, icons: IconSet) -> Self {
+        Self { icons, ..self }
+    }
+
     /// How many screen lines each row takes in an area `width` columns wide, the gutter
     /// included.
     #[must_use]
@@ -123,15 +134,15 @@ impl<'a> OutlineView<'a> {
                 return (
                     index,
                     row,
-                    vec![editor_line(row, editor, width).0],
+                    vec![editor_line(row, editor, width, self.icons).0],
                     Line::default(),
                 );
             }
-            let chips = chips(row, self.today);
+            let chips = chips(row, self.today, self.icons);
             let room = width.saturating_sub(chips.width());
-            let line = row_line(row, room);
+            let line = row_line(row, room, self.icons);
             let lines = if self.wrap {
-                wrap::wrap(&line, text_column(row), room, width)
+                wrap::wrap(&line, text_column(row, self.icons), room, width)
             } else {
                 vec![wrap::truncate(&line, room)]
             };
@@ -197,15 +208,13 @@ pub const GUTTER_WIDTH: u16 = 2;
 /// quarter block it replaced (D-51).
 const FOCUS_MARKER: &str = "▌";
 
-/// Stands for the document root in the breadcrumbs (D-32).
-const HOME_ICON: &str = "⌂";
-
-/// The breadcrumb header for a view zoomed into the last of `crumbs`: `⌂`, then each crumb,
-/// dropping crumbs from the left behind `…` until it fits in `width` columns or only the last
-/// one is left (navigation §4). Bold, as the focused pane's header (ui.md §1).
+/// The breadcrumb header for a view zoomed into the last of `crumbs`: the home icon of `icons`
+/// (D-32), then each crumb, dropping crumbs from the left behind `…` until it fits in `width`
+/// columns or only the last one is left (navigation §4). Bold, as the focused pane's header
+/// (ui.md §1).
 #[must_use]
-pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
-    let path: Vec<&str> = std::iter::once(HOME_ICON)
+pub fn breadcrumbs(crumbs: &[String], width: usize, icons: IconSet) -> Line<'static> {
+    let path: Vec<&str> = std::iter::once(Icon::Home.glyph(icons))
         .chain(crumbs.iter().map(String::as_str))
         .collect();
     let mut line = Line::from(path.join(" › "));
@@ -222,17 +231,18 @@ pub fn breadcrumbs(crumbs: &[String], width: usize) -> Line<'static> {
 /// The header of the Today view in place of breadcrumbs: its icon, as in the sidebar, and its name,
 /// bold as the focused pane's header (navigation.md §7, ui.md §1).
 #[must_use]
-pub fn today_header() -> Line<'static> {
+pub fn today_header(icons: IconSet) -> Line<'static> {
     Line::from(vec![
-        Span::styled(Icon::Today.glyph(), today_style()),
+        Span::styled(Icon::Today.glyph(icons), today_style()),
         Span::raw(" Today"),
     ])
     .bold()
 }
 
-/// What the status line says after the file's path (ui.md §1, file-io.md §1–3): `●` while changes
-/// are unsaved, an error badge when the last save failed, `read-only`, `not on disk` when the file
-/// was deleted or moved away, the question a failed save on quit asks, and the current notice.
+/// What the status line says after the file's path (ui.md §1, file-io.md §1–3): the unsaved icon
+/// of `icons` while changes are unsaved, an error badge when the last save failed, `read-only`,
+/// `not on disk` when the file was deleted or moved away, the question a failed save on quit
+/// asks, and the current notice.
 #[must_use]
 pub fn file_status(
     save: SaveState,
@@ -240,12 +250,14 @@ pub fn file_status(
     gone: bool,
     confirming_quit: bool,
     notice: Option<&Notice>,
+    icons: IconSet,
 ) -> Vec<Span<'static>> {
+    let unsaved = Icon::Unsaved.glyph(icons);
     let mut spans = match save {
         SaveState::Saved => Vec::new(),
-        SaveState::Unsaved => vec![Span::raw(" ●")],
+        SaveState::Unsaved => vec![Span::raw(format!(" {unsaved}"))],
         SaveState::Failed { reason } => vec![
-            Span::raw(" ● "),
+            Span::raw(format!(" {unsaved} ")),
             Span::styled(format!("save failed: {reason}"), error_style()),
         ],
     };
@@ -420,30 +432,35 @@ impl Popup {
     /// after its icon and padded by 2 columns on each side, with a line across it between groups
     /// and `/` before its filter (D-50, D-54).
     #[must_use]
-    pub fn commands(menu: &CommandMenuView) -> Self {
+    pub fn commands(menu: &CommandMenuView, icons: IconSet) -> Self {
         let filter = if menu.filter.is_empty() {
             String::new()
         } else {
             format!("/{}", menu.filter)
         };
-        Self::command_list(menu, |_| String::new(), filter)
+        Self::command_list(menu, |_| String::new(), filter, icons)
     }
 
     /// The context menu: the command menu's box, with each command's keys as `keys` gives them
     /// right-aligned in the primary color, and its filter as typed (FR-KEY-06, ui.md §5).
     #[must_use]
-    pub fn context_menu(menu: &CommandMenuView, keys: impl Fn(Command) -> String) -> Self {
-        Self::command_list(menu, keys, menu.filter.to_owned())
+    pub fn context_menu(
+        menu: &CommandMenuView,
+        keys: impl Fn(Command) -> String,
+        icons: IconSet,
+    ) -> Self {
+        Self::command_list(menu, keys, menu.filter.to_owned(), icons)
     }
 
     /// A menu of commands titled "Commands:" in the accent color like its border, each entry
     /// after its icon with what `keys` says of its command right-aligned 2 columns after the
     /// widest label, padded by 2 columns on each side, a line across it between groups and
-    /// `filter` at the bottom.
+    /// `filter` at the bottom, the icons drawn from `icons`.
     fn command_list(
         menu: &CommandMenuView,
         keys: impl Fn(Command) -> String,
         filter: String,
+        icons: IconSet,
     ) -> Self {
         const PAD: &str = "  ";
         let title = "Commands:";
@@ -455,7 +472,7 @@ impl Popup {
                     let (icon, style) = command_icon(*command);
                     let line = Line::from(vec![
                         Span::raw(PAD),
-                        Span::styled(icon.glyph(), style),
+                        Span::styled(icon.glyph(icons), style),
                         Span::raw(format!(" {label}")),
                     ]);
                     Some((line, keys(*command)))
@@ -499,19 +516,18 @@ impl Popup {
         }
     }
 
-    /// The color picker, titled "Color:", each color's name in that color after its number,
-    /// which chooses it (D-48).
+    /// The color picker, titled "Color:", each color's name in that color after its icon and
+    /// its number, which chooses it (D-48).
     #[must_use]
-    pub fn colors(picker: &PickerView<Option<TagColor>>) -> Self {
+    pub fn colors(picker: &PickerView<Option<TagColor>>, icons: IconSet) -> Self {
         let names: Vec<(String, Style)> = picker
             .entries
             .iter()
-            .map(|&(color, name)| match color {
-                Some(color) => (
-                    format!("{} {name}", color.number()),
-                    Style::new().fg(tag_color(color)),
-                ),
-                None => (format!("  {name}"), Style::new()),
+            .map(|&(color, name)| {
+                let (icon, style) = command_icon(Command::SetColor(color));
+                let number =
+                    color.map_or_else(|| " ".to_owned(), |color| color.number().to_string());
+                (format!("{} {number} {name}", icon.glyph(icons)), style)
             })
             .collect();
         let names = names.iter().map(|(name, style)| (name.as_str(), *style));
@@ -524,10 +540,23 @@ impl Popup {
         }
     }
 
-    /// The type picker, titled "Node type:" (FR-BLK-08).
+    /// The type picker, titled "Node type:", each type after its icon (FR-BLK-08).
     #[must_use]
-    pub fn block_types(picker: &PickerView<Conversion>) -> Self {
-        let names = picker.entries.iter().map(|&(_, name)| (name, Style::new()));
+    pub fn block_types(picker: &PickerView<Conversion>, icons: IconSet) -> Self {
+        let names: Vec<String> = picker
+            .entries
+            .iter()
+            .map(|&(conversion, name)| {
+                let icon = match conversion {
+                    Conversion::To(Typed::Project) => Icon::Project,
+                    Conversion::To(Typed::Task) => Icon::Task,
+                    Conversion::To(Typed::Text) | Conversion::Section(false) => Icon::Note,
+                    Conversion::To(Typed::Section) | Conversion::Section(true) => Icon::Section,
+                };
+                format!("{} {name}", icon.glyph(icons))
+            })
+            .collect();
+        let names = names.iter().map(|name| (name.as_str(), Style::new()));
         Self {
             title: "Node type:",
             frame: Style::new(),
@@ -592,8 +621,9 @@ impl Popup {
 
 /// The icon of the command menu's entry for `command`, in its style: the colors of the matching
 /// chips and icons of the outline (D-46, D-47), a color entry in its color, and a command without
-/// an icon of its own the generic one (D-54).
-fn command_icon(command: Command) -> (Icon, Style) {
+/// an icon of its own the generic one (D-54); also Go to Command's.
+#[must_use]
+pub fn command_icon(command: Command) -> (Icon, Style) {
     let plain = |icon| (icon, Style::new());
     let date = |tag| match tag {
         DateTag::Start => (Icon::Start, start_style()),
@@ -618,6 +648,19 @@ fn command_icon(command: Command) -> (Icon, Style) {
         Command::Delete => plain(Icon::Delete),
         _ => plain(Icon::Command),
     }
+}
+
+/// The icon of block `id` of `document` in the finders: its type's, as the type picker shows it,
+/// or for the document root, which is no block, the home icon (D-32).
+#[must_use]
+pub fn block_icon(document: &Document, id: ItemId) -> (Icon, Style) {
+    let icon = blocks::block(document, id).map_or(Icon::Home, |block| match block.kind() {
+        BlockKind::Project => Icon::Project,
+        BlockKind::Task => Icon::Task,
+        BlockKind::Text if block.section() => Icon::Section,
+        BlockKind::Text => Icon::Note,
+    });
+    (icon, Style::new())
 }
 
 /// A menu's entry lines: each name padded by a space and in its style, the one at `selected`
@@ -679,11 +722,13 @@ pub struct Keyboard {
 /// primary color, scrolled, with a `↑ more` line first while lines are hidden above and a
 /// `↓ more` line last while lines are hidden below, each with the keys that scroll that way
 /// (D-55), and below it what the keyboard reports: how to send `Alt` on macOS until an `Alt` key
-/// arrives, and whether the kitty protocol is on.
+/// arrives, and whether the kitty protocol is on; and while Nerd Font icons are drawn, how to turn
+/// them off (ui.md §7).
 #[derive(Debug)]
 pub struct ShortcutsPanel<'a> {
     groups: &'a [(Group, Vec<(Command, String)>)],
     keyboard: Keyboard,
+    icons: IconSet,
     scroll: usize,
     keys: [&'a str; 2],
 }
@@ -700,12 +745,17 @@ struct Window {
 
 impl<'a> ShortcutsPanel<'a> {
     /// The panel listing `groups`, each command with how its keys read, from the top, noting
-    /// what `keyboard` reports.
+    /// what `keyboard` reports and how to turn off the `icons` drawn.
     #[must_use]
-    pub fn new(groups: &'a [(Group, Vec<(Command, String)>)], keyboard: Keyboard) -> Self {
+    pub fn new(
+        groups: &'a [(Group, Vec<(Command, String)>)],
+        keyboard: Keyboard,
+        icons: IconSet,
+    ) -> Self {
         Self {
             groups,
             keyboard,
+            icons,
             scroll: 0,
             keys: ["", ""],
         }
@@ -810,6 +860,11 @@ impl<'a> ShortcutsPanel<'a> {
         }
         let kitty = if self.keyboard.kitty { "on" } else { "off" };
         notes.push(Line::from(format!("Kitty keyboard protocol: {kitty}")));
+        // The app cannot tell whether the font has the glyphs, so it says how to do without them.
+        if self.icons == IconSet::Nerd {
+            notes.push(Line::from("Icons drawn as boxes? Set"));
+            notes.push(Line::from("icons = \"none\" in config.toml"));
+        }
         notes.into_iter().map(Line::dim).collect()
     }
 }
@@ -1003,13 +1058,10 @@ fn formatted(row: &Row, style: Style) -> impl Iterator<Item = Span<'_>> {
 /// (D-31, FR-FMT-01), then the `@today` star and the bookmark icon, each after a space (D-47),
 /// dimmed with a done block or one inside it. A collapsed block with children shows `▸ n` after
 /// them (ui.md §2), and an entry of the Today view the path of the blocks above it, dimmed
-/// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34).
-fn row_line(row: &Row, width: usize) -> Line<'_> {
-    let (marker, marker_style, style) = row_style(row);
-    let mut line = Line::from(vec![
-        Span::raw("  ".repeat(row.depth)),
-        Span::styled(marker, marker_style),
-    ]);
+/// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34). Markers and icons
+/// come from `icons`.
+fn row_line(row: &Row, width: usize, icons: IconSet) -> Line<'_> {
+    let (mut line, style) = lead(row, icons);
     match row.kind {
         _ if row.divider => {}
         // TaskPaper marks a project with a trailing colon, which the display text drops.
@@ -1032,12 +1084,12 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
     ] {
         if marked {
             line.push_span(" ");
-            line.push_span(Span::styled(icon.glyph(), recede(style)));
+            line.push_span(Span::styled(icon.glyph(icons), recede(style)));
         }
     }
     if row.hidden_children > 0 {
         line.push_span(Span::styled(
-            format!(" ▸ {}", row.hidden_children),
+            format!(" {} {}", Icon::Collapsed.glyph(icons), row.hidden_children),
             Style::new().dim(),
         ));
     }
@@ -1059,15 +1111,15 @@ fn row_line(row: &Row, width: usize) -> Line<'_> {
 /// The date chips of `row` on `today`, right-aligned, each after a space: its start date in green
 /// and its due date in red, each as its icon and the date named relative to `today`, such as
 /// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
-/// block or one inside it (ui.md §2, FR-TAG-03).
-fn chips(row: &Row, today: Date) -> Line<'static> {
+/// block or one inside it (ui.md §2, FR-TAG-03). The icons come from `icons`.
+fn chips(row: &Row, today: Date, icons: IconSet) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
     let chip = |icon: Icon, date: Date, style: Style| {
         [
             Span::raw(" "),
             Span::styled(
-                format!("{} {}", icon.glyph(), dates::relative(date, today)),
+                format!("{} {}", icon.glyph(icons), dates::relative(date, today)),
                 recede(style),
             ),
         ]
@@ -1116,22 +1168,34 @@ fn overdue_style() -> Style {
     due_style().bold().reversed()
 }
 
-/// The column of `row`'s line where its text starts, after its indent and marker.
+/// The column of `row`'s line where its text starts, after its indent and its marker from
+/// `icons`.
 #[must_use]
-pub fn text_column(row: &Row) -> usize {
-    let (marker, _, _) = row_style(row);
-    row.depth * 2 + Span::raw(marker).width()
+pub fn text_column(row: &Row, icons: IconSet) -> usize {
+    lead(row, icons).0.width()
+}
+
+/// What comes before `row`'s text: its indent, then its marker from `icons` and a space, styled;
+/// with the style of its text.
+fn lead(row: &Row, icons: IconSet) -> (Line<'static>, Style) {
+    let (marker, marker_style, style) = row_style(row);
+    let mut line = Line::from(Span::raw("  ".repeat(row.depth)));
+    if let Some(marker) = marker {
+        line.push_span(Span::styled(marker.glyph(icons), marker_style));
+        line.push_span(Span::styled(" ", marker_style));
+    }
+    (line, style)
 }
 
 /// The marker of a block with its style, and the style of its text, by its type and whether it
 /// is done or inside a done block (ui.md §2).
-fn row_style(row: &Row) -> (&'static str, Style, Style) {
+fn row_style(row: &Row) -> (Option<Icon>, Style, Style) {
     let (marker, style) = match row.kind {
-        BlockKind::Project => ("", Style::new().bold().fg(PRIMARY)),
-        BlockKind::Task if row.done => ("✔ ", Style::new()),
-        BlockKind::Task => ("- ", Style::new()),
-        BlockKind::Text if row.section => ("", Style::new().bold().italic().fg(SECONDARY)),
-        BlockKind::Text => ("", Style::new().fg(TEXT)),
+        BlockKind::Project => (None, Style::new().bold().fg(PRIMARY)),
+        BlockKind::Task if row.done => (Some(Icon::DoneTask), Style::new()),
+        BlockKind::Task => (Some(Icon::TaskMarker), Style::new()),
+        BlockKind::Text if row.section => (None, Style::new().bold().italic().fg(SECONDARY)),
+        BlockKind::Text => (None, Style::new().fg(TEXT)),
     };
     let style = if row.title { style.bold() } else { style };
     // A done block recedes and is struck through, and everything inside it recedes; markers
@@ -1146,16 +1210,17 @@ fn row_style(row: &Row) -> (&'static str, Style, Style) {
 }
 
 /// The screen line of `row` while `editor` edits it, `width` columns wide, and the caret's column
-/// on it: the row's indent and marker, then the text with the selection reversed, styled as the
-/// row (FR-MODE-02). When the caret would be past the right edge,
+/// on it: the row's indent and marker from `icons`, then the text with the selection reversed,
+/// styled as the row (FR-MODE-02). When the caret would be past the right edge,
 /// the text scrolls left by whole graphemes to keep it in view.
 #[must_use]
-pub fn editor_line<'a>(row: &Row, editor: &'a Editor, width: usize) -> (Line<'a>, usize) {
-    let (marker, marker_style, style) = row_style(row);
-    let mut line = Line::from(vec![
-        Span::raw("  ".repeat(row.depth)),
-        Span::styled(marker, marker_style),
-    ]);
+pub fn editor_line<'a>(
+    row: &Row,
+    editor: &'a Editor,
+    width: usize,
+    icons: IconSet,
+) -> (Line<'a>, usize) {
+    let (mut line, style) = lead(row, icons);
     let field = Field {
         text: editor.text,
         caret: editor.caret,
@@ -1308,11 +1373,19 @@ mod tests {
 
     const TODAY: Date = jiff::civil::date(2026, 10, 5);
 
+    /// The icons the tests draw: the Unicode markers of ui.md §2.
+    const ICONS: IconSet = IconSet::Unicode;
+
+    /// A view of `rows` on [`TODAY`] drawing [`ICONS`].
+    fn outline(rows: &[Row]) -> OutlineView<'_> {
+        OutlineView::new(rows, TODAY).icons(ICONS)
+    }
+
     /// Draws `rows` with nothing focused and returns the `width` × `height` columns right of
     /// the gutter.
     fn draw(rows: &[Row], width: u16, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, width + GUTTER_WIDTH, height));
-        OutlineView::new(rows, TODAY).render(buf.area, &mut buf);
+        outline(rows).render(buf.area, &mut buf);
         let mut text = Buffer::empty(Rect::new(0, 0, width, height));
         for y in 0..height {
             for x in 0..width {
@@ -1324,7 +1397,7 @@ mod tests {
 
     /// A date chip as drawn: its icon, then the date in words.
     fn chip(icon: Icon, date: &str) -> String {
-        format!("{} {date}", icon.glyph())
+        format!("{} {date}", icon.glyph(ICONS))
     }
 
     /// `text`, then `chips` ending at column `width`; every character is one cell wide.
@@ -1341,7 +1414,7 @@ mod tests {
     fn render_scrolled(offset: usize, focused: Option<usize>, area: Rect) -> Buffer {
         let rows = State::new(format::parse("- a\n- b\n- c\n- d"), None).rows();
         let mut buf = Buffer::empty(area);
-        OutlineView::new(&rows, TODAY)
+        outline(&rows)
             .offset(offset)
             .focused(focused)
             .render(area, &mut buf);
@@ -1515,7 +1588,7 @@ mod tests {
             state.update(Message::Menu(Menu::CommandMenu, *key));
         }
         let menu = state.command_menu().unwrap();
-        let popup = Popup::commands(&menu);
+        let popup = Popup::commands(&menu, ICONS);
         let (width, full) = popup.size();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, full.min(height)));
         popup.render(buf.area, &mut buf);
@@ -1535,7 +1608,7 @@ mod tests {
     #[test]
     fn the_command_menu_shows_the_matches_under_its_title_and_the_filter_at_the_bottom() {
         use crate::app::MenuInput::{Next, Type};
-        let due = Icon::Due.glyph();
+        let due = Icon::Due.glyph(ICONS);
         let mut expected = Buffer::with_lines([
             "┌Commands:─────────┐".to_owned(),
             format!("│  {due} Set Due Date  │"),
@@ -1566,13 +1639,15 @@ mod tests {
             ));
         }
         let keymap = Keymap::default();
-        let popup = Popup::context_menu(&state.context_menu().unwrap(), |command| {
-            keymap.bindings(command, false)
-        });
+        let popup = Popup::context_menu(
+            &state.context_menu().unwrap(),
+            |command| keymap.bindings(command, false),
+            ICONS,
+        );
         assert_eq!(popup.size(), (23, 4));
         let mut buf = Buffer::empty(Rect::new(0, 0, 23, 4));
         popup.render(buf.area, &mut buf);
-        let due = Icon::Due.glyph();
+        let due = Icon::Due.glyph(ICONS);
         let mut expected = Buffer::with_lines([
             "┌Commands:────────────┐".to_owned(),
             format!("│  {due} Due Today     T  │"),
@@ -1592,7 +1667,7 @@ mod tests {
     #[test]
     fn a_command_menu_taller_than_its_room_scrolls_to_keep_the_highlight_in_view() {
         let [complete, today, bookmark] =
-            [Icon::Complete, Icon::Today, Icon::Bookmark].map(Icon::glyph);
+            [Icon::Complete, Icon::Today, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut expected = Buffer::with_lines([
             "┌Commands:───────────┐".to_owned(),
             "│────────────────────│".to_owned(),
@@ -1665,23 +1740,23 @@ mod tests {
 
     // FR-BLK-08, keybindings.md §4
     #[test]
-    fn the_type_picker_lists_the_types_and_the_section_entries() {
+    fn the_type_picker_lists_the_types_and_the_section_entries_after_their_icons() {
         let mut state = State::new(format::parse("a"), None);
         state.update(Message::OpenTypePicker);
-        let popup = Popup::block_types(&state.type_picker().unwrap());
-        assert_eq!(popup.size(), (18, 7));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 18, 7));
+        let popup = Popup::block_types(&state.type_picker().unwrap(), ICONS);
+        assert_eq!(popup.size(), (20, 7));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "┌Node type:──────┐",
-            "│ Project        │",
-            "│ Task           │",
-            "│ Note           │",
-            "│ Make Section   │",
-            "│ Remove Section │",
-            "└────────────────┘",
+            "┌Node type:────────┐",
+            "│ ▸ Project        │",
+            "│ ☐ Task           │",
+            "│ ¶ Note           │",
+            "│ § Make Section   │",
+            "│ ¶ Remove Section │",
+            "└──────────────────┘",
         ]);
-        expected.set_style(Rect::new(1, 3, 16, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 3, 18, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         for c in "rem".chars() {
             state.update(Message::Menu(
@@ -1689,14 +1764,14 @@ mod tests {
                 crate::app::MenuInput::Type(c),
             ));
         }
-        let mut buf = Buffer::empty(Rect::new(0, 0, 18, 3));
-        Popup::block_types(&state.type_picker().unwrap()).render(buf.area, &mut buf);
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 3));
+        Popup::block_types(&state.type_picker().unwrap(), ICONS).render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "┌Node type:──────┐",
-            "│ Remove Section │",
-            "└rem─────────────┘",
+            "┌Node type:────────┐",
+            "│ ¶ Remove Section │",
+            "└rem───────────────┘",
         ]);
-        expected.set_style(Rect::new(1, 1, 16, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 1, 18, 1), Style::new().reversed());
         assert_eq!(buf, expected);
     }
 
@@ -1741,24 +1816,24 @@ mod tests {
 
     // FR-TAG-05, keybindings.md §4, D-48
     #[test]
-    fn the_color_picker_names_each_color_in_it_after_its_number() {
+    fn the_color_picker_names_each_color_in_it_after_its_icon_and_number() {
         let mut state = State::new(format::parse("- a @blue"), None);
         state.update(Message::OpenColorPicker);
         let picker = state.color_picker().unwrap();
-        let popup = Popup::colors(&picker);
-        assert_eq!(popup.size(), (12, 9));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 9));
+        let popup = Popup::colors(&picker, ICONS);
+        assert_eq!(popup.size(), (14, 9));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 9));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
-            "┌Color:────┐",
-            "│ 1 Red    │",
-            "│ 2 Orange │",
-            "│ 3 Yellow │",
-            "│ 4 Green  │",
-            "│ 5 Blue   │",
-            "│ 6 Violet │",
-            "│   None   │",
-            "└──────────┘",
+            "┌Color:──────┐",
+            "│ ● 1 Red    │",
+            "│ ● 2 Orange │",
+            "│ ● 3 Yellow │",
+            "│ ● 4 Green  │",
+            "│ ● 5 Blue   │",
+            "│ ● 6 Violet │",
+            "│ ●   None   │",
+            "└────────────┘",
         ]);
         for (y, color) in [
             Color::Red,
@@ -1772,20 +1847,21 @@ mod tests {
         .enumerate()
         {
             let y = u16::try_from(y).unwrap() + 1;
-            expected.set_style(Rect::new(1, y, 10, 1), Style::new().fg(color));
+            expected.set_style(Rect::new(1, y, 12, 1), Style::new().fg(color));
         }
-        expected.set_style(Rect::new(1, 5, 10, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 5, 12, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         state.update(Message::Menu(
             Menu::ColorPicker,
             crate::app::MenuInput::Type('v'),
         ));
         let picker = state.color_picker().unwrap();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 3));
-        Popup::colors(&picker).render(buf.area, &mut buf);
-        let mut expected = Buffer::with_lines(["┌Color:────┐", "│ 6 Violet │", "└v─────────┘"]);
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 3));
+        Popup::colors(&picker, ICONS).render(buf.area, &mut buf);
+        let mut expected =
+            Buffer::with_lines(["┌Color:──────┐", "│ ● 6 Violet │", "└v───────────┘"]);
         expected.set_style(
-            Rect::new(1, 1, 10, 1),
+            Rect::new(1, 1, 12, 1),
             Style::new().fg(Color::Magenta).reversed(),
         );
         assert_eq!(buf, expected);
@@ -1832,7 +1908,7 @@ mod tests {
     fn a_focused_colored_row_gets_a_brighter_tint_after_the_band() {
         let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
-        OutlineView::new(&rows, TODAY)
+        outline(&rows)
             .focused(Some(1))
             .render(Rect::new(0, 0, 8, 3), &mut buf);
         let band = Color::Indexed(235);
@@ -1853,8 +1929,8 @@ mod tests {
     // FR-TAG-04, D-47, ui.md §2
     #[test]
     fn today_and_bookmark_icons_follow_the_text() {
-        let star = Icon::Today.glyph();
-        let bookmark = Icon::Bookmark.glyph();
+        let star = Icon::Today.glyph(ICONS);
+        let bookmark = Icon::Bookmark.glyph(ICONS);
         let mut expected = Buffer::with_lines([
             at_right(&format!("- a {star}"), &chip(Icon::Due, "Fri"), 20),
             format!("{:<20}", format!("- b {star} {bookmark}")),
@@ -1890,7 +1966,8 @@ mod tests {
     fn a_collapsed_blocks_count_follows_its_icons() {
         let mut state = State::new(format::parse("Q: @bookmark\n\t- d"), None);
         state.update(Message::CollapseAll);
-        let mut expected = Buffer::with_lines([format!("Q: {} ▸ 1  ", Icon::Bookmark.glyph())]);
+        let mut expected =
+            Buffer::with_lines([format!("Q: {} ▸ 1  ", Icon::Bookmark.glyph(ICONS))]);
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(PRIMARY));
         expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style());
         expected.set_style(Rect::new(4, 0, 4, 1), Style::new().dim());
@@ -2032,8 +2109,11 @@ mod tests {
     // D-7, navigation §7
     #[test]
     fn the_today_header_names_the_view_after_its_icon_in_bold() {
-        let header = today_header();
-        assert_eq!(header.to_string(), format!("{} Today", Icon::Today.glyph()));
+        let header = today_header(ICONS);
+        assert_eq!(
+            header.to_string(),
+            format!("{} Today", Icon::Today.glyph(ICONS))
+        );
         assert_eq!(header.style, Style::new().bold());
         assert_eq!(header.spans[0].style, today_style());
     }
@@ -2051,7 +2131,7 @@ mod tests {
         });
         state.update(Message::FocusSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
-        let star = Icon::Today.glyph();
+        let star = Icon::Today.glyph(ICONS);
         let mut expected = Buffer::with_lines([at_right(
             &format!("- c {star}  A › B"),
             &chip(Icon::Due, "today"),
@@ -2067,13 +2147,13 @@ mod tests {
     #[test]
     fn breadcrumbs_start_at_home_and_drop_crumbs_from_the_left_to_fit() {
         let crumbs = ["Work".to_owned(), "Report".to_owned(), "Draft".to_owned()];
-        let text = |width| breadcrumbs(&crumbs, width).to_string();
-        assert_eq!(breadcrumbs(&[], 0).to_string(), "⌂");
+        let text = |width| breadcrumbs(&crumbs, width, ICONS).to_string();
+        assert_eq!(breadcrumbs(&[], 0, ICONS).to_string(), "⌂");
         assert_eq!(text(25), "⌂ › Work › Report › Draft");
         assert_eq!(text(24), "… › Report › Draft");
         assert_eq!(text(17), "… › Draft");
         assert_eq!(text(3), "… › Draft", "the last crumb always stays");
-        assert_eq!(breadcrumbs(&crumbs, 25).style, Style::new().bold());
+        assert_eq!(breadcrumbs(&crumbs, 25, ICONS).style, Style::new().bold());
     }
 
     // FR-NAV-03
@@ -2105,7 +2185,7 @@ mod tests {
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
         let rows = State::new(format::parse(text), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
-        let (line, caret) = editor_line(&rows[0], editor, usize::from(width));
+        let (line, caret) = editor_line(&rows[0], editor, usize::from(width), ICONS);
         line.render(buf.area, &mut buf);
         (buf, caret)
     }
@@ -2183,7 +2263,7 @@ mod tests {
         let rows = state.rows();
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 7, 2));
-        OutlineView::new(&rows, TODAY)
+        outline(&rows)
             .editor(editor.as_ref())
             .render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines(["  - a  ", "  - bc "]);
@@ -2243,9 +2323,7 @@ mod tests {
     fn chips_keep_the_band_of_the_focused_row() {
         let rows = State::new(format::parse("- a @due(2026-10-04)"), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 1));
-        OutlineView::new(&rows, TODAY)
-            .focused(Some(0))
-            .render(buf.area, &mut buf);
+        outline(&rows).focused(Some(0)).render(buf.area, &mut buf);
         let mut expected =
             Buffer::with_lines([at_right("▌ - a", &chip(Icon::Overdue, "yesterday"), 20)]);
         expected.set_style(expected.area, current_line_style());
@@ -2265,7 +2343,7 @@ mod tests {
         let rows = state.rows();
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 2));
-        OutlineView::new(&rows, TODAY)
+        outline(&rows)
             .focused(Some(0))
             .editor(editor.as_ref())
             .render(buf.area, &mut buf);
@@ -2308,10 +2386,10 @@ mod tests {
         .rows();
         let area = Rect::new(0, 0, 12, 6);
         let mut plain = Buffer::empty(area);
-        OutlineView::new(&rows, TODAY).render(area, &mut plain);
+        outline(&rows).render(area, &mut plain);
         for index in 0..rows.len() {
             let mut focused = Buffer::empty(area);
-            OutlineView::new(&rows, TODAY)
+            outline(&rows)
                 .focused(Some(index))
                 .render(area, &mut focused);
             let y = u16::try_from(index).unwrap();
@@ -2349,9 +2427,7 @@ mod tests {
         let rows = state.rows();
         let area = Rect::new(0, 0, 5, 3);
         let mut buf = Buffer::empty(area);
-        OutlineView::new(&rows, TODAY)
-            .focused(Some(1))
-            .render(area, &mut buf);
+        outline(&rows).focused(Some(1)).render(area, &mut buf);
         let mut expected = Buffer::with_lines(["▌ - a", "▌ - b", "  - c"]);
         expected.set_style(Rect::new(0, 1, 5, 1), current_line_style());
         expected.set_style(Rect::new(0, 1, 1, 1), Style::new().fg(PRIMARY));
@@ -2390,7 +2466,7 @@ mod tests {
     fn wrapped(text: &str, width: u16, height: u16, focused: usize, offset: usize) -> Buffer {
         let rows = State::new(format::parse(text), None).rows();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        OutlineView::new(&rows, TODAY)
+        outline(&rows)
             .wrap(true)
             .focused(Some(focused))
             .offset(offset)
@@ -2447,15 +2523,13 @@ mod tests {
     fn heights_count_the_lines_of_each_row_and_one_for_the_edited_row() {
         let mut state = State::new(format::parse("- aaa bbb ccc\n- d\n- eee fff"), None);
         let rows = state.rows();
-        let view = OutlineView::new(&rows, TODAY);
+        let view = outline(&rows);
         assert_eq!(view.heights(9), [1, 1, 1], "wrap off");
         assert_eq!(view.wrap(true).heights(9), [3, 1, 2]);
         state.update(Message::EditAtEnd);
         let editor = state.editor();
         let rows = state.rows();
-        let view = OutlineView::new(&rows, TODAY)
-            .wrap(true)
-            .editor(editor.as_ref());
+        let view = outline(&rows).wrap(true).editor(editor.as_ref());
         assert_eq!(view.heights(9), [1, 1, 2]);
         assert_eq!(view.heights(0), [1, 1, 1], "no room for text");
     }
@@ -2476,7 +2550,7 @@ mod tests {
         confirming_quit: bool,
         notice: Option<&Notice>,
     ) -> Vec<(String, Style)> {
-        file_status(save, access, false, confirming_quit, notice)
+        file_status(save, access, false, confirming_quit, notice, ICONS)
             .into_iter()
             .map(|span| (span.content.into_owned(), span.style))
             .collect()
@@ -2577,7 +2651,7 @@ mod tests {
     fn the_file_status_marks_a_file_gone_from_disk_and_external_change_notices() {
         let rw = Access::ReadWrite;
         assert_eq!(
-            file_status(SaveState::Saved, rw, true, false, None)
+            file_status(SaveState::Saved, rw, true, false, None, ICONS)
                 .into_iter()
                 .map(|span| span.content.into_owned())
                 .collect::<Vec<_>>(),
@@ -2717,5 +2791,107 @@ mod tests {
         let same = prompt(Some(&diff), 0, 30, 7);
         assert_eq!(same[(1, 2)].symbol(), " ");
         assert_eq!(same[(3, 2)].symbol(), "o");
+    }
+
+    /// The lines of `text` drawn 30 columns wide with `icons`, every block with children
+    /// collapsed, and the column where its first block's text starts.
+    fn drawn_with(icons: IconSet, text: &str) -> (Vec<String>, usize) {
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::CollapseAll);
+        let rows = state.rows();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 30 + GUTTER_WIDTH, 4));
+        OutlineView::new(&rows, TODAY)
+            .icons(icons)
+            .render(buf.area, &mut buf);
+        let lines = lines(&buf)
+            .into_iter()
+            .map(|line| line.chars().skip(2).collect())
+            .collect();
+        (lines, text_column(&rows[0], icons))
+    }
+
+    // FR-UI-09, FR-UI-10, ui.md §3, §7
+    #[test]
+    fn markers_icons_and_chips_come_from_the_icon_set() {
+        let text = "- d @done @due(2026-10-05)\n- t @today @bookmark\nP:\n\t- c";
+        let (nerd, column) = drawn_with(IconSet::Nerd, text);
+        assert_eq!(
+            nerd,
+            [
+                at_right("\u{f0134} d", "\u{f166c} today", 30),
+                "\u{f0130} t \u{f04ce} \u{f00c0}".to_owned(),
+                "P: \u{f035f} 1".to_owned(),
+                String::new(),
+            ]
+        );
+        assert_eq!(column, 2);
+        let (ascii, column) = drawn_with(IconSet::Ascii, text);
+        assert_eq!(
+            ascii,
+            [
+                at_right("[x] d", "@ today", 30),
+                "- t * #".to_owned(),
+                "P: > 1".to_owned(),
+                String::new(),
+            ]
+        );
+        assert_eq!(column, 4, "the text starts after `[x] `");
+    }
+
+    // FR-UI-10, ui.md §3
+    #[test]
+    fn the_home_crumb_today_header_and_unsaved_mark_come_from_the_icon_set() {
+        let crumbs = ["Work".to_owned()];
+        assert_eq!(
+            breadcrumbs(&crumbs, 20, IconSet::Nerd).to_string(),
+            "\u{f02dc} › Work"
+        );
+        assert_eq!(
+            breadcrumbs(&crumbs, 20, IconSet::Ascii).to_string(),
+            "~ › Work"
+        );
+        assert_eq!(today_header(IconSet::Ascii).to_string(), "* Today");
+        let unsaved = |icons| {
+            file_status(
+                SaveState::Unsaved,
+                Access::ReadWrite,
+                false,
+                false,
+                None,
+                icons,
+            )
+            .iter()
+            .map(|span| span.content.to_string())
+            .collect::<String>()
+        };
+        assert_eq!(unsaved(IconSet::Nerd), " \u{f09de}");
+        assert_eq!(unsaved(IconSet::Unicode), " ●");
+        assert_eq!(unsaved(IconSet::Ascii), " *");
+    }
+
+    // FR-NAV-05, FR-OPS-05, ui.md §7
+    #[test]
+    fn a_block_in_the_finders_shows_its_types_icon_and_the_root_the_home_icon() {
+        let document = format::parse("P:\n\t- t\n\tn\n\tS @section");
+        let ids: Vec<ItemId> = blocks::each_child(&document, document.root())
+            .flat_map(|project| {
+                std::iter::once(project.id())
+                    .chain(blocks::each_child(&document, project.id()).map(|block| block.id()))
+            })
+            .collect();
+        let icons: Vec<Icon> = std::iter::once(document.root())
+            .chain(ids)
+            .map(|id| block_icon(&document, id).0)
+            .collect();
+        assert_eq!(
+            icons,
+            [
+                Icon::Home,
+                Icon::Project,
+                Icon::Task,
+                Icon::Note,
+                Icon::Section
+            ]
+        );
     }
 }

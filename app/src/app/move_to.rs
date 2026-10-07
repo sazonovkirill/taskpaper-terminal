@@ -35,7 +35,7 @@ impl State {
             .all(|block| block.kind() == BlockKind::Project)
             .then(|| Candidate {
                 value: self.document.root(),
-                text: "⌂ Home".to_owned(),
+                text: "Home".to_owned(),
                 detail: String::new(),
                 tier: 0,
             });
@@ -145,7 +145,14 @@ mod tests {
         let view = state.move_to().unwrap();
         view.entries
             .iter()
-            .map(|entry| entry.text.clone())
+            .map(|entry| {
+                // The core names the document root, which the frontend marks with its icon.
+                if entry.value == state.document().root() {
+                    format!("⌂ {}", entry.text)
+                } else {
+                    entry.text.clone()
+                }
+            })
             .collect()
     }
 

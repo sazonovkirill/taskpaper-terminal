@@ -101,11 +101,12 @@ fn status(screen: &termlens::Screen) -> String {
     screen.row_text(screen.rows() - 1).trim_end().to_owned()
 }
 
-/// The temporary file a start without a path made, as the status line names it.
+/// The temporary file a start without a path made, as the status line names it. Without a
+/// locale, as termlens starts the app, its mode's icon is ASCII (ui.md §3).
 fn temporary_file(screen: &termlens::Screen) -> Result<PathBuf, String> {
     let status = status(screen);
     status
-        .strip_prefix("NAVIGATE · ")
+        .strip_prefix("> NAVIGATE · ")
         .and_then(|rest| rest.strip_suffix(" · temporary"))
         .map(PathBuf::from)
         .ok_or_else(|| format!("no temporary file in {status:?}"))
@@ -217,7 +218,7 @@ fn daily_copies(data: &std::path::Path) -> std::io::Result<Vec<String>> {
     Ok(copies)
 }
 
-// FR-UI-04, file-io.md §5
+// FR-UI-04, file-io.md §5, FR-UI-09
 #[test]
 fn quitting_and_reopening_a_file_brings_its_panes_back() -> TestResult {
     let dir = tempfile::tempdir()?;
@@ -229,12 +230,14 @@ fn quitting_and_reopening_a_file_brings_its_panes_back() -> TestResult {
             "tpt",
             arg(&path),
             env("XDG_DATA_HOME", dir.path().join("data")),
-            env("XDG_STATE_HOME", &state)
+            env("XDG_STATE_HOME", &state),
+            env("LANG", "C.UTF-8")
         )
     };
-    let two_panes = |screen: &termlens::Screen| screen.row_text(0).contains("⌂ › Errands");
+    // A UTF-8 locale draws Nerd Font icons by default: the home crumb is a Nerd house.
+    let two_panes = |screen: &termlens::Screen| screen.row_text(0).contains("\u{f02dc} › Errands");
     let mut terminal = open()?;
-    terminal.wait_until(|screen| screen.contains("- Post office"))?;
+    terminal.wait_until(|screen| screen.contains("Post office"))?;
     terminal.send(termlens::Key::Ctrl('w'))?;
     terminal.send(termlens::Key::Char('v'))?;
     terminal.wait_until(two_panes)?;
@@ -402,11 +405,12 @@ fn completing_a_task_saves_it_and_undo_saves_the_file_back() -> TestResult {
     let original = std::fs::read_to_string(&path)?;
     terminal.send(termlens::Key::Char('j'))?;
     terminal.send(termlens::Key::Char('x'))?;
-    terminal.wait_until(|screen| status(screen).contains('●'))?;
+    // Without a locale the unsaved mark is ASCII (ui.md §3).
+    terminal.wait_until(|screen| status(screen).ends_with(" *"))?;
     terminal.wait_until(saved)?;
     let completed = std::fs::read_to_string(&path)?;
     terminal.send(termlens::Key::Char('z'))?;
-    terminal.wait_until(|screen| status(screen).contains('●'))?;
+    terminal.wait_until(|screen| status(screen).ends_with(" *"))?;
     terminal.wait_until(saved)?;
     let reverted = std::fs::read_to_string(&path)?;
     terminal.send(termlens::Key::Ctrl('q'))?;

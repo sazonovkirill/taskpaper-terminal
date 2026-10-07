@@ -6,7 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::buffer::Buffer;
 use taskpaper_terminal::ui::Input;
 
-use crate::support::{BOOKMARK, Harness, STAR, line};
+use crate::support::{BOOKMARK, Harness, NAVIGATE, STAR, line};
 
 const OUTLINE: &str = "\
 Work:
@@ -109,7 +109,7 @@ fn the_sidebar_lists_bookmarks_today_and_projects_left_of_the_pane() {
         ]
     );
     assert!(
-        line(&buffer, 9).starts_with("NAVIGATE · "),
+        line(&buffer, 9).starts_with(&format!("{NAVIGATE} · ")),
         "the status line spans the screen"
     );
 }

@@ -16,6 +16,7 @@ use toml_edit::{Document, Item, TableLike};
 use super::{
     effects::{self, BackupSettings},
     keymap::{BindingError, Keymap},
+    theme::IconSetting,
 };
 use crate::app::Mode;
 
@@ -77,6 +78,8 @@ pub struct Config {
     pub(super) keymap: Keymap,
     /// How long after the last change a save starts, when the file says (`autosave_delay_ms`).
     pub(super) autosave_delay: Option<Duration>,
+    /// Which icons to draw, when the file says (`icons`, ui.md §7).
+    pub(super) icons: Option<IconSetting>,
     backups: BackupSettings,
     problems: Vec<Problem>,
 }
@@ -103,6 +106,18 @@ impl Config {
             _ => self.problems.push(Problem::InvalidValue {
                 key: "autosave_delay_ms".to_owned(),
                 expected: "a whole number of milliseconds, at least 100",
+            }),
+        }
+    }
+
+    /// Takes `icons` from `item`: `"nerd"` or `"none"`.
+    fn read_icons(&mut self, item: &Item) {
+        match item.as_str() {
+            Some("nerd") => self.icons = Some(IconSetting::Nerd),
+            Some("none") => self.icons = Some(IconSetting::Off),
+            _ => self.problems.push(Problem::InvalidValue {
+                key: "icons".to_owned(),
+                expected: "\"nerd\" or \"none\"",
             }),
         }
     }
@@ -237,6 +252,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "keymap" => config.read_keymap(item),
             "autosave_delay_ms" => config.read_autosave_delay(item),
             "backups" => config.read_backups(item, home),
+            "icons" => config.read_icons(item),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
@@ -440,6 +456,33 @@ mod tests {
             ),
             "Ctrl+G, Alt+`, Ctrl+E"
         );
+    }
+
+    // FR-UI-10, ui.md §7
+    #[test]
+    fn icons_are_nerd_or_none_and_anything_else_is_reported() {
+        assert_eq!(read("", None).icons, None);
+        assert_eq!(
+            read("icons = \"nerd\"\n", None).icons,
+            Some(IconSetting::Nerd)
+        );
+        let off = read("icons = \"none\"\n", None);
+        assert_eq!(
+            (off.icons, off.problems()),
+            (Some(IconSetting::Off), &[][..])
+        );
+        for text in ["icons = \"off\"\n", "icons = false\n"] {
+            let config = read(text, None);
+            assert_eq!(config.icons, None, "{text}");
+            assert_eq!(
+                config.problems(),
+                [Problem::InvalidValue {
+                    key: "icons".to_owned(),
+                    expected: "\"nerd\" or \"none\"",
+                }],
+                "{text}"
+            );
+        }
     }
 
     // FR-SET-01, file-io.md §2

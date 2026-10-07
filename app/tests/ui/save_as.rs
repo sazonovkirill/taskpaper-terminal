@@ -5,7 +5,7 @@ use std::{fs, path::Path, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, line};
+use crate::support::{Harness, NAVIGATE, line};
 
 /// Every screen row, without trailing blanks.
 fn screen(app: &mut Harness) -> Vec<String> {
@@ -97,7 +97,7 @@ fn the_temporary_file_is_kept_in_a_folder_under_home_completed_with_tab() {
     assert!(!rows.iter().any(|row| row.contains("Save As")), "{rows:#?}");
     assert_eq!(
         rows[15],
-        format!("NAVIGATE · {}", kept.display()),
+        format!("{NAVIGATE} · {}", kept.display()),
         "the new file, no longer marked temporary"
     );
     app.type_keys("x");
@@ -141,7 +141,7 @@ fn a_file_there_is_replaced_once_confirmed_after_a_backup_and_esc_goes_back() {
     assert_eq!(fs::read_to_string(&other).unwrap(), "- mine\n");
     assert_eq!(
         screen(&mut app)[15],
-        format!("NAVIGATE · {}", other.display())
+        format!("{NAVIGATE} · {}", other.display())
     );
     let folder = fs::read_dir(&app.backups)
         .unwrap()
@@ -171,5 +171,5 @@ fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     press(&mut app, KeyCode::Esc);
     let rows = screen(&mut app);
     assert!(!rows.iter().any(|row| row.contains("Save As")), "{rows:#?}");
-    assert_eq!(rows[15], format!("NAVIGATE · {}", opened.display()));
+    assert_eq!(rows[15], format!("{NAVIGATE} · {}", opened.display()));
 }

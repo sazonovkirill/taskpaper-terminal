@@ -18,6 +18,7 @@ mod formatting;
 mod go_to_command;
 mod go_to_symbol;
 mod hang_up;
+mod icons;
 mod markdown;
 mod marks;
 mod move_to;

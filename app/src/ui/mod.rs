@@ -5,7 +5,7 @@ pub mod config;
 pub mod effects;
 pub mod keymap;
 pub mod layout;
-mod theme;
+pub mod theme;
 pub mod widgets;
 
 use std::{collections::HashMap, path::PathBuf, time::Duration};
@@ -22,14 +22,19 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use crate::app::{
-    Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput, State,
-    commands::{Command, Group, REGISTRY},
+use crate::{
+    app::{
+        Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs, SidebarInput,
+        State,
+        commands::{Command, Group, REGISTRY},
+    },
+    document::ItemId,
 };
 use config::Config;
 use effects::{Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use layout::Scroll;
+use theme::{Icon, IconSet, IconSetting};
 use widgets::{
     ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
     ShortcutsPanel, SidebarPanel,
@@ -66,6 +71,9 @@ pub struct Tui {
     keymap: Keymap,
     /// Whether text too long for its line wraps, or ends in `…` (FR-UI-05).
     wrap: bool,
+    /// The glyphs icons are drawn with: as the `icons` setting asks, or ASCII without a UTF-8
+    /// locale (ui.md §3, §7).
+    icons: IconSet,
     /// Where each pane's outline starts on screen: its top row stays put when rows above it
     /// change height.
     scrolls: HashMap<PaneId, Scroll>,
@@ -128,6 +136,7 @@ impl Tui {
             midnight: None,
             keymap: Keymap::default(),
             wrap: true,
+            icons: IconSet::default(),
             scrolls: HashMap::new(),
             strip_scroll: 0,
             pane_width: 0,
@@ -157,12 +166,34 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the key bindings and autosave delay `config` holds, reporting
-    /// once what it ignored of the settings file (FR-SET-04). Its backups are the disk worker's.
+    /// The frontend on a terminal whose locale is UTF-8 when `utf8` says so, and otherwise
+    /// drawing its icons in ASCII (ui.md §3, §7).
+    #[must_use]
+    pub fn with_locale(mut self, utf8: bool) -> Self {
+        if !utf8 {
+            self.icons = IconSet::Ascii;
+        }
+        self
+    }
+
+    /// The frontend drawing its icons as the `icons` setting `setting` asks, until a settings
+    /// file says otherwise (ui.md §7).
+    #[must_use]
+    pub fn with_icons(mut self, setting: IconSetting) -> Self {
+        self.icons = self.icons.with_setting(setting);
+        self
+    }
+
+    /// The frontend running with the key bindings, autosave delay and icons `config` holds,
+    /// reporting once what it ignored of the settings file (FR-SET-04). Its backups are the disk
+    /// worker's.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
         self.keymap = config.keymap;
+        if let Some(setting) = config.icons {
+            self.icons = self.icons.with_setting(setting);
+        }
         if let Some(delay) = config.autosave_delay {
             self.send(Message::SetAutosaveDelay(delay), Duration::ZERO);
         }
@@ -430,6 +461,7 @@ impl Tui {
     pub fn draw(&mut self, frame: &mut Frame) {
         let screen = frame.area();
         self.width = screen.width;
+        let icons = self.icons;
         let [main, status] = screen.layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -463,17 +495,17 @@ impl Tui {
         if let Some(caret) = focused.caret {
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.command_menu() {
-                draw_anchored(frame, Popup::commands(&menu), outline, caret);
+                draw_anchored(frame, Popup::commands(&menu, icons), outline, caret);
             }
         }
         let centered = self
             .state
             .color_picker()
-            .map(|picker| Popup::colors(&picker))
+            .map(|picker| Popup::colors(&picker, icons))
             .or_else(|| {
                 self.state
                     .type_picker()
-                    .map(|picker| Popup::block_types(&picker))
+                    .map(|picker| Popup::block_types(&picker, icons))
             })
             .or_else(|| self.state.details().map(|details| Popup::details(&details)));
         if let Some(popup) = centered {
@@ -488,10 +520,13 @@ impl Tui {
             .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
         if !self.state.in_conflict() {
             if let Some((title, view)) = finder {
-                draw_finder(frame, FinderPopup::new(title, &view), outline);
+                let icon = |id: &ItemId| widgets::block_icon(self.state.document(), *id);
+                draw_finder(frame, FinderPopup::new(title, &view, icons, &icon), outline);
             }
             if let Some(view) = self.state.go_to_command() {
-                draw_finder(frame, FinderPopup::new("Go to Command", &view), outline);
+                let icon = |command: &Command| widgets::command_icon(*command);
+                let finder = FinderPopup::new("Go to Command", &view, icons, &icon);
+                draw_finder(frame, finder, outline);
             }
             if let Some(view) = self.state.save_as() {
                 let prompt = SaveAsPrompt::new(&view);
@@ -505,8 +540,11 @@ impl Tui {
             };
             if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
                 let sidebar = self.state.sidebar_focused();
-                let popup =
-                    Popup::context_menu(&menu, |command| self.keymap.bindings(command, sidebar));
+                let popup = Popup::context_menu(
+                    &menu,
+                    |command| self.keymap.bindings(command, sidebar),
+                    icons,
+                );
                 draw_anchored(frame, popup, screen_body, anchor);
             }
         }
@@ -620,9 +658,9 @@ impl Tui {
         ]));
         let line = match pane.location {
             Location::Outline(_) => {
-                widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width))
+                widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width), self.icons)
             }
-            Location::Today => widgets::today_header(),
+            Location::Today => widgets::today_header(self.icons),
         };
         line.render(crumbs, buf);
         if !pane.focused {
@@ -677,7 +715,7 @@ impl Tui {
                 (group, keys)
             })
             .collect();
-        let panel = ShortcutsPanel::new(&groups, self.keyboard);
+        let panel = ShortcutsPanel::new(&groups, self.keyboard, self.icons);
         let (last, page) = panel.scroll_range(area);
         self.shortcuts_scroll = self.shortcuts_scroll.min(last);
         self.shortcuts_page = page;
@@ -693,9 +731,11 @@ impl Tui {
             .focus
             .and_then(|focus| rows.iter().position(|row| row.id == focus));
         let editor = self.state.editor().filter(|_| pane.focused);
+        let icons = self.icons;
         let view = OutlineView::new(rows, (self.clock)().date())
             .editor(editor.as_ref())
-            .wrap(self.wrap);
+            .wrap(self.wrap)
+            .icons(icons);
         let scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
         let anchor = if pane.focused {
             self.page_rows = usize::from(area.height);
@@ -737,7 +777,7 @@ impl Tui {
             .zip(row)
             .map(|(editor, row)| {
                 let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
-                let (_, column) = widgets::editor_line(row, editor, usize::from(text_width));
+                let (_, column) = widgets::editor_line(row, editor, usize::from(text_width), icons);
                 let x = u16::try_from(column)
                     .unwrap_or(u16::MAX)
                     .min(text_width.saturating_sub(1));
@@ -747,7 +787,7 @@ impl Tui {
                 )
             });
         let block = row.map(|row| {
-            let column = u16::try_from(widgets::text_column(row)).unwrap_or(u16::MAX);
+            let column = u16::try_from(widgets::text_column(row, icons)).unwrap_or(u16::MAX);
             (
                 area.x
                     .saturating_add(widgets::GUTTER_WIDTH)
@@ -774,7 +814,7 @@ impl Tui {
             Constraint::Length(width),
             Constraint::Fill(1),
         ]));
-        let panel = SidebarPanel::new(&view);
+        let panel = SidebarPanel::new(&view, self.icons);
         self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(sidebar.height));
         let entry = panel.focused_line().map(|line| {
             let line = u16::try_from(line.saturating_sub(self.sidebar_scroll)).unwrap_or(u16::MAX);
@@ -804,11 +844,12 @@ impl Tui {
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending
     /// key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
     fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let mode = match self.state.mode() {
-            Mode::Navigate => "NAVIGATE",
-            Mode::Edit => "EDIT",
+        let icons = self.icons;
+        let (icon, mode) = match self.state.mode() {
+            Mode::Navigate => (Icon::Navigate, "NAVIGATE"),
+            Mode::Edit => (Icon::Edit, "EDIT"),
         };
-        let mut spans = vec![mode.bold()];
+        let mut spans = vec![format!("{} {mode}", icon.glyph(icons)).bold()];
         if let Some(path) = self.state.path() {
             spans.push(format!(" · {}", path.display()).into());
         }
@@ -821,6 +862,7 @@ impl Tui {
             self.state.gone_from_disk(),
             self.state.confirming_quit(),
             self.state.notice(),
+            icons,
         ));
         frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a

@@ -10,7 +10,7 @@ use ratatui::{
     style::{Color, Style},
 };
 
-use crate::support::{BOOKMARK, CURRENT_LINE, Harness, focused_rows, line, outline_rows};
+use crate::support::{BOOKMARK, CURRENT_LINE, Harness, NAVIGATE, focused_rows, line, outline_rows};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -54,7 +54,7 @@ fn focus_starts_on_the_first_row_with_a_gutter_marker() {
     expected.set_style(Rect::new(0, 2, 12, 1), Style::new().bg(CURRENT_LINE));
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(2, 2, 2, 1), Style::new().bold().light_blue());
-    expected.set_style(Rect::new(0, 4, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 4, 10, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
@@ -186,7 +186,7 @@ fn the_status_line_shows_the_mode_and_the_path() {
     let path = app.path.clone().expect("a file was opened");
     assert_eq!(
         status_line(&mut app),
-        format!("NAVIGATE · {}", path.display())
+        format!("{NAVIGATE} · {}", path.display())
     );
 }
 

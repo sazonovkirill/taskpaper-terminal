@@ -47,10 +47,10 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
         [
             "▌   - Book the hotel",
             "      ┌Commands:───────────────────────────────────────────┐",
-            "    - │  󰅂 Edit                                     Enter  │",
-            "  Othe│  󰅂 New Block Below                              o  │",
-            "      │  󰅂 New Block Above                              O  │",
-            "      │  󰅂 New Block as Last Child                      i  │",
+            "    - │  › Edit                                     Enter  │",
+            "  Othe│  › New Block Below                              o  │",
+            "      │  › New Block Above                              O  │",
+            "      │  › New Block as Last Child                      i  │",
         ],
         "anchored at the task's text, below it"
     );
@@ -92,7 +92,7 @@ fn typing_filters_and_enter_runs_the_command_as_its_keys_do() {
         rows[4..7],
         [
             "      ┌Commands:────────────────────┐",
-            "    - │  󰗡 Complete  x, Ctrl+Enter  │",
+            "    - │  ✓ Complete  x, Ctrl+Enter  │",
             "  Othe└comp─────────────────────────┘",
         ]
     );
@@ -153,11 +153,11 @@ fn on_a_sidebar_entry_it_offers_going_there() {
         rows[4..10],
         [
             "  ┌Commands:─────────────────────────────────┐",
-            "  │  󰅂 Go to Entry                    Enter  │",
-            "  │  󰅂 Open in New Pane   Alt+Enter, Ctrl+V  │",
+            "  │  › Go to Entry                    Enter  │",
+            "  │  › Open in New Pane   Alt+Enter, Ctrl+V  │",
             "  │──────────────────────────────────────────│",
-            "  │  󰅂 Return to Outline                Esc  │",
-            "  │  󰅂 Hide Sidebar                  Ctrl+B  │",
+            "  │  › Return to Outline                Esc  │",
+            "  │  › Hide Sidebar                  Ctrl+B  │",
         ],
         "under the focused entry"
     );

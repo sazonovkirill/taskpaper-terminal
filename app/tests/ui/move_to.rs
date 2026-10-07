@@ -38,10 +38,10 @@ fn g_m_lists_every_block_but_the_focused_one_and_what_it_holds() {
         [
             "┌Move to───────────────────────────────────────────────────┐",
             "│›                                                         │",
-            "│ Home                                                     │",
-            "│ Work                                                     │",
-            "│ Later  Work                                              │",
-            "│ Paint the hall  Home                                     │",
+            "│ ▸ Home                                                   │",
+            "│ ▸ Work                                                   │",
+            "│ § Later  Work                                            │",
+            "│ ☐ Paint the hall  Home                                   │",
             "└──────────────────────────────────────────────────────────┘",
         ]
     );
@@ -103,7 +103,7 @@ fn a_project_moves_to_home_listed_first_making_it_the_last_top_level_block() {
             "┌Move to───────────────────────────────────────────────────┐",
             "│›                                                         │",
             "│ ⌂ Home                                                   │",
-            "│ Work                                                     │",
+            "│ ▸ Work                                                   │",
         ]
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);

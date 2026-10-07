@@ -96,15 +96,15 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
         screen(&mut app)[2..12],
         [
             "▌ - Milk",
-            "         ┌Color:────┐",
-            "         │ 1 Red    │",
-            "         │ 2 Orange │",
-            "         │ 3 Yellow │",
-            "         │ 4 Green  │",
-            "         │ 5 Blue   │",
-            "         │ 6 Violet │",
-            "         │   None   │",
-            "         └──────────┘",
+            "        ┌Color:──────┐",
+            "        │ ● 1 Red    │",
+            "        │ ● 2 Orange │",
+            "        │ ● 3 Yellow │",
+            "        │ ● 4 Green  │",
+            "        │ ● 5 Blue   │",
+            "        │ ● 6 Violet │",
+            "        │ ●   None   │",
+            "        └────────────┘",
         ]
     );
     let buffer = app.render().buffer().clone();
@@ -134,11 +134,11 @@ fn typing_in_the_picker_filters_it_and_esc_closes_it_unchanged() {
     app.type_keys("mcno");
     let rows = screen(&mut app);
     assert!(
-        rows.contains(&"          │   None │".to_owned()),
+        rows.contains(&"         │ ●   None │".to_owned()),
         "{rows:#?}"
     );
     assert!(
-        rows.contains(&"          └no──────┘".to_owned()),
+        rows.contains(&"         └no────────┘".to_owned()),
         "{rows:#?}"
     );
     assert!(!rows.iter().any(|row| row.contains("Red")));

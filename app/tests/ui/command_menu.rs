@@ -5,13 +5,13 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{DUE, Harness, STAR, START, focused_rows, line, outline_rows};
+use crate::support::{DUE, EDIT, Harness, NAVIGATE, STAR, START, focused_rows, line, outline_rows};
 
 /// The command menu's icons for project, task, note and complete entries (D-54).
-const PROJECT: &str = "\u{f0256}";
-const TASK: &str = "\u{f0131}";
-const NOTE: &str = "\u{f09a8}";
-const COMPLETE: &str = "\u{f05e1}";
+const PROJECT: &str = "▸";
+const TASK: &str = "☐";
+const NOTE: &str = "¶";
+const COMPLETE: &str = "✓";
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -77,7 +77,7 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
         "the highlight stays in view, skipping the lines between groups"
     );
     press(&mut app, KeyCode::Enter);
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     press(&mut app, KeyCode::Esc);
     assert_eq!(saved(&mut app), "- Buy milk @due(2026-10-05)\n- Call Ana\n");
 }
@@ -128,7 +128,7 @@ fn a_command_keeps_editing_with_the_caret_where_it_was() {
     app.type_keys("/comp");
     press(&mut app, KeyCode::Enter);
     app.type_keys("me ");
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     press(&mut app, KeyCode::Esc);
     assert_eq!(focused_rows(&mut app).len(), 1);
     assert_eq!(
@@ -149,10 +149,10 @@ fn a_date_prompt_from_the_menu_returns_to_editing() {
     press(&mut app, KeyCode::Enter);
     app.type_keys("/set due");
     press(&mut app, KeyCode::Enter);
-    assert!(status_line(&mut app).starts_with("NAV"));
+    assert!(status_line(&mut app).starts_with(NAVIGATE));
     app.type_keys("fri");
     press(&mut app, KeyCode::Enter);
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     app.type_keys("/clear s");
     press(&mut app, KeyCode::Enter);
     app.type_keys("!");
@@ -168,7 +168,7 @@ fn slash_make_section_makes_a_text_block_a_section_and_back() {
     press(&mut app, KeyCode::Enter);
     app.type_keys("/make");
     press(&mut app, KeyCode::Enter);
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     press(&mut app, KeyCode::Esc);
     assert_eq!(saved(&mut app), "Later @today @section\n- Next\n");
     press(&mut app, KeyCode::Enter);

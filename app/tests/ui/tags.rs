@@ -34,7 +34,7 @@ fn hides_tags_and_shows_done_tasks_checked_dimmed_and_struck_through() {
     expected.set_style(Rect::new(4, 7, 5, 1), project.dim().crossed_out());
     expected.set_style(Rect::new(4, 8, 33, 1), Style::new().fg(TEXT));
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
-    expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 9, 10, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 

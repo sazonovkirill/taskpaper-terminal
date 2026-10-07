@@ -15,7 +15,10 @@ use super::{
 };
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
-    ui::{layout, theme::Icon},
+    ui::{
+        layout,
+        theme::{Icon, IconSet},
+    },
 };
 
 /// The sidebar's lines: a heading over the bookmarks when there are any, the bookmarks, Today, a
@@ -26,13 +29,18 @@ use crate::{
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
     offset: usize,
+    icons: IconSet,
 }
 
 impl<'a> SidebarPanel<'a> {
-    /// A panel of `view` drawn from its first line.
+    /// A panel of `view` drawn from its first line, its icons and fold markers from `icons`.
     #[must_use]
-    pub fn new(view: &'a SidebarView) -> Self {
-        Self { view, offset: 0 }
+    pub fn new(view: &'a SidebarView, icons: IconSet) -> Self {
+        Self {
+            view,
+            offset: 0,
+            icons,
+        }
     }
 
     /// Starts drawing at line `offset` instead of the first.
@@ -97,26 +105,26 @@ enum SidebarLine<'a> {
 }
 
 impl<'a> SidebarLine<'a> {
-    /// The line as drawn.
-    fn line(self) -> Line<'a> {
+    /// The line as drawn, its icons from `icons`.
+    fn line(self, icons: IconSet) -> Line<'a> {
         match self {
             Self::Blank => Line::default(),
             Self::Heading(heading) => Line::styled(heading, heading_style()),
-            Self::Entry(entry) => entry_line(entry),
+            Self::Entry(entry) => entry_line(entry, icons),
         }
     }
 }
 
-/// An entry's line: its icon or fold marker and its text.
-fn entry_line(entry: &SidebarEntry) -> Line<'_> {
+/// An entry's line: its icon or fold marker from `icons` and its text.
+fn entry_line(entry: &SidebarEntry, icons: IconSet) -> Line<'_> {
     match entry {
         SidebarEntry::Bookmark { text, .. } => Line::from(vec![
-            Span::styled(Icon::Bookmark.glyph(), bookmark_style()),
+            Span::styled(Icon::Bookmark.glyph(icons), bookmark_style()),
             Span::raw(" "),
             Span::raw(text.as_str()),
         ]),
         SidebarEntry::Today => Line::from(vec![
-            Span::styled(Icon::Today.glyph(), today_style()),
+            Span::styled(Icon::Today.glyph(icons), today_style()),
             Span::raw(" Today"),
         ]),
         SidebarEntry::Project {
@@ -124,8 +132,8 @@ fn entry_line(entry: &SidebarEntry) -> Line<'_> {
         } => {
             let marker = match fold {
                 Fold::Leaf => " ",
-                Fold::Expanded => "▾",
-                Fold::Collapsed => "▸",
+                Fold::Expanded => Icon::Expanded.glyph(icons),
+                Fold::Collapsed => Icon::Collapsed.glyph(icons),
             };
             Line::from(vec![
                 Span::raw(format!("{:indent$}{marker} ", "", indent = (depth + 1) * 2)),
@@ -160,7 +168,7 @@ impl Widget for SidebarPanel<'_> {
                 buf.set_style(gutter_area.union(line_area), current_line_style());
                 Span::styled(FOCUS_MARKER, Style::new().fg(PRIMARY)).render(gutter_area, buf);
             }
-            line.line().render(line_area, buf);
+            line.line(self.icons).render(line_area, buf);
         }
     }
 }
@@ -178,7 +186,7 @@ mod tests {
             .sidebar()
             .expect("shown by default");
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
-        SidebarPanel::new(&view).render(buf.area, &mut buf);
+        SidebarPanel::new(&view, IconSet::Unicode).render(buf.area, &mut buf);
         buf
     }
 
@@ -197,14 +205,14 @@ mod tests {
     // FR-UI-01
     #[test]
     fn each_section_heading_comes_once_above_its_first_entry() {
-        let bookmark = Icon::Bookmark.glyph();
+        let bookmark = Icon::Bookmark.glyph(IconSet::Unicode);
         assert_eq!(
             rows(&draw("A: @bookmark\nB: @bookmark")),
             [
                 "  Bookmarks".to_owned(),
                 format!("  {bookmark} A"),
                 format!("  {bookmark} B"),
-                format!("  {} Today", Icon::Today.glyph()),
+                format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
                 "      A".to_owned(),

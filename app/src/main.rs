@@ -93,7 +93,15 @@ fn main() -> anyhow::Result<()> {
     // Asked before the event thread starts, which would otherwise read the terminal's answer; a
     // terminal that does not answer is taken not to speak the protocol.
     let kitty = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
-    let mut tui = tui.with_kitty_keyboard(kitty).with_config(config);
+    let utf8 = ui::theme::utf8_locale(
+        std::env::var_os("LC_ALL").as_deref(),
+        std::env::var_os("LC_CTYPE").as_deref(),
+        std::env::var_os("LANG").as_deref(),
+    );
+    let mut tui = tui
+        .with_kitty_keyboard(kitty)
+        .with_locale(utf8)
+        .with_config(config);
     // Terminals that cannot report focus, bracket pasted text or speak the kitty keyboard protocol
     // ignore the requests, so keys arrive as legacy reporting sends them (keybindings.md §1).
     let _ = execute!(

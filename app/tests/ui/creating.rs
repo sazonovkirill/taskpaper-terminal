@@ -4,7 +4,7 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{EDIT, Harness, NAVIGATE, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -42,11 +42,11 @@ fn a_new_list_is_written_from_scratch_with_o_enter_and_backspace() {
     app.settle();
     app.type_keys("o");
     assert!(
-        status_line(&mut app).starts_with("NAV"),
+        status_line(&mut app).starts_with(NAVIGATE),
         "o waits for a type letter"
     );
     app.wait(Duration::from_secs(1));
-    assert!(status_line(&mut app).starts_with("EDIT · "));
+    assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     app.type_keys("Trip:");
     press(&mut app, KeyCode::Enter, 1);
     app.type_keys("- Book flights");
@@ -79,7 +79,7 @@ fn shift_o_adds_a_block_above_i_a_last_child_and_shift_i_a_first_child() {
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("ggi");
     app.wait(Duration::from_secs(1));
-    assert!(status_line(&mut app).starts_with("EDIT · "));
+    assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     app.type_keys("Rice");
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("gg");
@@ -88,7 +88,7 @@ fn shift_o_adds_a_block_above_i_a_last_child_and_shift_i_a_first_child() {
     press(&mut app, KeyCode::Esc, 1);
     app.press(KeyCode::Char('o'), KeyModifiers::ALT);
     assert!(
-        !status_line(&mut app).starts_with("EDIT · "),
+        !status_line(&mut app).starts_with(&format!("{EDIT} · ")),
         "Alt+o is free"
     );
     assert_eq!(

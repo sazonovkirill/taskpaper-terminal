@@ -4,7 +4,7 @@ use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{DUE, Harness, focused_rows, line, outline_rows};
+use crate::support::{DUE, EDIT, Harness, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -42,7 +42,7 @@ fn enter_edits_a_task_in_place_and_esc_returns_with_it_renamed_and_saved() {
     app.settle();
     app.type_keys("j");
     press(&mut app, KeyCode::Enter, 1);
-    assert!(status_line(&mut app).starts_with("EDIT · "));
+    assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     assert_caret(&mut app, 10, 3);
     press(&mut app, KeyCode::Backspace, 4);
     app.type_keys("Oat milk");
@@ -66,7 +66,7 @@ fn home_moves_the_caret_to_the_start_and_enter_ends_editing_with_a_new_block() {
     assert_caret(&mut app, 6, 3);
     app.type_keys("Soy ");
     press(&mut app, KeyCode::Enter, 1);
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     assert_eq!(outline_rows(&mut app)[1..3], ["  - Soy Milk", "  -"]);
 }
 
@@ -295,7 +295,7 @@ fn up_and_down_edit_the_block_above_and_below_at_the_caret_column() {
     assert_caret(&mut app, 5, 5);
     app.type_keys("?");
     press(&mut app, KeyCode::Up, 3);
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     assert_caret(&mut app, 5, 2);
     press(&mut app, KeyCode::Esc, 1);
     assert_eq!(saved(&mut app), "one\n- two!\n---\nthr?ee\n");
@@ -315,7 +315,7 @@ fn no_key_breaks_a_line_in_edit_mode() {
     app.press(KeyCode::Enter, KeyModifiers::ALT);
     app.press(KeyCode::Char('j'), KeyModifiers::CONTROL);
     app.type_keys("!");
-    assert!(status_line(&mut app).starts_with("EDIT"));
+    assert!(status_line(&mut app).starts_with(EDIT));
     assert_eq!(outline_rows(&mut app)[..2], ["Ideas!", "- t"]);
 }
 

@@ -7,7 +7,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use taskpaper_terminal::ui::Input;
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{Harness, NAVIGATE, focused_rows, line, outline_rows};
 
 /// The status line of `app` after a draw.
 fn status_line(app: &mut Harness) -> String {
@@ -179,7 +179,7 @@ fn several_lines_pasted_into_a_new_block_become_blocks_in_its_place() {
     let mut app = Harness::with_text("Shopping:\n\t- Milk\n", 50, 10);
     app.type_keys("jo");
     paste_into_terminal(&mut app, "- Eggs\n- Bread\n");
-    assert!(status_line(&mut app).starts_with("NAVIGATE"));
+    assert!(status_line(&mut app).starts_with(NAVIGATE));
     assert_eq!(
         saved(&mut app),
         "Shopping:\n\t- Milk\n\t- Eggs\n\t- Bread\n"

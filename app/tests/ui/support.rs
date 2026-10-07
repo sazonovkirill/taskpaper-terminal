@@ -27,9 +27,14 @@ use taskpaper_terminal::{
         Input, Tui,
         config::{self, Config},
         effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
+        theme::IconSetting,
     },
 };
 use tempfile::TempDir;
+
+/// The status line's mode with icons off (ui.md §7).
+pub const NAVIGATE: &str = "↕ NAVIGATE";
+pub const EDIT: &str = "✎ EDIT";
 
 /// The local date every test runs on.
 pub const TODAY: Date = date(2026, 10, 5);
@@ -102,14 +107,16 @@ fn base64_decode(encoded: &str) -> Vec<u8> {
 /// names the URL `gx` chose.
 pub const OPENER: &str = "tpt-test-no-such-opener";
 
-/// The icons of a start, a due and an overdue date chip (ui.md §7, D-46).
-pub const START: &str = "\u{f166d}";
-pub const DUE: &str = "\u{f166c}";
-pub const OVERDUE: &str = "\u{f0a31}";
+/// The icons of a start, a due and an overdue date chip (ui.md §7, D-46), as drawn with icons
+/// off, as the tests run unless they turn them on.
+pub const START: &str = "↦";
+pub const DUE: &str = "⇥";
+pub const OVERDUE: &str = "!";
 
-/// The icons after the text of a block with `@today` and of a bookmarked one (D-47).
-pub const STAR: &str = "\u{f04ce}";
-pub const BOOKMARK: &str = "\u{f00c0}";
+/// The icons after the text of a block with `@today` and of a bookmarked one (D-47), as drawn
+/// with icons off.
+pub const STAR: &str = "★";
+pub const BOOKMARK: &str = "⚑";
 
 /// The color of text blocks, dimmed less than done tasks (D-37).
 pub const TEXT: Color = Color::Indexed(248);
@@ -220,7 +227,8 @@ impl Harness {
         Self::start_with(state, dir, Config::default(), width, height)
     }
 
-    /// Starts the app as [`Harness::start`] does, with the settings `config`.
+    /// Starts the app as [`Harness::start`] does, with the settings `config`. Icons are off unless
+    /// `config` turns them on, so screens read as the Unicode markers of ui.md §2.
     fn start_with(state: State, dir: TempDir, config: Config, width: u16, height: u16) -> Self {
         let backups = dir.path().join("backups");
         let views = dir.path().join("state/views.json");
@@ -247,6 +255,7 @@ impl Harness {
                 || CLOCK.with_borrow(Zoned::clone),
                 Some(home.clone()),
             )
+            .with_icons(IconSetting::Off)
             .with_config(config),
             home,
             terminal_output,
@@ -292,6 +301,12 @@ impl Harness {
         }
     }
 
+    /// The app on a terminal whose locale is not UTF-8.
+    pub fn without_utf8(mut self) -> Self {
+        self.tui = self.tui.with_locale(false);
+        self
+    }
+
     /// Hides the sidebar, which a screen 80 columns wide or wider shows, for a test of the pane
     /// alone on a wide screen.
     pub fn hide_sidebar(&mut self) {
@@ -312,7 +327,7 @@ impl Harness {
     pub fn status(&self, width: u16) -> String {
         let path = self.path.as_ref().expect("a file was opened");
         let mark = if self.temporary { " · temporary" } else { "" };
-        let status = format!("NAVIGATE · {}{mark}", path.display());
+        let status = format!("{NAVIGATE} · {}{mark}", path.display());
         format!("{status:width$.width$}", width = usize::from(width))
     }
 

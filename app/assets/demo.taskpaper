@@ -48,6 +48,7 @@ Weekend errands:
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.
 	Open Today from the sidebar with Alt+0, then j and Enter, for what is due or started by today; Alt+l or gz on one of its blocks goes to it in the outline.
 	Find any command by name with Ctrl+K or :, such as Count Blocks and Words for what is under the focused block, or Save As to keep this file somewhere of your own.
+	Icons need a Nerd Font: if they show as boxes, set icons = "none" in ~/.config/taskpaper-terminal/config.toml.
 Packing list template:
 	- Toothbrush
 	- Socks

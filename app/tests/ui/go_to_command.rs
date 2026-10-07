@@ -39,9 +39,9 @@ fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│›                                                         │",
-            "│ Back  H, Alt+Shift+←                                     │",
-            "│ Clear Due Date                                           │",
-            "│ Clear Selection  Esc                                     │",
+            "│ › Back  H, Alt+Shift+←                                   │",
+            "│ ⇥ Clear Due Date                                         │",
+            "│ › Clear Selection  Esc                                   │",
         ]
     );
     let buffer = app.render().buffer().clone();
@@ -50,7 +50,7 @@ fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
         "the first entry is highlighted"
     );
     assert!(
-        buffer[(8, 4)].modifier.contains(Modifier::DIM),
+        buffer[(10, 4)].modifier.contains(Modifier::DIM),
         "its keys are dim"
     );
     app.terminal.backend_mut().assert_cursor_position((3, 3));
@@ -60,7 +60,7 @@ fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│› symbol                                                  │",
-            "│ Go to Symbol  Ctrl+P, gs, /                              │",
+            "│ › Go to Symbol  Ctrl+P, gs, /                            │",
         ]
     );
 }

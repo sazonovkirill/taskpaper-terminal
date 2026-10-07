@@ -7,7 +7,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 use taskpaper_terminal::app::demo;
 
-use crate::support::{BOOKMARK, CURRENT_LINE, Harness, TEXT, TODAY, line};
+use crate::support::{BOOKMARK, CURRENT_LINE, Harness, NAVIGATE, TEXT, TODAY, line};
 
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
@@ -34,7 +34,7 @@ fn shows_the_file_as_an_indented_outline() {
     expected.set_style(Rect::new(4, 6, 6, 1), project);
     expected.set_style(Rect::new(2, 8, 21, 1), Style::new().fg(TEXT));
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
-    expected.set_style(Rect::new(0, 9, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 9, 10, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
@@ -56,7 +56,7 @@ fn shows_the_demo_outline_without_a_path() {
     expected.set_style(Rect::new(2, 2, 15, 1), Style::new().bold().light_blue());
     expected.set_style(Rect::new(18, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());
-    expected.set_style(Rect::new(0, 5, 8, 1), Style::new().bold());
+    expected.set_style(Rect::new(0, 5, 10, 1), Style::new().bold());
     app.render().assert_buffer(&expected);
 }
 
@@ -83,7 +83,7 @@ fn the_demo_is_a_new_temporary_file_marked_in_the_status_line() {
     let buffer = app.render().buffer().clone();
     assert_eq!(
         line(&buffer, 2),
-        format!("NAVIGATE · {} · temporary", path.display())
+        format!("{NAVIGATE} · {} · temporary", path.display())
     );
     assert_eq!(app.status(160).trim_end(), line(&buffer, 2));
 }
