@@ -201,7 +201,7 @@ fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
     let screen = screen(&mut app);
     assert_eq!(
         screen[2],
-        "  Work: ▸ 2                            │▌ Work: ▸ 2"
+        "  Work: ▸ 1                            │▌ Work: ▸ 1"
     );
     assert_eq!(screen[3], "  Home:                                │  Home:");
     alt(&mut app, '1');

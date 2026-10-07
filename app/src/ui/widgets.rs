@@ -130,7 +130,7 @@ impl<'a> OutlineView<'a> {
 
     /// The row drawn on screen line `line` of an area `width` columns wide, counted as
     /// [`Widget::render`] draws from its offset, with whether column `column` there, counted
-    /// from the area's left edge, shows the row's `▸ n` of hidden children (FR-KEY-05).
+    /// from the area's left edge, shows the row's fold marker (FR-KEY-05, D-67).
     #[must_use]
     pub fn hit(&self, width: u16, line: usize, column: u16) -> Option<(usize, bool)> {
         let column = column.checked_sub(GUTTER_WIDTH).map(usize::from);
@@ -1143,8 +1143,8 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
 /// (D-31, FR-FMT-01), then the `@today` star and the bookmark icon, each after a space (D-47),
-/// dimmed with a done block or one inside it. A collapsed block with children shows `▸ n` after
-/// them (ui.md §2), and an entry of the Today view the path of the blocks above it, dimmed
+/// dimmed with a done block or one inside it. A collapsed block with children shows its fold marker after
+/// them (ui.md §2, D-67), and an entry of the Today view the path of the blocks above it, dimmed
 /// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34). Markers and icons
 /// come from `icons`, colors from `theme`.
 fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Line<'a> {
@@ -1174,11 +1174,8 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
             line.push_span(Span::styled(icon.glyph(icons), recede(style)));
         }
     }
-    if row.hidden_children > 0 {
-        line.push_span(Span::styled(
-            format!(" {} {}", Icon::Collapsed.glyph(icons), row.hidden_children),
-            Style::new().dim(),
-        ));
+    if let Some(fold) = fold(row, icons) {
+        line.push_span(Span::styled(format!(" {fold}"), Style::new().dim()));
     }
     if !row.path.is_empty() {
         line.push_span(Span::styled(
@@ -1187,7 +1184,7 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
         ));
     }
     if row.divider {
-        if row.today || row.bookmark || row.hidden_children > 0 {
+        if row.today || row.bookmark || row.hidden_tasks.is_some() {
             line.push_span(" ");
         }
         line.push_span(rule(&line, width, theme));
@@ -1195,15 +1192,22 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
     line
 }
 
-/// Where `lines`, `row`'s screen lines as drawn with `icons`, show its `▸ n` of hidden children:
-/// the line and the columns from the `▸` to the count's last digit, if the count is drawn whole on one
-/// line. It is the last thing drawn of a row but a divider's rule, so it is found from the end,
+/// The fold marker of a collapsed `row` with children, drawn with `icons`: `▸ n` with the count of
+/// open tasks it hides, or `▸` alone when it hides none (D-67).
+fn fold(row: &Row, icons: IconSet) -> Option<String> {
+    let glyph = Icon::Collapsed.glyph(icons);
+    row.hidden_tasks.map(|tasks| match tasks {
+        0 => glyph.to_owned(),
+        tasks => format!("{glyph} {tasks}"),
+    })
+}
+
+/// Where `lines`, `row`'s screen lines as drawn with `icons`, show its fold marker:
+/// the line and the columns from the `▸` to the count's last digit, if the marker is drawn whole on
+/// one line. It is the last thing drawn of a row but a divider's rule, so it is found from the end,
 /// where a row cut short shows `…` instead.
 fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Range<usize>)> {
-    if row.hidden_children == 0 || !row.path.is_empty() {
-        return None;
-    }
-    let marker = format!("{} {}", Icon::Collapsed.glyph(icons), row.hidden_children);
+    let marker = fold(row, icons)?;
     let (at, line) = lines
         .iter()
         .enumerate()
@@ -2127,6 +2131,24 @@ mod tests {
         expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style(&THEME));
         expected.set_style(Rect::new(4, 0, 4, 1), Style::new().dim());
         assert_eq!(draw(&state.rows(), 10, 1), expected);
+    }
+
+    // D-67, FR-KEY-05
+    #[test]
+    fn a_fold_hiding_no_open_task_shows_its_marker_alone() {
+        let mut state = State::new(format::parse("P:\n\tn\n---\n\t- z @done"), None);
+        state.update(Message::CollapseAll);
+        let rows = state.rows();
+        let mut expected = Buffer::with_lines(["P: ▸   ", " ▸ ────"]);
+        expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
+        expected.set_style(Rect::new(2, 0, 2, 1), Style::new().dim());
+        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
+        expected.set_style(Rect::new(3, 1, 4, 1), divider_style(&THEME));
+        assert_eq!(draw(&rows, 7, 2), expected);
+        let view = outline(&rows);
+        assert_eq!(view.hit(9, 0, 5), Some((0, true)), "the `▸`");
+        assert_eq!(view.hit(9, 0, 6), Some((0, false)), "after it");
+        assert_eq!(view.hit(9, 1, 3), Some((1, true)), "before the rule");
     }
 
     // FR-NAV-02

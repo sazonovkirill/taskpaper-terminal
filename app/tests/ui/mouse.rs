@@ -146,22 +146,22 @@ fn a_click_in_the_text_being_edited_places_the_caret() {
     assert!(screen(&mut app)[11].contains("EDIT"));
 }
 
-// FR-KEY-05, FR-NAV-02, ui.md §6
+// FR-KEY-05, FR-NAV-02, ui.md §6, D-67
 #[test]
 fn a_click_on_a_fold_marker_toggles_the_fold() {
     let mut app = pane();
     app.click(8, 3);
     press(&mut app, KeyCode::Char('h'));
-    assert_eq!(outline_rows(&mut app)[1], "  - Report ▸ 1");
+    assert_eq!(outline_rows(&mut app)[1], "  - Report ▸");
     app.click(8, 3);
     assert_eq!(
         outline_rows(&mut app)[2],
         "  - Slides",
         "a click on the text only focuses"
     );
-    app.click(14, 3);
+    app.click(13, 3);
     assert_eq!(outline_rows(&mut app)[2], "    Draft");
-    app.click(14, 3);
+    app.click(13, 3);
     assert_eq!(
         outline_rows(&mut app)[2],
         "    Draft",

@@ -10,7 +10,7 @@ A pane's rows come from a depth-first walk over **blocks** ([data-model.md §3](
 2. If the pane hides completed blocks (FR-DONE-02), skip done blocks and their whole subtrees.
 3. When search exists (Later, FR-SRCH-01): show matching blocks plus their ancestors up to the zoom block, ancestors shown only for context dimmed; non-matching descendants hidden; fold state ignored while searching but kept.
 
-Each row carries: block id, display depth (relative to the zoom block) and whether it has hidden children. Wrapping and row heights are computed by the UI layer. The row list is recomputed only when the document revision, the folds or the pane change.
+Each row carries: block id, display depth (relative to the zoom block) and, when it is collapsed with children, how many open tasks its fold hides (D-67). Wrapping and row heights are computed by the UI layer. The row list is recomputed only when the document revision, the folds or the pane change.
 
 ## 2. Focus and motion (FR-NAV-01)
 

@@ -557,9 +557,9 @@ mod tests {
             state
                 .rows()
                 .iter()
-                .map(|row| row.hidden_children)
+                .map(|row| row.hidden_tasks)
                 .collect::<Vec<_>>(),
-            [0, 0, 1, 0],
+            [None, None, Some(1), None],
             "b stays collapsed"
         );
         state.update(Message::Back);

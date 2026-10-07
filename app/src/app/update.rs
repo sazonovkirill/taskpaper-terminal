@@ -1127,12 +1127,12 @@ mod tests {
         }
     }
 
-    /// Each visible row as its depth, display text and hidden-children count.
-    fn visible(state: &State) -> Vec<(usize, String, usize)> {
+    /// Each visible row as its depth, display text and count of hidden open tasks.
+    fn visible(state: &State) -> Vec<(usize, String, Option<usize>)> {
         state
             .rows()
             .iter()
-            .map(|row| (row.depth, row.text.to_string(), row.hidden_children))
+            .map(|row| (row.depth, row.text.to_string(), row.hidden_tasks))
             .collect()
     }
 
@@ -1157,12 +1157,12 @@ mod tests {
 
     // FR-NAV-02
     #[test]
-    fn collapse_hides_children_and_counts_them() {
+    fn collapse_hides_children_and_counts_their_open_tasks() {
         let mut state = open(TREE, 0);
         state.update(Message::Collapse);
         assert_eq!(
             visible(&state),
-            [(0, "A".to_owned(), 2), (0, "e".to_owned(), 0)]
+            [(0, "A".to_owned(), Some(3)), (0, "e".to_owned(), None)]
         );
         assert_eq!(focus_text(&state), "A");
     }
@@ -1202,9 +1202,9 @@ mod tests {
     fn toggle_fold_flips_a_block_and_ignores_leaves() {
         let mut state = open(TREE, 1);
         state.update(Message::ToggleFold);
-        assert_eq!(visible(&state)[1], (1, "b".to_owned(), 1));
+        assert_eq!(visible(&state)[1], (1, "b".to_owned(), Some(1)));
         state.update(Message::ToggleFold);
-        assert_eq!(visible(&state)[1], (1, "b".to_owned(), 0));
+        assert_eq!(visible(&state)[1], (1, "b".to_owned(), None));
         let mut leaf = open(TREE, 4);
         leaf.update(Message::ToggleFold);
         assert_eq!(leaf.folds, HashSet::new());
@@ -1217,7 +1217,7 @@ mod tests {
         state.update(Message::ToggleSubtree);
         assert_eq!(state.folds.len(), 2, "A and b, not the leaves");
         state.update(Message::Expand);
-        assert_eq!(visible(&state)[1], (1, "b".to_owned(), 1));
+        assert_eq!(visible(&state)[1], (1, "b".to_owned(), Some(1)));
         state.update(Message::ToggleSubtree);
         assert_eq!(state.folds.len(), 2);
         state.update(Message::ToggleSubtree);
@@ -1230,14 +1230,14 @@ mod tests {
     fn levels_expand_the_shallowest_and_collapse_the_deepest() {
         let mut state = open(TREE, 0);
         state.update(Message::CollapseLevel);
-        assert_eq!(visible(&state)[1], (1, "b".to_owned(), 1));
-        assert_eq!(visible(&state)[0], (0, "A".to_owned(), 0));
+        assert_eq!(visible(&state)[1], (1, "b".to_owned(), Some(1)));
+        assert_eq!(visible(&state)[0], (0, "A".to_owned(), None));
         state.update(Message::CollapseLevel);
-        assert_eq!(visible(&state)[0], (0, "A".to_owned(), 2));
+        assert_eq!(visible(&state)[0], (0, "A".to_owned(), Some(3)));
         state.update(Message::CollapseLevel);
         assert_eq!(state.folds.len(), 2, "nothing left to collapse");
         state.update(Message::ExpandLevel);
-        assert_eq!(visible(&state)[1], (1, "b".to_owned(), 1));
+        assert_eq!(visible(&state)[1], (1, "b".to_owned(), Some(1)));
         state.update(Message::ExpandLevel);
         assert_eq!(visible(&state).len(), 5);
         state.update(Message::ExpandLevel);
@@ -1252,9 +1252,9 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::FocusNext);
         state.update(Message::ToggleFold);
-        assert_eq!(visible(&state)[2], (1, "c".to_owned(), 1));
+        assert_eq!(visible(&state)[2], (1, "c".to_owned(), Some(1)));
         state.update(Message::ExpandLevel);
-        assert_eq!(visible(&state)[2], (1, "c".to_owned(), 0));
+        assert_eq!(visible(&state)[2], (1, "c".to_owned(), None));
     }
 
     // FR-NAV-02
@@ -1264,7 +1264,7 @@ mod tests {
         state.update(Message::CollapseAll);
         assert_eq!(
             visible(&state),
-            [(0, "A".to_owned(), 2), (0, "e".to_owned(), 0)]
+            [(0, "A".to_owned(), Some(3)), (0, "e".to_owned(), None)]
         );
         assert_eq!(state.folds.len(), 2);
         state.update(Message::ExpandAll);
@@ -1402,7 +1402,7 @@ mod tests {
         state.update(Message::CollapseAll);
         state.update(Message::Collapse);
         assert_eq!(state.folds, HashSet::new());
-        assert_eq!(visible(&state)[0], (0, "a".to_owned(), 0));
+        assert_eq!(visible(&state)[0], (0, "a".to_owned(), None));
     }
 
     /// The display text of the zoom block, or `Home`.
@@ -1433,7 +1433,7 @@ mod tests {
         assert_eq!(state.breadcrumbs(), ["A", "b"]);
         assert_eq!(
             visible(&state),
-            [(0, "b".to_owned(), 0), (1, "c".to_owned(), 0)]
+            [(0, "b".to_owned(), None), (1, "c".to_owned(), None)]
         );
         assert_eq!(
             state.rows().iter().map(|row| row.title).collect::<Vec<_>>(),
@@ -1570,7 +1570,7 @@ mod tests {
         let mut state = open(TREE, 0);
         state.update(Message::Collapse);
         state.update(Message::ZoomIn);
-        assert_eq!(visible(&state)[0], (0, "A".to_owned(), 0));
+        assert_eq!(visible(&state)[0], (0, "A".to_owned(), None));
         assert_eq!(visible(&state).len(), 4);
     }
 

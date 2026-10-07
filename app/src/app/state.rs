@@ -258,8 +258,9 @@ pub struct Row {
     /// Whether a block above it is done, also one above the zoom; its own `@done` is `done`
     /// (D-40).
     pub inside_done: bool,
-    /// How many child blocks its fold hides; 0 when it is expanded or has none.
-    pub hidden_children: usize,
+    /// With a fold that hides child blocks, how many open tasks it hides at any depth: tasks
+    /// neither done nor inside a done block (D-67); `None` when it is expanded or has none.
+    pub hidden_tasks: Option<usize>,
     /// Whether this is the title row of a zoomed view: the zoom block itself, above its children.
     pub title: bool,
     /// The date of its `@start`, if it holds one (FR-TAG-03).
@@ -546,11 +547,18 @@ impl State {
                 .unwrap_or_default(),
             done: block.done(),
             inside_done,
-            hidden_children: if !title && self.folds.contains(&block.id()) {
-                self.children(block).len()
-            } else {
-                0
-            },
+            hidden_tasks: (!title
+                && self.folds.contains(&block.id())
+                && blocks::each_child(&self.document, block.id())
+                    .next()
+                    .is_some())
+            .then(|| {
+                if block.done() || inside_done {
+                    0
+                } else {
+                    self.open_tasks(block)
+                }
+            }),
             title,
             start: block.start(),
             due: block.due(),
@@ -625,6 +633,20 @@ impl State {
         let mut children = self.children(block);
         children.retain(|child| self.shows(child));
         children
+    }
+
+    /// How many tasks below `block`, at any depth, are neither done nor inside a done block
+    /// (D-67).
+    fn open_tasks(&self, block: &Block) -> usize {
+        let mut open = 0;
+        let mut below: Vec<Block> = blocks::each_child(&self.document, block.id()).collect();
+        while let Some(block) = below.pop() {
+            if !block.done() {
+                open += usize::from(block.kind() == BlockKind::Task);
+                below.extend(blocks::each_child(&self.document, block.id()));
+            }
+        }
+        open
     }
 
     /// The child blocks of `block`.
@@ -878,5 +900,51 @@ mod tests {
         let temporary = state.with_origin(Origin::Temporary);
         assert_eq!(temporary.origin(), Origin::Temporary);
         assert_eq!(temporary.path(), Some(Path::new("/tmp/t.taskpaper")));
+    }
+
+    /// Each row's text and count of hidden open tasks with the blocks reading `folded` collapsed.
+    fn hidden_tasks(text: &str, folded: &[&str]) -> Vec<(String, Option<usize>)> {
+        let mut state = State::new(format::parse(text), None);
+        for (block, _) in state.blocks(false) {
+            if folded.contains(&state.document.get(block.id()).map_or("", Item::plain_text)) {
+                state.folds.insert(block.id());
+            }
+        }
+        state
+            .rows()
+            .iter()
+            .map(|row| (row.text.to_string(), row.hidden_tasks))
+            .collect()
+    }
+
+    // D-67, D-40
+    #[test]
+    fn a_fold_counts_the_open_tasks_it_hides_at_any_depth() {
+        let text = "P:\n\t- a\n\tnote\n\tQ:\n\t\t- b\n\t\t- c @done\n\tR: @done\n\t\t- d\n\t- e @done\n\t\t- f";
+        assert_eq!(hidden_tasks(text, &["P"]), [("P".to_owned(), Some(2))]);
+        let projects = hidden_tasks(text, &["Q", "R"]);
+        assert_eq!(projects[3], ("Q".to_owned(), Some(1)));
+        assert_eq!(projects[4], ("R".to_owned(), Some(0)), "a done block");
+        let inside = hidden_tasks("A: @done\n\tB:\n\t\t- c", &["B"]);
+        assert_eq!(inside[1], ("B".to_owned(), Some(0)), "inside a done block");
+    }
+
+    // D-67, special-nodes.md §1
+    #[test]
+    fn a_fold_hiding_no_block_counts_nothing_and_one_hiding_no_task_counts_0() {
+        let text = "- a\n- b\n\tC @hidden\n- d\n\tn";
+        assert_eq!(
+            hidden_tasks(text, &["a", "b", "d"]),
+            [
+                ("a".to_owned(), None),
+                ("b".to_owned(), None),
+                ("d".to_owned(), Some(0)),
+            ]
+        );
+        assert_eq!(
+            hidden_tasks("- a\n\t- b", &[]),
+            [("a".to_owned(), None), ("b".to_owned(), None)],
+            "expanded"
+        );
     }
 }

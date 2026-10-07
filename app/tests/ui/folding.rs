@@ -71,11 +71,20 @@ fn h_collapses_a_project() {
 
 // FR-NAV-02
 #[test]
-fn a_collapsed_block_shows_how_many_children_it_hides() {
+fn a_collapsed_block_without_open_tasks_shows_its_marker_alone() {
     let mut app = app();
     app.type_keys("j");
     app.press(KeyCode::Left, NONE);
-    assert_eq!(shown(&mut app)[..3], ["Home:", "  - Milk ▸ 1", "  - Eggs"]);
+    assert_eq!(shown(&mut app)[..3], ["Home:", "  - Milk ▸", "  - Eggs"]);
+}
+
+// D-67, D-40
+#[test]
+fn a_collapsed_block_counts_only_the_open_tasks_it_hides() {
+    let text = "P:\n\t- a\n\tnote\n\tQ:\n\t\t- b\n\t\t- c @done\n\tR: @done\n\t\t- d\nN:\n\tnote\n";
+    let mut app = Harness::with_text(text, 30, 6);
+    app.type_keys("_");
+    assert_eq!(shown(&mut app), ["P: ▸ 2", "N: ▸"]);
 }
 
 // FR-NAV-01, FR-NAV-02
@@ -87,7 +96,7 @@ fn h_on_a_leaf_or_a_collapsed_block_goes_to_its_parent() {
     app.type_keys("h");
     assert_focus(&mut app, "  - Milk");
     app.type_keys("h");
-    assert_focus(&mut app, "  - Milk ▸ 1");
+    assert_focus(&mut app, "  - Milk ▸");
     app.type_keys("h");
     assert_focus(&mut app, "Home:");
 }
@@ -126,14 +135,14 @@ fn double_quote_toggles_the_whole_subtree() {
     let mut app = app();
     app.type_keys("jjjj");
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "✔ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 3", "✔ Loose"]);
     app.type_keys("l");
     assert_eq!(
         shown(&mut app)[4..],
-        ["Work:", "  - Report ▸ 1", "  Ideas:", "✔ Loose"]
+        ["Work:", "  - Report ▸ 2", "  Ideas:", "✔ Loose"]
     );
     app.type_keys("\"");
-    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 2", "✔ Loose"]);
+    assert_eq!(shown(&mut app)[4..], ["Work: ▸ 3", "✔ Loose"]);
     app.type_keys("\"");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -143,7 +152,7 @@ fn double_quote_toggles_the_whole_subtree() {
 fn underscore_and_plus_collapse_and_expand_everything() {
     let mut app = app();
     app.type_keys("_");
-    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "✔ Loose"]);
+    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 3", "✔ Loose"]);
     app.type_keys("+");
     assert_eq!(shown(&mut app).len(), 10);
 }
@@ -159,19 +168,19 @@ fn minus_and_equals_fold_one_level_at_a_time() {
         shown(&mut app),
         [
             "Home:",
-            "  - Milk ▸ 1",
+            "  - Milk ▸",
             "  - Eggs",
             "Work:",
-            "  - Report ▸ 1",
+            "  - Report ▸ 2",
             "  Ideas:",
             "✔ Loose",
         ]
     );
     app.type_keys("-");
     app.type_keys("-");
-    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 2", "✔ Loose"]);
+    assert_eq!(shown(&mut app), ["Home: ▸ 2", "Work: ▸ 3", "✔ Loose"]);
     app.type_keys("=");
-    assert_eq!(shown(&mut app)[4], "  - Report ▸ 1");
+    assert_eq!(shown(&mut app)[4], "  - Report ▸ 2");
     app.type_keys("=");
     assert_eq!(shown(&mut app)[6], "    - Draft ▸ 1");
     app.type_keys("==");
@@ -194,7 +203,7 @@ fn without_a_next_visible_block_focus_moves_to_the_previous_one() {
     let mut app = Harness::with_text("A:\n\t- b\n\t\t- c\n", 30, 6);
     app.type_keys("jj");
     app.type_keys("_");
-    assert_focus(&mut app, "A: ▸ 1");
+    assert_focus(&mut app, "A: ▸ 2");
 }
 
 // FR-NAV-01

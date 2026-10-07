@@ -554,7 +554,10 @@ mod tests {
         state.update(Message::Collapse);
         assert_eq!(panes(&state), ["*⌂: Work", "⌂: Home"]);
         let right = &state.panes()[1];
-        assert_eq!(right.rows.first().map(|row| row.hidden_children), Some(2));
+        assert_eq!(
+            right.rows.first().map(|row| row.hidden_tasks),
+            Some(Some(1))
+        );
     }
 
     // FR-UI-02, navigation.md §2 and §5: edits in one pane show in all of them.

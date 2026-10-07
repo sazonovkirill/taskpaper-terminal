@@ -42,7 +42,7 @@ impl State {
                 path.pop();
                 out.push(Row {
                     path,
-                    hidden_children: 0,
+                    hidden_tasks: None,
                     ..self.row(pane, &block, 0, false, inside_done)
                 });
             }
@@ -289,7 +289,7 @@ Work: @done
         assert!(water.today && !water.inside_done);
         let mut folded = today("- a @today\n\t- b\n");
         folded.folds.insert(folded.focus().expect("a focus"));
-        assert_eq!(folded.rows()[0].hidden_children, 0, "entries do not fold");
+        assert_eq!(folded.rows()[0].hidden_tasks, None, "entries do not fold");
     }
 
     // FR-DONE-02, D-7
