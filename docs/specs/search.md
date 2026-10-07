@@ -40,6 +40,7 @@ Dates are stored as `YYYY-MM-DD` with no time (D-6), so they run from 0000-01-01
 - `today`, `tomorrow`, `yesterday`.
 - Weekday names and three-letter abbreviations (`fri`, `friday`): the next such day after today; `next fri` the one after that; `last fri` the most recent past one.
 - `this|next|last week|month|year`: the first day of that period; weeks start on Monday (ISO, as TaskPaper).
+- `weekend` and `this weekend`: the coming Saturday, today on a Saturday; `next|last weekend`: a week after or before it (D-97).
 - Offsets `[+|-]N d|w|m|y` and long forms (`+3d`, `2 weeks`, `-1 month`), applied to today or to a preceding date (`fri +1w`). Unlike TaskPaper's grammar (where `m` is minutes), `m` means months here because there are no times.
 
 Parsing is case-insensitive and relative to the local date, using `jiff`. The prompt previews the resolved date live and rejects unparseable input. The local date is read from the injected clock ([architecture.md §2](architecture.md#2-event-loop)), so "today", overdue highlighting and the Today view are testable and update at midnight.
