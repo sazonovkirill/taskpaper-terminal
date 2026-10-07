@@ -133,7 +133,7 @@ impl Facts {
             color: color(tags),
             url: has("url"),
             section: text && has("section"),
-            divider: text && item.display_text().trim() == "---",
+            divider: text && divider_title(item.display_text()).is_some(),
         }
     }
 }
@@ -208,11 +208,25 @@ impl Block {
         self.facts.section
     }
 
-    /// Whether it is a divider: a text block whose text, tags aside, is `---` (FR-BLK-07, D-52).
+    /// Whether it is a divider: a text block whose text, tags aside, is `---`, or `---Title---`
+    /// for a titled one (FR-BLK-07, D-52, D-76).
     #[must_use]
     pub fn divider(&self) -> bool {
         self.facts.divider
     }
+}
+
+/// The title of a divider whose display text, trimmed, is `text`: empty for `---`, and the text
+/// between the dashes, trimmed, for `---Title---` when it holds more than dashes; `None` for any
+/// other text (FR-BLK-07, D-76).
+#[must_use]
+pub fn divider_title(text: &str) -> Option<&str> {
+    let text = text.trim();
+    if text == "---" {
+        return Some("");
+    }
+    let title = text.strip_prefix("---")?.strip_suffix("---")?.trim();
+    title.contains(|c| c != '-').then_some(title)
 }
 
 /// The blocks formed by the children of the line `parent` (or the root), in order. Special nodes
@@ -436,6 +450,45 @@ mod tests {
         );
         check("----", &[r#"0 Text "----""#]);
         check("- ---", &[r#"0 Task "- ---""#]);
+    }
+
+    // FR-BLK-07, D-76
+    #[test]
+    fn a_titled_divider_is_text_between_dashes_its_title_trimmed() {
+        check("---Plan--- @red", &[r#"0 Text "---Plan--- @red" divider"#]);
+        check("- ---Plan---", &[r#"0 Task "- ---Plan---""#]);
+        let titles = [
+            "---",
+            " --- ",
+            "---Plan---",
+            "--- Next week ---",
+            "---a-b---",
+            "------",
+            "-------",
+            "---- ---",
+            "--Plan--",
+            "---Plan",
+            "Plan---",
+            "---Plan---!",
+        ]
+        .map(divider_title);
+        assert_eq!(
+            titles,
+            [
+                Some(""),
+                Some(""),
+                Some("Plan"),
+                Some("Next week"),
+                Some("a-b"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ]
+        );
     }
 
     // FR-BLK-04, D-52

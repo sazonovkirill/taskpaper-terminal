@@ -249,7 +249,8 @@ pub struct Row {
     pub kind: BlockKind,
     /// Whether it is a section: a text block carrying `@section` (FR-BLK-04, D-52).
     pub section: bool,
-    /// Whether it is a divider: a text block reading `---` (FR-BLK-07, D-52).
+    /// Whether it is a divider: a text block reading `---` or `---Title---` (FR-BLK-07, D-52,
+    /// D-76).
     pub divider: bool,
     /// Its text without type syntax and tags.
     pub text: Arc<str>,

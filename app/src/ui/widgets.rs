@@ -1182,11 +1182,12 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01), then the flag of the color tag `flag`, in its color (D-74), the `@today` star
-/// and the bookmark icon, each after a space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows its fold marker after
-/// them (ui.md §2, D-67), and an entry of the Today view the path of the blocks above it, dimmed
-/// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34). Markers and icons
-/// come from `icons`, colors from `theme`.
+/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the flag of
+/// the color tag `flag`, in its color (D-74), the `@today` star and the bookmark icon, each after a
+/// space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
+/// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
+/// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
+/// (D-34). Markers and icons come from `icons`, colors from `theme`.
 fn row_line<'a>(
     row: &'a Row,
     width: usize,
@@ -1195,8 +1196,18 @@ fn row_line<'a>(
     theme: &Theme,
 ) -> Line<'a> {
     let (mut line, style) = lead(row, icons, theme);
+    let before_title = line.spans.len();
+    let title = row
+        .divider
+        .then(|| blocks::divider_title(&row.text))
+        .flatten()
+        .filter(|title| !title.is_empty());
     match row.kind {
-        _ if row.divider => {}
+        _ if row.divider => {
+            if let Some(title) = title {
+                line.push_span(Span::styled(format!(" {title}"), style));
+            }
+        }
         // TaskPaper marks a project with a trailing colon, which the display text drops.
         BlockKind::Project => {
             line.extend(formatted(row, style, theme));
@@ -1231,8 +1242,15 @@ fn row_line<'a>(
         ));
     }
     if row.divider {
-        if marks.iter().any(Option::is_some) || row.hidden_tasks.is_some() {
+        if title.is_some() || marks.iter().any(Option::is_some) || row.hidden_tasks.is_some() {
             line.push_span(" ");
+        }
+        if title.is_some() {
+            let half = width.saturating_sub(line.width()) / 2;
+            line.spans.insert(
+                before_title,
+                Span::styled("─".repeat(half), divider_style(theme)),
+            );
         }
         line.push_span(rule(&line, width, theme));
     }
@@ -2168,6 +2186,35 @@ mod tests {
                 "- a @due(2026-10-09) @today\n- b @bookmark @today(x)\nP: @today @done\n\t- c @bookmark\n--- @bookmark",
                 20,
                 5
+            ),
+            expected
+        );
+    }
+
+    // FR-BLK-07, D-76
+    #[test]
+    fn a_titled_divider_shows_its_title_centered_in_its_rule_before_its_icons() {
+        let bookmark = Icon::Bookmark.glyph(ICONS);
+        let mut expected = Buffer::with_lines([
+            "─── Plan ───".to_owned(),
+            format!("  ─ Next {bookmark} ─"),
+            "------      ".to_owned(),
+        ]);
+        expected.set_style(Rect::new(0, 0, 3, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(3, 0, 5, 1), Style::new().fg(THEME.dim_text));
+        expected.set_style(Rect::new(9, 0, 3, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(2, 1, 1, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(3, 1, 5, 1), Style::new().fg(THEME.dim_text));
+        expected.set_style(Rect::new(9, 1, 1, 1), bookmark_style(&THEME));
+        expected.set_style(Rect::new(11, 1, 1, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(0, 2, 6, 1), Style::new().fg(THEME.dim_text));
+        assert_eq!(
+            render(
+                "---Plan---
+	--- Next --- @bookmark
+------",
+                12,
+                3
             ),
             expected
         );

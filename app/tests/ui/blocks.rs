@@ -1,12 +1,13 @@
 //! Step 1.4: blocks. Every line drawn as a block of its type, focus moving by block, and special
 //! nodes never shown (D-43).
 
+use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     style::{Color, Modifier},
 };
 
-use crate::support::{Harness, TEXT, is_focused, outline_line};
+use crate::support::{Harness, TEXT, is_focused, outline_line, outline_rows};
 
 fn screen(app: &mut Harness) -> Buffer {
     app.render().buffer().clone()
@@ -115,5 +116,32 @@ fn demo_shows_every_block_type() {
     assert!(
         !text.contains("COMMENTS"),
         "a special node is visible:\n{text}"
+    );
+}
+
+// FR-BLK-07, D-76
+#[test]
+fn a_titled_divider_shows_its_title_in_its_rule_and_is_edited_raw() {
+    let mut app = Harness::with_text("one\n---Next week---\ntwo\n", 40, 8);
+    let rows = outline_rows(&mut app);
+    let rule = rows[1].trim_end();
+    let (left, right) = rule
+        .split_once(" Next week ")
+        .expect("the title is in the rule");
+    assert!(
+        !left.is_empty() && left.chars().all(|c| c == '─'),
+        "{rule:?}"
+    );
+    assert!(right.chars().all(|c| c == '─'), "{rule:?}");
+    assert!(
+        left.chars().count().abs_diff(right.chars().count()) <= 1,
+        "the title is centered: {rule:?}"
+    );
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(
+        crate::support::focused_rows(&mut app),
+        ["---Next week---"],
+        "edited raw"
     );
 }

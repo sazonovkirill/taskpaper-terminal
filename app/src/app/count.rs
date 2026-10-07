@@ -7,16 +7,21 @@ use crate::document::{ItemId, blocks};
 impl State {
     /// Shows how many blocks are under the focused block, which is the zoom root when its title
     /// is focused and an entry in the Today view, and how many words their text holds, completed
-    /// and folded ones included; none when nothing is focused. A divider's `---` is no word.
+    /// and folded ones included; none when nothing is focused. A divider's dashes are no
+    /// words, but its title's are (D-76).
     pub(super) fn count(&mut self) {
         let (mut count, mut words) = (0, 0);
         let mut pending: Vec<ItemId> = self.pane.focus.into_iter().collect();
         while let Some(line) = pending.pop() {
             for block in blocks::each_child(&self.document, line) {
                 count += 1;
-                if !block.divider() {
-                    words += self.shown_text(&block).split_whitespace().count();
-                }
+                let text = self.shown_text(&block);
+                let text = if block.divider() {
+                    blocks::divider_title(&text).unwrap_or_default()
+                } else {
+                    &text
+                };
+                words += text.split_whitespace().count();
                 pending.push(block.id());
             }
         }
@@ -47,9 +52,9 @@ mod tests {
     // FR-OPS-09
     #[test]
     fn counts_the_blocks_and_words_under_the_focused_block() {
-        let text = "Trip: @today\n\t- Book **the** hotel @due(2026-10-09)\n\t\tNear the station\n\t---\n\t- Pack @done\nOther\n";
+        let text = "Trip: @today\n\t- Book **the** hotel @due(2026-10-09)\n\t\tNear the station\n\t---\n\t--- Day two ---\n\t- Pack @done\nOther\n";
         let mut state = State::new(format::parse(text), None);
-        assert_eq!(counted(&mut state), count(4, 7), "done ones count too");
+        assert_eq!(counted(&mut state), count(5, 9), "done ones count too");
         state.update(Message::FocusNext);
         assert_eq!(counted(&mut state), count(1, 3));
         state.update(Message::FocusNext);

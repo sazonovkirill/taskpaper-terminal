@@ -53,7 +53,7 @@ A block is what the user navigates, selects and edits (FR-BLK). Every line of th
 Two kinds of text block are drawn differently, as attributes rather than types (D-52):
 
 - **Section** (FR-BLK-04): a text block carrying `@section`. On a task or project the tag has no effect: it is preserved, hidden and listed by the details as unsupported, and the file is never rewritten to move it.
-- **Divider** (FR-BLK-07): a text block whose text, tags aside and trimmed, is exactly `---`, so metadata commands on a divider don't change what it is.
+- **Divider** (FR-BLK-07): a text block whose text, tags aside and trimmed, is exactly `---`, so metadata commands on a divider don't change what it is, or `---Title---`, a titled divider whose title is the text between the dashes, trimmed, holding something other than dashes (D-76).
 
 `@code` has no meaning for the type: a line carrying it is whatever the rules above make it, usually text, and the tag stays hidden and preserved like any unsupported tag (D-43). Nor has `@url(...)`: a line carrying it keeps its type, and the tag, hidden and preserved, makes the block's title a link to its address (FR-BLK-06, D-45).
 
