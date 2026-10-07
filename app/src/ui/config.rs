@@ -793,7 +793,12 @@ mod tests {
         assert_eq!(config.file(), Some(path.as_path()));
         assert_eq!(read("", None).theme, None);
         assert_eq!(Config::default().file(), None);
-        for text in ["theme = \"Nord\"", "theme = 3"] {
+        // Terminal Light was removed (D-63).
+        for text in [
+            "theme = \"Nord\"",
+            "theme = 3",
+            "theme = \"terminal-light\"",
+        ] {
             let config = read(text, None);
             assert_eq!(config.theme, None, "{text}");
             assert_eq!(

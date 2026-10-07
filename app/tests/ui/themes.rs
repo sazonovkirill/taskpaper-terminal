@@ -17,7 +17,6 @@ const OUTLINE: &str = "Trip:\n\t- Book the hotel @red\n\tNear the station\n";
 
 const SETTINGS: &str = "# Mine\nautosave_delay_ms = 500 # half a second\n";
 
-const MOCHA_BACKGROUND: Color = Color::Rgb(0x1e, 0x1e, 0x2e);
 const NORD_BACKGROUND: Color = Color::Rgb(0x2e, 0x34, 0x40);
 const DRACULA_BACKGROUND: Color = Color::Rgb(0x28, 0x2a, 0x36);
 
@@ -52,18 +51,17 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
         Harness::with_config(OUTLINE, SETTINGS, 60, 24).with_colors(ColorSupport::TrueColor);
     assert_eq!(
         background(&mut app),
-        MOCHA_BACKGROUND,
-        "Catppuccin Mocha by default"
+        Color::Reset,
+        "Terminal Dark, in the terminal's own background, by default (D-63)"
     );
     choose_theme(&mut app);
     let buffer = app.render().buffer().clone();
-    let rows: Vec<String> = screen(&buffer)[4..21]
+    let rows: Vec<String> = screen(&buffer)[5..21]
         .iter()
         .map(|row| row.trim_end().to_owned())
         .collect();
     let names = [
         "Terminal Dark",
-        "Terminal Light",
         "Catppuccin Mocha",
         "Catppuccin Latte",
         "Tokyo Night",
@@ -85,8 +83,8 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
     expected.push("└──────────────────────────────────────────────────────────┘".to_owned());
     assert_eq!(rows, expected);
     assert!(
-        buffer[(3, 8)].modifier.contains(Modifier::REVERSED),
-        "Catppuccin Mocha is highlighted"
+        buffer[(3, 7)].modifier.contains(Modifier::REVERSED),
+        "Terminal Dark is highlighted"
     );
 }
 
@@ -103,12 +101,12 @@ fn highlighting_previews_a_theme_esc_goes_back_and_enter_keeps_and_saves_it() {
         "the highlighted theme shows"
     );
     press(&mut app, KeyCode::Esc);
-    assert_eq!(background(&mut app), MOCHA_BACKGROUND, "Esc goes back");
+    assert_eq!(background(&mut app), Color::Reset, "Esc goes back");
     assert_eq!(fs::read_to_string(app.config_file()).unwrap(), SETTINGS);
     choose_theme(&mut app);
-    press(&mut app, KeyCode::Down);
-    press(&mut app, KeyCode::Down);
-    press(&mut app, KeyCode::Down);
+    for _ in 0..4 {
+        press(&mut app, KeyCode::Down);
+    }
     assert_eq!(
         background(&mut app),
         DRACULA_BACKGROUND,
@@ -147,16 +145,22 @@ fn the_theme_in_the_config_file_is_used_from_the_start() {
     assert_eq!(status, app.status(60).trim_end(), "no problems reported");
 }
 
-// N-UX-03, ui.md §3
+// N-UX-03, ui.md §3, D-63
 #[test]
-fn without_truecolor_a_truecolor_theme_is_drawn_in_the_terminals_16_colors() {
-    for (theme, project) in [("nord", Color::LightBlue), ("solarized-light", Color::Blue)] {
+fn without_truecolor_a_truecolor_theme_is_drawn_as_terminal_dark() {
+    for theme in ["nord", "solarized-light"] {
         let settings = format!("theme = \"{theme}\"\n");
         let mut app = Harness::with_config(OUTLINE, &settings, 60, 8);
         let buffer = app.render().buffer().clone();
         assert_eq!(background(&mut app), Color::Reset, "{theme}");
-        assert_eq!(buffer[(2, 2)].fg, project, "{theme}");
+        assert_eq!(buffer[(2, 2)].fg, Color::LightBlue, "{theme}");
         assert_eq!(buffer[(6, 3)].bg, Color::Red, "{theme}: the red tag's row");
+        assert_eq!(buffer[(4, 4)].symbol(), "N");
+        assert_eq!(
+            buffer[(4, 4)].fg,
+            Color::Indexed(248),
+            "{theme}: the note is dimmed"
+        );
     }
 }
 

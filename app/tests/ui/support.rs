@@ -122,7 +122,7 @@ pub const BOOKMARK: &str = "⚑";
 
 /// The color of text blocks, dimmed less than done tasks (D-37), in Terminal Dark, the theme of a
 /// terminal without truecolor.
-pub const TEXT: Color = Color::Gray;
+pub const TEXT: Color = Color::Indexed(248);
 
 /// The background of every line of the focused block (D-39), in Terminal Dark.
 pub const CURRENT_LINE: Color = Color::Black;

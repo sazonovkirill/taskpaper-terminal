@@ -15,7 +15,7 @@ pub struct Theme {
     pub background: Color,
     /// Text in no color of its own.
     pub text: Color,
-    /// Plain text blocks, slightly dimmed (D-37).
+    /// Plain text blocks, slightly dimmed, less than done blocks (D-37, D-63).
     pub dim_text: Color,
     /// Projects, keys in menus and the bookmark icon (Textual's `$primary`).
     pub primary: Color,
@@ -91,9 +91,12 @@ impl Theme {
         tints: [(Color::Reset, Color::Reset); 6],
     };
 
-    /// A theme in the terminal's 16 ANSI colors for a `shade` of background, so it follows the
-    /// user's palette. Its row tints are the tags' own colors, as 16 colors have no dim shades.
-    const fn terminal(shade: Shade) -> Self {
+    /// Terminal Dark: the terminal's 16 ANSI colors, so it follows the user's palette, and grey
+    /// 248 of the 256 for notes, as 16 colors have no grey between the default foreground,
+    /// which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a
+    /// done block (D-37, D-63). Its row tints are the tags' own colors, as 16 colors have no dim
+    /// shades.
+    const fn terminal() -> Self {
         let (red, orange, yellow, green, blue, violet) = (
             Color::Red,
             Color::LightRed,
@@ -111,25 +114,17 @@ impl Theme {
             (blue, blue),
             (violet, violet),
         ];
-        let (dim_text, primary, current_line, headers) = match shade {
-            Shade::Dark => (
-                Color::Gray,
-                Color::LightBlue,
-                Color::Black,
-                Color::LightMagenta,
-            ),
-            Shade::Light => (Color::DarkGray, Color::Blue, Color::White, Color::Magenta),
-        };
+        let primary = Color::LightBlue;
         Self {
             background: Color::Reset,
             text: Color::Reset,
-            dim_text,
+            dim_text: Color::Indexed(248),
             primary,
             accent: Color::Yellow,
             selection: primary,
             focus: primary,
-            current_line,
-            headers,
+            current_line: Color::Black,
+            headers: Color::LightMagenta,
             rule: Color::DarkGray,
             link: Color::Cyan,
             start: Color::Green,
@@ -153,13 +148,6 @@ fn pick<T>(values: [T; 6], color: TagColor) -> T {
         TagColor::Blue => blue,
         TagColor::Violet => violet,
     }
-}
-
-/// Whether a theme is for a dark or a light background.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Shade {
-    Dark,
-    Light,
 }
 
 /// How much of a tag's color its row tint mixes into the background, in percent, plain and on
@@ -248,11 +236,10 @@ impl ColorSupport {
 #[derive(Debug, Clone, Copy)]
 enum Source {
     /// The terminal's 16 ANSI colors.
-    Terminal(Shade),
-    /// A truecolor palette for a shade of background: its background, surface, text, muted and
-    /// accent colors, then its red, orange, yellow, green, blue and violet, each as `0xRRGGBB`,
+    Terminal,
+    /// A truecolor palette: its background, surface, text, muted and accent colors, then its red, orange, yellow, green, blue and violet, each as `0xRRGGBB`,
     /// as [reference/themes.md](../../../../docs/reference/themes.md) lists them.
-    Palette(Shade, [u32; 5], [u32; 6]),
+    Palette([u32; 5], [u32; 6]),
 }
 
 /// One of the built-in themes, available without any settings file (FR-UI-08).
@@ -263,25 +250,15 @@ pub struct BuiltIn(usize);
     clippy::unreadable_literal,
     reason = "colors are written as the palettes write them, `#rrggbb`"
 )]
-/// Each built-in theme's name in `config.toml`, its name on screen and its colors: the two
-/// terminal themes, then the twelve truecolor ones of
+/// Each built-in theme's name in `config.toml`, its name on screen and its colors: the
+/// terminal theme, then the twelve truecolor ones of
 /// [reference/themes.md](../../../../docs/reference/themes.md) in its order.
-const THEMES: [(&str, &str, Source); 14] = [
-    (
-        "terminal-dark",
-        "Terminal Dark",
-        Source::Terminal(Shade::Dark),
-    ),
-    (
-        "terminal-light",
-        "Terminal Light",
-        Source::Terminal(Shade::Light),
-    ),
+const THEMES: [(&str, &str, Source); 13] = [
+    ("terminal-dark", "Terminal Dark", Source::Terminal),
     (
         "catppuccin-mocha",
         "Catppuccin Mocha",
         Source::Palette(
-            Shade::Dark,
             [0x1e1e2e, 0x313244, 0xcdd6f4, 0x6c7086, 0xb4befe],
             [0xf38ba8, 0xfab387, 0xf9e2af, 0xa6e3a1, 0x89b4fa, 0xcba6f7],
         ),
@@ -290,7 +267,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "catppuccin-latte",
         "Catppuccin Latte",
         Source::Palette(
-            Shade::Light,
             [0xeff1f5, 0xccd0da, 0x4c4f69, 0x9ca0b0, 0x7287fd],
             [0xd20f39, 0xfe640b, 0xdf8e1d, 0x40a02b, 0x1e66f5, 0x8839ef],
         ),
@@ -299,7 +275,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "tokyo-night",
         "Tokyo Night",
         Source::Palette(
-            Shade::Dark,
             [0x1a1b26, 0x292e42, 0xc0caf5, 0x565f89, 0x7dcfff],
             [0xf7768e, 0xff9e64, 0xe0af68, 0x9ece6a, 0x7aa2f7, 0xbb9af7],
         ),
@@ -308,7 +283,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "dracula",
         "Dracula",
         Source::Palette(
-            Shade::Dark,
             [0x282a36, 0x44475a, 0xf8f8f2, 0x6272a4, 0xff79c6],
             [0xff5555, 0xffb86c, 0xf1fa8c, 0x50fa7b, 0x8be9fd, 0xbd93f9],
         ),
@@ -317,7 +291,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "nord",
         "Nord",
         Source::Palette(
-            Shade::Dark,
             [0x2e3440, 0x434c5e, 0xd8dee9, 0x4c566a, 0x88c0d0],
             [0xbf616a, 0xd08770, 0xebcb8b, 0xa3be8c, 0x81a1c1, 0xb48ead],
         ),
@@ -326,7 +299,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "gruvbox-dark",
         "Gruvbox Dark",
         Source::Palette(
-            Shade::Dark,
             [0x282828, 0x3c3836, 0xebdbb2, 0x928374, 0x8ec07c],
             [0xfb4934, 0xfe8019, 0xfabd2f, 0xb8bb26, 0x83a598, 0xd3869b],
         ),
@@ -335,7 +307,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "rose-pine",
         "Rosé Pine",
         Source::Palette(
-            Shade::Dark,
             [0x191724, 0x26233a, 0xe0def4, 0x6e6a86, 0xc4a7e7],
             [0xeb6f92, 0xebbcba, 0xf6c177, 0x9ccfd8, 0x31748f, 0xc4a7e7],
         ),
@@ -344,7 +315,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "rose-pine-dawn",
         "Rosé Pine Dawn",
         Source::Palette(
-            Shade::Light,
             [0xfaf4ed, 0xf2e9e1, 0x575279, 0x9893a5, 0x907aa9],
             [0xb4637a, 0xd7827e, 0xea9d34, 0x56949f, 0x286983, 0x907aa9],
         ),
@@ -353,7 +323,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "kanagawa-wave",
         "Kanagawa Wave",
         Source::Palette(
-            Shade::Dark,
             [0x1f1f28, 0x2a2a37, 0xdcd7ba, 0x727169, 0x7fb4ca],
             [0xff5d62, 0xffa066, 0xe6c384, 0x98bb6c, 0x7e9cd8, 0x957fb8],
         ),
@@ -362,7 +331,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "everforest-dark",
         "Everforest Dark",
         Source::Palette(
-            Shade::Dark,
             [0x2d353b, 0x3d484d, 0xd3c6aa, 0x859289, 0x83c092],
             [0xe67e80, 0xe69875, 0xdbbc7f, 0xa7c080, 0x7fbbb3, 0xd699b6],
         ),
@@ -371,7 +339,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "one-dark",
         "One Dark",
         Source::Palette(
-            Shade::Dark,
             [0x282c34, 0x3e4451, 0xabb2bf, 0x5c6370, 0x56b6c2],
             [0xe06c75, 0xd19a66, 0xe5c07b, 0x98c379, 0x61afef, 0xc678dd],
         ),
@@ -380,7 +347,6 @@ const THEMES: [(&str, &str, Source); 14] = [
         "solarized-light",
         "Solarized Light",
         Source::Palette(
-            Shade::Light,
             [0xfdf6e3, 0xeee8d5, 0x657b83, 0x93a1a1, 0x2aa198],
             [0xdc322f, 0xcb4b16, 0xb58900, 0x859900, 0x268bd2, 0x6c71c4],
         ),
@@ -388,10 +354,8 @@ const THEMES: [(&str, &str, Source); 14] = [
 ];
 
 impl BuiltIn {
-    /// The theme used until one is chosen: Catppuccin Mocha, as
-    /// [reference/themes.md](../../../../docs/reference/themes.md) suggests, which a terminal
-    /// without truecolor shows as Terminal Dark.
-    pub const DEFAULT: Self = Self(2);
+    /// The theme used until one is chosen: Terminal Dark (D-63).
+    pub const DEFAULT: Self = Self(0);
 
     /// Every built-in theme, in the order the theme picker lists them.
     pub fn all() -> impl Iterator<Item = Self> {
@@ -428,17 +392,15 @@ impl BuiltIn {
         self.entry().1
     }
 
-    /// The colors the theme is drawn in with `support`: none without colors, and the terminal
-    /// theme for its shade of background when it is a truecolor theme and the terminal lacks
-    /// truecolor, so that every theme is usable in 16 colors (N-UX-03).
+    /// The colors the theme is drawn in with `support`: none without colors, and Terminal Dark
+    /// when it is a truecolor theme and the terminal lacks truecolor, so that every theme is
+    /// usable in 16 colors (N-UX-03, D-63).
     #[must_use]
     pub fn colors(self, support: ColorSupport) -> Theme {
         match (self.entry().2, support) {
             (_, ColorSupport::None) => Theme::PLAIN,
-            (Source::Terminal(shade), _) | (Source::Palette(shade, ..), ColorSupport::Ansi) => {
-                Theme::terminal(shade)
-            }
-            (Source::Palette(_, base, tags), ColorSupport::TrueColor) => {
+            (Source::Terminal, _) | (Source::Palette(..), ColorSupport::Ansi) => Theme::terminal(),
+            (Source::Palette(base, tags), ColorSupport::TrueColor) => {
                 Theme::from_palette(base, tags)
             }
         }
@@ -529,13 +491,12 @@ mod tests {
 
     // FR-UI-08
     #[test]
-    fn the_twelve_themes_and_the_two_terminal_ones_are_built_in() {
+    fn the_twelve_themes_and_the_terminal_one_are_built_in() {
         let names: Vec<&str> = BuiltIn::all().map(BuiltIn::name).collect();
         assert_eq!(
             names,
             [
                 "Terminal Dark",
-                "Terminal Light",
                 "Catppuccin Mocha",
                 "Catppuccin Latte",
                 "Tokyo Night",
@@ -561,14 +522,15 @@ mod tests {
                 .replace('é', "e");
             assert_eq!(theme.id(), id);
         }
-        assert_eq!(BuiltIn::nth(14), None);
+        assert_eq!(BuiltIn::nth(13), None);
         assert_eq!(BuiltIn::named("Nord"), None, "names in the file are ids");
-        assert_eq!(BuiltIn::DEFAULT, named("catppuccin-mocha"));
+        assert_eq!(BuiltIn::named("terminal-light"), None, "removed (D-63)");
+        assert_eq!(BuiltIn::DEFAULT, named("terminal-dark"));
     }
 
-    // N-UX-03
+    // N-UX-03, D-63
     #[test]
-    fn the_terminal_themes_use_only_the_16_ansi_colors() {
+    fn terminal_dark_uses_only_the_16_ansi_colors_but_for_notes() {
         let ansi = [
             Color::Reset,
             Color::Black,
@@ -588,39 +550,48 @@ mod tests {
             Color::LightCyan,
             Color::White,
         ];
-        for theme in BuiltIn::all() {
-            for (role, color) in roles(&theme.colors(ColorSupport::Ansi)) {
-                assert!(ansi.contains(&color), "{} {role}: {color:?}", theme.id());
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi);
+        for (role, color) in roles(&dark) {
+            if role == "dim_text" {
+                continue;
             }
+            assert!(ansi.contains(&color), "{role}: {color:?}");
         }
-        let dark = named("terminal-dark").colors(ColorSupport::TrueColor);
-        assert_eq!(dark, named("terminal-dark").colors(ColorSupport::Ansi));
+        assert_eq!(dark.dim_text, Color::Indexed(248), "grey 248 (D-37)");
+        assert_eq!(dark, named("terminal-dark").colors(ColorSupport::TrueColor));
         assert_eq!(
             (dark.background, dark.text, dark.primary, dark.current_line),
             (Color::Reset, Color::Reset, Color::LightBlue, Color::Black)
         );
-        let light = named("terminal-light").colors(ColorSupport::Ansi);
-        assert_eq!(
-            (light.primary, light.current_line, light.dim_text),
-            (Color::Blue, Color::White, Color::DarkGray)
-        );
-        assert_ne!(dark, light);
     }
 
-    // N-UX-03
+    // N-UX-03, D-63
     #[test]
-    fn a_truecolor_theme_without_truecolor_is_the_terminal_theme_of_its_shade() {
+    fn a_truecolor_theme_without_truecolor_is_terminal_dark() {
         let dark = named("terminal-dark").colors(ColorSupport::Ansi);
-        let light = named("terminal-light").colors(ColorSupport::Ansi);
-        for theme in BuiltIn::all().skip(2) {
-            let expected = if ["catppuccin-latte", "rose-pine-dawn", "solarized-light"]
-                .contains(&theme.id())
-            {
-                light
-            } else {
-                dark
-            };
-            assert_eq!(theme.colors(ColorSupport::Ansi), expected, "{}", theme.id());
+        for theme in BuiltIn::all().skip(1) {
+            assert_eq!(theme.colors(ColorSupport::Ansi), dark, "{}", theme.id());
+        }
+    }
+
+    // D-37, D-63
+    #[test]
+    fn notes_are_dimmed_in_every_theme_with_colors() {
+        for theme in BuiltIn::all() {
+            for support in [ColorSupport::Ansi, ColorSupport::TrueColor] {
+                let colors = theme.colors(support);
+                let notes = colors.dim_text;
+                let id = theme.id();
+                assert_ne!(notes, colors.text, "{id} {support:?}");
+                assert!(
+                    ![Color::Reset, Color::Gray, Color::White].contains(&notes),
+                    "{id} {support:?}: terminals draw {notes:?} as their default foreground"
+                );
+                assert!(
+                    ![Color::DarkGray, Color::Black].contains(&notes),
+                    "{id} {support:?}: {notes:?} is as dim as a done block"
+                );
+            }
         }
     }
 
@@ -660,11 +631,10 @@ mod tests {
 
     #[test]
     fn every_truecolor_theme_tells_its_parts_apart() {
-        for theme in BuiltIn::all().skip(2) {
+        for theme in BuiltIn::all().skip(1) {
             let colors = theme.colors(ColorSupport::TrueColor);
             let id = theme.id();
             assert_ne!(colors.text, colors.background, "{id}");
-            assert_ne!(colors.dim_text, colors.text, "{id}");
             assert_ne!(colors.current_line, colors.background, "{id}");
             for color in TagColor::ALL {
                 let (plain, focused) = (colors.tint(color, false), colors.tint(color, true));

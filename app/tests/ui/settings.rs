@@ -89,7 +89,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         rows[..8],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
-            "│ Appearance    │   ● Theme                        Catppuccin Mocha  │",
+            "│ Appearance    │   ● Theme                           Terminal Dark  │",
             "│ Files         │     The colors of the whole app                    │",
             "│               │ * ◇ Icons                                    none  │",
             "│               │     Nerd Font icons; choose none if they show as bo│",
@@ -122,7 +122,7 @@ fn open_settings_in_go_to_command_opens_the_window() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         window(&mut app)[1],
-        "│ Appearance    │   ● Theme                        Catppuccin Mocha  │"
+        "│ Appearance    │   ● Theme                           Terminal Dark  │"
     );
 }
 
@@ -230,20 +230,20 @@ fn l_and_h_cycle_a_choice_and_r_resets_it_each_written_at_once() {
     app.settle();
     assert_eq!(
         config(&app),
-        format!("{SETTINGS}theme = \"catppuccin-latte\"\n")
+        format!("{SETTINGS}theme = \"catppuccin-mocha\"\n")
     );
     press(&mut app, KeyCode::Char('h'));
     press(&mut app, KeyCode::Char('h'));
     app.settle();
     assert_eq!(
         config(&app),
-        format!("{SETTINGS}theme = \"terminal-light\"\n")
+        format!("{SETTINGS}theme = \"solarized-light\"\n")
     );
     press(&mut app, KeyCode::Char('r'));
     app.settle();
     assert_eq!(
         config(&app),
-        format!("{SETTINGS}theme = \"catppuccin-mocha\"\n")
+        format!("{SETTINGS}theme = \"terminal-dark\"\n")
     );
     assert!(
         window(&mut app)[1].starts_with("│ Appearance    │   ● Theme"),
@@ -444,7 +444,7 @@ fn slash_filters_the_settings_by_name() {
     press(&mut app, KeyCode::Esc);
     assert_eq!(
         window(&mut app)[1],
-        "│ Appearance    │   ● Theme                        Catppuccin Mocha  │"
+        "│ Appearance    │   ● Theme                           Terminal Dark  │"
     );
 }
 

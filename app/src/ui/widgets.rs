@@ -1500,7 +1500,7 @@ mod tests {
         ui::theme::{BuiltIn, ColorSupport},
     };
 
-    /// The theme the widgets are drawn in: Terminal Dark, the default theme without truecolor.
+    /// The theme the widgets are drawn in: Terminal Dark, the default theme.
     pub(super) static THEME: LazyLock<Theme> =
         LazyLock::new(|| BuiltIn::DEFAULT.colors(ColorSupport::Ansi));
 
