@@ -140,7 +140,7 @@ mod tests {
     fn focused(state: &State) -> String {
         let rows = state.rows();
         let row = rows.iter().find(|row| Some(row.id) == state.focus());
-        row.unwrap().text.clone()
+        row.unwrap().text.to_string()
     }
 
     /// The text being edited with `|` at the caret.

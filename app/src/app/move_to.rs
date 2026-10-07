@@ -339,7 +339,11 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::OpenMoveTo);
         choose(&mut state, "B");
-        let rows: Vec<String> = state.rows().iter().map(|row| row.text.clone()).collect();
+        let rows: Vec<String> = state
+            .rows()
+            .iter()
+            .map(|row| row.text.to_string())
+            .collect();
         assert_eq!(rows, ["A", "B", "b", "x"]);
         assert_eq!(text(&state, state.focus()), "x");
     }
@@ -358,7 +362,7 @@ mod tests {
         choose(&mut state, "Home");
         assert_eq!(text(&state, state.zoom()), "Home");
         assert_eq!(text(&state, state.focus()), "Call Ann");
-        assert_eq!(state.rows().last().unwrap().text, "Call Ann");
+        assert_eq!(&*state.rows().last().unwrap().text, "Call Ann");
         state.update(Message::Back);
         assert_eq!(text(&state, state.zoom()), "Work", "a step in the history");
     }

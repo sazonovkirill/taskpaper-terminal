@@ -221,7 +221,7 @@ mod tests {
             .rows()
             .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text.clone())
+            .map(|row| row.text.to_string())
             .collect()
     }
 
@@ -229,7 +229,7 @@ mod tests {
     fn focused(state: &State) -> String {
         let rows = state.rows();
         let row = rows.iter().find(|row| Some(row.id) == state.focus());
-        row.map(|row| row.text.clone()).unwrap_or_default()
+        row.map(|row| row.text.to_string()).unwrap_or_default()
     }
 
     /// The display text of each block a command would act on.

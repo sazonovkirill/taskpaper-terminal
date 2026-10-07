@@ -1040,7 +1040,7 @@ mod tests {
         state
             .rows()
             .iter()
-            .map(|row| (row.depth, row.text.clone(), row.hidden_children))
+            .map(|row| (row.depth, row.text.to_string(), row.hidden_children))
             .collect()
     }
 
@@ -1048,7 +1048,7 @@ mod tests {
     fn focus_text(state: &State) -> String {
         let rows = state.rows();
         let row = rows.iter().find(|row| Some(row.id) == state.focus());
-        row.map(|row| row.text.clone()).unwrap_or_default()
+        row.map(|row| row.text.to_string()).unwrap_or_default()
     }
 
     /// `text` with focus moved down `index` rows.
@@ -1195,7 +1195,11 @@ mod tests {
 
     /// The display text of each visible row.
     fn texts(state: &State) -> Vec<String> {
-        state.rows().iter().map(|row| row.text.clone()).collect()
+        state
+            .rows()
+            .iter()
+            .map(|row| row.text.to_string())
+            .collect()
     }
 
     // FR-DONE-02

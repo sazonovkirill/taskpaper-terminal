@@ -793,7 +793,7 @@ mod tests {
             .rows()
             .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text.clone())
+            .map(|row| row.text.to_string())
             .collect();
         assert_eq!(selected, ["Report"]);
     }

@@ -243,7 +243,11 @@ mod tests {
 
     /// The text of each row.
     fn listed(state: &State) -> Vec<String> {
-        state.rows().iter().map(|row| row.text.clone()).collect()
+        state
+            .rows()
+            .iter()
+            .map(|row| row.text.to_string())
+            .collect()
     }
 
     /// The text of the focused block.
@@ -255,7 +259,7 @@ mod tests {
             .find(|row| row.id == id)
             .expect("shown")
             .text
-            .clone()
+            .to_string()
     }
 
     // D-57, navigation §7

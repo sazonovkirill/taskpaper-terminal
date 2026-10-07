@@ -444,7 +444,11 @@ mod tests {
     }
 
     fn texts(state: &State) -> Vec<String> {
-        state.rows().iter().map(|row| row.text.clone()).collect()
+        state
+            .rows()
+            .iter()
+            .map(|row| row.text.to_string())
+            .collect()
     }
 
     /// The text of the block with id `id`.
@@ -1112,7 +1116,7 @@ mod tests {
             .rows()
             .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text.clone())
+            .map(|row| row.text.to_string())
             .collect();
         assert_eq!(selected, ["b"]);
         state.update(Message::Delete);

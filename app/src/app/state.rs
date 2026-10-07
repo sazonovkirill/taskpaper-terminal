@@ -4,6 +4,7 @@ use std::{
     collections::HashSet,
     path::{Path, PathBuf},
     rc::Rc,
+    sync::Arc,
     time::Duration,
 };
 
@@ -102,8 +103,8 @@ struct RowsKey {
     location: Location,
     show_done: bool,
     selection: Selection,
-    today: Date,
-    today_order: TodayOrder,
+    /// The day and order of the Today view; `None` in an outline, which does not depend on them.
+    today: Option<(Date, TodayOrder)>,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -241,7 +242,7 @@ pub struct Row {
     /// Whether it is a divider: a text block reading `---` (FR-BLK-07, D-52).
     pub divider: bool,
     /// Its text without type syntax and tags.
-    pub text: String,
+    pub text: Arc<str>,
     /// Whether the block carries `@done`, with or without a value (D-17).
     pub done: bool,
     /// Whether a block above it is done, also one above the zoom; its own `@done` is `done`
@@ -473,8 +474,8 @@ impl State {
             location: pane.location,
             show_done: pane.show_done,
             selection: pane.selection.clone(),
-            today: self.today,
-            today_order: self.today_order.clone(),
+            today: (pane.location == Location::Today)
+                .then(|| (self.today, self.today_order.clone())),
         };
         self.rows.get(key, || match pane.location {
             Location::Outline(_) => self.outline_rows(pane).into(),
@@ -502,15 +503,12 @@ impl State {
             .is_some_and(|row| row.done || row.inside_done);
         // Whether each block on the path to the current one is done or inside a done block.
         let mut path: Vec<bool> = Vec::new();
-        let rows = self
-            .blocks_of(pane, true)
-            .into_iter()
-            .map(|(block, depth)| {
-                path.truncate(depth);
-                let inside_done = path.last().copied().unwrap_or(top_done);
-                path.push(inside_done || block.done());
-                self.row(pane, &block, depth + below, false, inside_done)
-            });
+        let rows = self.walk(pane, true).map(|(block, depth)| {
+            path.truncate(depth);
+            let inside_done = path.last().copied().unwrap_or(top_done);
+            path.push(inside_done || block.done());
+            self.row(pane, &block, depth + below, false, inside_done)
+        });
         title.into_iter().chain(rows).collect()
     }
 
@@ -532,8 +530,7 @@ impl State {
             text: self
                 .document
                 .get(block.id())
-                .map(Item::display_text)
-                .map(str::to_owned)
+                .map(Item::shared_display_text)
                 .unwrap_or_default(),
             done: block.done(),
             inside_done,
@@ -573,33 +570,37 @@ impl State {
 
     /// Every block below `pane`'s zoom, as [`State::blocks`] gives them.
     pub(super) fn blocks_of(&self, pane: &Pane, visible: bool) -> Vec<(Block, usize)> {
+        self.walk(pane, visible).collect()
+    }
+
+    /// The blocks [`State::blocks_of`] gives, one at a time, so a walk over a large outline does
+    /// not first collect them.
+    fn walk<'a>(
+        &'a self,
+        pane: &'a Pane,
+        visible: bool,
+    ) -> impl Iterator<Item = (Block, usize)> + 'a {
         let top = self
             .zoom_block_of(pane)
             .map_or(self.document.root(), |block| block.id());
-        let mut out = Vec::new();
-        self.push_blocks(pane, top, 0, visible, &mut out);
-        out
-    }
-
-    fn push_blocks(
-        &self,
-        pane: &Pane,
-        line: ItemId,
-        depth: usize,
-        visible: bool,
-        out: &mut Vec<(Block, usize)>,
-    ) {
-        for block in blocks::each_child(&self.document, line) {
-            if visible && !pane.shows(&block) {
-                continue;
+        // The blocks still to visit at each depth on the way down to the current one.
+        let mut levels = vec![blocks::each_child(&self.document, top)];
+        std::iter::from_fn(move || {
+            loop {
+                let depth = levels.len().checked_sub(1)?;
+                let Some(block) = levels.last_mut()?.next() else {
+                    levels.pop();
+                    continue;
+                };
+                if visible && !pane.shows(&block) {
+                    continue;
+                }
+                if !(visible && self.folds.contains(&block.id())) {
+                    levels.push(blocks::each_child(&self.document, block.id()));
+                }
+                return Some((block, depth));
             }
-            let id = block.id();
-            let open = !(visible && self.folds.contains(&id));
-            out.push((block, depth));
-            if open {
-                self.push_blocks(pane, id, depth + 1, visible, out);
-            }
-        }
+        })
     }
 
     /// Whether `block` shows in the pane where the blocks around it do (FR-DONE-02).
@@ -629,7 +630,7 @@ mod tests {
         state
             .rows()
             .iter()
-            .map(|row| (row.depth, row.kind, row.text.clone()))
+            .map(|row| (row.depth, row.kind, row.text.to_string()))
             .collect()
     }
 
@@ -694,7 +695,7 @@ mod tests {
         let rows: Vec<_> = state
             .rows()
             .iter()
-            .map(|row| (row.text.clone(), row.done))
+            .map(|row| (row.text.to_string(), row.done))
             .collect();
         assert_eq!(
             rows,
@@ -710,6 +711,18 @@ mod tests {
         );
     }
 
+    // N-PERF-01: an outline's rows do not depend on the day, so a new day keeps them.
+    #[test]
+    fn an_outline_keeps_its_rows_over_a_new_day() {
+        let mut state = State::new(format::parse("- a @due(2026-10-05)\n"), None);
+        let rows = state.rows();
+        state.update(crate::app::Message::Tick {
+            now: Duration::ZERO,
+            today: jiff::civil::date(2026, 10, 6),
+        });
+        assert!(Rc::ptr_eq(&rows, &state.rows()));
+    }
+
     // FR-TAG-03
     #[test]
     fn rows_carry_their_dates_and_say_when_they_are_overdue() {
@@ -723,7 +736,7 @@ mod tests {
         let dates: Vec<_> = state
             .rows()
             .iter()
-            .map(|row| (row.text.clone(), row.start, row.due, row.overdue(today)))
+            .map(|row| (row.text.to_string(), row.start, row.due, row.overdue(today)))
             .collect();
         let day = |d| Some(jiff::civil::date(2026, 10, d));
         let row = |text: &str, start, due, overdue| (text.to_owned(), start, due, overdue);
@@ -746,7 +759,7 @@ mod tests {
         state
             .rows()
             .iter()
-            .map(|row| (row.text.clone(), row.done, row.inside_done))
+            .map(|row| (row.text.to_string(), row.done, row.inside_done))
             .collect()
     }
 

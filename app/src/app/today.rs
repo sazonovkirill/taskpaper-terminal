@@ -217,8 +217,8 @@ Work: @done
                 assert!(!row.title);
                 row.path
                     .iter()
-                    .chain([&row.text])
-                    .cloned()
+                    .map(String::as_str)
+                    .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ")
             })

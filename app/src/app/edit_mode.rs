@@ -703,7 +703,7 @@ mod tests {
         state.update(Message::EditAtEnd);
         typed(&mut state, "s");
         assert_eq!(texts(&state), ["- Milks"]);
-        assert_eq!(state.rows()[0].text, "Milks");
+        assert_eq!(&*state.rows()[0].text, "Milks");
         press(&mut state, TextEdit::DeleteBackward, 2);
         assert_eq!(texts(&state), ["- Mil"]);
         state.update(Message::Text(TextEdit::Move {

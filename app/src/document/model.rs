@@ -288,6 +288,12 @@ impl Item {
         &self.text.display_text
     }
 
+    /// [`Item::display_text`] shared rather than copied, for views that keep it.
+    #[must_use]
+    pub fn shared_display_text(&self) -> Arc<str> {
+        Arc::clone(&self.text.display_text)
+    }
+
     /// The tags on this line, first occurrence per name.
     #[must_use]
     pub fn tags(&self) -> &[format::tags::Tag] {
@@ -320,7 +326,7 @@ struct Line {
     text: String,
     kind: ItemKind,
     tags: Vec<format::tags::Tag>,
-    display_text: String,
+    display_text: Arc<str>,
     /// Only some views read these, so they are derived on the first read rather than for every
     /// line.
     plain: OnceLock<String>,
@@ -334,7 +340,7 @@ impl Line {
             text,
             kind,
             tags,
-            display_text,
+            display_text: display_text.into(),
             plain: OnceLock::new(),
             facts: OnceLock::new(),
         }

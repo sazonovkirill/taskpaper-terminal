@@ -283,7 +283,7 @@ mod tests {
         state.panes()[at]
             .rows
             .iter()
-            .map(|row| row.text.clone())
+            .map(|row| row.text.to_string())
             .collect()
     }
 

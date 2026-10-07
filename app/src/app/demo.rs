@@ -139,7 +139,7 @@ mod tests {
         let texts: Vec<&str> = rows
             .iter()
             .filter(|row| row.kind == BlockKind::Text)
-            .map(|row| row.text.as_str())
+            .map(|row| &*row.text)
             .collect();
         assert!(
             texts.iter().any(|text| text.starts_with("## ")),
@@ -168,10 +168,7 @@ mod tests {
         assert!(rows.iter().any(|row| row.section), "demo lacks a section");
         assert!(rows.iter().any(|row| row.divider), "demo lacks a divider");
         assert!(rows.iter().any(|row| row.depth >= 2), "demo lacks nesting");
-        assert_eq!(
-            rows.first().map(|row| row.text.as_str()),
-            Some("Trip to Lisbon")
-        );
+        assert_eq!(rows.first().map(|row| &*row.text), Some("Trip to Lisbon"));
         assert!(
             rows.iter()
                 .any(|row| row.kind == BlockKind::Task && row.done),

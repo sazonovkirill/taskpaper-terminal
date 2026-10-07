@@ -269,7 +269,7 @@ mod tests {
             .iter()
             .find(|row| Some(row.id) == state.focus())
             .unwrap();
-        row.text.clone()
+        row.text.to_string()
     }
 
     /// The text being edited with `|` at the caret.
@@ -991,7 +991,7 @@ mod tests {
             .rows()
             .iter()
             .filter(|row| row.selected)
-            .map(|row| row.text.clone())
+            .map(|row| row.text.to_string())
             .collect()
     }
 
