@@ -81,14 +81,14 @@ fn files(app: &mut Harness) {
 // FR-SET-02, FR-SET-03, ui.md §7, §8
 #[test]
 fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
-    // Tall enough for the whole Appearance group.
-    let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 32);
+    // Taller than the window, which stops at 30 rows, one short of the Appearance group.
+    let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 34);
     app.type_keys("g,");
     let file = app.config_file();
     let footer = format!("│ Settings file: {}", file.display());
     let rows = window(&mut app);
     assert_eq!(
-        rows[..25],
+        rows[..26],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
@@ -101,6 +101,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Show INBOX: above Today, not under Projects    │",
             "│               │   ☼ Show Today in Navigator                    on  │",
             "│               │     List the Today view in the Navigator           │",
+            "│               │   ☼ Special handling of TODAY project          on  │",
+            "│               │     qt adds to TODAY:, as qi adds to INBOX:        │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
             "│               │   » Show Upcoming in Navigator                 on  │",
@@ -114,20 +116,19 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │   ★ Show Starred in Navigator                  on  │",
             "│               │     List the Starred view in the Navigator         │",
             "│               │   ⚐ Show Flagged in Navigator                  on  │",
-            "│               │     List the Flagged view in the Navigator         │",
         ]
     );
     assert!(
-        rows[26].starts_with("│ Tab: groups/settings · Enter: change"),
-        "{}",
-        rows[26]
-    );
-    assert!(
-        rows[27].starts_with(&footer[..footer.len().min(68)]),
+        rows[27].starts_with("│ Tab: groups/settings · Enter: change"),
         "{}",
         rows[27]
     );
-    assert_eq!(rows.len(), 29, "as tall as the Appearance group needs");
+    assert!(
+        rows[28].starts_with(&footer[..footer.len().min(68)]),
+        "{}",
+        rows[28]
+    );
+    assert_eq!(rows.len(), 30, "as tall as the window gets");
     press(&mut app, KeyCode::Esc);
     assert_eq!(window(&mut app), Vec::<String>::new());
 }

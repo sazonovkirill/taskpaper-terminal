@@ -35,15 +35,27 @@ pub fn new_block(
     place: Place<'_>,
     typed: Option<Typed>,
 ) -> Option<(ItemId, Vec<Op>)> {
-    let (parent, index) = position(document, place)?;
     let (parts, text) =
         LineParts::default().retyped(typed.unwrap_or_else(|| fitting_type(place)), "");
+    new_line(document, place, parts.line(&text))
+}
+
+/// A block reading `line` at `place`, as Quick Add adds it (D-96): its id and the ops that put
+/// it there, repairing what it breaks as [`new_block`] does, or `None` when `place` names a block
+/// that is not in `document`.
+#[must_use]
+pub fn new_line(
+    document: &mut Document,
+    place: Place<'_>,
+    line: String,
+) -> Option<(ItemId, Vec<Op>)> {
+    let (parent, index) = position(document, place)?;
     let mut ops = repairs(document, parent);
     let id = document.new_id();
     ops.push(Op::Insert {
         parent,
         index,
-        subtree: Snapshot::line(id, parts.line(&text)),
+        subtree: Snapshot::line(id, line),
     });
     Some((id, ops))
 }
@@ -534,6 +546,35 @@ mod tests {
             ["- t", "\t- a", "\t>- ", "\tC @hidden @comments"]
         );
         assert_eq!(added("n\n\tm", At::LastChild, "n"), ["n", "\tm", "\t>"]);
+    }
+
+    // D-96
+    #[test]
+    fn a_new_line_keeps_its_text_and_goes_before_special_nodes() {
+        let mut document = format::parse("- t\n\tC @hidden @comments\nn");
+        let task = block(&document, "- t");
+        let (id, ops) = new_line(
+            &mut document,
+            Place::LastChild(&task),
+            "- x @due(2026-10-08)".to_owned(),
+        )
+        .unwrap();
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        assert_eq!(
+            lines(&document, Some(id)),
+            [
+                "- t",
+                "\t>- x @due(2026-10-08)",
+                "\tC @hidden @comments",
+                "n"
+            ]
+        );
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(
+            lines(&document, None),
+            ["- t", "\tC @hidden @comments", "n"]
+        );
     }
 
     // OQ-03

@@ -107,6 +107,8 @@ pub struct Config {
     pub(super) navigator_views: Vec<(SpecialView, bool)>,
     /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
     pub(super) today_starred: Option<bool>,
+    /// Whether `qt` adds to the `TODAY` project, when the file says (`special_today`, D-98).
+    pub(super) special_today: Option<bool>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -196,6 +198,17 @@ impl Config {
             Some(on) => self.navigator_views.push((view, on)),
             None => self.problems.push(Problem::InvalidValue {
                 key: navigator_key(view).to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `special_today` from `item`: `true` or `false`.
+    fn read_special_today(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.special_today = Some(on),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "special_today".to_owned(),
                 expected: "true or false",
             }),
         }
@@ -350,6 +363,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
             "special_inbox" => config.read_special_inbox(item),
+            "special_today" => config.read_special_today(item),
             "today_starred" => config.read_today_starred(item),
             key => match SpecialView::ALL
                 .into_iter()
@@ -803,6 +817,25 @@ mod tests {
             read("sidebar_starred = 1\n", None).problems(),
             [Problem::InvalidValue {
                 key: "sidebar_starred".to_owned(),
+                expected: "true or false",
+            }]
+        );
+    }
+
+    // D-98, FR-SET-04
+    #[test]
+    fn special_today_is_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).special_today, None);
+        assert_eq!(
+            read("special_today = false\n", None).special_today,
+            Some(false)
+        );
+        let config = read("special_today = 1\n", None);
+        assert_eq!(config.special_today, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "special_today".to_owned(),
                 expected: "true or false",
             }]
         );

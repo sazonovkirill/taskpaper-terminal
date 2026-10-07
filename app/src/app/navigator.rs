@@ -11,7 +11,7 @@ use super::{
     memo::Memo,
     pane::Pane,
 };
-use crate::document::{BlockKind, ItemId, Stamp, blocks};
+use crate::document::{Block, BlockKind, ItemId, Stamp, blocks};
 
 /// The text of the project the Navigator lists apart, above Today (D-75).
 const INBOX: &str = "INBOX";
@@ -504,15 +504,27 @@ impl State {
 
     /// The entry of the first shown top-level project whose text is `INBOX`, if any (D-75).
     fn inbox(&self) -> Option<NavigatorEntry> {
+        self.top_project(INBOX).map(|block| NavigatorEntry::Inbox {
+            id: block.id(),
+            text: INBOX.to_owned(),
+            open_tasks: self.open_tasks(&block, false),
+        })
+    }
+
+    /// The project the Navigator lists apart as the inbox, which `qi` adds to (D-75, D-96).
+    pub(super) fn inbox_project(&self) -> Option<ItemId> {
+        self.navigator
+            .special_inbox
+            .then(|| self.top_project(INBOX))
+            .flatten()
+            .map(|block| block.id())
+    }
+
+    /// The first shown top-level project whose text is `text`, if any (D-75, D-98).
+    pub(super) fn top_project(&self, text: &str) -> Option<Block> {
         blocks::each_child(self.document(), self.document().root())
             .filter(|block| block.kind() == BlockKind::Project && self.shows(block))
-            .map(|block| (self.shown_text(block.id()), block))
-            .find(|(text, _)| text == INBOX)
-            .map(|(text, block)| NavigatorEntry::Inbox {
-                id: block.id(),
-                text,
-                open_tasks: self.open_tasks(&block, false),
-            })
+            .find(|block| self.shown_text(block.id()) == text)
     }
 
     /// The bookmark entries of `rows` in document order, each with the open tasks it holds.

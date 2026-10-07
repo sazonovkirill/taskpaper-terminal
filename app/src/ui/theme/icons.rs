@@ -34,6 +34,8 @@ pub enum Icon {
     /// The Logbook view's Navigator entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Logbook,
+    /// Quick Add in Go to Command (D-96).
+    QuickAdd,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the Navigator's
     /// bookmarks.
     Bookmark,
@@ -187,6 +189,8 @@ impl Icon {
             Self::Colors => ("\u{f0e0c}", "◐", "c"),
             // nf-md-book_check
             Self::Logbook => ("\u{f14f3}", "▤", "L"),
+            // nf-md-plus
+            Self::QuickAdd => ("\u{f0415}", "+", "+"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -251,7 +255,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 36] = [
+    const ICONS: [Icon; 37] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -262,6 +266,7 @@ mod tests {
         Icon::Upcoming,
         Icon::Colors,
         Icon::Logbook,
+        Icon::QuickAdd,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,

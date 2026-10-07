@@ -26,7 +26,7 @@ use super::{
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        NavigatorInput, Notice, PickerView, Row, SaveState, SpecialView, ViewGroup,
+        NavigatorInput, Notice, PickerView, QuickAddTo, Row, SaveState, SpecialView, ViewGroup,
         commands::Group,
     },
     document::{
@@ -38,10 +38,12 @@ use crate::{
 };
 
 mod navigator;
+mod quick_add;
 mod save_as;
 mod settings;
 
 pub use navigator::NavigatorPanel;
+pub use quick_add::QuickAddPanel;
 pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
 
@@ -464,6 +466,8 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::NoInbox => Span::raw("No INBOX project in the Navigator"),
+        Notice::NoTodayProject => Span::raw("No TODAY project"),
+        Notice::QuickAdded { project } => Span::raw(format!("Added to {project}")),
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style)
         }
@@ -788,6 +792,10 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::Retype(Typed::Section) => plain(Icon::Section),
         Command::ToggleFlag(Flag::Star) => (Icon::Star, today_style(theme)),
         Command::GoToView(view) => (view_icon(view), view_icon_style(view, theme)),
+        Command::QuickAdd(QuickAddTo::Today) => (
+            view_icon(SpecialView::Today),
+            view_icon_style(SpecialView::Today, theme),
+        ),
         Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
         Command::ToggleFlag(Flag::Flagged) => (Icon::Flag, flag_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
@@ -797,7 +805,10 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
         Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
         Command::OpenSettings => plain(Icon::Settings),
-        Command::Navigator(NavigatorInput::GoToInbox) => plain(Icon::Inbox),
+        Command::Navigator(NavigatorInput::GoToInbox) | Command::QuickAdd(QuickAddTo::Inbox) => {
+            plain(Icon::Inbox)
+        }
+        Command::QuickAdd(QuickAddTo::Chosen) => plain(Icon::QuickAdd),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -2032,6 +2043,21 @@ mod tests {
                 Icon::Inbox,
                 Style::new(),
             ),
+            (
+                Command::QuickAdd(QuickAddTo::Inbox),
+                Icon::Inbox,
+                Style::new(),
+            ),
+            (
+                Command::QuickAdd(QuickAddTo::Today),
+                Icon::Today,
+                today_style(&THEME),
+            ),
+            (
+                Command::QuickAdd(QuickAddTo::Chosen),
+                Icon::QuickAdd,
+                Style::new(),
+            ),
             (Command::GoToProject, Icon::Project, Style::new()),
             (Command::OpenSettings, Icon::Settings, Style::new()),
             (Command::OpenDetails, Icon::Details, Style::new()),
@@ -3250,6 +3276,13 @@ mod tests {
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
             (Notice::NoInbox, plain("No INBOX project in the Navigator")),
+            (Notice::NoTodayProject, plain("No TODAY project")),
+            (
+                Notice::QuickAdded {
+                    project: "INBOX".to_owned(),
+                },
+                plain("Added to INBOX"),
+            ),
             (
                 Notice::Count {
                     blocks: 1,

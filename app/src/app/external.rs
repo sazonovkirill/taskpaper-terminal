@@ -307,7 +307,8 @@ impl State {
     /// session ends with the document it edited, whose text is saved or in a conflict copy, and
     /// the date prompt closes with it, as does an edit a command of the command menu would resume
     /// (D-50), and so do Go to Symbol and Move to, whose candidates name blocks of the old
-    /// document, and the context menu, whose labels tell the old blocks' state.
+    /// document, and the context menu, whose labels tell the old blocks' state. Quick Add stays
+    /// open, its destination kept on the same project.
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
@@ -329,6 +330,9 @@ impl State {
             .collect::<HashSet<_>>();
         self.navigator.rematch_folds(exact);
         self.today_order.rematch(exact);
+        if let Some(quick_add) = &mut self.quick_add {
+            quick_add.rematch(exact);
+        }
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
     }
@@ -390,7 +394,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Menu, MenuInput, Message, SelectionChange, SpecialView, Symbols, state::NOTICE_TIME,
+            Menu, MenuInput, Message, QuickAddInput, QuickAddTo, SelectionChange, SpecialView,
+            Symbols, TextEdit, state::NOTICE_TIME,
         },
         document::{Op, Transaction},
     };
@@ -574,6 +579,34 @@ mod tests {
             [],
             "a reload is not a change to save"
         );
+    }
+
+    // F-FILE-06, D-96
+    #[test]
+    fn a_reload_keeps_quick_adds_destination_on_its_project_and_closes_the_picker() {
+        let mut state = opened("A:\nB:\n");
+        let quick_add = |state: &mut State, input| state.update(Message::QuickAdd(input));
+        quick_add(&mut state, QuickAddInput::Open(QuickAddTo::Chosen));
+        for c in ['x', ' ', '/'] {
+            quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert(c)));
+        }
+        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Next));
+        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Choose));
+        quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
+        assert!(state.quick_add_picker().is_some());
+        state.update(found("New:\nA:\nB:\n"));
+        assert_eq!(state.quick_add_picker(), None);
+        let destination = |state: &State| state.quick_add().unwrap().destination;
+        assert_eq!(destination(&state), Some(vec!["B".to_owned()]));
+        quick_add(&mut state, QuickAddInput::Add);
+        assert_eq!(format::serialize(state.document()), "New:\nA:\nB:\n\t- x\n");
+        let mut state = opened("A:\nB:\n");
+        quick_add(&mut state, QuickAddInput::Open(QuickAddTo::Chosen));
+        quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
+        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Choose));
+        assert_eq!(destination(&state), Some(vec!["A".to_owned()]));
+        state.update(found("B:\n"));
+        assert_eq!(destination(&state), None, "A is gone");
     }
 
     // F-FILE-06, D-7

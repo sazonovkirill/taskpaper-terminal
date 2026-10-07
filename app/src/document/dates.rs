@@ -2,7 +2,7 @@
 //! given day ([search.md §4](../../../docs/specs/search.md#4-dates)), and the words that name a
 //! date relative to a given day, such as `tomorrow` or `in 15 days` (D-46). Hides their grammar.
 
-use std::vec;
+use std::{ops::Range, vec};
 
 use jiff::{
     Span, ToSpan,
@@ -87,6 +87,93 @@ pub fn day_heading(date: Date, today: Date) -> String {
         .map(|first| first.to_uppercase().chain(letters).collect())
         .unwrap_or_default();
     format!("{capitalized} · {}", date.strftime("%a %-d %b"))
+}
+
+/// A date named in words within a longer text, as Quick Add reads it (D-97).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Found {
+    /// The bytes of the text that name it, a due date's `due` included.
+    pub span: Range<usize>,
+    /// Whether it is a start or a due date.
+    pub tag: DateTag,
+    /// The date, resolved against the day given.
+    pub date: Date,
+}
+
+/// The most words a date found in a text spans, as in `last fri +2 weeks`.
+const MOST_WORDS: usize = 4;
+
+/// The dates that count in `text`, resolved against `today`, in the order they stand: a run of
+/// whole words the grammar reads is a start date, or a due date right after the word `due`; the
+/// longest run at each word wins, a run starting with a bare number does not count, and of
+/// several start or due dates only the last counts (D-97).
+#[must_use]
+pub fn find(text: &str, today: Date) -> Vec<Found> {
+    let words = words(text);
+    let mut found = Vec::new();
+    let mut at = 0;
+    while let Some(word) = words.get(at) {
+        let due = text[word.clone()].eq_ignore_ascii_case("due");
+        let (tag, first) = if due {
+            (DateTag::Due, at + 1)
+        } else {
+            (DateTag::Start, at)
+        };
+        match longest_run(text, words.get(first..).unwrap_or_default(), today, tag) {
+            Some((taken, end, date)) => {
+                found.push(Found {
+                    span: word.start..end,
+                    tag,
+                    date,
+                });
+                at = first + taken;
+            }
+            None => at += 1,
+        }
+    }
+    let mut counting: Vec<Found> = Vec::new();
+    for date in found.into_iter().rev() {
+        if !counting.iter().any(|kept| kept.tag == date.tag) {
+            counting.insert(0, date);
+        }
+    }
+    counting
+}
+
+/// The byte ranges of the words of `text`, the runs between whitespace, without the punctuation
+/// that ends a sentence or clause after them.
+fn words(text: &str) -> Vec<Range<usize>> {
+    text.split_whitespace()
+        .map(|word| word.trim_end_matches(['.', ',', ';', ':', '!', '?']))
+        .filter(|word| !word.is_empty())
+        .filter_map(|word| text.substr_range(word))
+        .map(Into::into)
+        .collect()
+}
+
+/// How many of `words` the longest run from the first that reads as the `tag` date takes, the
+/// byte where it ends and the date; `None` when there is none or the first word is a bare number.
+fn longest_run(
+    text: &str,
+    words: &[Range<usize>],
+    today: Date,
+    tag: DateTag,
+) -> Option<(usize, usize, Date)> {
+    let first = words.first()?;
+    let word = &text[first.clone()];
+    let after_digits = word.trim_start_matches(|c: char| c.is_ascii_digit());
+    if after_digits.len() < word.len() && !after_digits.starts_with(['-', '/']) {
+        return None;
+    }
+    words
+        .iter()
+        .take(MOST_WORDS)
+        .enumerate()
+        .rev()
+        .find_map(|(last, word)| {
+            let date = parse(&text[first.start..word.end], today, tag).ok()?;
+            Some((last + 1, word.end, date))
+        })
 }
 
 /// One part of a date expression.
@@ -284,15 +371,31 @@ impl<'a> Parser<'a> {
                         .today
                         .nth_weekday(nth, weekday)
                         .map_err(|_| out_of_range),
+                    _ if target == "weekend" => self.weekend(step, offset),
                     _ => self.period_start(&target, target_offset, step, offset),
                 }
             }
+            "weekend" => self.weekend(0, offset),
             _ => {
                 let weekday = weekday(word).ok_or(DateError::Unexpected { offset })?;
                 self.today.nth_weekday(1, weekday).map_err(|_| out_of_range)
             }
         }
     }
+
+    /// The coming Saturday, today on a Saturday, moved by `step` weeks (D-97); `offset` is where
+    /// the expression naming it starts.
+    fn weekend(&self, step: i64, offset: usize) -> Result<Date, DateError> {
+        let saturday = if self.today.weekday() == Weekday::Saturday {
+            Ok(self.today)
+        } else {
+            self.today.nth_weekday(1, Weekday::Saturday)
+        };
+        saturday
+            .and_then(|saturday| saturday.checked_add(step.weeks()))
+            .map_err(|_| DateError::OutOfRange { offset })
+    }
+
     /// The first day of the lower-case `period` at `period_offset`, `step` periods from the one
     /// holding today; `offset` is where the expression naming it starts. Weeks are ISO weeks.
     fn period_start(
@@ -519,6 +622,33 @@ mod tests {
         check("LAST YEAR", date(2025, 1, 1));
     }
 
+    // D-97
+    #[test]
+    fn weekend_is_the_coming_saturday_and_next_or_last_weekend_a_week_from_it() {
+        check("weekend", date(2026, 10, 10));
+        check("Weekend", date(2026, 10, 10));
+        check_on(date(2026, 10, 10), "weekend", date(2026, 10, 10));
+        check_on(date(2026, 10, 11), "weekend", date(2026, 10, 17));
+        check("this weekend", date(2026, 10, 10));
+        check("next weekend", date(2026, 10, 17));
+        check("last weekend", date(2026, 10, 3));
+        check_on(date(2026, 10, 11), "this weekend", date(2026, 10, 17));
+        check_on(date(2026, 10, 11), "next weekend", date(2026, 10, 24));
+        check_on(date(2026, 10, 11), "last weekend", date(2026, 10, 10));
+        check_on(date(2026, 10, 10), "next weekend", date(2026, 10, 17));
+        fails_on(
+            date(9999, 12, 31),
+            "weekend",
+            DateError::OutOfRange { offset: 0 },
+        );
+        fails_on(
+            date(9999, 12, 20),
+            "next weekend",
+            DateError::OutOfRange { offset: 0 },
+        );
+        check("next weekend +1d", date(2026, 10, 18));
+    }
+
     #[test]
     fn weeks_are_iso_weeks_starting_on_monday() {
         check_on(date(2026, 10, 5), "this week", date(2026, 10, 5));
@@ -626,6 +756,94 @@ mod tests {
         assert_eq!(
             parse("12-25", Date::MAX, DateTag::Due),
             Err(DateError::OutOfRange { offset: 0 })
+        );
+    }
+
+    /// The text, tag and date of each date `find` finds in `text`.
+    fn found(text: &str) -> Vec<(&str, DateTag, Date)> {
+        find(text, TODAY)
+            .into_iter()
+            .map(|found| (&text[found.span], found.tag, found.date))
+            .collect()
+    }
+
+    // FR-MODE-08, D-97
+    #[test]
+    fn finds_a_start_date_in_words_and_a_due_date_after_due() {
+        assert_eq!(
+            found("Buy milk tomorrow"),
+            [("tomorrow", DateTag::Start, date(2026, 10, 8))]
+        );
+        assert_eq!(
+            found("Pay rent due next Mon"),
+            [("due next Mon", DateTag::Due, date(2026, 10, 19))]
+        );
+        assert_eq!(
+            found("Plan trip next weekend"),
+            [("next weekend", DateTag::Start, date(2026, 10, 17))]
+        );
+        assert_eq!(
+            found("DUE today: call Ann next week"),
+            [
+                ("DUE today", DateTag::Due, TODAY),
+                ("next week", DateTag::Start, date(2026, 10, 12)),
+            ]
+        );
+        assert_eq!(
+            found("Купить молоко завтра fri"),
+            [("fri", DateTag::Start, date(2026, 10, 9))]
+        );
+    }
+
+    // D-97
+    #[test]
+    fn takes_the_longest_run_of_whole_words() {
+        assert_eq!(
+            found("fri +1 w later"),
+            [("fri +1 w", DateTag::Start, date(2026, 10, 16))]
+        );
+        assert_eq!(
+            found("last fri +2 weeks"),
+            [("last fri +2 weeks", DateTag::Start, date(2026, 10, 16))]
+        );
+        assert_eq!(found("tomorrowland friday's due"), []);
+        assert_eq!(
+            found("Call Ann tomorrow."),
+            [("tomorrow", DateTag::Start, date(2026, 10, 8))]
+        );
+        assert_eq!(found("Pay the bill due"), []);
+        assert_eq!(found("due diligence"), []);
+        assert_eq!(found("  ...  "), []);
+    }
+
+    // D-97
+    #[test]
+    fn a_run_starting_with_a_bare_number_does_not_count() {
+        assert_eq!(found("Read 3 days of notes"), []);
+        assert_eq!(found("Print 3d models"), []);
+        assert_eq!(
+            found("Ship +3d"),
+            [("+3d", DateTag::Start, date(2026, 10, 10))]
+        );
+        assert_eq!(
+            found("Ship 2026-10-20"),
+            [("2026-10-20", DateTag::Start, date(2026, 10, 20))]
+        );
+        assert_eq!(
+            found("Renew due 3/7"),
+            [("due 3/7", DateTag::Due, date(2027, 3, 7))]
+        );
+    }
+
+    // D-97
+    #[test]
+    fn of_several_start_or_due_dates_the_last_counts() {
+        assert_eq!(
+            found("today call tomorrow due fri due mon"),
+            [
+                ("tomorrow", DateTag::Start, date(2026, 10, 8)),
+                ("due mon", DateTag::Due, date(2026, 10, 12)),
+            ]
         );
     }
 

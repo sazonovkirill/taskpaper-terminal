@@ -126,14 +126,14 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_sti
         outline_line(app.render().buffer(), 0),
         format!("{FLAG} Flagged")
     );
-    app.type_keys("g,");
+    app.type_keys("g,jjjjjjjjjjjj");
     let screen = outline_rows(&mut app).join("\n");
     assert!(
         screen.contains(&format!("{FLAG} Show Flagged in Navigator")),
         "{screen}"
     );
     assert!(screen.contains("List the Flagged view in the Navigator"));
-    app.type_keys("jjjjjjjjjjj ");
+    app.type_keys(" ");
     app.settle();
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(

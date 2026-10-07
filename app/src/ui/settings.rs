@@ -22,6 +22,8 @@ enum Listed {
     NavigatorView(SpecialView),
     /// Whether the Today view lists starred blocks (D-88).
     TodayStarred,
+    /// Whether `qt` adds to the `TODAY` project (D-98).
+    SpecialToday,
     AutosaveDelay,
     Backups,
     BackupFolder,
@@ -30,12 +32,13 @@ enum Listed {
 
 /// The settings the window lists, in order. Animations join when they reach the settings file
 /// (ui.md §9.3).
-const LISTED: [Listed; 16] = [
+const LISTED: [Listed; 17] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
     Listed::SpecialInbox,
     Listed::NavigatorView(SpecialView::Today),
+    Listed::SpecialToday,
     Listed::TodayStarred,
     Listed::NavigatorView(SpecialView::Upcoming),
     Listed::NavigatorView(SpecialView::Overdue),
@@ -62,6 +65,7 @@ impl Listed {
             Self::SpecialInbox => "special_inbox",
             Self::NavigatorView(view) => config::navigator_key(view),
             Self::TodayStarred => "today_starred",
+            Self::SpecialToday => "special_today",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -78,6 +82,7 @@ impl Listed {
             Self::SpecialInbox => Icon::Inbox,
             Self::NavigatorView(view) => widgets::view_icon(view),
             Self::TodayStarred => Icon::Star,
+            Self::SpecialToday => widgets::view_icon(SpecialView::Today),
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -214,6 +219,12 @@ impl Tui {
                     self.state.navigator_lists(view),
                 )
             }
+            Listed::SpecialToday => switch_on_by_default(
+                "Appearance",
+                "Special handling of TODAY project",
+                "qt adds to TODAY:, as qi adds to INBOX:",
+                self.state.special_today(),
+            ),
             Listed::TodayStarred => switch_on_by_default(
                 "Appearance",
                 "Display starred items in Today view",
@@ -321,6 +332,10 @@ impl Tui {
                     Message::Configure(Configuration::NavigatorView(view, on)),
                     now,
                 );
+                Some(on.into())
+            }
+            (Listed::SpecialToday, SettingValue::Switch(on)) => {
+                self.send(Message::Configure(Configuration::SpecialToday(on)), now);
                 Some(on.into())
             }
             (Listed::TodayStarred, SettingValue::Switch(on)) => {
@@ -432,6 +447,7 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
+            SettingValue::Switch(false),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -442,9 +458,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(14, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(15, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[14].value,
+            tui.listed_settings()[15].value,
             SettingValue::Text(String::new())
         );
         assert!(
