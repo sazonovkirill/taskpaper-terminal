@@ -1,4 +1,4 @@
-//! Step 4.5: word wrap, on by default and toggled with `Alt+z` and `gw`.
+//! Step 4.5: word wrap, off by default (D-89) and toggled with `Alt+z` and `gw`.
 
 use std::fmt::Write as _;
 
@@ -20,15 +20,24 @@ fn shown(app: &mut Harness) -> Vec<String> {
 
 const WRAPPED: [&str; 4] = ["- buy milk and", "  eggs from the", "  shop", "- b"];
 
+/// The app showing `text` in a `width` × `height` terminal with word wrap turned on.
+fn wrapping(text: &str, width: u16, height: u16) -> Harness {
+    Harness::with_config(text, "word_wrap = true\n", width, height)
+}
+
 // FR-UI-05, D-42
 #[test]
-fn long_text_wraps_until_alt_z_turns_wrap_off_and_on_again() {
+fn long_text_ends_in_an_ellipsis_until_alt_z_turns_wrap_on_and_off_again() {
     let mut app = Harness::with_text(LONG, 20, 8);
-    assert_eq!(shown(&mut app), WRAPPED, "wrap is on by default");
-    app.press(KeyCode::Char('z'), KeyModifiers::ALT);
-    assert_eq!(shown(&mut app), ["- buy milk and eg…", "- b"]);
+    assert_eq!(
+        shown(&mut app),
+        ["- buy milk and eg…", "- b"],
+        "wrap is off by default"
+    );
     app.press(KeyCode::Char('z'), KeyModifiers::ALT);
     assert_eq!(shown(&mut app), WRAPPED);
+    app.press(KeyCode::Char('z'), KeyModifiers::ALT);
+    assert_eq!(shown(&mut app), ["- buy milk and eg…", "- b"]);
 }
 
 // FR-UI-05, D-42
@@ -37,17 +46,17 @@ fn g_w_toggles_wrap_and_keeps_the_focus() {
     let mut app = Harness::with_text(LONG, 20, 8);
     app.type_keys("j");
     app.type_keys("gw");
-    assert_eq!(shown(&mut app), ["- buy milk and eg…", "- b"]);
+    assert_eq!(shown(&mut app), WRAPPED);
     assert_eq!(focused_rows(&mut app), ["- b"]);
     app.type_keys("gw");
-    assert_eq!(shown(&mut app), WRAPPED);
+    assert_eq!(shown(&mut app), ["- buy milk and eg…", "- b"]);
     assert_eq!(focused_rows(&mut app), ["- b"]);
 }
 
 // FR-UI-05, FR-TAG-03
 #[test]
 fn a_wrapped_block_keeps_its_date_chip_on_its_first_line() {
-    let mut app = Harness::with_text("- buy milk and eggs @due(2026-10-05)\n", 24, 6);
+    let mut app = wrapping("- buy milk and eggs @due(2026-10-05)\n", 24, 6);
     assert_eq!(
         shown(&mut app),
         [format!("- buy milk and {DUE} today"), "  eggs".to_owned()]
@@ -65,7 +74,7 @@ fn long_tasks(n: usize) -> String {
 // FR-UI-05, navigation §2
 #[test]
 fn scrolling_keeps_every_line_of_the_focused_wrapped_block_in_view() {
-    let mut app = Harness::with_text(&long_tasks(6), 16, 9);
+    let mut app = wrapping(&long_tasks(6), 16, 9);
     for _ in 0..5 {
         app.type_keys("j");
         assert_eq!(focused_rows(&mut app).len(), 2, "both lines on screen");
@@ -88,7 +97,7 @@ fn scrolling_keeps_every_line_of_the_focused_wrapped_block_in_view() {
 // FR-UI-05, FR-NAV-01
 #[test]
 fn paging_keeps_the_focused_wrapped_block_in_its_place_on_screen() {
-    let mut app = Harness::with_text(&long_tasks(12), 16, 9);
+    let mut app = wrapping(&long_tasks(12), 16, 9);
     app.type_keys("jj");
     assert_eq!(shown(&mut app)[2], "- Task 03 has");
     app.press(KeyCode::PageDown, NONE);
@@ -99,7 +108,7 @@ fn paging_keeps_the_focused_wrapped_block_in_its_place_on_screen() {
 // FR-UI-05, FR-MODE-02
 #[test]
 fn the_caret_sits_on_the_edited_block_below_a_wrapped_one_which_edits_on_one_line() {
-    let mut app = Harness::with_text("- aaa bbb ccc\n- d\n", 9, 8);
+    let mut app = wrapping("- aaa bbb ccc\n- d\n", 9, 8);
     app.type_keys("j");
     app.press(KeyCode::Enter, NONE);
     app.render();

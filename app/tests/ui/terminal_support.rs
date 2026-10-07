@@ -42,7 +42,7 @@ fn screen(app: &mut Harness) -> Vec<String> {
 // N-PORT-04, FR-UI-05
 #[test]
 fn wide_characters_take_their_display_width_and_wrap_without_splitting_a_grapheme() {
-    let mut app = Harness::with_text(WIDE, 40, 12);
+    let mut app = Harness::with_config(WIDE, "word_wrap = true\n", 40, 12);
     assert_eq!(
         screen(&mut app)[2..10],
         [

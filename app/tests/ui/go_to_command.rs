@@ -112,7 +112,7 @@ fn a_chosen_command_acts_as_its_keys_do() {
 fn a_command_the_frontend_carries_out_runs_too() {
     let mut app = Harness::with_text("- A task long enough to wrap at this width\n", 30, 8);
     give(&mut app, "word wrap");
-    assert_eq!(screen(&mut app)[2], "▌ - A task long enough to wra…");
+    assert_eq!(screen(&mut app)[3], "▌   at this width");
 }
 
 // keybindings.md §4

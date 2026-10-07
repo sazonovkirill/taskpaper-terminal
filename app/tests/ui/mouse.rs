@@ -395,7 +395,7 @@ fn the_wheel_scrolls_by_screen_lines_through_a_wrapped_block() {
     let long = "word ".repeat(60);
     let text = format!("- Task 1\n- {long}\n")
         + &(2..=20).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
-    let mut app = Harness::with_text(&text, 50, 10);
+    let mut app = Harness::with_config(&text, "word_wrap = true\n", 50, 10);
     wheel(&mut app, 10, 5, true);
     let rows = outline_rows(&mut app);
     assert!(rows[0].trim_start().starts_with("word"), "{rows:?}");

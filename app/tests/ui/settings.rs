@@ -93,7 +93,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│ Files         │     The colors of the whole app                    │",
             "│               │ * ◇ Icons                                    none  │",
             "│               │     Nerd Font icons; choose none if they show as bo│",
-            "│               │   ↩ Word wrap                                  on  │",
+            "│               │   ↩ Word wrap                                 off  │",
             "│               │     Wrap long text, or end it in … on one line     │",
             "│               │   ● Color tags                               icon  │",
             "│               │     A colored flag after the text, or a tinted line│",
@@ -285,16 +285,16 @@ fn word_wrap_toggles_at_once_and_is_kept_for_the_next_start() {
     app.type_keys("g,jj");
     press(&mut app, KeyCode::Char(' '));
     app.settle();
-    assert_eq!(config(&app), "word_wrap = false\n");
+    assert_eq!(config(&app), "word_wrap = true\n");
     press(&mut app, KeyCode::Esc);
     let buffer = app.render().buffer().clone();
-    assert_eq!(line(&buffer, 2), "▌ - buy milk and eggs from th…");
-    let mut app = Harness::with_config(OUTLINE, "word_wrap = false\n", 30, 20);
+    assert_eq!(line(&buffer, 2), "▌ - buy milk and eggs from the");
+    let mut app = Harness::with_config(OUTLINE, "word_wrap = true\n", 30, 20);
     let buffer = app.render().buffer().clone();
     assert_eq!(
         line(&buffer, 2),
-        "▌ - buy milk and eggs from th…",
-        "off from the start"
+        "▌ - buy milk and eggs from the",
+        "on from the start"
     );
 }
 
@@ -501,7 +501,7 @@ fn a_change_that_cannot_be_written_shows_in_the_window_and_the_status_line_and_h
         "{:?}",
         window(&mut app)[15]
     );
-    assert!(window(&mut app)[5].contains("off"), "kept for the session");
+    assert!(window(&mut app)[5].contains("on"), "kept for the session");
     assert_eq!(config(&app), "theme = \n");
     let mut app = Harness::with_text(OUTLINE, 140, 20);
     app.type_keys("g,");

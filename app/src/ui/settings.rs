@@ -171,11 +171,13 @@ impl Tui {
                 chosen(&ICONS, self.icon_setting),
                 SettingValue::Choice(0),
             ),
-            Listed::Wrap => switch_on_by_default(
+            Listed::Wrap => (
                 "Appearance",
                 "Word wrap",
                 "Wrap long text, or end it in … on one line",
-                self.wrap,
+                SettingKind::Switch,
+                SettingValue::Switch(self.wrap),
+                SettingValue::Switch(false),
             ),
             Listed::ColorTags => (
                 "Appearance",

@@ -157,7 +157,7 @@ impl Tui {
             clock,
             midnight: None,
             keymap: Keymap::default(),
-            wrap: true,
+            wrap: false,
             icons: IconSet::default(),
             icon_setting: IconSetting::default(),
             color_tags: ColorTagDisplay::default(),
