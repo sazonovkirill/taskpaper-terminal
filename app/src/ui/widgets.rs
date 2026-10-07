@@ -312,13 +312,14 @@ pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'st
 pub fn view_icon(view: SpecialView) -> Icon {
     match view {
         SpecialView::Today => Icon::Today,
+        SpecialView::Starred => Icon::Star,
     }
 }
 
 /// The style of the special view `view`'s icon in `theme`.
 fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     match view {
-        SpecialView::Today => today_style(theme),
+        SpecialView::Today | SpecialView::Starred => today_style(theme),
     }
 }
 
@@ -1959,6 +1960,11 @@ mod tests {
                 today_style(&THEME),
             ),
             (
+                Command::GoToView(SpecialView::Starred),
+                Icon::Star,
+                today_style(&THEME),
+            ),
+            (
                 Command::Sidebar(SidebarInput::GoToInbox),
                 Icon::Inbox,
                 Style::new(),
@@ -2464,6 +2470,17 @@ mod tests {
             format!("{} Today", Icon::Today.glyph(ICONS))
         );
         assert_eq!(header.style, Style::new().bold());
+        assert_eq!(header.spans[0].style, today_style(&THEME));
+    }
+
+    // D-92: Starred's icon is the star that marks a starred block.
+    #[test]
+    fn the_starred_header_names_the_view_after_the_star() {
+        let header = view_header(SpecialView::Starred, ICONS, &THEME);
+        assert_eq!(
+            header.to_string(),
+            format!("{} Starred", Icon::Star.glyph(ICONS))
+        );
         assert_eq!(header.spans[0].style, today_style(&THEME));
     }
 

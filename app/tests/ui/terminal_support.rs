@@ -218,10 +218,11 @@ fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
-        screen(&mut app)[5..11],
+        screen(&mut app)[4..11],
         [
             "  日本 ┌Navigator─────────────────────────────────────┐",
             "  日本 │▌ ☼ Today                                     │",
+            "  日本 │  ★ Starred                                   │",
             "  日本 │                                              │",
             "  日本 │  Projects                                    │",
             "  日本 │  日本語のとても長いプロジェクト名前ですね  1 │",

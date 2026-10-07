@@ -14,17 +14,20 @@ use crate::document::{Block, ItemId, blocks};
 pub enum SpecialView {
     /// The blocks for today (FR-TAG-04, D-7).
     Today,
+    /// The starred blocks (FR-TAG-13, D-92).
+    Starred,
 }
 
 impl SpecialView {
     /// Every special view, in the sidebar's order (D-80).
-    pub const ALL: [Self; 1] = [Self::Today];
+    pub const ALL: [Self; 2] = [Self::Today, Self::Starred];
 
     /// The view's name, as its header, sidebar entry and Go to command show it.
     #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::Today => "Today",
+            Self::Starred => "Starred",
         }
     }
 }
@@ -34,6 +37,7 @@ impl State {
     pub(super) fn view_rows(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
         match view {
             SpecialView::Today => self.today_rows(pane),
+            SpecialView::Starred => self.matching_rows(pane, Block::starred),
         }
     }
 
@@ -103,6 +107,7 @@ impl State {
     pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
         match view {
             SpecialView::Today => self.reorder_entries(down),
+            SpecialView::Starred => {}
         }
     }
 }
@@ -208,5 +213,107 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::Select(_)
         | Message::Pane(_)
         | Message::ResizePane(_) => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::{Flag, format};
+
+    /// Starred blocks at several depths among blocks that are not: dated today, a special node, a
+    /// done block and blocks inside a done project.
+    const OUTLINE: &str = "\
+Home:
+\t- Water plants @star
+\t- Paint the hall @due(2026-10-01)
+\tErrands:
+\t\t- Bank @star @done(2026-10-04)
+\t\t\tC @hidden @star
+Work: @done @star
+\t- Report @star
+\t- Slides
+- Plan the week @star
+";
+
+    /// `text` in the Starred view.
+    fn starred(text: &str) -> State {
+        let mut state = State::new(format::parse(text), None);
+        state.go_to(Location::View(SpecialView::Starred));
+        assert_eq!(state.location(), Location::View(SpecialView::Starred));
+        state
+    }
+
+    /// Each row's text and path, joined as `path › text`.
+    fn listed(state: &State) -> Vec<String> {
+        state
+            .rows()
+            .iter()
+            .map(|row| {
+                assert_eq!(row.depth, 0, "entries are flat");
+                row.path
+                    .iter()
+                    .map(String::as_str)
+                    .chain([&*row.text])
+                    .collect::<Vec<_>>()
+                    .join(" › ")
+            })
+            .collect()
+    }
+
+    // D-80, D-92
+    #[test]
+    fn starred_follows_today_in_every_list_of_the_views() {
+        assert_eq!(SpecialView::ALL, [SpecialView::Today, SpecialView::Starred]);
+        assert_eq!(SpecialView::Starred.name(), "Starred");
+    }
+
+    // FR-TAG-13, D-92, FR-SPC-01
+    #[test]
+    fn starred_lists_every_starred_block_flat_in_document_order_with_its_path() {
+        let state = starred(OUTLINE);
+        assert_eq!(
+            listed(&state),
+            [
+                "Home › Water plants",
+                "Home › Errands › Bank",
+                "Work",
+                "Work › Report",
+                "Plan the week",
+            ]
+        );
+        assert!(state.rows().iter().all(|row| row.starred));
+    }
+
+    // FR-DONE-02, D-92
+    #[test]
+    fn starred_leaves_out_hidden_completed_blocks_with_everything_inside_them() {
+        let mut state = starred(OUTLINE);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(listed(&state), ["Home › Water plants", "Plan the week"]);
+    }
+
+    // D-92
+    #[test]
+    fn an_entry_whose_star_is_removed_leaves_starred() {
+        let mut state = starred("- a @star\n- b @star\n");
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert_eq!(listed(&state), ["b"]);
+        assert_eq!(format::serialize(state.document()), "- a\n- b @star\n");
+    }
+
+    // D-80, D-92
+    #[test]
+    fn moving_an_entry_up_or_down_leaves_starred_as_it_is() {
+        let mut state = starred("- a @star\n- b @star\n- c @star\n");
+        state.update(Message::FocusNext);
+        for message in [Message::MoveDown, Message::MoveUp] {
+            assert_eq!(state.update(message), []);
+            assert_eq!(listed(&state), ["a", "b", "c"]);
+        }
+        assert_eq!(
+            format::serialize(state.document()),
+            "- a @star\n- b @star\n- c @star\n"
+        );
     }
 }

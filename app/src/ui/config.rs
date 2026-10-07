@@ -24,6 +24,7 @@ use crate::app::{Mode, SpecialView};
 pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
     match view {
         SpecialView::Today => "sidebar_today",
+        SpecialView::Starred => "sidebar_starred",
     }
 }
 
@@ -757,6 +758,22 @@ mod tests {
             config.problems(),
             [Problem::InvalidValue {
                 key: "sidebar_today".to_owned(),
+                expected: "true or false",
+            }]
+        );
+    }
+
+    // D-92
+    #[test]
+    fn sidebar_starred_is_true_or_false() {
+        assert_eq!(
+            read("sidebar_starred = false\n", None).sidebar_views,
+            [(SpecialView::Starred, false)]
+        );
+        assert_eq!(
+            read("sidebar_starred = 1\n", None).problems(),
+            [Problem::InvalidValue {
+                key: "sidebar_starred".to_owned(),
                 expected: "true or false",
             }]
         );

@@ -572,6 +572,7 @@ mod tests {
             ),
             (Command::GoToCrumb(1), "Zoom Here"),
             (Command::GoToView(SpecialView::Today), "Go to Today"),
+            (Command::GoToView(SpecialView::Starred), "Go to Starred"),
             (Command::GoToProject, "Go to Project"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
@@ -645,6 +646,10 @@ mod tests {
             (
                 Command::GoToView(SpecialView::Today),
                 Message::GoTo(Location::View(SpecialView::Today)),
+            ),
+            (
+                Command::GoToView(SpecialView::Starred),
+                Message::GoTo(Location::View(SpecialView::Starred)),
             ),
             (Command::GoToSymbol, Message::OpenGoToSymbol(Symbols::All)),
             (

@@ -763,14 +763,17 @@ mod tests {
     fn the_sidebar_opens_its_focused_entry_in_a_new_pane_which_gets_the_keys() {
         let mut state = open(OUTLINE);
         state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(crate::app::SidebarInput::Next));
-        state.update(Message::Sidebar(crate::app::SidebarInput::Next));
+        // Past Today and Starred (D-92).
+        for _ in 0..3 {
+            state.update(Message::Sidebar(crate::app::SidebarInput::Next));
+        }
         pane(&mut state, PaneChange::Open);
         assert!(!state.sidebar_focused());
         assert_eq!(panes(&state), ["⌂: Work", "*Home: Plants"]);
         state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
-        state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
+        for _ in 0..3 {
+            state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
+        }
         pane(&mut state, PaneChange::Open);
         assert_eq!(panes(&state)[2], "*Today: ");
     }

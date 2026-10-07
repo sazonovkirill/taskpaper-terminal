@@ -310,9 +310,23 @@ mod tests {
         document::format,
     };
 
-    /// The state of `text` with the sidebar open, on its first entry.
-    fn opened(text: &str) -> State {
+    /// The state of `text` with the sidebar closed, Today the only special view it lists, as
+    /// these tests were written for before the other views (D-80).
+    fn only_today(text: &str) -> State {
         let mut state = State::new(format::parse(text), None);
+        for view in SpecialView::ALL {
+            if view != SpecialView::Today {
+                state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                    view, false,
+                )));
+            }
+        }
+        state
+    }
+
+    /// The state of `text` with the sidebar open, on its first entry, as [`only_today`] lists it.
+    fn opened(text: &str) -> State {
+        let mut state = only_today(text);
         state.update(Message::ToggleSidebar);
         state
     }
@@ -453,15 +467,28 @@ mod tests {
     // D-77
     #[test]
     fn without_today_the_first_section_starts_at_the_top_or_below_the_inbox() {
-        let draw_without_today = |text: &str| {
+        let draw_without = |views: &[SpecialView], text: &str| {
             let mut state = State::new(format::parse(text), None);
-            state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                SpecialView::Today,
-                false,
-            )));
+            for &view in views {
+                state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                    view, false,
+                )));
+            }
             state.update(Message::ToggleSidebar);
             rows(&render(&view(&state), 5))
         };
+        // D-80, D-92: the special views stand together, a blank line after the last one listed.
+        assert_eq!(
+            draw_without(&[SpecialView::Today], "A:"),
+            [
+                format!("▌ {} Starred", Icon::Star.glyph(IconSet::Unicode)),
+                String::new(),
+                "  Projects".to_owned(),
+                "  A".to_owned(),
+                String::new(),
+            ]
+        );
+        let draw_without_today = |text: &str| draw_without(&SpecialView::ALL, text);
         assert_eq!(
             draw_without_today("A: @bookmark"),
             ["  Bookmarks", "▌ A", "", "  Projects", "  A"]
@@ -528,7 +555,7 @@ mod tests {
     // D-68
     #[test]
     fn the_focused_entry_is_scrolled_to_and_the_current_one_gets_a_selected_blocks_marker() {
-        let mut state = State::new(format::parse("A:\nB:\nC:\nD:"), None);
+        let mut state = only_today("A:\nB:\nC:\nD:");
         state.update(Message::FocusLast);
         state.update(Message::ZoomIn);
         state.update(Message::ToggleSidebar);

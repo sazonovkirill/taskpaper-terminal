@@ -3186,6 +3186,27 @@ mod tests {
         assert_eq!(messages("t", CONTEXT), [Some(start)]);
     }
 
+    // FR-TAG-13, D-92, D-42: `g*` goes to Starred whether `*` arrives plain or, under the kitty
+    // protocol, with `Shift`.
+    #[test]
+    fn g_star_goes_to_starred_in_both_key_reportings() {
+        let starred = Some(Message::GoTo(Location::View(SpecialView::Starred)));
+        assert_eq!(messages("g*", CONTEXT), [None, starred.clone()]);
+        let mut keymap = Keymap::default();
+        let sent: Vec<_> = [
+            key(KeyCode::Char('g'), KeyModifiers::NONE),
+            key(KeyCode::Char('*'), KeyModifiers::SHIFT),
+        ]
+        .iter()
+        .map(|key| keymap.message_for(key, ms(0), CONTEXT))
+        .collect();
+        assert_eq!(sent, [None, starred]);
+        assert_eq!(
+            Keymap::default().bindings(Command::GoToView(SpecialView::Starred), true),
+            "g*"
+        );
+    }
+
     // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with
     // `Shift`.
     #[test]

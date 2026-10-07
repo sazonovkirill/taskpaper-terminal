@@ -36,6 +36,7 @@ mod settings;
 mod shortcuts;
 mod show_completed;
 mod sidebar;
+mod starred;
 mod support;
 mod tags;
 mod terminal_support;

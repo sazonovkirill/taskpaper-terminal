@@ -142,14 +142,15 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Down);
     app.press(KeyCode::F(10), KeyModifiers::SHIFT);
     let rows = screen(&mut app);
     assert_eq!(
         rows[4..10],
         [
             "      Near the station  ┌Commands:─────────────────────────────────────────┐",
-            "    - Pack              │  › Go to Entry                            Enter  │",
-            "  Other              ┌Na│  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
+            "    - Pack           ┌Na│  › Go to Entry                            Enter  │",
+            "  Other              │  │  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
             "                     │  │──────────────────────────────────────────────────│",
             "                     │  │  › Return to Outline                        Esc  │",
             "                     │  └──────────────────────────────────────────────────┘",

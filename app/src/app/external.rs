@@ -630,7 +630,8 @@ mod tests {
         use crate::app::{Fold, SidebarInput};
         let mut state = opened("A:\n\tA1:\nB:\n\tB1:\nC:\n\tC1:\n");
         state.update(Message::ToggleSidebar);
-        for input in [SidebarInput::Next; 3] {
+        // Past Today, Starred (D-92) and A.
+        for input in [SidebarInput::Next; 4] {
             state.update(Message::Sidebar(input));
         }
         state.update(Message::Sidebar(SidebarInput::Collapse));

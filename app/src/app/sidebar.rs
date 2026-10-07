@@ -708,8 +708,16 @@ Home: @bookmark
 - Errand
 ";
 
+    /// `text` opened with Today the only special view the sidebar lists, as these tests were
+    /// written for before the other views (D-80).
     fn open(text: &str) -> State {
-        State::new(format::parse(text), None)
+        let mut state = State::new(format::parse(text), None);
+        for view in SpecialView::ALL {
+            if view != SpecialView::Today {
+                state.update(Message::Configure(Configuration::SidebarView(view, false)));
+            }
+        }
+        state
     }
 
     /// The sidebar as it would open, or as it is while it is open.
@@ -1137,9 +1145,39 @@ INBOX:",
 
     // FR-UI-01
     #[test]
-    fn an_outline_without_bookmarks_or_projects_lists_only_today() {
-        assert_eq!(listed(&open("- a\nb")), ["today"]);
-        assert_eq!(listed(&State::new(Document::default(), None)), ["today"]);
+    fn an_outline_without_bookmarks_or_projects_lists_only_the_special_views() {
+        let views = ["today", "starred"];
+        assert_eq!(listed(&State::new(format::parse("- a\nb"), None)), views);
+        assert_eq!(listed(&State::new(Document::default(), None)), views);
+    }
+
+    // FR-TAG-13, D-92: Starred follows the other special views unless its setting is off, and
+    // choosing it shows it.
+    #[test]
+    fn starred_follows_the_other_views_unless_its_setting_is_off() {
+        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        assert!(state.sidebar_lists(SpecialView::Starred), "on by default");
+        assert_eq!(
+            listed(&state),
+            ["inbox INBOX", "today", "starred", "bookmark A", "Leaf A"]
+        );
+        state.update(Message::ToggleSidebar);
+        input(
+            &mut state,
+            &[SidebarInput::Next, SidebarInput::Next, SidebarInput::Choose],
+        );
+        assert_eq!(state.location(), Location::View(SpecialView::Starred));
+        assert_eq!(current(&state), Some(2), "its entry is current");
+        state.update(Message::Configure(Configuration::SidebarView(
+            SpecialView::Starred,
+            false,
+        )));
+        assert!(!state.sidebar_lists(SpecialView::Starred));
+        assert!(state.sidebar_lists(SpecialView::Today));
+        assert_eq!(
+            listed(&state),
+            ["inbox INBOX", "today", "bookmark A", "Leaf A"]
+        );
     }
 
     // FR-UI-01, D-68, D-79
