@@ -210,7 +210,7 @@ Keys that common terminals, multiplexers and desktops take for themselves by def
 | `Ctrl+V` (new pane from the Navigator and Go to Symbol; paste) | Windows Terminal: paste | `Ctrl+T`; paste arrives as pasted text |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` (pane left / right; select a word in edit mode) | kitty: tabs; WezTerm: panes | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`; in edit mode, `Shift+←` / `Shift+→` |
 | `Ctrl+Shift+Z` (redo) | kitty: previous prompt; WezTerm: zoom pane | `Z`, `Ctrl+Y` |
-| `Alt+←` / `Alt+→`, `Alt+↑` / `Alt+↓`, `Alt+Shift+←` / `Alt+Shift+→` | Windows Terminal, between its own split panes | `.` / `>`, `Alt+k` / `Alt+j`, `H` / `L` |
+| `Alt+←` / `Alt+→`, `Alt+↑` / `Alt+↓`, `Alt+Shift+←` / `Alt+Shift+→` | Windows Terminal, between its own split panes | `>` / `.`, `Alt+k` / `Alt+j`, `H` / `L` |
 | `Alt+1` … `Alt+9` (focus pane N) | GNOME Terminal and Ghostty on Linux: tabs | `g1` … `g9` |
 | `Shift+F10` (context menu) | GNOME Terminal: its own menu | `\` |
 | `Ctrl+B` (bold, edit mode) | tmux: its prefix | `Ctrl+B` twice in tmux, which sends it on |
