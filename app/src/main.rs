@@ -173,6 +173,10 @@ fn forward_signals(inputs: Sender<Input>) -> std::io::Result<()> {
 fn forward_terminal_events(inputs: Sender<Input>) {
     thread::spawn(move || {
         while let Ok(event) = event::read() {
+            // The terminal reports every move of the pointer; each would otherwise draw a frame.
+            if !ui::acts_on(&event) {
+                continue;
+            }
             if inputs.send(Input::Terminal(event)).is_err() {
                 return;
             }

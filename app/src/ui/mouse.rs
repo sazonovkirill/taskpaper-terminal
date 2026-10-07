@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{Event, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
 use super::{Tui, widgets};
@@ -130,6 +130,49 @@ enum Gesture {
     RightClick,
 }
 
+/// What a mouse event asks for: a press of a button, or the wheel scrolling by that many
+/// screen lines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Action {
+    Press(Gesture),
+    Wheel(isize),
+}
+
+/// What `mouse` asks for, if anything: moving the pointer, dragging, releasing a button and the
+/// other buttons and wheel directions ask for nothing (ui.md §6).
+fn action(mouse: MouseEvent) -> Option<Action> {
+    match mouse.kind {
+        MouseEventKind::Down(MouseButton::Left) if mouse.modifiers.contains(KeyModifiers::ALT) => {
+            Some(Action::Press(Gesture::AltClick))
+        }
+        MouseEventKind::Down(MouseButton::Left) => Some(Action::Press(Gesture::Click)),
+        MouseEventKind::Down(MouseButton::Right) => Some(Action::Press(Gesture::RightClick)),
+        MouseEventKind::ScrollDown => Some(Action::Wheel(WHEEL_LINES)),
+        MouseEventKind::ScrollUp => Some(Action::Wheel(-WHEEL_LINES)),
+        MouseEventKind::Down(MouseButton::Middle)
+        | MouseEventKind::Up(_)
+        | MouseEventKind::Drag(_)
+        | MouseEventKind::Moved
+        | MouseEventKind::ScrollLeft
+        | MouseEventKind::ScrollRight => None,
+    }
+}
+
+/// Whether the frontend may act on `event`: every event but a mouse event that asks for
+/// nothing, such as each move of the pointer, which the event loop drops rather than draw a
+/// frame for (ui.md §6).
+#[must_use]
+pub fn acts_on(event: &Event) -> bool {
+    match event {
+        Event::Mouse(mouse) => action(*mouse).is_some(),
+        Event::FocusGained
+        | Event::FocusLost
+        | Event::Key(_)
+        | Event::Paste(_)
+        | Event::Resize(..) => true,
+    }
+}
+
 /// The messages `gesture` on `target` gives, in order (ui.md §6): a click focuses or goes, an
 /// Alt+click opens in a new pane and a right-click opens the context menu. A click on a pane's
 /// part gives that pane the keys first, and a right-click on a block that is not selected makes
@@ -197,17 +240,10 @@ impl Tui {
         let Some(spot) = self.drawn.spot(position) else {
             return;
         };
-        let gesture = match mouse.kind {
-            MouseEventKind::Down(MouseButton::Left)
-                if mouse.modifiers.contains(KeyModifiers::ALT) =>
-            {
-                Gesture::AltClick
-            }
-            MouseEventKind::Down(MouseButton::Left) => Gesture::Click,
-            MouseEventKind::Down(MouseButton::Right) => Gesture::RightClick,
-            MouseEventKind::ScrollDown => return self.wheel(spot, WHEEL_LINES),
-            MouseEventKind::ScrollUp => return self.wheel(spot, -WHEEL_LINES),
-            _ => return,
+        let gesture = match action(mouse) {
+            Some(Action::Press(gesture)) => gesture,
+            Some(Action::Wheel(lines)) => return self.wheel(spot, lines),
+            None => return,
         };
         // A click acts where the panes show their focus again.
         self.wheel.clear();
@@ -390,6 +426,49 @@ mod tests {
             }),
             "areas that start below and right of the screen's corner"
         );
+    }
+
+    // FR-KEY-05, ui.md §6
+    #[test]
+    fn only_presses_and_the_wheel_ask_for_anything_so_other_mouse_events_draw_nothing() {
+        let mouse = |kind, modifiers| {
+            Event::Mouse(MouseEvent {
+                kind,
+                column: 3,
+                row: 4,
+                modifiers,
+            })
+        };
+        let acts = |kind| acts_on(&mouse(kind, KeyModifiers::NONE));
+        assert!(acts(MouseEventKind::Down(MouseButton::Left)));
+        assert!(acts_on(&mouse(
+            MouseEventKind::Down(MouseButton::Left),
+            KeyModifiers::ALT
+        )));
+        assert!(acts(MouseEventKind::Down(MouseButton::Right)));
+        assert!(acts(MouseEventKind::ScrollDown));
+        assert!(acts(MouseEventKind::ScrollUp));
+        for kind in [
+            MouseEventKind::Moved,
+            MouseEventKind::Drag(MouseButton::Left),
+            MouseEventKind::Up(MouseButton::Left),
+            MouseEventKind::Down(MouseButton::Middle),
+            MouseEventKind::ScrollLeft,
+            MouseEventKind::ScrollRight,
+        ] {
+            assert!(!acts(kind), "{kind:?}");
+        }
+        for event in [
+            Event::FocusGained,
+            Event::FocusLost,
+            Event::Key(crossterm::event::KeyEvent::from(
+                crossterm::event::KeyCode::Esc,
+            )),
+            Event::Paste("a".to_owned()),
+            Event::Resize(80, 24),
+        ] {
+            assert!(acts_on(&event), "{event:?}");
+        }
     }
 
     #[track_caller]

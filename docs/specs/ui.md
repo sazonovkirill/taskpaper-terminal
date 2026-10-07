@@ -90,6 +90,7 @@ The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D
 - Wheel: scroll the pane under the pointer without moving focus, 3 lines a step, no further than the first and last lines; the pane stays where the wheel left it until the next key or click, which bring the focus back into view as any motion does. Over the `?` panel the wheel scrolls the panel (D-55).
 - A block's row counts from the gutter to the right edge. A click on a block of another pane, a crumb or a pane header gives that pane the keys first, and any click on a pane takes them from the sidebar. A right-click on a block that is not selected clears the selection and focuses the block, so the menu is the block's; on a selected block it opens the selection's menu. A click on the `▸`/`▾` of a sidebar project entry folds or unfolds it, giving the sidebar the keys on that entry.
 - While a popup, picker, prompt or the conflict prompt is open, the mouse does nothing.
+- Moving the pointer, dragging, releasing a button, the middle button and the sideways wheel do nothing, and the event loop drops them so they draw no frame.
 - No feature depends on the mouse; every action above has a key.
 
 ## 7. Icons (FR-UI-09, FR-UI-10)
