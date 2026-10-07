@@ -52,6 +52,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
 | `gs` | **s**ymbol (= `Ctrl+P`) |
+| `gP` | **P**roject: Go to Symbol over projects only (capital goes to the bigger thing: `gp` is the parent, `gP` the project) |
 | `gm` | **m**ove block to… |
 | `gG` | **G**roup the selection |
 | `gx` | open link (vim's `gx`) |

@@ -46,6 +46,7 @@ pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{Editor, Mode};
 pub use external::{DiffLine, Version};
 pub use finder::{Candidate, FinderView};
+pub use go_to_symbol::Symbols;
 pub use history::{History, Restore};
 pub use pane::{PaneChange, PaneId, PaneView};
 pub use picker::PickerView;

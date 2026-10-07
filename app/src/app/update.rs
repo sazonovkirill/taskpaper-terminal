@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use super::{
     Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
-    SettingValue, SettingsInput, SidebarInput, State, TextEdit, Version,
+    SettingValue, SettingsInput, SidebarInput, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
     structure::NewBlock,
@@ -203,8 +203,9 @@ pub enum Message {
     OpenDetails,
     /// Close the details popup.
     CloseDetails,
-    /// Open Go to Symbol (FR-NAV-05).
-    OpenGoToSymbol,
+    /// Open Go to Symbol over these blocks: every one (FR-NAV-05), or the projects, as Go to
+    /// Project (D-65).
+    OpenGoToSymbol(Symbols),
     /// Open Move to over the selected blocks, else the focused block (FR-OPS-05).
     OpenMoveTo,
     /// Open Go to Command over the commands of navigate mode, each shown with its bindings as
@@ -425,7 +426,7 @@ impl Message {
             | Self::OpenTypePicker
             | Self::OpenDetails
             | Self::CloseDetails
-            | Self::OpenGoToSymbol
+            | Self::OpenGoToSymbol(_)
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
             | Self::OpenThemePicker { .. }
@@ -632,7 +633,7 @@ impl State {
             Message::OpenTypePicker => self.open_type_picker(),
             Message::OpenDetails => self.open_details(),
             Message::CloseDetails => self.close_details(),
-            Message::OpenGoToSymbol => self.open_go_to_symbol(),
+            Message::OpenGoToSymbol(listed) => self.open_go_to_symbol(listed),
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::OpenThemePicker { names, current } => self.open_theme_picker(names, current),

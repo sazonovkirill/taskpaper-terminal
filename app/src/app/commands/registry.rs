@@ -362,6 +362,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ChooseTheme, Mode::Navigate, &["ctrl+t"]),
     entry!(Command::OpenSettings, Mode::Navigate, &["g ,"]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+p", "g s", "/"]),
+    entry!(Command::GoToProject, Mode::Navigate, &["g P"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
@@ -632,6 +633,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ToggleShowDone,
             Command::ToggleWrap,
             Command::GoToSymbol,
+            Command::GoToProject,
             Command::GoToCommand,
             Command::OpenSettings,
             Command::ContextMenu,
@@ -764,7 +766,7 @@ mod tests {
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 7),
-                ("View and Panels", 9),
+                ("View and Panels", 10),
             ]
         );
         assert_eq!(
@@ -775,7 +777,7 @@ mod tests {
         let (_, editing) = &edit[0];
         assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[8].keys, ["ctrl+q"]);
+        assert_eq!(view[9].keys, ["ctrl+q"]);
     }
 
     // FR-UI-01, FR-KEY-06, keybindings.md §4

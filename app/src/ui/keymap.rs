@@ -85,7 +85,7 @@ pub enum Overlay {
     TypePicker,
     /// The details popup, which any key closes (D-3).
     Details,
-    /// Go to Symbol (FR-NAV-05).
+    /// Go to Symbol, or Go to Project, its form over the projects alone (FR-NAV-05, D-65).
     GoToSymbol,
     /// Move to (FR-OPS-05).
     MoveTo,
@@ -901,7 +901,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Location, NewBlock, PaneChange, SelectionChange, SidebarInput},
+        app::{Location, NewBlock, PaneChange, SelectionChange, SidebarInput, Symbols},
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
 
@@ -2745,17 +2745,17 @@ mod tests {
         let ctrl_p = key(KeyCode::Char('p'), KeyModifiers::CONTROL);
         assert_eq!(
             keymap.message_for(&ctrl_p, ms(0), CONTEXT),
-            Some(Message::OpenGoToSymbol)
+            Some(Message::OpenGoToSymbol(Symbols::All))
         );
         let char = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
         assert_eq!(keymap.message_for(&char('g'), ms(0), CONTEXT), None);
         assert_eq!(
             keymap.message_for(&char('s'), ms(1), CONTEXT),
-            Some(Message::OpenGoToSymbol)
+            Some(Message::OpenGoToSymbol(Symbols::All))
         );
         assert_eq!(
             keymap.message_for(&char('/'), ms(2), CONTEXT),
-            Some(Message::OpenGoToSymbol)
+            Some(Message::OpenGoToSymbol(Symbols::All))
         );
         let finding = &Context {
             overlay: Some(Overlay::GoToSymbol),
@@ -2769,6 +2769,31 @@ mod tests {
             keymap.message_for(&char('g'), ms(3), finding),
             Some(Message::Menu(Menu::GoToSymbol, MenuInput::Type('g')))
         );
+    }
+
+    // D-65, D-42: `gP` opens Go to Project whether `P` arrives as `P`, as `P` with `Shift` or,
+    // under the kitty protocol, as `p` with `Shift`; `gp` still focuses the parent.
+    #[test]
+    fn g_shift_p_opens_go_to_project_in_both_key_reportings() {
+        let open = Some(KeyAction::Send(Message::OpenGoToSymbol(Symbols::Projects)));
+        for (c, modifiers) in [
+            ('P', KeyModifiers::NONE),
+            ('P', KeyModifiers::SHIFT),
+            ('p', KeyModifiers::SHIFT),
+        ] {
+            assert_eq!(
+                actions(
+                    &[
+                        (KeyCode::Char('g'), KeyModifiers::NONE),
+                        (KeyCode::Char(c), modifiers)
+                    ],
+                    CONTEXT
+                ),
+                [None, open.clone()],
+                "{c} {modifiers:?}"
+            );
+        }
+        assert_eq!(messages("gp", CONTEXT), [None, Some(Message::FocusParent)]);
     }
 
     /// What the keys `presses` ask for in turn from a fresh keymap in `context`.

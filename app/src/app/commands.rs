@@ -16,7 +16,8 @@ pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
 
 use super::{
-    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, TextEdit,
+    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, Symbols,
+    TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
@@ -125,6 +126,8 @@ pub enum Command {
     OpenDetails,
     /// Find a block by name and go to it.
     GoToSymbol,
+    /// Find a project by name and go to it (D-65).
+    GoToProject,
     /// Find a block by name and move the selection under it.
     MoveTo,
     /// Find a command by name and give it, which the frontend opens with the bindings it shows
@@ -262,6 +265,7 @@ impl Command {
             Self::Retype(Typed::Text) => "Note".into(),
             Self::OpenDetails => "Show Details".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
+            Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
             Self::GoToCommand => "Go to Command".into(),
             Self::Count => "Count Blocks and Words".into(),
@@ -372,7 +376,8 @@ impl Command {
             | Self::ScrollShortcutsDown
             | Self::ScrollShortcutsUp => return None,
             Self::OpenDetails => Message::OpenDetails,
-            Self::GoToSymbol => Message::OpenGoToSymbol,
+            Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
+            Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,
             Self::Count => Message::Count,
             Self::SaveAs => Message::SaveAs(SaveAs::Open),
@@ -554,6 +559,7 @@ mod tests {
             (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
             (Command::GoToCrumb(1), "Zoom Here"),
             (Command::GoToToday, "Go to Today"),
+            (Command::GoToProject, "Go to Project"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
             (
@@ -624,6 +630,11 @@ mod tests {
             (Command::GoToCrumb(1), Message::GoToCrumb(1)),
             (Command::GoHome, Message::GoTo(Location::Outline(None))),
             (Command::GoToToday, Message::GoTo(Location::Today)),
+            (Command::GoToSymbol, Message::OpenGoToSymbol(Symbols::All)),
+            (
+                Command::GoToProject,
+                Message::OpenGoToSymbol(Symbols::Projects),
+            ),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

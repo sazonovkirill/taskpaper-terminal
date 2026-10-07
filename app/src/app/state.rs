@@ -11,7 +11,7 @@ use std::{
 use jiff::civil::Date;
 
 use super::{
-    Command, History,
+    Command, History, Symbols,
     command_menu::CommandMenu,
     date_prompt::DatePrompt,
     edit_mode::{Resume, Session},
@@ -72,8 +72,9 @@ pub struct State {
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// Whether the details popup is open over the focused block (D-3).
     pub(super) details: bool,
-    /// Go to Symbol, while it is open (FR-NAV-05).
-    pub(super) symbols: Option<Finder<ItemId>>,
+    /// Go to Symbol or Go to Project, with the blocks it lists, while it is open (FR-NAV-05,
+    /// D-65).
+    pub(super) symbols: Option<(Symbols, Finder<ItemId>)>,
     /// Move to, while it is open (FR-OPS-05).
     pub(super) destinations: Option<Finder<ItemId>>,
     /// Go to Command, while it is open (FR-NAV-06).

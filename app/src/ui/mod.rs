@@ -919,14 +919,19 @@ impl Tui {
         FocusedPane { caret, block }
     }
 
-    /// The open finder, Go to Symbol, Move to, Go to Command or the theme picker, over `area`
-    /// in `theme` (navigation.md §8, ui.md §3).
+    /// The open finder, Go to Symbol, Go to Project, Move to, Go to Command or the theme picker,
+    /// over `area` in `theme` (navigation.md §8, ui.md §3).
     fn draw_finders(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
         let icons = self.icons;
         let finder = self
             .state
             .go_to_symbol()
             .map(|view| ("Go to Symbol", view))
+            .or_else(|| {
+                self.state
+                    .go_to_project()
+                    .map(|view| ("Go to Project", view))
+            })
             .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
         if let Some((title, view)) = finder {
             let icon = |id: &ItemId| widgets::block_icon(self.state.document(), *id);
@@ -1067,7 +1072,7 @@ impl Tui {
             Some(Overlay::ColorPicker)
         } else if self.state.type_picker().is_some() {
             Some(Overlay::TypePicker)
-        } else if self.state.go_to_symbol().is_some() {
+        } else if self.state.go_to_symbol().is_some() || self.state.go_to_project().is_some() {
             Some(Overlay::GoToSymbol)
         } else if self.state.move_to().is_some() {
             Some(Overlay::MoveTo)

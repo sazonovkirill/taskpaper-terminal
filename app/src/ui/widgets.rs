@@ -711,7 +711,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         DateTag::Due => (Icon::Due, due_style(theme)),
     };
     match command {
-        Command::Retype(Typed::Project) => plain(Icon::Project),
+        Command::Retype(Typed::Project) | Command::GoToProject => plain(Icon::Project),
         Command::Retype(Typed::Task) => plain(Icon::Task),
         Command::Retype(Typed::Text) => plain(Icon::Note),
         Command::Retype(Typed::Section) => plain(Icon::Section),
@@ -1872,6 +1872,7 @@ mod tests {
             ),
             (Command::SetColor(None), Icon::Color, Style::new()),
             (Command::GoToToday, Icon::Today, today_style(&THEME)),
+            (Command::GoToProject, Icon::Project, Style::new()),
             (Command::OpenSettings, Icon::Settings, Style::new()),
             (Command::OpenDetails, Icon::Details, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),

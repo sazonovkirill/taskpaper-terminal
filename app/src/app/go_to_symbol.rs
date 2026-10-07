@@ -1,7 +1,8 @@
 //! Go to Symbol: a fuzzy finder over every block, bookmarks first, then projects and sections,
-//! that zooms to the chosen block's parent and focuses it
+//! or over the projects alone as Go to Project, that zooms to the chosen block's parent and
+//! focuses it
 //! ([navigation.md §8](../../../docs/specs/navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06),
-//! FR-NAV-05).
+//! FR-NAV-05, D-65).
 
 use super::{
     Location, MenuInput, State,
@@ -9,6 +10,15 @@ use super::{
     picker::Picked,
 };
 use crate::document::{Block, BlockKind, ItemId, blocks};
+
+/// Which blocks Go to Symbol lists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Symbols {
+    /// Every block but dividers (FR-NAV-05).
+    All,
+    /// Only projects, as Go to Project (D-65).
+    Projects,
+}
 
 /// How a block ranks in Go to Symbol: bookmarks, then projects and sections, then the rest.
 fn tier(block: &Block) -> u8 {
@@ -22,15 +32,37 @@ fn tier(block: &Block) -> u8 {
 }
 
 impl State {
-    /// Go to Symbol, while it is open (FR-NAV-05).
+    /// Go to Symbol over every block, while it is open (FR-NAV-05).
     #[must_use]
     pub fn go_to_symbol(&self) -> Option<FinderView<'_, ItemId>> {
-        self.symbols.as_ref().map(Finder::view)
+        self.symbols_view(Symbols::All)
     }
 
-    /// `Ctrl+P`: opens Go to Symbol over every block in document order but dividers.
-    pub(super) fn open_go_to_symbol(&mut self) {
-        self.symbols = Some(Finder::new(self.block_candidates(&[])));
+    /// Go to Project, while it is open (D-65).
+    #[must_use]
+    pub fn go_to_project(&self) -> Option<FinderView<'_, ItemId>> {
+        self.symbols_view(Symbols::Projects)
+    }
+
+    /// Go to Symbol while it is open over `listed`.
+    fn symbols_view(&self, listed: Symbols) -> Option<FinderView<'_, ItemId>> {
+        self.symbols
+            .as_ref()
+            .filter(|(open, _)| *open == listed)
+            .map(|(_, finder)| finder.view())
+    }
+
+    /// `Ctrl+P`: opens Go to Symbol over every block in document order but dividers, or `gP`
+    /// over the projects among them, as Go to Project.
+    pub(super) fn open_go_to_symbol(&mut self, listed: Symbols) {
+        let mut candidates = self.block_candidates(&[]);
+        if listed == Symbols::Projects {
+            candidates.retain(|candidate| {
+                blocks::block(&self.document, candidate.value)
+                    .is_some_and(|block| block.kind() == BlockKind::Project)
+            });
+        }
+        self.symbols = Some((listed, Finder::new(candidates)));
     }
 
     /// A candidate for each block in document order, with the path of the blocks above it and
@@ -64,10 +96,14 @@ impl State {
         }
     }
 
-    /// Applies `input` to Go to Symbol, and once a block is chosen, zooms to its parent and
-    /// focuses it (navigation.md §8).
+    /// Applies `input` to Go to Symbol or Go to Project, and once a block is chosen, zooms to its
+    /// parent and focuses it (navigation.md §8).
     pub(super) fn go_to_symbol_input(&mut self, input: MenuInput) {
-        let Some(closed) = self.symbols.as_mut().and_then(|finder| finder.input(input)) else {
+        let Some(closed) = self
+            .symbols
+            .as_mut()
+            .and_then(|(_, finder)| finder.input(input))
+        else {
             return;
         };
         self.symbols = None;
@@ -123,7 +159,7 @@ mod tests {
     fn lists_every_block_but_dividers_bookmarks_first_then_projects_and_sections() {
         let mut state = state();
         assert_eq!(state.go_to_symbol(), None);
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         let entry = |text: &str, path: &str| (text.to_owned(), path.to_owned());
         assert_eq!(
             listed(&state),
@@ -146,7 +182,7 @@ mod tests {
     #[test]
     fn choosing_a_block_zooms_to_its_parent_and_focuses_it() {
         let mut state = state();
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         typed(&mut state, "ann");
         assert_eq!(listed(&state).0.len(), 1);
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
@@ -165,7 +201,7 @@ mod tests {
             None,
         );
         state.update(Message::ToggleShowDone);
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         let texts: Vec<String> = listed(&state).0.into_iter().map(|(text, _)| text).collect();
         assert_eq!(texts, ["A", "open"]);
     }
@@ -176,7 +212,7 @@ mod tests {
         let mut state = state();
         state.update(Message::FocusLast);
         state.update(Message::ZoomIn);
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         typed(&mut state, "work");
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(state.zoom(), None);
@@ -186,11 +222,11 @@ mod tests {
     #[test]
     fn dismissing_or_choosing_nothing_leaves_the_view_as_it_was() {
         let mut state = state();
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Dismiss));
         assert_eq!(state.go_to_symbol(), None);
         assert_eq!(text(state.document(), state.focus()).unwrap(), "Home");
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         typed(&mut state, "zzz");
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert!(
@@ -198,6 +234,61 @@ mod tests {
             "nothing to choose keeps it open"
         );
         assert_eq!(state.zoom(), None);
+    }
+
+    /// Projects at several depths, under a note, bookmarked and done, among other blocks.
+    const PROJECTS: &str = "Home:\n\t- Paint the hall\n\tGarden:\n\t\t- Weed\nIdeas\n\tTrip: @bookmark\nOld: @done\nWork:\n\tLater @section";
+
+    /// The text and path of each entry Go to Project lists.
+    fn projects_listed(state: &State) -> Vec<(String, String)> {
+        state
+            .go_to_project()
+            .unwrap()
+            .entries
+            .iter()
+            .map(|entry| (entry.text.clone(), entry.detail.clone()))
+            .collect()
+    }
+
+    // D-65, FR-DONE-02
+    #[test]
+    fn go_to_project_lists_only_projects_with_their_paths_bookmarks_first() {
+        let mut state = State::new(format::parse(PROJECTS), None);
+        state.update(Message::OpenGoToSymbol(Symbols::Projects));
+        assert_eq!(state.go_to_symbol(), None, "Go to Symbol is not open");
+        let entry = |text: &str, path: &str| (text.to_owned(), path.to_owned());
+        assert_eq!(
+            projects_listed(&state),
+            [
+                entry("Trip", "Ideas"),
+                entry("Home", ""),
+                entry("Garden", "Home"),
+                entry("Old", ""),
+                entry("Work", ""),
+            ]
+        );
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Dismiss));
+        state.update(Message::ToggleShowDone);
+        state.update(Message::OpenGoToSymbol(Symbols::Projects));
+        assert!(
+            !projects_listed(&state).contains(&entry("Old", "")),
+            "hidden completed projects are not listed"
+        );
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Dismiss));
+        state.update(Message::OpenGoToSymbol(Symbols::All));
+        assert_eq!(state.go_to_project(), None, "Go to Project is not open");
+    }
+
+    // D-65, navigation.md §8
+    #[test]
+    fn choosing_a_project_zooms_to_its_parent_and_focuses_it() {
+        let mut state = State::new(format::parse(PROJECTS), None);
+        state.update(Message::OpenGoToSymbol(Symbols::Projects));
+        typed(&mut state, "gar");
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
+        assert_eq!(state.go_to_project(), None);
+        assert_eq!(text(state.document(), state.zoom()).unwrap(), "Home");
+        assert_eq!(text(state.document(), state.focus()).unwrap(), "Garden");
     }
 
     #[test]
@@ -211,7 +302,7 @@ mod tests {
     #[test]
     fn a_block_deleted_while_listed_is_not_gone_to() {
         let mut state = state();
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         typed(&mut state, "ann");
         state.document = format::parse("Other:\n\t- Task");
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));

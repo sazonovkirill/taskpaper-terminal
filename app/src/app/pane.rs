@@ -223,11 +223,11 @@ impl State {
         self.pane.width = Some(width);
     }
 
-    /// Opens the highlighted Go to Symbol entry, the focused sidebar entry or the focused block
-    /// in a new pane, as [`PaneChange::Open`] says, closing Go to Symbol and giving the pane the
-    /// keys back from the sidebar.
+    /// Opens the highlighted entry of Go to Symbol or Go to Project, the focused sidebar entry or
+    /// the focused block in a new pane, as [`PaneChange::Open`] says, closing the finder and
+    /// giving the pane the keys back from the sidebar.
     fn open_chosen(&mut self) {
-        let chosen = if let Some(finder) = self.symbols.take() {
+        let chosen = if let Some((_, finder)) = self.symbols.take() {
             finder
                 .highlighted()
                 .copied()
@@ -368,7 +368,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Menu, MenuInput, Message, Mode, SelectionChange, TextEdit, Version},
+        app::{Menu, MenuInput, Message, Mode, SelectionChange, Symbols, TextEdit, Version},
         document::{Item, format},
     };
 
@@ -729,18 +729,28 @@ mod tests {
     #[test]
     fn go_to_symbol_opens_the_highlighted_block_in_a_new_pane() {
         let mut state = open(OUTLINE);
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         for c in "plants".chars() {
             state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type(c)));
         }
         pane(&mut state, PaneChange::Open);
         assert_eq!(state.go_to_symbol(), None, "closed");
         assert_eq!(panes(&state), ["⌂: Work", "*Plants: Plants"]);
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type('#')));
         pane(&mut state, PaneChange::Open);
         assert_eq!(state.go_to_symbol(), None);
         assert_eq!(state.panes().len(), 2, "nothing matched, nothing opened");
+    }
+
+    // D-65, FR-UI-03
+    #[test]
+    fn go_to_project_opens_the_highlighted_project_in_a_new_pane() {
+        let mut state = open(OUTLINE);
+        state.update(Message::OpenGoToSymbol(Symbols::Projects));
+        pane(&mut state, PaneChange::Open);
+        assert_eq!(state.go_to_project(), None, "closed");
+        assert_eq!(panes(&state), ["⌂: Work", "*Work: Report"]);
     }
 
     // FR-UI-01, FR-UI-03, navigation.md §6

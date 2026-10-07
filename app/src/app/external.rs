@@ -389,7 +389,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Menu, MenuInput, Message, SelectionChange, state::NOTICE_TIME},
+        app::{Menu, MenuInput, Message, SelectionChange, Symbols, state::NOTICE_TIME},
         document::{Op, Transaction},
     };
 
@@ -774,7 +774,7 @@ mod tests {
     #[test]
     fn a_reload_closes_go_to_symbol() {
         let mut state = opened("A\nB\nC\n");
-        state.update(Message::OpenGoToSymbol);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type('c')));
         state.update(found("X\nA\nB\nC\n"));
         assert_eq!(state.go_to_symbol(), None);

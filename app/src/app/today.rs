@@ -146,7 +146,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::OpenTypePicker
         | Message::OpenDetails
         | Message::CloseDetails
-        | Message::OpenGoToSymbol
+        | Message::OpenGoToSymbol(_)
         | Message::OpenMoveTo
         | Message::OpenGoToCommand(_)
         | Message::OpenThemePicker { .. }
