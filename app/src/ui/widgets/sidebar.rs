@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// The sidebar's lines: Today, then for each of the bookmarks and the projects that has entries, a
-/// blank line, a heading at the right edge and its entries (D-68). Bookmarks are their text alone;
+/// blank line, a heading and its entries (D-68). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; while the pane has the keys, the entry
@@ -155,7 +155,7 @@ impl Mark {
 enum SidebarLine<'a> {
     /// The blank line above a heading.
     Blank,
-    /// A section heading, at the right edge.
+    /// A section heading.
     Heading(&'static str),
     /// An entry.
     Entry(&'a SidebarEntry),
@@ -166,7 +166,7 @@ impl<'a> SidebarLine<'a> {
     fn line(self, icons: IconSet, theme: &Theme) -> Line<'a> {
         match self {
             Self::Blank => Line::default(),
-            Self::Heading(heading) => Line::styled(heading, heading_style()).right_aligned(),
+            Self::Heading(heading) => Line::styled(heading, heading_style()),
             Self::Entry(entry) => entry_line(entry, icons, theme),
         }
     }
@@ -280,24 +280,24 @@ mod tests {
 
     // FR-UI-01, D-68
     #[test]
-    fn today_comes_first_and_each_section_heading_once_at_the_right_above_its_first_entry() {
+    fn today_comes_first_and_each_section_heading_once_above_its_first_entry() {
         assert_eq!(
             rows(&draw("A: @bookmark\nB: @bookmark")),
             [
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
-                "          Bookmarks".to_owned(),
+                "  Bookmarks".to_owned(),
                 "  A".to_owned(),
                 "  B".to_owned(),
                 String::new(),
-                "           Projects".to_owned(),
+                "  Projects".to_owned(),
                 "  A".to_owned(),
             ],
-            "bookmarks without an icon, headings against the rule"
+            "bookmarks without an icon, headings in line with the entries"
         );
         assert_eq!(
             rows(&draw("- a @bookmark"))[1..],
-            ["", "          Bookmarks", "  a", "", "", "", ""],
+            ["", "  Bookmarks", "  a", "", "", "", ""],
             "no projects"
         );
     }
@@ -333,7 +333,7 @@ mod tests {
         assert_eq!(
             rows(&draw("ABCDEFGHIJKLMNOPQ:\n\tB:"))[2..5],
             [
-                "           Projects".to_owned(),
+                "  Projects".to_owned(),
                 " ▾ABCDEFGHIJKLMNOPQ".to_owned(),
                 "    B".to_owned(),
             ]

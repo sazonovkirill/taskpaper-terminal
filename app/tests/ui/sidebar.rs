@@ -67,20 +67,15 @@ fn ctrl_b(app: &mut Harness) {
     app.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
 }
 
-/// A section heading as drawn right of the gutter, against the rule (D-68).
-fn heading(text: &str) -> String {
-    format!("{text:>21}")
-}
-
 /// The sidebar's lines as listed before any key, `▌` marking the focused or current one.
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
         format!("{STAR} Today"),
         String::new(),
-        heading("Bookmarks"),
+        "Bookmarks".to_owned(),
         "Launch plan".to_owned(),
         String::new(),
-        heading("Projects"),
+        "Projects".to_owned(),
         "▾Work".to_owned(),
         "  Reports".to_owned(),
         "Home".to_owned(),
@@ -398,7 +393,7 @@ fn the_sidebar_scrolls_to_keep_its_focused_entry_visible() {
         [
             format!("  {STAR} Today"),
             String::new(),
-            format!("  {}", heading("Projects"))
+            "  Projects".to_owned()
         ]
     );
     alt_0(&mut app);
@@ -432,7 +427,7 @@ fn the_shortcuts_panel_opens_at_the_right_with_the_sidebar_at_the_left() {
     let mut app = Harness::with_text(OUTLINE, 100, 10);
     app.type_keys("?");
     let buffer = app.render().buffer().clone();
-    assert_eq!(columns(&buffer, 2, 0, 25), "               Bookmarks│");
+    assert_eq!(columns(&buffer, 2, 0, 25), "  Bookmarks             │");
     assert_eq!(columns(&buffer, 2, 25, 68), "▌ Work:");
     assert_eq!(columns(&buffer, 0, 68, 100), "│Shortcuts");
 }
