@@ -107,9 +107,11 @@ pub enum PaneChange {
     OpenCrumb(usize),
     /// Give the keys to the pane at this position, counted from 0 at the left, if there is one.
     Focus(usize),
-    /// Give the keys to the pane left of the focused one.
+    /// Give the keys to the pane left of the focused one, or to the shown sidebar from the
+    /// leftmost pane (D-71).
     FocusLeft,
-    /// Give the keys to the pane right of the focused one.
+    /// Give the keys to the pane right of the focused one, or to the leftmost pane from the
+    /// sidebar (D-71).
     FocusRight,
     /// Close the focused pane, unless it is the only one, and give the keys to its left
     /// neighbor, else its right one.
@@ -207,11 +209,13 @@ impl State {
                 }
             }
             PaneChange::Focus(at) => self.focus_pane(at),
-            PaneChange::FocusLeft => {
-                if let Some(at) = self.pane_at.checked_sub(1) {
-                    self.focus_pane(at);
-                }
-            }
+            PaneChange::FocusLeft if self.sidebar_focused() => {}
+            PaneChange::FocusLeft => match self.pane_at.checked_sub(1) {
+                Some(at) => self.focus_pane(at),
+                None if self.sidebar.shown() => self.focus_sidebar(),
+                None => {}
+            },
+            PaneChange::FocusRight if self.sidebar_focused() => self.focus_pane(0),
             PaneChange::FocusRight => self.focus_pane(self.pane_at.saturating_add(1)),
             PaneChange::Close => self.close_pane(),
         }
@@ -654,6 +658,7 @@ mod tests {
     #[test]
     fn focusing_a_pane_by_number_or_neighbor_keeps_their_order() {
         let mut state = open(OUTLINE);
+        state.update(Message::ToggleSidebar);
         for project in ["Work", "Home", "Later"] {
             pane(&mut state, PaneChange::Focus(0));
             focus(&mut state, project);
@@ -685,6 +690,54 @@ mod tests {
         pane(&mut state, PaneChange::FocusRight);
         pane(&mut state, PaneChange::FocusRight);
         assert_eq!(panes(&state), marked(2));
+    }
+
+    // FR-UI-01, FR-UI-03, navigation.md §5, D-71: the shown sidebar is the stop left of the
+    // leftmost pane.
+    #[test]
+    fn left_from_the_leftmost_pane_focuses_the_shown_sidebar_and_right_comes_back() {
+        let mut state = open(OUTLINE);
+        focus(&mut state, "Home");
+        pane(&mut state, PaneChange::Open);
+        pane(&mut state, PaneChange::FocusLeft);
+        assert!(!state.sidebar_focused(), "a pane left of it first");
+        pane(&mut state, PaneChange::FocusLeft);
+        assert!(state.sidebar_focused());
+        assert_eq!(state.sidebar().and_then(|sidebar| sidebar.focused), Some(0));
+        state.update(Message::Sidebar(crate::app::SidebarInput::Next));
+        pane(&mut state, PaneChange::FocusLeft);
+        assert!(state.sidebar_focused(), "nothing left of the sidebar");
+        assert_eq!(
+            state.sidebar().and_then(|sidebar| sidebar.focused),
+            Some(1),
+            "its entry stays"
+        );
+        pane(&mut state, PaneChange::Focus(1));
+        state.update(Message::FocusSidebar);
+        pane(&mut state, PaneChange::FocusLeft);
+        assert!(
+            state.sidebar_focused(),
+            "whichever pane had the keys before"
+        );
+        pane(&mut state, PaneChange::FocusRight);
+        assert!(!state.sidebar_focused());
+        assert_eq!(
+            panes(&state),
+            ["*⌂: Home", "Home: Plants"],
+            "right goes to the leftmost pane"
+        );
+        state.update(Message::FocusSidebar);
+        pane(&mut state, PaneChange::FocusRight);
+        assert!(!state.sidebar_focused());
+        assert_eq!(
+            panes(&state),
+            ["*⌂: Home", "Home: Plants"],
+            "the leftmost one had the keys before"
+        );
+        state.update(Message::ToggleSidebar);
+        pane(&mut state, PaneChange::FocusLeft);
+        assert!(!state.sidebar_focused(), "a hidden sidebar is no stop");
+        assert_eq!(state.sidebar(), None, "and stays hidden");
     }
 
     // FR-UI-03, navigation.md §5

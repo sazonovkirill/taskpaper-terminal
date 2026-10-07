@@ -48,6 +48,7 @@ Weekend errands:
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.
 	Open Today with gt, or from the sidebar with Alt+0, then j and Enter, for what is due or started by today; Alt+l or gz on one of its blocks goes to it in the outline.
 	Jump to any block by name with Ctrl+P, or to a project with gP; Alt+Enter or Ctrl+V there opens it in a new pane.
+	Move between the sidebar and the panes with Ctrl+Shift+← and Ctrl+Shift+→, or Ctrl+W ← and Ctrl+W →.
 	Find any command by name with Ctrl+K or :, such as Count Blocks and Words for what is under the focused block, or Save As to keep this file somewhere of your own.
 	Press g, for the settings: theme, icons, word wrap, autosave delay and backups, each kept in ~/.config/taskpaper-terminal/config.toml as you change it.
 	Icons need a Nerd Font: if they show as boxes, press g, and set Icons to none with l.

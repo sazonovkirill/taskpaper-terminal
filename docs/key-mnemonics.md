@@ -84,7 +84,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` focus left/right · `c` **c**lose · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right, the sidebar left of the first pane (`Ctrl+Shift+←/→` too) · `c` **c**lose · `<`/`>` narrower/wider.
 
 ## 9. Kitty-only keys and their everyday twins
 

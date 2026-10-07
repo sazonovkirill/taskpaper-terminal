@@ -134,7 +134,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9`, `g1` … `g9` (the non-`Alt` route of §1) |
-| Focus pane left / right | `Ctrl+W h` / `Ctrl+W l` |
+| Focus the pane left / right; left of the leftmost pane, the shown sidebar (D-71) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l` |
 | Close pane | `Ctrl+W c` |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
 | Search (Later, FR-SRCH-01); until search exists, Go to Symbol | `/` |
@@ -170,7 +170,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused sidebar entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
-- **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and returns to the pane, `Alt+Enter` or `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` returns to the pane, `Alt+1` … `Alt+9` or `g1` … `g9` give the keys to that pane, `Ctrl+B` hides the sidebar. Below 80 columns, where the sidebar hides, the pane keeps the keys.
+- **Sidebar focused:** `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and returns to the pane, `Alt+Enter` or `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` returns to the pane, `Alt+1` … `Alt+9` or `g1` … `g9` give the keys to that pane, `Ctrl+Shift+→`, `Ctrl+W →` or `Ctrl+W l` to the leftmost pane (D-71), `Ctrl+B` hides the sidebar. Below 80 columns, where the sidebar hides, the pane keeps the keys.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` or `Ctrl+V` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.

@@ -434,12 +434,12 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Pane(PaneChange::FocusLeft),
         Mode::Navigate,
-        &["ctrl+w h"],
+        &["ctrl+shift+left", "ctrl+w left", "ctrl+w h"],
     ),
     entry!(
         Command::Pane(PaneChange::FocusRight),
         Mode::Navigate,
-        &["ctrl+w l"],
+        &["ctrl+shift+right", "ctrl+w right", "ctrl+w l"],
     ),
     entry!(
         Command::Pane(PaneChange::Close),

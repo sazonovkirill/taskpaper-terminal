@@ -192,6 +192,41 @@ fn g_1_and_alt_1_give_the_keys_from_the_sidebar_to_the_pane() {
     assert_eq!(sidebar(&mut app), listed(None));
 }
 
+// FR-UI-01, FR-UI-03, keybindings.md §2, §4, D-71, D-42
+#[test]
+fn ctrl_shift_and_ctrl_w_arrows_move_between_the_sidebar_and_the_leftmost_pane() {
+    let mut app = app(80);
+    let ctrl_shift = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
+    app.press(KeyCode::Left, ctrl_shift);
+    assert_eq!(
+        sidebar(&mut app),
+        listed(Some(1)),
+        "the sidebar takes the keys"
+    );
+    app.press(KeyCode::Right, ctrl_shift);
+    assert_eq!(sidebar(&mut app), listed(None), "and gives them back");
+    press(&mut app, KeyCode::Char('j'));
+    assert_eq!(
+        pane(&mut app)[3],
+        format!("▌   - Launch plan {BOOKMARK}"),
+        "j moves in the pane"
+    );
+    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Left);
+    assert_eq!(sidebar(&mut app), listed(Some(1)), "Ctrl+W ← too");
+    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Right);
+    assert_eq!(sidebar(&mut app), listed(None), "and Ctrl+W →");
+    ctrl_b(&mut app);
+    app.press(KeyCode::Left, ctrl_shift);
+    press(&mut app, KeyCode::Char('j'));
+    assert_eq!(
+        line(app.render().buffer(), 4),
+        "▌   Reports:",
+        "a hidden sidebar stays hidden and the pane keeps the keys"
+    );
+}
+
 // FR-UI-01
 #[test]
 fn alt_0_shows_a_hidden_sidebar() {

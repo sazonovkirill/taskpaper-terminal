@@ -748,7 +748,8 @@ impl Keymap {
     }
 
     /// What `pressed` asks for while the sidebar has the keys: its own keys, or the keys that
-    /// focus a pane, sequences such as `g1` included (keybindings.md §4).
+    /// focus a pane or move to the pane on the left or right, sequences such as `g1` included
+    /// (keybindings.md §4, D-71).
     fn sidebar_action(&mut self, pressed: Key, context: &Context) -> Option<KeyAction> {
         if self.pending.is_empty()
             && let Some((_, command)) = self.sidebar.iter().find(|(key, _)| *key == pressed)
@@ -757,8 +758,12 @@ impl Keymap {
         }
         self.pending.push(pressed);
         let mut focus = self.navigate.iter().filter(|(keys, command)| {
-            matches!(command, Command::Pane(PaneChange::Focus(_)))
-                && keys.starts_with(&self.pending)
+            matches!(
+                command,
+                Command::Pane(
+                    PaneChange::Focus(_) | PaneChange::FocusLeft | PaneChange::FocusRight
+                )
+            ) && keys.starts_with(&self.pending)
         });
         let bound = focus.clone().find(|(keys, _)| *keys == self.pending);
         if bound.is_none() && focus.next().is_some() {
@@ -2957,6 +2962,50 @@ mod tests {
             let focus = Some(Message::Pane(PaneChange::Focus(at)));
             check(KeyCode::Char(digit), KeyModifiers::ALT, focus.as_ref());
             assert_eq!(messages(&format!("g{digit}"), CONTEXT), [None, focus]);
+        }
+    }
+
+    // D-71, D-42: `Ctrl+Shift+←`/`→`, which both key reportings send, and their classic variants
+    // `Ctrl+W ←`/`→` move to the pane on the left or right, from a pane and from the sidebar;
+    // edit mode keeps `Ctrl+Shift+←`/`→` for selecting words.
+    #[test]
+    fn ctrl_shift_and_ctrl_w_with_an_arrow_move_to_the_pane_on_that_side() {
+        let ctrl = KeyModifiers::CONTROL;
+        let ctrl_w = (KeyCode::Char('w'), ctrl);
+        let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
+        for (code, change) in [
+            (KeyCode::Left, PaneChange::FocusLeft),
+            (KeyCode::Right, PaneChange::FocusRight),
+        ] {
+            for context in [CONTEXT, IN_SIDEBAR] {
+                let shifted = (code, ctrl | KeyModifiers::SHIFT);
+                assert_eq!(actions(&[shifted], context), [pane(change)]);
+                let arrow = (code, KeyModifiers::NONE);
+                assert_eq!(actions(&[ctrl_w, arrow], context), [None, pane(change)]);
+            }
+        }
+        assert_eq!(
+            actions(
+                &[ctrl_w, (KeyCode::Char('l'), KeyModifiers::NONE)],
+                IN_SIDEBAR
+            ),
+            [None, pane(PaneChange::FocusRight)],
+            "Ctrl+W l too"
+        );
+        assert_eq!(
+            actions(
+                &[ctrl_w, (KeyCode::Char('v'), KeyModifiers::NONE)],
+                IN_SIDEBAR
+            ),
+            [None, None],
+            "the sidebar takes no other Ctrl+W keys"
+        );
+        let keymap = Keymap::default();
+        for (change, keys) in [
+            (PaneChange::FocusLeft, "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h"),
+            (PaneChange::FocusRight, "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l"),
+        ] {
+            assert_eq!(keymap.bindings(Command::Pane(change), true), keys);
         }
     }
 
