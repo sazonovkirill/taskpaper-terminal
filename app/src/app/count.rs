@@ -15,7 +15,7 @@ impl State {
         while let Some(line) = pending.pop() {
             for block in blocks::each_child(&self.document, line) {
                 count += 1;
-                let text = self.shown_text(&block);
+                let text = self.shown_text(block.id());
                 let text = if block.divider() {
                     blocks::divider_title(&text).unwrap_or_default()
                 } else {

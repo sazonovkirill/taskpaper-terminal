@@ -463,16 +463,16 @@ impl State {
         let mut path: Vec<String> = std::iter::successors(Some(block.clone()), |block| {
             blocks::parent(&self.document, block.id())
         })
-        .map(|block| self.shown_text(&block))
+        .map(|block| self.shown_text(block.id()))
         .collect();
         path.reverse();
         path
     }
 
-    /// The text of `block` as shown, without the delimiters of its formatting.
-    pub(super) fn shown_text(&self, block: &Block) -> String {
+    /// The text of the block `id` as shown, without the delimiters of its formatting.
+    pub(super) fn shown_text(&self, id: ItemId) -> String {
         self.document
-            .get(block.id())
+            .get(id)
             .map(Item::plain_text)
             .unwrap_or_default()
             .to_owned()
@@ -486,23 +486,32 @@ impl State {
 
     /// The visible rows of `pane`: its outline's, or in the Today view its entries (D-7).
     pub(super) fn rows_of(&self, pane: &Pane) -> Rows {
+        self.rows_folded(pane, &self.folds)
+    }
+
+    /// The visible rows of `pane` with the blocks `folds` collapsed.
+    pub(super) fn rows_folded(&self, pane: &Pane, folds: &HashSet<ItemId>) -> Rows {
         let key = RowsKey {
             document: self.document.stamp(),
-            folds: self.folds.clone(),
+            folds: folds.clone(),
             location: pane.location,
             show_done: pane.show_done,
             selection: pane.selection.clone(),
             today: (pane.location == Location::Today)
                 .then(|| (self.today, self.today_order.clone())),
         };
-        let fits = |kept: &RowsKey| {
-            matches!(kept.location, Location::Outline(_))
+        // Rows of the same outline fit, best those with the same folds: the sidebar's rows,
+        // with none, and a pane's are each built from their own earlier rows, so a folded
+        // block's rows are not built again for the other.
+        let rank = |kept: &RowsKey| {
+            (matches!(kept.location, Location::Outline(_))
                 && kept.location == pane.location
-                && kept.show_done == pane.show_done
+                && kept.show_done == pane.show_done)
+                .then(|| kept.folds == *folds)
         };
         self.rows
-            .get_or_derive(key, fits, |before| match pane.location {
-                Location::Outline(_) => self.outline_rows(pane, before),
+            .get_or_derive(key, rank, |before| match pane.location {
+                Location::Outline(_) => self.outline_rows(pane, folds, before),
                 Location::Today => self.today_rows(pane).into_iter().collect(),
             })
     }
@@ -513,8 +522,12 @@ impl State {
     /// and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row
     /// inside a done block, also one above the zoom, says so (D-40). Rows of `before`, the
     /// pane's rows at an earlier key, are kept where nothing they show changed since.
-    fn outline_rows(&self, pane: &Pane, before: Option<(RowsKey, Rows)>) -> Rows {
-        let folds = &self.folds;
+    fn outline_rows(
+        &self,
+        pane: &Pane,
+        folds: &HashSet<ItemId>,
+        before: Option<(RowsKey, Rows)>,
+    ) -> Rows {
         let title = self.zoom_block_of(pane).map(|block| {
             let inside_done =
                 std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
@@ -1176,12 +1189,44 @@ mod tests {
             let before = state.rows();
             make(&mut state, &change);
             let rows = state.rows();
-            assert_eq!(rows, state.outline_rows(&state.pane, None));
+            assert_eq!(rows, state.outline_rows(&state.pane, &state.folds, None));
             // The chunk of the first row, Top's, which every change below it builds again, and
             // those around the change, of the eight there are.
             let built = rows.chunks_apart_from(&before);
             assert!(built <= 4, "{change:?} built {built} chunks again");
         }
+    }
+
+    // N-PERF-02
+    #[test]
+    fn rows_with_other_folds_build_again_from_their_own_earlier_rows() {
+        let mut text = "Top:\n".to_owned();
+        for project in 0..40 {
+            writeln!(text, "\tP{project}:").unwrap();
+            for task in 0..50 {
+                writeln!(text, "\t\t- {project} {task}").unwrap();
+            }
+        }
+        let mut state = State::new(format::parse(&text), None);
+        let projects: Vec<ItemId> = state
+            .blocks(false)
+            .into_iter()
+            .filter(|&(_, depth)| depth == 1)
+            .map(|(block, _)| block.id())
+            .collect();
+        state.folds.extend(projects);
+        let unfolded = |state: &State| state.rows_folded(&Pane::first(), &HashSet::new());
+        let before = unfolded(&state);
+        let _ = state.rows();
+        make(&mut state, &Change::Text(20 * 51 + 5, "- t @done"));
+        let _ = state.rows();
+        let rows = unfolded(&state);
+        assert_eq!(
+            rows,
+            state.outline_rows(&Pane::first(), &HashSet::new(), None)
+        );
+        let built = rows.chunks_apart_from(&before);
+        assert!(built <= 4, "built {built} chunks again");
     }
 
     proptest::proptest! {
@@ -1197,7 +1242,7 @@ mod tests {
                 let _ = state.rows();
                 make(&mut state, change);
                 let rows = state.rows();
-                let anew = state.outline_rows(&state.pane, None);
+                let anew = state.outline_rows(&state.pane, &state.folds, None);
                 proptest::prop_assert_eq!(rows, anew, "after {:?}", change);
             }
         }

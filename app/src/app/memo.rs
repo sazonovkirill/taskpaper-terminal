@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 
-/// How many keys a memo keeps values for: enough for every pane on a screen.
+/// How many keys a memo keeps values for: enough for every pane on a screen and the sidebar.
 const KEPT: usize = 8;
 
 /// The values computed for the latest few keys, where a key holds everything its value is
@@ -24,16 +24,16 @@ impl<K, V> Default for Memo<K, V> {
 impl<K: PartialEq + Clone, V: Clone> Memo<K, V> {
     /// The value kept for `key`, or else the one `compute` gives, kept for it from now on.
     pub(super) fn get(&self, key: K, compute: impl FnOnce() -> V) -> V {
-        self.get_or_derive(key, |_| false, |_| compute())
+        self.get_or_derive(key, |_| None::<()>, |_| compute())
     }
 
-    /// The value kept for `key`, or else the one `compute` gives from the latest key and value
-    /// kept that `fits` accepts, if any, kept for `key` from now on; for values cheaper to
-    /// work out from an earlier one than anew.
-    pub(super) fn get_or_derive(
+    /// The value kept for `key`, or else the one `compute` gives from the key and value kept
+    /// that `rank` ranks highest, the latest of those, if it ranks any, kept for `key` from now
+    /// on; for values cheaper to work out from an earlier one than anew.
+    pub(super) fn get_or_derive<R: Ord>(
         &self,
         key: K,
-        fits: impl Fn(&K) -> bool,
+        rank: impl Fn(&K) -> Option<R>,
         compute: impl FnOnce(Option<(K, V)>) -> V,
     ) -> V {
         let base = {
@@ -41,7 +41,11 @@ impl<K: PartialEq + Clone, V: Clone> Memo<K, V> {
             if let Some((_, value)) = entries.iter().find(|(kept, _)| *kept == key) {
                 return value.clone();
             }
-            entries.iter().rev().find(|(kept, _)| fits(kept)).cloned()
+            entries
+                .iter()
+                .filter_map(|entry| Some((rank(&entry.0)?, entry)))
+                .max_by(|(a, _), (b, _)| a.cmp(b))
+                .map(|(_, entry)| entry.clone())
         };
         let value = compute(base);
         let mut entries = self.entries.borrow_mut();
@@ -86,12 +90,13 @@ mod tests {
 
     // N-PERF-02
     #[test]
-    fn a_value_is_derived_from_the_latest_kept_one_that_fits() {
+    fn a_value_is_derived_from_the_latest_kept_one_ranked_highest() {
         let memo = Memo::default();
+        // Keys of the same parity fit, those ending in the same digit best.
         let derive = |key: usize| {
             memo.get_or_derive(
                 key,
-                |kept| kept % 2 == key % 2,
+                |kept| (kept % 2 == key % 2).then_some(kept % 10 == key % 10),
                 |base| (key, base.map(|(kept, _)| kept)),
             )
         };
@@ -99,6 +104,7 @@ mod tests {
         assert_eq!(derive(2), (2, None), "nothing that fits");
         assert_eq!(derive(3), (3, Some(1)));
         assert_eq!(derive(5), (5, Some(3)), "the latest that fits");
+        assert_eq!(derive(13), (13, Some(3)), "the one that fits best");
         assert_eq!(derive(1), (1, None), "kept for the key");
     }
 }

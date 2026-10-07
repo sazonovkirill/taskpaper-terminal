@@ -5,9 +5,10 @@
 use std::{collections::HashSet, rc::Rc};
 
 use super::{
-    Location, Notice, PaneChange, State,
+    Location, Notice, PaneChange, Rows, State,
     commands::{Command, NodeCommand},
     memo::Memo,
+    pane::Pane,
 };
 use crate::document::{BlockKind, ItemId, Stamp, blocks};
 
@@ -392,14 +393,26 @@ impl State {
             today: self.sidebar.today,
         };
         self.sidebar.entries.get(key, || {
-            let root = self.document().root();
             let inbox = self.sidebar.special_inbox.then(|| self.inbox()).flatten();
             let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
-            let mut entries: Vec<_> = inbox.into_iter().collect();
-            entries.extend(self.sidebar.today.then_some(SidebarEntry::Today));
-            self.push_bookmarks(root, &mut entries);
-            entries.extend(self.projects(root, 0, false, apart));
-            entries.into()
+            // Every block that shows, from the outline's rows with nothing collapsed, which a
+            // change builds again only where it changed.
+            let mut every = Pane::first();
+            every.show_done = self.pane.show_done;
+            let rows = self.rows_folded(&every, &HashSet::new());
+            let bookmarks =
+                rows.iter()
+                    .filter(|row| row.bookmark)
+                    .map(|row| SidebarEntry::Bookmark {
+                        id: row.id,
+                        text: self.shown_text(row.id),
+                    });
+            inbox
+                .into_iter()
+                .chain(self.sidebar.today.then_some(SidebarEntry::Today))
+                .chain(bookmarks)
+                .chain(self.projects(&rows, apart))
+                .collect()
         })
     }
 
@@ -407,7 +420,7 @@ impl State {
     fn inbox(&self) -> Option<SidebarEntry> {
         blocks::each_child(self.document(), self.document().root())
             .filter(|block| block.kind() == BlockKind::Project && self.shows(block))
-            .map(|block| (self.shown_text(&block), block))
+            .map(|block| (self.shown_text(block.id()), block))
             .find(|(text, _)| text == INBOX)
             .map(|(text, block)| SidebarEntry::Inbox {
                 id: block.id(),
@@ -416,64 +429,100 @@ impl State {
             })
     }
 
-    /// Appends an entry for each bookmarked block below `line`, depth first, but not for
-    /// completed blocks and what they hold while those are hidden (FR-DONE-02).
-    fn push_bookmarks(&self, line: ItemId, out: &mut Vec<SidebarEntry>) {
-        for block in blocks::each_child(self.document(), line) {
-            if !self.shows(&block) {
-                continue;
-            }
-            if block.bookmark() {
-                out.push(SidebarEntry::Bookmark {
-                    id: block.id(),
-                    text: self.shown_text(&block),
-                });
-            }
-            self.push_bookmarks(block.id(), out);
-        }
-    }
-
-    /// The project entries below the line `line` at `depth`, skipping the blocks between
-    /// projects, the projects inside folded entries, the block `apart` with what it holds, and
-    /// completed blocks with what they hold while those are hidden (FR-DONE-02); `inside_done`
-    /// says whether `line` or a block above it is done.
-    fn projects(
-        &self,
-        line: ItemId,
-        depth: usize,
-        inside_done: bool,
-        apart: Option<ItemId>,
-    ) -> Vec<SidebarEntry> {
+    /// The project entries of `rows`, each nested under the closest project above it, without
+    /// the projects inside folded entries or the block `apart` with what it holds.
+    fn projects(&self, rows: &Rows, apart: Option<ItemId>) -> Vec<SidebarEntry> {
         let mut out = Vec::new();
-        for block in blocks::each_child(self.document(), line) {
-            if !self.shows(&block) || apart == Some(block.id()) {
+        // The projects above the current row.
+        let mut above: Vec<Above> = Vec::new();
+        // How many open tasks (D-67) the rows so far hold: tasks neither done nor inside a done
+        // block, so a done project counts none.
+        let mut open = 0;
+        // The depth of `apart` while going through what it holds.
+        let mut inside_apart = None;
+        for row in rows {
+            if inside_apart.is_some_and(|depth| row.depth > depth) {
                 continue;
             }
-            let done = inside_done || block.done();
-            if block.kind() != BlockKind::Project {
-                out.extend(self.projects(block.id(), depth, done, apart));
+            inside_apart = (apart == Some(row.id)).then_some(row.depth);
+            if inside_apart.is_some() {
                 continue;
             }
-            let below = self.projects(block.id(), depth + 1, done, apart);
-            let fold = if below.is_empty() {
-                Fold::Leaf
-            } else if self.sidebar.folds.contains(&block.id()) {
-                Fold::Collapsed
-            } else {
-                Fold::Expanded
-            };
-            out.push(SidebarEntry::Project {
-                id: block.id(),
-                text: self.shown_text(&block),
-                depth,
-                fold,
-                open_tasks: self.open_tasks(&block, inside_done),
+            while above
+                .last()
+                .is_some_and(|project| project.depth >= row.depth)
+            {
+                end_project(&mut above, &mut out, open);
+            }
+            if row.kind == BlockKind::Task && !row.done && !row.inside_done {
+                open += 1;
+            }
+            if row.kind != BlockKind::Project {
+                continue;
+            }
+            let parent = above.last().copied();
+            if let Some(Above {
+                entry: Some(entry),
+                folded,
+                ..
+            }) = parent
+                && let Some(SidebarEntry::Project { fold, .. }) = out.get_mut(entry)
+            {
+                *fold = if folded {
+                    Fold::Collapsed
+                } else {
+                    Fold::Expanded
+                };
+            }
+            let listed = parent.is_none_or(|above| above.entry.is_some() && !above.folded);
+            let entry = listed.then(|| {
+                out.push(SidebarEntry::Project {
+                    id: row.id,
+                    text: self.shown_text(row.id),
+                    depth: above.len(),
+                    fold: Fold::Leaf,
+                    open_tasks: 0,
+                });
+                out.len() - 1
             });
-            if fold == Fold::Expanded {
-                out.extend(below);
-            }
+            above.push(Above {
+                depth: row.depth,
+                entry,
+                folded: self.sidebar.folds.contains(&row.id),
+                open_before: open,
+            });
+        }
+        while !above.is_empty() {
+            end_project(&mut above, &mut out, open);
         }
         out
+    }
+}
+
+/// A project above a row of the outline.
+#[derive(Debug, Clone, Copy)]
+struct Above {
+    /// Its depth in the outline.
+    depth: usize,
+    /// Its entry, unless an entry above it is folded.
+    entry: Option<usize>,
+    /// Whether its entry is folded.
+    folded: bool,
+    /// How many open tasks came before it.
+    open_before: usize,
+}
+
+/// Ends the last project of `above`, giving its entry in `out` the open tasks since it began,
+/// `open` counting those so far.
+fn end_project(above: &mut Vec<Above>, out: &mut [SidebarEntry], open: usize) {
+    if let Some(Above {
+        entry: Some(entry),
+        open_before,
+        ..
+    }) = above.pop()
+        && let Some(SidebarEntry::Project { open_tasks, .. }) = out.get_mut(entry)
+    {
+        *open_tasks = open - open_before;
     }
 }
 
