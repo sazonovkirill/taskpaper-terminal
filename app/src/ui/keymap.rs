@@ -37,7 +37,7 @@ pub struct Context {
     pub overlay: Option<Overlay>,
     /// Whether the shortcuts panel is open, which `Esc` closes in navigate mode (FR-KEY-04).
     pub shortcuts: bool,
-    /// Whether the sidebar is drawn and has the keys (FR-UI-01).
+    /// Whether the sidebar is open, and so has the keys (FR-UI-01, D-79).
     pub sidebar: bool,
 }
 
@@ -589,7 +589,7 @@ pub struct Keymap {
     navigate: Vec<(Vec<Key>, Command)>,
     /// Each edit-mode key with its command, as a sequence of one key.
     edit: Vec<(Vec<Key>, Command)>,
-    /// Each key of the focused sidebar with its command.
+    /// Each key of the open sidebar with its command.
     sidebar: Vec<(Key, Command)>,
     pending: Vec<Key>,
     /// When the pending sequence started, in the frontend's time.
@@ -714,8 +714,8 @@ impl Keymap {
     }
 
     /// How the keys that give `command` read on screen, as [`Keymap::labels`] writes them: its
-    /// navigate-mode keys if it is a command of navigate mode, else its keys in the focused
-    /// sidebar, or the other way round where the `sidebar` has the keys.
+    /// navigate-mode keys if it is a command of navigate mode, else its keys in the open sidebar,
+    /// or the other way round where the `sidebar` is open.
     #[must_use]
     pub fn bindings(&self, command: Command, sidebar: bool) -> String {
         let navigate = || {
@@ -747,30 +747,11 @@ impl Keymap {
         action(*command, context)
     }
 
-    /// What `pressed` asks for while the sidebar has the keys: its own keys, or the keys that
-    /// focus a pane or move to the pane on the left or right, sequences such as `g1` included
-    /// (keybindings.md §4, D-71).
-    fn sidebar_action(&mut self, pressed: Key, context: &Context) -> Option<KeyAction> {
-        if self.pending.is_empty()
-            && let Some((_, command)) = self.sidebar.iter().find(|(key, _)| *key == pressed)
-        {
-            return action(*command, context);
-        }
-        self.pending.push(pressed);
-        let mut focus = self.navigate.iter().filter(|(keys, command)| {
-            matches!(
-                command,
-                Command::Pane(
-                    PaneChange::Focus(_) | PaneChange::FocusLeft | PaneChange::FocusRight
-                )
-            ) && keys.starts_with(&self.pending)
-        });
-        let bound = focus.clone().find(|(keys, _)| *keys == self.pending);
-        if bound.is_none() && focus.next().is_some() {
-            return None;
-        }
-        self.pending.clear();
-        action(bound?.1, context)
+    /// What `pressed` asks for while the sidebar is open: its own keys alone (keybindings.md §4,
+    /// D-79).
+    fn sidebar_action(&self, pressed: Key, context: &Context) -> Option<KeyAction> {
+        let (_, command) = self.sidebar.iter().find(|(key, _)| *key == pressed)?;
+        action(*command, context)
     }
 
     /// The edit-mode message for `key`: its binding, else the change to the text it asks for.
@@ -1714,11 +1695,7 @@ mod tests {
         check_editing(KeyCode::Char('b'), KeyModifiers::CONTROL, Some(&bold));
         check_editing(KeyCode::Char('`'), KeyModifiers::ALT, Some(&code));
         check_editing(KeyCode::Char('e'), KeyModifiers::CONTROL, Some(&code));
-        check(
-            KeyCode::Char('b'),
-            KeyModifiers::CONTROL,
-            Some(&Message::ToggleSidebar),
-        );
+        check(KeyCode::Char('b'), KeyModifiers::CONTROL, None);
         check(KeyCode::Char('`'), KeyModifiers::ALT, None);
     }
 
@@ -2217,41 +2194,42 @@ mod tests {
         }
     }
 
-    // FR-UI-01, D-42: `Alt+0` has the classic variant `g0`.
+    // FR-UI-01, D-42, D-79: `Ctrl+G` is the same key with and without the kitty protocol, and
+    // the sidebar's old keys are gone.
     #[test]
-    fn ctrl_b_toggles_the_sidebar_and_alt_0_and_g_0_focus_it() {
+    fn ctrl_g_opens_the_sidebar() {
         check(
-            KeyCode::Char('b'),
+            KeyCode::Char('g'),
             KeyModifiers::CONTROL,
             Some(&Message::ToggleSidebar),
         );
-        check(
-            KeyCode::Char('0'),
-            KeyModifiers::ALT,
-            Some(&Message::FocusSidebar),
-        );
-        assert_eq!(messages("g0", CONTEXT), [None, Some(Message::FocusSidebar)]);
+        check(KeyCode::Char('0'), KeyModifiers::ALT, None);
+        assert_eq!(messages("g0", CONTEXT), [None, None]);
     }
 
-    // keybindings.md §4, D-42: the panes' keys work from the sidebar too.
+    // keybindings.md §4, D-79: the open sidebar is a window that keeps the keys.
     #[test]
-    fn the_focused_sidebar_takes_the_keys_that_focus_a_pane() {
-        let focus = |at| Some(Message::Pane(PaneChange::Focus(at)));
-        assert_eq!(messages("g1", IN_SIDEBAR), [None, focus(0)]);
-        assert_eq!(messages("g9", IN_SIDEBAR), [None, focus(8)]);
-        assert_eq!(messages("gj", IN_SIDEBAR), [None, None]);
+    fn the_open_sidebar_takes_no_keys_that_focus_a_pane() {
+        assert_eq!(messages("g1", IN_SIDEBAR), [None, None]);
         let mut keymap = Keymap::default();
-        let alt_2 = key(KeyCode::Char('2'), KeyModifiers::ALT);
-        assert_eq!(keymap.message_for(&alt_2, ms(0), IN_SIDEBAR), focus(1));
-        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
-        let j = key(KeyCode::Char('j'), KeyModifiers::NONE);
-        keymap.message_for(&g, ms(0), IN_SIDEBAR);
-        assert_eq!(keymap.message_for(&j, ms(1), IN_SIDEBAR), None);
-        assert_eq!(keymap.pending(), "", "the sequence ends");
+        for (code, modifiers) in [
+            (KeyCode::Char('2'), KeyModifiers::ALT),
+            (KeyCode::Right, KeyModifiers::CONTROL | KeyModifiers::SHIFT),
+            (KeyCode::Char('w'), KeyModifiers::CONTROL),
+        ] {
+            assert_eq!(
+                keymap.message_for(&key(code, modifiers), ms(0), IN_SIDEBAR),
+                None
+            );
+            assert_eq!(keymap.pending(), "", "nothing waits for a sequence");
+        }
         assert_eq!(
-            keymap.message_for(&j, ms(2), IN_SIDEBAR),
+            keymap.message_for(
+                &key(KeyCode::Char('j'), KeyModifiers::NONE),
+                ms(1),
+                IN_SIDEBAR
+            ),
             Some(Message::Sidebar(SidebarInput::Next)),
-            "and the sidebar's own keys work again"
         );
     }
 
@@ -2262,7 +2240,7 @@ mod tests {
 
     // FR-UI-01, keybindings.md §4
     #[test]
-    fn the_focused_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_b() {
+    fn the_open_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_g() {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
         let sidebar = |input| Some(Message::Sidebar(input));
@@ -2278,7 +2256,8 @@ mod tests {
             (KeyCode::Enter, none, sidebar(SidebarInput::Choose)),
             (KeyCode::Esc, none, sidebar(SidebarInput::Leave)),
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
-            (KeyCode::Char('b'), ctrl, Some(Message::ToggleSidebar)),
+            (KeyCode::Char('g'), ctrl, Some(Message::ToggleSidebar)),
+            (KeyCode::Char('b'), ctrl, None),
             (KeyCode::Char('x'), none, None),
             (KeyCode::Char('j'), ctrl, None),
         ] {
@@ -2964,7 +2943,7 @@ mod tests {
     }
 
     // FR-UI-03, keybindings.md §2, D-42: `Alt+1` … `Alt+9` have the classic variants `g1` …
-    // `g9`, beside `Alt+0` and `g0` for the sidebar.
+    // `g9`.
     #[test]
     fn alt_and_g_with_a_digit_focus_that_pane() {
         for (at, digit) in ('1'..='9').enumerate() {
@@ -2975,8 +2954,7 @@ mod tests {
     }
 
     // D-71, D-42: `Ctrl+Shift+←`/`→`, which both key reportings send, and their classic variants
-    // `Ctrl+W ←`/`→` move to the pane on the left or right, from a pane and from the sidebar;
-    // edit mode keeps `Ctrl+Shift+←`/`→` for selecting words.
+    // `Ctrl+W ←`/`→` move to the pane on the left or right; edit mode keeps `Ctrl+Shift+←`/`→` for selecting words.
     #[test]
     fn ctrl_shift_and_ctrl_w_with_an_arrow_move_to_the_pane_on_that_side() {
         let ctrl = KeyModifiers::CONTROL;
@@ -2986,28 +2964,15 @@ mod tests {
             (KeyCode::Left, PaneChange::FocusLeft),
             (KeyCode::Right, PaneChange::FocusRight),
         ] {
-            for context in [CONTEXT, IN_SIDEBAR] {
-                let shifted = (code, ctrl | KeyModifiers::SHIFT);
-                assert_eq!(actions(&[shifted], context), [pane(change)]);
-                let arrow = (code, KeyModifiers::NONE);
-                assert_eq!(actions(&[ctrl_w, arrow], context), [None, pane(change)]);
-            }
+            let shifted = (code, ctrl | KeyModifiers::SHIFT);
+            assert_eq!(actions(&[shifted], CONTEXT), [pane(change)]);
+            let arrow = (code, KeyModifiers::NONE);
+            assert_eq!(actions(&[ctrl_w, arrow], CONTEXT), [None, pane(change)]);
         }
         assert_eq!(
-            actions(
-                &[ctrl_w, (KeyCode::Char('l'), KeyModifiers::NONE)],
-                IN_SIDEBAR
-            ),
+            actions(&[ctrl_w, (KeyCode::Char('l'), KeyModifiers::NONE)], CONTEXT),
             [None, pane(PaneChange::FocusRight)],
             "Ctrl+W l too"
-        );
-        assert_eq!(
-            actions(
-                &[ctrl_w, (KeyCode::Char('v'), KeyModifiers::NONE)],
-                IN_SIDEBAR
-            ),
-            [None, None],
-            "the sidebar takes no other Ctrl+W keys"
         );
         let keymap = Keymap::default();
         for (change, keys) in [

@@ -29,7 +29,7 @@ Document (core)        document::{model, blocks, format, dates, query}
 | `app::update` | App | `update(state, message) -> effects`, committing each command's transaction to the history; autosave and debounce timing from clock-tick messages; canonical-outline repairs before save. |
 | `ui::keymap` | UI | Key events → app messages per mode and context, multi-key sequences, config overrides ([keybindings.md](keybindings.md)). |
 | `ui::mouse` | UI | Mouse events → app messages: what the last frame drew under the pointer and what a click, Alt+click, right-click or the wheel there asks for ([ui.md §6](ui.md#6-mouse-fr-key-05-d-16)). |
-| `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, sidebar, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
+| `ui::widgets`, `ui::layout`, `ui::theme` | UI | Rendering panes, blocks and the inline editor, the Navigator, panels, pickers, prompts, context menu, status line; wrapping, display width, scrolling, pane widths, themes ([ui.md](ui.md)). |
 | `ui::animation` | UI | Animation effects drawn over rendered frames, their triggers and the animation setting ([ui.md §9](ui.md#9-animation-fr-ui-11)). |
 | `ui::effects` | UI | Executes the core's effects: atomic save, Save As, backups, recovery files, view-state files, file watching, clipboard, opening URLs ([file-io.md](file-io.md)). |
 | `ui::config` | UI | Loads and writes `config.toml` (OQ-18, FR-SET), keeping comments and order with `toml_edit`. |

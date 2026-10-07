@@ -213,8 +213,7 @@ mod tests {
                          "focus": [["Work", 0], ["Report", 0]], "width": null,
                          "show_completed": true}
                     ],
-                    "focused": 1,
-                    "sidebar": true
+                    "focused": 1
                 }
             })
         );
@@ -228,10 +227,9 @@ mod tests {
         let views = views(dir.path());
         let path = dir.path().join("new.taskpaper");
         let mut state = super::super::open(&path)?;
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::Pane(PaneChange::OpenLocation));
         store(&views, &state)?;
-        assert_eq!(views.restore(super::super::open(&path)?).sidebar(), None);
+        assert_eq!(views.restore(super::super::open(&path)?).panes().len(), 2);
         Ok(())
     }
 

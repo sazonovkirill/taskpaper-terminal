@@ -130,7 +130,6 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::Back
         | Message::Forward
         | Message::ToggleSidebar
-        | Message::FocusSidebar
         | Message::Sidebar(_)
         | Message::ToggleDone { .. }
         | Message::ChangeDate { .. }

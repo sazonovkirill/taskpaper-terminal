@@ -187,8 +187,8 @@ impl Tui {
             ),
             Listed::SidebarToday => switch_on_by_default(
                 "Appearance",
-                "Show Today in sidebar",
-                "List the Today view in the sidebar",
+                "Show Today in Navigator",
+                "List the Today view in the Navigator",
                 self.state.sidebar_today(),
             ),
             Listed::AutosaveDelay => (

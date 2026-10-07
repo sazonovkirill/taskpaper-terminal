@@ -1,6 +1,6 @@
 //! A file's layout as it is kept between sessions: its panes in order, each with its location
-//! and history, focused block, width and show-completed setting, which pane has the keys and
-//! whether the sidebar shows, and the order the user gave the Today view's entries (D-57), with
+//! and history, focused block, width and show-completed setting, which pane has the keys, and the
+//! order the user gave the Today view's entries (D-57), with
 //! blocks named by their text paths, which outlive the ids of one
 //! session; restoring it drops what no longer matches. Folds are not kept (D-26)
 //! ([file-io.md §5](../../../docs/specs/file-io.md#5-view-state-persistence), FR-UI-04, OQ-05).
@@ -22,8 +22,6 @@ pub struct ViewState {
     panes: Vec<PaneState>,
     /// The position of the pane with the keys.
     focused: usize,
-    /// Whether the sidebar shows.
-    sidebar: bool,
     /// The blocks placed in the Today view's order, in that order; left out while there are none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     today: Vec<TextPath>,
@@ -90,7 +88,6 @@ impl State {
                 .map(|pane| self.pane_state(pane))
                 .collect(),
             focused: self.pane_at,
-            sidebar: self.sidebar.shown(),
             today: self
                 .today_order
                 .placed()
@@ -131,14 +128,12 @@ impl State {
         let ViewState {
             panes,
             focused,
-            sidebar,
             today,
         } = view;
         self.today_order =
             TodayOrder::new(today.iter().filter_map(|path| exact(path, &self.document)));
         let panes = panes.iter().map(|saved| self.restored(saved)).collect();
         self.set_panes(panes, focused);
-        self.sidebar.show(sidebar);
         self
     }
 
@@ -259,13 +254,14 @@ mod tests {
 
     /// Three panes: home focusing Home with completed blocks hidden; Work zoomed in, focusing
     /// Report, 44 columns wide, with home ahead in its history; and Today, entered from Work.
-    /// The middle one has the keys, and the sidebar is hidden.
+    /// The middle one has the keys.
     fn laid_out() -> State {
         let mut state = open(OUTLINE);
         focus(&mut state, "Work");
         state.update(Message::Pane(PaneChange::Open));
         state.update(Message::ResizePane(44));
         state.update(Message::Pane(PaneChange::OpenLocation));
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Focus(0)));
         state.update(Message::Sidebar(SidebarInput::Choose));
         state.update(Message::Pane(PaneChange::Focus(0)));
@@ -274,8 +270,6 @@ mod tests {
         state.update(Message::Pane(PaneChange::Focus(1)));
         state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Back);
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
         state
     }
 
@@ -296,7 +290,6 @@ mod tests {
         assert_eq!(panes(&state), expected);
         let mut restored = reopened(&state, OUTLINE);
         assert_eq!(panes(&restored), expected);
-        assert_eq!(restored.sidebar(), None, "the sidebar stays hidden");
         assert!(!rows(&restored, 0).contains(&"Slides".to_owned()));
         assert!(rows(&restored, 1).contains(&"Slides".to_owned()));
         restored.update(Message::Forward);
@@ -304,8 +297,6 @@ mod tests {
         restored.update(Message::Pane(PaneChange::FocusRight));
         restored.update(Message::Back);
         assert_eq!(crumb(&restored), "Work", "back to Work");
-        restored.update(Message::ToggleSidebar);
-        assert!(restored.sidebar().is_some());
         let ids: std::collections::HashSet<_> =
             restored.panes().iter().map(|pane| pane.id).collect();
         assert_eq!(ids.len(), 3, "each pane told apart");
@@ -313,9 +304,8 @@ mod tests {
 
     // FR-UI-04, file-io.md §5
     #[test]
-    fn a_new_launch_finds_blocks_that_moved_and_shows_the_sidebar_when_it_showed() {
-        let mut state = laid_out();
-        state.update(Message::ToggleSidebar);
+    fn a_new_launch_finds_blocks_that_moved() {
+        let state = laid_out();
         let moved =
             "Intro\nLater:\nHome:\n\t- Plants\nWork:\n\t- Slides @done\n\t- Report @today\n";
         let restored = reopened(&state, moved);
@@ -323,7 +313,6 @@ mod tests {
             panes(&restored),
             ["⌂: Home", "*Work: Report (44)", "Today: Report"]
         );
-        assert!(restored.sidebar().is_some());
     }
 
     // FR-UI-04, file-io.md §5
@@ -364,7 +353,7 @@ mod tests {
     fn a_today_entry_stays_focused_until_the_date_shows_it() {
         let text = "Errands:\n\t- Post office @today\n\t- Dentist @due(2026-10-05)\n";
         let mut state = open(text);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Choose));
         state.update(Message::FocusNext);
         assert_eq!(panes(&state), ["*Today: Dentist"]);
@@ -449,7 +438,6 @@ mod tests {
                 .expect("a layout");
         let state = open(OUTLINE).with_view_state(none);
         assert_eq!(panes(&state), ["*⌂: Work"], "without panes the pane stays");
-        assert_eq!(state.sidebar(), None);
     }
 
     // file-io.md §5

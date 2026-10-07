@@ -99,8 +99,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     A colored flag after the text, or a tinted line│",
             "│               │   ⊔ Special handling of INBOX project          on  │",
             "│               │     Show INBOX: above Today, not under Projects    │",
-            "│               │   ★ Show Today in sidebar                      on  │",
-            "│               │     List the Today view in the sidebar             │",
+            "│               │   ★ Show Today in Navigator                    on  │",
+            "│               │     List the Today view in the Navigator           │",
         ]
     );
     assert!(
@@ -486,7 +486,6 @@ fn slash_filters_the_settings_by_name() {
 #[test]
 fn a_change_that_cannot_be_written_shows_in_the_window_and_the_status_line_and_holds() {
     let mut app = Harness::with_config(OUTLINE, "theme = \n", 140, 20);
-    app.hide_sidebar();
     app.type_keys("g,jj ");
     app.settle();
     let buffer = app.render().buffer().clone();
@@ -503,7 +502,6 @@ fn a_change_that_cannot_be_written_shows_in_the_window_and_the_status_line_and_h
     assert!(window(&mut app)[5].contains("off"), "kept for the session");
     assert_eq!(config(&app), "theme = \n");
     let mut app = Harness::with_text(OUTLINE, 140, 20);
-    app.hide_sidebar();
     app.type_keys("g,");
     assert!(
         window(&mut app)[15]

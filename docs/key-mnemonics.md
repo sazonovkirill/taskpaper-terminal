@@ -58,7 +58,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `gG` | **G**roup the selection |
 | `gx` | open link (vim's `gx`) |
 | `gc` / `gw` | show **c**ompleted / word **w**rap |
-| `g0` / `g1`…`g9` | sidebar / pane N (numbers = places, like `Alt+1` tabs) |
+| `g1`…`g9` | pane N (numbers = places, like `Alt+1` tabs) |
 | `g,` | settings (`,` is preferences, as `Cmd+,` on macOS) |
 
 ## 5. The `m` family: metadata with a prompt or picker
@@ -80,12 +80,12 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 7. Modifier keys
 
-- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+B` sidebar, `Ctrl+K` go to a block and `Ctrl+P` command palette (D-72), `Ctrl+T` choose **t**heme, `Ctrl+O` show completed (**O**ld tasks), `Ctrl+↑/↓` jump between siblings.
-- **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+h/l` zoom out/in, `Alt+Shift+h/l` narrow/widen the pane, `Alt+Shift+←/→` back/forward, `Alt+z` wrap (as in VS Code), `Alt+0…9` sidebar and panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
+- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+G` **g**o: the Navigator, `Ctrl+K` go to a block and `Ctrl+P` command palette (D-72), `Ctrl+T` choose **t**heme, `Ctrl+O` show completed (**O**ld tasks), `Ctrl+↑/↓` jump between siblings.
+- **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+h/l` zoom out/in, `Alt+Shift+h/l` narrow/widen the pane, `Alt+Shift+←/→` back/forward, `Alt+z` wrap (as in VS Code), `Alt+1…9` panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right, the sidebar left of the first pane (`Ctrl+Shift+←/→` too) · `c` **c**lose · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→` too) · `c` **c**lose · `<`/`>` narrower/wider.
 
 ## 9. Kitty-only keys and their everyday twins
 

@@ -19,7 +19,7 @@ const WHEEL_LINES: isize = 3;
 /// Where the last frame drew what the pointer can act on.
 #[derive(Debug, Default)]
 pub(super) struct Drawn {
-    /// The sidebar's area and its first line on screen.
+    /// The inside of the sidebar's window and its first line on screen.
     pub(super) sidebar: Option<(Rect, usize)>,
     /// The panes on screen.
     pub(super) panes: Vec<DrawnPane>,
@@ -63,18 +63,16 @@ enum Spot {
 impl Drawn {
     /// What the last frame drew at `position`.
     fn spot(&self, position: Position) -> Option<Spot> {
-        if self.shortcuts.is_some_and(|area| area.contains(position)) {
-            return Some(Spot::Shortcuts);
-        }
         if let Some((area, scroll)) = self.sidebar
             && area.contains(position)
         {
-            // The sidebar's rightmost column is its rule.
-            let column = position.x - area.x;
-            return (column + 1 < area.width).then(|| Spot::Sidebar {
+            return Some(Spot::Sidebar {
                 line: usize::from(position.y - area.y) + scroll,
-                column,
+                column: position.x - area.x,
             });
+        }
+        if self.shortcuts.is_some_and(|area| area.contains(position)) {
+            return Some(Spot::Shortcuts);
         }
         let (index, pane) = self
             .panes
@@ -378,7 +376,7 @@ mod tests {
         let spot = |x, y| drawn.spot(Position::new(x, y));
         assert_eq!(spot(3, 2), Some(Spot::Sidebar { line: 5, column: 3 }));
         assert_eq!(spot(1, 0), Some(Spot::Sidebar { line: 3, column: 1 }));
-        assert_eq!(spot(9, 0), None, "the sidebar's rule");
+        assert_eq!(spot(9, 0), Some(Spot::Sidebar { line: 3, column: 9 }));
         assert_eq!(
             spot(10, 0),
             Some(Spot::Header {
@@ -436,6 +434,19 @@ mod tests {
             }),
             "areas that start below and right of the screen's corner"
         );
+        let over = Drawn {
+            sidebar: Some((Rect::new(4, 2, 10, 4), 0)),
+            panes: vec![pane(0, Rect::new(0, 0, 12, 8), 0, 12)],
+            shortcuts: Some(Rect::new(12, 0, 4, 8)),
+        };
+        let spot = |x, y| over.spot(Position::new(x, y));
+        assert_eq!(spot(5, 3), Some(Spot::Sidebar { line: 1, column: 1 }));
+        assert_eq!(
+            spot(13, 3),
+            Some(Spot::Sidebar { line: 1, column: 9 }),
+            "the sidebar's window is over the panes and the shortcuts panel"
+        );
+        assert_eq!(spot(13, 7), Some(Spot::Shortcuts), "below the window");
     }
 
     // FR-KEY-05, ui.md §6

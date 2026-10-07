@@ -1,5 +1,5 @@
 //! The command registry: every command a user can give, with its name, the modes it belongs to
-//! and its default key bindings in one table ([`REGISTRY`]), and the focused sidebar's in
+//! and its default key bindings in one table ([`REGISTRY`]), and the open sidebar's in
 //! another ([`SIDEBAR`]), which the keymap reads and the
 //! menus, the command palette and the shortcuts panel list
 //! ([architecture.md §1](../../../docs/specs/architecture.md#1-layers-and-modules),
@@ -95,10 +95,8 @@ pub enum Command {
     Back,
     /// Go forward in the zoom history.
     Forward,
-    /// Show or hide the sidebar.
+    /// Open or close the sidebar's window (D-79).
     ToggleSidebar,
-    /// Give the sidebar the keys.
-    FocusSidebar,
     /// Complete or uncomplete.
     ToggleDone,
     /// Change a date without a prompt.
@@ -137,10 +135,10 @@ pub enum Command {
     Count,
     /// Write the document to a path the user types and continue with that file (FR-DOC-06).
     SaveAs,
-    /// Open the context menu on the focused block, the selection or the focused sidebar entry
+    /// Open the context menu on the focused block, the selection or the open sidebar's focused entry
     /// (FR-KEY-06).
     ContextMenu,
-    /// A key of the focused sidebar, which its entries' context menu offers (FR-UI-01).
+    /// A key of the open sidebar, which its entries' context menu offers (FR-UI-01).
     Sidebar(SidebarInput),
     /// Undo.
     Undo,
@@ -249,8 +247,7 @@ impl Command {
             Self::GoToCrumb(_) => "Zoom Here".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
-            Self::ToggleSidebar => "Toggle Sidebar".into(),
-            Self::FocusSidebar => "Focus Sidebar".into(),
+            Self::ToggleSidebar => "Open Navigator".into(),
             Self::ToggleDone => "Toggle Done".into(),
             Self::ToggleFlag(Flag::Today) => "Toggle Today".into(),
             Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
@@ -349,7 +346,6 @@ impl Command {
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
             Self::ToggleSidebar => Message::ToggleSidebar,
-            Self::FocusSidebar => Message::FocusSidebar,
             Self::ToggleDone => Message::ToggleDone { today },
             Self::ChangeDate(tag, change) => Message::ChangeDate { tag, change, today },
             Self::ClearDate(tag) => Message::ClearDate(tag),

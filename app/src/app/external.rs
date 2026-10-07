@@ -607,7 +607,7 @@ mod tests {
 
     /// Each project entry of the sidebar with its fold.
     fn project_folds(state: &State) -> Vec<(String, crate::app::Fold)> {
-        let view = state.sidebar().expect("shown");
+        let view = state.sidebar().expect("open");
         view.entries
             .iter()
             .filter_map(|entry| match entry {
@@ -624,7 +624,7 @@ mod tests {
     fn a_reload_keeps_folded_project_entries_on_their_projects() {
         use crate::app::{Fold, SidebarInput};
         let mut state = opened("A:\n\tA1:\nB:\n\tB1:\nC:\n\tC1:\n");
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         for input in [SidebarInput::Next; 3] {
             state.update(Message::Sidebar(input));
         }

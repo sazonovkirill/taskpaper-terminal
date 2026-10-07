@@ -123,7 +123,6 @@ fn tags_stay_hidden_and_follow_the_edited_text() {
 #[test]
 fn an_at_sign_starting_a_word_is_refused_with_a_hint() {
     let mut app = Harness::with_text("- Mail\n", 100, 5);
-    app.hide_sidebar();
     press(&mut app, KeyCode::Enter, 1);
     app.type_keys(" @me@x.org");
     assert_eq!(outline_rows(&mut app)[0], "- Mail me@x.org");
@@ -255,7 +254,6 @@ fn a_read_only_file_refuses_edit_mode() {
     fs::write(&path, "- Milk\n").unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
     let mut app = Harness::open_path(dir, &path, 90, 4);
-    app.hide_sidebar();
     press(&mut app, KeyCode::Enter, 1);
     app.type_keys("x");
     assert!(status_line(&mut app).ends_with("read-only · cannot edit a read-only file"));

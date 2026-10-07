@@ -1,5 +1,5 @@
-//! The navigation sidebar: its entries, which one has the keys while it is focused and which
-//! project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-sidebar-fr-ui-01-d-7-d-11-d-28),
+//! The navigation sidebar, which the screen shows as the Navigator, a window that `Ctrl+G` opens
+//! over the panes (D-79): its entries, which one has the keys while it is open and which project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79),
 //! FR-UI-01).
 
 use std::{collections::HashSet, rc::Rc};
@@ -15,15 +15,14 @@ use crate::document::{BlockKind, ItemId, Stamp, blocks};
 /// The text of the project the sidebar lists apart, above Today (D-75).
 const INBOX: &str = "INBOX";
 
-/// Whether the sidebar is shown, its focused entry while it has the keys, its folded project
-/// entries, which are its own and not the outline's, whether it lists the `INBOX` project apart
-/// and whether it lists Today.
+/// The sidebar's focused entry while it is open, its folded project entries, which are its own
+/// and not the outline's, whether it lists the `INBOX` project apart and whether it lists Today.
 #[derive(Debug, Clone)]
 pub(super) struct Sidebar {
-    shown: bool,
     special_inbox: bool,
     today: bool,
-    /// The index of the focused entry, while the sidebar has the keys.
+    /// The index of the focused entry, while the sidebar is open, which it is only while it has
+    /// the keys (D-79).
     focus: Option<usize>,
     folds: HashSet<ItemId>,
     entries: Memo<EntriesKey, Rc<[SidebarEntry]>>,
@@ -50,17 +49,6 @@ struct CurrentKey {
 }
 
 impl Sidebar {
-    /// Whether it is shown.
-    pub(super) fn shown(&self) -> bool {
-        self.shown
-    }
-
-    /// Shows it, or hides it when `shown` is false, without giving it the keys.
-    pub(super) fn show(&mut self, shown: bool) {
-        self.shown = shown;
-        self.focus = None;
-    }
-
     /// Lists the `INBOX` project above Today rather than among the projects, or not when `on` is
     /// false (navigation.md §6).
     pub(super) fn set_special_inbox(&mut self, on: bool) {
@@ -80,11 +68,9 @@ impl Sidebar {
 }
 
 impl Default for Sidebar {
-    /// Shown, without the keys, every project entry expanded, the `INBOX` project apart, Today
-    /// listed.
+    /// Closed, every project entry expanded, the `INBOX` project apart, Today listed.
     fn default() -> Self {
         Self {
-            shown: true,
             special_inbox: true,
             today: true,
             focus: None,
@@ -95,7 +81,7 @@ impl Default for Sidebar {
     }
 }
 
-/// A key of the focused sidebar ([keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
+/// A key of the open sidebar ([keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidebarInput {
     /// Focus the entry below.
@@ -106,11 +92,12 @@ pub enum SidebarInput {
     Collapse,
     /// Unfold the focused project entry.
     Expand,
-    /// Zoom the pane to the focused entry and give the pane the keys.
+    /// Zoom the pane to the focused entry and close the sidebar.
     Choose,
-    /// Give the pane the keys.
+    /// Close the sidebar, giving the pane the keys.
     Leave,
-    /// Give the sidebar the keys on the entry at this index, as a click on it does (FR-KEY-05).
+    /// Focus the entry at this index while the sidebar is open, as a click on it does
+    /// (FR-KEY-05).
     Focus(usize),
     /// `gi`: zoom the pane to the inbox entry's project, from anywhere, or say there is none
     /// (D-78).
@@ -178,30 +165,26 @@ pub enum Fold {
     Collapsed,
 }
 
-/// The shown sidebar as a frontend draws it.
+/// The open sidebar as a frontend draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SidebarView {
     /// Its entries in order.
     pub entries: Rc<[SidebarEntry]>,
-    /// The index of the focused entry, while the sidebar has the keys.
+    /// The index of the focused entry, or `None` when it lists none.
     pub focused: Option<usize>,
-    /// The index of the entry of where the focused pane is, while the pane has the keys (D-68).
+    /// The index of the entry of where the focused pane is, if one goes there (D-68).
     pub current: Option<usize>,
 }
 
 impl State {
-    /// The sidebar, or `None` while it is hidden (FR-UI-01).
+    /// The sidebar, or `None` while it is closed (FR-UI-01, D-79).
     #[must_use]
     pub fn sidebar(&self) -> Option<SidebarView> {
-        if !self.sidebar.shown {
-            return None;
-        }
+        self.sidebar.focus?;
         let entries = self.sidebar_entries();
-        let focused = self.sidebar_focus(&entries);
-        let current = focused
-            .is_none()
-            .then(|| self.sidebar_current(&entries))
-            .flatten();
+        let focused = self.sidebar_focus(&entries)?;
+        let focused = (focused < entries.len()).then_some(focused);
+        let current = self.sidebar_current(&entries);
         Some(SidebarView {
             entries,
             focused,
@@ -222,27 +205,18 @@ impl State {
         self.sidebar.today
     }
 
-    /// Whether the sidebar has the keys rather than the pane.
+    /// Whether the sidebar is open, and so has the keys rather than the pane.
     #[must_use]
     pub fn sidebar_focused(&self) -> bool {
         self.sidebar.focus.is_some()
     }
 
-    /// `Ctrl+B`: hides the sidebar and gives the pane the keys while the sidebar has them, and
-    /// otherwise focuses it as `Alt+0` does (D-68).
+    /// `Ctrl+G`: closes the sidebar while it is open, and otherwise opens it on the entry of where
+    /// the focused pane is, else on its first entry (D-68, D-79).
     pub(super) fn toggle_sidebar(&mut self) {
         if self.sidebar_focused() {
-            self.sidebar.show(false);
+            self.sidebar.focus = None;
         } else {
-            self.focus_sidebar();
-        }
-    }
-
-    /// `Alt+0`: shows the sidebar and gives it the keys unless it has them, on the entry of where
-    /// the focused pane is, else on its first entry (D-68).
-    pub(super) fn focus_sidebar(&mut self) {
-        self.sidebar.shown = true;
-        if self.sidebar.focus.is_none() {
             let entries = self.sidebar_entries();
             self.sidebar.focus = Some(self.sidebar_current(&entries).unwrap_or(0));
         }
@@ -261,7 +235,7 @@ impl State {
                 }
                 inbox.then_some(0)
             }
-            SidebarInput::Focus(at) => (self.sidebar.shown && at < entries.len()).then_some(at),
+            SidebarInput::Focus(at) => (self.sidebar_focused() && at < entries.len()).then_some(at),
             SidebarInput::Next
             | SidebarInput::Previous
             | SidebarInput::Collapse
@@ -305,7 +279,7 @@ impl State {
         }
     }
 
-    /// Where the focused entry goes, while the sidebar has the keys.
+    /// Where the focused entry goes, while the sidebar is open.
     pub(super) fn sidebar_location(&self) -> Option<Location> {
         let entries = self.sidebar_entries();
         entries
@@ -313,9 +287,9 @@ impl State {
             .map(SidebarEntry::location)
     }
 
-    /// The commands the context menu offers on the focused entry while the sidebar has the keys:
-    /// going to it, opening it in a new pane and folding a project entry with child projects, then leaving or hiding the
-    /// sidebar (FR-KEY-06).
+    /// The commands the context menu offers on the focused entry while the sidebar is open: going
+    /// to it, opening it in a new pane and folding a project entry with child projects, then
+    /// closing the sidebar (FR-KEY-06).
     pub(super) fn sidebar_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
         let entries = self.sidebar_entries();
         let entry = entries.get(self.sidebar_focus(&entries)?)?;
@@ -340,11 +314,10 @@ impl State {
             .chain([NodeCommand::named(Command::Pane(PaneChange::Open))])
             .chain(fold.map(|input| NodeCommand::named(Command::Sidebar(input))))
             .collect();
-        let sidebar = vec![
-            NodeCommand::named(Command::Sidebar(SidebarInput::Leave)),
-            NodeCommand::labelled("Hide Sidebar", Command::ToggleSidebar),
-        ];
-        Some(vec![entry, sidebar])
+        Some(vec![
+            entry,
+            vec![NodeCommand::named(Command::Sidebar(SidebarInput::Leave))],
+        ])
     }
 
     /// The focused entry's index among `entries`, kept on the last one when entries went away.
@@ -554,10 +527,19 @@ Home: @bookmark
         State::new(format::parse(text), None)
     }
 
+    /// The sidebar as it would open, or as it is while it is open.
+    fn view(state: &State) -> SidebarView {
+        state.sidebar().unwrap_or_else(|| {
+            let mut opened = state.clone();
+            opened.update(Message::ToggleSidebar);
+            opened.sidebar().expect("open")
+        })
+    }
+
     /// Each entry as `kind text`, project entries indented 2 spaces per level behind their fold.
     fn listed(state: &State) -> Vec<String> {
-        let view = state.sidebar().expect("the sidebar is shown");
-        view.entries
+        view(state)
+            .entries
             .iter()
             .map(|entry| match entry {
                 SidebarEntry::Inbox { text, .. } => format!("inbox {text}"),
@@ -686,7 +668,7 @@ INBOX:",
         state.update(Message::GoTo(Location::Today));
         assert_eq!(state.location(), Location::Today);
         assert_eq!(current(&state), None, "no entry goes there");
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         assert_eq!(focused(&state), Some(0), "the first entry");
         input(&mut state, &[SidebarInput::Choose]);
         assert_eq!(state.breadcrumbs(), ["INBOX"]);
@@ -698,13 +680,13 @@ INBOX:",
     #[test]
     fn the_inbox_entry_goes_to_the_inbox_has_no_fold_and_beats_its_bookmark_as_current() {
         let mut state = open(INBOXED);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         assert_eq!(focused(&state), Some(0), "the first entry");
         assert_eq!(
             entry_commands(&state),
             Some(vec![
                 "Go to Entry, Open in New Pane".to_owned(),
-                "Return to Outline, Hide Sidebar".to_owned()
+                "Return to Outline".to_owned()
             ])
         );
         input(&mut state, &[SidebarInput::Collapse, SidebarInput::Choose]);
@@ -763,8 +745,8 @@ INBOX:",
 
     /// Each project or inbox entry's text with its count of open tasks.
     fn counts(state: &State) -> Vec<(String, usize)> {
-        let view = state.sidebar().expect("the sidebar is shown");
-        view.entries
+        view(state)
+            .entries
             .iter()
             .filter_map(|entry| match entry {
                 SidebarEntry::Inbox {
@@ -796,6 +778,7 @@ INBOX:",
             all,
             "sub-projects count, done blocks do not"
         );
+        state.update(Message::ToggleSidebar);
         input(
             &mut state,
             &[SidebarInput::Focus(1), SidebarInput::Collapse],
@@ -811,8 +794,11 @@ INBOX:",
 
     // FR-KEY-05
     #[test]
-    fn focusing_an_entry_gives_the_sidebar_the_keys_there_while_it_is_shown() {
+    fn focusing_an_entry_moves_the_focus_there_while_the_sidebar_is_open() {
         let mut state = open(OUTLINE);
+        input(&mut state, &[SidebarInput::Focus(3)]);
+        assert!(!state.sidebar_focused(), "a closed sidebar takes no keys");
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Focus(3)]);
         assert_eq!(focused(&state), Some(3));
         let past = listed(&state).len();
@@ -820,10 +806,7 @@ INBOX:",
         assert_eq!(focused(&state), Some(3), "no entry there");
         input(&mut state, &[SidebarInput::Choose]);
         assert_eq!(state.breadcrumbs(), ["Work"]);
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Focus(1)]);
-        assert!(!state.sidebar_focused(), "a hidden sidebar takes no keys");
+        assert_eq!(state.sidebar(), None, "closed");
     }
 
     // FR-UI-01
@@ -833,44 +816,18 @@ INBOX:",
         assert_eq!(listed(&State::new(Document::default(), None)), ["today"]);
     }
 
-    // FR-UI-01, D-68
+    // FR-UI-01, D-68, D-79
     #[test]
-    fn toggling_gives_the_sidebar_the_keys_showing_it_and_hides_it_while_it_has_them() {
+    fn toggling_opens_the_sidebar_with_the_keys_and_closes_it() {
         let mut state = open(OUTLINE);
-        assert!(state.sidebar().is_some(), "shown by default");
+        assert_eq!(state.sidebar(), None, "closed at the start");
         assert!(!state.sidebar_focused());
         state.update(Message::ToggleSidebar);
-        assert_eq!(focused(&state), Some(0), "a shown sidebar takes the keys");
-        state.update(Message::ToggleSidebar);
-        assert_eq!(state.sidebar(), None);
-        assert!(!state.sidebar_focused());
-        state.update(Message::ToggleSidebar);
-        assert_eq!(focused(&state), Some(0), "shown with the keys");
-    }
-
-    // FR-UI-01
-    #[test]
-    fn focusing_shows_the_sidebar_and_gives_its_first_entry_the_keys() {
-        let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
-        assert_eq!(state.sidebar(), None);
-        state.update(Message::FocusSidebar);
         assert!(state.sidebar_focused());
         assert_eq!(focused(&state), Some(0), "the pane is at home");
-        input(&mut state, &[SidebarInput::Next]);
-        state.update(Message::FocusSidebar);
-        assert_eq!(focused(&state), Some(1), "focusing again keeps the entry");
-    }
-
-    // FR-UI-01
-    #[test]
-    fn hiding_the_sidebar_gives_the_pane_the_keys() {
-        let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
         state.update(Message::ToggleSidebar);
-        assert!(!state.sidebar_focused());
         assert_eq!(state.sidebar(), None);
+        assert!(!state.sidebar_focused());
     }
 
     // FR-MODE-01
@@ -878,7 +835,7 @@ INBOX:",
     fn focusing_the_sidebar_ends_editing() {
         let mut state = open(OUTLINE);
         state.update(Message::EditAtEnd);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         assert_eq!(state.mode(), Mode::Navigate);
     }
 
@@ -886,7 +843,7 @@ INBOX:",
     #[test]
     fn next_and_previous_move_the_focus_and_stop_at_the_ends() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Previous]);
         assert_eq!(focused(&state), Some(0));
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
@@ -899,7 +856,7 @@ INBOX:",
 
     // keybindings.md §4
     #[test]
-    fn keys_of_the_sidebar_do_nothing_until_it_is_focused() {
+    fn keys_of_the_sidebar_do_nothing_until_it_is_open() {
         let mut state = open(OUTLINE);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Collapse]);
         assert_eq!(focused(&state), None);
@@ -910,7 +867,7 @@ INBOX:",
     #[test]
     fn collapse_and_expand_fold_project_entries_only() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next; 3]);
         input(&mut state, &[SidebarInput::Collapse]);
         assert_eq!(
@@ -933,7 +890,7 @@ INBOX:",
         );
         for at in [0, 2] {
             let mut state = open(OUTLINE);
-            state.update(Message::FocusSidebar);
+            state.update(Message::ToggleSidebar);
             input(&mut state, &vec![SidebarInput::Next; at]);
             input(&mut state, &[SidebarInput::Collapse, SidebarInput::Expand]);
             assert_eq!(listed(&state), listed(&open(OUTLINE)), "entry {at}");
@@ -949,11 +906,11 @@ INBOX:",
     #[test]
     fn choosing_a_bookmark_or_project_zooms_the_pane_to_it_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
         assert_eq!(zoomed(&state).as_deref(), Some("Launch plan"));
         assert!(!state.sidebar_focused());
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         assert_eq!(focused(&state), Some(1), "on the entry of the zoom");
         input(&mut state, &[SidebarInput::Next; 3]);
         input(&mut state, &[SidebarInput::Choose]);
@@ -970,9 +927,9 @@ INBOX:",
     #[test]
     fn choosing_today_shows_the_today_view_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Previous, SidebarInput::Choose]);
         assert_eq!(state.location(), Location::Today);
         assert!(!state.sidebar_focused());
@@ -985,13 +942,15 @@ INBOX:",
     }
 
     fn current(state: &State) -> Option<usize> {
-        state.sidebar().and_then(|view| view.current)
+        view(state).current
     }
 
     /// The block of the entry at `at`.
     fn entry_block(state: &State, at: usize) -> ItemId {
-        let entries = state.sidebar().expect("shown").entries;
-        entries[at].location().zoom().expect("a block's entry")
+        view(state).entries[at]
+            .location()
+            .zoom()
+            .expect("a block's entry")
     }
 
     // D-68
@@ -1028,6 +987,7 @@ INBOX:",
         assert_eq!(current(&state), Some(3), "Work, above the task");
         state.update(Message::ZoomIn);
         assert_eq!(current(&state), Some(4), "Drafts");
+        state.update(Message::ToggleSidebar);
         input(
             &mut state,
             &[SidebarInput::Focus(3), SidebarInput::Collapse],
@@ -1038,13 +998,15 @@ INBOX:",
 
     // D-68
     #[test]
-    fn no_entry_is_current_while_the_sidebar_has_the_keys_which_start_on_the_current_one() {
+    fn the_sidebar_opens_on_the_current_entry_which_stays_marked() {
         let mut state = open(OUTLINE);
         state.update(Message::ZoomIn);
         state.update(Message::ToggleSidebar);
         assert_eq!(focused(&state), Some(3), "on Work");
-        assert_eq!(current(&state), None);
+        assert_eq!(current(&state), Some(3));
         input(&mut state, &[SidebarInput::Next]);
+        assert_eq!(focused(&state), Some(4));
+        assert_eq!(current(&state), Some(3), "still Work");
         state.update(Message::ToggleSidebar);
         state.update(Message::ToggleSidebar);
         assert_eq!(focused(&state), Some(3), "on Work again");
@@ -1052,21 +1014,20 @@ INBOX:",
 
     // keybindings.md §4
     #[test]
-    fn leaving_gives_the_pane_the_keys_on_the_same_view() {
+    fn leaving_closes_the_sidebar_on_the_same_view() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Leave]);
         assert!(!state.sidebar_focused());
-        assert_eq!(focused(&state), None);
+        assert_eq!(state.sidebar(), None);
         assert_eq!(zoomed(&state), None);
-        assert!(state.sidebar().is_some(), "still shown");
     }
 
     // FR-UI-01
     #[test]
     fn the_focus_stays_on_the_last_entry_when_entries_go_away() {
         let mut state = open("- a @bookmark\nP:");
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
         assert_eq!(focused(&state), Some(2));
         state.update(Message::ToggleFlag(Flag::Bookmark));
@@ -1095,11 +1056,11 @@ INBOX:",
 
     // FR-KEY-06
     #[test]
-    fn the_focused_entrys_commands_go_to_it_open_it_fold_it_and_leave_or_hide_the_sidebar() {
+    fn the_focused_entrys_commands_go_to_it_open_it_fold_it_and_close_the_sidebar() {
         let mut state = open(OUTLINE);
         assert_eq!(entry_commands(&state), None, "the pane has the keys");
-        state.update(Message::FocusSidebar);
-        let leave = "Return to Outline, Hide Sidebar".to_owned();
+        state.update(Message::ToggleSidebar);
+        let leave = "Return to Outline".to_owned();
         assert_eq!(
             entry_commands(&state),
             Some(vec![
@@ -1140,7 +1101,7 @@ INBOX:",
             "a project without child projects"
         );
         let groups = state.sidebar_commands().unwrap();
-        assert_eq!(groups[1][1].command, Command::ToggleSidebar);
+        assert_eq!(groups[1][0].command, Command::Sidebar(SidebarInput::Leave));
         assert_eq!(groups[0][0].command, Command::Sidebar(SidebarInput::Choose));
     }
 }

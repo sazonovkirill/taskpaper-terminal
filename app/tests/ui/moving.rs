@@ -120,7 +120,6 @@ fn tab_while_typing_a_new_block_indents_it_and_keeps_editing() {
 #[test]
 fn indenting_a_text_line_after_a_text_line_leaves_them_apart() {
     let mut app = Harness::with_text("Ideas:\n\tFirst note\nSecond note\n", 200, 6);
-    app.hide_sidebar();
     app.type_keys("jj");
     app.press(KeyCode::Tab, KeyModifiers::NONE);
     assert_eq!(focused_rows(&mut app), ["  Second note"]);

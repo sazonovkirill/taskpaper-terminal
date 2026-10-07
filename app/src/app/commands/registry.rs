@@ -1,6 +1,6 @@
 //! The registry's tables: every command with the mode it belongs to and its default bindings
 //! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)), the keys of
-//! the focused sidebar (§4), and the commands of each mode the shortcuts panel lists, grouped
+//! the open sidebar (§4), and the commands of each mode the shortcuts panel lists, grouped
 //! (FR-KEY-04).
 
 use super::Command;
@@ -371,8 +371,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
-    entry!(Command::ToggleSidebar, Mode::Navigate, &["ctrl+b"]),
-    entry!(Command::FocusSidebar, Mode::Navigate, &["alt+0", "g 0"]),
+    entry!(Command::ToggleSidebar, Mode::Navigate, &["ctrl+g"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+p", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::SaveAs, Mode::Navigate, &[]),
@@ -487,7 +486,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::Paste(Paste::Below), Mode::Edit, &["ctrl+v"]),
 ];
 
-/// The keys of the focused sidebar, each command's written as in [`Entry::keys`]; other keys do
+/// The keys of the open sidebar, each command's written as in [`Entry::keys`]; other keys do
 /// nothing there ([keybindings.md §4]).
 ///
 /// [keybindings.md §4]: ../../../../docs/specs/keybindings.md#4-other-contexts
@@ -500,7 +499,7 @@ pub const SIDEBAR: &[(Command, &[&str])] = &[
     (Command::Pane(PaneChange::Open), &["alt+enter", "ctrl+v"]),
     (Command::Sidebar(SidebarInput::Leave), &["esc"]),
     (Command::ContextMenu, &["\\", "shift+f10", "menu"]),
-    (Command::ToggleSidebar, &["ctrl+b"]),
+    (Command::ToggleSidebar, &["ctrl+g"]),
     (Command::Quit, &["ctrl+q"]),
 ];
 

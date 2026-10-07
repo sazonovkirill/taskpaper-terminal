@@ -63,7 +63,6 @@ fn m_y_turns_a_text_block_into_a_section_and_z_undoes_it() {
 #[test]
 fn a_line_with_a_url_keeps_it_under_its_new_type() {
     let mut app = Harness::with_text("Docs @url(https://a.b)\n- Milk\n", 100, 14);
-    app.hide_sidebar();
     app.type_keys("mytask");
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Docs @url(https://a.b)\n- Milk\n");

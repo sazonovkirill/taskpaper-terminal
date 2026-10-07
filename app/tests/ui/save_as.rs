@@ -61,7 +61,6 @@ fn backup_folders(app: &Harness, name: &str) -> usize {
 #[test]
 fn the_temporary_file_is_kept_in_a_folder_under_home_completed_with_tab() {
     let mut app = Harness::demo(70, 16);
-    app.hide_sidebar();
     let temporary = app.path.clone().expect("the demo file");
     let demo = fs::read_to_string(&temporary).unwrap();
     open_save_as(&mut app);
@@ -120,7 +119,6 @@ fn the_temporary_file_is_kept_in_a_folder_under_home_completed_with_tab() {
 #[test]
 fn a_file_there_is_replaced_once_confirmed_after_a_backup_and_esc_goes_back() {
     let mut app = Harness::with_text("- mine\n", 70, 16);
-    app.hide_sidebar();
     let other = app.home.join("other.taskpaper");
     fs::write(&other, "- theirs\n").unwrap();
     save_as(&mut app, &other);
@@ -158,7 +156,6 @@ fn a_file_there_is_replaced_once_confirmed_after_a_backup_and_esc_goes_back() {
 #[test]
 fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     let mut app = Harness::with_text("- mine\n", 70, 16);
-    app.hide_sidebar();
     let opened = app.path.clone().unwrap();
     let missing = app.home.join("missing/a.taskpaper");
     save_as(&mut app, &missing);

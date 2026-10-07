@@ -177,7 +177,6 @@ fn m_t_marks_the_focused_block_for_today_with_a_star_after_its_text() {
 #[test]
 fn m_b_bookmarks_the_focused_block_and_says_so() {
     let mut app = Harness::with_text("Plans:\n", 80, 4);
-    app.hide_sidebar();
     app.type_keys("mb");
     let status = line(app.render().buffer(), 3);
     assert!(status.ends_with("· Bookmarked"), "{status}");

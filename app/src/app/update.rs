@@ -161,12 +161,10 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
-    /// Hide the sidebar and give the pane the keys while the sidebar has them, else show it and
-    /// give it the keys (FR-UI-01, D-68).
+    /// Close the sidebar while it is open, else open it, giving it the keys (FR-UI-01, D-68,
+    /// D-79).
     ToggleSidebar,
-    /// Show the sidebar and give it the keys (FR-UI-01).
-    FocusSidebar,
-    /// A key of the focused sidebar (FR-UI-01).
+    /// A key of the open sidebar (FR-UI-01).
     Sidebar(SidebarInput),
     /// Complete the selected blocks, else the focused block, dating them `today`, or uncomplete
     /// them when all are done (FR-DONE-01, FR-OPS-07).
@@ -238,7 +236,7 @@ pub enum Message {
     Settings(SettingsInput),
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
-    /// Open the context menu on the focused sidebar entry while the sidebar has the keys, else
+    /// Open the context menu on the focused sidebar entry while the sidebar is open, else
     /// on the selection or the focused block (FR-KEY-06).
     OpenContextMenu,
     /// Open the context menu on the focused pane's header, or with a depth on its breadcrumb at
@@ -426,7 +424,6 @@ impl Message {
             | Self::Back
             | Self::Forward
             | Self::ToggleSidebar
-            | Self::FocusSidebar
             | Self::Sidebar(_)
             | Self::ToggleDone { .. }
             | Self::ChangeDate { .. }
@@ -641,7 +638,6 @@ impl State {
             Message::GoToCrumb(depth) => self.go_to_crumb(depth),
             Message::Back | Message::Forward => self.walk_history(message == Message::Forward),
             Message::ToggleSidebar => self.toggle_sidebar(),
-            Message::FocusSidebar => self.focus_sidebar(),
             Message::Sidebar(input) => self.sidebar_input(input),
             Message::ToggleDone { today } => self.toggle_done(today),
             Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),

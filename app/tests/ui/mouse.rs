@@ -30,6 +30,10 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
+fn ctrl_g(app: &mut Harness) {
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+}
+
 fn alt_click(app: &mut Harness, x: u16, y: u16) {
     app.mouse(
         MouseEventKind::Down(MouseButton::Left),
@@ -57,11 +61,9 @@ fn wheel(app: &mut Harness, x: u16, y: u16, down: bool) {
     app.mouse(kind, x, y, KeyModifiers::NONE);
 }
 
-/// The outline of one pane without the sidebar, 50×12.
+/// The outline of one pane, 50×12.
 fn pane() -> Harness {
-    let mut app = Harness::with_text(OUTLINE, 50, 12);
-    app.hide_sidebar();
-    app
+    Harness::with_text(OUTLINE, 50, 12)
 }
 
 /// The breadcrumb header's text, after the gutter.
@@ -195,7 +197,6 @@ fn a_click_on_a_crumb_zooms_the_pane_there_and_on_home_goes_home() {
 #[test]
 fn alt_click_opens_a_block_or_a_crumb_in_a_new_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.hide_sidebar();
     alt_click(&mut app, 8, 3);
     let rows = screen(&mut app);
     assert!(rows[0].ends_with("│  ⌂ › Work › Report"), "{rows:?}");
@@ -209,7 +210,6 @@ fn alt_click_opens_a_block_or_a_crumb_in_a_new_pane() {
 #[test]
 fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.hide_sidebar();
     app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
     let dimmed = |app: &mut Harness, x| {
         app.render().buffer()[(x, 0)]
@@ -228,28 +228,63 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 // FR-KEY-05, FR-UI-01, navigation.md §6
 #[test]
 fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
-    let mut app = Harness::with_text(OUTLINE, 80, 12);
+    let mut app = Harness::with_text(OUTLINE, 80, 14);
+    ctrl_g(&mut app);
+    // The window's inside starts at column 17, row 5: Today, a blank line, Projects, Work, Home,
+    // Garden.
     let rows = screen(&mut app);
-    assert!(rows[4].starts_with(" ▾Home "), "{rows:?}");
-    app.click(10, 5);
-    assert!(screen(&mut app)[0].ends_with("⌂ › Home › Garden"));
-    app.click(1, 4);
+    assert!(rows[10].contains("│    Garden "), "{rows:?}");
+    app.click(25, 10);
+    assert_eq!(screen(&mut app)[0], "  ⌂ › Home › Garden", "and closed");
+    ctrl_g(&mut app);
+    app.click(18, 9);
     let rows = screen(&mut app);
     assert!(
-        rows[4].starts_with("▌▸Home"),
-        "the sidebar has the keys on Home: {rows:?}"
+        rows.iter().any(|row| row.contains("│▌▸Home ")),
+        "the window has the keys on Home: {rows:?}"
     );
-    assert!(rows[5].starts_with("        "), "Garden folded away");
-    alt_click(&mut app, 10, 3);
+    assert!(
+        !rows.iter().any(|row| row.contains("│    Garden")),
+        "Garden folded away: {rows:?}"
+    );
+    let work = rows
+        .iter()
+        .position(|row| row.contains("│  Work "))
+        .expect("Work listed");
+    alt_click(&mut app, 25, u16::try_from(work).expect("on screen"));
     let rows = screen(&mut app);
-    assert!(rows[0].ends_with("│  ⌂ › Work"), "{rows:?}");
+    assert!(rows[0].ends_with("│  ⌂ › Work"), "a new pane: {rows:?}");
+    assert!(!rows.iter().any(|row| row.contains("Navigator")), "closed");
+}
+
+// FR-KEY-05, ui.md §6
+#[test]
+fn the_wheel_over_the_sidebars_window_does_nothing() {
+    let mut app = Harness::with_text(OUTLINE, 80, 14);
+    ctrl_g(&mut app);
+    let before = screen(&mut app);
+    wheel(&mut app, 25, 8, true);
+    assert_eq!(screen(&mut app), before);
+}
+
+// FR-KEY-05, D-79
+#[test]
+fn a_click_outside_the_sidebars_window_closes_it_and_acts_there() {
+    let mut app = Harness::with_text(OUTLINE, 80, 14);
+    ctrl_g(&mut app);
+    app.click(6, 3);
+    let rows = screen(&mut app);
+    assert!(
+        !rows.iter().any(|row| row.contains("Navigator")),
+        "{rows:?}"
+    );
+    assert_eq!(focused_rows(&mut app), ["  - Report"]);
 }
 
 // FR-KEY-05, FR-KEY-06, ui.md §5
 #[test]
 fn a_right_click_on_a_block_opens_its_menu_at_the_pointer() {
     let mut app = Harness::with_text(OUTLINE, 100, 40);
-    app.hide_sidebar();
     right_click(&mut app, 12, 5);
     let rows = menu(&mut app);
     assert_eq!(corner(&rows), Some(12), "{rows:?}");
@@ -269,7 +304,6 @@ fn a_right_click_on_a_block_opens_its_menu_at_the_pointer() {
 #[test]
 fn a_right_click_on_the_selection_opens_its_menu_and_elsewhere_drops_it() {
     let mut app = Harness::with_text(OUTLINE, 100, 40);
-    app.hide_sidebar();
     app.type_keys("vjv");
     // The menu dims the focus and selection markers alike (D-69), so they are checked with it
     // closed.
@@ -291,14 +325,14 @@ fn a_right_click_on_the_selection_opens_its_menu_and_elsewhere_drops_it() {
 #[test]
 fn a_right_click_on_a_crumb_a_pane_header_or_a_sidebar_entry_opens_its_menu() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
-    app.click(32, 3);
+    app.click(8, 3);
     press(&mut app, KeyCode::Char('.'));
-    right_click(&mut app, 30, 0);
+    right_click(&mut app, 6, 0);
     let rows = menu(&mut app);
     assert!(rows.iter().any(|row| row.contains("Zoom Here")), "{rows:?}");
     assert!(rows.iter().any(|row| row.contains("Open in New Pane")));
     press(&mut app, KeyCode::Esc);
-    right_click(&mut app, 70, 1);
+    right_click(&mut app, 46, 1);
     let rows = menu(&mut app);
     assert!(rows.iter().any(|row| row.contains("Zoom Out")), "{rows:?}");
     assert!(
@@ -306,7 +340,9 @@ fn a_right_click_on_a_crumb_a_pane_header_or_a_sidebar_entry_opens_its_menu() {
             .any(|row| row.contains("Open Location in New Pane"))
     );
     press(&mut app, KeyCode::Esc);
-    right_click(&mut app, 6, 4);
+    ctrl_g(&mut app);
+    // Work's entry, on the window's fourth row inside.
+    right_click(&mut app, 25, 8);
     let rows = menu(&mut app);
     assert!(
         rows.iter().any(|row| row.contains("Go to Entry")),
@@ -319,7 +355,6 @@ fn a_right_click_on_a_crumb_a_pane_header_or_a_sidebar_entry_opens_its_menu() {
 fn the_wheel_scrolls_the_pane_under_the_pointer_until_a_key() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 50, 10);
-    app.hide_sidebar();
     wheel(&mut app, 10, 5, true);
     wheel(&mut app, 10, 5, true);
     assert_eq!(outline_rows(&mut app)[0], "- Task 7");
@@ -361,7 +396,6 @@ fn the_wheel_scrolls_by_screen_lines_through_a_wrapped_block() {
     let text = format!("- Task 1\n- {long}\n")
         + &(2..=20).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 50, 10);
-    app.hide_sidebar();
     wheel(&mut app, 10, 5, true);
     let rows = outline_rows(&mut app);
     assert!(rows[0].trim_start().starts_with("word"), "{rows:?}");
@@ -382,11 +416,10 @@ fn the_wheel_scrolls_the_shortcuts_panel_under_the_pointer() {
     assert_eq!(after[2].get(..40), before[2].get(..40), "the pane stays");
     wheel(&mut app, 90, 5, false);
     app.click(90, 5);
-    wheel(&mut app, 5, 5, true);
     assert_eq!(
         screen(&mut app),
         before,
-        "a click on the panel and the wheel on the sidebar do nothing"
+        "a click on the panel does nothing"
     );
 }
 

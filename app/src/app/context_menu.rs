@@ -17,7 +17,7 @@ impl State {
         self.context_menu.as_ref().map(CommandMenu::view)
     }
 
-    /// `\`: opens the context menu on the focused sidebar entry while the sidebar has the keys,
+    /// `\`: opens the context menu on the focused sidebar entry while the sidebar is open,
     /// else on the selected blocks, else on the focused block. In the Today view it leaves out
     /// what the view does not take (navigation.md §7). Nothing opens without anything to offer.
     pub(super) fn open_context_menu(&mut self) {
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
         let mut state = open(TEXT);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Choose));
         assert_eq!(state.location(), Location::Today);
         state.update(Message::OpenContextMenu);
@@ -226,19 +226,13 @@ mod tests {
 
     // FR-KEY-06
     #[test]
-    fn opens_on_the_focused_sidebar_entry_while_the_sidebar_has_the_keys() {
+    fn opens_on_the_focused_sidebar_entry_while_the_sidebar_is_open() {
         let mut state = open(TEXT);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::OpenContextMenu);
         assert_eq!(
             shown(&state),
-            [
-                "Go to Entry",
-                "Open in New Pane",
-                "|",
-                "Return to Outline",
-                "Hide Sidebar"
-            ]
+            ["Go to Entry", "Open in New Pane", "|", "Return to Outline"]
         );
         assert_eq!(
             menu(&mut state, MenuInput::Choose),
@@ -314,6 +308,7 @@ mod tests {
                 "Close Pane"
             ]
         );
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Focus(0)));
         state.update(Message::Sidebar(SidebarInput::Choose));
         assert_eq!(state.pane.location, Location::Today);

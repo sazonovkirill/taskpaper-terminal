@@ -8,9 +8,6 @@ use ratatui::layout::{Constraint, Layout, Rect};
 /// ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01)).
 const SCROLL_MARGIN: usize = 2;
 
-/// The narrowest screen with room for the sidebar beside the panes (ui.md §1).
-const SIDEBAR_SCREEN: u16 = 80;
-
 /// The narrowest a pane gets, in columns ([navigation.md §5]).
 ///
 /// [navigation.md §5]: ../../../docs/specs/navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13
@@ -76,13 +73,6 @@ pub fn strip_offset(offset: u16, focused: Range<u16>, view: u16, total: u16) -> 
         .max(focused.end.saturating_sub(view))
         .min(focused.start)
         .min(total.saturating_sub(view))
-}
-
-/// The sidebar's width on a screen `width` columns wide: a quarter of it, within 24 to 32
-/// columns, or `None` below 80 columns, where the sidebar hides (ui.md §1).
-#[must_use]
-pub fn sidebar_width(width: u16) -> Option<u16> {
-    (width >= SIDEBAR_SCREEN).then(|| (width / 4).clamp(24, 32))
 }
 
 /// The first of `len` lines to draw in a view `height` lines tall so that the lines `focus` of
@@ -351,17 +341,6 @@ mod tests {
         );
     }
 
-    // FR-UI-01
-    #[test]
-    fn the_sidebar_takes_a_quarter_of_the_screen_within_24_to_32_columns_from_80_on() {
-        assert_eq!(sidebar_width(79), None);
-        assert_eq!(sidebar_width(0), None);
-        assert_eq!(sidebar_width(80), Some(24));
-        assert_eq!(sidebar_width(103), Some(25));
-        assert_eq!(sidebar_width(128), Some(32));
-        assert_eq!(sidebar_width(500), Some(32));
-    }
-
     #[test]
     fn the_secondary_sidebar_takes_a_quarter_of_the_width_within_32_to_40_columns() {
         let body = |width| Rect::new(0, 0, width, 23);
@@ -378,9 +357,9 @@ mod tests {
             secondary_sidebar(screen(200), body(200)),
             (body(160), Some(Rect::new(160, 0, 40, 23)))
         );
-        let below_left_sidebar = Rect::new(30, 1, 170, 20);
+        let inset_body = Rect::new(30, 1, 170, 20);
         assert_eq!(
-            secondary_sidebar(screen(200), below_left_sidebar),
+            secondary_sidebar(screen(200), inset_body),
             (Rect::new(30, 1, 130, 20), Some(Rect::new(160, 1, 40, 20))),
             "it stays at the right of the body"
         );

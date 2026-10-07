@@ -20,14 +20,13 @@ Home:
 - Plan the week @start(2026-10-06)
 ";
 
-/// Opens `text` on an 80×10 screen, chooses Today, the sidebar's first entry without bookmarks,
-/// and hides the sidebar.
+/// Opens `text` on an 80×10 screen and chooses Today, the sidebar's first entry without an
+/// inbox.
 fn today(text: &str) -> Harness {
     let mut app = Harness::with_text(text, 80, 10);
     app.render();
-    app.press(KeyCode::Char('0'), KeyModifiers::ALT);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
-    app.hide_sidebar();
     app
 }
 
@@ -77,7 +76,6 @@ fn choosing_today_in_the_sidebar_lists_the_blocks_for_today_with_their_paths() {
 #[test]
 fn g_t_shows_the_today_view_and_back_returns() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     app.type_keys("gt");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{STAR} Today"));
@@ -100,7 +98,6 @@ fn g_t_shows_the_today_view_and_back_returns() {
 #[test]
 fn go_to_command_lists_go_to_today_with_its_key_and_gives_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     app.type_keys(":go to today");
     let buffer = app.render().buffer().clone();
     let rows: Vec<String> = (0..buffer.area.height)
@@ -250,11 +247,7 @@ fn the_order_of_the_entries_comes_back_on_the_next_launch() {
     app.press(KeyCode::Char('k'), KeyModifiers::ALT);
     let expected = shown(&mut app);
     let mut app = app.reopen(80, 10);
-    assert_eq!(
-        shown(&mut app),
-        expected,
-        "the Today view without the sidebar"
-    );
+    assert_eq!(shown(&mut app), expected, "the Today view");
     let path = app.path.clone().expect("a file");
     assert_eq!(std::fs::read_to_string(&path).expect("the file"), OUTLINE);
 }

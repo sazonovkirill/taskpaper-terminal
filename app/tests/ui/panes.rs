@@ -65,7 +65,6 @@ const WORK_BESIDE: [&str; 9] = [
 #[test]
 fn ctrl_backslash_opens_the_focused_block_zoomed_in_a_new_pane_to_the_right() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     ctrl(&mut app, '\\');
     assert_eq!(
         screen(&mut app)[..9],
@@ -87,7 +86,6 @@ fn ctrl_backslash_opens_the_focused_block_zoomed_in_a_new_pane_to_the_right() {
 #[test]
 fn ctrl_w_v_opens_the_focused_block_in_a_new_pane_too() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     window(&mut app, "v");
     assert_eq!(screen(&mut app)[..9], WORK_BESIDE);
 }
@@ -96,7 +94,6 @@ fn ctrl_w_v_opens_the_focused_block_in_a_new_pane_too() {
 #[test]
 fn ctrl_w_s_opens_the_current_location_in_a_new_pane_with_the_same_focus() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     app.type_keys("jjj");
     window(&mut app, "s");
     let screen = screen(&mut app);
@@ -111,7 +108,6 @@ fn ctrl_w_s_opens_the_current_location_in_a_new_pane_with_the_same_focus() {
 #[test]
 fn a_leaf_opens_in_a_new_pane_zoomed_into_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     app.type_keys("j");
     ctrl(&mut app, '\\');
     let screen = screen(&mut app);
@@ -129,7 +125,6 @@ fn a_leaf_opens_in_a_new_pane_zoomed_into_it() {
 #[test]
 fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     ctrl(&mut app, '\\');
     let focused = |app: &mut Harness| {
         let screen = screen(app);
@@ -157,7 +152,6 @@ fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
 #[test]
 fn each_pane_keeps_its_own_zoom_focus_and_history() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     window(&mut app, "s");
     app.type_keys("jjj");
     app.press(KeyCode::Right, KeyModifiers::ALT);
@@ -191,7 +185,6 @@ fn each_pane_keeps_its_own_zoom_focus_and_history() {
 #[test]
 fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     window(&mut app, "s");
     app.type_keys("j");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -216,7 +209,6 @@ fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
 #[test]
 fn showing_completed_blocks_is_per_pane_and_a_new_pane_starts_with_its_opener_s() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     ctrl(&mut app, 'o');
     window(&mut app, "s");
     assert_eq!(
@@ -236,7 +228,6 @@ fn showing_completed_blocks_is_per_pane_and_a_new_pane_starts_with_its_opener_s(
 #[test]
 fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     app.type_keys("j");
     ctrl(&mut app, '\\');
     alt(&mut app, '1');
@@ -262,7 +253,6 @@ fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() 
 #[test]
 fn ctrl_w_c_closes_the_focused_pane_focusing_its_neighbor_but_not_the_last() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     ctrl(&mut app, '\\');
     window(&mut app, "c");
     let screen = screen(&mut app);
@@ -276,7 +266,6 @@ fn ctrl_w_c_closes_the_focused_pane_focusing_its_neighbor_but_not_the_last() {
 #[test]
 fn the_context_menu_closes_a_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.hide_sidebar();
     ctrl(&mut app, '\\');
     app.type_keys("\\close");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -287,7 +276,6 @@ fn the_context_menu_closes_a_pane() {
 #[test]
 fn ctrl_w_angles_and_alt_shift_h_l_narrow_and_widen_the_focused_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     window(&mut app, "s");
     assert_eq!(dividers(&mut app), [39]);
     window(&mut app, "<");
@@ -313,7 +301,6 @@ fn ctrl_w_angles_and_alt_shift_h_l_narrow_and_widen_the_focused_pane() {
 #[test]
 fn panes_wider_than_the_screen_scroll_sideways_to_keep_the_focused_one_in_view() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     window(&mut app, "s");
     window(&mut app, "s");
     let screen = screen(&mut app);
@@ -342,7 +329,6 @@ fn each_pane_keeps_how_far_it_is_scrolled() {
         .collect::<Vec<_>>()
         .join("\n");
     let mut app = Harness::with_text(&text, 80, 10);
-    app.hide_sidebar();
     app.type_keys("G");
     app.render();
     app.type_keys("kkk");
@@ -375,7 +361,6 @@ fn alt_enter_and_ctrl_v_open_the_highlighted_symbol_in_a_new_pane() {
         (KeyCode::Char('v'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(OUTLINE, 80, 10);
-        app.hide_sidebar();
         ctrl(&mut app, 'k');
         app.type_keys("water");
         app.press(key.0, key.1);
@@ -400,17 +385,17 @@ fn alt_enter_and_ctrl_v_open_the_focused_sidebar_entry_in_a_new_pane() {
     ] {
         let mut app = Harness::with_text(OUTLINE, 100, 10);
         app.render();
-        alt(&mut app, '0');
+        ctrl(&mut app, 'g');
         app.type_keys("jj");
         app.press(key.0, key.1);
         let screen = screen(&mut app);
         assert_eq!(
             screen[..4],
             [
-                "  ★ Today               │  ⌂                                  │  ⌂ › Home",
-                "                        │─────────────────────────────────────│─────────────────────────────────────",
-                "  Projects              │  Work:                              │  Home:",
-                "  Work                 1│    - Report                         │▌   - Water plants",
+                "  ⌂                                              │  ⌂ › Home",
+                "─────────────────────────────────────────────────│──────────────────────────────────────────────────",
+                "  Work:                                          │  Home:",
+                "    - Report                                     │▌   - Water plants",
             ]
         );
     }
@@ -437,7 +422,6 @@ fn a_screen_smaller_than_40_by_10_shows_only_the_focused_pane() {
 #[test]
 fn a_pane_scrolled_wholly_out_of_view_is_not_drawn() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     for _ in 0..3 {
         window(&mut app, "s");
     }
@@ -450,30 +434,29 @@ fn a_pane_scrolled_wholly_out_of_view_is_not_drawn() {
 
 // FR-UI-02, FR-UI-03, ui.md §1
 #[test]
-fn a_pane_is_never_wider_than_the_room_left_by_the_sidebars() {
+fn a_pane_is_never_wider_than_the_room_left_by_the_shortcuts_panel() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
     app.type_keys("?");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         screen(&mut app)[2],
-        "  Projects             │▌ Work:                 │  Stop Editing             Esc",
-        "the one pane takes the 24 columns between the sidebars"
+        "▌ Work:                                         │  Stop Editing             Esc",
+        "the one pane takes the 48 columns left of the panel"
     );
-    app.terminal.backend_mut().assert_cursor_position((30, 2));
+    app.terminal.backend_mut().assert_cursor_position((6, 2));
 }
 
 // FR-UI-04, file-io.md §5, navigation.md §5
 #[test]
 fn quitting_and_reopening_the_file_brings_its_panes_back() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    app.hide_sidebar();
     ctrl(&mut app, '\\');
     assert_eq!(screen(&mut app)[..9], WORK_BESIDE);
     let mut app = app.reopen(80, 10);
     assert_eq!(
         screen(&mut app)[..9],
         WORK_BESIDE,
-        "the panes, their zooms and focus, and the hidden sidebar"
+        "the panes, their zooms and focus"
     );
     let kept = std::fs::read_to_string(&app.views).expect("the layout is kept");
     assert!(kept.contains("outline.taskpaper"), "{kept}");
@@ -510,12 +493,12 @@ fn reopening_focuses_the_today_entry_that_was_focused() {
     let focused = |app: &mut Harness| -> Vec<String> {
         screen(app)
             .into_iter()
-            .filter(|row| row.contains("│▌"))
+            .filter(|row| row.starts_with('▌'))
             .collect()
     };
     let mut app = Harness::with_text(text, 80, 10);
     app.render();
-    alt(&mut app, '0');
+    ctrl(&mut app, 'g');
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.type_keys("j");
     let expected = focused(&mut app);

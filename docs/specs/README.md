@@ -11,7 +11,7 @@
 | [data-model.md](data-model.md) | Lines and the block layer, derived attributes, edits and undo, panes and workspace state. |
 | [file-format.md](file-format.md) | Parsing and serializing TaskPaper text exactly like TaskPaper 3. |
 | [file-io.md](file-io.md) | Opening, `/tmp` documents, Save As, atomic autosave, backups, external changes, crash recovery, pane layout persistence. |
-| [navigation.md](navigation.md) | Visible rows, focus, folding, zoom, panes, sidebar, Today view, Go to Symbol and Go to Command. |
+| [navigation.md](navigation.md) | Visible rows, focus, folding, zoom, panes, the Navigator, Today view, Go to Symbol and Go to Command. |
 | [editing.md](editing.md) | Navigate and edit modes, creating blocks, structural operations, clipboard, block type, done, dates, colors, bookmarks. |
 | [special-nodes.md](special-nodes.md) | Hidden `@hidden` lines that store feature data. |
 | [links.md](links.md) | Internal links and backlinks (Later): `@uid` targets, `[[ID\|Title]]` links, display, commands. |

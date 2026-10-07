@@ -1,17 +1,15 @@
-//! The navigation sidebar on the left: the inbox, Today, bookmarks and the project tree, with a
-//! rule on its right edge ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01).
+//! The navigation sidebar's window over the panes: the inbox, Today, bookmarks and the project
+//! tree in a centered box ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01, D-79).
 
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::Style,
+    style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, Widget},
+    widgets::{Block, Clear, Widget},
 };
 
-use super::{
-    FOCUS_MARKER, GUTTER_WIDTH, current_line_style, rule_style, selection_style, today_style,
-};
+use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, selection_style, today_style};
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
     ui::{
@@ -20,13 +18,20 @@ use crate::{
     },
 };
 
-/// The sidebar's lines: the inbox and Today, then for each of the bookmarks and the projects that
+/// The widest the window gets.
+const WIDTH: u16 = 48;
+
+/// The window's title.
+const TITLE: &str = "Navigator";
+
+/// The sidebar's window, framed and titled in the accent color like the finders, and its lines:
+/// the inbox and Today, then for each of the bookmarks and the projects that
 /// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
-/// outline's focused block and gets the current-line band; while the pane has the keys, the entry
-/// of where it is gets a selected block's marker instead (D-68). A project or the inbox with open
-/// tasks has their count dimmed at the right, its text cut off a space before it (D-73).
+/// outline's focused block and gets the current-line band; any other entry of where the focused
+/// pane is gets a selected block's marker (D-68). A project or the inbox with open tasks has their
+/// count dimmed at the right, its text cut off a space before it (D-73).
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -54,18 +59,27 @@ impl<'a> SidebarPanel<'a> {
         Self { offset, ..self }
     }
 
+    /// Where the window goes in `area`: centered, as wide as it can be up to 48 columns and as
+    /// tall as its lines with the border, up to the height of `area`.
+    #[must_use]
+    pub fn area(&self, area: Rect) -> Rect {
+        let lines = u16::try_from(self.lines().count().max(1)).unwrap_or(u16::MAX);
+        let height = lines.saturating_add(2).min(area.height);
+        area.centered(Constraint::Length(WIDTH), Constraint::Length(height))
+    }
+
     /// The first line to draw in `height` rows from `offset` on, scrolling as little as possible
-    /// to keep the focused or current entry visible and never past the last line.
+    /// to keep the focused entry visible and never past the last line.
     #[must_use]
     pub fn scroll(&self, offset: usize, height: usize) -> usize {
         let lines = self.lines().count();
-        match self.lines().position(|(_, mark)| mark != Mark::None) {
-            Some(marked) => layout::scroll_offset(offset, marked..marked + 1, height, lines),
-            None => offset.min(lines.saturating_sub(height)),
+        match self.focused_line() {
+            Some(focused) => layout::scroll_offset(offset, focused..focused + 1, height, lines),
+            None => 0,
         }
     }
 
-    /// The line of the focused entry, counted from the first, while the sidebar has the keys.
+    /// The line of the focused entry, counted from the first, if it lists any.
     #[must_use]
     pub fn focused_line(&self) -> Option<usize> {
         self.lines().position(|(_, mark)| mark == Mark::Focused)
@@ -207,14 +221,23 @@ fn heading_style() -> Style {
 
 impl Widget for SidebarPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border = Block::new()
-            .borders(Borders::RIGHT)
-            .border_style(rule_style(self.theme));
-        let inner = border.inner(area);
-        border.render(area, buf);
-        let [gutter, text] = inner.layout(&Layout::horizontal([
+        Clear.render(area, buf);
+        let accent = Style::new().fg(self.theme.accent);
+        let frame = Block::bordered()
+            .border_style(accent)
+            .title_style(accent)
+            .title(TITLE);
+        let inner = frame.inner(area);
+        frame.render(area, buf);
+        if self.view.entries.is_empty() {
+            Line::from(" Nothing to go to").dim().render(inner, buf);
+            return;
+        }
+        // The text keeps a column clear of the right border, as the gutter does of the left.
+        let [gutter, text, _] = inner.layout(&Layout::horizontal([
             Constraint::Length(GUTTER_WIDTH),
             Constraint::Fill(1),
+            Constraint::Length(1),
         ]));
         for ((line, mark), (gutter_area, line_area)) in self
             .lines()
@@ -272,34 +295,98 @@ fn render_count(count: usize, area: Rect, buf: &mut Buffer) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::super::tests::THEME;
-    use ratatui::style::{Color, Modifier};
+    use ratatui::{
+        buffer::Cell,
+        style::{Color, Modifier},
+    };
 
     use super::*;
     use crate::{
-        app::{Message, State},
+        app::{Message, SidebarInput, SidebarView, State},
         document::format,
     };
 
-    /// Draws the sidebar of `text` 20 columns wide and returns its rows, without the rule.
-    fn draw(text: &str) -> Buffer {
-        let view = State::new(format::parse(text), None)
-            .sidebar()
-            .expect("shown by default");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 8));
-        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+    /// The state of `text` with the sidebar open, on its first entry.
+    fn opened(text: &str) -> State {
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::ToggleSidebar);
+        state
+    }
+
+    fn view(state: &State) -> SidebarView {
+        state.sidebar().expect("open")
+    }
+
+    /// Draws `view` in a window 22 columns wide whose inside is `height` rows tall.
+    fn render(view: &SidebarView, height: u16) -> Buffer {
+        let mut buf = Buffer::empty(Rect::new(0, 0, 22, height + 2));
+        SidebarPanel::new(view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
         buf
     }
 
+    /// Draws the open sidebar of `text` with 8 rows inside the window.
+    fn draw(text: &str) -> Buffer {
+        render(&view(&opened(text)), 8)
+    }
+
+    /// The cell at `x`, `y` inside the window's border.
+    fn cell(buf: &Buffer, x: u16, y: u16) -> &Cell {
+        &buf[(x + 1, y + 1)]
+    }
+
+    /// The rows inside the window's border, without the column it keeps clear of the right one.
     fn rows(buf: &Buffer) -> Vec<String> {
-        (0..buf.area.height)
+        (0..buf.area.height - 2)
             .map(|y| {
-                (0..buf.area.width - 1)
-                    .map(|x| buf[(x, y)].symbol())
+                (0..buf.area.width - 3)
+                    .map(|x| cell(buf, x, y).symbol())
                     .collect::<String>()
                     .trim_end()
                     .to_owned()
             })
             .collect()
+    }
+
+    // ui.md §1, D-79
+    #[test]
+    fn the_window_is_framed_and_titled_in_the_accent_color_and_centered() {
+        let buf = render(&view(&opened("A:")), 4);
+        let top: String = (0..22).map(|x| buf[(x, 0)].symbol()).collect();
+        assert_eq!(top, format!("┌{TITLE}{}┐", "─".repeat(20 - TITLE.len())));
+        assert_eq!(buf[(0, 0)].fg, THEME.accent);
+        assert_eq!(buf[(1, 0)].fg, THEME.accent, "the title");
+        let state = opened("A:");
+        let view = view(&state);
+        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        // Today, blank, Projects, A, with the border.
+        assert_eq!(
+            panel.area(Rect::new(0, 0, 100, 20)),
+            Rect::new(26, 7, 48, 6)
+        );
+        assert_eq!(
+            panel.area(Rect::new(2, 1, 30, 4)),
+            Rect::new(2, 1, 30, 4),
+            "no larger than where it goes"
+        );
+    }
+
+    // D-77, D-79
+    #[test]
+    fn a_window_with_no_entries_says_so() {
+        let mut state = State::new(format::parse("- a"), None);
+        state.update(Message::Configure(crate::app::Configuration::SidebarToday(
+            false,
+        )));
+        state.update(Message::ToggleSidebar);
+        let view = view(&state);
+        assert_eq!(view.focused, None);
+        let buf = render(&view, 2);
+        assert_eq!(rows(&buf), [" Nothing to go to", ""]);
+        assert_eq!(cell(&buf, 1, 0).modifier, Modifier::DIM);
+        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        assert_eq!(panel.focused_line(), None);
+        assert_eq!(panel.scroll(3, 2), 0);
+        assert_eq!(panel.area(Rect::new(0, 0, 60, 20)).height, 3, "one line");
     }
 
     // FR-UI-01, D-68
@@ -308,7 +395,7 @@ mod tests {
         assert_eq!(
             rows(&draw("A: @bookmark\nB: @bookmark")),
             [
-                format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
+                format!("▌ {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Bookmarks".to_owned(),
                 "  A".to_owned(),
@@ -332,16 +419,14 @@ mod tests {
         assert_eq!(
             rows(&draw("INBOX:\n\t- a\nA:"))[..5],
             [
-                format!("  {} INBOX         1", Icon::Inbox.glyph(IconSet::Unicode)),
+                format!("▌ {} INBOX         1", Icon::Inbox.glyph(IconSet::Unicode)),
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
                 "  A".to_owned(),
             ]
         );
-        let view = State::new(format::parse("INBOX:\n\tA:"), None)
-            .sidebar()
-            .expect("shown by default");
+        let view = view(&opened("INBOX:\n\tA:"));
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
     }
@@ -354,20 +439,18 @@ mod tests {
             state.update(Message::Configure(crate::app::Configuration::SidebarToday(
                 false,
             )));
-            let view = state.sidebar().expect("shown by default");
-            let mut buf = Buffer::empty(Rect::new(0, 0, 20, 5));
-            SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
-            rows(&buf)
+            state.update(Message::ToggleSidebar);
+            rows(&render(&view(&state), 5))
         };
         assert_eq!(
             draw_without_today("A: @bookmark"),
-            ["  Bookmarks", "  A", "", "  Projects", "  A"]
+            ["  Bookmarks", "▌ A", "", "  Projects", "  A"]
         );
-        assert_eq!(draw_without_today("A:"), ["  Projects", "  A", "", "", ""]);
+        assert_eq!(draw_without_today("A:"), ["  Projects", "▌ A", "", "", ""]);
         assert_eq!(
             draw_without_today("INBOX:\nA:"),
             [
-                format!("  {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
+                format!("▌ {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
                 "  A".to_owned(),
@@ -379,9 +462,7 @@ mod tests {
     // FR-KEY-05
     #[test]
     fn a_line_names_its_entry_and_a_column_its_fold_marker() {
-        let view = State::new(format::parse("A: @bookmark\n\tB:\nC:"), None)
-            .sidebar()
-            .expect("shown by default");
+        let view = view(&opened("A: @bookmark\n\tB:\nC:"));
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Bookmarks, A, blank, Projects, ▾ A, B, C.
         assert_eq!(panel.entry_at(0, 2), Some((0, None)));
@@ -417,9 +498,7 @@ mod tests {
     // FR-KEY-05, D-60
     #[test]
     fn a_nested_projects_fold_marker_is_2_columns_in_per_level() {
-        let view = State::new(format::parse("A:\n\tB:\n\t\tC:"), None)
-            .sidebar()
-            .expect("shown by default");
+        let view = view(&opened("A:\n\tB:\n\t\tC:"));
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Projects, ▾ A, ▾ B, C.
         assert_eq!(panel.entry_at(4, 3), Some((2, Some(Fold::Expanded))));
@@ -428,37 +507,37 @@ mod tests {
 
     // D-68
     #[test]
-    fn the_current_entry_gets_a_selected_blocks_marker_and_is_scrolled_to() {
+    fn the_focused_entry_is_scrolled_to_and_the_current_one_gets_a_selected_blocks_marker() {
         let mut state = State::new(format::parse("A:\nB:\nC:\nD:"), None);
         state.update(Message::FocusLast);
         state.update(Message::ZoomIn);
-        let view = state.sidebar().expect("shown by default");
-        assert_eq!(view.current, Some(4), "D");
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        state.update(Message::ToggleSidebar);
+        let opened = view(&state);
+        assert_eq!((opened.focused, opened.current), (Some(4), Some(4)), "D");
+        let panel = SidebarPanel::new(&opened, IconSet::Unicode, &THEME);
         // Today, blank, Projects, A, B, C, D.
+        assert_eq!(panel.focused_line(), Some(6));
         assert_eq!(panel.scroll(0, 4), 3, "D on the last row");
         assert_eq!(panel.scroll(0, 7), 0);
-        assert_eq!(panel.focused_line(), None, "nothing focused");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
-        panel.render(buf.area, &mut buf);
+        let buf = render(&opened, 7);
         assert_eq!(rows(&buf)[6], "▌ D");
+        assert_eq!(cell(&buf, 0, 6).fg, THEME.focus, "the focus marker");
+        state.update(Message::Sidebar(SidebarInput::Previous));
+        let buf = render(&view(&state), 7);
+        assert_eq!(rows(&buf)[5..], ["▌ C", "▌ D"]);
+        assert_eq!(cell(&buf, 0, 5).fg, THEME.focus);
         assert_eq!(
             Style::new()
-                .fg(buf[(0, 6)].fg)
-                .add_modifier(buf[(0, 6)].modifier),
+                .fg(cell(&buf, 0, 6).fg)
+                .add_modifier(cell(&buf, 0, 6).modifier),
             selection_style(&THEME)
         );
-        assert_eq!(buf[(2, 6)].bg, Color::Reset, "no band");
-        state.update(Message::FocusSidebar);
-        let view = state.sidebar().expect("shown");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
-        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
-        assert_eq!(buf[(0, 6)].fg, THEME.focus, "the focus marker instead");
+        assert_eq!(cell(&buf, 2, 6).bg, Color::Reset, "no band");
     }
 
     // D-73
     #[test]
-    fn a_projects_open_task_count_is_dim_against_the_rule_and_cuts_its_text_off() {
+    fn a_projects_open_task_count_is_dim_at_the_right_and_cuts_its_text_off() {
         let buf =
             draw("Work:\n\t- a\n\tSub:\n\t\t- b\nABCDEFGHIJKLMNOPQ:\n\t- c\nNone:\n\t- d @done");
         assert_eq!(
@@ -471,24 +550,26 @@ mod tests {
                 "  None",
             ]
         );
-        assert_eq!(buf[(18, 3)].modifier, Modifier::DIM);
-        assert_eq!(buf[(17, 3)].symbol(), " ", "a space before the count");
-        assert!(buf[(2, 3)].modifier.is_empty(), "the text is plain");
+        assert_eq!(cell(&buf, 18, 3).modifier, Modifier::DIM);
+        assert_eq!(cell(&buf, 17, 3).symbol(), " ", "a space before the count");
+        assert_eq!(
+            cell(&buf, 19, 3).symbol(),
+            " ",
+            "a column clear of the border"
+        );
+        assert!(cell(&buf, 2, 3).modifier.is_empty(), "the text is plain");
     }
 
     // D-73, D-68
     #[test]
     fn the_focused_band_covers_the_count() {
-        let mut state = State::new(format::parse("Work:\n\t- a"), None);
-        state.update(Message::FocusSidebar);
-        state.update(Message::Sidebar(crate::app::SidebarInput::Focus(1)));
-        let view = state.sidebar().expect("shown");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 4));
-        SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+        let mut state = opened("Work:\n\t- a");
+        state.update(Message::Sidebar(SidebarInput::Focus(1)));
+        let buf = render(&view(&state), 4);
         assert_eq!(rows(&buf)[3], "▌ Work            1");
         let band = current_line_style(&THEME).bg;
-        assert_eq!(Some(buf[(18, 3)].bg), band);
-        assert_eq!(buf[(18, 3)].modifier, Modifier::DIM);
+        assert_eq!(Some(cell(&buf, 18, 3).bg), band);
+        assert_eq!(cell(&buf, 18, 3).modifier, Modifier::DIM);
     }
 
     // FR-UI-01
@@ -496,9 +577,9 @@ mod tests {
     fn headings_are_bold_and_dim() {
         let buf = draw("A: @bookmark");
         for y in [2, 5] {
-            let modifier = buf[(18, y)].modifier;
+            let modifier = cell(&buf, 18, y).modifier;
             assert!(modifier.contains(Modifier::BOLD | Modifier::DIM), "row {y}");
         }
-        assert!(buf[(2, 3)].modifier.is_empty(), "entries are plain");
+        assert!(cell(&buf, 2, 3).modifier.is_empty(), "entries are plain");
     }
 }

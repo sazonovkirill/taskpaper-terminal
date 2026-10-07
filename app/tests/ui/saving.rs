@@ -64,7 +64,6 @@ fn a_read_only_file_opens_read_only() {
     fs::write(&path, "- Milk\n").unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
     let mut app = Harness::open_path(dir, &path, 80, 4);
-    app.hide_sidebar();
     assert_eq!(
         status_line(&mut app),
         format!("{} · read-only", app.status(80).trim_end())

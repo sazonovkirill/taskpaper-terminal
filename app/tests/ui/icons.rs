@@ -38,8 +38,7 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-/// The app on [`OUTLINE`] with `settings`, on a screen with the sidebar, with `Later` collapsed
-/// and an unsaved change.
+/// The app on [`OUTLINE`] with `settings`, with `Later` collapsed and an unsaved change.
 fn started(settings: &str) -> Harness {
     let mut app = Harness::with_config(OUTLINE, settings, 90, 12);
     // `h` on `Call`, the last block, goes to `Later`, and on `Later` collapses it; then the
@@ -90,19 +89,24 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         let rows = screen(&mut app);
         let markers = ['⌂', '✔', '★', '⚑', '▸', '▾', '⇥', '↕', '●'];
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
-        assert!(rows[0].contains("│  ~"), "{settings}: {rows:#?}");
-        assert!(rows[0].starts_with("  * Today "), "{settings}: {rows:#?}");
-        assert!(rows[3].starts_with("  Work "), "{settings}: {rows:#?}");
-        assert!(rows[6].starts_with(" vWork"), "{settings}: {rows:#?}");
-        assert!(rows.iter().any(|row| row.ends_with("│  Work: #")));
+        assert_eq!(rows[0], "  ~", "{settings}: {rows:#?}");
+        assert_eq!(rows[2], "  Work: #", "{settings}: {rows:#?}");
         assert!(
-            rows.iter()
-                .any(|row| row.contains("│▌   - Draft * ") && row.ends_with("@ today")),
+            rows[3].starts_with("▌   - Draft * ") && rows[3].ends_with("@ today"),
             "{settings}: {rows:#?}"
         );
-        assert!(rows.iter().any(|row| row.contains("│    [x] Sent")));
-        assert!(rows.iter().any(|row| row.ends_with("│  Later: > 1")));
+        assert_eq!(rows[4], "    [x] Sent", "{settings}: {rows:#?}");
+        assert_eq!(rows[7], "  Later: > 1", "{settings}: {rows:#?}");
         assert_eq!(rows[11], "> NAVIGATE · FILE *", "{settings}: unsaved");
+        app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+        let rows = screen(&mut app);
+        assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
+        for entry in ["│▌ * Today ", "│  Work ", "│ vWork "] {
+            assert!(
+                rows.iter().any(|row| row.contains(entry)),
+                "{settings}: {entry:?} in the sidebar's window: {rows:#?}"
+            );
+        }
     }
 }
 

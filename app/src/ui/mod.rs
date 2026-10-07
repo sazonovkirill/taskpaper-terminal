@@ -27,7 +27,7 @@ use ratatui::{
 use crate::{
     app::{
         Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs,
-        SettingsInput, SidebarInput, State,
+        SettingsInput, State,
         commands::{Command, Group, REGISTRY},
     },
     document::ItemId,
@@ -102,8 +102,6 @@ pub struct Tui {
     /// Where the next draw puts the focused block's first line, counted from the top of the
     /// screen: where it was before a page motion.
     page_anchor: Option<usize>,
-    /// The screen's width at the last draw, which decides whether the sidebar has room.
-    width: u16,
     /// The first sidebar line on screen.
     sidebar_scroll: usize,
     /// Whether the process was told to end, so only saving is left.
@@ -171,7 +169,6 @@ impl Tui {
             page_rows: 0,
             focus_line: None,
             page_anchor: None,
-            width: 0,
             sidebar_scroll: 0,
             ending: false,
             diff_scroll: 0,
@@ -293,10 +290,6 @@ impl Tui {
         if self.state.in_conflict() {
             self.handle_prompt_key(event, now);
             return;
-        }
-        // A sidebar the screen became too narrow for gives the keys back to the pane.
-        if self.state.sidebar_focused() && layout::sidebar_width(self.width).is_none() {
-            self.send(Message::Sidebar(SidebarInput::Leave), now);
         }
         if let Event::Mouse(mouse) = event {
             self.handle_mouse(*mouse, now);
@@ -574,21 +567,20 @@ impl Tui {
         }
     }
 
-    /// Draws the whole screen: the sidebar, the panes side by side, each a breadcrumb header over
+    /// Draws the whole screen: the panes side by side, each a breadcrumb header over
     /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
     /// while open, the date prompt's panel below them while open, and the status line, all dimmed
-    /// behind a dialog that takes the keys.
+    /// behind a dialog that takes the keys, such as the sidebar's window.
     pub fn draw(&mut self, frame: &mut Frame) {
         let theme = self.palette();
         let screen = frame.area();
-        self.width = screen.width;
         let icons = self.icons;
         let [main, status] = screen.layout(&Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
         // The outline gives up the panel's rows rather than lying under it, so the focus scrolls
-        // into view above it; the panel spans the screen, below the sidebar too (D-54).
+        // into view above it; the panel spans the screen (D-54).
         let panel_height = if self.state.date_prompt().is_some() {
             DatePromptPanel::HEIGHT
         } else {
@@ -599,7 +591,6 @@ impl Tui {
             Constraint::Length(panel_height),
         ]));
         let screen_body = body;
-        let (body, entry) = self.draw_sidebar(frame, body);
         let (strip, sidebar) = match self.state.shortcuts() {
             Some(_) => layout::secondary_sidebar(screen, body),
             None => (body, None),
@@ -611,13 +602,20 @@ impl Tui {
         ]));
         let small = screen.width < 40 || screen.height < 10;
         let focused = self.draw_panes(frame, strip, small);
-        // Centered popups go over the sidebar, which a narrow screen draws over the outline.
+        // Centered popups go over the secondary sidebar, which a narrow screen draws over the
+        // outline.
         self.draw_shortcuts(frame, sidebar);
         self.draw_status(frame, status);
         // A dialog that takes the keys sets itself apart from the screen behind it (D-54, D-69).
-        if self.overlay().is_some() || self.state.in_conflict() {
+        if self.overlay().is_some() || self.state.sidebar_focused() || self.state.in_conflict() {
             frame.buffer_mut().set_style(screen, Style::new().dim());
         }
+        // A dialog over the Navigator dims it too; its own `Clear` would undo the dim above.
+        let entry = self.draw_sidebar(
+            frame,
+            outline,
+            self.overlay().is_some() || self.state.in_conflict(),
+        );
         if let Some(caret) = focused.caret {
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.command_menu() {
@@ -1019,36 +1017,30 @@ impl Tui {
         }
     }
 
-    /// The sidebar on the left of `area`, scrolled to keep its focused entry visible, while it is
-    /// shown and `area` has room for it; returns the rest of `area`, for the pane (ui.md §1), and
-    /// where the focused entry starts on screen, if one is focused.
-    fn draw_sidebar(
-        &mut self,
-        frame: &mut Frame,
-        area: ratatui::layout::Rect,
-    ) -> (ratatui::layout::Rect, Option<(u16, u16)>) {
+    /// The sidebar's window centered over `area`, scrolled to keep its focused entry visible,
+    /// while it is open (ui.md §1, D-79); returns where the focused entry starts on screen, if
+    /// one is focused. It is dimmed when `dim`, behind a dialog (D-69).
+    fn draw_sidebar(&mut self, frame: &mut Frame, area: Rect, dim: bool) -> Option<(u16, u16)> {
         self.drawn.sidebar = None;
-        let (Some(view), Some(width)) = (self.state.sidebar(), layout::sidebar_width(area.width))
-        else {
-            return (area, None);
-        };
-        let [sidebar, pane] = area.layout(&Layout::horizontal([
-            Constraint::Length(width),
-            Constraint::Fill(1),
-        ]));
+        let view = self.state.sidebar()?;
         let theme = self.palette();
         let panel = SidebarPanel::new(&view, self.icons, &theme);
-        self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(sidebar.height));
+        let window = panel.area(area);
+        let inner = window.inner(ratatui::layout::Margin::new(1, 1));
+        self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(inner.height));
         let entry = panel.focused_line().map(|line| {
             let line = u16::try_from(line.saturating_sub(self.sidebar_scroll)).unwrap_or(u16::MAX);
             (
-                sidebar.x.saturating_add(widgets::GUTTER_WIDTH),
-                sidebar.y.saturating_add(line),
+                inner.x.saturating_add(widgets::GUTTER_WIDTH),
+                inner.y.saturating_add(line),
             )
         });
-        self.drawn.sidebar = Some((sidebar, self.sidebar_scroll));
-        frame.render_widget(panel.offset(self.sidebar_scroll), sidebar);
-        (pane, entry)
+        self.drawn.sidebar = Some((inner, self.sidebar_scroll));
+        frame.render_widget(panel.offset(self.sidebar_scroll), window);
+        if dim {
+            frame.buffer_mut().set_style(window, Style::new().dim());
+        }
+        entry
     }
 
     /// The date prompt's panel over `area` with its caret, if it is open (D-54). The conflict

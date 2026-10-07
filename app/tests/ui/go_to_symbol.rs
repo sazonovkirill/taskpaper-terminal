@@ -136,7 +136,6 @@ fn a_query_that_matches_nothing_says_so() {
 fn a_long_list_scrolls_with_the_highlight_in_a_box_at_most_80_by_20() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 100, 30);
-    app.hide_sidebar();
     app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let rows = screen(&mut app);
     let top = rows
@@ -253,7 +252,6 @@ fn alt_enter_and_ctrl_v_open_the_highlighted_project_in_a_new_pane() {
         (KeyCode::Char('v'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(PROJECTS, 80, 10);
-        app.hide_sidebar();
         app.type_keys("gPgarden");
         app.press(code, modifiers);
         let rows = screen(&mut app);

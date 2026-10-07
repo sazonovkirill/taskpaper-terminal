@@ -420,7 +420,7 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
         ),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
-        Notice::NoInbox => Span::raw("No INBOX project in the sidebar"),
+        Notice::NoInbox => Span::raw("No INBOX project in the Navigator"),
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style)
         }
@@ -2476,7 +2476,7 @@ mod tests {
             now: std::time::Duration::ZERO,
             today: TODAY,
         });
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
         let star = Icon::Today.glyph(ICONS);
         let mut expected = Buffer::with_lines([at_right(
@@ -3143,7 +3143,7 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
-            (Notice::NoInbox, plain("No INBOX project in the sidebar")),
+            (Notice::NoInbox, plain("No INBOX project in the Navigator")),
             (
                 Notice::Count {
                     blocks: 1,

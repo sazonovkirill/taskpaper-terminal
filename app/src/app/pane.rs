@@ -95,7 +95,7 @@ impl Pane {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaneChange {
     /// Open the highlighted entry of Go to Symbol while it is open, else the focused sidebar entry
-    /// while the sidebar has the keys, else the focused block, in a new pane right of the focused
+    /// while the sidebar is open, else the focused block, in a new pane right of the focused
     /// one, zoomed into it, and give that pane the keys.
     Open,
     /// Open the focused pane's location in a new pane right of it, and give that pane the keys.
@@ -107,11 +107,9 @@ pub enum PaneChange {
     OpenCrumb(usize),
     /// Give the keys to the pane at this position, counted from 0 at the left, if there is one.
     Focus(usize),
-    /// Give the keys to the pane left of the focused one, or to the shown sidebar from the
-    /// leftmost pane (D-71).
+    /// Give the keys to the pane left of the focused one (D-71).
     FocusLeft,
-    /// Give the keys to the pane right of the focused one, or to the leftmost pane from the
-    /// sidebar (D-71).
+    /// Give the keys to the pane right of the focused one (D-71).
     FocusRight,
     /// Close the focused pane, unless it is the only one, and give the keys to its left
     /// neighbor, else its right one.
@@ -209,13 +207,11 @@ impl State {
                 }
             }
             PaneChange::Focus(at) => self.focus_pane(at),
-            PaneChange::FocusLeft if self.sidebar_focused() => {}
-            PaneChange::FocusLeft => match self.pane_at.checked_sub(1) {
-                Some(at) => self.focus_pane(at),
-                None if self.sidebar.shown() => self.focus_sidebar(),
-                None => {}
-            },
-            PaneChange::FocusRight if self.sidebar_focused() => self.focus_pane(0),
+            PaneChange::FocusLeft => {
+                if let Some(at) = self.pane_at.checked_sub(1) {
+                    self.focus_pane(at);
+                }
+            }
             PaneChange::FocusRight => self.focus_pane(self.pane_at.saturating_add(1)),
             PaneChange::Close => self.close_pane(),
         }
@@ -228,8 +224,8 @@ impl State {
     }
 
     /// Opens the highlighted entry of Go to Symbol or Go to Project, the focused sidebar entry or
-    /// the focused block in a new pane, as [`PaneChange::Open`] says, closing the finder and
-    /// giving the pane the keys back from the sidebar.
+    /// the focused block in a new pane, as [`PaneChange::Open`] says, closing the finder or the
+    /// sidebar.
     fn open_chosen(&mut self) {
         let chosen = if let Some((_, finder)) = self.symbols.take() {
             finder
@@ -497,6 +493,7 @@ mod tests {
         pane(&mut state, PaneChange::FocusLeft);
         state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Pane(PaneChange::FocusRight));
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Focus(0)));
         state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
         pane(&mut state, PaneChange::OpenLocation);
@@ -658,8 +655,6 @@ mod tests {
     #[test]
     fn focusing_a_pane_by_number_or_neighbor_keeps_their_order() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
         for project in ["Work", "Home", "Later"] {
             pane(&mut state, PaneChange::Focus(0));
             focus(&mut state, project);
@@ -691,55 +686,6 @@ mod tests {
         pane(&mut state, PaneChange::FocusRight);
         pane(&mut state, PaneChange::FocusRight);
         assert_eq!(panes(&state), marked(2));
-    }
-
-    // FR-UI-01, FR-UI-03, navigation.md §5, D-71: the shown sidebar is the stop left of the
-    // leftmost pane.
-    #[test]
-    fn left_from_the_leftmost_pane_focuses_the_shown_sidebar_and_right_comes_back() {
-        let mut state = open(OUTLINE);
-        focus(&mut state, "Home");
-        pane(&mut state, PaneChange::Open);
-        pane(&mut state, PaneChange::FocusLeft);
-        assert!(!state.sidebar_focused(), "a pane left of it first");
-        pane(&mut state, PaneChange::FocusLeft);
-        assert!(state.sidebar_focused());
-        assert_eq!(state.sidebar().and_then(|sidebar| sidebar.focused), Some(0));
-        state.update(Message::Sidebar(crate::app::SidebarInput::Next));
-        pane(&mut state, PaneChange::FocusLeft);
-        assert!(state.sidebar_focused(), "nothing left of the sidebar");
-        assert_eq!(
-            state.sidebar().and_then(|sidebar| sidebar.focused),
-            Some(1),
-            "its entry stays"
-        );
-        pane(&mut state, PaneChange::Focus(1));
-        state.update(Message::FocusSidebar);
-        pane(&mut state, PaneChange::FocusLeft);
-        assert!(
-            state.sidebar_focused(),
-            "whichever pane had the keys before"
-        );
-        pane(&mut state, PaneChange::FocusRight);
-        assert!(!state.sidebar_focused());
-        assert_eq!(
-            panes(&state),
-            ["*⌂: Home", "Home: Plants"],
-            "right goes to the leftmost pane"
-        );
-        state.update(Message::FocusSidebar);
-        pane(&mut state, PaneChange::FocusRight);
-        assert!(!state.sidebar_focused());
-        assert_eq!(
-            panes(&state),
-            ["*⌂: Home", "Home: Plants"],
-            "the leftmost one had the keys before"
-        );
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
-        pane(&mut state, PaneChange::FocusLeft);
-        assert!(!state.sidebar_focused(), "a hidden sidebar is no stop");
-        assert_eq!(state.sidebar(), None, "and stays hidden");
     }
 
     // FR-UI-03, navigation.md §5
@@ -816,13 +762,13 @@ mod tests {
     #[test]
     fn the_sidebar_opens_its_focused_entry_in_a_new_pane_which_gets_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Next));
         state.update(Message::Sidebar(crate::app::SidebarInput::Next));
         pane(&mut state, PaneChange::Open);
         assert!(!state.sidebar_focused());
         assert_eq!(panes(&state), ["⌂: Work", "*Home: Plants"]);
-        state.update(Message::FocusSidebar);
+        state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
         state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
         pane(&mut state, PaneChange::Open);

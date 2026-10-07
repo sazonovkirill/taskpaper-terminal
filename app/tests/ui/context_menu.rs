@@ -39,7 +39,6 @@ fn saved(app: &mut Harness) -> String {
 #[test]
 fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.hide_sidebar();
     app.type_keys("j\\");
     let rows = screen(&mut app);
     assert_eq!(
@@ -69,7 +68,6 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
 #[test]
 fn shift_f10_and_the_menu_key_open_it_too_and_esc_closes_it() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.hide_sidebar();
     app.press(KeyCode::F(10), KeyModifiers::SHIFT);
     assert!(open(&mut app));
     press(&mut app, KeyCode::Esc);
@@ -85,7 +83,6 @@ fn shift_f10_and_the_menu_key_open_it_too_and_esc_closes_it() {
 #[test]
 fn typing_filters_and_enter_runs_the_command_as_its_keys_do() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.hide_sidebar();
     app.type_keys("j\\comp");
     let rows = screen(&mut app);
     assert_eq!(
@@ -112,7 +109,6 @@ fn typing_filters_and_enter_runs_the_command_as_its_keys_do() {
 #[test]
 fn a_character_that_matches_nothing_is_not_typed() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.hide_sidebar();
     app.type_keys("\\zq");
     assert!(
         screen(&mut app).iter().any(|row| row.contains("└z─")),
@@ -125,7 +121,6 @@ fn a_character_that_matches_nothing_is_not_typed() {
 #[test]
 fn on_the_selection_its_commands_act_on_every_selected_block() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.hide_sidebar();
     app.type_keys("jJJ\\");
     assert!(
         !screen(&mut app).iter().any(|row| row.contains("Edit ")),
@@ -145,28 +140,35 @@ fn on_the_selection_its_commands_act_on_every_selected_block() {
 fn on_a_sidebar_entry_it_offers_going_there() {
     let mut app = Harness::with_text(TEXT, 90, 16);
     app.render();
-    app.press(KeyCode::Char('0'), KeyModifiers::ALT);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Char('\\'));
     let rows = screen(&mut app);
     assert_eq!(
         rows[4..10],
         [
-            "  ┌Commands:─────────────────────────────────┐",
-            "  │  › Go to Entry                    Enter  │",
-            "  │  › Open in New Pane   Alt+Enter, Ctrl+V  │",
-            "  │──────────────────────────────────────────│",
-            "  │  › Return to Outline                Esc  │",
-            "  │  › Hide Sidebar                  Ctrl+B  │",
+            "      Near the station  ┌Commands:─────────────────────────────────┐",
+            "    - Pack              │  › Go to Entry                    Enter  │",
+            "  Other              ┌Na│  › Open in New Pane   Alt+Enter, Ctrl+V  │┐",
+            "                     │  │──────────────────────────────────────────││",
+            "                     │  │  › Return to Outline                Esc  ││",
+            "                     │  └──────────────────────────────────────────┘│",
         ],
-        "under the focused entry"
+        "over the window, above the focused entry on its last row"
     );
+    let buffer = app.render().buffer().clone();
+    assert!(
+        buffer[(21, 6)].modifier.contains(Modifier::DIM),
+        "the window is dimmed behind the menu"
+    );
+    assert!(!buffer[(25, 5)].modifier.contains(Modifier::DIM));
     press(&mut app, KeyCode::Enter);
     assert!(!open(&mut app));
-    assert!(screen(&mut app)[0].ends_with("│  ⌂ › Trip"));
+    assert_eq!(screen(&mut app)[0], "  ⌂ › Trip", "the window closed");
     press(&mut app, KeyCode::Char('j'));
-    assert!(
-        screen(&mut app)[4].ends_with("│▌     Near the station"),
+    assert_eq!(
+        screen(&mut app)[4],
+        "▌     Near the station",
         "the pane has the keys and j moved its focus"
     );
 }
@@ -176,7 +178,7 @@ fn on_a_sidebar_entry_it_offers_going_there() {
 fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
     let mut app = Harness::with_text("- Call Ann @today\n", 90, 30);
     app.render();
-    app.press(KeyCode::Char('0'), KeyModifiers::ALT);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Enter);
     press(&mut app, KeyCode::Char('\\'));
     let rows = screen(&mut app).join("\n");

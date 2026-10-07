@@ -402,15 +402,14 @@ mod tests {
         let (io, inputs) = start(dir.path());
         let path = dir.path().join("todo.taskpaper");
         let mut state = super::super::open(&path)?;
-        state.update(Message::FocusSidebar);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::Pane(crate::app::PaneChange::OpenLocation));
         io.submit(save_job(&path, "Work:\n"));
         io.store_view(path.clone(), state.view_state().expect("a layout"));
         io.flush();
         assert_eq!(results(&inputs), [Input::Core(Message::Saved)]);
         let views = Views::new(Some(dir.path().join("state/views.json")));
         let restored = views.restore(super::super::open(&path)?);
-        assert_eq!(restored.sidebar(), None, "kept for the saved file");
+        assert_eq!(restored.panes().len(), 2, "kept for the saved file");
         Ok(())
     }
 

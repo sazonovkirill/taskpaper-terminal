@@ -53,7 +53,6 @@ fn the_config_file_binds_keys_to_commands_and_unbinds_them() {
 #[test]
 fn the_shortcuts_panel_go_to_command_and_the_context_menu_show_the_config_files_keys() {
     let mut app = Harness::with_config(OUTLINE, REBOUND, 120, 60);
-    app.hide_sidebar();
     app.type_keys("?");
     let buffer = app.render().buffer().clone();
     let rows: Vec<String> = (0..60).map(|y| line(&buffer, y)).collect();

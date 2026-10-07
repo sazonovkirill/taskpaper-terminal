@@ -56,7 +56,6 @@ fn conflict_copies(app: &Harness) -> Vec<(String, Vec<u8>)> {
 #[test]
 fn a_file_changed_elsewhere_is_reloaded_keeping_the_focus() {
     let mut app = Harness::with_text(GROCERIES, 80, 7);
-    app.hide_sidebar();
     app.settle();
     app.type_keys("jj");
     assert_eq!(focused_rows(&mut app), ["  - Eggs"]);
@@ -107,7 +106,6 @@ fn a_deleted_file_is_kept_and_marked_not_on_disk() {
 #[test]
 fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
     let mut app = Harness::with_text(GROCERIES, 140, 8);
-    app.hide_sidebar();
     app.settle();
     let theirs = b"Groceries:\n\t- Caf\xe9\n\t- Milk\n".to_vec();
     fs::write(path(&app), &theirs).unwrap();

@@ -1,4 +1,5 @@
-//! Step 4.6: the navigation sidebar on the left, its keys and the 80-column rule.
+//! Step 4.6, D-79: the navigation sidebar, a window that `Ctrl+G` opens over the panes, and its
+//! keys.
 
 use std::fmt::Write as _;
 
@@ -17,11 +18,12 @@ Home:
 \t- Water plants
 ";
 
-/// The sidebar's width on an 80-column screen, its rule included.
-const SIDEBAR: u16 = 24;
+/// How many columns of the window's inside its lines take: all but the one it keeps clear of its
+/// right border.
+const TEXT: u16 = 45;
 
 fn app(width: u16) -> Harness {
-    let mut app = Harness::with_text(OUTLINE, width, 10);
+    let mut app = Harness::with_text(OUTLINE, width, 16);
     app.render();
     app
 }
@@ -35,23 +37,32 @@ fn columns(buffer: &Buffer, y: u16, from: u16, to: u16) -> String {
     text.trim_end().to_owned()
 }
 
-/// The sidebar's lines as drawn, gutter included, without its rule.
-fn sidebar(app: &mut Harness) -> Vec<String> {
-    let buffer = app.render().buffer().clone();
-    let mut lines: Vec<String> = (0..buffer.area.height - 1)
-        .map(|y| columns(&buffer, y, 0, SIDEBAR - 1))
-        .collect();
-    while lines.last().is_some_and(String::is_empty) {
-        lines.pop();
-    }
-    lines
+/// Where the window's top left corner is on screen, if it is open.
+fn corner(buffer: &Buffer) -> Option<(u16, u16)> {
+    let area = buffer.area;
+    (0..area.height)
+        .flat_map(|y| (0..area.width).map(move |x| (x, y)))
+        .find(|&(x, y)| {
+            buffer[(x, y)].symbol() == "┌" && columns(buffer, y, x + 1, x + 10) == "Navigator"
+        })
 }
 
-/// The pane's rows right of the sidebar, gutter included, header and rule first.
+/// The lines inside the open window, gutter included, or `None` while it is closed.
+fn window(app: &mut Harness) -> Option<Vec<String>> {
+    let buffer = app.render().buffer().clone();
+    let (x, top) = corner(&buffer)?;
+    let lines = (top + 1..buffer.area.height)
+        .take_while(|&y| buffer[(x, y)].symbol() != "└")
+        .map(|y| columns(&buffer, y, x + 1, x + 1 + TEXT))
+        .collect();
+    Some(lines)
+}
+
+/// The pane's rows, gutter included, header and rule first.
 fn pane(app: &mut Harness) -> Vec<String> {
     let buffer = app.render().buffer().clone();
     (0..buffer.area.height - 1)
-        .map(|y| columns(&buffer, y, SIDEBAR, buffer.area.width))
+        .map(|y| columns(&buffer, y, 0, buffer.area.width))
         .collect()
 }
 
@@ -59,16 +70,12 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-fn alt_0(app: &mut Harness) {
-    app.press(KeyCode::Char('0'), KeyModifiers::ALT);
+fn ctrl_g(app: &mut Harness) {
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
 }
 
-fn ctrl_b(app: &mut Harness) {
-    app.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
-}
-
-/// The sidebar's lines as listed before any key, `▌` marking the focused or current one, each
-/// project's count of open tasks against the rule (D-73).
+/// The window's lines as it opens before any key, `▌` marking the focused or current one, each
+/// project's count of open tasks at the right (D-73).
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
         (format!("{STAR} Today"), None),
@@ -93,210 +100,158 @@ fn listed(focused: Option<usize>) -> Vec<String> {
         };
         let line = format!("{gutter}{text}");
         match count {
-            Some(count) => format!("{line:22}{count}"),
+            Some(count) => format!("{line:44}{count}"),
             None => line.trim_end().to_owned(),
         }
     })
     .collect()
 }
 
-// FR-UI-01, ui.md §1, navigation §6, D-68
+// FR-UI-01, ui.md §1, navigation §6, D-79
 #[test]
-fn the_sidebar_lists_today_bookmarks_and_projects_left_of_the_pane() {
+fn the_pane_takes_the_screen_and_ctrl_g_opens_the_window_over_it() {
     let mut app = app(80);
-    assert_eq!(sidebar(&mut app), listed(None));
-    let buffer = app.render().buffer().clone();
-    assert_eq!(
-        buffer[(SIDEBAR - 1, 0)].symbol(),
-        "│",
-        "a rule on its right edge"
-    );
+    assert_eq!(window(&mut app), None, "closed at the start");
     assert_eq!(
         pane(&mut app)[..4],
         [
             "  ⌂",
-            "─".repeat(56).as_str(),
+            "─".repeat(80).as_str(),
             "▌ Work:",
             &format!("    - Launch plan {BOOKMARK}")
         ]
     );
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app), Some(listed(Some(0))));
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        corner(&buffer),
+        Some((16, 3)),
+        "centered below the pane's header"
+    );
     assert!(
-        line(&buffer, 9).starts_with(&format!("{NAVIGATE} · ")),
+        buffer[(2, 2)].modifier.contains(Modifier::DIM),
+        "the pane is dimmed behind it"
+    );
+    assert!(
+        !buffer[(19, 4)].modifier.contains(Modifier::DIM),
+        "it is not"
+    );
+    assert!(
+        line(&buffer, 15).starts_with(&format!("{NAVIGATE} · ")),
         "the status line spans the screen"
     );
 }
 
-// FR-UI-01, ui.md §1
+// FR-UI-01, D-79
 #[test]
-fn below_80_columns_the_sidebar_hides_and_cannot_take_the_keys() {
-    let mut app = app(79);
-    assert_eq!(line(app.render().buffer(), 0), "  ⌂");
-    alt_0(&mut app);
-    press(&mut app, KeyCode::Char('j'));
-    let buffer = app.render().buffer().clone();
-    assert_eq!(
-        line(&buffer, 3),
-        format!("▌   - Launch plan {BOOKMARK}"),
-        "j moved the pane's focus"
-    );
-    assert_eq!(line(&buffer, 0), "  ⌂", "still hidden");
-}
-
-// FR-UI-01, D-68
-#[test]
-fn ctrl_b_gives_the_sidebar_the_keys_showing_it_and_hides_it_from_there() {
+fn ctrl_g_and_esc_close_the_window_and_the_pane_has_the_keys() {
     let mut app = app(80);
-    ctrl_b(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(0)), "the shown sidebar");
-    ctrl_b(&mut app);
-    assert_eq!(
-        line(app.render().buffer(), 2),
-        "▌ Work:",
-        "the pane takes the screen"
-    );
-    ctrl_b(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(0)));
+    for close in [KeyCode::Esc, KeyCode::Char('g')] {
+        ctrl_g(&mut app);
+        let modifiers = match close {
+            KeyCode::Esc => KeyModifiers::NONE,
+            _ => KeyModifiers::CONTROL,
+        };
+        app.press(close, modifiers);
+        assert_eq!(window(&mut app), None, "{close:?}");
+    }
     press(&mut app, KeyCode::Char('j'));
-    assert_eq!(sidebar(&mut app), listed(Some(3)), "j moves in the sidebar");
+    assert_eq!(
+        pane(&mut app)[3],
+        format!("▌   - Launch plan {BOOKMARK}"),
+        "j moves in the pane"
+    );
 }
 
 // D-68
 #[test]
-fn the_entry_of_the_panes_zoom_is_marked_as_selected_and_focused_by_ctrl_b() {
+fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
     let mut app = app(80);
     app.type_keys(".");
-    assert_eq!(sidebar(&mut app), listed(Some(6)), "Work");
-    let buffer = app.render().buffer().clone();
-    assert!(
-        buffer[(0, 6)].modifier.contains(Modifier::DIM),
-        "a selected block's marker"
-    );
-    assert_eq!(buffer[(2, 6)].bg, buffer[(2, 7)].bg, "without the band");
-    app.type_keys("j.");
-    assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports");
-    assert_eq!(sidebar(&mut app), listed(Some(7)), "the marker follows");
-    app.type_keys(".");
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app), Some(listed(Some(6))), "Work");
+    press(&mut app, KeyCode::Esc);
+    app.type_keys("j..");
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports › Draft");
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app),
-        listed(Some(7)),
+        window(&mut app),
+        Some(listed(Some(7))),
         "Reports, above the zoomed task"
     );
-    ctrl_b(&mut app);
-    let buffer = app.render().buffer().clone();
-    assert!(!buffer[(0, 7)].modifier.contains(Modifier::DIM), "focused");
     press(&mut app, KeyCode::Char('k'));
+    let mut lines = listed(Some(6));
+    lines[7] = format!("{:44}1", "▌   Reports");
     assert_eq!(
-        sidebar(&mut app),
-        listed(Some(6)),
-        "k moves the focus freely"
+        window(&mut app),
+        Some(lines),
+        "k moves the focus, the current entry keeps its marker"
     );
-    press(&mut app, KeyCode::Esc);
-    assert_eq!(sidebar(&mut app), listed(Some(7)), "the marker is back");
+    let buffer = app.render().buffer().clone();
+    let (x, y) = corner(&buffer).expect("open");
+    assert!(
+        buffer[(x + 1, y + 8)].modifier.contains(Modifier::DIM),
+        "a selected block's marker"
+    );
 }
 
-// FR-UI-01, keybindings.md §2, §4, D-42
+// FR-UI-01, keybindings.md §4
 #[test]
-fn alt_0_and_g_0_focus_the_sidebar_where_j_k_and_the_arrows_move() {
+fn j_k_and_the_arrows_move_in_the_window_skipping_headings() {
     let mut app = app(80);
-    alt_0(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(0)));
+    ctrl_g(&mut app);
     press(&mut app, KeyCode::Char('j'));
     assert_eq!(
-        sidebar(&mut app),
-        listed(Some(3)),
+        window(&mut app),
+        Some(listed(Some(3))),
         "headings and blank lines are skipped"
     );
     press(&mut app, KeyCode::Down);
-    assert_eq!(sidebar(&mut app), listed(Some(6)));
+    assert_eq!(window(&mut app), Some(listed(Some(6))));
     press(&mut app, KeyCode::Char('k'));
     press(&mut app, KeyCode::Up);
-    assert_eq!(sidebar(&mut app), listed(Some(0)));
-    assert_eq!(pane(&mut app)[2], "▌ Work:", "the pane's focus stays");
+    assert_eq!(window(&mut app), Some(listed(Some(0))));
     press(&mut app, KeyCode::Esc);
-    assert_eq!(sidebar(&mut app), listed(None));
-    app.type_keys("g0");
-    assert_eq!(sidebar(&mut app), listed(Some(0)));
+    assert_eq!(pane(&mut app)[2], "▌ Work:", "the pane's focus stayed");
 }
 
-// FR-UI-02, keybindings.md §4, D-42
+// keybindings.md §4, D-79: the window keeps the keys until it closes.
 #[test]
-fn g_1_and_alt_1_give_the_keys_from_the_sidebar_to_the_pane() {
+fn the_keys_that_focus_a_pane_and_the_sidebars_old_keys_do_nothing() {
     let mut app = app(80);
-    app.type_keys("g0");
+    ctrl_g(&mut app);
     app.type_keys("g1");
-    assert_eq!(sidebar(&mut app), listed(None), "the sidebar lets go");
-    press(&mut app, KeyCode::Char('j'));
-    assert_eq!(
-        pane(&mut app)[3],
-        "▌   - Launch plan ⚑".replace('⚑', BOOKMARK),
-        "j moves in the pane"
-    );
-    alt_0(&mut app);
     app.press(KeyCode::Char('1'), KeyModifiers::ALT);
-    assert_eq!(sidebar(&mut app), listed(None));
-}
-
-// FR-UI-01, FR-UI-03, keybindings.md §2, §4, D-71, D-42
-#[test]
-fn ctrl_shift_and_ctrl_w_arrows_move_between_the_sidebar_and_the_leftmost_pane() {
-    let mut app = app(80);
-    let ctrl_shift = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
-    app.press(KeyCode::Left, ctrl_shift);
-    assert_eq!(
-        sidebar(&mut app),
-        listed(Some(0)),
-        "the sidebar takes the keys"
-    );
-    app.press(KeyCode::Right, ctrl_shift);
-    assert_eq!(sidebar(&mut app), listed(None), "and gives them back");
-    press(&mut app, KeyCode::Char('j'));
-    assert_eq!(
-        pane(&mut app)[3],
-        format!("▌   - Launch plan {BOOKMARK}"),
-        "j moves in the pane"
-    );
+    app.press(KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Left);
-    assert_eq!(sidebar(&mut app), listed(Some(0)), "Ctrl+W ← too");
-    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
-    press(&mut app, KeyCode::Right);
-    assert_eq!(sidebar(&mut app), listed(None), "and Ctrl+W →");
-    app.hide_sidebar();
-    app.press(KeyCode::Left, ctrl_shift);
-    press(&mut app, KeyCode::Char('j'));
-    assert_eq!(
-        line(app.render().buffer(), 4),
-        "▌   Reports:",
-        "a hidden sidebar stays hidden and the pane keeps the keys"
-    );
-}
-
-// FR-UI-01
-#[test]
-fn alt_0_shows_a_hidden_sidebar() {
-    let mut app = app(80);
-    ctrl_b(&mut app);
-    alt_0(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(0)));
+    assert_eq!(window(&mut app), Some(listed(Some(0))), "still open");
+    press(&mut app, KeyCode::Esc);
+    app.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('0'), KeyModifiers::ALT);
+    app.type_keys("g0");
+    assert_eq!(window(&mut app), None, "Ctrl+B, Alt+0 and g0 open nothing");
 }
 
 // FR-UI-01, navigation §6
 #[test]
-fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
+fn enter_zooms_the_pane_to_the_entry_and_closes_the_window() {
     let mut app = app(80);
-    alt_0(&mut app);
+    ctrl_g(&mut app);
     press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
+    assert_eq!(window(&mut app), None);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
-    assert_eq!(sidebar(&mut app), listed(Some(3)), "the entry marked");
-    app.type_keys("g0jj");
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app), Some(listed(Some(3))), "on its entry");
+    app.type_keys("jj");
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         pane(&mut app)[..4],
         [
             "  ⌂ › Work › Reports",
-            "─".repeat(56).as_str(),
+            "─".repeat(80).as_str(),
             "  Reports:",
             "▌   - Draft"
         ]
@@ -309,28 +264,30 @@ fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
 #[test]
 fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
-    alt_0(&mut app);
+    ctrl_g(&mut app);
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
-    assert_eq!(sidebar(&mut app), listed(Some(0)), "the entry marked");
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app), Some(listed(Some(0))), "on its entry");
 }
 
 // keybindings.md §4
 #[test]
 fn h_and_l_and_the_arrows_fold_project_entries() {
     let mut app = app(80);
-    alt_0(&mut app);
+    ctrl_g(&mut app);
     app.type_keys("jjh");
     let mut folded = listed(Some(6));
-    folded[6] = format!("{:22}2", "▌▸Work");
+    folded[6] = format!("{:44}2", "▌▸Work");
     folded.remove(7);
-    assert_eq!(sidebar(&mut app), folded);
+    assert_eq!(window(&mut app), Some(folded.clone()));
     press(&mut app, KeyCode::Char('l'));
-    assert_eq!(sidebar(&mut app), listed(Some(6)));
+    assert_eq!(window(&mut app), Some(listed(Some(6))));
     press(&mut app, KeyCode::Left);
-    assert_eq!(sidebar(&mut app), folded);
+    assert_eq!(window(&mut app), Some(folded));
     press(&mut app, KeyCode::Right);
-    assert_eq!(sidebar(&mut app), listed(Some(6)));
+    assert_eq!(window(&mut app), Some(listed(Some(6))));
+    press(&mut app, KeyCode::Esc);
     assert_eq!(
         pane(&mut app)[3],
         format!("    - Launch plan {BOOKMARK}"),
@@ -338,103 +295,63 @@ fn h_and_l_and_the_arrows_fold_project_entries() {
     );
 }
 
-// FR-UI-01
 #[test]
-fn ctrl_b_in_the_sidebar_hides_it_and_gives_the_pane_the_keys() {
+fn ctrl_q_quits_from_the_window() {
     let mut app = app(80);
-    alt_0(&mut app);
-    ctrl_b(&mut app);
-    press(&mut app, KeyCode::Char('j'));
-    assert_eq!(
-        line(app.render().buffer(), 3),
-        format!("▌   - Launch plan {BOOKMARK}")
-    );
-}
-
-#[test]
-fn ctrl_q_quits_from_the_sidebar() {
-    let mut app = app(80);
-    alt_0(&mut app);
+    ctrl_g(&mut app);
     app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
     assert!(app.tui.should_quit());
 }
 
 // FR-OPS-06
 #[test]
-fn text_pasted_into_the_focused_sidebar_is_dropped() {
+fn text_pasted_into_the_window_is_dropped() {
     let mut app = app(80);
-    alt_0(&mut app);
+    ctrl_g(&mut app);
     app.send(Input::Terminal(Event::Paste("- Eggs".to_owned())));
+    press(&mut app, KeyCode::Esc);
     assert_eq!(pane(&mut app)[3], format!("    - Launch plan {BOOKMARK}"));
 }
 
-// FR-UI-01, ui.md §1
+// ui.md §1
 #[test]
-fn a_screen_narrowed_below_80_columns_gives_the_keys_back_to_the_pane() {
-    let mut app = app(80);
-    alt_0(&mut app);
-    app.terminal.backend_mut().resize(60, 10);
-    app.render();
-    press(&mut app, KeyCode::Char('j'));
+fn a_narrow_screen_draws_the_window_as_wide_as_the_pane() {
+    let mut app = app(30);
+    ctrl_g(&mut app);
+    let buffer = app.render().buffer().clone();
+    assert_eq!(corner(&buffer), Some((0, 3)));
+    assert_eq!(columns(&buffer, 3, 0, 30).chars().last(), Some('┐'));
     assert_eq!(
-        line(app.render().buffer(), 3),
-        format!("▌   - Launch plan {BOOKMARK}")
+        columns(&buffer, 4, 0, 30),
+        format!("│▌ {STAR} Today{:19}│", "")
     );
-    app.terminal.backend_mut().resize(80, 10);
-    assert_eq!(sidebar(&mut app), listed(None));
 }
 
 // FR-UI-01
 #[test]
-fn the_sidebar_scrolls_to_keep_its_focused_entry_visible() {
+fn the_window_scrolls_to_keep_its_focused_entry_visible() {
     let projects = (1..=12)
         .map(|n| format!("P{n}:"))
         .collect::<Vec<_>>()
         .join("\n");
-    let mut app = Harness::with_text(&projects, 80, 6);
+    let mut app = Harness::with_text(&projects, 80, 10);
     app.render();
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app)[..3],
+        window(&mut app).expect("open"),
         [
-            format!("  {STAR} Today"),
+            format!("▌ {STAR} Today"),
             String::new(),
-            "  Projects".to_owned()
+            "  Projects".to_owned(),
+            "  P1".to_owned(),
+            "  P2".to_owned(),
         ]
     );
-    alt_0(&mut app);
     app.type_keys("jjjjj");
-    assert_eq!(sidebar(&mut app), ["  P3", "  P4", "▌ P5", "  P6", "  P7"]);
-}
-
-// D-54, ui.md §1
-#[test]
-fn the_date_prompt_spans_the_screen_below_the_sidebar() {
-    let mut app = app(80);
-    app.type_keys("md");
-    let buffer = app.render().buffer().clone();
-    assert!(
-        line(&buffer, 5).starts_with("┌ Due date ─"),
-        "{}",
-        line(&buffer, 5)
-    );
-    assert!(line(&buffer, 8).ends_with('┘'));
-    assert_eq!(line(&buffer, 8).chars().count(), 80);
     assert_eq!(
-        sidebar(&mut app)[..2],
-        listed(None)[..2],
-        "the sidebar stays above it"
+        window(&mut app).expect("open"),
+        ["  P3", "  P4", "▌ P5", "  P6", "  P7"]
     );
-}
-
-// FR-UI-01, FR-KEY-04, D-28, ui.md §1
-#[test]
-fn the_shortcuts_panel_opens_at_the_right_with_the_sidebar_at_the_left() {
-    let mut app = Harness::with_text(OUTLINE, 100, 10);
-    app.type_keys("?");
-    let buffer = app.render().buffer().clone();
-    assert_eq!(columns(&buffer, 2, 0, 25), "  Bookmarks             │");
-    assert_eq!(columns(&buffer, 2, 25, 68), "▌ Work:");
-    assert_eq!(columns(&buffer, 0, 68, 100), "│Shortcuts");
 }
 
 // D-73, D-67
@@ -442,13 +359,16 @@ fn the_shortcuts_panel_opens_at_the_right_with_the_sidebar_at_the_left() {
 fn a_projects_count_of_open_tasks_follows_completing_them() {
     let mut app = app(80);
     app.type_keys("jx");
-    let mut listed = listed(None);
-    listed[6] = format!("{:22}1", " ▾Work");
-    assert_eq!(sidebar(&mut app), listed, "Launch plan done");
+    ctrl_g(&mut app);
+    let mut listed = listed(Some(0));
+    listed[6] = format!("{:44}1", " ▾Work");
+    assert_eq!(window(&mut app), Some(listed.clone()), "Launch plan done");
+    press(&mut app, KeyCode::Esc);
     app.type_keys("jjx");
+    ctrl_g(&mut app);
     listed[6] = " ▾Work".to_owned();
     listed[7] = "    Reports".to_owned();
-    assert_eq!(sidebar(&mut app), listed, "no open tasks, no count");
+    assert_eq!(window(&mut app), Some(listed), "no open tasks, no count");
 }
 
 const INBOXED: &str = "\
@@ -460,52 +380,57 @@ INBOX:
 // D-75
 #[test]
 fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
-    let mut app = Harness::with_text(INBOXED, 80, 10);
+    let mut app = Harness::with_text(INBOXED, 80, 16);
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app),
+        window(&mut app).expect("open"),
         [
-            format!("{:22}1", "  ⊔ INBOX"),
+            format!("{:44}1", "▌ ⊔ INBOX"),
             format!("  {STAR} Today"),
             String::new(),
             "  Projects".to_owned(),
             "  Work".to_owned(),
         ]
     );
-    let mut app = Harness::with_config(INBOXED, "special_inbox = false\n", 80, 10);
+    let mut app = Harness::with_config(INBOXED, "special_inbox = false\n", 80, 16);
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app),
+        window(&mut app).expect("open"),
         [
-            format!("  {STAR} Today"),
+            format!("▌ {STAR} Today"),
             String::new(),
             "  Projects".to_owned(),
             "  Work".to_owned(),
-            format!("{:22}1", "  INBOX"),
+            format!("{:44}1", "  INBOX"),
         ]
     );
 }
 
 // D-77
 #[test]
-fn the_today_entry_leaves_the_sidebar_with_its_setting_off_and_gt_still_opens_today() {
-    let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 80, 10);
+fn the_today_entry_leaves_the_window_with_its_setting_off_and_gt_still_opens_today() {
+    let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 80, 16);
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app),
+        window(&mut app).expect("open"),
         [
-            format!("{:22}1", "  ⊔ INBOX"),
+            format!("{:44}1", "▌ ⊔ INBOX"),
             String::new(),
             "  Projects".to_owned(),
             "  Work".to_owned(),
         ]
     );
+    press(&mut app, KeyCode::Esc);
     app.type_keys("gt");
     assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
     app.type_keys("g,jjjjj ");
     app.settle();
     press(&mut app, KeyCode::Esc);
+    ctrl_g(&mut app);
     assert_eq!(
-        sidebar(&mut app)[1],
+        window(&mut app).expect("open")[1],
         format!("▌ {STAR} Today"),
-        "back on, marked as where the pane is"
+        "back on, focused as where the pane is"
     );
     assert_eq!(
         std::fs::read_to_string(app.config_file()).expect("written"),
@@ -519,11 +444,11 @@ fn g_i_zooms_to_the_inbox_and_says_so_when_there_is_none() {
     let mut app = Harness::with_text(INBOXED, 80, 10);
     app.type_keys("gi");
     assert_eq!(pane(&mut app)[0], "  ⌂ › INBOX", "the breadcrumbs");
-    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    let mut app = Harness::with_text(OUTLINE, 100, 10);
     app.type_keys("gi");
     let status = line(app.render().buffer(), 9);
     assert!(
-        status.ends_with("· No INBOX project in the sidebar"),
+        status.ends_with("· No INBOX project in the Navigator"),
         "{status}"
     );
 }
