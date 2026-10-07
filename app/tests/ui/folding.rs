@@ -253,6 +253,20 @@ fn ctrl_arrows_move_between_siblings() {
     assert_focus(&mut app, "  - Eggs");
 }
 
+// FR-NAV-01, keybindings.md §6: `gj`/`gk` where macOS takes `Ctrl+↓`/`Ctrl+↑`.
+#[test]
+fn g_j_and_g_k_move_between_siblings() {
+    let mut app = app();
+    app.type_keys("gj");
+    assert_focus(&mut app, "Work:");
+    app.type_keys("gjgj");
+    assert_focus(&mut app, "✔ Loose");
+    app.type_keys("gkgk");
+    assert_focus(&mut app, "Home:");
+    app.type_keys("gk");
+    assert_focus(&mut app, "Home:");
+}
+
 // FR-SPC-01, special-nodes §1
 #[test]
 fn a_block_whose_only_children_are_special_nodes_is_a_leaf() {

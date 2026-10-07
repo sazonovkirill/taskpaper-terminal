@@ -246,10 +246,11 @@ fn a_query_that_matches_no_project_says_so() {
 
 // D-65, FR-UI-03, keybindings.md §4
 #[test]
-fn alt_enter_and_ctrl_v_open_the_highlighted_project_in_a_new_pane() {
+fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_project_in_a_new_pane() {
     for (code, modifiers) in [
         (KeyCode::Enter, KeyModifiers::ALT),
         (KeyCode::Char('v'), KeyModifiers::CONTROL),
+        (KeyCode::Char('t'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(PROJECTS, 80, 10);
         app.type_keys("gPgarden");

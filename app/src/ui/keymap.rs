@@ -243,7 +243,7 @@ const MENU: &[(Key, MenuInput)] = &[
 /// it ([keybindings.md §4]).
 ///
 /// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
-const OPEN_IN_NEW_PANE: [Key; 2] = [key!(alt Enter), key!(ctrl 'v')];
+const OPEN_IN_NEW_PANE: [Key; 3] = [key!(alt Enter), key!(ctrl 'v'), key!(ctrl 't')];
 
 /// The message of the open `menu` for `key`: `Ctrl+Q` quits, a menu binding, else typing the
 /// character it is, as in edit mode.
@@ -1017,6 +1017,18 @@ mod tests {
         check(KeyCode::Char('G'), none, last);
     }
 
+    // FR-NAV-01, keybindings.md §6: `gj`/`gk` beside `Ctrl+↓`/`Ctrl+↑`, which macOS takes.
+    #[test]
+    fn ctrl_arrows_and_g_j_g_k_move_to_the_next_and_previous_sibling() {
+        let next = Some(&Message::FocusNextSibling);
+        let previous = Some(&Message::FocusPreviousSibling);
+        check(KeyCode::Down, KeyModifiers::CONTROL, next);
+        check(KeyCode::Up, KeyModifiers::CONTROL, previous);
+        assert_eq!(messages("gj", CONTEXT), [None, next.cloned()]);
+        assert_eq!(messages("gk", CONTEXT), [None, previous.cloned()]);
+        assert_eq!(messages("j", CONTEXT), [Some(Message::FocusNext)]);
+    }
+
     // FR-NAV-01
     #[test]
     fn page_keys_carry_the_page_height() {
@@ -1570,6 +1582,113 @@ mod tests {
         );
     }
 
+    // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
+    // window, the prompts and the conflict prompt are all sent alike by both key reportings.
+    #[test]
+    fn every_key_of_the_other_contexts_is_both_variants_at_once() {
+        let keys = TEXT
+            .iter()
+            .map(|&(key, _)| key)
+            .chain(MENU.iter().map(|&(key, _)| key))
+            .chain(SETTINGS.iter().map(|(key, _)| *key))
+            .chain(SETTINGS_TEXT.iter().map(|(key, _)| *key))
+            .chain(DATE_PROMPT.iter().map(|&(key, _)| key))
+            .chain(SAVE_AS.iter().map(|(key, _)| *key))
+            .chain(PROMPT.iter().map(|&(key, _)| key))
+            .chain(OPEN_IN_NEW_PANE);
+        for key in keys {
+            assert!(!kitty_only(key), "{}", key_label(key));
+        }
+    }
+
+    /// What takes `key` for itself by default before the app sees it, in a terminal, multiplexer
+    /// or desktop that [keybindings.md §6](../../../docs/specs/keybindings.md#6-validation)
+    /// names, if one does. A key such a program lets through when pressed twice, as tmux does its
+    /// prefix `Ctrl+B`, is not taken.
+    fn taken_by((modifiers, code): Key) -> Option<&'static str> {
+        let ctrl = KeyModifiers::CONTROL;
+        let ctrl_shift = ctrl | KeyModifiers::SHIFT;
+        let alt = KeyModifiers::ALT;
+        let alt_shift = alt | KeyModifiers::SHIFT;
+        let arrow = matches!(
+            code,
+            KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right
+        );
+        match code {
+            _ if arrow && modifiers == ctrl => Some("macOS Mission Control and Spaces"),
+            KeyCode::Left | KeyCode::Right if modifiers == ctrl_shift => {
+                Some("kitty's tabs and WezTerm's panes")
+            }
+            _ if arrow && (modifiers == alt || modifiers == alt_shift) => {
+                Some("Windows Terminal's split panes")
+            }
+            KeyCode::Enter if modifiers == alt => {
+                Some("Windows Terminal's and WezTerm's full screen")
+            }
+            KeyCode::Char('v') if modifiers == ctrl => Some("Windows Terminal's paste"),
+            KeyCode::Char('Z') if modifiers == ctrl => Some("kitty's and WezTerm's own keys"),
+            KeyCode::F(10) if modifiers == KeyModifiers::SHIFT => Some("GNOME Terminal's menu"),
+            KeyCode::Char('1'..='9') if modifiers == alt => {
+                Some("GNOME Terminal's and Ghostty's tabs on Linux")
+            }
+            _ => None,
+        }
+    }
+
+    // keybindings.md §6: every bound command, and opening a choice in a new pane from Go to
+    // Symbol, has a sequence of keys that no common terminal takes for itself. Pasting is the
+    // exception: a terminal that takes `Ctrl+V` pastes the clipboard itself, which the app takes
+    // as pasted text.
+    #[test]
+    fn every_command_has_keys_no_common_terminal_takes() {
+        let bindings = REGISTRY
+            .iter()
+            .filter(|entry| !matches!(entry.command, Command::Paste(_)))
+            .map(|entry| (format!("{:?} {:?}", entry.command, entry.mode), entry.keys))
+            .chain(
+                SIDEBAR
+                    .iter()
+                    .map(|&(command, keys)| (format!("{command:?} in the sidebar"), keys)),
+            );
+        for (command, keys) in bindings.filter(|(_, keys)| !keys.is_empty()) {
+            assert!(
+                keys.iter().any(|keys| {
+                    parse_sequence(keys)
+                        .expect("registry keys parse")
+                        .into_iter()
+                        .all(|key| taken_by(key).is_none())
+                }),
+                "{command}: {keys:?}"
+            );
+        }
+        assert!(
+            OPEN_IN_NEW_PANE.iter().any(|&key| taken_by(key).is_none()),
+            "Go to Symbol's new pane"
+        );
+        for (keys, taken) in [
+            ("ctrl+down", Some("macOS Mission Control and Spaces")),
+            ("ctrl+shift+left", Some("kitty's tabs and WezTerm's panes")),
+            ("alt+up", Some("Windows Terminal's split panes")),
+            ("alt+shift+right", Some("Windows Terminal's split panes")),
+            (
+                "alt+enter",
+                Some("Windows Terminal's and WezTerm's full screen"),
+            ),
+            ("ctrl+v", Some("Windows Terminal's paste")),
+            ("ctrl+shift+z", Some("kitty's and WezTerm's own keys")),
+            ("shift+f10", Some("GNOME Terminal's menu")),
+            (
+                "alt+9",
+                Some("GNOME Terminal's and Ghostty's tabs on Linux"),
+            ),
+            ("ctrl+b", None),
+            ("ctrl+t", None),
+            ("alt+k", None),
+        ] {
+            assert_eq!(taken_by(parse_key(keys).expect("a key")), taken, "{keys}");
+        }
+    }
+
     // FR-BLK-06
     #[test]
     fn g_x_opens_the_url() {
@@ -2031,11 +2150,7 @@ mod tests {
         let mut keymap = Keymap::default();
         keymap.message_for(&key(KeyCode::Char('g'), KeyModifiers::NONE), ms(0), CONTEXT);
         assert_eq!(
-            keymap.message_for(
-                &key(KeyCode::Char('j'), KeyModifiers::NONE),
-                ms(10),
-                CONTEXT
-            ),
+            keymap.message_for(&key(KeyCode::Down, KeyModifiers::NONE), ms(10), CONTEXT),
             None
         );
         assert_eq!(keymap.pending(), "");
@@ -2829,7 +2944,7 @@ mod tests {
         assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v");
         assert_eq!(
             bindings(open, true),
-            "Alt+Enter, Ctrl+V",
+            "Alt+Enter, Ctrl+V, Ctrl+T",
             "the sidebar's own"
         );
         assert_eq!(bindings(Command::Undo, true), "z, Ctrl+Z", "no sidebar key");
@@ -3044,10 +3159,11 @@ mod tests {
         );
     }
 
-    // FR-UI-03, navigation.md §5–6, keybindings.md §4, D-42: `Alt+Enter` has the classic variant
-    // `Ctrl+V` in Go to Symbol and the sidebar, and means nothing to other pickers.
+    // FR-UI-03, navigation.md §5–6, keybindings.md §4 and §6, D-42: `Alt+Enter` has the classic
+    // variant `Ctrl+V` in Go to Symbol and the sidebar, and `Ctrl+T` stands beside both, which
+    // Windows Terminal takes; they mean nothing to other pickers.
     #[test]
-    fn alt_enter_and_ctrl_v_open_the_choice_of_go_to_symbol_and_the_sidebar_in_a_new_pane() {
+    fn alt_enter_ctrl_v_and_ctrl_t_open_the_choice_of_go_to_symbol_and_the_sidebar_in_a_new_pane() {
         let open = Some(KeyAction::Send(Message::Pane(PaneChange::Open)));
         let finding = &Context {
             overlay: Some(Overlay::GoToSymbol),
@@ -3060,6 +3176,7 @@ mod tests {
         for (code, modifiers) in [
             (KeyCode::Enter, KeyModifiers::ALT),
             (KeyCode::Char('v'), KeyModifiers::CONTROL),
+            (KeyCode::Char('t'), KeyModifiers::CONTROL),
         ] {
             assert_eq!(
                 actions(&[(code, modifiers)], finding),

@@ -147,12 +147,12 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     assert_eq!(
         rows[4..10],
         [
-            "      Near the station  ┌Commands:─────────────────────────────────┐",
-            "    - Pack              │  › Go to Entry                    Enter  │",
-            "  Other              ┌Na│  › Open in New Pane   Alt+Enter, Ctrl+V  │┐",
-            "                     │  │──────────────────────────────────────────││",
-            "                     │  │  › Return to Outline                Esc  ││",
-            "                     │  └──────────────────────────────────────────┘│",
+            "      Near the station  ┌Commands:─────────────────────────────────────────┐",
+            "    - Pack              │  › Go to Entry                            Enter  │",
+            "  Other              ┌Na│  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
+            "                     │  │──────────────────────────────────────────────────│",
+            "                     │  │  › Return to Outline                        Esc  │",
+            "                     │  └──────────────────────────────────────────────────┘",
         ],
         "over the window, above the focused entry on its last row"
     );

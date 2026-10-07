@@ -32,7 +32,7 @@ The owner's bindings of 2026-10-04 (D-26) are the base of this section. Where th
 | Next / previous visible block | `j` / `k`, `↓` / `↑` |
 | Collapse, or go to parent if already collapsed or a leaf | `h`, `←` |
 | Expand, or go to first child if already expanded | `l`, `→` |
-| Next / previous sibling | `Ctrl+↓` / `Ctrl+↑` (`}` / `{` now shift the due date) |
+| Next / previous sibling | `Ctrl+↓` / `Ctrl+↑`, `gj` / `gk` (D-90, §6; `}` / `{` now shift the due date) |
 | Parent | `gp` |
 | Last child | `gl` |
 | First / last block | `gg` / `G`, `Home` / `End` |
@@ -172,8 +172,8 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
 - **Context menu:** opens on the focused block or selection, or on the focused Navigator entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context.
-- **Navigator** (D-79): `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter` or `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` or `Ctrl+G` closes it, `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
-- **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter` or `Ctrl+V` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
+- **Navigator** (D-79): `j`/`k`/arrows move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `h`/`l` and `←`/`→` fold project entries, `Esc` or `Ctrl+G` closes it, `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
+- **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.
 - **External-change conflict prompt** ([file-io.md §3](file-io.md#3-external-changes)): `m` keeps mine, `t` takes theirs, `d` shows or hides the diff, `j`/`k`/arrows scroll the diff a line and `Ctrl+D`/`Ctrl+U`/`PageDown`/`PageUp` a page, `Ctrl+Q` quits. Other keys do nothing; the prompt has no `Esc`, because saving stays paused until a choice is made.
@@ -198,3 +198,18 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 ## 6. Validation
 
 Every binding must be verified in the terminals listed in N-PORT-01, including Windows Terminal (FR-KEY-03), with and without the kitty protocol and inside tmux, before the keymap is accepted. Bindings that a common terminal or desktop environment swallows get a different key; the results are recorded in this file.
+
+Keys that common terminals, multiplexers and desktops take for themselves by default, and the route beside each that they leave alone (D-90). The terminals checked are macOS Terminal, iTerm2, Ghostty, kitty, WezTerm, Alacritty, GNOME Terminal and Windows Terminal, and tmux inside them; a key not listed here reaches the app in all of them. Every command keeps a route no listed program takes, except pasting, where a terminal that takes `Ctrl+V` pastes the clipboard itself as pasted text, which the app takes the same way.
+
+| Key | Taken by | Route beside it |
+|---|---|---|
+| `Ctrl+↓` / `Ctrl+↑` (siblings) | macOS: Mission Control and application windows | `gj` / `gk` |
+| `Ctrl+←` / `Ctrl+→` (words, edit mode) | macOS: switching Spaces | `Alt+B` / `Alt+F` |
+| `Alt+Enter` (new pane from the Navigator and Go to Symbol) | Windows Terminal and WezTerm: full screen | `Ctrl+T` |
+| `Ctrl+V` (new pane from the Navigator and Go to Symbol; paste) | Windows Terminal: paste | `Ctrl+T`; paste arrives as pasted text |
+| `Ctrl+Shift+←` / `Ctrl+Shift+→` (pane left / right; select a word in edit mode) | kitty: tabs; WezTerm: panes | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`; in edit mode, `Shift+←` / `Shift+→` |
+| `Ctrl+Shift+Z` (redo) | kitty: previous prompt; WezTerm: zoom pane | `Z`, `Ctrl+Y` |
+| `Alt+←` / `Alt+→`, `Alt+↑` / `Alt+↓`, `Alt+Shift+←` / `Alt+Shift+→` | Windows Terminal, between its own split panes | `.` / `>`, `Alt+k` / `Alt+j`, `H` / `L` |
+| `Alt+1` … `Alt+9` (focus pane N) | GNOME Terminal and Ghostty on Linux: tabs | `g1` … `g9` |
+| `Shift+F10` (context menu) | GNOME Terminal: its own menu | `\` |
+| `Ctrl+B` (bold, edit mode) | tmux: its prefix | `Ctrl+B` twice in tmux, which sends it on |

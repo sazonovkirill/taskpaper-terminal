@@ -355,10 +355,11 @@ fn a_screen_40_by_11_still_shows_more_than_one_pane() {
 
 // FR-UI-02, FR-NAV-05, navigation.md §8, keybindings.md §4
 #[test]
-fn alt_enter_and_ctrl_v_open_the_highlighted_symbol_in_a_new_pane() {
+fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_symbol_in_a_new_pane() {
     for key in [
         (KeyCode::Enter, KeyModifiers::ALT),
         (KeyCode::Char('v'), KeyModifiers::CONTROL),
+        (KeyCode::Char('t'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(OUTLINE, 80, 10);
         ctrl(&mut app, 'k');
@@ -378,10 +379,11 @@ fn alt_enter_and_ctrl_v_open_the_highlighted_symbol_in_a_new_pane() {
 
 // FR-UI-02, FR-UI-05, keybindings.md §4
 #[test]
-fn alt_enter_and_ctrl_v_open_the_focused_sidebar_entry_in_a_new_pane() {
+fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_sidebar_entry_in_a_new_pane() {
     for key in [
         (KeyCode::Enter, KeyModifiers::ALT),
         (KeyCode::Char('v'), KeyModifiers::CONTROL),
+        (KeyCode::Char('t'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(OUTLINE, 100, 10);
         app.render();

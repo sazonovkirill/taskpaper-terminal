@@ -46,8 +46,16 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::FocusPrevious, Mode::Navigate, &["k", "up"]),
     entry!(Command::Collapse, Mode::Navigate, &["h", "left"]),
     entry!(Command::Expand, Mode::Navigate, &["l", "right"]),
-    entry!(Command::FocusNextSibling, Mode::Navigate, &["ctrl+down"]),
-    entry!(Command::FocusPreviousSibling, Mode::Navigate, &["ctrl+up"]),
+    entry!(
+        Command::FocusNextSibling,
+        Mode::Navigate,
+        &["ctrl+down", "g j"]
+    ),
+    entry!(
+        Command::FocusPreviousSibling,
+        Mode::Navigate,
+        &["ctrl+up", "g k"]
+    ),
     entry!(Command::FocusParent, Mode::Navigate, &["g p"]),
     entry!(Command::FocusLastChild, Mode::Navigate, &["g l"]),
     entry!(Command::FocusFirst, Mode::Navigate, &["g g", "home"]),
@@ -500,7 +508,10 @@ pub const SIDEBAR: &[(Command, &[&str])] = &[
     (Command::Sidebar(SidebarInput::Collapse), &["h", "left"]),
     (Command::Sidebar(SidebarInput::Expand), &["l", "right"]),
     (Command::Sidebar(SidebarInput::Choose), &["enter"]),
-    (Command::Pane(PaneChange::Open), &["alt+enter", "ctrl+v"]),
+    (
+        Command::Pane(PaneChange::Open),
+        &["alt+enter", "ctrl+v", "ctrl+t"],
+    ),
     (Command::Sidebar(SidebarInput::Leave), &["esc"]),
     (Command::ContextMenu, &["\\", "shift+f10", "menu"]),
     (Command::ToggleSidebar, &["ctrl+g"]),
