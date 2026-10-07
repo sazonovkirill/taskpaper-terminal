@@ -19,10 +19,8 @@ Later:
 
 /// Each Nerd Font glyph the screen of [`OUTLINE`] shows, with the Unicode marker drawn in its
 /// place when icons are off (ui.md §2, §7).
-const NERD_TO_UNICODE: [(&str, &str); 10] = [
+const NERD_TO_UNICODE: [(&str, &str); 8] = [
     ("\u{f02dc}", "⌂"),
-    ("\u{f0130}", "-"),
-    ("\u{f0134}", "✔"),
     ("\u{f04ce}", "★"),
     ("\u{f00c0}", "⚑"),
     ("\u{f166c}", "⇥"),

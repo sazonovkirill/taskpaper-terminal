@@ -187,10 +187,9 @@ impl Icon {
             Self::Expanded => ("\u{f035d}", "▾", "v"),
             // nf-md-menu_right
             Self::Collapsed => ("\u{f035f}", "▸", ">"),
-            // nf-md-checkbox_blank_circle_outline
-            Self::TaskMarker => ("\u{f0130}", "-", "-"),
-            // nf-md-checkbox_marked_circle_outline
-            Self::DoneTask => ("\u{f0134}", "✔", "[x]"),
+            // The task markers stay plain with Nerd Font icons too (D-59).
+            Self::TaskMarker => ("-", "-", "-"),
+            Self::DoneTask => ("✔", "✔", "[x]"),
             // nf-md-cursor_default_outline
             Self::Navigate => ("\u{f01bf}", "↕", ">"),
             // nf-md-pencil
@@ -267,10 +266,21 @@ mod tests {
         }
     }
 
+    /// The task markers, drawn the same with Nerd Font icons as without (D-59).
+    const MARKERS: [Icon; 2] = [Icon::TaskMarker, Icon::DoneTask];
+
+    // D-59
+    #[test]
+    fn the_task_markers_are_the_unicode_ones_with_nerd_font_icons_too() {
+        for icon in MARKERS {
+            assert_eq!(icon.glyph(IconSet::Nerd), icon.glyph(IconSet::Unicode));
+        }
+    }
+
     // ui.md §7
     #[test]
     fn nerd_glyphs_come_from_the_nerd_fonts_v3_material_design_range() {
-        for icon in ICONS {
+        for icon in ICONS.into_iter().filter(|icon| !MARKERS.contains(icon)) {
             let code = icon.glyph(IconSet::Nerd).chars().next().map(u32::from);
             assert!(
                 code.is_some_and(|code| (0xF0001..=0xF1AF0).contains(&code)),
@@ -283,8 +293,12 @@ mod tests {
     // all different.
     #[test]
     fn every_icon_has_its_own_nerd_glyph() {
-        for (at, icon) in ICONS.iter().enumerate() {
-            for other in &ICONS[at + 1..] {
+        let icons: Vec<Icon> = ICONS
+            .into_iter()
+            .filter(|icon| !MARKERS.contains(icon))
+            .collect();
+        for (at, icon) in icons.iter().enumerate() {
+            for other in &icons[at + 1..] {
                 assert_ne!(icon.glyph(IconSet::Nerd), other.glyph(IconSet::Nerd));
             }
         }
