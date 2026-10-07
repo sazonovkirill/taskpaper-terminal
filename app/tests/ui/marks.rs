@@ -1,5 +1,6 @@
-//! Step 3.4: `@today` with its marker chip, color tags that tint the row's background with `c1` to
-//! `c6`, `cc` and the `mc` picker and go with `C` (D-48), and bookmarks with `mb`.
+//! Step 3.4: `@today` with its marker chip, color tags set with `c1` to `c6`, `cc` and the `mc`
+//! picker and gone with `C` (D-48), shown as a flag or a tinted row (D-74), and bookmarks with
+//! `mb`.
 
 use std::{fs, time::Duration};
 
@@ -7,7 +8,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Color};
 
 use crate::support::{
-    BOOKMARK, CURRENT_LINE, DUE, Harness, STAR, line, outline_line, outline_rows,
+    BOOKMARK, CURRENT_LINE, DUE, FLAG, Harness, STAR, line, outline_line, outline_rows,
 };
 
 /// The open file's text once the autosave delay has passed and its save is done.
@@ -44,10 +45,11 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-05, FR-TAG-06, D-48, FR-OPS-08
+// FR-TAG-05, FR-TAG-06, D-48, D-74, FR-OPS-08
 #[test]
 fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() {
-    let mut app = Harness::with_text("- Milk\n- Bread\n", 30, 5);
+    let highlight = "color_tags = \"line highlight\"\n";
+    let mut app = Harness::with_config("- Milk\n- Bread\n", highlight, 30, 5);
     app.type_keys("jc");
     let status = line(app.render().buffer(), 4);
     assert!(status.ends_with(" c"), "the pending prefix shows: {status}");
@@ -95,7 +97,7 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     assert_eq!(
         screen(&mut app)[2..12],
         [
-            "▌ - Milk",
+            "▌ - Milk ●",
             "        ┌Color:──────┐",
             "        │ ● 1 Red    │",
             "        │ ● 2 Orange │",
@@ -192,7 +194,7 @@ fn m_b_bookmarks_the_focused_block_and_says_so() {
     assert_eq!(outline_rows(&mut app)[0], "Plans:");
 }
 
-// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11, D-47
+// FR-DOC-05, FR-TAG-04, FR-TAG-05, D-11, D-47, D-74
 #[test]
 fn the_demo_shows_today_and_colors() {
     let mut app = Harness::demo(70, 40);
@@ -210,8 +212,10 @@ fn the_demo_shows_today_and_colors() {
         outline_line(&buffer, row("Trip to Lisbon:")),
         format!("Trip to Lisbon: {BOOKMARK}")
     );
-    assert_eq!(
-        background(&buffer, row("  - Fix the broken contact form"), 4),
-        Some(RED_TINT)
-    );
+    let y = row("  - Fix the broken contact form");
+    let text = format!("  - Fix the broken contact form {FLAG}");
+    assert!(outline_line(&buffer, y).starts_with(&format!("{text} ")));
+    let x = u16::try_from(text.chars().count() + 1).expect("a narrow row");
+    assert_eq!(buffer[(x, y)].fg, Color::Red, "the flag in the tag's color");
+    assert_eq!(background(&buffer, y, 4), Some(Color::Reset), "no tint");
 }

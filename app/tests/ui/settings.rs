@@ -86,7 +86,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
     let footer = format!("│ Settings file: {}", file.display());
     let rows = window(&mut app);
     assert_eq!(
-        rows[..8],
+        rows[..9],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
@@ -95,7 +95,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Nerd Font icons; choose none if they show as bo│",
             "│               │   ↩ Word wrap                                  on  │",
             "│               │     Wrap long text, or end it in … on one line     │",
-            "│               │                                                    │",
+            "│               │   ● Color tags                               icon  │",
+            "│               │     A colored flag after the text, or a tinted line│",
         ]
     );
     assert!(
@@ -288,6 +289,35 @@ fn word_wrap_toggles_at_once_and_is_kept_for_the_next_start() {
         line(&buffer, 2),
         "▌ - buy milk and eggs from th…",
         "off from the start"
+    );
+}
+
+// FR-TAG-05, FR-SET-03, FR-SET-04, D-74, ui.md §2, §8
+#[test]
+fn color_tags_switch_from_a_flag_to_a_tinted_line_and_are_kept_for_the_next_start() {
+    let text = "- milk @red\n";
+    let mut app = Harness::with_config(text, "", 30, 20);
+    let buffer = app.render().buffer().clone();
+    assert_eq!(line(&buffer, 2), "▌ - milk ●", "a flag by default");
+    assert_eq!(
+        (buffer[(9, 2)].fg, buffer[(9, 2)].bg),
+        (Color::Red, Color::Black)
+    );
+    app.type_keys("g,jjj");
+    press(&mut app, KeyCode::Char('l'));
+    app.settle();
+    assert_eq!(config(&app), "color_tags = \"line highlight\"\n");
+    press(&mut app, KeyCode::Esc);
+    let tinted = |app: &mut Harness| {
+        let buffer = app.render().buffer().clone();
+        (line(&buffer, 2), buffer[(9, 2)].bg)
+    };
+    assert_eq!(tinted(&mut app), ("▌ - milk".to_owned(), Color::Red));
+    let mut app = Harness::with_config(text, "color_tags = \"line highlight\"\n", 30, 20);
+    assert_eq!(
+        tinted(&mut app),
+        ("▌ - milk".to_owned(), Color::Red),
+        "tinted from the start"
     );
 }
 

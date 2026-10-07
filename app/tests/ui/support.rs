@@ -120,6 +120,9 @@ pub const OVERDUE: &str = "!";
 pub const STAR: &str = "★";
 pub const BOOKMARK: &str = "⚑";
 
+/// The flag after the text of a block with a color tag (D-74), as drawn with icons off.
+pub const FLAG: &str = "●";
+
 /// The color of text blocks, dimmed less than done tasks (D-37), in Terminal Dark, the theme of a
 /// terminal without truecolor.
 pub const TEXT: Color = Color::Indexed(248);

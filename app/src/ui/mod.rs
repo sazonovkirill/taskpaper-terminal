@@ -40,8 +40,8 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
-    SettingsWindow, ShortcutsPanel, SidebarPanel,
+    ColorTagDisplay, ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup,
+    SaveAsPrompt, SettingsWindow, ShortcutsPanel, SidebarPanel,
 };
 
 /// What the event loop waits for.
@@ -80,6 +80,8 @@ pub struct Tui {
     icons: IconSet,
     /// The `icons` setting, which the settings window shows and changes (ui.md §7).
     icon_setting: IconSetting,
+    /// How color tags show in the outline (`color_tags`, ui.md §2).
+    color_tags: ColorTagDisplay,
     /// The backups the disk worker makes, which the settings window shows and changes
     /// (file-io.md §2).
     backups: BackupSettings,
@@ -160,6 +162,7 @@ impl Tui {
             wrap: true,
             icons: IconSet::default(),
             icon_setting: IconSetting::default(),
+            color_tags: ColorTagDisplay::default(),
             backups: BackupSettings::default(),
             scrolls: HashMap::new(),
             strip_scroll: 0,
@@ -222,8 +225,8 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the key bindings, autosave delay, icons, word wrap, theme and
-    /// backups `config` holds, keeping settings changed in the app in its file and reporting once
+    /// The frontend running with the key bindings, autosave delay, icons, color tags, word wrap,
+    /// theme and backups `config` holds, keeping settings changed in the app in its file and reporting once
     /// what it ignored of the file (FR-SET-04). The disk worker makes its backups as `config`
     /// says until the settings window changes them.
     #[must_use]
@@ -237,6 +240,9 @@ impl Tui {
         self.keymap = config.keymap;
         if let Some(setting) = config.icons {
             self = self.with_icons(setting);
+        }
+        if let Some(display) = config.color_tags {
+            self.color_tags = display;
         }
         if let Some(wrap) = config.wrap {
             self.wrap = wrap;
@@ -853,7 +859,8 @@ impl Tui {
         let view = OutlineView::new(rows, (self.clock)().date(), &theme)
             .editor(editor.as_ref())
             .wrap(self.wrap)
-            .icons(icons);
+            .icons(icons)
+            .color_tags(self.color_tags);
         let scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
         let anchor = if pane.focused {
             self.page_rows = usize::from(area.height);

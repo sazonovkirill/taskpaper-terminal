@@ -16,6 +16,9 @@ pub enum Icon {
     /// A block with `@today`, after its text, the command menu's Toggle Today and the sidebar's
     /// Today entry.
     Today,
+    /// A block's color tag, in its color after its text, when color tags are shown as icons, and
+    /// the settings window's color tags setting.
+    Flag,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
     /// bookmarks.
     Bookmark,
@@ -157,6 +160,8 @@ impl Icon {
             Self::Overdue => ("\u{f0a31}", "!", "!"),
             // nf-md-star
             Self::Today => ("\u{f04ce}", "★", "*"),
+            // nf-md-flag; the Unicode flag is the bookmark's fallback.
+            Self::Flag => ("\u{f023b}", "●", "o"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -221,11 +226,12 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 30] = [
+    const ICONS: [Icon; 31] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
         Icon::Today,
+        Icon::Flag,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,

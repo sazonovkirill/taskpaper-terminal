@@ -149,7 +149,7 @@ fn the_theme_in_the_config_file_is_used_from_the_start() {
 #[test]
 fn without_truecolor_a_truecolor_theme_is_drawn_as_terminal_dark() {
     for theme in ["nord", "solarized-light"] {
-        let settings = format!("theme = \"{theme}\"\n");
+        let settings = format!("theme = \"{theme}\"\ncolor_tags = \"line highlight\"\n");
         let mut app = Harness::with_config(OUTLINE, &settings, 60, 8);
         let buffer = app.render().buffer().clone();
         assert_eq!(background(&mut app), Color::Reset, "{theme}");

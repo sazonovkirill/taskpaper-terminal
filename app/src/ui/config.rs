@@ -17,6 +17,7 @@ use super::{
     effects::{self, BackupSettings, atomic},
     keymap::{BindingError, Keymap},
     theme::{BuiltIn, IconSetting},
+    widgets::ColorTagDisplay,
 };
 use crate::app::Mode;
 
@@ -82,6 +83,8 @@ pub struct Config {
     pub(super) icons: Option<IconSetting>,
     /// The theme, when the file names one (`theme`, FR-UI-06).
     pub(super) theme: Option<BuiltIn>,
+    /// How color tags show, when the file says (`color_tags`, ui.md §2).
+    pub(super) color_tags: Option<ColorTagDisplay>,
     /// Whether text wraps, when the file says (`word_wrap`, FR-UI-05).
     pub(super) wrap: Option<bool>,
     backups: BackupSettings,
@@ -130,6 +133,18 @@ impl Config {
             _ => self.problems.push(Problem::InvalidValue {
                 key: "icons".to_owned(),
                 expected: "\"nerd\" or \"none\"",
+            }),
+        }
+    }
+
+    /// Takes `color_tags` from `item`: `"icon"` or `"line highlight"`.
+    fn read_color_tags(&mut self, item: &Item) {
+        match item.as_str() {
+            Some("icon") => self.color_tags = Some(ColorTagDisplay::Icon),
+            Some("line highlight") => self.color_tags = Some(ColorTagDisplay::Highlight),
+            _ => self.problems.push(Problem::InvalidValue {
+                key: "color_tags".to_owned(),
+                expected: "\"icon\" or \"line highlight\"",
             }),
         }
     }
@@ -290,6 +305,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "keymap" => config.read_keymap(item),
             "autosave_delay_ms" => config.read_autosave_delay(item),
             "backups" => config.read_backups(item, home),
+            "color_tags" => config.read_color_tags(item),
             "icons" => config.read_icons(item),
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
@@ -632,6 +648,33 @@ mod tests {
                 [Problem::InvalidValue {
                     key: "icons".to_owned(),
                     expected: "\"nerd\" or \"none\"",
+                }],
+                "{text}"
+            );
+        }
+    }
+
+    // D-74, ui.md §2
+    #[test]
+    fn color_tags_are_icon_or_line_highlight_and_anything_else_is_reported() {
+        assert_eq!(read("", None).color_tags, None);
+        assert_eq!(
+            read("color_tags = \"icon\"\n", None).color_tags,
+            Some(ColorTagDisplay::Icon)
+        );
+        let highlight = read("color_tags = \"line highlight\"\n", None);
+        assert_eq!(
+            (highlight.color_tags, highlight.problems()),
+            (Some(ColorTagDisplay::Highlight), &[][..])
+        );
+        for text in ["color_tags = \"highlight\"\n", "color_tags = true\n"] {
+            let config = read(text, None);
+            assert_eq!(config.color_tags, None, "{text}");
+            assert_eq!(
+                config.problems(),
+                [Problem::InvalidValue {
+                    key: "color_tags".to_owned(),
+                    expected: "\"icon\" or \"line highlight\"",
                 }],
                 "{text}"
             );

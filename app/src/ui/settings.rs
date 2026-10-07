@@ -7,6 +7,7 @@ use std::time::Duration;
 use super::{
     Tui, config, effects,
     theme::{BuiltIn, Icon, IconSetting},
+    widgets::ColorTagDisplay,
 };
 use crate::app::{Message, Setting, SettingKind, SettingValue, saving};
 
@@ -16,6 +17,7 @@ enum Listed {
     Theme,
     Icons,
     Wrap,
+    ColorTags,
     AutosaveDelay,
     Backups,
     BackupFolder,
@@ -24,10 +26,11 @@ enum Listed {
 
 /// The settings the window lists, in order. Animations join when they reach the settings file
 /// (ui.md §9.3).
-const LISTED: [Listed; 7] = [
+const LISTED: [Listed; 8] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
+    Listed::ColorTags,
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -37,6 +40,12 @@ const LISTED: [Listed; 7] = [
 /// The `icons` setting's choices, as the settings file names them (ui.md §7).
 const ICONS: [(IconSetting, &str); 2] = [(IconSetting::Nerd, "nerd"), (IconSetting::Off, "none")];
 
+/// The `color_tags` setting's choices, as the settings file names them (D-74).
+const COLOR_TAGS: [(ColorTagDisplay, &str); 2] = [
+    (ColorTagDisplay::Icon, "icon"),
+    (ColorTagDisplay::Highlight, "line highlight"),
+];
+
 impl Listed {
     /// The setting's key in the settings file.
     fn key(self) -> &'static str {
@@ -44,6 +53,7 @@ impl Listed {
             Self::Theme => "theme",
             Self::Icons => "icons",
             Self::Wrap => "word_wrap",
+            Self::ColorTags => "color_tags",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -57,6 +67,7 @@ impl Listed {
             Self::Theme => Icon::Color,
             Self::Icons => Icon::Glyphs,
             Self::Wrap => Icon::Wrap,
+            Self::ColorTags => Icon::Flag,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -72,6 +83,21 @@ pub(super) fn icon(at: usize) -> Icon {
 /// A count of milliseconds or copies as the window shows it, at most `u32::MAX`.
 fn count(value: impl TryInto<u32>) -> u32 {
     value.try_into().unwrap_or(u32::MAX)
+}
+
+/// A setting whose `choices` are named as the settings file names them.
+fn choices<T>(choices: &[(T, &str)]) -> SettingKind {
+    SettingKind::Choice(choices.iter().map(|(_, name)| (*name).to_owned()).collect())
+}
+
+/// `value` among `choices`.
+fn chosen<T: Copy + PartialEq>(choices: &[(T, &str)], value: T) -> SettingValue {
+    SettingValue::Choice(
+        choices
+            .iter()
+            .position(|&(choice, _)| choice == value)
+            .unwrap_or_default(),
+    )
 }
 
 impl Tui {
@@ -99,13 +125,8 @@ impl Tui {
                 "Appearance",
                 "Icons",
                 "Nerd Font icons; choose none if they show as boxes",
-                SettingKind::Choice(ICONS.iter().map(|(_, name)| (*name).to_owned()).collect()),
-                SettingValue::Choice(
-                    ICONS
-                        .iter()
-                        .position(|&(setting, _)| setting == self.icon_setting)
-                        .unwrap_or_default(),
-                ),
+                choices(&ICONS),
+                chosen(&ICONS, self.icon_setting),
                 SettingValue::Choice(0),
             ),
             Listed::Wrap => (
@@ -115,6 +136,14 @@ impl Tui {
                 SettingKind::Switch,
                 SettingValue::Switch(self.wrap),
                 SettingValue::Switch(true),
+            ),
+            Listed::ColorTags => (
+                "Appearance",
+                "Color tags",
+                "A colored flag after the text, or a tinted line",
+                choices(&COLOR_TAGS),
+                chosen(&COLOR_TAGS, self.color_tags),
+                SettingValue::Choice(0),
             ),
             Listed::AutosaveDelay => (
                 "Files",
@@ -193,6 +222,13 @@ impl Tui {
             (Listed::Wrap, SettingValue::Switch(on)) => {
                 self.wrap = on;
                 Some(on.into())
+            }
+            (Listed::ColorTags, SettingValue::Choice(choice)) => {
+                let Some(&(display, name)) = COLOR_TAGS.get(choice) else {
+                    return;
+                };
+                self.color_tags = display;
+                Some(name.into())
             }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
                 let delay = Duration::from_millis(ms.into());
@@ -273,6 +309,7 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
+            (3, SettingValue::Choice(2)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
@@ -290,6 +327,7 @@ mod tests {
             SettingValue::Choice(1),
             SettingValue::Choice(1),
             SettingValue::Switch(false),
+            SettingValue::Choice(1),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -300,9 +338,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(5, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(6, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[5].value,
+            tui.listed_settings()[6].value,
             SettingValue::Text(String::new())
         );
         assert!(

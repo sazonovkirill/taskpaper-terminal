@@ -314,6 +314,7 @@ impl Tui {
                     .editor(editor.as_ref())
                     .wrap(self.wrap)
                     .icons(self.icons)
+                    .color_tags(self.color_tags)
                     .offset(scroll.line)
                     .hit(drawn.width, line, column)?;
                 let row = shown.get(index)?;

@@ -44,6 +44,16 @@ pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
 pub use sidebar::SidebarPanel;
 
+/// How a block's color tag shows in the outline (`color_tags`, ui.md §2).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ColorTagDisplay {
+    /// A flag in the tag's color right after the block's text, the default (D-74).
+    #[default]
+    Icon,
+    /// A tint behind the block's row (D-48).
+    Highlight,
+}
+
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
 /// the selected blocks, then each block, 2 columns of indent per level, a marker and the text,
 /// with its date chips at the right edge of its first line. Text too long for its line wraps
@@ -60,11 +70,12 @@ pub struct OutlineView<'a> {
     editor: Option<&'a Editor<'a>>,
     wrap: bool,
     icons: IconSet,
+    color_tags: ColorTagDisplay,
 }
 
 impl<'a> OutlineView<'a> {
     /// A view of `rows` on `today`, the local date, in `theme`, drawn from the top of its area
-    /// with no row focused, wrap off and Nerd Font icons.
+    /// with no row focused, wrap off, Nerd Font icons and color tags tinting their rows.
     #[must_use]
     pub fn new(rows: &'a [Row], today: Date, theme: &'a Theme) -> Self {
         Self {
@@ -76,6 +87,7 @@ impl<'a> OutlineView<'a> {
             editor: None,
             wrap: false,
             icons: IconSet::Nerd,
+            color_tags: ColorTagDisplay::Highlight,
         }
     }
 
@@ -116,6 +128,15 @@ impl<'a> OutlineView<'a> {
     #[must_use]
     pub fn icons(self, icons: IconSet) -> Self {
         Self { icons, ..self }
+    }
+
+    /// Shows color tags as `display` asks (ui.md §2).
+    #[must_use]
+    pub fn color_tags(self, display: ColorTagDisplay) -> Self {
+        Self {
+            color_tags: display,
+            ..self
+        }
     }
 
     /// How many screen lines each row takes in an area `width` columns wide, the gutter
@@ -168,7 +189,10 @@ impl<'a> OutlineView<'a> {
             }
             let chips = chips(row, self.today, self.icons, self.theme);
             let room = width.saturating_sub(chips.width());
-            let line = row_line(row, room, self.icons, self.theme);
+            let flag = row
+                .color
+                .filter(|_| self.color_tags == ColorTagDisplay::Icon);
+            let line = row_line(row, room, flag, self.icons, self.theme);
             let lines = if self.wrap {
                 wrap::wrap(&line, text_column(row, self.icons), room, width)
             } else {
@@ -202,7 +226,10 @@ impl Widget for OutlineView<'_> {
             if focused {
                 buf.set_style(gutter_area.union(line_area), current_line_style(self.theme));
             }
-            if let Some(color) = row.color {
+            if let Some(color) = row
+                .color
+                .filter(|_| self.color_tags == ColorTagDisplay::Highlight)
+            {
                 let indent = u16::try_from(row.depth.saturating_mul(2)).unwrap_or(u16::MAX);
                 let tinted = Rect {
                     x: line_area.x.saturating_add(indent),
@@ -1155,12 +1182,18 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01), then the `@today` star and the bookmark icon, each after a space (D-47),
-/// dimmed with a done block or one inside it. A collapsed block with children shows its fold marker after
+/// (D-31, FR-FMT-01), then the flag of the color tag `flag`, in its color (D-74), the `@today` star
+/// and the bookmark icon, each after a space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows its fold marker after
 /// them (ui.md §2, D-67), and an entry of the Today view the path of the blocks above it, dimmed
 /// (navigation.md §7). The zoom title is drawn like its block, in bold (D-34). Markers and icons
 /// come from `icons`, colors from `theme`.
-fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Line<'a> {
+fn row_line<'a>(
+    row: &'a Row,
+    width: usize,
+    flag: Option<TagColor>,
+    icons: IconSet,
+    theme: &Theme,
+) -> Line<'a> {
     let (mut line, style) = lead(row, icons, theme);
     match row.kind {
         _ if row.divider => {}
@@ -1178,14 +1211,15 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
             style
         }
     };
-    for (marked, icon, style) in [
-        (row.today, Icon::Today, today_style(theme)),
-        (row.bookmark, Icon::Bookmark, bookmark_style(theme)),
-    ] {
-        if marked {
-            line.push_span(" ");
-            line.push_span(Span::styled(icon.glyph(icons), recede(style)));
-        }
+    let flag = flag.map(|color| (Icon::Flag, Style::new().fg(theme.tag(color))));
+    let today = row.today.then(|| (Icon::Today, today_style(theme)));
+    let bookmark = row
+        .bookmark
+        .then(|| (Icon::Bookmark, bookmark_style(theme)));
+    let marks = [flag, today, bookmark];
+    for (icon, style) in marks.into_iter().flatten() {
+        line.push_span(" ");
+        line.push_span(Span::styled(icon.glyph(icons), recede(style)));
     }
     if let Some(fold) = fold(row, icons) {
         line.push_span(Span::styled(format!(" {fold}"), Style::new().dim()));
@@ -1197,7 +1231,7 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
         ));
     }
     if row.divider {
-        if row.today || row.bookmark || row.hidden_tasks.is_some() {
+        if marks.iter().any(Option::is_some) || row.hidden_tasks.is_some() {
             line.push_span(" ");
         }
         line.push_span(rule(&line, width, theme));
@@ -1535,8 +1569,13 @@ mod tests {
     /// Draws `rows` with nothing focused and returns the `width` × `height` columns right of
     /// the gutter.
     fn draw(rows: &[Row], width: u16, height: u16) -> Buffer {
+        draw_view(outline(rows), width, height)
+    }
+
+    /// Draws `view` and returns the `width` × `height` columns right of the gutter.
+    fn draw_view(view: OutlineView, width: u16, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, width + GUTTER_WIDTH, height));
-        outline(rows).render(buf.area, &mut buf);
+        view.render(buf.area, &mut buf);
         let mut text = Buffer::empty(Rect::new(0, 0, width, height));
         for y in 0..height {
             for x in 0..width {
@@ -2132,6 +2171,49 @@ mod tests {
             ),
             expected
         );
+    }
+
+    // D-74, ui.md §2
+    #[test]
+    fn color_tags_shown_as_icons_put_a_flag_in_their_color_after_the_text_and_tint_nothing() {
+        let [flag, star, bookmark] =
+            [Icon::Flag, Icon::Today, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
+        let mut state = State::new(
+            format::parse(
+                "- a @today @red @bookmark\nP: @orange @done\n--- @blue\nQ: @green\n\t- d",
+            ),
+            None,
+        );
+        state.update(Message::CollapseAll);
+        let rows = state.rows();
+        let mut expected = Buffer::with_lines([
+            format!("{:<12}", format!("- a {flag} {star} {bookmark}")),
+            format!("{:<12}", format!("P: {flag}")),
+            format!(" {flag} {}", "─".repeat(9)),
+            format!("{:<12}", format!("Q: {flag} ▸ 1")),
+        ]);
+        let tag = |color| Style::new().fg(THEME.tag(color));
+        expected.set_style(Rect::new(4, 0, 1, 1), tag(TagColor::Red));
+        expected.set_style(Rect::new(6, 0, 1, 1), today_style(&THEME));
+        expected.set_style(Rect::new(8, 0, 1, 1), bookmark_style(&THEME));
+        expected.set_style(
+            Rect::new(0, 1, 2, 1),
+            Style::new().bold().fg(THEME.primary).dim().crossed_out(),
+        );
+        expected.set_style(Rect::new(3, 1, 1, 1), tag(TagColor::Orange).dim());
+        expected.set_style(Rect::new(1, 2, 1, 1), tag(TagColor::Blue));
+        expected.set_style(Rect::new(3, 2, 9, 1), divider_style(&THEME));
+        expected.set_style(Rect::new(0, 3, 2, 1), Style::new().bold().fg(THEME.primary));
+        expected.set_style(Rect::new(3, 3, 1, 1), tag(TagColor::Green));
+        expected.set_style(Rect::new(4, 3, 4, 1), Style::new().dim());
+        let view = outline(&rows).color_tags(ColorTagDisplay::Icon);
+        assert_eq!(draw_view(view, 12, 4), expected);
+        assert_eq!(
+            view.hit(14, 3, 7),
+            Some((3, true)),
+            "the `▸` after the flag"
+        );
+        assert_eq!(view.hit(14, 3, 5), Some((3, false)), "the flag");
     }
 
     // D-47, ui.md §2
