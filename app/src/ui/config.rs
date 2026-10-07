@@ -87,6 +87,9 @@ pub struct Config {
     pub(super) color_tags: Option<ColorTagDisplay>,
     /// Whether text wraps, when the file says (`word_wrap`, FR-UI-05).
     pub(super) wrap: Option<bool>,
+    /// Whether the sidebar lists the `INBOX` project apart, when the file says
+    /// (`special_inbox`, D-75).
+    pub(super) special_inbox: Option<bool>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -155,6 +158,17 @@ impl Config {
             Some(wrap) => self.wrap = Some(wrap),
             None => self.problems.push(Problem::InvalidValue {
                 key: "word_wrap".to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `special_inbox` from `item`: `true` or `false`.
+    fn read_special_inbox(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.special_inbox = Some(on),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "special_inbox".to_owned(),
                 expected: "true or false",
             }),
         }
@@ -309,6 +323,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "icons" => config.read_icons(item),
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
+            "special_inbox" => config.read_special_inbox(item),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
@@ -679,6 +694,25 @@ mod tests {
                 "{text}"
             );
         }
+    }
+
+    // D-75, FR-SET-04
+    #[test]
+    fn special_inbox_is_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).special_inbox, None);
+        assert_eq!(
+            read("special_inbox = false\n", None).special_inbox,
+            Some(false)
+        );
+        let config = read("special_inbox = 1\n", None);
+        assert_eq!(config.special_inbox, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "special_inbox".to_owned(),
+                expected: "true or false",
+            }]
+        );
     }
 
     // FR-UI-05, FR-SET-04

@@ -450,3 +450,36 @@ fn a_projects_count_of_open_tasks_follows_completing_them() {
     listed[7] = "    Reports".to_owned();
     assert_eq!(sidebar(&mut app), listed, "no open tasks, no count");
 }
+
+const INBOXED: &str = "\
+Work:
+INBOX:
+\t- Call the bank
+";
+
+// D-75
+#[test]
+fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
+    let mut app = Harness::with_text(INBOXED, 80, 10);
+    assert_eq!(
+        sidebar(&mut app),
+        [
+            format!("{:22}1", "  ⊔ INBOX"),
+            format!("  {STAR} Today"),
+            String::new(),
+            "  Projects".to_owned(),
+            "  Work".to_owned(),
+        ]
+    );
+    let mut app = Harness::with_config(INBOXED, "special_inbox = false\n", 80, 10);
+    assert_eq!(
+        sidebar(&mut app),
+        [
+            format!("  {STAR} Today"),
+            String::new(),
+            "  Projects".to_owned(),
+            "  Work".to_owned(),
+            format!("{:22}1", "  INBOX"),
+        ]
+    );
+}

@@ -612,7 +612,9 @@ mod tests {
             .iter()
             .filter_map(|entry| match entry {
                 crate::app::SidebarEntry::Project { text, fold, .. } => Some((text.clone(), *fold)),
-                crate::app::SidebarEntry::Bookmark { .. } | crate::app::SidebarEntry::Today => None,
+                crate::app::SidebarEntry::Inbox { .. }
+                | crate::app::SidebarEntry::Bookmark { .. }
+                | crate::app::SidebarEntry::Today => None,
             })
             .collect()
     }

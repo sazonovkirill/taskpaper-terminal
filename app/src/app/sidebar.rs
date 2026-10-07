@@ -11,11 +11,16 @@ use super::{
 };
 use crate::document::{BlockKind, ItemId, Stamp, blocks};
 
-/// Whether the sidebar is shown, its focused entry while it has the keys, and its folded project
-/// entries, which are its own and not the outline's.
+/// The text of the project the sidebar lists apart, above Today (D-75).
+const INBOX: &str = "INBOX";
+
+/// Whether the sidebar is shown, its focused entry while it has the keys, its folded project
+/// entries, which are its own and not the outline's, and whether it lists the `INBOX` project
+/// apart.
 #[derive(Debug, Clone)]
 pub(super) struct Sidebar {
     shown: bool,
+    special_inbox: bool,
     /// The index of the focused entry, while the sidebar has the keys.
     focus: Option<usize>,
     folds: HashSet<ItemId>,
@@ -29,6 +34,7 @@ struct EntriesKey {
     document: Stamp,
     folds: HashSet<ItemId>,
     show_done: bool,
+    special_inbox: bool,
 }
 
 /// Everything the entry of where the focused pane is comes from: the entries, the blocks above
@@ -52,6 +58,12 @@ impl Sidebar {
         self.focus = None;
     }
 
+    /// Lists the `INBOX` project above Today rather than among the projects, or not when `on` is
+    /// false (navigation.md §6).
+    pub(super) fn set_special_inbox(&mut self, on: bool) {
+        self.special_inbox = on;
+    }
+
     /// Keeps each folded project entry folded on the block `rematch` finds for its block in a
     /// reloaded document, and drops the fold when it finds none (file-io.md §3).
     pub(super) fn rematch_folds(&mut self, rematch: impl Fn(ItemId) -> Option<ItemId>) {
@@ -60,10 +72,11 @@ impl Sidebar {
 }
 
 impl Default for Sidebar {
-    /// Shown, without the keys, every project entry expanded.
+    /// Shown, without the keys, every project entry expanded, the `INBOX` project apart.
     fn default() -> Self {
         Self {
             shown: true,
+            special_inbox: true,
             focus: None,
             folds: HashSet::new(),
             entries: Memo::default(),
@@ -91,9 +104,19 @@ pub enum SidebarInput {
     Focus(usize),
 }
 
-/// One entry of the sidebar, in its sections' order: Today, bookmarks, projects (D-68).
+/// One entry of the sidebar, in its sections' order: the inbox, Today, bookmarks, projects
+/// (D-68, D-75).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SidebarEntry {
+    /// The top-level project `INBOX`, apart from the other projects (D-75).
+    Inbox {
+        /// The block.
+        id: ItemId,
+        /// Its text as shown, without formatting delimiters.
+        text: String,
+        /// How many open tasks it holds, as a project entry counts them (D-73).
+        open_tasks: usize,
+    },
     /// A block with `@bookmark` (D-11).
     Bookmark {
         /// The block.
@@ -123,7 +146,9 @@ impl SidebarEntry {
     /// Where choosing the entry goes: into its block, or the Today view.
     fn location(&self) -> Location {
         match self {
-            Self::Bookmark { id, .. } | Self::Project { id, .. } => Location::Outline(Some(*id)),
+            Self::Inbox { id, .. } | Self::Bookmark { id, .. } | Self::Project { id, .. } => {
+                Location::Outline(Some(*id))
+            }
             Self::Today => Location::Today,
         }
     }
@@ -169,6 +194,13 @@ impl State {
             focused,
             current,
         })
+    }
+
+    /// Whether the sidebar lists the `INBOX` project above Today rather than among the projects
+    /// (`special_inbox`, D-75).
+    #[must_use]
+    pub fn special_inbox(&self) -> bool {
+        self.sidebar.special_inbox
     }
 
     /// Whether the sidebar has the keys rather than the pane.
@@ -272,6 +304,7 @@ impl State {
             SidebarEntry::Project {
                 fold: Fold::Leaf, ..
             }
+            | SidebarEntry::Inbox { .. }
             | SidebarEntry::Bookmark { .. }
             | SidebarEntry::Today => None,
         };
@@ -294,10 +327,10 @@ impl State {
             .map(|at| at.min(entries.len().saturating_sub(1)))
     }
 
-    /// The index among `entries` of the entry of where the focused pane is: the last one going to
-    /// its location, else to the closest block above its zoom block that has one, so a project
-    /// both bookmarked and listed is its project entry and a block hidden in a folded entry is
-    /// that entry (D-68).
+    /// The index among `entries` of the entry of where the focused pane is: the one going to its
+    /// location, else to the closest block above its zoom block that has one, preferring an entry
+    /// that is not a bookmark, so a project both bookmarked and listed is its project or inbox
+    /// entry, and a block hidden in a folded entry is that entry (D-68).
     fn sidebar_current(&self, entries: &Rc<[SidebarEntry]>) -> Option<usize> {
         let location = self.pane.location;
         let key = CurrentKey {
@@ -307,9 +340,11 @@ impl State {
         };
         self.sidebar.current.get(key, || {
             let going_to = |location| {
+                let to = |entry: &SidebarEntry| entry.location() == location;
                 entries
                     .iter()
-                    .rposition(|entry| entry.location() == location)
+                    .position(|entry| to(entry) && !matches!(entry, SidebarEntry::Bookmark { .. }))
+                    .or_else(|| entries.iter().position(to))
             };
             let above = |&id: &ItemId| blocks::parent(self.document(), id).map(|block| block.id());
             match location {
@@ -320,20 +355,38 @@ impl State {
         })
     }
 
-    /// Today, then every bookmarked block in document order, then the project tree (D-68).
+    /// The inbox while it is apart, Today, then every bookmarked block in document order, then the
+    /// project tree without the inbox (D-68, D-75).
     fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
         let key = EntriesKey {
             document: self.document().stamp(),
             folds: self.sidebar.folds.clone(),
             show_done: self.pane.show_done,
+            special_inbox: self.sidebar.special_inbox,
         };
         self.sidebar.entries.get(key, || {
             let root = self.document().root();
-            let mut entries = vec![SidebarEntry::Today];
+            let inbox = self.sidebar.special_inbox.then(|| self.inbox()).flatten();
+            let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
+            let mut entries: Vec<_> = inbox.into_iter().collect();
+            entries.push(SidebarEntry::Today);
             self.push_bookmarks(root, &mut entries);
-            entries.extend(self.projects(root, 0, false));
+            entries.extend(self.projects(root, 0, false, apart));
             entries.into()
         })
+    }
+
+    /// The entry of the first shown top-level project whose text is `INBOX`, if any (D-75).
+    fn inbox(&self) -> Option<SidebarEntry> {
+        blocks::each_child(self.document(), self.document().root())
+            .filter(|block| block.kind() == BlockKind::Project && self.shows(block))
+            .map(|block| (self.shown_text(&block), block))
+            .find(|(text, _)| text == INBOX)
+            .map(|(text, block)| SidebarEntry::Inbox {
+                id: block.id(),
+                text,
+                open_tasks: self.open_tasks(&block, false),
+            })
     }
 
     /// Appends an entry for each bookmarked block below `line`, depth first, but not for
@@ -354,21 +407,27 @@ impl State {
     }
 
     /// The project entries below the line `line` at `depth`, skipping the blocks between
-    /// projects, the projects inside folded entries, and completed blocks with what they hold
-    /// while those are hidden (FR-DONE-02); `inside_done` says whether `line` or a block above it
-    /// is done.
-    fn projects(&self, line: ItemId, depth: usize, inside_done: bool) -> Vec<SidebarEntry> {
+    /// projects, the projects inside folded entries, the block `apart` with what it holds, and
+    /// completed blocks with what they hold while those are hidden (FR-DONE-02); `inside_done`
+    /// says whether `line` or a block above it is done.
+    fn projects(
+        &self,
+        line: ItemId,
+        depth: usize,
+        inside_done: bool,
+        apart: Option<ItemId>,
+    ) -> Vec<SidebarEntry> {
         let mut out = Vec::new();
         for block in blocks::each_child(self.document(), line) {
-            if !self.shows(&block) {
+            if !self.shows(&block) || apart == Some(block.id()) {
                 continue;
             }
             let done = inside_done || block.done();
             if block.kind() != BlockKind::Project {
-                out.extend(self.projects(block.id(), depth, done));
+                out.extend(self.projects(block.id(), depth, done, apart));
                 continue;
             }
-            let below = self.projects(block.id(), depth + 1, done);
+            let below = self.projects(block.id(), depth + 1, done, apart);
             let fold = if below.is_empty() {
                 Fold::Leaf
             } else if self.sidebar.folds.contains(&block.id()) {
@@ -395,7 +454,7 @@ impl State {
 mod tests {
     use super::*;
     use crate::{
-        app::{Message, Mode},
+        app::{Configuration, Message, Mode},
         document::{Document, Flag, format},
     };
 
@@ -425,6 +484,7 @@ Home: @bookmark
         view.entries
             .iter()
             .map(|entry| match entry {
+                SidebarEntry::Inbox { text, .. } => format!("inbox {text}"),
                 SidebarEntry::Bookmark { text, .. } => format!("bookmark {text}"),
                 SidebarEntry::Today => "today".to_owned(),
                 SidebarEntry::Project {
@@ -462,6 +522,108 @@ Home: @bookmark
         );
     }
 
+    /// An inbox holding a project and a bookmark, beside a project with an inbox of its own.
+    const INBOXED: &str = "\
+Work:
+\tINBOX:
+INBOX: @bookmark
+\t- call @bookmark
+\tLater:
+\t\t- soon
+Home:
+";
+
+    // D-75
+    #[test]
+    fn the_top_level_inbox_comes_first_and_leaves_the_project_tree_with_its_projects() {
+        assert_eq!(
+            listed(&open(INBOXED)),
+            [
+                "inbox INBOX",
+                "today",
+                "bookmark INBOX",
+                "bookmark call",
+                "Expanded Work",
+                "  Leaf INBOX",
+                "Leaf Home",
+            ]
+        );
+    }
+
+    // D-75
+    #[test]
+    fn only_the_first_shown_project_written_inbox_in_capitals_is_apart() {
+        assert_eq!(
+            listed(&open(
+                "Inbox:
+INBOX
+- INBOX"
+            ))[0],
+            "today"
+        );
+        let both = listed(&open(
+            "INBOX:
+	A:
+INBOX:
+	B:",
+        ));
+        assert_eq!(both, ["inbox INBOX", "today", "Expanded INBOX", "  Leaf B"]);
+        let mut state = open(
+            "INBOX: @done
+INBOX:",
+        );
+        assert_eq!(listed(&state), ["inbox INBOX", "today", "Leaf INBOX"]);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(listed(&state), ["inbox INBOX", "today"], "the open one");
+    }
+
+    // D-75
+    #[test]
+    fn with_the_setting_off_the_inbox_is_a_project_like_any_other() {
+        let mut state = open(INBOXED);
+        assert!(state.special_inbox(), "on by default");
+        state.update(Message::Configure(Configuration::SpecialInbox(false)));
+        assert!(!state.special_inbox());
+        assert_eq!(
+            listed(&state)[..3],
+            ["today", "bookmark INBOX", "bookmark call"]
+        );
+        assert_eq!(
+            listed(&state)[5..],
+            ["Expanded INBOX", "  Leaf Later", "Leaf Home"]
+        );
+        state.update(Message::Configure(Configuration::SpecialInbox(true)));
+        assert_eq!(listed(&state), listed(&open(INBOXED)));
+        assert_eq!(counts(&state)[0], ("INBOX".to_owned(), 2), "its open tasks");
+    }
+
+    // D-75, D-68
+    #[test]
+    fn the_inbox_entry_goes_to_the_inbox_has_no_fold_and_beats_its_bookmark_as_current() {
+        let mut state = open(INBOXED);
+        state.update(Message::FocusSidebar);
+        assert_eq!(focused(&state), Some(0), "the first entry");
+        assert_eq!(
+            entry_commands(&state),
+            Some(vec![
+                "Go to Entry, Open in New Pane".to_owned(),
+                "Return to Outline, Hide Sidebar".to_owned()
+            ])
+        );
+        input(&mut state, &[SidebarInput::Collapse, SidebarInput::Choose]);
+        assert_eq!(state.breadcrumbs(), ["INBOX"]);
+        assert_eq!(current(&state), Some(0));
+        let call = entry_block(&state, 3);
+        state.update(Message::GoTo(Location::Outline(Some(call))));
+        assert_eq!(state.breadcrumbs(), ["INBOX", "call"]);
+        assert_eq!(current(&state), Some(3), "call's own bookmark");
+        state.update(Message::Back);
+        state.update(Message::FocusLast);
+        state.update(Message::ZoomIn);
+        assert_eq!(state.breadcrumbs(), ["INBOX", "Later", "soon"]);
+        assert_eq!(current(&state), Some(0), "inside the inbox");
+    }
+
     // FR-UI-01, FR-DONE-02
     #[test]
     fn hidden_completed_blocks_take_their_bookmarks_and_projects_with_them() {
@@ -476,13 +638,16 @@ Home: @bookmark
         assert_eq!(all.len(), 7, "{all:?}");
     }
 
-    /// Each project entry's text with its count of open tasks.
+    /// Each project or inbox entry's text with its count of open tasks.
     fn counts(state: &State) -> Vec<(String, usize)> {
         let view = state.sidebar().expect("the sidebar is shown");
         view.entries
             .iter()
             .filter_map(|entry| match entry {
-                SidebarEntry::Project {
+                SidebarEntry::Inbox {
+                    text, open_tasks, ..
+                }
+                | SidebarEntry::Project {
                     text, open_tasks, ..
                 } => Some((text.clone(), *open_tasks)),
                 SidebarEntry::Bookmark { .. } | SidebarEntry::Today => None,

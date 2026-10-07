@@ -19,6 +19,8 @@ pub enum Icon {
     /// A block's color tag, in its color after its text, when color tags are shown as icons, and
     /// the settings window's color tags setting.
     Flag,
+    /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
+    Inbox,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
     /// bookmarks.
     Bookmark,
@@ -162,6 +164,8 @@ impl Icon {
             Self::Today => ("\u{f04ce}", "★", "*"),
             // nf-md-flag; the Unicode flag is the bookmark's fallback.
             Self::Flag => ("\u{f023b}", "●", "o"),
+            // nf-md-inbox
+            Self::Inbox => ("\u{f0687}", "⊔", "I"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -226,12 +230,13 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 31] = [
+    const ICONS: [Icon; 32] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
         Icon::Today,
         Icon::Flag,
+        Icon::Inbox,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,
@@ -339,6 +344,7 @@ mod tests {
         assert_eq!(unicode(Icon::DoneTask), "✔");
         assert_eq!(unicode(Icon::Today), "★");
         assert_eq!(unicode(Icon::Bookmark), "⚑");
+        assert_eq!(unicode(Icon::Inbox), "⊔");
     }
 
     // FR-UI-10

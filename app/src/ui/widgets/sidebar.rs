@@ -1,5 +1,5 @@
-//! The navigation sidebar on the left: Today, bookmarks and the project tree, with a rule on its
-//! right edge ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01).
+//! The navigation sidebar on the left: the inbox, Today, bookmarks and the project tree, with a
+//! rule on its right edge ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01).
 
 use ratatui::{
     buffer::Buffer,
@@ -20,13 +20,13 @@ use crate::{
     },
 };
 
-/// The sidebar's lines: Today, then for each of the bookmarks and the projects that has entries, a
-/// blank line, a heading and its entries (D-68). Bookmarks are their text alone;
+/// The sidebar's lines: the inbox and Today, then for each of the bookmarks and the projects that
+/// has entries, a blank line, a heading and its entries (D-68). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; while the pane has the keys, the entry
-/// of where it is gets a selected block's marker instead (D-68). A project with open tasks has
-/// their count dimmed at the right, its text cut off a space before it (D-73).
+/// of where it is gets a selected block's marker instead (D-68). A project or the inbox with open
+/// tasks has their count dimmed at the right, its text cut off a space before it (D-73).
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -89,9 +89,10 @@ impl<'a> SidebarPanel<'a> {
             {
                 Some(fold)
             }
-            SidebarEntry::Bookmark { .. } | SidebarEntry::Today | SidebarEntry::Project { .. } => {
-                None
-            }
+            SidebarEntry::Inbox { .. }
+            | SidebarEntry::Bookmark { .. }
+            | SidebarEntry::Today
+            | SidebarEntry::Project { .. } => None,
         };
         Some((entries, fold))
     }
@@ -112,7 +113,8 @@ impl<'a> SidebarPanel<'a> {
                     Some(SidebarEntry::Today | SidebarEntry::Bookmark { .. }),
                 ) => Some("Projects"),
                 (
-                    SidebarEntry::Today
+                    SidebarEntry::Inbox { .. }
+                    | SidebarEntry::Today
                     | SidebarEntry::Bookmark { .. }
                     | SidebarEntry::Project { .. },
                     _,
@@ -173,9 +175,15 @@ impl<'a> SidebarLine<'a> {
     }
 }
 
-/// An entry's line in `theme`: Today's icon or a project's fold marker from `icons`, and its text.
+/// An entry's line in `theme`: the inbox's or Today's icon or a project's fold marker from
+/// `icons`, and its text.
 fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
     match entry {
+        SidebarEntry::Inbox { text, .. } => Line::from(vec![
+            Span::raw(Icon::Inbox.glyph(icons)),
+            Span::raw(" "),
+            Span::raw(text.as_str()),
+        ]),
         SidebarEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
         SidebarEntry::Today => Line::from(vec![
             Span::styled(Icon::Today.glyph(icons), today_style(theme)),
@@ -242,9 +250,10 @@ impl Widget for SidebarPanel<'_> {
                 line_area
             };
             let line_area = match line {
-                SidebarLine::Entry(&SidebarEntry::Project { open_tasks, .. }) if open_tasks > 0 => {
-                    render_count(open_tasks, line_area, buf)
-                }
+                SidebarLine::Entry(
+                    &(SidebarEntry::Project { open_tasks, .. }
+                    | SidebarEntry::Inbox { open_tasks, .. }),
+                ) if open_tasks > 0 => render_count(open_tasks, line_area, buf),
                 SidebarLine::Blank | SidebarLine::Heading(_) | SidebarLine::Entry(_) => line_area,
             };
             line.line(self.icons, self.theme).render(line_area, buf);
@@ -320,6 +329,26 @@ mod tests {
             ["", "  Bookmarks", "  a", "", "", "", ""],
             "no projects"
         );
+    }
+
+    // D-75
+    #[test]
+    fn the_inbox_comes_above_today_behind_its_icon() {
+        assert_eq!(
+            rows(&draw("INBOX:\n\t- a\nA:"))[..5],
+            [
+                format!("  {} INBOX         1", Icon::Inbox.glyph(IconSet::Unicode)),
+                format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
+                String::new(),
+                "  Projects".to_owned(),
+                "  A".to_owned(),
+            ]
+        );
+        let view = State::new(format::parse("INBOX:\n\tA:"), None)
+            .sidebar()
+            .expect("shown by default");
+        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
     }
 
     // FR-KEY-05

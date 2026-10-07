@@ -23,6 +23,9 @@ use crate::document::{
 pub enum Configuration {
     /// Save this long after the last change from now on (`autosave_delay_ms`, file-io.md §2).
     AutosaveDelay(Duration),
+    /// List the `INBOX` project above Today in the sidebar, or among the projects when `false`
+    /// (`special_inbox`, navigation.md §6).
+    SpecialInbox(bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -581,6 +584,7 @@ impl State {
     fn configure(&mut self, setting: Configuration) {
         match setting {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
+            Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
         }
     }
 

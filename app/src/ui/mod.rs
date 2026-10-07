@@ -226,9 +226,9 @@ impl Tui {
     }
 
     /// The frontend running with the key bindings, autosave delay, icons, color tags, word wrap,
-    /// theme and backups `config` holds, keeping settings changed in the app in its file and reporting once
-    /// what it ignored of the file (FR-SET-04). The disk worker makes its backups as `config`
-    /// says until the settings window changes them.
+    /// theme, inbox handling and backups `config` holds, keeping settings changed in the app in its
+    /// file and reporting once what it ignored of the file (FR-SET-04). The disk worker makes its
+    /// backups as `config` says until the settings window changes them.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
@@ -250,6 +250,12 @@ impl Tui {
         if let Some(delay) = config.autosave_delay {
             self.send(
                 Message::Configure(Configuration::AutosaveDelay(delay)),
+                Duration::ZERO,
+            );
+        }
+        if let Some(on) = config.special_inbox {
+            self.send(
+                Message::Configure(Configuration::SpecialInbox(on)),
                 Duration::ZERO,
             );
         }
