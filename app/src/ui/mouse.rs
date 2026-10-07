@@ -257,10 +257,13 @@ impl Tui {
     }
 
     /// Scrolls what is at `spot` by `lines` screen lines: a pane's outline, which then stays
-    /// where it is scrolled to until a key or a click, or the shortcuts panel (D-55).
+    /// where it is scrolled to until a key or a click, or the shortcuts panel (D-55). The panes
+    /// stay put while the Navigator is open.
     fn wheel(&mut self, spot: Spot, lines: isize) {
+        // The open Navigator is a dialog (ui.md §6).
+        let navigator = self.state.sidebar_focused();
         match spot {
-            Spot::Header { pane, .. } | Spot::Outline { pane, .. } => {
+            Spot::Header { pane, .. } | Spot::Outline { pane, .. } if !navigator => {
                 if let Some(pane) = self.drawn.panes.get(pane) {
                     *self.wheel.entry(pane.id).or_default() += lines;
                 }
@@ -268,7 +271,7 @@ impl Tui {
             Spot::Shortcuts => {
                 self.shortcuts_scroll = self.shortcuts_scroll.saturating_add_signed(lines);
             }
-            Spot::Sidebar { .. } => {}
+            Spot::Sidebar { .. } | Spot::Header { .. } | Spot::Outline { .. } => {}
         }
     }
 

@@ -192,7 +192,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 - The file is `config.toml` in `$XDG_CONFIG_HOME/taskpaper-terminal/`, or `~/.config/taskpaper-terminal/` when that is unset, also on macOS (FR-SET-01). The contexts are `navigate` and `edit`.
 - Keys are written as `mod+mod+key` in lower case (`ctrl`, `alt`, `shift`), or as a sequence separated by spaces (`"g g"`). Key names are those of the tables above in lower case (`enter`, `esc`, `tab`, `space`, `up`, `pageup`, `f10`, `menu`, …); a capital letter is the same as `shift+` with the letter. Edit mode binds single keys only.
-- Values are command names, as shown in the command palette, of a command of that context; case, spaces and punctuation do not matter, so `Move Up`, `move up` and `move_up` are the same name. `"none"` unbinds the key.
+- Values are command names, as shown in the command palette, of a command of that context; case, spaces and punctuation do not matter, so `Move Up`, `move up` and `move_up` are the same name. `"none"` unbinds the key. The sidebar's old names `toggle_sidebar` and `focus_sidebar` still name Open Navigator, so a file written before D-79 keeps working.
 - A binding takes the key from the command it gave and adds it before the command's other keys, which stay bound. The `?` panel, Go to Command and the context menu show the keys as configured.
 - Unknown commands, malformed keys and a key bound twice in one context (such as `"G"` and `"shift+g"`) are reported at startup and ignored, leaving that key's default; the app still starts. Problems are shown once, in the status line, as are unknown settings and invalid values elsewhere in the file (FR-SET-04).
 

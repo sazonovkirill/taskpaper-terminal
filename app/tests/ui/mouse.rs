@@ -259,12 +259,26 @@ fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
 
 // FR-KEY-05, ui.md §6
 #[test]
-fn the_wheel_over_the_sidebars_window_does_nothing() {
-    let mut app = Harness::with_text(OUTLINE, 80, 14);
+fn the_wheel_does_nothing_while_the_sidebars_window_is_open() {
+    let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
+    let mut app = Harness::with_text(&text, 80, 14);
     ctrl_g(&mut app);
     let before = screen(&mut app);
     wheel(&mut app, 25, 8, true);
-    assert_eq!(screen(&mut app), before);
+    wheel(&mut app, 2, 3, true);
+    wheel(&mut app, 2, 0, true);
+    assert_eq!(
+        screen(&mut app),
+        before,
+        "over the window or the pane behind it, its header included"
+    );
+    press(&mut app, KeyCode::Esc);
+    wheel(&mut app, 2, 3, true);
+    assert_eq!(
+        outline_rows(&mut app)[0],
+        "- Task 4",
+        "the wheel works again once it closes"
+    );
 }
 
 // FR-KEY-05, D-79

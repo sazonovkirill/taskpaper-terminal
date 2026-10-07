@@ -485,12 +485,25 @@ fn config_name(name: &str) -> String {
 /// and only the command menu offers (D-44).
 fn command_named(mode: Mode, name: &str) -> Option<Command> {
     let name = config_name(name);
+    let name = RENAMED
+        .iter()
+        .find(|(old, _)| *old == name)
+        .map_or(name.as_str(), |&(_, new)| new);
     REGISTRY
         .iter()
         .filter(|entry| entry.mode == mode && !matches!(entry.command, Command::Retype(_)))
         .map(|entry| entry.command)
         .find(|command| config_name(&command.name()) == name)
 }
+
+/// Names a config file written before a command was renamed may still use, each with the name
+/// it now has, as [`config_name`] writes them ([keybindings.md §5]).
+///
+/// [keybindings.md §5]: ../../../docs/specs/keybindings.md#5-configuration
+const RENAMED: &[(&str, &str)] = &[
+    ("toggle_sidebar", "open_navigator"),
+    ("focus_sidebar", "open_navigator"),
+];
 
 /// Why a key binding the config file asks for was ignored ([keybindings.md §5]).
 ///
@@ -2741,6 +2754,36 @@ mod tests {
         assert_eq!(
             keymap.expire(ms(1002), CONTEXT),
             Some(KeyAction::Send(Message::GoTo(Location::Outline(None))))
+        );
+    }
+
+    // keybindings.md §5, D-79
+    #[test]
+    fn the_sidebars_old_names_bind_open_navigator() {
+        let mut keymap = Keymap::default();
+        let errors = keymap.bind(
+            Mode::Navigate,
+            &[("ctrl+b", "toggle_sidebar"), ("alt+0", "Focus Sidebar")],
+        );
+        assert_eq!(errors, []);
+        for (at, (code, modifiers)) in [
+            (KeyCode::Char('b'), KeyModifiers::CONTROL),
+            (KeyCode::Char('0'), KeyModifiers::ALT),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(
+                keymap.message_for(&key(code, modifiers), ms(at as u64), CONTEXT),
+                Some(Message::ToggleSidebar)
+            );
+        }
+        assert_eq!(
+            keymap
+                .bind(Mode::Edit, &[("ctrl+b", "toggle_sidebar")])
+                .len(),
+            1,
+            "only where Open Navigator is bound"
         );
     }
 
