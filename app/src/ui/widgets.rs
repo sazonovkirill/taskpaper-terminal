@@ -747,7 +747,7 @@ pub fn block_icon(document: &Document, id: ItemId) -> (Icon, Style) {
     (icon, Style::new())
 }
 
-/// The style of block `id`'s text in the finders in `theme`: a bookmarked block's in the primary
+/// The style of block `id`'s icon and text in the finders in `theme`: a bookmarked block's in the primary
 /// color, as the sidebar marks bookmarks (D-70), any other's plain.
 #[must_use]
 pub fn block_text_style(document: &Document, id: ItemId, theme: &Theme) -> Style {
@@ -1278,7 +1278,7 @@ fn today_style(theme: &Theme) -> Style {
     Style::new().fg(theme.warning())
 }
 
-/// The bookmark icon (D-47) and a bookmarked block's text in the finders (D-70), in the primary
+/// The bookmark icon (D-47) and a bookmarked block's icon and text in the finders (D-70), in the primary
 /// color.
 fn bookmark_style(theme: &Theme) -> Style {
     Style::new().fg(theme.primary)

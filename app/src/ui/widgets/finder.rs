@@ -23,7 +23,7 @@ const PROMPT: &str = "› ";
 
 /// A finder titled with what it finds, such as Go to Symbol, framed in the accent color like the
 /// other menus of commands: the query with the caret after it,
-/// then each matching entry's icon, its text, in the style its value gives if any, and, dimmed
+/// then each matching entry's icon and its text, both in the style its value gives if any, and, dimmed
 /// after it, its detail, the highlighted one reversed and kept in view, or a dimmed line saying
 /// nothing matches.
 pub struct FinderPopup<'a, T> {
@@ -65,7 +65,7 @@ impl<'a, T> FinderPopup<'a, T> {
         }
     }
 
-    /// The finder with each entry's text in the style `text_style` gives its value.
+    /// The finder with each entry's icon and text in the style `text_style` gives its value.
     #[must_use]
     pub fn text_style(mut self, text_style: &'a dyn Fn(&T) -> Style) -> Self {
         self.text_style = Some(text_style);
@@ -133,7 +133,7 @@ impl<T> Widget for FinderPopup<'_, T> {
                 .map_or_else(Style::new, |text_style| text_style(&entry.value));
             let mut line = Line::from(vec![
                 Span::raw(" "),
-                Span::styled(icon.glyph(self.icons), style),
+                Span::styled(icon.glyph(self.icons), style.patch(text_style)),
                 Span::raw(" "),
                 Span::styled(entry.text.as_str(), text_style),
             ]);
@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn draws_each_entrys_text_in_the_style_its_value_gives() {
+    fn draws_each_entrys_icon_and_text_in_the_style_its_value_gives() {
         let (one, two) = (candidate("One"), candidate("Two"));
         let two = Candidate { value: 2, ..two };
         let view = FinderView {
@@ -261,6 +261,7 @@ mod tests {
         FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME)
             .text_style(&text)
             .render(buf.area, &mut buf);
+        assert_eq!(buf[(2, 2)].fg, Color::Indexed(100), "the icon too");
         assert_eq!(buf[(4, 2)].fg, Color::Indexed(100));
         assert_eq!(buf[(6, 2)].fg, Color::Indexed(100));
         assert_eq!(buf[(3, 2)].fg, Color::Reset, "not the space before it");
