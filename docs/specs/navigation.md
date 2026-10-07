@@ -60,7 +60,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 ## 6. Sidebar (FR-UI-01, D-7, D-11, D-28)
 
 A panel on the left with three sections, top to bottom:
-1. **Today**: the built-in view (§7), unless `sidebar_today = false` in `config.toml`, or **Show Today in sidebar** turned off in the settings window (ui.md §8), leaves it out; it is on by default, and the Today view still opens by `gt` and Go to Today (D-77).
+1. **Today**, then **Upcoming**, **Overdue**, **Colors** and **Logbook** (§7.1, D-80), each unless its setting leaves it out: Today is the built-in view (§7), unless `sidebar_today = false` in `config.toml`, or **Show Today in sidebar** turned off in the settings window (ui.md §8), leaves it out; it is on by default, and the Today view still opens by `gt` and Go to Today (D-77).
 2. **Bookmarks**: every block tagged `@bookmark`, in document order; later also bookmarked searches (FR-SRCH-03).
 3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper, each with how many open tasks it holds at any depth, counted as for a collapsed block (D-67, D-73).
 
@@ -71,6 +71,19 @@ A panel on the left with three sections, top to bottom:
 ## 7. Today view (FR-TAG-04, D-7)
 
 A built-in list of every block that has `@today`, or `@due` or `@start` on or before today's local date (FR-TAG-04), in document order unless the user reordered it (D-57). Done blocks follow the pane's show-completed setting (FR-DONE-02), like any other view: while completed blocks are hidden, a done block leaves the list with every block inside it. Choosing Today in the sidebar, or Go to Today (`gt`, D-64), shows this list in the focused pane instead of an outline, under a header naming it ([ui.md §1](ui.md#1-layout)); it is a location in the pane's history like a zoom, entered focusing the block zoomed out of when it is an entry, and left focusing the focused entry when the new location shows it. Entries are flat, each with its breadcrumb path. Navigation, edit mode and block commands (done, dates, today, color) work on the entries directly, as do selection, delete, duplicate, copy and undo; an entry that stops matching leaves the list, its focus moving as in §2. `zoom_in` (`Alt+l`/`gz`, and `.` and `Alt+→`) on an entry goes to it in the outline: the pane zooms to its parent and focuses it, as Go to Symbol does (§8). The entries have no tree around them, so commands that need one do nothing in the Today view: folding, moving the focus to a parent, child or sibling, `zoom_out`, adding, grouping or pasting blocks outside edit mode, and indenting; `Enter` at the end of an entry being edited only ends editing. `move_up`/`move_down` reorder the list instead (D-57): the selected entries, else the focused one, move a step up or down past the entry next to them, runs of selected entries together, and one at the end it moves toward stays. The order is the app's, never the file's: the document does not change, nothing is saved and there is no step to undo. Every pane showing Today shares it, and an entry a pane hides keeps its place. Entries never moved follow the moved ones in document order, so a block that starts matching comes last, and a block that leaves the list keeps its place for when it returns. The order is kept with the layout ([file-io.md §5](file-io.md#5-view-state-persistence)). The list is recomputed on every document change and at local midnight.
+
+### 7.1 Other special views (FR-TAG-07, D-80)
+
+Upcoming, Overdue, Colors and Logbook are special views like Today: everything above holds for them except reordering, which only Today has, so `move_up`/`move_down` do nothing in them. Their entries may be grouped. A heading line above the first entry of each group names it; it is drawn, not a block, so focus, selection, motion and paging skip it, and an empty group has no heading. Each view has its own icon, shown before its name in its sidebar entry and its header, as Today's star is ([ui.md §1, §7](ui.md#7-icons-fr-ui-09-fr-ui-10)).
+
+| View | Lists | Groups, in order | Go to | Setting (on by default) |
+|---|---|---|---|---|
+| Upcoming (D-81) | blocks with `@start` or `@due` from tomorrow to a week from today, once, under the earliest such date; done blocks per show-completed | days, earliest first; heading `Tomorrow · Thu 8 Oct` | `gn` | `sidebar_upcoming` |
+| Overdue (D-82) | open blocks (not done, not inside a done block) with `@due` before today | due dates, oldest first; heading `3 days ago · Sun 4 Oct` | `go` | `sidebar_overdue` |
+| Colors (D-83) | blocks with a color tag; done blocks per show-completed | red, orange, yellow, green, blue, violet; heading the color's flag and name | `gf` | `sidebar_colors` |
+| Logbook (D-84) | blocks with `@done(DATE)` from six days ago to today, inside done blocks too, whatever show-completed says | days, newest first; heading `Yesterday · Tue 6 Oct` | `gD` | `sidebar_logbook` |
+
+Within a group, entries are in document order. The sidebar lists the views after Today in the table's order (§6), each unless its setting is off; its Go to command still opens it.
 
 ## 8. Go to Symbol and Go to Command (FR-NAV-05, FR-NAV-06)
 

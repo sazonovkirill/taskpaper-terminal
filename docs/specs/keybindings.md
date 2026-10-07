@@ -57,6 +57,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Zoom out | `>` (`Shift+.`), `Alt+h`, `Alt+←`, `gu` |
 | Go home | `Ctrl+'` (kitty keyboard protocol only, §1), `gh` |
 | Go to Today: show the Today view, as choosing it in the sidebar does (D-64) | `gt` |
+| Go to Upcoming / Overdue / Colors / Logbook: show that special view, as choosing it in the sidebar does (D-80) | `gn` / `go` / `gf` / `gD` |
 | Go to Inbox: zoom to the INBOX project the sidebar lists apart, as choosing its entry does; with none, or the setting off, a status notice says so (D-78) | `gi` |
 | Back / forward | `H` / `L`, `Alt+Shift+←` / `Alt+Shift+→` |
 
