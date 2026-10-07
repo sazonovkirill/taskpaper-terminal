@@ -5,7 +5,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::buffer::CellWidth as _;
 
-use crate::support::{DUE, Harness, NAVIGATE, STAR, START};
+use crate::support::{DUE, Harness, NAVIGATE, STAR, START, SUN};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -178,11 +178,13 @@ fn every_size_down_to_nothing_shows_the_status_line_and_the_focused_block() {
     }
 }
 
-// N-PORT-02: every overlay opens on every size without failing, and keys go on working.
+// N-PORT-02, D-79, D-80: every overlay, the Navigator and its context menu, and the Today view
+// open on every size without failing, and keys go on working.
 #[test]
 fn every_overlay_opens_on_every_size() {
     let overlays = [
-        "?", "md", "gs", "gP", ":", "mc", "my", "mi", "\\", "g,", "\n/",
+        "?", "md", "gs", "gP", ":", "mc", "my", "mi", "\\", "g,", "\n/", "\x07", "\x07j\\", "gt",
+        "gtj\\",
     ];
     for (width, height) in SIZES {
         for keys in overlays {
@@ -190,6 +192,7 @@ fn every_overlay_opens_on_every_size() {
             for key in keys.chars() {
                 match key {
                     '\n' => app.press(KeyCode::Enter, NONE),
+                    '\x07' => app.press(KeyCode::Char('g'), KeyModifiers::CONTROL),
                     key => app.type_keys(&key.to_string()),
                 }
                 app.render();
@@ -201,4 +204,56 @@ fn every_overlay_opens_on_every_size() {
             assert!(app.tui.should_quit(), "{width}×{height} {keys:?}");
         }
     }
+}
+
+// N-PORT-04, D-79: the Navigator's window over wide text hides the graphemes its edges cut, and
+// its entries end before a wide grapheme that would not fit beside their counts.
+#[test]
+fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {
+    let text = format!(
+        "{}日本語のとても長いプロジェクト名前ですね本当に長い:\n\t- 仕事\n",
+        "日本語日本語日本語日本語日本語日本語日本語日本語\n".repeat(8)
+    );
+    let mut app = Harness::with_text(&text, 61, 14);
+    app.render();
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    assert_eq!(
+        screen(&mut app)[5..11],
+        [
+            "  日本 ┌Navigator─────────────────────────────────────┐",
+            "  日本 │▌ ☼ Today                                     │",
+            "  日本 │                                              │",
+            "  日本 │  Projects                                    │",
+            "  日本 │  日本語のとても長いプロジェクト名前ですね  1 │",
+            "  日本 └──────────────────────────────────────────────┘",
+        ]
+    );
+}
+
+// N-PORT-04, FR-TAG-04, FR-UI-05: a Today entry of wide text and its path take their display
+// width, cut or wrapped.
+#[test]
+fn the_today_view_shows_wide_entries_and_paths_whole() {
+    let mut app = Harness::with_text(
+        "日本語のプロジェクト:\n\t- 買い物 👨‍👩‍👧 とても長い仕事の名前です @due(2026-10-05)\n",
+        40,
+        8,
+    );
+    app.type_keys("gt");
+    assert_eq!(
+        screen(&mut app)[2],
+        format!("▌ - 買い物 👨‍👩‍👧 とても長い仕事の…  {DUE} today"),
+        "with wrap off, the text ends in … before a whole grapheme and the path is left out"
+    );
+    app.type_keys("gw");
+    assert_eq!(
+        screen(&mut app)[..5],
+        [
+            format!("  {SUN} Today").as_str(),
+            "────────────────────────────────────────",
+            format!("▌ - 買い物 👨‍👩‍👧                    {DUE} today").as_str(),
+            "▌   とても長い仕事の名前です",
+            "▌   日本語のプロジェクト",
+        ]
+    );
 }
