@@ -555,7 +555,8 @@ impl Tui {
 
     /// Draws the whole screen: the sidebar, the panes side by side, each a breadcrumb header over
     /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
-    /// while open, the date prompt's panel below them while open, and the status line.
+    /// while open, the date prompt's panel below them while open, and the status line, all dimmed
+    /// behind a dialog that takes the keys.
     pub fn draw(&mut self, frame: &mut Frame) {
         let theme = self.palette();
         let screen = frame.area();
@@ -591,6 +592,11 @@ impl Tui {
         let focused = self.draw_panes(frame, strip, small);
         // Centered popups go over the sidebar, which a narrow screen draws over the outline.
         self.draw_shortcuts(frame, sidebar);
+        self.draw_status(frame, status);
+        // A dialog that takes the keys sets itself apart from the screen behind it (D-54, D-69).
+        if self.overlay().is_some() || self.state.in_conflict() {
+            frame.buffer_mut().set_style(screen, Style::new().dim());
+        }
         if let Some(caret) = focused.caret {
             frame.set_cursor_position(caret);
             if let Some(menu) = self.state.command_menu() {
@@ -639,7 +645,6 @@ impl Tui {
                 draw_anchored(frame, popup, screen_body, anchor);
             }
         }
-        self.draw_status(frame, status);
         self.draw_date_prompt(frame, panel);
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
@@ -1019,14 +1024,12 @@ impl Tui {
         (pane, entry)
     }
 
-    /// The date prompt's panel over `area` with its caret, if it is open, and the rest of the
-    /// screen dimmed to set it apart (D-54). The conflict prompt covers both.
+    /// The date prompt's panel over `area` with its caret, if it is open (D-54). The conflict
+    /// prompt covers it.
     fn draw_date_prompt(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         if let Some(prompt) = self.state.date_prompt()
             && !self.state.in_conflict()
         {
-            let screen = frame.area();
-            frame.buffer_mut().set_style(screen, Style::new().dim());
             let theme = self.palette();
             let panel = DatePromptPanel::new(&prompt, &theme);
             frame.set_cursor_position(panel.caret(area));

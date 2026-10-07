@@ -125,12 +125,8 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
             bottom.clone(),
         ]
     );
+    // The prompt dims the outline's focus marker (D-69), so the focus is checked once it closes.
     app.type_keys("jx");
-    let focused = focused_rows(&mut app);
-    assert!(
-        focused.len() == 1 && focused[0].starts_with("Groceries: "),
-        "keys answer the prompt: {focused:?}"
-    );
     app.type_keys("d");
     let diff = [
         top,
@@ -183,6 +179,11 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
     assert_eq!(
         outline_rows(&mut app)[..3],
         ["Groceries:", "  - Milk", "  - Eggs"]
+    );
+    assert_eq!(
+        focused_rows(&mut app),
+        ["Groceries:"],
+        "keys answer the prompt"
     );
 }
 

@@ -271,17 +271,20 @@ fn a_right_click_on_the_selection_opens_its_menu_and_elsewhere_drops_it() {
     let mut app = Harness::with_text(OUTLINE, 100, 40);
     app.hide_sidebar();
     app.type_keys("vjv");
+    // The menu dims the focus and selection markers alike (D-69), so they are checked with it
+    // closed.
     right_click(&mut app, 8, 3);
-    assert_eq!(selected_rows(&mut app), ["Work:"]);
     assert!(
         menu(&mut app).iter().all(|row| !row.contains("Edit")),
         "the selection's menu"
     );
     press(&mut app, KeyCode::Esc);
+    assert_eq!(selected_rows(&mut app), ["Work:"]);
     right_click(&mut app, 8, 6);
+    assert!(menu(&mut app).iter().any(|row| row.contains("Edit")));
+    press(&mut app, KeyCode::Esc);
     assert_eq!(selected_rows(&mut app), Vec::<String>::new());
     assert_eq!(focused_rows(&mut app), ["Home:"]);
-    assert!(menu(&mut app).iter().any(|row| row.contains("Edit")));
 }
 
 // FR-KEY-05, FR-KEY-06, ui.md §5

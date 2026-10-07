@@ -10,6 +10,7 @@ mod converting;
 mod creating;
 mod date_prompt;
 mod details;
+mod dialogs;
 mod editing;
 mod external_changes;
 mod focus_and_scrolling;
