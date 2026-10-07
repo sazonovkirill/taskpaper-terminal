@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use super::{
     Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
-    SettingValue, SettingsInput, SidebarInput, State, Symbols, TextEdit, Version,
+    SettingValue, SettingsInput, SidebarInput, SpecialView, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
     structure::NewBlock,
@@ -26,9 +26,9 @@ pub enum Configuration {
     /// List the `INBOX` project above Today in the sidebar, or among the projects when `false`
     /// (`special_inbox`, navigation.md §6).
     SpecialInbox(bool),
-    /// List the Today view in the sidebar, or not when `false` (`sidebar_today`,
-    /// navigation.md §6).
-    SidebarToday(bool),
+    /// List this special view in the sidebar, or not when `false` (`sidebar_today` and so on,
+    /// navigation.md §6, D-77, D-80).
+    SidebarView(SpecialView, bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -146,13 +146,14 @@ pub enum Message {
     ToggleShortcuts,
     /// Close the shortcuts panel.
     CloseShortcuts,
-    /// Show the focused block as the root; in the Today view, go to the focused entry in the
-    /// outline (D-7).
+    /// Show the focused block as the root; in a special view, go to the focused entry in the
+    /// outline (D-7, D-80).
     ZoomIn,
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
     ZoomOut,
     /// Show `location` in the focused pane as a step of its history: the whole document with
-    /// `Location::Outline(None)`, or the Today view, as choosing it in the sidebar does (D-64).
+    /// `Location::Outline(None)`, or a special view, as choosing it in the sidebar does (D-64,
+    /// D-80).
     GoTo(Location),
     /// Show the focused pane's breadcrumb at `depth` as its root: 0 is the whole document, 1 the
     /// zoom block's top-level ancestor, and so on down to the zoom block (FR-KEY-05).
@@ -585,7 +586,7 @@ impl State {
         match setting {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
             Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
-            Configuration::SidebarToday(on) => self.sidebar.set_today(on),
+            Configuration::SidebarView(view, on) => self.sidebar.set_listed(view, on),
         }
     }
 
@@ -736,24 +737,24 @@ impl State {
             .unwrap_or_default()
     }
 
-    /// Zooms into the focused block (FR-NAV-03), or in the Today view goes to it in the outline
-    /// (D-7).
+    /// Zooms into the focused block (FR-NAV-03), or in a special view goes to it in the outline
+    /// (D-7, D-80).
     fn zoom_in(&mut self) {
         let Some(block) = self.focused_block() else {
             return;
         };
         match self.pane.location {
             Location::Outline(_) => self.go_to(Location::Outline(Some(block.id()))),
-            Location::Today => self.go_to_entry(&block),
+            Location::View(_) => self.go_to_entry(&block),
         }
     }
 
     /// Moves the selected blocks, else the focused block, a step up or down with `down`: in the
-    /// outline with their subtrees (FR-OPS-03), in the Today view only in its order (D-57).
+    /// outline with their subtrees (FR-OPS-03), in a special view only in its order (D-57, D-80).
     fn move_blocks(&mut self, down: bool) {
         match self.pane.location {
             Location::Outline(_) => self.shift_selected(if down { Shift::Down } else { Shift::Up }),
-            Location::Today => self.reorder_entries(down),
+            Location::View(view) => self.move_entries(view, down),
         }
     }
 
@@ -824,12 +825,12 @@ impl State {
     }
 
     /// Shows `location` and focuses the block left when it is visible: the block zoomed out of,
-    /// or the focused entry when leaving the Today view; else the first block under the title,
+    /// or the focused entry when leaving a special view; else the first block under the title,
     /// else the title.
     fn show(&mut self, location: Location) {
         let left = match self.pane.location {
             Location::Outline(zoom) => zoom,
-            Location::Today => self.pane.focus,
+            Location::View(_) => self.pane.focus,
         };
         self.pane.location = location;
         let rows = self.rows();

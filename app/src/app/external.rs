@@ -389,7 +389,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Menu, MenuInput, Message, SelectionChange, Symbols, state::NOTICE_TIME},
+        app::{
+            Menu, MenuInput, Message, SelectionChange, SpecialView, Symbols, state::NOTICE_TIME,
+        },
         document::{Op, Transaction},
     };
 
@@ -580,9 +582,12 @@ mod tests {
         let mut state = opened("- a @today\n- b @today\n");
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
-        state.go_to(crate::app::Location::Today);
+        state.go_to(crate::app::Location::View(SpecialView::Today));
         state.update(found("- new @today\n- a @today\n- b @today @x\n"));
-        assert_eq!(state.location(), crate::app::Location::Today);
+        assert_eq!(
+            state.location(),
+            crate::app::Location::View(SpecialView::Today)
+        );
         assert_eq!(texts(&state), ["new", "a", "b"]);
         assert_eq!(text_of(&state, state.focus()).as_deref(), Some("b"));
         state.update(Message::Back);
@@ -597,7 +602,7 @@ mod tests {
     #[test]
     fn a_reload_keeps_the_today_views_order() {
         let mut state = opened("- a @today\n- b @today\n");
-        state.go_to(crate::app::Location::Today);
+        state.go_to(crate::app::Location::View(SpecialView::Today));
         state.update(Message::FocusLast);
         state.update(Message::MoveUp);
         assert_eq!(texts(&state), ["b", "a"]);
@@ -614,7 +619,7 @@ mod tests {
                 crate::app::SidebarEntry::Project { text, fold, .. } => Some((text.clone(), *fold)),
                 crate::app::SidebarEntry::Inbox { .. }
                 | crate::app::SidebarEntry::Bookmark { .. }
-                | crate::app::SidebarEntry::Today => None,
+                | crate::app::SidebarEntry::View(_) => None,
             })
             .collect()
     }

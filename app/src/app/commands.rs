@@ -16,8 +16,8 @@ pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
 
 use super::{
-    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput, Symbols,
-    TextEdit,
+    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput,
+    SpecialView, Symbols, TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
@@ -86,8 +86,8 @@ pub enum Command {
     ZoomOut,
     /// Show the whole document.
     GoHome,
-    /// Show the Today view in the focused pane (D-64).
-    GoToToday,
+    /// Show this special view in the focused pane (D-64, D-80).
+    GoToView(SpecialView),
     /// Show the focused pane's breadcrumb at this depth as its root, as
     /// [`Message::GoToCrumb`] counts it; only a breadcrumb's context menu offers it.
     GoToCrumb(usize),
@@ -243,7 +243,7 @@ impl Command {
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
-            Self::GoToToday => "Go to Today".into(),
+            Self::GoToView(view) => format!("Go to {}", view.name()).into(),
             Self::GoToCrumb(_) => "Zoom Here".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
@@ -341,7 +341,7 @@ impl Command {
             Self::ZoomIn => Message::ZoomIn,
             Self::ZoomOut => Message::ZoomOut,
             Self::GoHome => Message::GoTo(Location::Outline(None)),
-            Self::GoToToday => Message::GoTo(Location::Today),
+            Self::GoToView(view) => Message::GoTo(Location::View(view)),
             Self::GoToCrumb(depth) => Message::GoToCrumb(depth),
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
@@ -563,7 +563,7 @@ mod tests {
             (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
             (Command::Sidebar(SidebarInput::GoToInbox), "Go to Inbox"),
             (Command::GoToCrumb(1), "Zoom Here"),
-            (Command::GoToToday, "Go to Today"),
+            (Command::GoToView(SpecialView::Today), "Go to Today"),
             (Command::GoToProject, "Go to Project"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
@@ -634,7 +634,10 @@ mod tests {
             ),
             (Command::GoToCrumb(1), Message::GoToCrumb(1)),
             (Command::GoHome, Message::GoTo(Location::Outline(None))),
-            (Command::GoToToday, Message::GoTo(Location::Today)),
+            (
+                Command::GoToView(SpecialView::Today),
+                Message::GoTo(Location::View(SpecialView::Today)),
+            ),
             (Command::GoToSymbol, Message::OpenGoToSymbol(Symbols::All)),
             (
                 Command::GoToProject,

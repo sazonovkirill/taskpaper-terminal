@@ -26,6 +26,7 @@ use super::{
     selection::Selection,
     settings,
     sidebar::Sidebar,
+    special_view::SpecialView,
     today_order::TodayOrder,
     type_picker::Conversion,
 };
@@ -111,7 +112,7 @@ struct RowsKey {
     location: Location,
     show_done: bool,
     selection: Selection,
-    /// The day and order of the Today view; `None` in an outline, which does not depend on them.
+    /// The day and order of the Today view; `None` elsewhere, which does not depend on them.
     today: Option<(Date, TodayOrder)>,
 }
 
@@ -120,16 +121,17 @@ struct RowsKey {
 pub enum Location {
     /// The outline below this zoom block, or below the document root at home (FR-NAV-03).
     Outline(Option<ItemId>),
-    /// The Today view: a flat list of the blocks for today (FR-TAG-04, D-7).
-    Today,
+    /// A special view: a flat list of blocks, such as those for today (FR-TAG-04, FR-TAG-07,
+    /// D-7, D-80).
+    View(SpecialView),
 }
 
 impl Location {
-    /// The block shown as the root, or `None` at home and in the Today view (FR-NAV-03).
+    /// The block shown as the root, or `None` at home and in a special view (FR-NAV-03).
     pub(super) fn zoom(self) -> Option<ItemId> {
         match self {
             Self::Outline(zoom) => zoom,
-            Self::Today => None,
+            Self::View(_) => None,
         }
     }
 
@@ -138,7 +140,7 @@ impl Location {
     pub(super) fn rematched(self, rematch: impl FnOnce(ItemId) -> Option<ItemId>) -> Self {
         match self {
             Self::Outline(zoom) => Self::Outline(zoom.and_then(rematch)),
-            Self::Today => Self::Today,
+            Self::View(view) => Self::View(view),
         }
     }
 }
@@ -282,8 +284,8 @@ pub struct Row {
     pub url: bool,
     /// Whether it is selected (FR-OPS-01).
     pub selected: bool,
-    /// The text of each block above it, from the top level down, as an entry of the Today view
-    /// shows it; empty in an outline (D-7).
+    /// The text of each block above it, from the top level down, as an entry of a special view
+    /// shows it; empty in an outline (D-7, D-80).
     pub path: Vec<String>,
 }
 
@@ -430,7 +432,7 @@ impl State {
         self.pane.focus
     }
 
-    /// The block shown as the root, or `None` at home and in the Today view (FR-NAV-03).
+    /// The block shown as the root, or `None` at home and in a special view (FR-NAV-03).
     #[must_use]
     pub fn zoom(&self) -> Option<ItemId> {
         self.pane.zoom()
@@ -443,7 +445,7 @@ impl State {
     }
 
     /// The text of each block from the top level down to the zoom block as shown, without the
-    /// delimiters of its formatting; empty at home and in the Today view (FR-NAV-03, FR-FMT-01,
+    /// delimiters of its formatting; empty at home and in a special view (FR-NAV-03, FR-FMT-01,
     /// FR-FMT-03).
     #[must_use]
     pub fn breadcrumbs(&self) -> Vec<String> {
@@ -478,13 +480,13 @@ impl State {
             .to_owned()
     }
 
-    /// The visible rows: the outline's, or in the Today view its entries (D-7).
+    /// The visible rows: the outline's, or in a special view its entries (D-7, D-80).
     #[must_use]
     pub fn rows(&self) -> Rows {
         self.rows_of(&self.pane)
     }
 
-    /// The visible rows of `pane`: its outline's, or in the Today view its entries (D-7).
+    /// The visible rows of `pane`: its outline's, or in a special view its entries (D-7, D-80).
     pub(super) fn rows_of(&self, pane: &Pane) -> Rows {
         self.rows_folded(pane, &self.folds)
     }
@@ -497,7 +499,7 @@ impl State {
             location: pane.location,
             show_done: pane.show_done,
             selection: pane.selection.clone(),
-            today: (pane.location == Location::Today)
+            today: (pane.location == Location::View(SpecialView::Today))
                 .then(|| (self.today, self.today_order.clone())),
         };
         // Rows of the same outline fit, best those with the same folds: the sidebar's rows,
@@ -512,7 +514,7 @@ impl State {
         self.rows
             .get_or_derive(key, rank, |before| match pane.location {
                 Location::Outline(_) => self.outline_rows(pane, folds, before),
-                Location::Today => self.today_rows(pane).into_iter().collect(),
+                Location::View(view) => self.view_rows(pane, view).into_iter().collect(),
             })
     }
 

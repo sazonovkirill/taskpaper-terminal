@@ -36,7 +36,7 @@ impl State {
 mod tests {
     use super::*;
     use crate::{
-        app::{Location, Message},
+        app::{Location, Message, SpecialView},
         document::{Document, format},
     };
 
@@ -77,10 +77,10 @@ mod tests {
     #[test]
     fn counts_under_the_focused_entry_of_the_today_view_and_nothing_when_it_is_empty() {
         let mut state = State::new(format::parse("A\n\t- b @today\n\t\tc d\nE\n"), None);
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         assert_eq!(counted(&mut state), count(1, 2));
         let mut none = State::new(format::parse("A\n\tb\n"), None);
-        none.go_to(Location::Today);
+        none.go_to(Location::View(SpecialView::Today));
         assert_eq!(counted(&mut none), count(0, 0), "not the whole document");
     }
 }

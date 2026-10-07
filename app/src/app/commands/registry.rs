@@ -5,7 +5,7 @@
 
 use super::Command;
 use crate::{
-    app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput},
+    app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput, SpecialView},
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -71,7 +71,11 @@ pub const REGISTRY: &[Entry] = &[
         &[">", "alt+h", "alt+left", "g u"],
     ),
     entry!(Command::GoHome, Mode::Navigate, &["ctrl+'", "g h"]),
-    entry!(Command::GoToToday, Mode::Navigate, &["g t"]),
+    entry!(
+        Command::GoToView(SpecialView::Today),
+        Mode::Navigate,
+        &["g t"]
+    ),
     entry!(
         Command::Sidebar(SidebarInput::GoToInbox),
         Mode::Navigate,
@@ -582,7 +586,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ZoomOut,
             Command::Back,
             Command::Forward,
-            Command::GoToToday,
+            Command::GoToView(SpecialView::Today),
             Command::Sidebar(SidebarInput::GoToInbox),
         ],
     ),

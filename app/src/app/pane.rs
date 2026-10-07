@@ -406,7 +406,7 @@ mod tests {
             .map(|pane| {
                 let at = match pane.location {
                     Location::Outline(_) => pane.breadcrumbs.last().map_or("⌂", String::as_str),
-                    Location::Today => "Today",
+                    Location::View(view) => view.name(),
                 };
                 let mark = if pane.focused { "*" } else { "" };
                 format!("{mark}{at}: {}", text(state, pane.focus))

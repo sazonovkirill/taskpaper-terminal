@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Location, Origin, State,
+    Location, Origin, SpecialView, State,
     pane::{Pane, landing},
     text_path::TextPath,
     today_order::TodayOrder,
@@ -39,13 +39,14 @@ struct PaneState {
     show_completed: bool,
 }
 
-/// A [`Location`] as kept.
+/// A [`Location`] as kept; a special view is kept as its name alone, such as `"today"`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum Place {
     Home,
     Zoom(TextPath),
-    Today,
+    #[serde(untagged)]
+    View(SpecialView),
 }
 
 impl Place {
@@ -54,7 +55,7 @@ impl Place {
         match location {
             Location::Outline(None) => Some(Self::Home),
             Location::Outline(Some(zoom)) => TextPath::of(document, zoom).map(Self::Zoom),
-            Location::Today => Some(Self::Today),
+            Location::View(view) => Some(Self::View(view)),
         }
     }
 
@@ -63,7 +64,7 @@ impl Place {
         match self {
             Self::Home => Some(Location::Outline(None)),
             Self::Zoom(path) => exact(path, document).map(|zoom| Location::Outline(Some(zoom))),
-            Self::Today => Some(Location::Today),
+            Self::View(view) => Some(Location::View(*view)),
         }
     }
 }
@@ -218,7 +219,7 @@ mod tests {
             .map(|pane| {
                 let at = match pane.location {
                     Location::Outline(_) => pane.breadcrumbs.last().map_or("⌂", String::as_str),
-                    Location::Today => "Today",
+                    Location::View(view) => view.name(),
                 };
                 let mark = if pane.focused { "*" } else { "" };
                 let width = pane.width.map(|w| format!(" ({w})")).unwrap_or_default();
@@ -332,7 +333,7 @@ mod tests {
         restored.update(Message::Back);
         assert_eq!(
             restored.location(),
-            Location::Today,
+            Location::View(SpecialView::Today),
             "Work left the history"
         );
     }
@@ -400,17 +401,17 @@ mod tests {
     fn a_new_launch_restores_the_today_views_order_as_far_as_it_matches() {
         let text = "Errands:\n\t- Post office @today\n\t- Bank @today\n- Dentist @today\n- Plan\n";
         let mut state = open(text);
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         state.update(Message::FocusLast);
         state.update(Message::MoveUp);
         state.update(Message::MoveUp);
         assert_eq!(rows(&state, 0), ["Dentist", "Post office", "Bank"]);
         let mut restored = reopened(&state, text);
-        restored.go_to(Location::Today);
+        restored.go_to(Location::View(SpecialView::Today));
         assert_eq!(rows(&restored, 0), ["Dentist", "Post office", "Bank"]);
         let changed = "- Plan @today\n- Dentist @today\nErrands:\n\t- Bank @today\n";
         let mut restored = reopened(&state, changed);
-        restored.go_to(Location::Today);
+        restored.go_to(Location::View(SpecialView::Today));
         assert_eq!(
             rows(&restored, 0),
             ["Dentist", "Bank", "Plan"],

@@ -29,6 +29,7 @@ mod selection;
 mod settings;
 mod shortcuts;
 mod sidebar;
+mod special_view;
 pub mod state;
 mod structure;
 pub mod text_field;
@@ -60,6 +61,7 @@ pub use settings::{
     Typed,
 };
 pub use sidebar::{Fold, SidebarEntry, SidebarInput, SidebarView};
+pub use special_view::SpecialView;
 pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};

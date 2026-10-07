@@ -223,7 +223,7 @@ impl Tui {
     }
 
     /// The frontend running with the key bindings, autosave delay, icons, color tags, word wrap,
-    /// theme, inbox handling, sidebar Today and backups `config` holds, keeping settings changed in the app in its
+    /// theme, inbox handling, special views in the sidebar and backups `config` holds, keeping settings changed in the app in its
     /// file and reporting once what it ignored of the file (FR-SET-04). The disk worker makes its
     /// backups as `config` says until the settings window changes them.
     #[must_use]
@@ -256,9 +256,9 @@ impl Tui {
                 Duration::ZERO,
             );
         }
-        if let Some(on) = config.sidebar_today {
+        for &(view, on) in &config.sidebar_views {
             self.send(
-                Message::Configure(Configuration::SidebarToday(on)),
+                Message::Configure(Configuration::SidebarView(view, on)),
                 Duration::ZERO,
             );
         }
@@ -373,10 +373,10 @@ impl Tui {
     }
 
     /// When the local date changes, counted like `now`, if a pane shows a date chip, which the
-    /// new date names differently, or the Today view, whose entries it changes.
+    /// new date names differently, or a special view, whose entries it may change.
     fn next_midnight(&self, now: Duration) -> Option<Duration> {
         let dated = self.state.panes().iter().any(|pane| {
-            pane.location == Location::Today
+            matches!(pane.location, Location::View(_))
                 || pane
                     .rows
                     .iter()
@@ -789,7 +789,7 @@ impl Tui {
             Location::Outline(_) => {
                 widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width), self.icons)
             }
-            Location::Today => widgets::today_header(self.icons, &theme),
+            Location::View(view) => widgets::view_header(view, self.icons, &theme),
         };
         line.render(crumbs, buf);
         if !pane.focused {

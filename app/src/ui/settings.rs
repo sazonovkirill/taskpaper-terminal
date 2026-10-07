@@ -7,9 +7,9 @@ use std::time::Duration;
 use super::{
     Tui, config, effects,
     theme::{BuiltIn, Icon, IconSetting},
-    widgets::ColorTagDisplay,
+    widgets::{self, ColorTagDisplay},
 };
-use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, saving};
+use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving};
 
 /// A setting the window lists, in the window's order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +19,8 @@ enum Listed {
     Wrap,
     ColorTags,
     SpecialInbox,
-    SidebarToday,
+    /// Whether the sidebar lists this special view (D-77, D-80).
+    SidebarView(SpecialView),
     AutosaveDelay,
     Backups,
     BackupFolder,
@@ -34,7 +35,7 @@ const LISTED: [Listed; 10] = [
     Listed::Wrap,
     Listed::ColorTags,
     Listed::SpecialInbox,
-    Listed::SidebarToday,
+    Listed::SidebarView(SpecialView::Today),
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -59,7 +60,7 @@ impl Listed {
             Self::Wrap => "word_wrap",
             Self::ColorTags => "color_tags",
             Self::SpecialInbox => "special_inbox",
-            Self::SidebarToday => "sidebar_today",
+            Self::SidebarView(view) => config::sidebar_key(view),
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -75,7 +76,7 @@ impl Listed {
             Self::Wrap => Icon::Wrap,
             Self::ColorTags => Icon::Flag,
             Self::SpecialInbox => Icon::Inbox,
-            Self::SidebarToday => Icon::Today,
+            Self::SidebarView(view) => widgets::view_icon(view),
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -86,6 +87,17 @@ impl Listed {
 /// The icon of the setting at `at` in the settings the window lists.
 pub(super) fn icon(at: usize) -> Icon {
     LISTED.get(at).map_or(Icon::Command, |listed| listed.icon())
+}
+
+/// The name and description of the setting that says whether the sidebar lists `view` (D-77,
+/// D-80).
+fn sidebar_setting(view: SpecialView) -> (&'static str, &'static str) {
+    match view {
+        SpecialView::Today => (
+            "Show Today in Navigator",
+            "List the Today view in the Navigator",
+        ),
+    }
 }
 
 /// A count of milliseconds or copies as the window shows it, at most `u32::MAX`.
@@ -185,12 +197,15 @@ impl Tui {
                 "Show INBOX: above Today, not under Projects",
                 self.state.special_inbox(),
             ),
-            Listed::SidebarToday => switch_on_by_default(
-                "Appearance",
-                "Show Today in Navigator",
-                "List the Today view in the Navigator",
-                self.state.sidebar_today(),
-            ),
+            Listed::SidebarView(view) => {
+                let (name, description) = sidebar_setting(view);
+                switch_on_by_default(
+                    "Appearance",
+                    name,
+                    description,
+                    self.state.sidebar_lists(view),
+                )
+            }
             Listed::AutosaveDelay => (
                 "Files",
                 "Autosave delay",
@@ -278,8 +293,11 @@ impl Tui {
                 self.send(Message::Configure(Configuration::SpecialInbox(on)), now);
                 Some(on.into())
             }
-            (Listed::SidebarToday, SettingValue::Switch(on)) => {
-                self.send(Message::Configure(Configuration::SidebarToday(on)), now);
+            (Listed::SidebarView(view), SettingValue::Switch(on)) => {
+                self.send(
+                    Message::Configure(Configuration::SidebarView(view, on)),
+                    now,
+                );
                 Some(on.into())
             }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {

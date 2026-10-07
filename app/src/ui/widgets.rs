@@ -26,7 +26,7 @@ use super::{
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Notice, PickerView, Row, SaveState, SidebarInput, commands::Group,
+        Notice, PickerView, Row, SaveState, SidebarInput, SpecialView, commands::Group,
     },
     document::{
         BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
@@ -326,15 +326,36 @@ fn shown_crumbs(crumbs: &[String], width: usize, icons: IconSet) -> (bool, Vec<(
     (start > 0, path.get(start..).unwrap_or_default().to_vec())
 }
 
-/// The header of the Today view in place of breadcrumbs: its icon, as in the sidebar, and its name,
-/// bold as the focused pane's header (navigation.md §7, ui.md §1).
+/// The header of the special view `view` in place of breadcrumbs: its icon, as in the sidebar,
+/// and its name, bold as the focused pane's header (navigation.md §7, ui.md §1).
 #[must_use]
-pub fn today_header(icons: IconSet, theme: &Theme) -> Line<'static> {
+pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static> {
+    view_title(view, icons, theme).bold()
+}
+
+/// The icon of the special view `view`, as its sidebar entry, header, Go to command and sidebar
+/// setting show it (ui.md §7, D-80).
+#[must_use]
+pub fn view_icon(view: SpecialView) -> Icon {
+    match view {
+        SpecialView::Today => Icon::Today,
+    }
+}
+
+/// The style of the special view `view`'s icon in `theme`.
+fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
+    match view {
+        SpecialView::Today => today_style(theme),
+    }
+}
+
+/// The special view `view` as its sidebar entry and header name it: its icon from `icons` in its
+/// style, then its name.
+fn view_title(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static> {
     Line::from(vec![
-        Span::styled(Icon::Today.glyph(icons), today_style(theme)),
-        Span::raw(" Today"),
+        Span::styled(view_icon(view).glyph(icons), view_icon_style(view, theme)),
+        Span::raw(format!(" {}", view.name())),
     ])
-    .bold()
 }
 
 /// What the status line says after the file's path (ui.md §1, file-io.md §1–3): the unsaved icon
@@ -743,7 +764,8 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::Retype(Typed::Task) => plain(Icon::Task),
         Command::Retype(Typed::Text) => plain(Icon::Note),
         Command::Retype(Typed::Section) => plain(Icon::Section),
-        Command::ToggleFlag(Flag::Today) | Command::GoToToday => (Icon::Today, today_style(theme)),
+        Command::ToggleFlag(Flag::Today) => (Icon::Today, today_style(theme)),
+        Command::GoToView(view) => (view_icon(view), view_icon_style(view, theme)),
         Command::ToggleFlag(Flag::Bookmark) => (Icon::Bookmark, bookmark_style(theme)),
         Command::OpenDatePrompt(tag) | Command::ChangeDate(tag, _) | Command::ClearDate(tag) => {
             date(tag)
@@ -1954,7 +1976,11 @@ mod tests {
                 Style::new().fg(Color::Blue),
             ),
             (Command::SetColor(None), Icon::Color, Style::new()),
-            (Command::GoToToday, Icon::Today, today_style(&THEME)),
+            (
+                Command::GoToView(SpecialView::Today),
+                Icon::Today,
+                today_style(&THEME),
+            ),
             (
                 Command::Sidebar(SidebarInput::GoToInbox),
                 Icon::Inbox,
@@ -2456,7 +2482,7 @@ mod tests {
     // D-7, navigation §7
     #[test]
     fn the_today_header_names_the_view_after_its_icon_in_bold() {
-        let header = today_header(ICONS, &THEME);
+        let header = view_header(SpecialView::Today, ICONS, &THEME);
         assert_eq!(
             header.to_string(),
             format!("{} Today", Icon::Today.glyph(ICONS))
@@ -3327,7 +3353,10 @@ mod tests {
             breadcrumbs(&crumbs, 20, IconSet::Ascii).to_string(),
             "~ › Work"
         );
-        assert_eq!(today_header(IconSet::Ascii, &THEME).to_string(), "* Today");
+        assert_eq!(
+            view_header(SpecialView::Today, IconSet::Ascii, &THEME).to_string(),
+            "* Today"
+        );
         let unsaved = |icons| {
             file_status(
                 SaveState::Unsaved,

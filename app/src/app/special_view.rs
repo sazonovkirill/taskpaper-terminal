@@ -1,0 +1,212 @@
+//! The special views: flat lists of blocks a pane shows instead of an outline, and the intents a
+//! pane takes in one, since its entries stand alone rather than in a tree
+//! ([navigation.md §7, §7.1](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7),
+//! FR-TAG-04, FR-TAG-07, D-7, D-80).
+
+use serde::{Deserialize, Serialize};
+
+use super::{Location, Message, Row, State, pane::Pane};
+use crate::document::{Block, ItemId, blocks};
+
+/// A special view, in the order the sidebar lists them (D-80).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpecialView {
+    /// The blocks for today (FR-TAG-04, D-7).
+    Today,
+}
+
+impl SpecialView {
+    /// Every special view, in the sidebar's order (D-80).
+    pub const ALL: [Self; 1] = [Self::Today];
+
+    /// The view's name, as its header, sidebar entry and Go to command show it.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Today => "Today",
+        }
+    }
+}
+
+impl State {
+    /// The entries of `view` in `pane`.
+    pub(super) fn view_rows(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
+        match view {
+            SpecialView::Today => self.today_rows(pane),
+        }
+    }
+
+    /// Every block `pane` shows for which `lists` holds, in document order, each at depth 0 with
+    /// the path of the blocks above it. Completed blocks, each with everything inside it, are
+    /// left out while hidden, as in the outline (FR-DONE-02); special nodes never show
+    /// (FR-SPC-01).
+    pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
+        let mut rows = Vec::new();
+        self.push_matching(pane, &lists, self.document.root(), false, &mut rows);
+        rows
+    }
+
+    /// Appends the entries below the line `line`, which is done or inside a done block when
+    /// `inside_done` says so.
+    fn push_matching(
+        &self,
+        pane: &Pane,
+        lists: &impl Fn(&Block) -> bool,
+        line: ItemId,
+        inside_done: bool,
+        out: &mut Vec<Row>,
+    ) {
+        for block in blocks::each_child(&self.document, line) {
+            if !pane.shows(&block) {
+                continue;
+            }
+            if lists(&block) {
+                let mut path = self.path_to(&block);
+                path.pop();
+                out.push(Row {
+                    path,
+                    ..self.row(pane, &block, 0, false, inside_done)
+                });
+            }
+            self.push_matching(pane, lists, block.id(), inside_done || block.done(), out);
+        }
+    }
+
+    /// `message` as the pane takes it where it is: in a special view an intent that needs the
+    /// outline's tree around the focused block, such as folding, moving to a parent, child or
+    /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
+    /// edit mode, and ending an edit with `Enter` only stops editing (navigation.md §7).
+    pub(super) fn as_located(&self, message: Message) -> Option<Message> {
+        if let Location::Outline(_) = self.pane.location {
+            return Some(message);
+        }
+        match message {
+            Message::NewNext => Some(Message::StopEditing),
+            Message::Paste(_) | Message::Pasted { .. } if self.edit.is_none() => None,
+            message if needs_the_tree(&message) => None,
+            message => Some(message),
+        }
+    }
+
+    /// Goes from a special view's entry `block` to it in the outline: zooms to its parent and
+    /// focuses it, as Go to Symbol does (navigation.md §7, §8).
+    pub(super) fn go_to_entry(&mut self, block: &Block) {
+        let parent = blocks::parent(&self.document, block.id()).map(|parent| parent.id());
+        self.go_to(Location::Outline(parent));
+        self.pane.focus = Some(block.id());
+    }
+
+    /// Moves the selected entries, else the focused one, a step up or down with `down` in
+    /// `view`: only Today has an order of the user's, and the other views keep their own
+    /// (D-57, D-80).
+    pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
+        match view {
+            SpecialView::Today => self.reorder_entries(down),
+        }
+    }
+}
+
+/// Whether `message` needs the outline's tree around the focused block, which a special view
+/// does not show (navigation.md §7).
+fn needs_the_tree(message: &Message) -> bool {
+    match message {
+        Message::FocusParent
+        | Message::FocusNextSibling
+        | Message::FocusPreviousSibling
+        | Message::FocusLastChild
+        | Message::Collapse
+        | Message::Expand
+        | Message::ToggleFold
+        | Message::ToggleSubtree
+        | Message::ExpandLevel
+        | Message::CollapseLevel
+        | Message::ExpandAll
+        | Message::CollapseAll
+        | Message::New(..)
+        | Message::Group
+        | Message::Indent
+        | Message::Outdent => true,
+        Message::NewNext
+        | Message::Started
+        | Message::Tick { .. }
+        | Message::Saved
+        | Message::SaveFailed { .. }
+        | Message::SaveRefused { .. }
+        | Message::CheckFile
+        | Message::FileChecked { .. }
+        | Message::KeepMine
+        | Message::TakeTheirs
+        | Message::ToggleDiff
+        | Message::ConflictCopied { .. }
+        | Message::ConflictCopyFailed { .. }
+        | Message::BackupFailed { .. }
+        | Message::ConfigProblems(_)
+        | Message::Configure(_)
+        | Message::Quit
+        | Message::Terminate
+        | Message::FocusNext
+        | Message::FocusPrevious
+        | Message::FocusFirst
+        | Message::FocusLast
+        | Message::PageDown { .. }
+        | Message::PageUp { .. }
+        | Message::Focus(_)
+        | Message::GoToCrumb(_)
+        | Message::OpenPaneMenu(_)
+        | Message::ToggleShowDone
+        | Message::ToggleShortcuts
+        | Message::CloseShortcuts
+        | Message::ZoomIn
+        | Message::ZoomOut
+        | Message::GoTo(_)
+        | Message::Back
+        | Message::Forward
+        | Message::ToggleSidebar
+        | Message::Sidebar(_)
+        | Message::ToggleDone { .. }
+        | Message::ChangeDate { .. }
+        | Message::ToggleFlag(_)
+        | Message::CycleColor
+        | Message::SetColor(_)
+        | Message::OpenColorPicker
+        | Message::SetSection(_)
+        | Message::OpenDatePrompt { .. }
+        | Message::DatePrompt(_)
+        | Message::ClearDate(_)
+        | Message::OpenTypePicker
+        | Message::OpenDetails
+        | Message::CloseDetails
+        | Message::OpenGoToSymbol(_)
+        | Message::OpenMoveTo
+        | Message::OpenGoToCommand(_)
+        | Message::OpenThemePicker { .. }
+        | Message::Settings(_)
+        | Message::Count
+        | Message::SaveAs(_)
+        | Message::OpenContextMenu
+        | Message::Undo
+        | Message::Redo
+        | Message::EditAtEnd
+        | Message::Text(_)
+        | Message::StopEditing
+        | Message::OpenCommandMenu { .. }
+        | Message::Menu(..)
+        | Message::CycleType
+        | Message::EditPrevious
+        | Message::EditNext
+        | Message::Delete
+        | Message::Copy
+        | Message::Cut
+        | Message::Paste(_)
+        | Message::Pasted { .. }
+        | Message::Duplicate
+        | Message::MoveUp
+        | Message::MoveDown
+        | Message::OpenUrl
+        | Message::OpenUrlFailed { .. }
+        | Message::Select(_)
+        | Message::Pane(_)
+        | Message::ResizePane(_) => false,
+    }
+}

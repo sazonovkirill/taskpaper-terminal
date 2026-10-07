@@ -123,7 +123,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Location, Message, PaneChange, SelectionChange},
+        app::{Location, Message, PaneChange, SelectionChange, SpecialView},
         document::{Flag, blocks, format},
     };
 
@@ -237,7 +237,7 @@ mod tests {
             now: Duration::ZERO,
             today: date(2026, 10, 5),
         });
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         state
     }
 
@@ -328,7 +328,7 @@ mod tests {
         state.update(Message::ToggleFlag(Flag::Today));
         state.update(Message::FocusFirst);
         state.update(Message::ToggleFlag(Flag::Today));
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         assert_eq!(listed(&state), ["a", "c", "b", "d"]);
     }
 }

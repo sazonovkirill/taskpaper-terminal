@@ -1,12 +1,11 @@
-//! The Today view: which blocks it lists, and which intents it takes, since its entries stand
-//! alone rather than in a tree
+//! The Today view: which blocks it lists, in the order the user gave them
 //! ([navigation.md §7](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7), FR-TAG-04,
-//! D-7).
+//! D-7, D-57).
 
 use jiff::civil::Date;
 
-use super::{Location, Message, Row, State, pane::Pane};
-use crate::document::{Block, ItemId, blocks};
+use super::{Row, State, pane::Pane};
+use crate::document::Block;
 
 /// Whether the Today view lists `block` on `today`: it has `@today`, or a start or due date on or
 /// before `today` (FR-TAG-04).
@@ -19,162 +18,12 @@ fn for_today(block: &Block, today: Date) -> bool {
 }
 
 impl State {
-    /// The Today view's entries in `pane`, each at depth 0 with the path of the blocks above it,
-    /// in the order the user gave them, else in document order (D-57). Completed blocks, each
-    /// with everything inside it, are left out while hidden, as in the outline (FR-DONE-02);
-    /// special nodes never show (FR-SPC-01).
+    /// The Today view's entries in `pane`, as [`State::matching_rows`] gives them, in the order
+    /// the user gave them, else in document order (D-57).
     pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
-        let mut rows = Vec::new();
-        self.push_today_rows(pane, self.document.root(), false, &mut rows);
+        let mut rows = self.matching_rows(pane, |block| for_today(block, self.today));
         self.today_order.arrange(&mut rows, |row| row.id);
         rows
-    }
-
-    /// Appends `pane`'s entries below the line `line`, which is done or inside a done block when
-    /// `inside_done` says so.
-    fn push_today_rows(&self, pane: &Pane, line: ItemId, inside_done: bool, out: &mut Vec<Row>) {
-        for block in blocks::each_child(&self.document, line) {
-            if !pane.shows(&block) {
-                continue;
-            }
-            if for_today(&block, self.today) {
-                let mut path = self.path_to(&block);
-                path.pop();
-                out.push(Row {
-                    path,
-                    ..self.row(pane, &block, 0, false, inside_done)
-                });
-            }
-            self.push_today_rows(pane, block.id(), inside_done || block.done(), out);
-        }
-    }
-
-    /// `message` as the pane takes it where it is: in the Today view an intent that needs the
-    /// outline's tree around the focused block, such as folding, moving to a parent, child or
-    /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
-    /// edit mode, and ending an edit with `Enter` only stops editing (navigation.md §7).
-    pub(super) fn as_located(&self, message: Message) -> Option<Message> {
-        if self.pane.location != Location::Today {
-            return Some(message);
-        }
-        match message {
-            Message::NewNext => Some(Message::StopEditing),
-            Message::Paste(_) | Message::Pasted { .. } if self.edit.is_none() => None,
-            message if needs_the_tree(&message) => None,
-            message => Some(message),
-        }
-    }
-
-    /// Goes from the Today view's entry `block` to it in the outline: zooms to its parent and
-    /// focuses it, as Go to Symbol does (navigation.md §7, §8).
-    pub(super) fn go_to_entry(&mut self, block: &Block) {
-        let parent = blocks::parent(&self.document, block.id()).map(|parent| parent.id());
-        self.go_to(Location::Outline(parent));
-        self.pane.focus = Some(block.id());
-    }
-}
-
-/// Whether `message` needs the outline's tree around the focused block, which the Today view does
-/// not show (navigation.md §7).
-fn needs_the_tree(message: &Message) -> bool {
-    match message {
-        Message::FocusParent
-        | Message::FocusNextSibling
-        | Message::FocusPreviousSibling
-        | Message::FocusLastChild
-        | Message::Collapse
-        | Message::Expand
-        | Message::ToggleFold
-        | Message::ToggleSubtree
-        | Message::ExpandLevel
-        | Message::CollapseLevel
-        | Message::ExpandAll
-        | Message::CollapseAll
-        | Message::New(..)
-        | Message::Group
-        | Message::Indent
-        | Message::Outdent => true,
-        Message::NewNext
-        | Message::Started
-        | Message::Tick { .. }
-        | Message::Saved
-        | Message::SaveFailed { .. }
-        | Message::SaveRefused { .. }
-        | Message::CheckFile
-        | Message::FileChecked { .. }
-        | Message::KeepMine
-        | Message::TakeTheirs
-        | Message::ToggleDiff
-        | Message::ConflictCopied { .. }
-        | Message::ConflictCopyFailed { .. }
-        | Message::BackupFailed { .. }
-        | Message::ConfigProblems(_)
-        | Message::Configure(_)
-        | Message::Quit
-        | Message::Terminate
-        | Message::FocusNext
-        | Message::FocusPrevious
-        | Message::FocusFirst
-        | Message::FocusLast
-        | Message::PageDown { .. }
-        | Message::PageUp { .. }
-        | Message::Focus(_)
-        | Message::GoToCrumb(_)
-        | Message::OpenPaneMenu(_)
-        | Message::ToggleShowDone
-        | Message::ToggleShortcuts
-        | Message::CloseShortcuts
-        | Message::ZoomIn
-        | Message::ZoomOut
-        | Message::GoTo(_)
-        | Message::Back
-        | Message::Forward
-        | Message::ToggleSidebar
-        | Message::Sidebar(_)
-        | Message::ToggleDone { .. }
-        | Message::ChangeDate { .. }
-        | Message::ToggleFlag(_)
-        | Message::CycleColor
-        | Message::SetColor(_)
-        | Message::OpenColorPicker
-        | Message::SetSection(_)
-        | Message::OpenDatePrompt { .. }
-        | Message::DatePrompt(_)
-        | Message::ClearDate(_)
-        | Message::OpenTypePicker
-        | Message::OpenDetails
-        | Message::CloseDetails
-        | Message::OpenGoToSymbol(_)
-        | Message::OpenMoveTo
-        | Message::OpenGoToCommand(_)
-        | Message::OpenThemePicker { .. }
-        | Message::Settings(_)
-        | Message::Count
-        | Message::SaveAs(_)
-        | Message::OpenContextMenu
-        | Message::Undo
-        | Message::Redo
-        | Message::EditAtEnd
-        | Message::Text(_)
-        | Message::StopEditing
-        | Message::OpenCommandMenu { .. }
-        | Message::Menu(..)
-        | Message::CycleType
-        | Message::EditPrevious
-        | Message::EditNext
-        | Message::Delete
-        | Message::Copy
-        | Message::Cut
-        | Message::Paste(_)
-        | Message::Pasted { .. }
-        | Message::Duplicate
-        | Message::MoveUp
-        | Message::MoveDown
-        | Message::OpenUrl
-        | Message::OpenUrlFailed { .. }
-        | Message::Select(_)
-        | Message::Pane(_)
-        | Message::ResizePane(_) => false,
     }
 }
 
@@ -186,7 +35,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Effect, Menu, Mode, NewBlock, Paste, SelectionChange, TextEdit},
+        app::{
+            Effect, Location, Menu, Message, Mode, NewBlock, Paste, SelectionChange, SpecialView,
+            TextEdit,
+        },
         document::{DateChange, DateTag, Flag, format},
     };
 
@@ -217,8 +69,8 @@ Work: @done
             now: Duration::ZERO,
             today: TODAY,
         });
-        state.go_to(Location::Today);
-        assert_eq!(state.location(), Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
         state
     }
 
@@ -404,7 +256,11 @@ Work: @done
             assert_eq!(state.folds, HashSet::new(), "{message:?}");
             assert_eq!(state.mode(), Mode::Navigate, "{message:?}");
             assert_eq!(format::serialize(state.document()), before, "{message:?}");
-            assert_eq!(state.location(), Location::Today, "{message:?}");
+            assert_eq!(
+                state.location(),
+                Location::View(SpecialView::Today),
+                "{message:?}"
+            );
         }
     }
 
@@ -454,7 +310,7 @@ Work: @done
             crate::app::MenuInput::Type('B'),
         ));
         state.update(Message::Menu(Menu::MoveTo, crate::app::MenuInput::Choose));
-        assert_eq!(state.location(), Location::Today);
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
         assert_eq!(listed(&state), ["B › a"]);
     }
 
@@ -477,7 +333,11 @@ Work: @done
         assert_eq!(focused(&top), "a");
         let mut empty = today("- a\n");
         empty.update(Message::ZoomIn);
-        assert_eq!(empty.location(), Location::Today, "no entry to go to");
+        assert_eq!(
+            empty.location(),
+            Location::View(SpecialView::Today),
+            "no entry to go to"
+        );
     }
 
     // D-64, navigation.md §7
@@ -488,10 +348,10 @@ Work: @done
             now: Duration::ZERO,
             today: TODAY,
         });
-        state.update(Message::GoTo(Location::Today));
-        assert_eq!(state.location(), Location::Today);
+        state.update(Message::GoTo(Location::View(SpecialView::Today)));
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
         assert_eq!(focused(&state), "Water plants");
-        state.update(Message::GoTo(Location::Today));
+        state.update(Message::GoTo(Location::View(SpecialView::Today)));
         assert_eq!(
             state.pane.history.len(),
             2,
@@ -511,13 +371,13 @@ Work: @done
         });
         down(&mut state, 4);
         state.update(Message::ZoomIn);
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         assert_eq!(
             focused(&state),
             "Post office",
             "the block zoomed out of is an entry"
         );
-        state.go_to(Location::Today);
+        state.go_to(Location::View(SpecialView::Today));
         assert_eq!(
             state.pane.history.len(),
             3,
@@ -532,7 +392,7 @@ Work: @done
             "the focused entry is not under the zoom"
         );
         state.update(Message::Forward);
-        assert_eq!(state.location(), Location::Today);
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
         assert_eq!(focused(&state), "Post office", "the block zoomed out of");
         state.update(Message::FocusNext);
         state.update(Message::Back);
@@ -546,6 +406,6 @@ Work: @done
         assert_eq!(state.location(), Location::Outline(None));
         assert_eq!(focused(&state), "Bank", "the focused entry shows at home");
         state.update(Message::Back);
-        assert_eq!(state.location(), Location::Today);
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
     }
 }

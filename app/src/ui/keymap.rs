@@ -906,7 +906,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Location, NewBlock, PaneChange, SelectionChange, SidebarInput, Symbols},
+        app::{
+            Location, NewBlock, PaneChange, SelectionChange, SidebarInput, SpecialView, Symbols,
+        },
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
 
@@ -2989,7 +2991,10 @@ mod tests {
     fn g_t_goes_to_today_and_t_alone_still_starts_today() {
         assert_eq!(
             messages("gt", CONTEXT),
-            [None, Some(Message::GoTo(Location::Today))]
+            [
+                None,
+                Some(Message::GoTo(Location::View(SpecialView::Today)))
+            ]
         );
         let start = Message::ChangeDate {
             tag: DateTag::Start,

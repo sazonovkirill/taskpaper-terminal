@@ -127,6 +127,7 @@ mod tests {
     use crate::{
         app::{
             Command, Location, Menu, MenuRow, Message, PaneChange, SelectionChange, SidebarInput,
+            SpecialView,
         },
         document::format,
     };
@@ -210,7 +211,7 @@ mod tests {
         let mut state = open(TEXT);
         state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Choose));
-        assert_eq!(state.location(), Location::Today);
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
         state.update(Message::OpenContextMenu);
         let shown = shown(&state);
         for absent in ["New Block Below", "Paste Below", "Indent", "Group"] {
@@ -311,7 +312,7 @@ mod tests {
         state.update(Message::ToggleSidebar);
         state.update(Message::Sidebar(SidebarInput::Focus(0)));
         state.update(Message::Sidebar(SidebarInput::Choose));
-        assert_eq!(state.pane.location, Location::Today);
+        assert_eq!(state.pane.location, Location::View(SpecialView::Today));
         assert_eq!(
             pane_menu(&mut state, None).expect("a menu"),
             ["Go Home", "|", "Open Location in New Pane", "Close Pane"]

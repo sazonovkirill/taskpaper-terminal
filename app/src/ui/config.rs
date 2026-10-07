@@ -19,7 +19,14 @@ use super::{
     theme::{BuiltIn, IconSetting},
     widgets::ColorTagDisplay,
 };
-use crate::app::Mode;
+use crate::app::{Mode, SpecialView};
+
+/// The key of the setting that says whether the sidebar lists `view` (D-77, D-80).
+pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
+    match view {
+        SpecialView::Today => "sidebar_today",
+    }
+}
 
 /// The settings file: `$XDG_CONFIG_HOME/taskpaper-terminal/config.toml`, or under `~/.config`
 /// when that is unset or not absolute; also on macOS (FR-SET-01). `None` when neither is known.
@@ -90,8 +97,9 @@ pub struct Config {
     /// Whether the sidebar lists the `INBOX` project apart, when the file says
     /// (`special_inbox`, D-75).
     pub(super) special_inbox: Option<bool>,
-    /// Whether the sidebar lists Today, when the file says (`sidebar_today`, D-77).
-    pub(super) sidebar_today: Option<bool>,
+    /// Whether the sidebar lists each special view the file says about (`sidebar_today` and so
+    /// on, D-77, D-80).
+    pub(super) sidebar_views: Vec<(SpecialView, bool)>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -176,12 +184,12 @@ impl Config {
         }
     }
 
-    /// Takes `sidebar_today` from `item`: `true` or `false`.
-    fn read_sidebar_today(&mut self, item: &Item) {
+    /// Takes whether the sidebar lists `view` from `item`: `true` or `false`.
+    fn read_sidebar_view(&mut self, view: SpecialView, item: &Item) {
         match item.as_bool() {
-            Some(on) => self.sidebar_today = Some(on),
+            Some(on) => self.sidebar_views.push((view, on)),
             None => self.problems.push(Problem::InvalidValue {
-                key: "sidebar_today".to_owned(),
+                key: sidebar_key(view).to_owned(),
                 expected: "true or false",
             }),
         }
@@ -337,10 +345,15 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
             "special_inbox" => config.read_special_inbox(item),
-            "sidebar_today" => config.read_sidebar_today(item),
-            _ => config.problems.push(Problem::UnknownSetting {
-                key: key.to_owned(),
-            }),
+            key => match SpecialView::ALL
+                .into_iter()
+                .find(|&view| sidebar_key(view) == key)
+            {
+                Some(view) => config.read_sidebar_view(view, item),
+                None => config.problems.push(Problem::UnknownSetting {
+                    key: key.to_owned(),
+                }),
+            },
         }
     }
     config
@@ -732,13 +745,13 @@ mod tests {
     // D-77, FR-SET-04
     #[test]
     fn sidebar_today_is_true_or_false_and_anything_else_is_reported() {
-        assert_eq!(read("", None).sidebar_today, None);
+        assert_eq!(read("", None).sidebar_views, []);
         assert_eq!(
-            read("sidebar_today = false\n", None).sidebar_today,
-            Some(false)
+            read("sidebar_today = false\n", None).sidebar_views,
+            [(SpecialView::Today, false)]
         );
         let config = read("sidebar_today = \"no\"\n", None);
-        assert_eq!(config.sidebar_today, None);
+        assert_eq!(config.sidebar_views, []);
         assert_eq!(
             config.problems(),
             [Problem::InvalidValue {

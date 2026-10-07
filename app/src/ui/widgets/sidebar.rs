@@ -1,5 +1,6 @@
-//! The navigation sidebar's window over the panes: the inbox, Today, bookmarks and the project
-//! tree in a centered box ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01, D-79).
+//! The navigation sidebar's window over the panes: the inbox, the special views, bookmarks and the
+//! project tree in a centered box ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01,
+//! D-79).
 
 use ratatui::{
     buffer::Buffer,
@@ -9,7 +10,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, selection_style, today_style};
+use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, selection_style, view_title};
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
     ui::{
@@ -25,8 +26,8 @@ const WIDTH: u16 = 48;
 const TITLE: &str = "Navigator";
 
 /// The sidebar's window, framed and titled in the accent color like the finders, and its lines:
-/// the inbox and Today, then for each of the bookmarks and the projects that
-/// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77). Bookmarks are their text alone;
+/// the inbox and the special views, then for each of the bookmarks and the projects that
+/// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77, D-80). Bookmarks are their text alone;
 /// projects are 2 columns more per level, each right behind a marker of its fold, which for a
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; any other entry of where the focused
@@ -105,7 +106,7 @@ impl<'a> SidebarPanel<'a> {
             }
             SidebarEntry::Inbox { .. }
             | SidebarEntry::Bookmark { .. }
-            | SidebarEntry::Today
+            | SidebarEntry::View(_)
             | SidebarEntry::Project { .. } => None,
         };
         Some((entries, fold))
@@ -123,7 +124,7 @@ impl<'a> SidebarPanel<'a> {
             let heading = match (entry, previous) {
                 (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Bookmark { .. }))
                 | (SidebarEntry::Project { .. }, Some(SidebarEntry::Project { .. }))
-                | (SidebarEntry::Inbox { .. } | SidebarEntry::Today, _) => None,
+                | (SidebarEntry::Inbox { .. } | SidebarEntry::View(_), _) => None,
                 (SidebarEntry::Bookmark { .. }, _) => Some("Bookmarks"),
                 (SidebarEntry::Project { .. }, _) => Some("Projects"),
             };
@@ -184,7 +185,7 @@ impl<'a> SidebarLine<'a> {
     }
 }
 
-/// An entry's line in `theme`: the inbox's or Today's icon or a project's fold marker from
+/// An entry's line in `theme`: the inbox's or a special view's icon or a project's fold marker from
 /// `icons`, and its text.
 fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
     match entry {
@@ -194,10 +195,7 @@ fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Lin
             Span::raw(text.as_str()),
         ]),
         SidebarEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
-        SidebarEntry::Today => Line::from(vec![
-            Span::styled(Icon::Today.glyph(icons), today_style(theme)),
-            Span::raw(" Today"),
-        ]),
+        SidebarEntry::View(view) => view_title(*view, icons, theme),
         SidebarEntry::Project {
             text, depth, fold, ..
         } => {
@@ -302,7 +300,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, SidebarInput, SidebarView, State},
+        app::{Message, SidebarInput, SidebarView, SpecialView, State},
         document::format,
     };
 
@@ -374,9 +372,11 @@ mod tests {
     #[test]
     fn a_window_with_no_entries_says_so() {
         let mut state = State::new(format::parse("- a"), None);
-        state.update(Message::Configure(crate::app::Configuration::SidebarToday(
-            false,
-        )));
+        for view in SpecialView::ALL {
+            state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                view, false,
+            )));
+        }
         state.update(Message::ToggleSidebar);
         let view = view(&state);
         assert_eq!(view.focused, None);
@@ -436,7 +436,8 @@ mod tests {
     fn without_today_the_first_section_starts_at_the_top_or_below_the_inbox() {
         let draw_without_today = |text: &str| {
             let mut state = State::new(format::parse(text), None);
-            state.update(Message::Configure(crate::app::Configuration::SidebarToday(
+            state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                SpecialView::Today,
                 false,
             )));
             state.update(Message::ToggleSidebar);
