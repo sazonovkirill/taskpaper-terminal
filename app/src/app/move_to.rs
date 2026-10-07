@@ -1,14 +1,15 @@
 //! Move to: a fuzzy finder over the blocks the selected blocks, else the focused block, can move
-//! under, ranked as in Go to Symbol, that makes them the chosen block's last children and follows
-//! them there ([editing.md §4](../../../docs/specs/editing.md#4-structural-operations-fr-ops),
-//! FR-OPS-05).
+//! under, ranked as in Go to Symbol, and Home when they are all projects, that makes them the
+//! chosen block's last children, or the last top-level blocks, and follows them there
+//! ([editing.md §4](../../../docs/specs/editing.md#4-structural-operations-fr-ops), FR-OPS-05,
+//! D-56).
 
 use super::{
     Access, Location, MenuInput, Notice, State,
-    finder::{Finder, FinderView},
+    finder::{Candidate, Finder, FinderView},
     picker::Picked,
 };
-use crate::document::{Block, ItemId, blocks, structure};
+use crate::document::{Block, BlockKind, ItemId, blocks, structure};
 
 impl State {
     /// Move to, while it is open (FR-OPS-05).
@@ -18,7 +19,8 @@ impl State {
     }
 
     /// `gm`: opens Move to over every block but the ones that would move and what they hold, as
-    /// Go to Symbol lists them. A read-only file refuses with a notice.
+    /// Go to Symbol lists them, after Home, the document's top level, when every block that would
+    /// move is a project (D-56). A read-only file refuses with a notice.
     pub(super) fn open_move_to(&mut self) {
         let moving = self.roots();
         if moving.is_empty() {
@@ -28,7 +30,17 @@ impl State {
             self.notify(Notice::ReadOnly);
             return;
         }
-        self.destinations = Some(Finder::new(self.block_candidates(&moving)));
+        let home = moving
+            .iter()
+            .all(|block| block.kind() == BlockKind::Project)
+            .then(|| Candidate {
+                value: self.document.root(),
+                text: "⌂ Home".to_owned(),
+                detail: String::new(),
+                tier: 0,
+            });
+        let candidates = home.into_iter().chain(self.block_candidates(&moving));
+        self.destinations = Some(Finder::new(candidates.collect()));
     }
 
     /// Applies `input` to Move to, and once a block is chosen, moves the selected blocks, else
@@ -47,16 +59,19 @@ impl State {
         }
     }
 
-    /// Makes the selected blocks, else the focused block, the last children of the block `to` as
-    /// one step to undo, and shows them there: the focus stays on a block that moves and goes to
-    /// the last of them otherwise; `to` and the blocks above it in the zoom expand, and a `to`
-    /// outside the zoom becomes the zoom (FR-OPS-05, FR-OPS-07).
+    /// Makes the selected blocks, else the focused block, the last children of the line `to`, a
+    /// block or the document's root, as one step to undo, and shows them there: the focus stays
+    /// on a block that moves and goes to the last of them otherwise; `to` and the blocks above it
+    /// in the zoom expand, and a `to` outside the zoom becomes the zoom, the root being home
+    /// (FR-OPS-05, FR-OPS-07, D-56).
     fn move_selected_to(&mut self, to: ItemId) {
         let moving = self.roots();
-        let Some(destination) = blocks::block(&self.document, to) else {
+        let home = to == self.document.root();
+        let destination = blocks::block(&self.document, to);
+        if destination.is_none() && !home {
             return;
-        };
-        let Some(ops) = structure::move_to(&self.document, &moving, &destination) else {
+        }
+        let Some(ops) = structure::move_to(&self.document, &moving, destination.as_ref()) else {
             return;
         };
         let inside = |id: ItemId| {
@@ -77,7 +92,7 @@ impl State {
                 self.folds.remove(line);
             }
         } else {
-            self.go_to(Location::Outline(Some(to)));
+            self.go_to(Location::Outline((!home).then_some(to)));
             self.pane.focus = focus;
         }
     }
@@ -165,7 +180,78 @@ mod tests {
         state.update(Message::ToggleShowDone);
         state.update(Message::FocusLast);
         state.update(Message::OpenMoveTo);
-        assert_eq!(listed(&state), ["A", "open"]);
+        assert_eq!(listed(&state), ["⌂ Home", "A", "open"]);
+    }
+
+    // FR-OPS-05, D-56
+    #[test]
+    fn home_is_listed_first_only_when_every_block_that_moves_is_a_project() {
+        let mut state = open(TEXT, 4);
+        state.update(Message::OpenMoveTo);
+        assert_eq!(listed(&state)[..2], ["⌂ Home", "Notes"], "for a project");
+        assert_eq!(state.move_to().unwrap().entries[0].detail, "");
+        let mut state = open(TEXT, 0);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::FocusLast);
+        state.update(Message::FocusParent);
+        state.update(Message::FocusParent);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::OpenMoveTo);
+        assert_eq!(listed(&state)[0], "⌂ Home", "for projects");
+        for (index, kind) in [(1, "a task"), (2, "a note"), (8, "a section")] {
+            let mut state = open(TEXT, index);
+            state.update(Message::OpenMoveTo);
+            assert!(!listed(&state).contains(&"⌂ Home".to_owned()), "{kind}");
+        }
+        let mut state = open(TEXT, 0);
+        state.update(Message::Select(SelectionChange::Toggle));
+        for _ in 0..3 {
+            state.update(Message::FocusNext);
+        }
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::OpenMoveTo);
+        assert_eq!(
+            listed(&state),
+            ["Work", "Later", "Write report", "Draft", "Call Ann"],
+            "not for a project with a divider"
+        );
+    }
+
+    // FR-OPS-05, FR-OPS-08, D-56
+    #[test]
+    fn choosing_home_makes_the_projects_the_last_top_level_blocks_in_one_undo_step() {
+        let mut state = open("A:\n\tB:\n\t\t- b\n\tC:\n- x", 1);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::FocusNext);
+        state.update(Message::FocusNext);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::OpenMoveTo);
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
+        assert_eq!(lines(&state), ["A:", "- x", "B:", "\t- b", "C:"]);
+        assert_eq!(text(&state, state.focus()), "C");
+        assert_eq!(state.zoom(), None);
+        state.update(Message::Undo);
+        assert_eq!(lines(&state), ["A:", "\tB:", "\t\t- b", "\tC:", "- x"]);
+    }
+
+    // FR-OPS-05, FR-NAV-04, D-56, D-57
+    #[test]
+    fn choosing_home_from_a_zoom_goes_home_and_back_returns_but_undo_keeps_it() {
+        let mut state = open("A:\n\tB:\n\t\t- b", 0);
+        state.update(Message::ZoomIn);
+        assert_eq!(text(&state, state.focus()), "B");
+        state.update(Message::OpenMoveTo);
+        choose(&mut state, "home");
+        assert_eq!(state.zoom(), None, "home");
+        assert_eq!(text(&state, state.focus()), "B");
+        state.update(Message::Undo);
+        assert_eq!(
+            state.zoom(),
+            None,
+            "undo restores the outline, not the zoom"
+        );
+        state.update(Message::Back);
+        assert_eq!(text(&state, state.zoom()), "A", "a step in the history");
     }
 
     // FR-OPS-05, FR-OPS-08

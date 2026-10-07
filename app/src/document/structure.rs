@@ -311,18 +311,19 @@ pub fn group(document: &mut Document, blocks: &[Block]) -> Option<(ItemId, Vec<O
 }
 
 /// The ops that move `blocks`, none inside another and in document order, with their subtrees
-/// to the end of the children of the block `to`, before the special nodes that end them, in that
-/// order (FR-OPS-05); `None` when `to` is one of them or inside one, or a block is not in
-/// `document`. A line that gets children but has no text gets the placeholder
-/// (file-format.md §3.1, rule 2).
+/// to the end of the children of the block `to`, or of the top level when `to` is `None`, before
+/// the special nodes that end them, in that order (FR-OPS-05, D-56); `None` when `to` is one of
+/// them or inside one, or a block is not in `document`. A line that gets children but has no
+/// text gets the placeholder (file-format.md §3.1, rule 2).
 #[must_use]
-pub fn move_to(document: &Document, blocks: &[Block], to: &Block) -> Option<Vec<Op>> {
-    document.get(to.id())?;
-    let mut above = std::iter::successors(Some(to.id()), |&line| document.get(line)?.parent());
+pub fn move_to(document: &Document, blocks: &[Block], to: Option<&Block>) -> Option<Vec<Op>> {
+    let to = to.map_or(document.root(), Block::id);
+    document.get(to)?;
+    let mut above = std::iter::successors(Some(to), |&line| document.get(line)?.parent());
     if above.any(|line| blocks.iter().any(|block| block.id() == line)) {
         return None;
     }
-    append(document, repairs(document, to.id()), blocks, to.id())
+    append(document, repairs(document, to), blocks, to)
 }
 
 /// `ops`, then the ops that move each of `blocks` in turn with its subtree to the end of the
@@ -918,7 +919,7 @@ mod tests {
     fn moved_to(text: &str, of: &[&str], to: &str) -> Option<Vec<String>> {
         let mut document = format::parse(text);
         let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
-        let ops = move_to(&document, &blocks, &block(&document, to))?;
+        let ops = move_to(&document, &blocks, Some(&block(&document, to)))?;
         let mut transaction = Transaction::new(ops, (), ());
         document.apply(&mut transaction).unwrap();
         let after = lines(&document, None);
@@ -989,6 +990,22 @@ Q:
         );
     }
 
+    // FR-OPS-05, D-56, special-nodes.md §1
+    #[test]
+    fn move_to_the_top_level_makes_the_blocks_the_last_top_level_blocks() {
+        let mut document = format::parse("P:\n\tQ:\n\t\t- x\n\tR:\nS:\nh @hidden");
+        let blocks = [block(&document, "Q:"), block(&document, "R:")];
+        let ops = move_to(&document, &blocks, None).unwrap();
+        let mut transaction = Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        assert_eq!(
+            lines(&document, None),
+            ["P:", "S:", "Q:", "\t- x", "R:", "h @hidden"]
+        );
+        document.apply(&mut transaction.inverse()).unwrap();
+        assert_eq!(lines(&document, None)[1], "\tQ:");
+    }
+
     // file-format.md §3.1
     #[test]
     fn a_blank_destination_gets_the_placeholder() {
@@ -1033,8 +1050,9 @@ Q:
             block(&document, "- b"),
             block(&other, "- w"),
         );
-        assert_eq!(move_to(&document, std::slice::from_ref(&a), &w), None);
-        assert_eq!(move_to(&document, &[a, w], &b), None);
+        assert_eq!(move_to(&document, std::slice::from_ref(&a), Some(&w)), None);
+        assert_eq!(move_to(&document, std::slice::from_ref(&w), None), None);
+        assert_eq!(move_to(&document, &[a, w], Some(&b)), None);
     }
 
     /// The lines of `text` once the blocks reading `of` are duplicated, with the copies marked

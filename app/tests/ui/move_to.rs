@@ -91,3 +91,27 @@ fn the_selected_blocks_move_together_and_esc_cancels() {
     );
     assert_eq!(focused_rows(&mut app), ["    - Draft"]);
 }
+
+// FR-OPS-05, FR-OPS-08, D-56
+#[test]
+fn a_project_moves_to_home_listed_first_making_it_the_last_top_level_block() {
+    let mut app = Harness::with_text(TEXT, 60, 16);
+    app.type_keys("gm");
+    assert_eq!(
+        screen(&mut app)[5..9],
+        [
+            "┌Move to───────────────────────────────────────────────────┐",
+            "│›                                                         │",
+            "│ ⌂ Home                                                   │",
+            "│ Work                                                     │",
+        ]
+    );
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(focused_rows(&mut app), ["Home:"]);
+    assert_eq!(
+        saved(&mut app),
+        "Work:\n\t- Write report\n\t\t- Draft\n\tLater @section\nHome:\n\t- Paint the hall\n"
+    );
+    app.type_keys("z");
+    assert_eq!(saved(&mut app), TEXT);
+}
