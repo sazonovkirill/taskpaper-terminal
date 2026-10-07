@@ -1,4 +1,4 @@
-//! The navigation sidebar on the left: bookmarks, Today and the project tree, with a rule on its
+//! The navigation sidebar on the left: Today, bookmarks and the project tree, with a rule on its
 //! right edge ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01).
 
 use ratatui::{
@@ -9,9 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use super::{
-    FOCUS_MARKER, GUTTER_WIDTH, bookmark_style, current_line_style, rule_style, today_style,
-};
+use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, rule_style, today_style};
 use crate::{
     app::{Fold, SidebarEntry, SidebarView},
     ui::{
@@ -20,11 +18,11 @@ use crate::{
     },
 };
 
-/// The sidebar's lines: a heading over the bookmarks when there are any, the bookmarks, Today, a
-/// blank line and a heading over the projects when there are any, and the projects, top-level ones in line with
-/// the headings and 2 columns more per level, each right behind a marker of its fold, which for a top-level
-/// project stands in the gutter. The focused entry is marked in a gutter like the outline's
-/// focused block and gets the current-line band.
+/// The sidebar's lines: Today, then for each of the bookmarks and the projects that has entries, a
+/// blank line, a heading at the right edge and its entries (D-68). Bookmarks are their text alone;
+/// projects are 2 columns more per level, each right behind a marker of its fold, which for a
+/// top-level project stands in the gutter. The focused entry is marked in a gutter like the
+/// outline's focused block and gets the current-line band.
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
     view: &'a SidebarView,
@@ -101,20 +99,22 @@ impl<'a> SidebarPanel<'a> {
         let focused = self.view.focused;
         entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
-            let heading = match entry {
-                SidebarEntry::Bookmark { .. } if previous.is_none() => Some("Bookmarks"),
-                SidebarEntry::Project { .. } if previous == Some(&SidebarEntry::Today) => {
-                    Some("Projects")
-                }
-                SidebarEntry::Bookmark { .. }
-                | SidebarEntry::Today
-                | SidebarEntry::Project { .. } => None,
+            let heading = match (entry, previous) {
+                (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Today)) => Some("Bookmarks"),
+                (
+                    SidebarEntry::Project { .. },
+                    Some(SidebarEntry::Today | SidebarEntry::Bookmark { .. }),
+                ) => Some("Projects"),
+                (
+                    SidebarEntry::Today
+                    | SidebarEntry::Bookmark { .. }
+                    | SidebarEntry::Project { .. },
+                    _,
+                ) => None,
             };
-            let blank = heading.filter(|_| matches!(entry, SidebarEntry::Project { .. }));
-            blank
-                .map(|_| SidebarLine::Blank)
+            heading
                 .into_iter()
-                .chain(heading.map(SidebarLine::Heading))
+                .flat_map(|heading| [SidebarLine::Blank, SidebarLine::Heading(heading)])
                 .map(|line| (line, false))
                 .chain([(SidebarLine::Entry(entry), Some(index) == focused)])
         })
@@ -124,9 +124,9 @@ impl<'a> SidebarPanel<'a> {
 /// A line of the sidebar before it is drawn.
 #[derive(Debug, Clone, Copy)]
 enum SidebarLine<'a> {
-    /// The blank line above the projects' heading.
+    /// The blank line above a heading.
     Blank,
-    /// A section heading.
+    /// A section heading, at the right edge.
     Heading(&'static str),
     /// An entry.
     Entry(&'a SidebarEntry),
@@ -137,20 +137,16 @@ impl<'a> SidebarLine<'a> {
     fn line(self, icons: IconSet, theme: &Theme) -> Line<'a> {
         match self {
             Self::Blank => Line::default(),
-            Self::Heading(heading) => Line::styled(heading, heading_style()),
+            Self::Heading(heading) => Line::styled(heading, heading_style()).right_aligned(),
             Self::Entry(entry) => entry_line(entry, icons, theme),
         }
     }
 }
 
-/// An entry's line in `theme`: its icon or fold marker from `icons` and its text.
+/// An entry's line in `theme`: Today's icon or a project's fold marker from `icons`, and its text.
 fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
     match entry {
-        SidebarEntry::Bookmark { text, .. } => Line::from(vec![
-            Span::styled(Icon::Bookmark.glyph(icons), bookmark_style(theme)),
-            Span::raw(" "),
-            Span::raw(text.as_str()),
-        ]),
+        SidebarEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
         SidebarEntry::Today => Line::from(vec![
             Span::styled(Icon::Today.glyph(icons), today_style(theme)),
             Span::raw(" Today"),
@@ -226,7 +222,7 @@ mod tests {
         let view = State::new(format::parse(text), None)
             .sidebar()
             .expect("shown by default");
-        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 7));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 8));
         SidebarPanel::new(&view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
         buf
     }
@@ -243,21 +239,27 @@ mod tests {
             .collect()
     }
 
-    // FR-UI-01
+    // FR-UI-01, D-68
     #[test]
-    fn each_section_heading_comes_once_above_its_first_entry() {
-        let bookmark = Icon::Bookmark.glyph(IconSet::Unicode);
+    fn today_comes_first_and_each_section_heading_once_at_the_right_above_its_first_entry() {
         assert_eq!(
             rows(&draw("A: @bookmark\nB: @bookmark")),
             [
-                "  Bookmarks".to_owned(),
-                format!("  {bookmark} A"),
-                format!("  {bookmark} B"),
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
-                "  Projects".to_owned(),
+                "          Bookmarks".to_owned(),
                 "  A".to_owned(),
-            ]
+                "  B".to_owned(),
+                String::new(),
+                "           Projects".to_owned(),
+                "  A".to_owned(),
+            ],
+            "bookmarks without an icon, headings against the rule"
+        );
+        assert_eq!(
+            rows(&draw("- a @bookmark"))[1..],
+            ["", "          Bookmarks", "  a", "", "", "", ""],
+            "no projects"
         );
     }
 
@@ -268,21 +270,22 @@ mod tests {
             .sidebar()
             .expect("shown by default");
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
-        // Bookmarks, A, Today, blank, Projects, ▾ A, B, C.
-        assert_eq!(panel.entry_at(0, 0), None, "a heading");
-        assert_eq!(panel.entry_at(1, 0), Some((0, None)));
-        assert_eq!(panel.entry_at(2, 2), Some((1, None)));
-        assert_eq!(panel.entry_at(3, 0), None, "the blank line");
-        assert_eq!(panel.entry_at(5, 1), Some((2, Some(Fold::Expanded))));
-        assert_eq!(panel.entry_at(5, 0), Some((2, None)));
-        assert_eq!(panel.entry_at(5, 2), Some((2, None)));
+        // Today, blank, Bookmarks, A, blank, Projects, ▾ A, B, C.
+        assert_eq!(panel.entry_at(0, 2), Some((0, None)));
+        assert_eq!(panel.entry_at(1, 0), None, "the blank line");
+        assert_eq!(panel.entry_at(2, 0), None, "a heading");
+        assert_eq!(panel.entry_at(3, 2), Some((1, None)));
+        assert_eq!(panel.entry_at(4, 0), None, "the blank line");
+        assert_eq!(panel.entry_at(6, 1), Some((2, Some(Fold::Expanded))));
+        assert_eq!(panel.entry_at(6, 0), Some((2, None)));
+        assert_eq!(panel.entry_at(6, 2), Some((2, None)));
         assert_eq!(
-            panel.entry_at(6, 3),
+            panel.entry_at(7, 3),
             Some((3, None)),
             "a leaf has no marker"
         );
-        assert_eq!(panel.entry_at(7, 0), Some((4, None)));
-        assert_eq!(panel.entry_at(8, 0), None, "past the last entry");
+        assert_eq!(panel.entry_at(8, 0), Some((4, None)));
+        assert_eq!(panel.entry_at(9, 0), None, "past the last entry");
     }
 
     // D-61
@@ -291,7 +294,7 @@ mod tests {
         assert_eq!(
             rows(&draw("ABCDEFGHIJKLMNOPQ:\n\tB:"))[2..5],
             [
-                "  Projects".to_owned(),
+                "           Projects".to_owned(),
                 " ▾ABCDEFGHIJKLMNOPQ".to_owned(),
                 "    B".to_owned(),
             ]
@@ -314,10 +317,10 @@ mod tests {
     #[test]
     fn headings_are_bold_and_dim() {
         let buf = draw("A: @bookmark");
-        for y in [0, 4] {
-            let modifier = buf[(2, y)].modifier;
+        for y in [2, 5] {
+            let modifier = buf[(18, y)].modifier;
             assert!(modifier.contains(Modifier::BOLD | Modifier::DIM), "row {y}");
         }
-        assert!(buf[(4, 1)].modifier.is_empty(), "entries are plain");
+        assert!(buf[(2, 3)].modifier.is_empty(), "entries are plain");
     }
 }

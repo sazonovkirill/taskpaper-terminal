@@ -80,7 +80,7 @@ pub enum SidebarInput {
     Focus(usize),
 }
 
-/// One entry of the sidebar, in its sections' order: bookmarks, Today, projects.
+/// One entry of the sidebar, in its sections' order: Today, bookmarks, projects (D-68).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SidebarEntry {
     /// A block with `@bookmark` (D-11).
@@ -261,7 +261,7 @@ impl State {
             .map(|at| at.min(entries.len().saturating_sub(1)))
     }
 
-    /// Every bookmarked block in document order, then Today, then the project tree.
+    /// Today, then every bookmarked block in document order, then the project tree (D-68).
     fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
         let key = EntriesKey {
             document: self.document().stamp(),
@@ -270,9 +270,8 @@ impl State {
         };
         self.sidebar.entries.get(key, || {
             let root = self.document().root();
-            let mut entries = Vec::new();
+            let mut entries = vec![SidebarEntry::Today];
             self.push_bookmarks(root, &mut entries);
-            entries.push(SidebarEntry::Today);
             entries.extend(self.projects(root, 0));
             entries.into()
         })
@@ -383,15 +382,15 @@ Home: @bookmark
         }
     }
 
-    // FR-UI-01, navigation §6
+    // FR-UI-01, navigation §6, D-68
     #[test]
-    fn lists_bookmarks_in_document_order_then_today_then_the_project_tree() {
+    fn lists_today_then_bookmarks_in_document_order_then_the_project_tree() {
         assert_eq!(
             listed(&open(OUTLINE)),
             [
+                "today",
                 "bookmark Launch plan",
                 "bookmark Home",
-                "today",
                 "Expanded Work",
                 "  Expanded Drafts",
                 "    Leaf Old",
@@ -517,7 +516,7 @@ Home: @bookmark
         input(&mut state, &[SidebarInput::Collapse]);
         assert_eq!(
             listed(&state)[2..],
-            ["today", "Collapsed Work", "Leaf Home"],
+            ["bookmark Home", "Collapsed Work", "Leaf Home"],
             "child projects hide"
         );
         input(&mut state, &[SidebarInput::Collapse]);
@@ -552,7 +551,7 @@ Home: @bookmark
     fn choosing_a_bookmark_or_project_zooms_the_pane_to_it_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
         state.update(Message::FocusSidebar);
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
         assert_eq!(zoomed(&state).as_deref(), Some("Launch plan"));
         assert!(!state.sidebar_focused());
         state.update(Message::FocusSidebar);
@@ -572,10 +571,9 @@ Home: @bookmark
     fn choosing_today_shows_the_today_view_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
         state.update(Message::FocusSidebar);
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
         state.update(Message::FocusSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[SidebarInput::Previous, SidebarInput::Choose]);
         assert_eq!(state.location(), Location::Today);
         assert!(!state.sidebar_focused());
         state.update(Message::Back);
@@ -642,7 +640,7 @@ Home: @bookmark
                 "Go to Entry, Open in New Pane".to_owned(),
                 leave.clone()
             ]),
-            "a bookmark"
+            "Today"
         );
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
         assert_eq!(
@@ -651,7 +649,7 @@ Home: @bookmark
                 "Go to Entry, Open in New Pane".to_owned(),
                 leave.clone()
             ]),
-            "Today"
+            "a bookmark"
         );
         input(&mut state, &[SidebarInput::Next]);
         assert_eq!(

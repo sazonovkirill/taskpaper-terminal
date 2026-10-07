@@ -91,9 +91,9 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         let markers = ['⌂', '✔', '★', '⚑', '▸', '▾', '⇥', '↕', '●'];
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
         assert!(rows[0].contains("│  ~"), "{settings}: {rows:#?}");
-        assert!(rows[1].contains("  # Work"), "{settings}: {rows:#?}");
-        assert!(rows[2].contains("  * Today"), "{settings}: {rows:#?}");
-        assert!(rows[5].starts_with(" vWork"), "{settings}: {rows:#?}");
+        assert!(rows[0].starts_with("  * Today "), "{settings}: {rows:#?}");
+        assert!(rows[3].starts_with("  Work "), "{settings}: {rows:#?}");
+        assert!(rows[6].starts_with(" vWork"), "{settings}: {rows:#?}");
         assert!(rows.iter().any(|row| row.ends_with("│  Work: #")));
         assert!(
             rows.iter()

@@ -67,14 +67,20 @@ fn ctrl_b(app: &mut Harness) {
     app.press(KeyCode::Char('b'), KeyModifiers::CONTROL);
 }
 
+/// A section heading as drawn right of the gutter, against the rule (D-68).
+fn heading(text: &str) -> String {
+    format!("{text:>21}")
+}
+
 /// The sidebar's lines as listed before any key, `▌` marking the focused one.
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
-        "Bookmarks".to_owned(),
-        format!("{BOOKMARK} Launch plan"),
         format!("{STAR} Today"),
         String::new(),
-        "Projects".to_owned(),
+        heading("Bookmarks"),
+        "Launch plan".to_owned(),
+        String::new(),
+        heading("Projects"),
         "▾Work".to_owned(),
         "  Reports".to_owned(),
         "Home".to_owned(),
@@ -94,9 +100,9 @@ fn listed(focused: Option<usize>) -> Vec<String> {
     .collect()
 }
 
-// FR-UI-01, ui.md §1, navigation §6
+// FR-UI-01, ui.md §1, navigation §6, D-68
 #[test]
-fn the_sidebar_lists_bookmarks_today_and_projects_left_of_the_pane() {
+fn the_sidebar_lists_today_bookmarks_and_projects_left_of_the_pane() {
     let mut app = app(80);
     assert_eq!(sidebar(&mut app), listed(None));
     let buffer = app.render().buffer().clone();
@@ -155,23 +161,23 @@ fn ctrl_b_hides_and_shows_the_sidebar() {
 fn alt_0_and_g_0_focus_the_sidebar_where_j_k_and_the_arrows_move() {
     let mut app = app(80);
     alt_0(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(1)));
+    assert_eq!(sidebar(&mut app), listed(Some(0)));
     press(&mut app, KeyCode::Char('j'));
-    assert_eq!(sidebar(&mut app), listed(Some(2)));
-    press(&mut app, KeyCode::Down);
     assert_eq!(
         sidebar(&mut app),
-        listed(Some(5)),
+        listed(Some(3)),
         "headings and blank lines are skipped"
     );
+    press(&mut app, KeyCode::Down);
+    assert_eq!(sidebar(&mut app), listed(Some(6)));
     press(&mut app, KeyCode::Char('k'));
     press(&mut app, KeyCode::Up);
-    assert_eq!(sidebar(&mut app), listed(Some(1)));
+    assert_eq!(sidebar(&mut app), listed(Some(0)));
     assert_eq!(pane(&mut app)[2], "▌ Work:", "the pane's focus stays");
     press(&mut app, KeyCode::Esc);
     assert_eq!(sidebar(&mut app), listed(None));
     app.type_keys("g0");
-    assert_eq!(sidebar(&mut app), listed(Some(1)));
+    assert_eq!(sidebar(&mut app), listed(Some(0)));
 }
 
 // FR-UI-02, keybindings.md §4, D-42
@@ -233,7 +239,7 @@ fn alt_0_shows_a_hidden_sidebar() {
     let mut app = app(80);
     ctrl_b(&mut app);
     alt_0(&mut app);
-    assert_eq!(sidebar(&mut app), listed(Some(1)));
+    assert_eq!(sidebar(&mut app), listed(Some(0)));
 }
 
 // FR-UI-01, navigation §6
@@ -241,6 +247,7 @@ fn alt_0_shows_a_hidden_sidebar() {
 fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
     let mut app = app(80);
     alt_0(&mut app);
+    press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
     assert_eq!(sidebar(&mut app), listed(None));
@@ -264,7 +271,6 @@ fn enter_zooms_the_pane_to_the_entry_and_gives_it_the_keys() {
 fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
     alt_0(&mut app);
-    press(&mut app, KeyCode::Char('j'));
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], format!("  {STAR} Today"));
     assert_eq!(sidebar(&mut app), listed(None));
@@ -276,16 +282,16 @@ fn h_and_l_and_the_arrows_fold_project_entries() {
     let mut app = app(80);
     alt_0(&mut app);
     app.type_keys("jjh");
-    let mut folded = listed(Some(5));
-    folded[5] = "▌▸Work".to_owned();
-    folded.remove(6);
+    let mut folded = listed(Some(6));
+    folded[6] = "▌▸Work".to_owned();
+    folded.remove(7);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Char('l'));
-    assert_eq!(sidebar(&mut app), listed(Some(5)));
+    assert_eq!(sidebar(&mut app), listed(Some(6)));
     press(&mut app, KeyCode::Left);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Right);
-    assert_eq!(sidebar(&mut app), listed(Some(5)));
+    assert_eq!(sidebar(&mut app), listed(Some(6)));
     assert_eq!(
         pane(&mut app)[3],
         format!("    - Launch plan {BOOKMARK}"),
@@ -353,7 +359,7 @@ fn the_sidebar_scrolls_to_keep_its_focused_entry_visible() {
         [
             format!("  {STAR} Today"),
             String::new(),
-            "  Projects".to_owned()
+            format!("  {}", heading("Projects"))
         ]
     );
     alt_0(&mut app);
@@ -387,7 +393,7 @@ fn the_shortcuts_panel_opens_at_the_right_with_the_sidebar_at_the_left() {
     let mut app = Harness::with_text(OUTLINE, 100, 10);
     app.type_keys("?");
     let buffer = app.render().buffer().clone();
-    assert_eq!(columns(&buffer, 0, 0, 25), "  Bookmarks             │");
+    assert_eq!(columns(&buffer, 2, 0, 25), "               Bookmarks│");
     assert_eq!(columns(&buffer, 2, 25, 68), "▌ Work:");
     assert_eq!(columns(&buffer, 0, 68, 100), "│Shortcuts");
 }
