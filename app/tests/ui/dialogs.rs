@@ -43,8 +43,8 @@ enum Open {
 #[test]
 fn every_dialog_dims_the_screen_behind_it() {
     let dialogs = [
-        ("Go to Command", Open::Control('k')),
-        ("Go to Symbol", Open::Control('p')),
+        ("Go to Command", Open::Control('p')),
+        ("Go to Symbol", Open::Control('k')),
         ("Go to Project", Open::Keys("gP")),
         ("Move to", Open::Keys("jgm")),
         ("theme chooser", Open::Control('t')),
@@ -72,7 +72,7 @@ fn every_dialog_dims_the_screen_behind_it() {
 #[test]
 fn save_as_dims_the_screen_behind_it() {
     let mut app = Harness::with_text(GROCERIES, 80, 20);
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     app.type_keys("save as");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert!(dims_behind_a_dialog(&mut app));

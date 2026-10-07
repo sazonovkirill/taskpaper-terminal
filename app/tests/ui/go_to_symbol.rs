@@ -1,4 +1,4 @@
-//! Step 4.2: `Ctrl+P`, `gs` and `/` open Go to Symbol, a fuzzy finder over every block,
+//! Step 4.2: `Ctrl+K`, `gs` and `/` open Go to Symbol, a fuzzy finder over every block,
 //! bookmarks first, then projects and sections; choosing a block zooms to its parent and focuses
 //! it. `gP` opens it over the projects alone, as Go to Project (D-65). Tasks show their outline
 //! markers and bookmarked blocks' text is in the primary color (D-70).
@@ -24,9 +24,9 @@ fn press(app: &mut Harness, code: KeyCode) {
 
 // FR-NAV-05, navigation.md §8, ui.md §1, D-70
 #[test]
-fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first() {
+fn ctrl_k_lists_every_block_with_its_path_bookmarks_projects_and_sections_first() {
     let mut app = Harness::with_text(TEXT, 60, 16);
-    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         screen(&mut app)[4..14],
         [
@@ -64,7 +64,7 @@ fn ctrl_p_lists_every_block_with_its_path_bookmarks_projects_and_sections_first(
 #[test]
 fn typing_filters_and_enter_zooms_to_the_parent_and_focuses_the_block() {
     let mut app = Harness::with_text(TEXT, 60, 16);
-    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.type_keys("rep");
     assert_eq!(
         screen(&mut app)[7..10],
@@ -118,7 +118,7 @@ fn g_s_and_slash_open_it_arrows_move_and_esc_closes_it() {
 #[test]
 fn a_query_that_matches_nothing_says_so() {
     let mut app = Harness::with_text(TEXT, 60, 16);
-    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.type_keys("qqq");
     assert_eq!(
         screen(&mut app)[7..11],
@@ -137,7 +137,7 @@ fn a_long_list_scrolls_with_the_highlight_in_a_box_at_most_80_by_20() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 100, 30);
     app.hide_sidebar();
-    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let rows = screen(&mut app);
     let top = rows
         .iter()

@@ -376,7 +376,7 @@ fn alt_enter_and_ctrl_v_open_the_highlighted_symbol_in_a_new_pane() {
     ] {
         let mut app = Harness::with_text(OUTLINE, 80, 10);
         app.hide_sidebar();
-        ctrl(&mut app, 'p');
+        ctrl(&mut app, 'k');
         app.type_keys("water");
         app.press(key.0, key.1);
         let screen = screen(&mut app);

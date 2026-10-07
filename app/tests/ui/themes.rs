@@ -26,7 +26,7 @@ fn press(app: &mut Harness, code: KeyCode) {
 
 /// Opens the theme picker from Go to Command.
 fn choose_theme(app: &mut Harness) {
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     app.type_keys("choose theme");
     press(app, KeyCode::Enter);
 }

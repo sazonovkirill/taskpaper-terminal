@@ -117,7 +117,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
 #[test]
 fn open_settings_in_go_to_command_opens_the_window() {
     let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 20);
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     app.type_keys("open settings");
     press(&mut app, KeyCode::Enter);
     assert_eq!(

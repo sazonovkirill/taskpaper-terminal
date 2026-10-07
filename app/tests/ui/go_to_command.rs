@@ -1,4 +1,4 @@
-//! Step 4.3: `Ctrl+K` and `:` open Go to Command, a fuzzy finder over every command of navigate
+//! Step 4.3: `Ctrl+P` and `:` open Go to Command, a fuzzy finder over every command of navigate
 //! mode by name with its bindings; `Enter` gives the chosen command, such as Count.
 
 use std::{fs, time::Duration};
@@ -22,18 +22,18 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-/// Opens Go to Command with `Ctrl+K`, types `query` and gives the best match.
+/// Opens Go to Command with `Ctrl+P`, types `query` and gives the best match.
 fn give(app: &mut Harness, query: &str) {
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     app.type_keys(query);
     press(app, KeyCode::Enter);
 }
 
 // FR-NAV-06, navigation.md §8, ui.md §1
 #[test]
-fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
+fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
     let mut app = Harness::with_text(TEXT, 60, 16);
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     assert_eq!(
         screen(&mut app)[2..7],
         [
@@ -60,7 +60,7 @@ fn ctrl_k_lists_the_commands_by_name_each_with_its_bindings() {
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│› symbol                                                  │",
-            "│ › Go to Symbol  Ctrl+P, gs, /                            │",
+            "│ › Go to Symbol  Ctrl+K, gs, /                            │",
         ]
     );
 }

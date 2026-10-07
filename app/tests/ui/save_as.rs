@@ -21,7 +21,7 @@ fn press(app: &mut Harness, code: KeyCode) {
 
 /// Opens Save As from Go to Command.
 fn open_save_as(app: &mut Harness) {
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
     app.type_keys("save as");
     press(app, KeyCode::Enter);
 }

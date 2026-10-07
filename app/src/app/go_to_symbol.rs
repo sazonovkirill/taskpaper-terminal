@@ -52,7 +52,7 @@ impl State {
             .map(|(_, finder)| finder.view())
     }
 
-    /// `Ctrl+P`: opens Go to Symbol over every block in document order but dividers, or `gP`
+    /// `Ctrl+K`: opens Go to Symbol over every block in document order but dividers, or `gP`
     /// over the projects among them, as Go to Project.
     pub(super) fn open_go_to_symbol(&mut self, listed: Symbols) {
         let mut candidates = self.block_candidates(&[]);

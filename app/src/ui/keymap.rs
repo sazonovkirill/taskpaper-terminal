@@ -2350,11 +2350,11 @@ mod tests {
 
     // FR-NAV-06, keybindings.md §2 and §4
     #[test]
-    fn ctrl_k_and_colon_open_go_to_command_which_takes_the_keys_of_pickers() {
+    fn ctrl_p_and_colon_open_go_to_command_which_takes_the_keys_of_pickers() {
         let mut keymap = Keymap::default();
-        let ctrl_k = key(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        let ctrl_p = key(KeyCode::Char('p'), KeyModifiers::CONTROL);
         assert_eq!(
-            keymap.action_for(&ctrl_k, ms(0), CONTEXT),
+            keymap.action_for(&ctrl_p, ms(0), CONTEXT),
             Some(KeyAction::GoToCommand)
         );
         let colon = key(KeyCode::Char(':'), KeyModifiers::NONE);
@@ -2367,9 +2367,9 @@ mod tests {
             ..*CONTEXT
         };
         assert_eq!(
-            keymap.message_for(&ctrl_k, ms(2), finding),
-            None,
-            "no second Go to Command"
+            keymap.message_for(&ctrl_p, ms(2), finding),
+            Some(Message::Menu(Menu::GoToCommand, MenuInput::Previous)),
+            "the picker's key, not a second Go to Command"
         );
         assert_eq!(
             keymap.message_for(&colon, ms(3), finding),
@@ -2735,7 +2735,7 @@ mod tests {
         let keymap = Keymap::default();
         assert_eq!(
             keymap.labels(Command::GoToCommand, Mode::Navigate),
-            "Ctrl+K, :"
+            "Ctrl+P, :"
         );
         assert_eq!(keymap.labels(Command::Count, Mode::Navigate), "");
         assert_eq!(keymap.labels(Command::StopEditing, Mode::Edit), "Esc");
@@ -2845,11 +2845,11 @@ mod tests {
 
     // FR-NAV-05, keybindings.md §2 and §4
     #[test]
-    fn ctrl_p_g_s_and_slash_open_go_to_symbol_which_takes_the_keys_of_pickers() {
+    fn ctrl_k_g_s_and_slash_open_go_to_symbol_which_takes_the_keys_of_pickers() {
         let mut keymap = Keymap::default();
-        let ctrl_p = key(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let ctrl_k = key(KeyCode::Char('k'), KeyModifiers::CONTROL);
         assert_eq!(
-            keymap.message_for(&ctrl_p, ms(0), CONTEXT),
+            keymap.message_for(&ctrl_k, ms(0), CONTEXT),
             Some(Message::OpenGoToSymbol(Symbols::All))
         );
         let char = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
@@ -2867,8 +2867,17 @@ mod tests {
             ..*CONTEXT
         };
         assert_eq!(
-            keymap.message_for(&ctrl_p, ms(0), finding),
+            keymap.message_for(
+                &key(KeyCode::Char('p'), KeyModifiers::CONTROL),
+                ms(0),
+                finding
+            ),
             Some(Message::Menu(Menu::GoToSymbol, MenuInput::Previous))
+        );
+        assert_eq!(
+            keymap.message_for(&ctrl_k, ms(1), finding),
+            None,
+            "no second Go to Symbol"
         );
         assert_eq!(
             keymap.message_for(&char('g'), ms(3), finding),

@@ -126,9 +126,9 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Toggle sidebar: focus it, showing it, or hide it while it has the keys / focus sidebar, showing it; either focuses the entry of where the pane is, else the first (FR-UI-01, D-68) | `Ctrl+B` / `Alt+0`, `g0` (the non-`Alt` route of §1) |
 | Shortcuts panel (FR-KEY-04) | `?` |
 | Scroll the shortcuts panel down / up a page, while it is open (D-55) | `)` / `(` |
-| Go to Symbol (FR-NAV-05) | `Ctrl+P`, `gs` (was `Ctrl+T`) |
+| Go to Symbol (FR-NAV-05) | `Ctrl+K`, `gs` (was `Ctrl+P`, D-72) |
 | Go to Project: Go to Symbol over the projects alone (D-65) | `gP` |
-| Go to Command (FR-NAV-06) | `Ctrl+K`, `:` (was `Ctrl+P`) |
+| Go to Command (FR-NAV-06) | `Ctrl+P`, `:` (was `Ctrl+K`, D-72) |
 | Settings window (FR-SET-02); also Open Settings in the command palette | `g,` |
 | Context menu for the focused element (FR-KEY-06) | `\`, `Shift+F10`, the Menu key (was `M`) |
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
@@ -159,7 +159,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Make a task text again / a project text again (OQ-27, [editing.md §2](editing.md#2-edit-mode)) | `Backspace` at the start of the text / delete its `:` like any character (`End`, `Backspace`) |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
-| Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Command) |
+| Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Symbol) |
 | Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
 | Copy / cut the selected text, paste ([editing.md §2](editing.md#2-edit-mode)) | `Ctrl+C` / `Ctrl+X`, `Ctrl+V` |
 

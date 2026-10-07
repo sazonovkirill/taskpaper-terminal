@@ -17,7 +17,7 @@ impl State {
         self.commands.as_ref().map(Finder::view)
     }
 
-    /// `Ctrl+K`: opens Go to Command over every command of navigate mode but itself, by name,
+    /// `Ctrl+P`: opens Go to Command over every command of navigate mode but itself, by name,
     /// each with its entry of `bindings`, if it has one.
     pub(super) fn open_go_to_command(&mut self, bindings: &[(Command, String)]) {
         let mut candidates: Vec<Candidate<Command>> = REGISTRY
