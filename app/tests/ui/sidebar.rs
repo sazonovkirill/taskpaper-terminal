@@ -75,14 +75,20 @@ fn listed(focused: Option<usize>) -> Vec<String> {
         format!("{STAR} Today"),
         String::new(),
         "Projects".to_owned(),
-        "▾ Work".to_owned(),
-        "    Reports".to_owned(),
-        "  Home".to_owned(),
+        "▾Work".to_owned(),
+        "  Reports".to_owned(),
+        "Home".to_owned(),
     ]
     .into_iter()
     .enumerate()
     .map(|(at, text)| {
-        let gutter = if Some(at) == focused { "▌ " } else { "  " };
+        // A top-level project's fold marker stands in the gutter's second column (D-61).
+        let gutter = match (Some(at) == focused, text.starts_with(['▾', '▸'])) {
+            (true, false) => "▌ ",
+            (true, true) => "▌",
+            (false, false) => "  ",
+            (false, true) => " ",
+        };
         format!("{gutter}{text}").trim_end().to_owned()
     })
     .collect()
@@ -218,7 +224,7 @@ fn h_and_l_and_the_arrows_fold_project_entries() {
     alt_0(&mut app);
     app.type_keys("jjh");
     let mut folded = listed(Some(5));
-    folded[5] = "▌ ▸ Work".to_owned();
+    folded[5] = "▌▸Work".to_owned();
     folded.remove(6);
     assert_eq!(sidebar(&mut app), folded);
     press(&mut app, KeyCode::Char('l'));
@@ -299,10 +305,7 @@ fn the_sidebar_scrolls_to_keep_its_focused_entry_visible() {
     );
     alt_0(&mut app);
     app.type_keys("jjjjj");
-    assert_eq!(
-        sidebar(&mut app),
-        ["    P3", "    P4", "▌   P5", "    P6", "    P7"]
-    );
+    assert_eq!(sidebar(&mut app), ["  P3", "  P4", "▌ P5", "  P6", "  P7"]);
 }
 
 // D-54, ui.md §1

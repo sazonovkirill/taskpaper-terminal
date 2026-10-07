@@ -22,7 +22,8 @@ use crate::{
 
 /// The sidebar's lines: a heading over the bookmarks when there are any, the bookmarks, Today, a
 /// blank line and a heading over the projects when there are any, and the projects, top-level ones in line with
-/// the bookmarks and 2 columns more per level, behind a marker of their fold. The focused entry is marked in a gutter like the outline's
+/// the headings and 2 columns more per level, each right behind a marker of its fold, which for a top-level
+/// project stands in the gutter. The focused entry is marked in a gutter like the outline's
 /// focused block and gets the current-line band.
 #[derive(Debug)]
 pub struct SidebarPanel<'a> {
@@ -69,8 +70,7 @@ impl<'a> SidebarPanel<'a> {
     }
 
     /// The index of the entry on line `line`, counted from the first, with its fold when column
-    /// `column`, counted from where the lines start after the gutter, shows a project entry's
-    /// fold marker (FR-KEY-05).
+    /// `column`, counted from the gutter's start, shows a project entry's fold marker (FR-KEY-05).
     #[must_use]
     pub fn entry_at(&self, line: usize, column: u16) -> Option<(usize, Option<Fold>)> {
         let mut entries = 0;
@@ -82,7 +82,8 @@ impl<'a> SidebarPanel<'a> {
         };
         let fold = match *entry {
             SidebarEntry::Project { depth, fold, .. }
-                if fold != Fold::Leaf && usize::from(column) == depth * 2 =>
+                if fold != Fold::Leaf
+                    && usize::from(column) == usize::from(GUTTER_WIDTH) - 1 + depth * 2 =>
             {
                 Some(fold)
             }
@@ -163,7 +164,7 @@ fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Lin
                 Fold::Collapsed => Icon::Collapsed.glyph(icons),
             };
             Line::from(vec![
-                Span::raw(format!("{:indent$}{marker} ", "", indent = depth * 2)),
+                Span::raw(format!("{:indent$}{marker}", "", indent = depth * 2)),
                 Span::raw(text.as_str()),
             ])
         }
@@ -196,6 +197,17 @@ impl Widget for SidebarPanel<'_> {
                 Span::styled(FOCUS_MARKER, Style::new().fg(self.theme.focus))
                     .render(gutter_area, buf);
             }
+            // A project's line starts a column early, so its fold marker stands right before its
+            // text (D-61).
+            let line_area = if matches!(line, SidebarLine::Entry(SidebarEntry::Project { .. })) {
+                Rect {
+                    x: line_area.x - 1,
+                    width: line_area.width + 1,
+                    ..line_area
+                }
+            } else {
+                line_area
+            };
             line.line(self.icons, self.theme).render(line_area, buf);
         }
     }
@@ -244,7 +256,7 @@ mod tests {
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
-                "    A".to_owned(),
+                "  A".to_owned(),
             ]
         );
     }
@@ -261,15 +273,29 @@ mod tests {
         assert_eq!(panel.entry_at(1, 0), Some((0, None)));
         assert_eq!(panel.entry_at(2, 2), Some((1, None)));
         assert_eq!(panel.entry_at(3, 0), None, "the blank line");
-        assert_eq!(panel.entry_at(5, 0), Some((2, Some(Fold::Expanded))));
-        assert_eq!(panel.entry_at(5, 1), Some((2, None)));
+        assert_eq!(panel.entry_at(5, 1), Some((2, Some(Fold::Expanded))));
+        assert_eq!(panel.entry_at(5, 0), Some((2, None)));
+        assert_eq!(panel.entry_at(5, 2), Some((2, None)));
         assert_eq!(
-            panel.entry_at(6, 2),
+            panel.entry_at(6, 3),
             Some((3, None)),
             "a leaf has no marker"
         );
         assert_eq!(panel.entry_at(7, 0), Some((4, None)));
         assert_eq!(panel.entry_at(8, 0), None, "past the last entry");
+    }
+
+    // D-61
+    #[test]
+    fn a_top_level_projects_marker_stands_in_the_gutter_and_its_text_reaches_the_edge() {
+        assert_eq!(
+            rows(&draw("ABCDEFGHIJKLMNOPQ:\n\tB:"))[2..5],
+            [
+                "  Projects".to_owned(),
+                " ▾ABCDEFGHIJKLMNOPQ".to_owned(),
+                "    B".to_owned(),
+            ]
+        );
     }
 
     // FR-KEY-05, D-60
@@ -280,8 +306,8 @@ mod tests {
             .expect("shown by default");
         let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Projects, ▾ A, ▾ B, C.
-        assert_eq!(panel.entry_at(4, 2), Some((2, Some(Fold::Expanded))));
-        assert_eq!(panel.entry_at(4, 0), Some((2, None)));
+        assert_eq!(panel.entry_at(4, 3), Some((2, Some(Fold::Expanded))));
+        assert_eq!(panel.entry_at(4, 1), Some((2, None)));
     }
 
     // FR-UI-01

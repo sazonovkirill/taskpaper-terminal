@@ -44,7 +44,7 @@ pub(super) struct DrawnPane {
 /// What is under the pointer, by where it was drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Spot {
-    /// A line of the sidebar, counted from its first, and a column after its gutter.
+    /// A line of the sidebar, counted from its first, and a column counted from its gutter's start.
     Sidebar { line: usize, column: u16 },
     /// The header of the pane at `at` among `Drawn::panes`, at a column of its breadcrumbs, or
     /// on its gutter or rule.
@@ -73,7 +73,7 @@ impl Drawn {
             let column = position.x - area.x;
             return (column + 1 < area.width).then(|| Spot::Sidebar {
                 line: usize::from(position.y - area.y) + scroll,
-                column: column.saturating_sub(widgets::GUTTER_WIDTH),
+                column,
             });
         }
         let (index, pane) = self
@@ -368,8 +368,8 @@ mod tests {
             shortcuts: Some(Rect::new(24, 0, 3, 8)),
         };
         let spot = |x, y| drawn.spot(Position::new(x, y));
-        assert_eq!(spot(3, 2), Some(Spot::Sidebar { line: 5, column: 1 }));
-        assert_eq!(spot(1, 0), Some(Spot::Sidebar { line: 3, column: 0 }));
+        assert_eq!(spot(3, 2), Some(Spot::Sidebar { line: 5, column: 3 }));
+        assert_eq!(spot(1, 0), Some(Spot::Sidebar { line: 3, column: 1 }));
         assert_eq!(spot(9, 0), None, "the sidebar's rule");
         assert_eq!(
             spot(10, 0),
@@ -418,7 +418,7 @@ mod tests {
             shortcuts: None,
         };
         let spot = |x, y| below.spot(Position::new(x, y));
-        assert_eq!(spot(5, 4), Some(Spot::Sidebar { line: 3, column: 1 }));
+        assert_eq!(spot(5, 4), Some(Spot::Sidebar { line: 3, column: 3 }));
         assert_eq!(
             spot(15, 4),
             Some(Spot::Outline {
