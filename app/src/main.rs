@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     }
     let home = std::env::home_dir();
     let config = ui::config::file(std::env::var_os("XDG_CONFIG_HOME"), home.clone())
-        .map(|file| ui::config::load(&file))
+        .map(|file| ui::config::load(&file, home.as_deref()))
         .unwrap_or_default();
     let recovery = Recovery::new(
         ui::effects::recovery_folder(std::env::var_os("XDG_STATE_HOME"), home.clone()),
@@ -47,7 +47,8 @@ fn main() -> anyhow::Result<()> {
     let backups = Backups::new(
         ui::effects::backups_folder(std::env::var_os("XDG_DATA_HOME"), home.clone()),
         || jiff::Zoned::now().datetime(),
-    );
+    )
+    .with_settings(config.backups());
     let views = Views::new(ui::effects::views_file(
         std::env::var_os("XDG_STATE_HOME"),
         home.clone(),

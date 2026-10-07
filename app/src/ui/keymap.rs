@@ -461,7 +461,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
     }
 }
 
-/// How one key reads on screen ([`label`]): its modifiers, then the key, a letter with `Ctrl` in
+/// How one key reads on screen ([`sequence_label`]): its modifiers, then the key, a letter with `Ctrl` in
 /// capitals and a capital letter with a modifier marked with `Shift`.
 fn key_label((modifiers, code): Key) -> String {
     let mut label = String::new();

@@ -175,7 +175,8 @@ impl Harness {
         let file = dir.path().join("config.toml");
         std::fs::write(&file, settings).expect("the temporary folder is writable");
         let state = effects::open(&path).expect("the file opens");
-        Self::start_with(state, dir, config::load(&file), width, height)
+        let config = config::load(&file, Some(&dir.path().join("home")));
+        Self::start_with(state, dir, config, width, height)
     }
 
     /// Starts on `text` as a file in a temporary folder, opened with `recovered`, the text of a
@@ -230,7 +231,7 @@ impl Harness {
         let (results, inputs) = mpsc::channel();
         let io = Io::start(
             results,
-            Backups::new(Some(backups.clone()), || NOW),
+            Backups::new(Some(backups.clone()), || NOW).with_settings(config.backups()),
             Views::new(Some(views.clone())),
         );
         let terminal_output = Output::default();

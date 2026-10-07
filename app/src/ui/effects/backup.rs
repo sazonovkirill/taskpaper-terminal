@@ -1,7 +1,7 @@
 //! Backups: before the app first changes a file on a given day, a copy of the file as it is on
-//! disk goes to a folder of its own under the backups folder, which keeps the newest [`KEEP`]
-//! daily copies ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-07); the
-//! same folder keeps the newest [`KEEP`] conflict copies, the versions a conflict choice
+//! disk goes to a folder of its own under the backups folder, which keeps the newest daily
+//! copies, as many as the settings say ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-07); the
+//! same folder keeps as many of the newest conflict copies, the versions a conflict choice
 //! discards ([file-io.md §3](../../../../docs/specs/file-io.md#3-external-changes)).
 
 use std::{
@@ -19,7 +19,8 @@ use thiserror::Error;
 
 use super::atomic;
 
-/// How many daily copies, and how many conflict copies, each file keeps (`backups.keep`).
+/// How many daily copies, and how many conflict copies, each file keeps unless the settings say
+/// otherwise (`backups.keep`).
 pub const KEEP: usize = 30;
 
 /// The file in a file's backup folder that names the file.
@@ -50,6 +51,30 @@ pub fn folder(xdg_data_home: Option<OsString>, home: Option<PathBuf>) -> Option<
     super::app_folder(xdg_data_home, home, ".local/share", "backups")
 }
 
+/// The backup settings of the settings file (file-io.md §2): whether daily copies are made, the
+/// folder they go to instead of the default one, and how many copies of each kind a file keeps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackupSettings {
+    /// Whether daily copies are made and old copies pruned (`backups.enabled`); conflict copies
+    /// are made either way.
+    pub enabled: bool,
+    /// The folder copies go to, when not the default one (`backups.dir`).
+    pub folder: Option<PathBuf>,
+    /// How many daily copies, and how many conflict copies, each file keeps (`backups.keep`),
+    /// at least 1.
+    pub keep: usize,
+}
+
+impl Default for BackupSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            folder: None,
+            keep: KEEP,
+        }
+    }
+}
+
 /// The backups of the files one session opens: where they go, what time it is, and which file
 /// was checked on which day, so each file is checked once a day.
 #[derive(Debug)]
@@ -57,6 +82,8 @@ pub struct Backups {
     folder: Option<PathBuf>,
     now: fn() -> DateTime,
     checked: Option<(PathBuf, Date)>,
+    enabled: bool,
+    keep: usize,
 }
 
 impl Backups {
@@ -67,6 +94,20 @@ impl Backups {
             folder,
             now,
             checked: None,
+            enabled: true,
+            keep: KEEP,
+        }
+    }
+
+    /// These backups as `settings` say: on or off, in their folder if they name one, keeping
+    /// their number of copies.
+    #[must_use]
+    pub fn with_settings(self, settings: &BackupSettings) -> Self {
+        Self {
+            folder: settings.folder.clone().or(self.folder),
+            enabled: settings.enabled,
+            keep: settings.keep,
+            ..self
         }
     }
 
@@ -77,13 +118,16 @@ impl Backups {
     ///
     /// [`BackupError`] when the copy could not be made.
     pub fn ensure(&mut self, file: &Path) -> Result<(), BackupError> {
+        if !self.enabled {
+            return Ok(());
+        }
         let check = (file.to_owned(), (self.now)().date());
         if self.checked.as_ref() == Some(&check) {
             return Ok(());
         }
         let (file, today) = self.checked.insert(check);
         let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
-        Ok(daily(file, folder, *today)?)
+        Ok(daily(file, folder, *today, self.keep)?)
     }
 
     /// Writes `contents` to a new conflict copy of `file` and returns its path.
@@ -93,14 +137,15 @@ impl Backups {
     /// [`BackupError`] when the copy could not be written.
     pub fn conflict(&self, file: &Path, contents: &[u8]) -> Result<PathBuf, BackupError> {
         let folder = self.folder.as_deref().ok_or(BackupError::NoFolder)?;
-        Ok(conflict(file, folder, (self.now)(), contents)?)
+        let keep = self.enabled.then_some(self.keep);
+        Ok(conflict(file, folder, (self.now)(), contents, keep)?)
     }
 }
 
 /// Copies `file` as it is on disk to `<YYYY-MM-DD>.taskpaper`, dated `today`, in its folder under
 /// `backups`, unless that copy exists, the file is missing or empty, or it equals the newest copy;
-/// then drops the oldest copies beyond [`KEEP`].
-fn daily(file: &Path, backups: &Path, today: Date) -> io::Result<()> {
+/// then drops the oldest copies beyond the newest `keep`.
+fn daily(file: &Path, backups: &Path, today: Date, keep: usize) -> io::Result<()> {
     let bytes = match fs::read(file) {
         Ok(bytes) if !bytes.is_empty() => bytes,
         Ok(_) => return Ok(()),
@@ -123,14 +168,20 @@ fn daily(file: &Path, backups: &Path, today: Date) -> io::Result<()> {
     write_copy(&source, &copy, &bytes, permissions)?;
     dates.push(today);
     dates.sort_unstable_by(|a, b| b.cmp(a));
-    prune(&folder, dates, daily_name)
+    prune(&folder, dates, daily_name, keep)
 }
 
 /// Writes `contents` to `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper`, named by the local time
 /// `now`, or the first later second no copy is named by, in `file`'s folder under `backups`; then
-/// drops the oldest conflict copies beyond [`KEEP`]. Returns the copy's path. A file gone from
-/// disk still has its folder of copies.
-fn conflict(file: &Path, backups: &Path, now: DateTime, contents: &[u8]) -> io::Result<PathBuf> {
+/// drops the oldest conflict copies beyond the newest `keep`, unless that is `None`, as while
+/// backups are off. Returns the copy's path. A file gone from disk still has its folder of copies.
+fn conflict(
+    file: &Path,
+    backups: &Path,
+    now: DateTime,
+    contents: &[u8],
+    keep: Option<usize>,
+) -> io::Result<PathBuf> {
     let (source, permissions) = locate(file)?;
     let folder = backups.join(folder_name(&source));
     fs::create_dir_all(&folder)?;
@@ -140,8 +191,10 @@ fn conflict(file: &Path, backups: &Path, now: DateTime, contents: &[u8]) -> io::
     }
     let copy = folder.join(conflict_name(time));
     write_copy(&source, &copy, contents, permissions)?;
-    let copies = copies(&folder, parse_conflict_name)?;
-    prune(&folder, copies, conflict_name)?;
+    if let Some(keep) = keep {
+        let copies = copies(&folder, parse_conflict_name)?;
+        prune(&folder, copies, conflict_name, keep)?;
+    }
     Ok(copy)
 }
 
@@ -176,9 +229,14 @@ fn write_copy(
     atomic::replace(copy, contents, permissions)
 }
 
-/// Deletes the copies in `folder` named by `name` from `newest_first` beyond the first [`KEEP`].
-fn prune<T>(folder: &Path, newest_first: Vec<T>, name: fn(T) -> String) -> io::Result<()> {
-    for old in newest_first.into_iter().skip(KEEP) {
+/// Deletes the copies in `folder` named by `name` from `newest_first` beyond the first `keep`.
+fn prune<T>(
+    folder: &Path,
+    newest_first: Vec<T>,
+    name: fn(T) -> String,
+    keep: usize,
+) -> io::Result<()> {
+    for old in newest_first.into_iter().skip(keep) {
         fs::remove_file(folder.join(name(old)))?;
     }
     Ok(())
@@ -299,7 +357,7 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "- a\n")?;
         fs::set_permissions(&file, fs::Permissions::from_mode(0o600))?;
-        daily(&file, &backups, TODAY)?;
+        daily(&file, &backups, TODAY, KEEP)?;
         let source = fs::canonicalize(&file)?;
         let folder = backups.join(format!(
             "todo.taskpaper-{:016x}",
@@ -328,7 +386,7 @@ mod tests {
             fs::create_dir(dir.path().join(sub))?;
             let file = dir.path().join(sub).join("todo.taskpaper");
             fs::write(&file, sub)?;
-            daily(&file, &backups, TODAY)?;
+            daily(&file, &backups, TODAY, KEEP)?;
         }
         assert_eq!(names(&backups)?.len(), 2);
         Ok(())
@@ -339,15 +397,15 @@ mod tests {
     fn keeps_the_first_copy_of_the_day_and_copies_again_the_next_day() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "first")?;
-        daily(&file, &backups, TODAY)?;
+        daily(&file, &backups, TODAY, KEEP)?;
         fs::write(&file, "second")?;
-        daily(&file, &backups, TODAY)?;
+        daily(&file, &backups, TODAY, KEEP)?;
         let folder = backup_folder(&file, &backups)?;
         assert_eq!(
             fs::read_to_string(folder.join("2026-10-05.taskpaper"))?,
             "first"
         );
-        daily(&file, &backups, date(2026, 10, 6))?;
+        daily(&file, &backups, date(2026, 10, 6), KEEP)?;
         assert_eq!(
             fs::read_to_string(folder.join("2026-10-06.taskpaper"))?,
             "second"
@@ -359,8 +417,8 @@ mod tests {
     fn skips_a_file_equal_to_its_newest_copy() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "same")?;
-        daily(&file, &backups, date(2026, 9, 1))?;
-        daily(&file, &backups, TODAY)?;
+        daily(&file, &backups, date(2026, 9, 1), KEEP)?;
+        daily(&file, &backups, TODAY, KEEP)?;
         let folder = backup_folder(&file, &backups)?;
         assert_eq!(names(&folder)?, ["2026-09-01.taskpaper", SOURCE]);
         Ok(())
@@ -370,8 +428,8 @@ mod tests {
     fn skips_a_missing_or_empty_file() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "")?;
-        daily(&file, &backups, TODAY)?;
-        daily(&dir.path().join("new.taskpaper"), &backups, TODAY)?;
+        daily(&file, &backups, TODAY, KEEP)?;
+        daily(&dir.path().join("new.taskpaper"), &backups, TODAY, KEEP)?;
         assert!(!fs::exists(&backups)?);
         Ok(())
     }
@@ -396,7 +454,7 @@ mod tests {
         for other in others {
             fs::write(folder.join(other), "")?;
         }
-        daily(&file, &backups, TODAY)?;
+        daily(&file, &backups, TODAY, KEEP)?;
         let names = names(&folder)?;
         assert!(!names.contains(&"2026-01-01.taskpaper".to_owned()));
         assert!(names.contains(&"2026-01-02.taskpaper".to_owned()));
@@ -409,9 +467,9 @@ mod tests {
     fn fails_when_the_file_cannot_be_read_or_copied() -> TestResult {
         let dir = tempfile::tempdir()?;
         let (file, backups) = setup(dir.path(), "x")?;
-        assert!(daily(dir.path(), &backups, TODAY).is_err());
+        assert!(daily(dir.path(), &backups, TODAY, KEEP).is_err());
         fs::write(&backups, "")?;
-        assert!(daily(&file, &backups, TODAY).is_err());
+        assert!(daily(&file, &backups, TODAY, KEEP).is_err());
         Ok(())
     }
 
@@ -447,6 +505,65 @@ mod tests {
             "no folder for backups: neither $XDG_DATA_HOME nor a home folder is set"
         );
         session.ensure(&file)?;
+        Ok(())
+    }
+
+    // FR-DOC-07, file-io.md §2
+    #[test]
+    fn the_settings_choose_the_folder_and_how_many_copies_are_kept() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "today")?;
+        let chosen = dir.path().join("chosen");
+        let settings = BackupSettings {
+            folder: Some(chosen.clone()),
+            keep: 2,
+            ..BackupSettings::default()
+        };
+        let mut session = Backups::new(Some(backups.clone()), || NOW).with_settings(&settings);
+        let folder = backup_folder(&file, &chosen)?;
+        fs::create_dir_all(&folder)?;
+        for old in ["2026-10-01.taskpaper", "2026-10-02.taskpaper"] {
+            fs::write(folder.join(old), old)?;
+        }
+        session.ensure(&file)?;
+        assert_eq!(
+            names(&folder)?,
+            ["2026-10-02.taskpaper", "2026-10-05.taskpaper", SOURCE]
+        );
+        assert!(!fs::exists(&backups)?, "not the default folder");
+        session.conflict(&file, b"a")?;
+        session.conflict(&file, b"b")?;
+        session.conflict(&file, b"c")?;
+        assert_eq!(names(&folder)?.len(), 5, "two of each kind");
+        let unchanged =
+            Backups::new(Some(backups.clone()), || NOW).with_settings(&BackupSettings::default());
+        unchanged.conflict(&file, b"d")?;
+        assert!(fs::exists(&backups)?, "no folder chosen keeps the default");
+        Ok(())
+    }
+
+    // FR-DOC-07, file-io.md §2–3
+    #[test]
+    fn backups_turned_off_make_no_daily_copies_and_prune_nothing_but_keep_conflicts() -> TestResult
+    {
+        let dir = tempfile::tempdir()?;
+        let (file, backups) = setup(dir.path(), "today")?;
+        let settings = BackupSettings {
+            enabled: false,
+            keep: 1,
+            ..BackupSettings::default()
+        };
+        let mut session = Backups::new(Some(backups.clone()), || NOW).with_settings(&settings);
+        session.ensure(&file)?;
+        assert!(!fs::exists(&backups)?, "no daily copy");
+        session.conflict(&file, b"a")?;
+        session.conflict(&file, b"b")?;
+        let folder = backup_folder(&file, &backups)?;
+        assert_eq!(
+            names(&folder)?.len(),
+            3,
+            "both conflict copies and the source"
+        );
         Ok(())
     }
 
@@ -497,7 +614,7 @@ mod tests {
         for other in others {
             fs::write(folder.join(other), "")?;
         }
-        conflict(&file, &backups, NOW, b"new")?;
+        conflict(&file, &backups, NOW, b"new", Some(KEEP))?;
         let names = names(&folder)?;
         assert!(!names.contains(&"2026-01-01-080000-conflict.taskpaper".to_owned()));
         assert!(names.contains(&"2026-01-01-080100-conflict.taskpaper".to_owned()));

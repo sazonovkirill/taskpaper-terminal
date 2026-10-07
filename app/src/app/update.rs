@@ -74,6 +74,9 @@ pub enum Message {
     /// The frontend's settings file has these problems, each ignored; shown once, at start
     /// (FR-SET-04).
     ConfigProblems(Vec<String>),
+    /// Save this long after the last change from now on, as the frontend's settings say
+    /// (`autosave_delay_ms`, file-io.md §2).
+    SetAutosaveDelay(Duration),
     /// Leave the app, saving first; if that save fails, ask (file-io.md §2).
     Quit,
     /// The process is told to end (`SIGTERM`, `SIGHUP`): save first and end even if that fails.
@@ -331,6 +334,7 @@ impl Message {
             | Self::ConflictCopyFailed { .. }
             | Self::BackupFailed { .. }
             | Self::ConfigProblems(_)
+            | Self::SetAutosaveDelay(_)
             | Self::OpenUrlFailed { .. }
             | Self::Undo
             | Self::Redo
@@ -544,6 +548,7 @@ impl State {
             Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::ConfigProblems(problems) => self.notify(Notice::ConfigProblems(problems)),
+            Message::SetAutosaveDelay(delay) => self.set_autosave_delay(delay),
             Message::Quit => self.autosave.end(Ending::Quit),
             Message::Terminate => self.autosave.end(Ending::Terminate),
             Message::FocusNext => self.focus_down(1),

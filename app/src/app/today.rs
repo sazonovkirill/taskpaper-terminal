@@ -91,6 +91,7 @@ impl State {
             | Message::ConflictCopyFailed { .. }
             | Message::BackupFailed { .. }
             | Message::ConfigProblems(_)
+            | Message::SetAutosaveDelay(_)
             | Message::Quit
             | Message::Terminate
             | Message::FocusNext

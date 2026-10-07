@@ -23,7 +23,7 @@ use std::{
 use jiff::civil::DateTime;
 use thiserror::Error;
 
-pub use backup::{BackupError, Backups, folder as backups_folder};
+pub use backup::{BackupError, BackupSettings, Backups, folder as backups_folder};
 pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
 pub use paths::{complete as complete_path, expand as expand_path};

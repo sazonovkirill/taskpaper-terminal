@@ -7,19 +7,23 @@ use std::{
     ffi::OsString,
     fs, io,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use thiserror::Error;
 use toml_edit::{Document, Item, TableLike};
 
-use super::keymap::{BindingError, Keymap};
+use super::{
+    effects::{self, BackupSettings},
+    keymap::{BindingError, Keymap},
+};
 use crate::app::Mode;
 
 /// The settings file: `$XDG_CONFIG_HOME/taskpaper-terminal/config.toml`, or under `~/.config`
 /// when that is unset or not absolute; also on macOS (FR-SET-01). `None` when neither is known.
 #[must_use]
 pub fn file(xdg_config_home: Option<OsString>, home: Option<PathBuf>) -> Option<PathBuf> {
-    super::effects::app_folder(xdg_config_home, home, ".config", "config.toml")
+    effects::app_folder(xdg_config_home, home, ".config", "config.toml")
 }
 
 /// Something in the settings file that the app ignored (FR-SET-04).
@@ -63,19 +67,80 @@ pub enum Problem {
     },
 }
 
+/// The least `autosave_delay_ms` may be (file-io.md §2).
+const MIN_AUTOSAVE_DELAY: Duration = Duration::from_millis(100);
+
 /// The settings the frontend runs with, and what it ignored of the file.
 #[derive(Debug, Default)]
 pub struct Config {
     /// The key bindings: the defaults with the file's `[keymap.*]` tables applied.
     pub(super) keymap: Keymap,
+    /// How long after the last change a save starts, when the file says (`autosave_delay_ms`).
+    pub(super) autosave_delay: Option<Duration>,
+    backups: BackupSettings,
     problems: Vec<Problem>,
 }
 
 impl Config {
-    /// What the app ignored of the file, in the order the file has it.
+    /// What the app ignored of the file, setting by setting.
     #[must_use]
     pub fn problems(&self) -> &[Problem] {
         &self.problems
+    }
+
+    /// The backups the file asks for (`[backups]`).
+    #[must_use]
+    pub fn backups(&self) -> &BackupSettings {
+        &self.backups
+    }
+
+    /// Takes `autosave_delay_ms` from `item`.
+    fn read_autosave_delay(&mut self, item: &Item) {
+        match item.as_integer().and_then(|ms| u64::try_from(ms).ok()) {
+            Some(ms) if Duration::from_millis(ms) >= MIN_AUTOSAVE_DELAY => {
+                self.autosave_delay = Some(Duration::from_millis(ms));
+            }
+            _ => self.problems.push(Problem::InvalidValue {
+                key: "autosave_delay_ms".to_owned(),
+                expected: "a whole number of milliseconds, at least 100",
+            }),
+        }
+    }
+
+    /// Takes the settings of the `[backups]` table `item`, a folder starting with `~` under
+    /// `home`.
+    fn read_backups(&mut self, item: &Item, home: Option<&Path>) {
+        let Some(settings) = table(item, "backups", &mut self.problems) else {
+            return;
+        };
+        for (key, item) in settings.iter() {
+            let invalid = |expected| Problem::InvalidValue {
+                key: format!("backups.{key}"),
+                expected,
+            };
+            match key {
+                "enabled" => match item.as_bool() {
+                    Some(enabled) => self.backups.enabled = enabled,
+                    None => self.problems.push(invalid("true or false")),
+                },
+                "dir" => match item.as_str() {
+                    Some(dir) if !dir.is_empty() => {
+                        self.backups.folder = Some(effects::expand_path(dir, home));
+                    }
+                    _ => self.problems.push(invalid("a folder")),
+                },
+                "keep" => match item
+                    .as_integer()
+                    .and_then(|keep| usize::try_from(keep).ok())
+                {
+                    Some(keep) if keep >= 1 => self.backups.keep = keep,
+                    _ => self.problems.push(invalid("a whole number, at least 1")),
+                },
+                _ => self.problems.push(Problem::UnknownSetting {
+                    key: format!("backups.{key}"),
+                }),
+            }
+        }
     }
 
     /// The defaults with only `problem`.
@@ -139,11 +204,12 @@ fn table<'a>(item: &'a Item, key: &str, problems: &mut Vec<Problem>) -> Option<&
 }
 
 /// The settings of the file at `path`: the defaults where it does not exist, and otherwise
-/// what it sets that the app can use, with the problems of the rest.
+/// what it sets that the app can use, with the problems of the rest. A folder it names starting
+/// with `~` is under `home`.
 #[must_use]
-pub fn load(path: &Path) -> Config {
+pub fn load(path: &Path, home: Option<&Path>) -> Config {
     match fs::read_to_string(path) {
-        Ok(text) => read(&text),
+        Ok(text) => read(&text, home),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Config::default(),
         Err(error) => Config::failed(Problem::Unreadable {
             reason: error.to_string(),
@@ -151,8 +217,9 @@ pub fn load(path: &Path) -> Config {
     }
 }
 
-/// The settings `text`, a settings file, sets, with the problems of what it sets wrongly.
-fn read(text: &str) -> Config {
+/// The settings `text`, a settings file, sets, with the problems of what it sets wrongly; a
+/// folder starting with `~` is under `home`.
+fn read(text: &str, home: Option<&Path>) -> Config {
     let document = match Document::parse(text) {
         Ok(document) => document,
         Err(error) => {
@@ -168,6 +235,8 @@ fn read(text: &str) -> Config {
     for (key, item) in document.as_table() {
         match key {
             "keymap" => config.read_keymap(item),
+            "autosave_delay_ms" => config.read_autosave_delay(item),
+            "backups" => config.read_backups(item, home),
             _ => config.problems.push(Problem::UnknownSetting {
                 key: key.to_owned(),
             }),
@@ -211,7 +280,7 @@ mod tests {
     #[test]
     fn a_missing_file_gives_the_defaults_without_problems() -> TestResult {
         let dir = tempfile::tempdir()?;
-        let config = load(&dir.path().join("config.toml"));
+        let config = load(&dir.path().join("config.toml"), None);
         assert_eq!(config.problems(), []);
         assert_eq!(
             config.keymap.labels(Command::Quit, Mode::Navigate),
@@ -226,7 +295,7 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let path = dir.path().join("config.toml");
         fs::write(&path, "[keymap.navigate]\nx = \"none\"\n")?;
-        let config = load(&path);
+        let config = load(&path, None);
         assert_eq!(config.problems(), []);
         assert_eq!(
             config.keymap.labels(Command::ToggleDone, Mode::Navigate),
@@ -242,11 +311,14 @@ mod tests {
         let path = dir.path().join("config.toml");
         fs::write(&path, [0xff, 0xfe])?;
         assert!(matches!(
-            load(&path).problems(),
+            load(&path, None).problems(),
             [Problem::Unreadable { .. }]
         ));
         assert!(
-            matches!(load(dir.path()).problems(), [Problem::Unreadable { .. }]),
+            matches!(
+                load(dir.path(), None).problems(),
+                [Problem::Unreadable { .. }]
+            ),
             "a folder"
         );
         Ok(())
@@ -255,7 +327,7 @@ mod tests {
     // FR-SET-04
     #[test]
     fn a_file_that_is_not_toml_gives_the_defaults_and_names_the_line() {
-        let config = read("[keymap.navigate]\nx = \"none\"\ny = \n");
+        let config = read("[keymap.navigate]\nx = \"none\"\ny = \n", None);
         assert!(matches!(
             config.problems(),
             [Problem::Syntax { line: 3, .. }]
@@ -277,6 +349,7 @@ mod tests {
              \"ctrl+d\" = \"toggle_done\"\n\
              [keymap.sidebar]\n\
              j = \"none\"\n",
+            None,
         );
         assert_eq!(
             config.problems(),
@@ -297,7 +370,7 @@ mod tests {
             config.keymap.labels(Command::ToggleDone, Mode::Navigate),
             "Ctrl+D, x, Ctrl+Enter"
         );
-        let config = read("keymap = 1\n");
+        let config = read("keymap = 1\n", None);
         assert_eq!(
             config.problems(),
             [Problem::InvalidValue {
@@ -305,7 +378,7 @@ mod tests {
                 expected: "a table"
             }]
         );
-        let config = read("keymap = { edit = \"none\" }\n");
+        let config = read("keymap = { edit = \"none\" }\n", None);
         assert_eq!(
             config.problems(),
             [Problem::InvalidValue {
@@ -327,6 +400,7 @@ mod tests {
              [keymap.edit]\n\
              \"ctrl+g\" = \"inline_code\"\n\
              \"ctrl+e\" = \"zoom_in\"\n",
+            None,
         );
         assert_eq!(
             config.problems(),
@@ -365,6 +439,91 @@ mod tests {
                 Mode::Edit
             ),
             "Ctrl+G, Alt+`, Ctrl+E"
+        );
+    }
+
+    // FR-SET-01, file-io.md §2
+    #[test]
+    fn the_autosave_delay_and_backups_are_read_with_their_limits() {
+        let config = read(
+            "autosave_delay_ms = 250\n\
+             [backups]\n\
+             enabled = false\n\
+             dir = \"~/copies\"\n\
+             keep = 3\n",
+            Some(Path::new("/home/ann")),
+        );
+        assert_eq!(config.problems(), []);
+        assert_eq!(config.autosave_delay, Some(Duration::from_millis(250)));
+        assert_eq!(
+            config.backups(),
+            &BackupSettings {
+                enabled: false,
+                folder: Some(PathBuf::from("/home/ann/copies")),
+                keep: 3,
+            }
+        );
+        let defaults = read("", None);
+        assert_eq!(defaults.autosave_delay, None);
+        assert_eq!(defaults.backups(), &BackupSettings::default());
+        assert_eq!(
+            read("autosave_delay_ms = 100\n", None).autosave_delay,
+            Some(Duration::from_millis(100)),
+            "the least delay"
+        );
+    }
+
+    // FR-SET-04, file-io.md §2
+    #[test]
+    fn autosave_and_backup_values_out_of_range_are_reported_and_keep_their_defaults() {
+        let invalid = |key: &str, expected| Problem::InvalidValue {
+            key: key.to_owned(),
+            expected,
+        };
+        let delay = "a whole number of milliseconds, at least 100";
+        for text in [
+            "autosave_delay_ms = 99",
+            "autosave_delay_ms = -5",
+            "autosave_delay_ms = \"1s\"",
+        ] {
+            let config = read(text, None);
+            assert_eq!(
+                config.problems(),
+                [invalid("autosave_delay_ms", delay)],
+                "{text}"
+            );
+            assert_eq!(config.autosave_delay, None);
+        }
+        let config = read(
+            "[backups]\n\
+             enabled = \"no\"\n\
+             dir = \"\"\n\
+             keep = 0\n\
+             folder = \"x\"\n",
+            None,
+        );
+        assert_eq!(
+            config.problems(),
+            [
+                invalid("backups.enabled", "true or false"),
+                invalid("backups.dir", "a folder"),
+                invalid("backups.keep", "a whole number, at least 1"),
+                Problem::UnknownSetting {
+                    key: "backups.folder".to_owned()
+                },
+            ]
+        );
+        assert_eq!(config.backups(), &BackupSettings::default());
+        assert_eq!(
+            read("[backups]\ndir = 3\nkeep = -1\n", None).problems(),
+            [
+                invalid("backups.dir", "a folder"),
+                invalid("backups.keep", "a whole number, at least 1"),
+            ]
+        );
+        assert_eq!(
+            read("backups = true\n", None).problems(),
+            [invalid("backups", "a table")]
         );
     }
 

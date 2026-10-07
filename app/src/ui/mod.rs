@@ -157,12 +157,15 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the settings `config` holds, reporting once what it ignored of
-    /// the settings file (FR-SET-04).
+    /// The frontend running with the key bindings and autosave delay `config` holds, reporting
+    /// once what it ignored of the settings file (FR-SET-04). Its backups are the disk worker's.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
         self.keymap = config.keymap;
+        if let Some(delay) = config.autosave_delay {
+            self.send(Message::SetAutosaveDelay(delay), Duration::ZERO);
+        }
         if !problems.is_empty() {
             self.send(Message::ConfigProblems(problems), Duration::ZERO);
         }

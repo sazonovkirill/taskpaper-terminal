@@ -135,3 +135,33 @@ fn a_config_file_that_is_not_toml_is_reported_and_the_app_starts_with_the_defaul
         "- Milk @done(2026-10-05)\n- Eggs\n"
     );
 }
+
+// FR-DOC-02, FR-SET-01, file-io.md §2
+#[test]
+fn the_config_file_sets_the_autosave_delay() {
+    let mut app = Harness::with_config(OUTLINE, "autosave_delay_ms = 5000\n", 60, 8);
+    app.type_keys("x");
+    app.wait(Duration::from_secs(4));
+    app.settle();
+    let path = app.path.clone().unwrap();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), OUTLINE, "not yet");
+    app.wait(Duration::from_secs(1));
+    app.settle();
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "- Milk @done(2026-10-05)\n- Eggs\n"
+    );
+}
+
+// FR-DOC-07, FR-SET-01, file-io.md §2
+#[test]
+fn the_config_file_moves_backups_to_a_folder_under_home_or_turns_them_off() {
+    let mut app = Harness::with_config(OUTLINE, "[backups]\ndir = \"~/copies\"\n", 60, 8);
+    app.settle();
+    let copies = std::fs::read_dir(app.home.join("copies")).unwrap().count();
+    assert_eq!(copies, 1, "one folder for the file");
+    assert!(!app.backups.exists(), "not in the default folder");
+    let mut app = Harness::with_config(OUTLINE, "[backups]\nenabled = false\n", 60, 8);
+    app.settle();
+    assert!(!app.backups.exists(), "no daily copy");
+}

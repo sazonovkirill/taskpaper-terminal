@@ -8,7 +8,8 @@ use std::{path::PathBuf, time::Duration};
 use super::{Access, Effect, Notice, Origin, State, update::Disk};
 use crate::document::format::{self, canonical};
 
-/// How long after the last change a save starts (file-io.md §2, `autosave_delay_ms`).
+/// How long after the last change a save starts unless the frontend sets another delay
+/// (file-io.md §2, `autosave_delay_ms`).
 pub const DELAY: Duration = Duration::from_secs(1);
 
 /// What the status line says about saving.
@@ -62,6 +63,8 @@ pub(super) struct Autosave {
     backup_warned: bool,
     /// Whether the next save starts without waiting for the delay.
     urgent: bool,
+    /// How long after the last change a save starts.
+    delay: Duration,
 }
 
 impl Autosave {
@@ -86,6 +89,7 @@ impl Autosave {
             confirm_quit: false,
             backup_warned: false,
             urgent: false,
+            delay: DELAY,
         }
     }
 
@@ -108,7 +112,8 @@ impl Autosave {
                 Some(Ending::Discard) => false,
                 None => {
                     self.urgent
-                        || !self.failed_at(revision) && now >= self.changed_at.saturating_add(DELAY)
+                        || !self.failed_at(revision)
+                            && now >= self.changed_at.saturating_add(self.delay)
                 }
             }
     }
@@ -125,7 +130,7 @@ impl Autosave {
             && self.writing.is_none()
             && Some(self.seen) != self.saved
             && !self.failed_at(self.seen))
-        .then(|| self.changed_at.saturating_add(DELAY))
+        .then(|| self.changed_at.saturating_add(self.delay))
     }
 
     /// Whether the session can end now: the file holds every change, or it is ended without them.
@@ -306,6 +311,11 @@ impl State {
         self.autosave.refused();
         self.external.save_ended(false);
         self.found(contents);
+    }
+
+    /// Saves `delay` after the last change from now on (`autosave_delay_ms`).
+    pub(super) fn set_autosave_delay(&mut self, delay: Duration) {
+        self.autosave.delay = delay;
     }
 
     /// Shows a backup failure, the first time one happens in the session.
@@ -655,6 +665,17 @@ mod tests {
         let mut unnamed = State::new(format::parse("a\n"), None);
         edit(&mut unnamed, "d", ms(0));
         assert_eq!(unnamed.unsaved_text().as_deref(), Some("d\n"));
+    }
+
+    // FR-DOC-02, file-io.md §2
+    #[test]
+    fn the_frontend_sets_how_long_after_the_last_change_a_save_starts() {
+        let mut state = opened();
+        assert_eq!(state.update(Message::SetAutosaveDelay(ms(300))), []);
+        assert_eq!(edit(&mut state, "b", ms(100)), []);
+        assert_eq!(state.deadline(), Some(ms(400)));
+        assert_eq!(tick(&mut state, ms(399)), []);
+        assert_eq!(tick(&mut state, ms(400)), save("b\n"));
     }
 
     // N-REL-01, file-io.md §4
