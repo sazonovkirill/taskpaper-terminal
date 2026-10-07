@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn demo_has_five_open_tasks_in_a_row_to_select() {
         let rows = State::new(format::parse(&text(TODAY)), None).rows();
-        let open_task_run = rows.windows(5).any(|run| {
+        let open_task_run = rows.to_vec().windows(5).any(|run| {
             run.iter()
                 .all(|row| row.kind == BlockKind::Task && !row.done && row.depth == run[0].depth)
         });

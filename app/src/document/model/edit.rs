@@ -10,6 +10,9 @@ use thiserror::Error;
 
 use super::{Document, Item, ItemId, Line};
 
+/// How many of the latest transactions a document remembers the changed lines of.
+const LOGGED: usize = 64;
+
 /// A primitive change to the line tree; every edit, its undo and its redo is a sequence of these.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
@@ -117,6 +120,23 @@ pub enum EditError {
 }
 
 impl Op {
+    /// The lines the op changes: those it puts in or takes out and those whose text, extra
+    /// indent, parent or children it changes.
+    fn lines(&self) -> Vec<ItemId> {
+        match self {
+            Self::SetText { id, .. } | Self::SetExtraIndent { id, .. } => vec![*id],
+            Self::Insert {
+                parent, subtree, ..
+            }
+            | Self::Remove {
+                parent, subtree, ..
+            } => std::iter::once(*parent)
+                .chain(subtree.lines().map(|&(id, _)| id))
+                .collect(),
+            Self::Move { id, from, to } => vec![*id, from.0, to.0],
+        }
+    }
+
     /// The op that undoes this one.
     #[must_use]
     pub fn inverse(self) -> Self {
@@ -315,6 +335,11 @@ impl Document {
         transaction.ops.extend(repairs);
         if !transaction.ops.is_empty() {
             self.revision += 1;
+            let lines = transaction.ops.iter().flat_map(Op::lines).collect();
+            if self.changes.len() == LOGGED {
+                self.changes.pop_front();
+            }
+            self.changes.push_back((self.revision, lines));
         }
         Ok(())
     }
@@ -726,6 +751,67 @@ mod tests {
             .apply(&mut transaction(vec![set_text(&document, "- a", "- b")]))
             .unwrap();
         assert_ne!(document.stamp(), stamp);
+    }
+
+    // N-PERF-02
+    #[test]
+    fn a_document_tells_the_lines_changed_since_a_stamp() {
+        let mut document = parse("A:\n\t- b\n\t\t- c\nD:");
+        let [a, b, c, d] = ["A:", "- b", "- c", "D:"].map(|text| id(&document, text));
+        let start = document.stamp();
+        let changed = |document: &Document, stamp| {
+            document.changed_since(stamp).map(|lines: HashSet<ItemId>| {
+                let mut lines: Vec<ItemId> = lines.into_iter().collect();
+                lines.sort();
+                lines
+            })
+        };
+        let sorted = |mut lines: Vec<ItemId>| {
+            lines.sort();
+            Some(lines)
+        };
+        assert_eq!(changed(&document, &start), Some(Vec::new()));
+        document
+            .apply(&mut transaction(vec![set_text(&document, "- c", "- e")]))
+            .unwrap();
+        assert_eq!(changed(&document, &start), Some(vec![c]));
+        let moved = document.stamp();
+        document
+            .apply(&mut transaction(vec![Op::Move {
+                id: b,
+                from: (a, 0),
+                to: (d, 0),
+            }]))
+            .unwrap();
+        assert_eq!(changed(&document, &moved), sorted(vec![b, a, d]));
+        assert_eq!(changed(&document, &start), sorted(vec![c, b, a, d]));
+        let removed = document.stamp();
+        document
+            .apply(&mut transaction(vec![remove(&document, b)]))
+            .unwrap();
+        assert_eq!(changed(&document, &removed), sorted(vec![d, b, c]));
+        let copy = document.clone();
+        assert_eq!(
+            copy.changed_since(&document.stamp()),
+            None,
+            "another document's stamp"
+        );
+        assert_eq!(document.changed_since(&copy.stamp()), None);
+        let old = document.stamp();
+        for round in 0..LOGGED {
+            let text = document.get(a).unwrap().text().to_owned();
+            let after = format!("A{round}:");
+            document
+                .apply(&mut transaction(vec![set_text(&document, &text, &after)]))
+                .unwrap();
+        }
+        assert_eq!(
+            changed(&document, &old),
+            Some(vec![a]),
+            "as old as remembered"
+        );
+        assert_eq!(changed(&document, &start), None, "older");
+        assert_eq!(changed(&document, &moved), None);
     }
 
     #[test]

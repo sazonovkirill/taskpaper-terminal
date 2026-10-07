@@ -2,7 +2,10 @@
 
 mod edit;
 
-use std::sync::{Arc, OnceLock};
+use std::{
+    collections::{HashSet, VecDeque},
+    sync::{Arc, OnceLock},
+};
 
 use slotmap::{SlotMap, new_key_type};
 
@@ -29,6 +32,9 @@ pub struct Document {
     root: ItemId,
     format: FileFormat,
     revision: u64,
+    /// The lines each of the latest transactions changed, oldest first, with the revision it
+    /// made, so that views can tell what changed since they were computed (N-PERF-02).
+    changes: VecDeque<(u64, Vec<ItemId>)>,
     /// Shared only by this document's stamps, so that no other document, a copy included, has
     /// equal ones.
     identity: Arc<()>,
@@ -42,6 +48,8 @@ impl Clone for Document {
             root: self.root,
             format: self.format.clone(),
             revision: self.revision,
+            // Its stamps differ from this one's, so this one's log could never answer for them.
+            changes: VecDeque::new(),
             identity: Arc::default(),
         }
     }
@@ -152,6 +160,7 @@ impl Document {
             root,
             format,
             revision: 0,
+            changes: VecDeque::new(),
             identity: Arc::default(),
         }
     }
@@ -187,6 +196,27 @@ impl Document {
             identity: Arc::clone(&self.identity),
             revision: self.revision,
         }
+    }
+
+    /// The lines changed since the document's `stamp`: those put in or taken out and those whose
+    /// text, extra indent, parent or children changed. `None` when `stamp` is another document's
+    /// or too old to tell.
+    #[must_use]
+    pub fn changed_since(&self, stamp: &Stamp) -> Option<HashSet<ItemId>> {
+        if !Arc::ptr_eq(&stamp.identity, &self.identity) {
+            return None;
+        }
+        if stamp.revision == self.revision {
+            return Some(HashSet::new());
+        }
+        let (oldest, _) = self.changes.front()?;
+        (*oldest <= stamp.revision + 1).then(|| {
+            self.changes
+                .iter()
+                .filter(|(revision, _)| *revision > stamp.revision)
+                .flat_map(|(_, lines)| lines.iter().copied())
+                .collect()
+        })
     }
 
     /// Every item below `id` in document order, with its depth relative to `id`'s children (0).

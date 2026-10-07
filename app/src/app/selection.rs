@@ -2,6 +2,8 @@
 //! toggle and clear it, and which blocks a command then takes
 //! ([navigation.md §2](../../../docs/specs/navigation.md#2-focus-and-motion-fr-nav-01), FR-OPS-01).
 
+use std::collections::HashSet;
+
 use super::{State, pane::Pane};
 use crate::document::{Block, ItemId, blocks};
 
@@ -42,6 +44,13 @@ impl Selection {
     /// Whether the block `id` is selected.
     pub(super) fn contains(&self, id: ItemId) -> bool {
         self.picked.contains(&id)
+    }
+
+    /// The blocks selected in only one of this selection and `other`.
+    pub(super) fn differences(&self, other: &Self) -> HashSet<ItemId> {
+        let mine: HashSet<ItemId> = self.picked.iter().copied().collect();
+        let theirs: HashSet<ItemId> = other.picked.iter().copied().collect();
+        mine.symmetric_difference(&theirs).copied().collect()
     }
 
     /// This selection with each block replaced by the one `to` finds for it, or dropped when it

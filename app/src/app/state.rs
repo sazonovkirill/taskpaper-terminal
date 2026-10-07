@@ -2,8 +2,8 @@
 
 use std::{
     collections::HashSet,
+    ops::Range,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::Arc,
     time::Duration,
 };
@@ -20,6 +20,7 @@ use super::{
     memo::Memo,
     pane::Pane,
     picker::Picker,
+    rows::{Builder, OldSiblings, Rows},
     save_as,
     saving::Autosave,
     selection::Selection,
@@ -99,7 +100,7 @@ pub struct State {
     /// The order the user gave the Today view's entries (D-57).
     pub(super) today_order: TodayOrder,
     /// The rows of the panes, kept while what they show stays the same.
-    rows: Memo<RowsKey, Rc<[Row]>>,
+    rows: Memo<RowsKey, Rows>,
 }
 
 /// Everything the rows of a pane are computed from.
@@ -476,12 +477,12 @@ impl State {
 
     /// The visible rows: the outline's, or in the Today view its entries (D-7).
     #[must_use]
-    pub fn rows(&self) -> Rc<[Row]> {
+    pub fn rows(&self) -> Rows {
         self.rows_of(&self.pane)
     }
 
     /// The visible rows of `pane`: its outline's, or in the Today view its entries (D-7).
-    pub(super) fn rows_of(&self, pane: &Pane) -> Rc<[Row]> {
+    pub(super) fn rows_of(&self, pane: &Pane) -> Rows {
         let key = RowsKey {
             document: self.document.stamp(),
             folds: self.folds.clone(),
@@ -491,18 +492,26 @@ impl State {
             today: (pane.location == Location::Today)
                 .then(|| (self.today, self.today_order.clone())),
         };
-        self.rows.get(key, || match pane.location {
-            Location::Outline(_) => self.outline_rows(pane).into(),
-            Location::Today => self.today_rows(pane).into(),
-        })
+        let fits = |kept: &RowsKey| {
+            matches!(kept.location, Location::Outline(_))
+                && kept.location == pane.location
+                && kept.show_done == pane.show_done
+        };
+        self.rows
+            .get_or_derive(key, fits, |before| match pane.location {
+                Location::Outline(_) => self.outline_rows(pane, before),
+                Location::Today => self.today_rows(pane).into_iter().collect(),
+            })
     }
 
-    /// The rows of `pane`'s outline: when zoomed, a title row for the zoom block at depth 0, then its child
-    /// blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed blocks hide
-    /// their children, done blocks are hidden with theirs while completed blocks are, and special
-    /// nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row inside a done
-    /// block, also one above the zoom, says so (D-40).
-    fn outline_rows(&self, pane: &Pane) -> Vec<Row> {
+    /// The rows of `pane`'s outline: when zoomed, a title row for the zoom block at depth 0, then
+    /// its child blocks from depth 1, so depth always follows the hierarchy (D-31). Collapsed
+    /// blocks hide their children, done blocks are hidden with theirs while completed blocks are,
+    /// and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row
+    /// inside a done block, also one above the zoom, says so (D-40). Rows of `before`, the
+    /// pane's rows at an earlier key, are kept where nothing they show changed since.
+    fn outline_rows(&self, pane: &Pane, before: Option<(RowsKey, Rows)>) -> Rows {
+        let folds = &self.folds;
         let title = self.zoom_block_of(pane).map(|block| {
             let inside_done =
                 std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
@@ -515,18 +524,100 @@ impl State {
         let top_done = title
             .as_ref()
             .is_some_and(|row| row.done || row.inside_done);
-        // Whether each block on the path to the current one is done or inside a done block.
-        let mut path: Vec<bool> = Vec::new();
-        let rows = self.walk(pane, true).map(|(block, depth)| {
-            path.truncate(depth);
-            let inside_done = path.last().copied().unwrap_or(top_done);
-            path.push(inside_done || block.done());
-            self.row(pane, &block, depth + below, false, inside_done)
-        });
-        title.into_iter().chain(rows).collect()
+        let before =
+            before.and_then(|(key, rows)| Some((rows, self.changed_blocks(pane, folds, &key)?)));
+        let mut rows = Builder::new(before.as_ref().map(|(rows, _)| rows));
+        let opened = title.map(|row| rows.open(row));
+        let top = self
+            .zoom_block_of(pane)
+            .map_or(self.document.root(), |block| block.id());
+        let kept = before
+            .as_ref()
+            .map(|(rows, changed)| (below..rows.len(), changed));
+        self.push_rows((pane, folds), top, (below, top_done), kept, &mut rows);
+        if let Some(opened) = opened {
+            rows.close(opened);
+        }
+        rows.finish()
     }
 
-    /// The row of `block` at `depth` in `pane`'s outline, the title row with `title`.
+    /// The blocks whose rows may differ from those at `key` in `pane`, with every line above
+    /// them, or `None` when the document cannot tell what changed since.
+    fn changed_blocks(
+        &self,
+        pane: &Pane,
+        folds: &HashSet<ItemId>,
+        key: &RowsKey,
+    ) -> Option<HashSet<ItemId>> {
+        let changed = self
+            .document
+            .changed_since(&key.document)?
+            .into_iter()
+            .chain(folds.symmetric_difference(&key.folds).copied())
+            .chain(pane.selection.differences(&key.selection));
+        let mut above = HashSet::new();
+        for id in changed {
+            let mut line = Some(id);
+            while let Some(id) = line
+                && above.insert(id)
+            {
+                line = self.document.get(id).and_then(Item::parent);
+            }
+        }
+        Some(above)
+    }
+
+    /// Adds the rows of the blocks below the line `parent` at `depth`, inside a done block when
+    /// `inside_done` says so. With `kept`, the old rows of `parent`'s children and the blocks
+    /// whose rows may have changed since, it keeps the rows of each unchanged block.
+    fn push_rows(
+        &self,
+        (pane, folds): (&Pane, &HashSet<ItemId>),
+        parent: ItemId,
+        (depth, inside_done): (usize, bool),
+        kept: Option<(Range<usize>, &HashSet<ItemId>)>,
+        rows: &mut Builder,
+    ) {
+        let children = self.document.get(parent).map_or(&[][..], Item::children);
+        let mut old =
+            kept.and_then(|(range, changed)| Some((OldSiblings::new(rows.old()?, range), changed)));
+        for &id in children {
+            if let Some((siblings, changed)) = &mut old
+                && !changed.contains(&id)
+            {
+                siblings.skip(changed);
+                if siblings.keep(id, (depth, inside_done), rows) {
+                    continue;
+                }
+            }
+            let Some(block) = blocks::block(&self.document, id).filter(|block| pane.shows(block))
+            else {
+                continue;
+            };
+            let folded = folds.contains(&id);
+            let opened = rows.open(Row {
+                hidden_tasks: (folded && blocks::each_child(&self.document, id).next().is_some())
+                    .then(|| self.open_tasks(&block, inside_done)),
+                ..self.row(pane, &block, depth, false, inside_done)
+            });
+            if !folded {
+                let below = old
+                    .as_mut()
+                    .and_then(|(siblings, changed)| Some((siblings.children_of(id)?, &**changed)));
+                self.push_rows(
+                    (pane, folds),
+                    id,
+                    (depth + 1, inside_done || block.done()),
+                    below,
+                    rows,
+                );
+            }
+            rows.close(opened);
+        }
+    }
+
+    /// The row of `block` at `depth` in `pane`'s outline, the title row with `title`, as if
+    /// expanded.
     pub(super) fn row(
         &self,
         pane: &Pane,
@@ -548,12 +639,7 @@ impl State {
                 .unwrap_or_default(),
             done: block.done(),
             inside_done,
-            hidden_tasks: (!title
-                && self.folds.contains(&block.id())
-                && blocks::each_child(&self.document, block.id())
-                    .next()
-                    .is_some())
-            .then(|| self.open_tasks(block, inside_done)),
+            hidden_tasks: None,
             title,
             start: block.start(),
             due: block.due(),
@@ -655,8 +741,10 @@ impl State {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Write as _;
+
     use super::*;
-    use crate::document::format;
+    use crate::document::{Op, Snapshot, format};
 
     fn summary(state: &State) -> Vec<(usize, BlockKind, String)> {
         state
@@ -752,7 +840,7 @@ mod tests {
             now: Duration::ZERO,
             today: jiff::civil::date(2026, 10, 6),
         });
-        assert!(Rc::ptr_eq(&rows, &state.rows()));
+        assert!(Rows::ptr_eq(&rows, &state.rows()));
     }
 
     // FR-TAG-03
@@ -869,7 +957,7 @@ mod tests {
 
     #[test]
     fn empty_document_has_no_rows() {
-        assert_eq!(*State::new(Document::default(), None).rows(), []);
+        assert!(State::new(Document::default(), None).rows().is_empty());
     }
 
     #[test]
@@ -944,5 +1032,171 @@ mod tests {
             [("a".to_owned(), None), ("b".to_owned(), None)],
             "expanded"
         );
+    }
+
+    /// A change the rows of a pane must follow.
+    #[derive(Debug, Clone)]
+    enum Change {
+        /// Gives the line at this position this text.
+        Text(usize, &'static str),
+        /// Takes out the line at this position.
+        Remove(usize),
+        /// Moves the line at the first position under the one at the second, or the root.
+        Move(usize, usize),
+        /// Puts in a new line under the one at this position.
+        Insert(usize),
+        /// Collapses or expands the block at this position.
+        Fold(usize),
+        /// Selects or unselects the block at this position.
+        Select(usize),
+        /// Zooms into the block at this position, or goes home.
+        Zoom(usize),
+        /// Shows or hides completed blocks.
+        ShowDone,
+    }
+
+    fn changes() -> impl proptest::strategy::Strategy<Value = Vec<Change>> {
+        use proptest::prelude::*;
+        let text =
+            prop::sample::select(vec!["- t", "- t @done", "P:", "P: @done", "n", "h @hidden"]);
+        let change = prop_oneof![
+            (any::<usize>(), text).prop_map(|(at, text)| Change::Text(at, text)),
+            any::<usize>().prop_map(Change::Remove),
+            (any::<usize>(), any::<usize>()).prop_map(|(at, to)| Change::Move(at, to)),
+            any::<usize>().prop_map(Change::Insert),
+            any::<usize>().prop_map(Change::Fold),
+            any::<usize>().prop_map(Change::Select),
+            any::<usize>().prop_map(Change::Zoom),
+            Just(Change::ShowDone),
+        ];
+        proptest::collection::vec(change, 1..12)
+    }
+
+    /// Makes `change` to `state`, positions counting the document's lines, root first.
+    fn make(state: &mut State, change: &Change) {
+        let document = &state.document;
+        let lines: Vec<ItemId> = std::iter::once(document.root())
+            .chain(document.descendants(document.root()).map(|(id, _)| id))
+            .collect();
+        let line = |at: usize| lines[at % lines.len()];
+        let op = match *change {
+            Change::Text(at, text) => {
+                let id = line(at);
+                let before = document.get(id).unwrap().text().to_owned();
+                (id != document.root()).then(|| Op::SetText {
+                    id,
+                    before,
+                    after: text.to_owned(),
+                })
+            }
+            Change::Remove(at) => document
+                .position(line(at))
+                .map(|(parent, index)| Op::Remove {
+                    parent,
+                    index,
+                    subtree: document.snapshot(line(at)).unwrap(),
+                }),
+            Change::Move(at, to) => {
+                let (id, parent) = (line(at), line(to));
+                let inside = std::iter::successors(Some(parent), |&up| document.get(up)?.parent())
+                    .any(|up| up == id);
+                document
+                    .position(id)
+                    .filter(|_| !inside)
+                    .map(|from| Op::Move {
+                        id,
+                        from,
+                        to: (parent, 0),
+                    })
+            }
+            Change::Insert(at) => {
+                let id = state.document.new_id();
+                Some(Op::Insert {
+                    parent: line(at),
+                    index: 0,
+                    subtree: Snapshot::line(id, "- new".to_owned()),
+                })
+            }
+            Change::Fold(at) => {
+                if !state.folds.remove(&line(at)) {
+                    state.folds.insert(line(at));
+                }
+                None
+            }
+            Change::Select(at) => {
+                state.pane.focus = Some(line(at));
+                state.update(crate::app::Message::Select(
+                    crate::app::SelectionChange::Toggle,
+                ));
+                None
+            }
+            Change::Zoom(at) => {
+                state.pane.location = Location::Outline((at % 3 != 0).then(|| line(at)));
+                None
+            }
+            Change::ShowDone => {
+                state.pane.show_done = !state.pane.show_done;
+                None
+            }
+        };
+        if let Some(op) = op {
+            state
+                .document
+                .apply(&mut crate::document::Transaction::new(vec![op], (), ()))
+                .unwrap();
+        }
+    }
+
+    // N-PERF-02
+    #[test]
+    fn a_change_builds_again_only_the_rows_around_it() {
+        let mut text = "Top:\n".to_owned();
+        for project in 0..40 {
+            writeln!(text, "\tP{project}:").unwrap();
+            for task in 0..50 {
+                writeln!(text, "\t\t- {project} {task}").unwrap();
+            }
+        }
+        text.push_str("After:\n");
+        let mut state = State::new(format::parse(&text), None);
+        let middle = 20 * 51;
+        for change in [
+            Change::Text(middle + 3, "- t @done"),
+            Change::Text(middle, "P: @done"),
+            Change::Remove(middle),
+            Change::Insert(0),
+            Change::Insert(middle + 7),
+            Change::Move(middle + 2, 0),
+            Change::Fold(middle + 52),
+            Change::Select(middle + 9),
+        ] {
+            let before = state.rows();
+            make(&mut state, &change);
+            let rows = state.rows();
+            assert_eq!(rows, state.outline_rows(&state.pane, None));
+            // The chunk of the first row, Top's, which every change below it builds again, and
+            // those around the change, of the eight there are.
+            let built = rows.chunks_apart_from(&before);
+            assert!(built <= 4, "{change:?} built {built} chunks again");
+        }
+    }
+
+    proptest::proptest! {
+        // N-PERF-02: rows built again from earlier ones are the rows built anew.
+        #[test]
+        fn rows_kept_from_before_a_change_are_those_built_anew(changes in changes()) {
+            let mut state = State::new(
+                format::parse("A:\n\t- a\n\t\t- b @done\n\t\tn\nB: @done\n\t- c\n\t\t\th @hidden\n- d\n\t- e"),
+                None,
+            );
+            for change in &changes {
+                // Kept, for the rows after the change to be built from.
+                let _ = state.rows();
+                make(&mut state, change);
+                let rows = state.rows();
+                let anew = state.outline_rows(&state.pane, None);
+                proptest::prop_assert_eq!(rows, anew, "after {:?}", change);
+            }
+        }
     }
 }

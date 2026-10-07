@@ -5,10 +5,10 @@
 //! ([navigation.md §5](../../../docs/specs/navigation.md#5-panes-fr-ui-02--fr-ui-04-d-13),
 //! FR-UI-02, FR-UI-03, D-13).
 
-use std::{cmp::Ordering, rc::Rc};
+use std::cmp::Ordering;
 
 use super::{
-    Location, Row, SidebarInput, State,
+    Location, Rows, SidebarInput, State,
     commands::{Command, NodeCommand},
     selection::Selection,
 };
@@ -131,7 +131,7 @@ pub struct PaneView {
     /// [`State::breadcrumbs`] gives them.
     pub breadcrumbs: Vec<String>,
     /// Its visible rows.
-    pub rows: Rc<[Row]>,
+    pub rows: Rows,
     /// Its focused row's item.
     pub focus: Option<ItemId>,
     /// The width the frontend gave it when it was last narrowed or widened, or `None` while it
@@ -152,7 +152,7 @@ pub(super) struct Landmark {
 
 /// The block to focus on arriving at a location with `rows`: the first block under the title,
 /// else the title.
-pub(super) fn landing(rows: &[Row]) -> Option<ItemId> {
+pub(super) fn landing(rows: &Rows) -> Option<ItemId> {
     rows.iter()
         .find(|row| !row.title)
         .or(rows.first())

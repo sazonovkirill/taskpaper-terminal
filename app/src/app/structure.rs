@@ -137,10 +137,12 @@ impl State {
             })
             .any(|block| roots.iter().any(|root| root.id() == block.id()))
         };
-        let at = rows.iter().position(|row| row.id == last.id());
-        let (before, after) = rows.split_at(at.unwrap_or_default());
-        let next = after.iter().find(|row| !gone(row.id));
-        let previous = before.iter().rev().find(|row| !gone(row.id));
+        let at = rows
+            .iter()
+            .position(|row| row.id == last.id())
+            .unwrap_or_default();
+        let next = rows.iter_from(at).find(|row| !gone(row.id));
+        let previous = rows.iter().take(at).rev().find(|row| !gone(row.id));
         self.delete_blocks(&roots, next.or(previous).map(|row| row.id));
     }
 

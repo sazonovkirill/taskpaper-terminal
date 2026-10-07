@@ -1263,6 +1263,16 @@ mod tests {
         assert_eq!(state.folds, HashSet::new());
     }
 
+    // FR-NAV-02, FR-DONE-02
+    #[test]
+    fn collapse_level_leaves_hidden_completed_blocks_alone() {
+        let mut state = open("- a\n\t- b\n- c @done\n\t- d\n\t\t- e", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::CollapseLevel);
+        assert_eq!(visible(&state), [(0, "a".to_owned(), Some(1))]);
+        assert_eq!(state.folds.len(), 1, "only a");
+    }
+
     // FR-NAV-02
     #[test]
     fn expand_level_skips_collapsed_leaves() {
@@ -1345,7 +1355,7 @@ mod tests {
     fn hiding_every_block_leaves_no_focus_until_one_shows_again() {
         let mut state = open("- a @done\n- b @done", 1);
         state.update(Message::ToggleShowDone);
-        assert_eq!(*state.rows(), []);
+        assert!(state.rows().is_empty());
         assert_eq!(state.focus(), None);
         state.update(Message::ToggleShowDone);
         assert_eq!(focus_text(&state), "a", "the first row");

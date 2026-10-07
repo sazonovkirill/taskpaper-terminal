@@ -865,7 +865,7 @@ impl Tui {
         let editor = self.state.editor().filter(|_| pane.focused);
         let icons = self.icons;
         let theme = self.palette();
-        let view = OutlineView::new(rows, (self.clock)().date(), &theme)
+        let view = OutlineView::new(&[], (self.clock)().date(), &theme)
             .editor(editor.as_ref())
             .wrap(self.wrap)
             .icons(icons)
@@ -880,8 +880,12 @@ impl Tui {
         // Only the rows near the focus or the view are measured, so drawing does not grow with
         // the outline.
         let row_height = |index| {
-            rows.get(index..=index)
-                .map_or(1, |row| view.rows(row).heights(area.width).iter().sum())
+            rows.get(index).map_or(1, |row| {
+                view.rows(std::slice::from_ref(row))
+                    .heights(area.width)
+                    .iter()
+                    .sum()
+            })
         };
         let height = usize::from(area.height);
         let (scroll, focus_line) = if let Some(lines) = self.wheel.get_mut(&pane.id) {
@@ -895,8 +899,9 @@ impl Tui {
             (scroll, focused.map(|_| line))
         };
         self.scrolls.insert(pane.id, scroll);
-        let shown = rows.get(scroll.row..).unwrap_or_default();
-        view.rows(shown)
+        // Every row is at least one line tall, so no more rows than lines show.
+        let shown: Vec<_> = rows.iter_from(scroll.row).take(height).cloned().collect();
+        view.rows(&shown)
             .focused(
                 focused
                     .filter(|_| pane.focused)

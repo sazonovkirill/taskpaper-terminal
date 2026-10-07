@@ -1615,12 +1615,18 @@ mod tests {
 
     #[track_caller]
     fn render(text: &str, width: u16, height: u16) -> Buffer {
-        draw(&State::new(format::parse(text), None).rows(), width, height)
+        draw(
+            &State::new(format::parse(text), None).rows().to_vec(),
+            width,
+            height,
+        )
     }
 
     #[track_caller]
     fn render_scrolled(offset: usize, focused: Option<usize>, area: Rect) -> Buffer {
-        let rows = State::new(format::parse("- a\n- b\n- c\n- d"), None).rows();
+        let rows = State::new(format::parse("- a\n- b\n- c\n- d"), None)
+            .rows()
+            .to_vec();
         let mut buf = Buffer::empty(area);
         outline(&rows)
             .offset(offset)
@@ -2135,7 +2141,9 @@ mod tests {
         let theme = BuiltIn::named("nord")
             .unwrap()
             .colors(ColorSupport::TrueColor);
-        let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None).rows();
+        let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None)
+            .rows()
+            .to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, 10, 3));
         OutlineView::new(&rows, TODAY, &theme)
             .icons(ICONS)
@@ -2232,7 +2240,7 @@ mod tests {
             None,
         );
         state.update(Message::CollapseAll);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let mut expected = Buffer::with_lines([
             format!("{:<12}", format!("- a {flag} {star} {bookmark}")),
             format!("{:<12}", format!("P: {flag}")),
@@ -2273,7 +2281,7 @@ mod tests {
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
         expected.set_style(Rect::new(3, 0, 1, 1), bookmark_style(&THEME));
         expected.set_style(Rect::new(4, 0, 4, 1), Style::new().dim());
-        assert_eq!(draw(&state.rows(), 10, 1), expected);
+        assert_eq!(draw(&state.rows().to_vec(), 10, 1), expected);
     }
 
     // D-67, FR-KEY-05
@@ -2281,7 +2289,7 @@ mod tests {
     fn a_fold_hiding_no_open_task_shows_its_marker_alone() {
         let mut state = State::new(format::parse("P:\n\tn\n---\n\t- z @done"), None);
         state.update(Message::CollapseAll);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let mut expected = Buffer::with_lines(["P: ▸   ", " ▸ ────"]);
         expected.set_style(Rect::new(0, 0, 2, 1), Style::new().bold().fg(THEME.primary));
         expected.set_style(Rect::new(2, 0, 2, 1), Style::new().dim());
@@ -2300,7 +2308,7 @@ mod tests {
         let text = "P:\n\t- t\nn\nm\n\t- x\nS @section\n\t- y\n---\n\t- z\nf() @code\n\t- w\n- v";
         let mut state = State::new(format::parse(text), None);
         state.update(Message::CollapseAll);
-        let buf = draw(&state.rows(), 14, 8);
+        let buf = draw(&state.rows().to_vec(), 14, 8);
         let mut expected = Buffer::with_lines([
             "P: ▸ 1        ",
             "n             ",
@@ -2472,7 +2480,7 @@ mod tests {
         expected.set_style(Rect::new(4, 0, 1, 1), today_style(&THEME));
         expected.set_style(Rect::new(5, 0, 7, 1), Style::new().dim());
         expected.set_style(Rect::new(17, 0, 7, 1), due_style(&THEME));
-        assert_eq!(draw(&state.rows(), 24, 1), expected);
+        assert_eq!(draw(&state.rows().to_vec(), 24, 1), expected);
     }
 
     // FR-NAV-03
@@ -2522,7 +2530,7 @@ mod tests {
             let mut state = State::new(format::parse(text), None);
             state.update(Message::FocusNext);
             state.update(Message::ZoomIn);
-            draw(&state.rows(), 6, 3)
+            draw(&state.rows().to_vec(), 6, 3)
         };
         let mut expected = Buffer::with_lines(["m     ", "  - t ", "      "]);
         expected.set_style(
@@ -2545,7 +2553,7 @@ mod tests {
     /// The first row of `text` drawn as `editor` edits it, `width` columns wide, with the caret's
     /// column.
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
-        let rows = State::new(format::parse(text), None).rows();
+        let rows = State::new(format::parse(text), None).rows().to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
         let (line, caret) = editor_line(&rows[0], editor, usize::from(width), ICONS, &THEME);
         line.render(buf.area, &mut buf);
@@ -2616,10 +2624,10 @@ mod tests {
     }
 
     /// The rows of `text` with its first block collapsed.
-    fn collapsed(text: &str) -> std::rc::Rc<[Row]> {
+    fn collapsed(text: &str) -> Vec<Row> {
         let mut state = State::new(format::parse(text), None);
         state.update(Message::Collapse);
-        state.rows()
+        state.rows().to_vec()
     }
 
     // FR-KEY-05
@@ -2656,13 +2664,15 @@ mod tests {
         let view = outline(&rows);
         assert_eq!(view.hit(12, 0, 3), Some((0, true)));
         assert_eq!(view.hit(12, 0, 7), Some((0, false)), "the rule");
-        let rows = State::new(format::parse("- a ▸ 0"), None).rows();
+        let rows = State::new(format::parse("- a ▸ 0"), None).rows().to_vec();
         assert_eq!(
             outline(&rows).hit(20, 0, 6),
             Some((0, false)),
             "no hidden children"
         );
-        let rows = State::new(format::parse("- a @today"), None).rows();
+        let rows = State::new(format::parse("- a @today"), None)
+            .rows()
+            .to_vec();
         assert_eq!(outline(&rows).hit(20, 0, 2), Some((0, false)));
     }
 
@@ -2672,7 +2682,7 @@ mod tests {
         let mut state = State::new(format::parse("a ▸ 1\n\t- b"), None);
         state.update(Message::Collapse);
         state.update(Message::EditAtEnd);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let editor = state.editor().expect("editing");
         let view = outline(&rows).editor(Some(&editor));
         assert_eq!(view.hit(20, 0, 6), Some((0, false)));
@@ -2682,7 +2692,7 @@ mod tests {
     // FR-KEY-05
     #[test]
     fn a_column_of_the_editor_names_the_offset_of_the_grapheme_drawn_there() {
-        let rows = State::new(format::parse("- a"), None).rows();
+        let rows = State::new(format::parse("- a"), None).rows().to_vec();
         let at =
             |editor: &Editor, width, column| editor_offset(&rows[0], editor, width, ICONS, column);
         let plain = editor("ab日c", 0, None);
@@ -2707,7 +2717,7 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::EditAtEnd);
         state.update(Message::Text(crate::app::TextEdit::SelectAll));
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 7, 2));
         outline(&rows)
@@ -2768,7 +2778,9 @@ mod tests {
     // FR-TAG-03, D-39
     #[test]
     fn chips_keep_the_band_of_the_focused_row() {
-        let rows = State::new(format::parse("- a @due(2026-10-04)"), None).rows();
+        let rows = State::new(format::parse("- a @due(2026-10-04)"), None)
+            .rows()
+            .to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 1));
         outline(&rows).focused(Some(0)).render(buf.area, &mut buf);
         let mut expected =
@@ -2787,7 +2799,7 @@ mod tests {
             None,
         );
         state.update(Message::EditAtEnd);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let editor = state.editor();
         let mut buf = Buffer::empty(Rect::new(0, 0, 20, 2));
         outline(&rows)
@@ -2830,7 +2842,8 @@ mod tests {
             format::parse("P:\n- a @done\nn\nS @section\n---\nhttps://x.y @url"),
             None,
         )
-        .rows();
+        .rows()
+        .to_vec();
         let area = Rect::new(0, 0, 12, 6);
         let mut plain = Buffer::empty(area);
         outline(&rows).render(area, &mut plain);
@@ -2871,7 +2884,7 @@ mod tests {
     fn marks_each_selected_row_with_a_dimmer_marker_and_no_band() {
         let mut state = State::new(format::parse("- a\n- b\n- c"), None);
         state.update(Message::Select(SelectionChange::ExtendDown));
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let area = Rect::new(0, 0, 5, 3);
         let mut buf = Buffer::empty(area);
         outline(&rows).focused(Some(1)).render(area, &mut buf);
@@ -2911,7 +2924,7 @@ mod tests {
     /// Draws `text` with wrap on in a `width` × `height` area, the gutter included, focusing row
     /// `focused` and starting at line `offset`.
     fn wrapped(text: &str, width: u16, height: u16, focused: usize, offset: usize) -> Buffer {
-        let rows = State::new(format::parse(text), None).rows();
+        let rows = State::new(format::parse(text), None).rows().to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
         outline(&rows)
             .wrap(true)
@@ -2969,13 +2982,13 @@ mod tests {
     #[test]
     fn heights_count_the_lines_of_each_row_and_one_for_the_edited_row() {
         let mut state = State::new(format::parse("- aaa bbb ccc\n- d\n- eee fff"), None);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let view = outline(&rows);
         assert_eq!(view.heights(9), [1, 1, 1], "wrap off");
         assert_eq!(view.wrap(true).heights(9), [3, 1, 2]);
         state.update(Message::EditAtEnd);
         let editor = state.editor();
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let view = outline(&rows).wrap(true).editor(editor.as_ref());
         assert_eq!(view.heights(9), [1, 1, 2]);
         assert_eq!(view.heights(0), [1, 1, 1], "no room for text");
@@ -3254,7 +3267,7 @@ mod tests {
     fn drawn_with(icons: IconSet, text: &str) -> (Vec<String>, usize) {
         let mut state = State::new(format::parse(text), None);
         state.update(Message::CollapseAll);
-        let rows = state.rows();
+        let rows = state.rows().to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, 30 + GUTTER_WIDTH, 4));
         OutlineView::new(&rows, TODAY, &THEME)
             .icons(icons)

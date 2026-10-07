@@ -42,7 +42,6 @@ impl State {
                 path.pop();
                 out.push(Row {
                     path,
-                    hidden_tasks: None,
                     ..self.row(pane, &block, 0, false, inside_done)
                 });
             }

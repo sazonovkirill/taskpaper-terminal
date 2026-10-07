@@ -308,15 +308,22 @@ impl Tui {
                 let view = self.state.panes().into_iter().nth(drawn.at)?;
                 let scroll = self.scrolls.get(&view.id).copied().unwrap_or_default();
                 let editor = self.state.editor().filter(|_| view.focused);
-                let shown = view.rows.get(scroll.row..).unwrap_or_default();
+                // Every row at least one line tall, so the rows up to the line clicked hold it.
+                let shown: Vec<_> = view
+                    .rows
+                    .iter_from(scroll.row)
+                    .take(line.saturating_add(1))
+                    .cloned()
+                    .collect();
                 let theme = self.palette();
-                let (index, fold) = widgets::OutlineView::new(shown, (self.clock)().date(), &theme)
-                    .editor(editor.as_ref())
-                    .wrap(self.wrap)
-                    .icons(self.icons)
-                    .color_tags(self.color_tags)
-                    .offset(scroll.line)
-                    .hit(drawn.width, line, column)?;
+                let (index, fold) =
+                    widgets::OutlineView::new(&shown, (self.clock)().date(), &theme)
+                        .editor(editor.as_ref())
+                        .wrap(self.wrap)
+                        .icons(self.icons)
+                        .color_tags(self.color_tags)
+                        .offset(scroll.line)
+                        .hit(drawn.width, line, column)?;
                 let row = shown.get(index)?;
                 if let Some(editor) = editor.filter(|editor| editor.id == row.id)
                     && gesture == Gesture::Click
