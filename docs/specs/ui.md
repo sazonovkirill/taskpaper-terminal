@@ -26,6 +26,7 @@ Covers FR-BLK display, FR-TAG display, FR-FMT-01, FR-KEY-04–06, FR-UI-05–11,
 - **Pickers and prompts** (Go to Symbol, Go to Project, Go to Command, Move to, type, color, Save As) are centered overlays at most 80×20; the finders (Go to Symbol, Go to Project, Go to Command, Move to) have their border and title in the accent color, like the command menu.
 - **Date prompt** (`ms`/`md`, D-54): a panel across the full width just above the status line, a bordered box titled with the date it sets, its border and title in the accent color, holding the typed text and the preview below it. While it is open the outline gives up its rows, scrolling only if the focused block would otherwise be under the panel, and everything else on screen (breadcrumbs, outline, status line) is dimmed with the terminal's dim attribute.
 - Below 80 columns the navigation sidebar hides; below 40×10 only the focused pane and the status line are drawn.
+- A wide character (CJK, emoji) that a popup, a panel or the screen's edge covers in part is hidden whole, so no grapheme is split and the popup's edge shows (N-PORT-04).
 
 ## 2. Blocks
 

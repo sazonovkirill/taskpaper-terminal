@@ -17,7 +17,7 @@ use jiff::Zoned;
 use ratatui::{
     Frame, Terminal,
     backend::Backend,
-    buffer::Buffer,
+    buffer::{Buffer, CellWidth},
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
@@ -645,6 +645,7 @@ impl Tui {
             self.draw_conflict(frame, main);
         }
         paint_defaults(frame.buffer_mut(), &theme);
+        hide_cut_graphemes(frame.buffer_mut());
     }
 
     /// The panes side by side in `strip`, each as wide as [`layout::pane_widths`] makes it, the
@@ -1123,6 +1124,26 @@ fn paint_defaults(buf: &mut Buffer, theme: &Theme) {
         }
         if cell.bg == Color::Reset {
             cell.bg = theme.background;
+        }
+    }
+}
+
+/// Blanks every wide grapheme of `buf` that something drawn later covers in part, such as the
+/// edge of a popup, or that runs past the right edge (N-PORT-04). Ratatui sends the terminal a
+/// wide grapheme and skips the cells it covers, so it would hide what was drawn over them.
+fn hide_cut_graphemes(buf: &mut Buffer) {
+    let area = buf.area;
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            let width = buf.cell((x, y)).map_or(1, CellWidth::cell_width);
+            let end = x.saturating_add(width);
+            let covered = (x.saturating_add(1)..end)
+                .any(|x| buf.cell((x, y)).is_some_and(|cell| cell.symbol() != " "));
+            if (end > area.right() || covered)
+                && let Some(cell) = buf.cell_mut((x, y))
+            {
+                cell.set_symbol(" ");
+            }
         }
     }
 }

@@ -1503,6 +1503,66 @@ mod tests {
         }
     }
 
+    /// Whether only the kitty keyboard protocol reports `key` as the keymap matches it
+    /// ([keybindings.md §1](../../../docs/specs/keybindings.md#1-terminal-constraints)): legacy
+    /// reporting sends `Ctrl+Enter` and `Shift+Enter` as `Enter`, `Ctrl+Shift+<letter>` as
+    /// `Ctrl+<letter>`, `Ctrl+H`, `Ctrl+I`, `Ctrl+M` and `Ctrl+[` as `Backspace`, `Tab`, `Enter` and
+    /// `Esc`, `Ctrl` with other characters as other keys or not at all, and no Menu key.
+    fn kitty_only((modifiers, code): Key) -> bool {
+        match code {
+            KeyCode::Menu => true,
+            KeyCode::Enter | KeyCode::Tab | KeyCode::Backspace | KeyCode::Esc => {
+                modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SHIFT)
+            }
+            KeyCode::Char(c) if modifiers.contains(KeyModifiers::CONTROL) => {
+                !c.is_ascii_lowercase() || matches!(c, 'h' | 'i' | 'm')
+            }
+            _ => false,
+        }
+    }
+
+    // D-42, FR-KEY-03, keybindings.md §1: every command bound to a key only the kitty protocol
+    // reports also has a classic variant, which legacy reporting sends and is not an `Alt` key,
+    // and the kitty-only keys are the ones keybindings.md §1 lists with their classic variants.
+    #[test]
+    fn every_kitty_only_binding_has_a_classic_variant_beside_it() {
+        let bindings = REGISTRY
+            .iter()
+            .map(|entry| (entry.command, entry.keys))
+            .chain(SIDEBAR.iter().copied());
+        let mut kitty = Vec::new();
+        for (command, keys) in bindings {
+            let sequences: Vec<Vec<Key>> = keys
+                .iter()
+                .map(|keys| parse_sequence(keys).expect("registry keys parse"))
+                .collect();
+            let classic = sequences.iter().any(|sequence| {
+                sequence.iter().all(|&(modifiers, code)| {
+                    !kitty_only((modifiers, code)) && !modifiers.contains(KeyModifiers::ALT)
+                })
+            });
+            for (keys, sequence) in keys.iter().zip(&sequences) {
+                assert!(
+                    sequence.iter().all(|&(modifiers, _)| {
+                        (KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT)
+                            .contains(modifiers)
+                    }),
+                    "{keys} of {command:?} takes no Cmd or Super"
+                );
+                if sequence.iter().any(|&key| kitty_only(key)) {
+                    assert!(classic, "{keys} of {command:?} has a classic variant");
+                    kitty.push(*keys);
+                }
+            }
+        }
+        kitty.sort_unstable();
+        kitty.dedup();
+        assert_eq!(
+            kitty,
+            ["ctrl+'", "ctrl+\\", "ctrl+enter", "ctrl+shift+z", "menu"]
+        );
+    }
+
     // FR-BLK-06
     #[test]
     fn g_x_opens_the_url() {

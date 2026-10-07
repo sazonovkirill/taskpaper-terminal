@@ -37,6 +37,7 @@ mod show_completed;
 mod sidebar;
 mod support;
 mod tags;
+mod terminal_support;
 mod themes;
 mod today;
 mod typed_creation;
