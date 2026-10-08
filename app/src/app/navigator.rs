@@ -30,16 +30,16 @@ pub(super) struct Navigator {
     filter: String,
     folds: HashSet<ItemId>,
     entries: Memo<EntriesKey, Rc<[NavigatorEntry]>>,
+    filtered: Memo<FilteredKey, Rc<[NavigatorEntry]>>,
     current: Memo<CurrentKey, Option<usize>>,
 }
 
-/// Everything the Navigator's entries are computed from.
+/// Everything the Navigator's entries before a filter are computed from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct EntriesKey {
     document: Stamp,
     /// The folded entries, none while a filter is typed.
     folds: HashSet<ItemId>,
-    filter: String,
     show_done: bool,
     special_inbox: bool,
     unlisted: HashSet<SpecialView>,
@@ -47,6 +47,14 @@ struct EntriesKey {
     /// follow (D-85).
     today: Date,
     today_starred: bool,
+}
+
+/// Everything the entries a filter leaves are computed from: the entries without folds and the
+/// filter, in lower case.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FilteredKey {
+    entries: Rc<[NavigatorEntry]>,
+    filter: String,
 }
 
 /// Everything the entry of where the focused pane is comes from: the entries, the blocks above
@@ -91,6 +99,7 @@ impl Default for Navigator {
             filter: String::new(),
             folds: HashSet::new(),
             entries: Memo::default(),
+            filtered: Memo::default(),
             current: Memo::default(),
         }
     }
@@ -449,19 +458,29 @@ impl State {
     }
 
     /// The inbox while it is apart, each special view it lists, then every bookmarked block in
-    /// document order, then the project tree without the inbox (D-68, D-75, D-77, D-80).
+    /// document order, then the project tree without the inbox (D-68, D-75, D-77, D-80); while a
+    /// filter is typed, those it matches with the projects above them.
     fn navigator_entries(&self) -> Rc<[NavigatorEntry]> {
         let filter = self.navigator.filter.to_lowercase();
+        if filter.is_empty() {
+            return self.unfiltered_entries(&self.navigator.folds);
+        }
         // A filter looks through folded entries.
-        let folds = if filter.is_empty() {
-            self.navigator.folds.clone()
-        } else {
-            HashSet::new()
+        let entries = self.unfiltered_entries(&HashSet::new());
+        let key = FilteredKey {
+            entries: Rc::clone(&entries),
+            filter: filter.clone(),
         };
+        self.navigator
+            .filtered
+            .get(key, || filtered(entries.to_vec(), &filter).into())
+    }
+
+    /// The entries with the project entries `folds` folded, before any filter.
+    fn unfiltered_entries(&self, folds: &HashSet<ItemId>) -> Rc<[NavigatorEntry]> {
         let key = EntriesKey {
             document: self.document().stamp(),
             folds: folds.clone(),
-            filter: filter.clone(),
             show_done: self.pane.show_done,
             special_inbox: self.navigator.special_inbox,
             unlisted: self.navigator.unlisted.clone(),
@@ -477,7 +496,7 @@ impl State {
             every.show_done = self.pane.show_done;
             let rows = self.rows_folded(&every, &HashSet::new());
             let views = self.views_open_tasks(&rows);
-            let entries: Vec<_> = inbox
+            inbox
                 .into_iter()
                 .chain(
                     SpecialView::ALL
@@ -487,13 +506,8 @@ impl State {
                         .map(|(view, open_tasks)| NavigatorEntry::View { view, open_tasks }),
                 )
                 .chain(self.bookmarks(&rows))
-                .chain(self.projects(&rows, apart, &folds))
-                .collect();
-            if filter.is_empty() {
-                entries.into()
-            } else {
-                filtered(entries, &filter).into()
-            }
+                .chain(self.projects(&rows, apart, folds))
+                .collect()
         })
     }
 
