@@ -51,8 +51,6 @@ pub enum Icon {
     Complete,
     /// The command menu's color entries, and the Colors view's group headings (D-83).
     Color,
-    /// The command menu's entry that shows a block's details.
-    Details,
     /// The command menu's entry that opens a block's link.
     Link,
     /// The command menu's entry that duplicates a block.
@@ -74,7 +72,7 @@ pub enum Icon {
     DoneTask,
     /// The status line's navigate mode.
     Navigate,
-    /// The status line's edit mode.
+    /// The status line's edit mode, and the command that opens the Edit Node dialog.
     Edit,
     /// The status line's mark of changes not saved yet.
     Unsaved,
@@ -207,8 +205,6 @@ impl Icon {
             Self::Complete => ("\u{f05e1}", "✓", "x"),
             // nf-md-palette
             Self::Color => ("\u{f03d8}", "●", "o"),
-            // nf-md-information_outline
-            Self::Details => ("\u{f02fd}", "i", "i"),
             // nf-md-link
             Self::Link => ("\u{f0337}", "↗", "^"),
             // nf-md-content_copy
@@ -259,7 +255,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 38] = [
+    const ICONS: [Icon; 37] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -278,7 +274,6 @@ mod tests {
         Icon::Section,
         Icon::Complete,
         Icon::Color,
-        Icon::Details,
         Icon::Link,
         Icon::Duplicate,
         Icon::Delete,

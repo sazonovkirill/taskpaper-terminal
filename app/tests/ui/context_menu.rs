@@ -47,9 +47,9 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
             "▌   - Book the hotel",
             "      ┌Commands:───────────────────────────────────────────┐",
             "    - │  › Edit                                     Enter  │",
-            "  Othe│  › New Block Below                              o  │",
+            "  Othe│  ✎ Edit Node                                e, mi  │",
+            "      │  › New Block Below                              o  │",
             "      │  › New Block Above                              O  │",
-            "      │  › New Block as Last Child                      i  │",
         ],
         "anchored at the task's text, below it"
     );

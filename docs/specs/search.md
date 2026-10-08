@@ -30,7 +30,7 @@ Precedence: `-` binds tightest, then AND (adjacency), then `OR`, then `>`. Paren
 
 ## 3. Bookmarked searches (Later, FR-SRCH-03, D-11)
 
-Saving the current query creates a block `Name @search(query) @bookmark` under a top-level `Searches:` project (created at the end of the file if missing), with `(` and `)` in the query escaped. Both tags are hidden; the sidebar lists it among bookmarks and choosing it runs the query in the focused pane. `@search` values written by TaskPaper 3 use TaskPaper's own query language ([reference/taskpaper.md §4](../reference/taskpaper.md#4-query-search--item-path-language)), which this syntax does not accept; such searches are listed as unsupported in the details popup.
+Saving the current query creates a block `Name @search(query) @bookmark` under a top-level `Searches:` project (created at the end of the file if missing), with `(` and `)` in the query escaped. Both tags are hidden; the sidebar lists it among bookmarks and choosing it runs the query in the focused pane. `@search` values written by TaskPaper 3 use TaskPaper's own query language ([reference/taskpaper.md §4](../reference/taskpaper.md#4-query-search--item-path-language)), which this syntax does not accept; such searches are listed as unsupported in the Edit Node dialog.
 
 ## 4. Dates (Must, FR-TAG-03, D-6)
 

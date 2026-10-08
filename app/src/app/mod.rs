@@ -11,7 +11,6 @@ mod context_menu;
 mod count;
 mod date_prompt;
 pub mod demo;
-mod details;
 mod edit_mode;
 mod editing;
 pub mod external;
@@ -25,6 +24,7 @@ mod logbook;
 mod memo;
 mod move_to;
 mod navigator;
+mod node_editor;
 mod overdue;
 mod pane;
 mod picker;
@@ -58,6 +58,9 @@ pub use finder::{Candidate, Detail, Entries, FinderView};
 pub use go_to_symbol::Symbols;
 pub use history::{History, Restore};
 pub use navigator::{Fold, NavigatorEntry, NavigatorInput, NavigatorView};
+pub use node_editor::{
+    DateValue, FieldOutcome, FieldView, NodeEditorView, NodeInput, NodeRow, TagView,
+};
 pub use pane::{PaneChange, PaneId, PaneView};
 pub use picker::PickerView;
 pub use quick_add::{Missing, QuickAddInput, QuickAddTo, QuickAddView};

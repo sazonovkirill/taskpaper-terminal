@@ -424,7 +424,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::OpenTypePicker, Mode::Navigate, &["m y"]),
     entry!(Command::SetSection(true), Mode::Navigate, &["S"]),
     entry!(Command::SetSection(false), Mode::Navigate, &["s"]),
-    entry!(Command::OpenDetails, Mode::Navigate, &["m i"]),
+    entry!(Command::EditNode, Mode::Navigate, &["e", "m i"]),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
     entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
@@ -720,7 +720,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::OpenDatePrompt(DateTag::Due),
             Command::OpenColorPicker,
             Command::ToggleFlag(Flag::Bookmark),
-            Command::OpenDetails,
+            Command::EditNode,
         ],
     ),
     (

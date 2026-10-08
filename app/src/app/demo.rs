@@ -264,25 +264,33 @@ mod tests {
         assert!(rows.iter().any(|row| row.url), "demo lacks an @url line");
     }
 
-    // D-3
+    // editing.md §7
     #[test]
-    fn demo_has_unsupported_tags_and_hidden_data_for_the_details() {
+    fn demo_has_unsupported_tags_and_hidden_data_for_the_edit_node_dialog() {
+        use crate::document::blocks;
         let state = State::new(format::parse(&text(TODAY)), None);
         let document = state.document();
-        let details: Vec<_> = state
+        let blocks: Vec<_> = state
             .rows()
             .iter()
-            .filter_map(|row| crate::document::blocks::details(document, row.id))
+            .filter_map(|row| blocks::block(document, row.id))
             .collect();
         assert!(
-            details
-                .iter()
-                .any(|details| details.tags.iter().any(|&(_, supported)| !supported)),
-            "demo lacks an unsupported tag for the details"
+            blocks.iter().any(|block| {
+                let line = document.get(block.id()).unwrap();
+                line.tags()
+                    .iter()
+                    .any(|tag| !blocks::supported(&tag.name, block.kind()))
+            }),
+            "demo lacks an unsupported tag for the dialog"
         );
         assert!(
-            details.iter().any(|details| !details.hidden.is_empty()),
-            "demo lacks hidden data for the details"
+            blocks
+                .iter()
+                .any(|block| !blocks::hidden_data(document, block.id())
+                    .unwrap()
+                    .is_empty()),
+            "demo lacks hidden data for the dialog"
         );
     }
 

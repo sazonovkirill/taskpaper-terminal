@@ -20,6 +20,7 @@ use super::{
     folds::Folds,
     memo::Memo,
     navigator::Navigator,
+    node_editor::NodeEditor,
     pane::Pane,
     picker::Picker,
     quick_add::QuickAdd,
@@ -83,8 +84,8 @@ pub struct State {
     pub(super) special_today: bool,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
-    /// Whether the details popup is open over the focused block (D-3).
-    pub(super) details: bool,
+    /// The Edit Node dialog, while it is open (FR-MODE-09).
+    pub(super) node_editor: Option<NodeEditor>,
     /// Go to Symbol or Go to Project, with the blocks it lists, while it is open (FR-NAV-05,
     /// D-65).
     pub(super) symbols: Option<(Symbols, Finder<ItemId>)>,
@@ -401,7 +402,7 @@ impl State {
             quick_add: None,
             special_today: true,
             type_picker: None,
-            details: false,
+            node_editor: None,
             symbols: None,
             destinations: None,
             commands: None,

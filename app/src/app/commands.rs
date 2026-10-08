@@ -16,8 +16,8 @@ pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
 
 use super::{
-    Location, Message, NavigatorInput, NewBlock, PaneChange, Paste, QuickAddInput, QuickAddTo,
-    SaveAs, SelectionChange, SpecialView, Symbols, TextEdit,
+    Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste, QuickAddInput,
+    QuickAddTo, SaveAs, SelectionChange, SpecialView, Symbols, TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
@@ -123,8 +123,8 @@ pub enum Command {
     /// Give the block being edited a type, as a change of its edit session (D-44); only the
     /// command menu offers it.
     Retype(Typed),
-    /// Show the details popup.
-    OpenDetails,
+    /// Show and change every property of the focused block in the Edit Node dialog.
+    EditNode,
     /// Find a block by name and go to it.
     GoToSymbol,
     /// Find a project by name and go to it (D-65).
@@ -284,7 +284,7 @@ impl Command {
             Self::Retype(Typed::Project) => "Project".into(),
             Self::Retype(Typed::Task) => "Task".into(),
             Self::Retype(Typed::Text) => "Note".into(),
-            Self::OpenDetails => "Show Details".into(),
+            Self::EditNode => "Edit Node".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
@@ -394,7 +394,7 @@ impl Command {
             | Self::WidenPane
             | Self::ScrollShortcutsDown
             | Self::ScrollShortcutsUp => return None,
-            Self::OpenDetails => Message::OpenDetails,
+            Self::EditNode => Message::NodeEditor(NodeInput::Open),
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,

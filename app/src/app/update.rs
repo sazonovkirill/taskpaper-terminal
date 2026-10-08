@@ -6,9 +6,9 @@ use std::{collections::HashSet, path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, NavigatorInput, PaneChange, Paste, QuickAddInput,
-    SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State, Symbols, TextEdit,
-    Version,
+    Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput, PaneChange, Paste,
+    QuickAddInput, SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State,
+    Symbols, TextEdit, Version,
     pane::{Pane, landing},
     rows::Rows,
     saving::{DocumentText, Ending},
@@ -227,10 +227,9 @@ pub enum Message {
     ClearDate(DateTag),
     /// Open the type picker on the focused block (FR-BLK-08).
     OpenTypePicker,
-    /// Open the details popup on the focused block (D-3).
-    OpenDetails,
-    /// Close the details popup.
-    CloseDetails,
+    /// Open the Edit Node dialog on the focused block, or a key of the open dialog
+    /// (FR-MODE-09).
+    NodeEditor(NodeInput),
     /// Open Go to Symbol over these blocks: every one (FR-NAV-05), or the projects, as Go to
     /// Project (D-65).
     OpenGoToSymbol(Symbols),
@@ -370,6 +369,8 @@ pub enum Menu {
     ThemePicker,
     /// Quick Add's project picker (D-96).
     QuickAdd,
+    /// The Edit Node dialog's parent finder (FR-MODE-09).
+    NodeEditor,
 }
 
 impl Message {
@@ -454,8 +455,7 @@ impl Message {
             | Self::QuickAdd(_)
             | Self::ClearDate(_)
             | Self::OpenTypePicker
-            | Self::OpenDetails
-            | Self::CloseDetails
+            | Self::NodeEditor(_)
             | Self::OpenGoToSymbol(_)
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
@@ -492,7 +492,8 @@ impl Menu {
             | Self::GoToCommand
             | Self::ContextMenu
             | Self::ThemePicker
-            | Self::QuickAdd => true,
+            | Self::QuickAdd
+            | Self::NodeEditor => true,
         }
     }
 }
@@ -681,8 +682,7 @@ impl State {
             Message::QuickAdd(input) => self.quick_add_input(input),
             Message::ClearDate(tag) => self.clear_date(tag),
             Message::OpenTypePicker => self.open_type_picker(),
-            Message::OpenDetails => self.open_details(),
-            Message::CloseDetails => self.close_details(),
+            Message::NodeEditor(input) => self.node_editor_input(input),
             Message::OpenGoToSymbol(listed) => self.open_go_to_symbol(listed),
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
@@ -742,6 +742,7 @@ impl State {
             Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),
             Menu::ThemePicker => return self.theme_picker_input(input).into_iter().collect(),
             Menu::QuickAdd => self.quick_add_picker_input(input),
+            Menu::NodeEditor => self.node_editor_finder_input(input),
         }
         Vec::new()
     }

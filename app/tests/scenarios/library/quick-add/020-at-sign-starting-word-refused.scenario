@@ -4,7 +4,7 @@ INBOX:
 END
 keys qi
 type Mail ann@example.com about @launch
-status Tags are set with commands
+status Tags are set in Edit Node (e)
 see - Mail ann@example.com about launch
 keys <Enter>
 quit

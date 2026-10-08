@@ -71,7 +71,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `mc` | **c**olor picker |
 | `*` / `mb` / `mf` | star (`@star`) / **b**ookmark / red **f**lag (also `!`, D-91) |
 | `my` | t**y**pe (`t` was taken) |
-| `mi` | **i**nfo: all tags |
+| `mi` | **i**nfo: Edit Node, as `e` (**e**dit) |
 
 ## 6. Colors, dates, done
 

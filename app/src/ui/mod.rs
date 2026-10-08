@@ -44,8 +44,8 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, NavigatorPanel, OutlineView, Popup,
-    QuickAddPanel, SaveAsPrompt, SettingsWindow, ShortcutsPanel,
+    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, NavigatorPanel, NodeEditorWindow,
+    OutlineView, Popup, QuickAddPanel, SaveAsPrompt, SettingsWindow, ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -696,8 +696,7 @@ impl Tui {
                 self.state
                     .type_picker()
                     .map(|picker| Popup::block_types(&picker, icons))
-            })
-            .or_else(|| self.state.details().map(|details| Popup::details(&details)));
+            });
         if let Some(popup) = centered {
             let (width, height) = popup.size();
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
@@ -706,6 +705,7 @@ impl Tui {
         if !self.state.in_conflict() {
             self.draw_finders(frame, outline, &theme);
             self.draw_settings(frame, screen_body, &theme);
+            self.draw_node_editor(frame, outline, &theme);
             if let Some(view) = self.state.save_as() {
                 let prompt = SaveAsPrompt::new(&view, &theme);
                 frame.set_cursor_position(prompt.caret(outline));
@@ -1122,6 +1122,29 @@ impl Tui {
         }
     }
 
+    /// The Edit Node dialog centered over `area`, with its caret, and its parent finder over it,
+    /// while they are open (editing.md §7).
+    fn draw_node_editor(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
+        let Some(view) = self.state.node_editor() else {
+            return;
+        };
+        let window = NodeEditorWindow::new(&view, (self.clock)().date(), self.icons, theme);
+        if let Some(caret) = window.caret(area) {
+            frame.set_cursor_position(caret);
+        }
+        frame.render_widget(window, area);
+        if let Some(finder) = self.state.node_editor_finder() {
+            let document = self.state.document();
+            let icon = |id: &ItemId| widgets::block_icon(document, *id);
+            let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
+            draw_finder(
+                frame,
+                FinderPopup::new("Parent", &finder, self.icons, &icon, theme).text_style(&text),
+                area,
+            );
+        }
+    }
+
     /// The Navigator centered over `area`, scrolled to keep its focused entry visible,
     /// while it is open (ui.md §1, D-79); returns where the focused entry starts on screen, if
     /// one is focused. It is dimmed when `dim`, behind a dialog (D-69).
@@ -1285,8 +1308,10 @@ impl Tui {
             Some(Overlay::SaveAs)
         } else if self.state.context_menu().is_some() {
             Some(Overlay::ContextMenu)
+        } else if self.state.node_editor_finder().is_some() {
+            Some(Overlay::NodeEditorFinder)
         } else {
-            self.state.details().map(|_| Overlay::Details)
+            self.state.node_editor().map(|_| Overlay::NodeEditor)
         }
     }
 

@@ -1,0 +1,19 @@
+# Edit Node from the command menu shows the block's dates and flag, and Esc returns to editing at the same column.
+file <<END
+- Pay rent @due(2026-11-01) @flag
+END
+see Pay rent
+keys <Enter> <Left> <Left> /
+type edit node
+keys <Enter>
+see Edit Node
+see Sun 1 Nov 2026
+see Flagged
+keys <Esc>
+hide Edit Node
+type Z
+keys <Esc>
+quit
+saved <<END
+- Pay reZnt @due(2026-11-01) @flag
+END

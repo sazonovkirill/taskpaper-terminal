@@ -50,7 +50,7 @@ fn every_dialog_dims_the_screen_behind_it() {
         ("theme chooser", Open::Control('t')),
         ("settings", Open::Keys("g,")),
         ("context menu", Open::Keys("\\")),
-        ("details", Open::Keys("mi")),
+        ("edit node", Open::Keys("e")),
         ("color picker", Open::Keys("mc")),
         ("type picker", Open::Keys("my")),
         ("date prompt", Open::Keys("md")),

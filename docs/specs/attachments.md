@@ -30,7 +30,7 @@ PROJECT A:
 ```
 
 - **Recognition.** A note is a special node whose line text, tags aside and trimmed, is exactly `NOTE`; comments one whose text is exactly `COMMENTS`; both case-sensitive, both carrying `@hidden`. Other tags on the line are kept and ignored, so D-23's `COMMENTS @hidden @comments` is recognized too. The content is the node's subtree: one line per note line or comment, one level deeper than the `NOTE` or `COMMENTS` line.
-- **Owner.** Any project, task or text block, sections included, can have one note and one comments node; a divider has none, as it has no children (FR-BLK-07). If a block has several of one kind, the first is the attachment and the others are unknown special nodes, preserved and listed by `mi`.
+- **Owner.** Any project, task or text block, sections included, can have one note and one comments node; a divider has none, as it has no children (FR-BLK-07). If a block has several of one kind, the first is the attachment and the others are unknown special nodes, preserved and listed by the Edit Node dialog.
 - **Placement.** The app writes `NOTE`, then `COMMENTS`, right after the block's leading run of text children (a new `COMMENTS` goes right after an existing `NOTE`, and a new `NOTE` right before existing `COMMENTS`, wherever they are) and before its first task or project child; with no such child, after its text children and before any trailing special nodes. This replaces FR-SPC-01's "last child" for these two kinds only, and attachments never count as trailing special nodes: a child inserted "at the end" of the block (new child, indent, move, paste, Move to) goes after its attachments, so indenting `- Task 2` under a `- Task 1` whose only child is its `NOTE` puts the task after the note. An attachment found elsewhere among the block's direct children is still recognized and left where it is; inserting, indenting or moving other children never moves an attachment.
 - **Lifetime.** The app creates the node with the first note text or comment, and deletes it when the note is emptied or the last comment deleted. Attachments travel with their block like every special node: move, indent, outdent, delete, cut, copy, paste, duplicate and undo carry them.
 - **Lossless.** A file is never rewritten on load. Attachment lines the app did not change are written from their original bytes (FR-DOC-03).
@@ -73,7 +73,7 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 ## 6. Settings (FR-ATT-06)
 
 - **Use Notes Attachments** (`attachments_notes`) and **Use Comments Attachments** (`attachments_comments`), booleans, both on by default, in the settings window's Appearance group and in `config.toml` ([ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03)).
-- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon, no panel tab and no command; `mi` lists it like any hidden data. With both off the panel cannot open.
+- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon, no panel tab and no command; the Edit Node dialog lists it like any hidden data. With both off the panel cannot open.
 
 ## 7. Tests
 

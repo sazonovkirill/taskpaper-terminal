@@ -171,7 +171,7 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::OpenContextMenu);
         let listed = shown(&state);
-        assert_eq!(listed[..2], ["Edit", "New Block Below"]);
+        assert_eq!(listed[..3], ["Edit", "Edit Node", "New Block Below"]);
         assert!(listed.contains(&"Clear Due Date".to_owned()));
         assert!(listed.contains(&"Zoom In".to_owned()));
         assert!(!listed.contains(&"Toggle Fold".to_owned()), "a leaf");
@@ -219,7 +219,10 @@ mod tests {
         for absent in ["New Block Below", "Paste Below", "Indent", "Group"] {
             assert!(!today.contains(&absent.to_owned()), "{absent}");
         }
-        assert_eq!(today[..4], ["Edit", "Copy", "Cut", "Duplicate"]);
+        assert_eq!(
+            today[..5],
+            ["Edit", "Edit Node", "Copy", "Cut", "Duplicate"]
+        );
         assert!(today.contains(&"Move to…".to_owned()));
         assert!(
             today.contains(&"Move Up".to_owned()),

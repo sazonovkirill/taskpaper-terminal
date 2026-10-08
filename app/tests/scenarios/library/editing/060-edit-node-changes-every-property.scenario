@@ -1,0 +1,33 @@
+# Edit Node changes the text, type, parent, start date, star, flag and tags from the keyboard and Enter saves them.
+file <<END
+Work:
+	- Draft plan @x(1)
+Home:
+END
+keys j e
+see Edit Node
+type  now
+keys <C-t>
+see Note
+keys <C-t> <C-t> <Tab> <Tab> <Tab>
+type home
+keys <Enter>
+see Home
+keys <Tab>
+type 2026-11-02
+keys <Enter> <Tab> <Tab>
+type *
+keys <Tab>
+type !
+keys <Tab> <Del>
+type ctx(phone)
+keys <Enter> <S-Tab> <Up>
+see @ctx(phone)
+keys <Enter>
+hide Edit Node
+quit
+saved <<END
+Work:
+Home:
+	- Draft plan now @start(2026-11-02) @star @flag @ctx(phone)
+END

@@ -167,7 +167,7 @@ impl State {
     /// `message` as the pane takes it where it is: in a special view an intent that needs the
     /// outline's tree around the focused block, such as folding, moving to a parent, child or
     /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
-    /// edit mode, the date prompt, Quick Add, Save As and the settings window, and moving entries up or down outside Today,
+    /// edit mode, the date prompt, Quick Add, Save As, the settings window and the Edit Node dialog, and moving entries up or down outside Today,
     /// the only view with an order of the user's; ending an edit with `Enter` only stops
     /// editing (navigation.md §7, §7.1, D-57, D-80).
     pub(super) fn as_located(&self, message: Message) -> Option<Message> {
@@ -182,7 +182,8 @@ impl State {
                     && self.date_prompt.is_none()
                     && self.quick_add.is_none()
                     && self.save_as.is_none()
-                    && self.settings.is_none() =>
+                    && self.settings.is_none()
+                    && self.node_editor.is_none() =>
             {
                 None
             }
@@ -269,8 +270,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::DatePrompt(_)
         | Message::ClearDate(_)
         | Message::OpenTypePicker
-        | Message::OpenDetails
-        | Message::CloseDetails
+        | Message::NodeEditor(_)
         | Message::OpenGoToSymbol(_)
         | Message::OpenMoveTo
         | Message::OpenGoToCommand(_)

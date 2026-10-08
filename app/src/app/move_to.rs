@@ -5,7 +5,7 @@
 //! D-56).
 
 use super::{
-    Access, Location, MenuInput, Notice, State,
+    Access, MenuInput, Notice, State,
     finder::{Candidate, Finder, FinderView},
     picker::Picked,
 };
@@ -84,17 +84,7 @@ impl State {
             .filter(|&id| inside(id))
             .or_else(|| moving.last().map(Block::id));
         self.commit_focusing(ops, focus);
-        let above: Vec<ItemId> =
-            std::iter::successors(Some(to), |&line| self.document.get(line)?.parent()).collect();
-        let zoom = self.zoom();
-        if zoom.is_none_or(|zoom| above.contains(&zoom)) {
-            for line in above.iter().take_while(|&&line| Some(line) != zoom) {
-                self.folds.remove(*line);
-            }
-        } else {
-            self.go_to(Location::Outline((!home).then_some(to)));
-            self.pane.focus = focus;
-        }
+        self.show_moved(to, focus);
     }
 }
 

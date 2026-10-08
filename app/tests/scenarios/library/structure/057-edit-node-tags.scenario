@@ -1,13 +1,13 @@
-# mi lists the block's tags, marking unsupported ones, and any key closes it.
+# e lists the block's tags, marking unsupported ones, and Esc closes it without a change.
 file <<END
 Packing:
 	- Toothbrush @due(2026-12-01) @owner(me)
 END
-keys j mi
-see Details:
+keys j e
+see Edit Node
 see @owner(me) unsupported
 keys <Esc>
-hide Details:
+hide Edit Node
 quit
 saved <<END
 Packing:

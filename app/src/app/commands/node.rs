@@ -73,7 +73,7 @@ pub(in crate::app) fn node_commands(block: &Block, link: bool) -> Vec<Vec<NodeCo
         .chain(section)
         .collect();
     let blocks = slice::from_ref(block);
-    let itself = [Command::OpenDetails]
+    let itself = [Command::EditNode]
         .into_iter()
         .chain(link.then_some(Command::OpenUrl))
         .chain([Command::Duplicate, Command::Delete])
@@ -114,6 +114,7 @@ pub(in crate::app) fn context_commands(
     };
     let editing = alone(&[
         Command::Edit,
+        Command::EditNode,
         Command::New(NewBlock::Below, None),
         Command::New(NewBlock::Above, None),
         Command::New(NewBlock::LastChild, None),
@@ -158,7 +159,7 @@ pub(in crate::app) fn context_commands(
                 .is_some_and(|focused| focused.foldable)
                 .then_some(Command::ToggleFold),
         )
-        .chain(alone(&[Command::Count, Command::OpenDetails]))
+        .chain(alone(&[Command::Count]))
         .chain(
             focused
                 .is_some_and(|focused| focused.link)
@@ -284,7 +285,7 @@ mod tests {
                     "Color: Blue",
                     "Color: Violet",
                 ],
-                vec!["Show Details", "Duplicate", "Delete"],
+                vec!["Edit Node", "Duplicate", "Delete"],
             ]
         );
     }
@@ -324,10 +325,7 @@ mod tests {
         );
         assert_eq!(groups[2][6..], ["Clear Start Date", "Clear Due Date"]);
         assert_eq!(groups[3].last().map(String::as_str), Some("Remove Color"));
-        assert_eq!(
-            groups[4],
-            ["Show Details", "Open Link", "Duplicate", "Delete"]
-        );
+        assert_eq!(groups[4], ["Edit Node", "Open Link", "Duplicate", "Delete"]);
     }
 
     // D-50
@@ -377,7 +375,7 @@ mod tests {
             ("Color: Blue", Command::SetColor(Some(TagColor::Blue))),
             ("Color: Violet", Command::SetColor(Some(TagColor::Violet))),
             ("Remove Color", Command::SetColor(None)),
-            ("Show Details", Command::OpenDetails),
+            ("Edit Node", Command::EditNode),
             ("Open Link", Command::OpenUrl),
             ("Duplicate", Command::Duplicate),
             ("Delete", Command::Delete),
@@ -415,8 +413,8 @@ mod tests {
         assert_eq!(
             context("- a\n", Some(ALONE)),
             [
-                "Edit, New Block Below, New Block Above, New Block as Last Child, Copy, Cut, \
-                 Paste Below, Paste Above, Duplicate, Delete",
+                "Edit, Edit Node, New Block Below, New Block Above, New Block as Last Child, \
+                 Copy, Cut, Paste Below, Paste Above, Duplicate, Delete",
                 "Indent, Outdent, Move Up, Move Down, Group, Move to…",
                 "Complete, Toggle Star, Toggle Flag, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \
@@ -424,7 +422,7 @@ mod tests {
                 "Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, \
                  Color: Violet",
                 "Convert Type",
-                "Zoom In, Count Blocks and Words, Show Details",
+                "Zoom In, Count Blocks and Words",
             ]
         );
     }
@@ -449,7 +447,7 @@ mod tests {
         assert_eq!(groups[5], "Convert Type, Make Section");
         assert_eq!(
             groups[6],
-            "Zoom In, Toggle Fold, Count Blocks and Words, Show Details, Open Link"
+            "Zoom In, Toggle Fold, Count Blocks and Words, Open Link"
         );
         assert_eq!(
             context("a @section\n", Some(ALONE))[5],

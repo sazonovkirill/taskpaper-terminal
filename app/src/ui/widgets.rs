@@ -30,7 +30,7 @@ use crate::{
         commands::Group,
     },
     document::{
-        BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
+        BlockKind, DateTag, Document, Flag, ItemId, TagColor, blocks,
         dates::{self, DateError},
         format::Typed,
         inline::{self, Format, Syntax},
@@ -38,11 +38,13 @@ use crate::{
 };
 
 mod navigator;
+mod node_editor;
 mod quick_add;
 mod save_as;
 mod settings;
 
 pub use navigator::NavigatorPanel;
+pub use node_editor::NodeEditorWindow;
 pub use quick_add::QuickAddPanel;
 pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
@@ -445,7 +447,7 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
             warning_style,
         ),
         Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style),
-        Notice::TypedTag => Span::styled("Tags are set with commands", warning_style),
+        Notice::TypedTag => Span::styled("Tags are set in Edit Node (e)", warning_style),
         Notice::EditFailed { reason } => {
             Span::styled(format!("edit failed: {reason}"), error_style)
         }
@@ -592,8 +594,8 @@ impl Widget for ConflictPrompt<'_> {
 /// A popup over the outline ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06)): a
 /// box with a title listing lines, for a menu the entries the filter matches with the highlighted
 /// one reversed and kept in view and the filter at the bottom once one is typed. It shows the
-/// command menu (D-50), the context menu (FR-KEY-06), the color picker (FR-TAG-05), the type picker (FR-BLK-08) and a block's
-/// details (D-3).
+/// command menu (D-50), the context menu (FR-KEY-06), the color picker (FR-TAG-05) and the type
+/// picker (FR-BLK-08).
 #[derive(Debug)]
 pub struct Popup {
     title: &'static str,
@@ -745,40 +747,6 @@ impl Popup {
         }
     }
 
-    /// A block's details, titled "Details:": each tag as written, the unsupported ones marked,
-    /// then each special node it owns as hidden data with its tags and line count (D-3).
-    #[must_use]
-    pub fn details(details: &Details) -> Self {
-        let tags = details.tags.iter().map(|(tag, supported)| {
-            let mut line = Line::from(format!(" {tag} "));
-            if !supported {
-                line.push_span(Span::styled("unsupported ", Style::new().dim()));
-            }
-            line
-        });
-        let hidden = details.hidden.iter().map(|node| {
-            let lines = match node.lines {
-                1 => "1 line".to_owned(),
-                n => format!("{n} lines"),
-            };
-            Line::from(vec![
-                Span::styled(" Hidden data ", Style::new().dim()),
-                Span::raw(format!("{} · {lines} ", node.tags.join(" "))),
-            ])
-        });
-        let mut entries: Vec<Line<'static>> = tags.chain(hidden).collect();
-        if entries.is_empty() {
-            entries.push(Line::from(" No tags ").dim());
-        }
-        Self {
-            title: "Details:",
-            frame: Style::new(),
-            entries,
-            selected: 0,
-            filter: String::new(),
-        }
-    }
-
     /// The popup's width and height: its widest entry or its title, which is wider than any
     /// filter that matches an entry, and a line per entry, with the border.
     #[must_use]
@@ -833,7 +801,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         }
         Command::QuickAdd(QuickAddTo::Chosen) => plain(Icon::QuickAdd),
         Command::SetAnimations(_) => plain(Icon::Animations),
-        Command::OpenDetails => plain(Icon::Details),
+        Command::EditNode => plain(Icon::Edit),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
         Command::Delete => plain(Icon::Delete),
@@ -2089,7 +2057,7 @@ mod tests {
                 Icon::Animations,
                 Style::new(),
             ),
-            (Command::OpenDetails, Icon::Details, Style::new()),
+            (Command::EditNode, Icon::Edit, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),
             (Command::Duplicate, Icon::Duplicate, Style::new()),
             (Command::Delete, Icon::Delete, Style::new()),
@@ -2135,45 +2103,6 @@ mod tests {
         ]);
         expected.set_style(Rect::new(1, 1, 18, 1), Style::new().reversed());
         assert_eq!(buf, expected);
-    }
-
-    /// The details popup of the first block of `text`, drawn at its size.
-    fn details(text: &str) -> Buffer {
-        let mut state = State::new(format::parse(text), None);
-        state.update(Message::OpenDetails);
-        let popup = Popup::details(&state.details().unwrap());
-        let (width, height) = popup.size();
-        let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        popup.render(buf.area, &mut buf);
-        buf
-    }
-
-    // D-3, FR-SPC-01
-    #[test]
-    fn the_details_list_tags_marking_the_unsupported_and_hidden_data() {
-        let mut expected = Buffer::with_lines([
-            "┌Details:────────────────────────────┐",
-            "│ @due(2026-10-08)                   │",
-            "│ @estimate(2h) unsupported          │",
-            "│ Hidden data @hidden @log · 2 lines │",
-            "│ Hidden data @hidden · 1 line       │",
-            "└────────────────────────────────────┘",
-        ]);
-        expected.set_style(Rect::new(16, 2, 12, 1), Style::new().dim());
-        expected.set_style(Rect::new(1, 3, 13, 1), Style::new().dim());
-        expected.set_style(Rect::new(1, 4, 13, 1), Style::new().dim());
-        assert_eq!(
-            details("- a @due(2026-10-08) @estimate(2h)\n\tL @hidden @log\n\t\tx\n\tY @hidden"),
-            expected
-        );
-    }
-
-    // D-3
-    #[test]
-    fn the_details_of_a_block_without_tags_say_so() {
-        let mut expected = Buffer::with_lines(["┌Details:─┐", "│ No tags │", "└─────────┘"]);
-        expected.set_style(Rect::new(1, 1, 9, 1), Style::new().dim());
-        assert_eq!(details("a"), expected);
     }
 
     // FR-TAG-05, keybindings.md §4, D-48
@@ -3272,7 +3201,7 @@ mod tests {
             [
                 plain(" · "),
                 (
-                    "Tags are set with commands".to_owned(),
+                    "Tags are set in Edit Node (e)".to_owned(),
                     warning_style(&THEME)
                 )
             ]

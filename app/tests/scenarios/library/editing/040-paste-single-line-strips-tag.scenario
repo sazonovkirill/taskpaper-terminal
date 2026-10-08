@@ -8,7 +8,7 @@ keys j <Enter> <Space>
 paste <<END
 and @cheese please
 END
-status Tags are set with commands
+status Tags are set in Edit Node (e)
 keys <Esc>
 see - Milk and cheese please
 quit

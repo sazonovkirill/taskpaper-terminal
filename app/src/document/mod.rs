@@ -6,9 +6,10 @@ pub mod format;
 pub mod inline;
 pub mod metadata;
 pub mod model;
+pub mod properties;
 pub mod structure;
 
-pub use blocks::{Block, BlockKind, Details, HiddenData, TagColor};
+pub use blocks::{Block, BlockKind, HiddenData, TagColor};
 pub use format::DecodeError;
 pub use metadata::{DateChange, DateTag, Flag};
 pub use model::{

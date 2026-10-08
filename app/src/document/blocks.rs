@@ -293,18 +293,8 @@ pub fn parent(document: &Document, id: ItemId) -> Option<Block> {
     block(document, document.get(id)?.parent()?)
 }
 
-/// What a block's details list: every tag on its line and the special nodes it owns (D-3).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Details {
-    /// Each tag on the line as written, such as `@due(2026-10-08)`, in order, duplicates
-    /// included, with whether the app supports it (FR-TAG-02).
-    pub tags: Vec<(String, bool)>,
-    /// The special nodes among the line's children, which no feature of the app shows yet
-    /// (special-nodes.md §1).
-    pub hidden: Vec<HiddenData>,
-}
-
-/// A special node as a block's details list it: preserved data the app does not show.
+/// A special node as the Edit Node dialog lists it: preserved data the app does not show
+/// (editing.md §7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HiddenData {
     /// The tags on its first line as written, in order.
@@ -313,45 +303,40 @@ pub struct HiddenData {
     pub lines: usize,
 }
 
-/// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and listed in the
-/// details as unsupported (D-3), as `@section` is on a task or project (D-52).
+/// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and the Edit Node
+/// dialog marks it unsupported, as `@section` is on a task or project (D-52).
 const SUPPORTED: [&str; 14] = [
     "start", "due", "star", "red", "orange", "yellow", "green", "blue", "violet", "section", "url",
     "done", "bookmark", "flag",
 ];
 
-/// The details of the block `id`, or `None` when it is no block of `document`.
+/// Whether the app reads the tag `name` on a block of type `kind` (FR-TAG-02, D-52).
 #[must_use]
-pub fn details(document: &Document, id: ItemId) -> Option<Details> {
-    let item = document.get(id)?;
-    let text = block(document, id)?.kind() == BlockKind::Text;
-    let hidden = item
-        .children()
-        .iter()
-        .filter_map(|&child| Some((child, document.get(child)?)))
-        .filter(|(_, child)| is_special(child))
-        .map(|(child, line)| HiddenData {
-            tags: written_tags(line.text()).map(|(tag, _)| tag).collect(),
-            lines: document.descendants(child).count() + 1,
-        })
-        .collect();
-    Some(Details {
-        tags: written_tags(item.text())
-            .map(|(tag, name)| {
-                let supported = SUPPORTED.contains(&name.as_str()) && (text || name != "section");
-                (tag, supported)
-            })
-            .collect(),
-        hidden,
-    })
+pub fn supported(name: &str, kind: BlockKind) -> bool {
+    SUPPORTED.contains(&name) && (kind == BlockKind::Text || name != "section")
 }
 
-/// Each tag of `text` as written, without the whitespace before it, with its name.
-fn written_tags(text: &str) -> impl Iterator<Item = (String, String)> + '_ {
-    tags::scan(text).into_iter().filter_map(|tag| {
-        let written = text.get(tag.span)?.trim_start_matches(tags::is_whitespace);
-        Some((written.to_owned(), tag.name))
-    })
+/// The special nodes among the children of the block `id`, which no feature of the app shows,
+/// or `None` when it is no block of `document` (special-nodes.md §1).
+#[must_use]
+pub fn hidden_data(document: &Document, id: ItemId) -> Option<Vec<HiddenData>> {
+    block(document, id)?;
+    let item = document.get(id)?;
+    Some(
+        item.children()
+            .iter()
+            .filter_map(|&child| Some((child, document.get(child)?)))
+            .filter(|(_, child)| is_special(child))
+            .map(|(child, line)| HiddenData {
+                tags: tags::scan(line.text())
+                    .into_iter()
+                    .filter_map(|tag| line.text().get(tag.span))
+                    .map(|tag| tag.trim_start_matches(tags::is_whitespace).to_owned())
+                    .collect(),
+                lines: document.descendants(child).count() + 1,
+            })
+            .collect(),
+    )
 }
 
 /// Whether `item` starts a special node, which with its subtree forms no block (FR-SPC-01).
@@ -758,68 +743,29 @@ P: @blue @red
         assert_eq!(special, [true, true, false, false, true]);
     }
 
-    // D-3, FR-TAG-01, FR-TAG-02
+    // FR-TAG-02, D-52
     #[test]
-    fn details_list_every_tag_as_written_and_mark_the_unsupported_ones() {
-        let document = parse("- a @due(2026-10-08) @estimate(2 h) @red @code @x(a\\)b) @x\n- b");
-        let top = children(&document, document.root());
-        let tag = |written: &str, supported| (written.to_owned(), supported);
-        assert_eq!(
-            details(&document, top[0].id()),
-            Some(Details {
-                tags: vec![
-                    tag("@due(2026-10-08)", true),
-                    tag("@estimate(2 h)", false),
-                    tag("@red", true),
-                    tag("@code", false),
-                    tag("@x(a\\)b)", false),
-                    tag("@x", false),
-                ],
-                hidden: Vec::new(),
-            })
-        );
-        assert_eq!(
-            details(&document, top[1].id()),
-            Some(Details {
-                tags: Vec::new(),
-                hidden: Vec::new()
-            })
-        );
-        let every = parse(&format!("a @{}", SUPPORTED.join(" @")));
-        let first = children(&every, every.root())[0].id();
-        let supported = details(&every, first).unwrap().tags;
-        assert_eq!(supported.len(), 14);
-        assert!(supported.iter().all(|&(_, supported)| supported));
-    }
-
-    // D-52
-    #[test]
-    fn a_section_tag_on_a_task_or_project_is_listed_as_unsupported() {
-        let document = parse("- a @section @red\nP: @section\nn @section");
-        let listed: Vec<Vec<(String, bool)>> = children(&document, document.root())
-            .iter()
-            .map(|block| details(&document, block.id()).unwrap().tags)
-            .collect();
-        let tag = |written: &str, supported| (written.to_owned(), supported);
-        assert_eq!(
-            listed,
-            [
-                vec![tag("@section", false), tag("@red", true)],
-                vec![tag("@section", false)],
-                vec![tag("@section", true)],
-            ]
-        );
+    fn the_supported_tags_are_read_and_a_section_only_on_text() {
+        for name in SUPPORTED {
+            assert!(supported(name, BlockKind::Text), "{name}");
+        }
+        for kind in [BlockKind::Task, BlockKind::Project] {
+            assert!(supported("due", kind));
+            assert!(!supported("section", kind));
+        }
+        assert!(!supported("estimate", BlockKind::Text));
+        assert!(!supported("today", BlockKind::Task), "D-88");
     }
 
     // FR-SPC-01, special-nodes.md §1
     #[test]
-    fn details_list_the_special_nodes_a_block_owns_with_their_tags_and_lines() {
+    fn the_special_nodes_a_block_owns_are_listed_with_their_tags_and_lines() {
         let document = parse(
             "P:\n\t- t\n\tLOG @hidden @log(x)\n\t\tone\n\t\t\ttwo\n\tX @hidden\n\t- u\n\t\tY @hidden",
         );
         let project = children(&document, document.root())[0].id();
         assert_eq!(
-            details(&document, project).unwrap().hidden,
+            hidden_data(&document, project).unwrap(),
             [
                 HiddenData {
                     tags: vec!["@hidden".to_owned(), "@log(x)".to_owned()],
@@ -834,13 +780,13 @@ P: @blue @red
     }
 
     #[test]
-    fn only_blocks_have_details() {
+    fn only_blocks_own_hidden_data() {
         let document = parse("a\n\tX @hidden");
         let hidden = document
             .get(children(&document, document.root())[0].id())
             .unwrap()
             .children()[0];
-        assert_eq!(details(&document, hidden), None);
-        assert_eq!(details(&document, document.root()), None);
+        assert_eq!(hidden_data(&document, hidden), None);
+        assert_eq!(hidden_data(&document, document.root()), None);
     }
 }

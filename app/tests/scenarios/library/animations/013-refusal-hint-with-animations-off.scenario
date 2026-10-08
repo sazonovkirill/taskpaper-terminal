@@ -7,7 +7,7 @@ file <<END
 END
 keys <Enter>
 type  @mom
-status Tags are set with commands
+status Tags are set in Edit Node (e)
 keys <Esc>
 see - Call mom
 quit

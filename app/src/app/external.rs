@@ -313,6 +313,7 @@ impl State {
     fn reload(&mut self, document: Document) {
         self.edit = None;
         self.date_prompt = None;
+        self.node_editor = None;
         self.symbols = None;
         self.destinations = None;
         self.context_menu = None;
@@ -919,8 +920,8 @@ mod tests {
         assert!(state.date_prompt().is_some());
         state.update(found("- x\n- y\n"));
         state.update(Message::FocusLast);
-        state.update(Message::OpenDetails);
-        state.update(Message::CloseDetails);
+        state.update(Message::NodeEditor(crate::app::NodeInput::Open));
+        state.update(Message::NodeEditor(crate::app::NodeInput::Cancel));
         assert_eq!(state.mode(), crate::app::Mode::Navigate);
         assert_eq!(state.focus(), Some(state.rows()[1].id));
     }

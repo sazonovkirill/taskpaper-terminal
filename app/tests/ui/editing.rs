@@ -127,7 +127,7 @@ fn an_at_sign_starting_a_word_is_refused_with_a_hint() {
     app.type_keys(" @me@x.org");
     assert_eq!(outline_rows(&mut app)[0], "- Mail me@x.org");
     assert!(
-        status_line(&mut app).ends_with(" · Tags are set with commands"),
+        status_line(&mut app).ends_with(" · Tags are set in Edit Node (e)"),
         "{}",
         status_line(&mut app)
     );

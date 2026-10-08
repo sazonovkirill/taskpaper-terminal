@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::app::{
     Animations, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, NavigatorInput,
-    PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput, TextEdit,
+    NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput, TextEdit,
     commands::{NAVIGATOR, REGISTRY},
 };
 
@@ -92,8 +92,10 @@ pub enum Overlay {
     QuickAddPicker,
     /// The type picker (FR-BLK-08).
     TypePicker,
-    /// The details popup, which any key closes (D-3).
-    Details,
+    /// The Edit Node dialog (FR-MODE-09).
+    NodeEditor,
+    /// The Edit Node dialog's parent finder.
+    NodeEditorFinder,
     /// Go to Symbol, or Go to Project, its form over the projects alone (FR-NAV-05, D-65).
     GoToSymbol,
     /// Move to (FR-OPS-05).
@@ -390,6 +392,38 @@ fn quick_add_message(key: Key) -> Option<Message> {
     Some(Message::QuickAdd(input))
 }
 
+/// Bindings of the Edit Node dialog ([keybindings.md §4]) besides the [`TEXT`] keys, which
+/// the dialog reads by its focused row; characters without other bindings are typed, and other
+/// keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const NODE_EDITOR: &[(Key, NodeInput)] = &[
+    (key!(Enter), NodeInput::Accept),
+    (key!(Esc), NodeInput::Cancel),
+    (key!(Tab), NodeInput::Next),
+    (key!(Down), NodeInput::Next),
+    (key!(shift BackTab), NodeInput::Previous),
+    (key!(Up), NodeInput::Previous),
+    (key!(ctrl 't'), NodeInput::CycleType),
+];
+
+/// The Edit Node message for `key`: `Ctrl+Q` quits, `Ctrl+V` pastes into the text, a dialog
+/// binding, else the text key it is.
+fn node_editor_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'v') {
+        return Some(Message::Paste(Paste::Below));
+    }
+    let input = NODE_EDITOR
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| input)
+        .or_else(|| text_edit(key).map(NodeInput::Key))?;
+    Some(Message::NodeEditor(input))
+}
+
 /// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
 /// without other bindings are typed, and other keys do nothing.
 ///
@@ -547,6 +581,7 @@ fn command_named(mode: Mode, name: &str) -> Option<Command> {
 const RENAMED: &[(&str, &str)] = &[
     ("toggle_sidebar", "open_navigator"),
     ("focus_sidebar", "open_navigator"),
+    ("show_details", "edit_node"),
 ];
 
 /// Why a key binding the config file asks for was ignored ([keybindings.md §5]).
@@ -825,8 +860,8 @@ impl Keymap {
 
     /// What `event` completes at time `now`, if anything, a message carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
-    /// navigate and edit mode, the date prompt, the Quick Add panel, the Save As prompt and the
-    /// settings window's prompt and filter alone; repeats, releases
+    /// navigate and edit mode, the date prompt, the Quick Add panel, the Save As prompt, the
+    /// settings window's prompt and filter and the Edit Node dialog alone; repeats, releases
     /// and other events are ignored. A key that continues no binding ends the pending sequence
     /// and does nothing, unless the sequence, or one that timed out, is a binding of its own:
     /// then what it asks for comes back and [`Keymap::replay`] says to handle `event` again once
@@ -850,6 +885,7 @@ impl Keymap {
                         | Overlay::QuickAdd
                         | Overlay::SaveAs
                         | Overlay::SettingsText
+                        | Overlay::NodeEditor
                 ),
                 None => !context.command_menu && !context.navigator,
             };
@@ -901,8 +937,8 @@ impl Keymap {
                 Overlay::SettingsPicker => settings_picker_message(pressed),
                 Overlay::SaveAs => save_as_message(pressed),
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
-                Overlay::Details if pressed == key!(ctrl 'q') => Some(Message::Quit),
-                Overlay::Details => Some(Message::CloseDetails),
+                Overlay::NodeEditor => node_editor_message(pressed),
+                Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
             };
             return message.map(KeyAction::Send);
         }
@@ -2105,30 +2141,86 @@ mod tests {
         );
     }
 
-    // D-3, D-42: plain characters, which both key reportings send alike.
+    // editing.md §7, D-42: plain characters, which both key reportings send alike.
     #[test]
-    fn m_i_opens_the_details_and_any_key_closes_them() {
-        assert_eq!(messages("mi", CONTEXT), [None, Some(Message::OpenDetails)]);
-        let open = &Context {
-            overlay: Some(Overlay::Details),
-            ..*CONTEXT
-        };
-        let mut keymap = Keymap::default();
-        let mut press = |code, modifiers| keymap.message_for(&key(code, modifiers), ms(0), open);
+    fn e_and_m_i_open_the_edit_node_dialog() {
+        let open = Some(Message::NodeEditor(NodeInput::Open));
+        assert_eq!(messages("e", CONTEXT), std::slice::from_ref(&open));
+        assert_eq!(messages("mi", CONTEXT), [None, open]);
+    }
+
+    // editing.md §7, keybindings.md §4, D-42
+    #[test]
+    fn the_edit_node_dialog_takes_its_keys_and_text_keys_and_its_finder_the_keys_of_a_picker() {
         let none = KeyModifiers::NONE;
-        for code in [
-            KeyCode::Esc,
-            KeyCode::Char('j'),
-            KeyCode::Char('g'),
-            KeyCode::Enter,
+        let dialog = |code, modifiers| overlay_message(Overlay::NodeEditor, code, modifiers);
+        for (code, modifiers, input) in [
+            (KeyCode::Enter, none, NodeInput::Accept),
+            (KeyCode::Esc, none, NodeInput::Cancel),
+            (KeyCode::Tab, none, NodeInput::Next),
+            (KeyCode::Down, none, NodeInput::Next),
+            (KeyCode::BackTab, KeyModifiers::SHIFT, NodeInput::Previous),
+            (KeyCode::Up, none, NodeInput::Previous),
+            (
+                KeyCode::Char('t'),
+                KeyModifiers::CONTROL,
+                NodeInput::CycleType,
+            ),
+            (
+                KeyCode::Char(' '),
+                none,
+                NodeInput::Key(TextEdit::Insert(' ')),
+            ),
+            (
+                KeyCode::Char('x'),
+                none,
+                NodeInput::Key(TextEdit::Insert('x')),
+            ),
+            (
+                KeyCode::Backspace,
+                none,
+                NodeInput::Key(TextEdit::DeleteBackward),
+            ),
+            (
+                KeyCode::Left,
+                none,
+                NodeInput::Key(TextEdit::Move {
+                    motion: Motion::Left,
+                    select: false,
+                }),
+            ),
         ] {
-            assert_eq!(press(code, none), Some(Message::CloseDetails), "{code:?}");
+            assert_eq!(
+                dialog(code, modifiers),
+                Some(Message::NodeEditor(input)),
+                "{code:?}"
+            );
         }
+        assert_eq!(dialog(KeyCode::F(2), none), None);
         assert_eq!(
-            press(KeyCode::Char('q'), KeyModifiers::CONTROL),
-            Some(Message::Quit)
+            dialog(KeyCode::Char('v'), KeyModifiers::CONTROL),
+            Some(Message::Paste(Paste::Below))
         );
-        assert_eq!(keymap.pending(), "");
+        let pick = |code| overlay_message(Overlay::NodeEditorFinder, code, none);
+        for (code, input) in [
+            (KeyCode::Char('w'), MenuInput::Type('w')),
+            (KeyCode::Down, MenuInput::Next),
+            (KeyCode::Enter, MenuInput::Choose),
+            (KeyCode::Esc, MenuInput::Dismiss),
+        ] {
+            assert_eq!(
+                pick(code),
+                Some(Message::Menu(Menu::NodeEditor, input)),
+                "{code:?}"
+            );
+        }
+        for overlay in [Overlay::NodeEditor, Overlay::NodeEditorFinder] {
+            assert_eq!(
+                overlay_message(overlay, KeyCode::Char('q'), KeyModifiers::CONTROL),
+                Some(Message::Quit),
+                "{overlay:?}"
+            );
+        }
     }
 
     #[test]
@@ -2950,6 +3042,24 @@ mod tests {
                 .len(),
             1,
             "only where Open Navigator is bound"
+        );
+    }
+
+    // keybindings.md §5, D-103
+    #[test]
+    fn show_details_binds_edit_node() {
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.bind(Mode::Navigate, &[("ctrl+e", "show_details")]),
+            []
+        );
+        assert_eq!(
+            keymap.message_for(
+                &key(KeyCode::Char('e'), KeyModifiers::CONTROL),
+                ms(0),
+                CONTEXT
+            ),
+            Some(Message::NodeEditor(NodeInput::Open))
         );
     }
 

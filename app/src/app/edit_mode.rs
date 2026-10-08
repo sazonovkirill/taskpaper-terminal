@@ -436,7 +436,7 @@ impl State {
     /// it had, once no prompt or popup is open; a block that is gone, or that no row shows any
     /// more, is not edited.
     pub(super) fn resume_editing(&mut self) {
-        if self.date_prompt.is_some() || self.details {
+        if self.date_prompt.is_some() || self.node_editor.is_some() {
             return;
         }
         let Some(resume) = self.resume.take() else {
@@ -1518,16 +1518,19 @@ Site @url(https://x.y)",
         }
     }
 
-    // D-50, D-3
+    // D-50, editing.md §7
     #[test]
-    fn the_details_the_menu_shows_return_to_editing_when_closed() {
-        let mut state = editing_before_last_word("- Call Ana @x");
-        slash(&mut state, "show");
-        menu(&mut state, MenuInput::Choose);
-        assert!(state.details().is_some());
-        assert_eq!(state.mode(), Mode::Navigate);
-        state.update(Message::CloseDetails);
-        assert_eq!(shown(&state), "Call |Ana");
+    fn the_edit_node_dialog_the_menu_opens_returns_to_editing_when_closed() {
+        use crate::app::NodeInput;
+        for close in [NodeInput::Cancel, NodeInput::Accept] {
+            let mut state = editing_before_last_word("- Call Ana @x");
+            slash(&mut state, "edit");
+            menu(&mut state, MenuInput::Choose);
+            assert!(state.node_editor().is_some());
+            assert_eq!(state.mode(), Mode::Navigate);
+            state.update(Message::NodeEditor(close));
+            assert_eq!(shown(&state), "Call |Ana", "{close:?}");
+        }
     }
 
     // D-50

@@ -16,7 +16,7 @@ The block's editor opens where the block is drawn, keeping its indentation, mark
 
 **What is edited** is the block's visible text:
 - without a task's `- ` (the type is shown by the marker); a project's `:` is part of the text, typed and deleted like any character, and editing a project starts with the caret before it, at the end of the name, so typing there adds to the name. The line is written back with the task's dash re-applied; if the result parses as a different TaskPaper type (a text line ending in `:` becomes a project, text starting with `-` and whitespace becomes a task), the line takes the new type and its marker updates live (OQ-27). Text that makes a block a task loses its `-` and whitespace to the marker as it is typed. `Backspace` with the caret at the start of a task's text, nothing selected, deletes the dash, also in an empty task, and deleting a project's `:` (`End` then `Backspace`, or `Delete` before it) leaves text; the block then takes the type its line reads as, the dash's removal as one change of the session (D-52). The tags stay: a section that gains `- ` is a task whose `@section` has no effect, and is a section again once its dash is deleted. A task whose text is emptied while it has tags keeps the placeholder `…` as its text, because `- @tag` is read back as text. A divider is text like any other and is edited as its raw `---` (D-52);
-- without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set with commands", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message. A pasted single line, ignoring line breaks that end it, goes in at the caret as one undo step; text of several lines ends editing and becomes blocks below the block as `paste_below` makes them, in place of the block when its text is empty and it has no tags or children (FR-OPS-06);
+- without any tags (FR-TAG-01): tags are hidden and cannot be typed. Typing `@` at the start of a word is refused with the hint "Tags are set in Edit Node (e)", because TaskPaper has no escape and the word would become a tag on reload (OQ-25). `@` inside a word (`me@example.com`) is ordinary text. Text pasted in edit mode follows the same rule: a tag-shaped word is pasted without its leading `@`, with a status message. A pasted single line, ignoring line breaks that end it, goes in at the caret as one undo step; text of several lines ends editing and becomes blocks below the block as `paste_below` makes them, in place of the block when its text is empty and it has no tags or children (FR-OPS-06);
 - with inline Markdown markers visible (`**bold**`, `` `code` ``) (FR-FMT-01) and the raw link syntax of §2.2, and in text blocks the `#` heading markers (FR-FMT-03, D-45).
 
 Edits are applied to the document as the user types (one undo step per edit session) and written back as: type syntax + edited text + the line's tags appended after the text in their original order (OQ-24 default A). A line whose text and type are as they were is written as it was, so its mid-line tags stay where they are.
@@ -73,7 +73,7 @@ Typing `/` in edit mode opens a menu at the caret listing every command that app
 | | Start Today, Start Tomorrow, Due Today, Due Tomorrow | `start_today`, `start_tomorrow`, `due_today`, `due_tomorrow` (§5) |
 | | Clear Start Date, Clear Due Date, each only when the block has that date | Remove the date, as the prompt does with an empty text |
 | Color | Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, Color: Violet; Remove Color only when the block has a color | Give the block that color, or none (FR-TAG-05) |
-| Block | Show Details | `details` (§5) |
+| Block | Edit Node | the Edit Node dialog (§7) |
 | | Open Link, only when the block has a link | `open_url` (§5) |
 | | Duplicate, Delete | `duplicate`, `delete` (§4) |
 
@@ -91,7 +91,7 @@ A filter that matches no entry closes the menu and types `/` and the filter, so 
 
 Choosing a type rewrites the line as `convert_type` (§5) does: the old type's syntax and `@section` go, other tags, `@url` included, stay, and the new type's syntax is added: `- ` for a task, `:` before the trailing tags for a project, nothing for text. Make Section adds `@section` after the other tags and Remove Section takes it off (D-52). The caret stays where it was. The change is part of the edit session's single undo step, and within the session `Ctrl+Z` takes it back on its own.
 
-Every other entry runs the same command as its key in navigate mode, on the edited block. It ends the edit session, which stays one undo step, runs as a step of its own, and editing goes on in the block with the caret at the column it had. A command that opens the date prompt or the details popup returns to editing when that closes, whether the date was set or not. After Duplicate editing goes on in the original block; Delete leaves navigate mode on the block after it.
+Every other entry runs the same command as its key in navigate mode, on the edited block. It ends the edit session, which stays one undo step, runs as a step of its own, and editing goes on in the block with the caret at the column it had. A command that opens the date prompt or the Edit Node dialog returns to editing when that closes, whether the date was set or not. After Duplicate editing goes on in the original block; Delete leaves navigate mode on the block after it.
 
 The list is a core list of the commands on one block, with their labels; the command registry of step 4.1 is meant to absorb it.
 
@@ -158,7 +158,7 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `toggle_flag` (FR-TAG-12, D-91) | Add bare `@flag` to the targets without it; if every target has it, remove it, with any value. A flagged block shows a red flag after its text ([ui.md §2](ui.md#2-blocks)). |
 | `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which; a bookmarked block shows a bookmark icon after its text (D-47). |
 | `open_url` (FR-BLK-06) | Open the focused block's link in the system browser (`open` on macOS, `xdg-open` on Linux; N-PORT-01): its `@url` address first, else the first link in its text (§2.2, D-45). It acts on the focused block also while blocks are selected. |
-| `details` (D-3) | Read-only popup titled "Details:" listing the focused block's tags as written, in order, each unsupported one marked "unsupported" (FR-TAG-02), then each special node the block owns as hidden data with its tags and line count, except its recognized attachments, which the attachments panel shows ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)); "No tags" when there is nothing to list. Any key closes it. |
+| `edit_node` (FR-MODE-09, D-103) | The Edit Node dialog on the focused block (§7), which lists its tags and the special nodes it owns, except its recognized attachments, which the attachments panel shows ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)). |
 
 All block commands apply to every selected block (FR-OPS-07). Tags are written with the rules in [file-format.md §5](file-format.md#5-tags).
 
@@ -174,3 +174,47 @@ Quick Add adds a task or note to a project without leaving the current view (D-9
 - **Dates** (D-97). A run of whole words that the date grammar reads ([search.md §4](search.md#4-dates)) is a start date, or a due date when the word `due` stands right before it: `Buy milk tomorrow`, `Pay rent due next Mon`, `Plan trip next weekend`. Runs are found left to right, the longest at each word; a run starting with a bare number, such as `3 days`, does not count. When several start or due dates are typed, the last of each counts. The dates that count are highlighted in the text as they are typed, a start date in the start chip's color and a due date, its `due` included, in the due chip's (D-46), and the panel's second line shows what they resolve to.
 - **Adding.** `Enter` adds the block, when there is a destination and text besides the dates: the text without the dates that count and the spaces around them, then `@start` and `@due` with their dates (D-6), as the destination's last child, as `new_last_child` places it: after its attachments and before the other special nodes that end its children ([attachments.md §1](attachments.md#1-storage-fr-att-01), [special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)), expanding nothing, as one step to undo. The panel closes and the status line says where the block went ("Added to INBOX"). A destination deleted while the panel was open counts as none. When the file is reloaded from disk ([file-io.md §3](file-io.md#3-external-changes)), the panel stays open, the destination stays on the same project, found by its path, and the project picker closes.
 - **Closing.** `Esc` closes the panel, adding nothing.
+
+## 7. Edit Node dialog (FR-MODE-09)
+
+The Edit Node dialog shows and changes every property of one block in a modal window, as the task windows of Things 3 and 2Do do (D-103). It is the only place the app shows a block's tags and the only place any tag can be typed (FR-TAG-01): commands such as `x`, `*` or `c1` still set the tags they own.
+
+- **Opening.** `e` (Edit Node in Go to Command and the context menu) and `mi` open it on the focused block, also while blocks are selected and in the special views; the zoom title counts as focused. Edit Node in edit mode's command menu (§2.3) opens it on the edited block and editing resumes when it closes, as after the date prompt. It replaces the details popup (D-3).
+- **Window.** A box centered over the panes like the pickers, its border and title `Edit Node` in the accent color, as wide as it can be up to 64 columns and as tall as its rows, scrolling to keep the focused row in view. Each row is a label in a column of its own, dimmed, and a value; the focused row is marked like the outline's focused block. The last line is a dimmed hint naming the keys of the focused row, or, while a field is open, what `Enter` would do, a reason in the warning color when it would do nothing. A sketch, the focus on Due:
+
+  ```
+  ┌ Edit Node ───────────────────────────────────────────────────┐
+  │  Text     Book the venue                                     │
+  │  Type     - Task                                             │
+  │  Done     Not done                                           │
+  │  Parent   Work › Launch                                      │
+  │  Start    ↦ Thu 8 Oct 2026 · Today                           │
+  │▌ Due      ⇥ Mon 12 Oct 2026 · Mon                            │
+  │  Starred  ★ Starred                                          │
+  │  Flagged  Not flagged                                        │
+  │  Tags     @context(phone)                                    │
+  │           @green                                             │
+  │           + Add tag                                          │
+  │  Hidden   @hidden @log · 3 lines                             │
+  │                                                              │
+  │ Type or ←/→ a date · Del clears · Enter save · Esc cancel    │
+  └──────────────────────────────────────────────────────────────┘
+  ```
+
+- **Rows**, in this order:
+
+  | Row | Shows | Changed by |
+  |---|---|---|
+  | Text | The block's text as edit mode edits it (§2), without a project's `:`, which the type gives | Typing: the standard text keys of prompts. An `@` that would start a tag is not typed, with edit mode's notice (OQ-25), and nothing breaks the line |
+  | Type | Project, Task or Note, after its icon | `Space` or `→` the next of task, note and project, `←` the previous; `p`, `t` or `n` that type. A divider and a section are notes, a section being a note with `@section` among its tags |
+  | Done | `Not done`, dimmed, or the done icon, `Done` and the value of `@done` | `Space` or `x`: adds `@done` with today's date (D-4) or removes it with any value |
+  | Parent | The path to the block's parent, `›` between its steps, or the home icon and `Home` for a top-level block | `Space`, or a character, which starts its filter, opens a finder over the blocks it can move under, as Move to lists them, `Home` first when the type is Project (D-56); choosing one makes it the parent. A block given another type while `Home` is chosen goes back to its own parent. The block then moves with its subtree, as its last child, as `move_to` places it (§4) |
+  | Start, Due | The date as `Thu 8 Oct 2026` and named relative to today as the date chips do, with the chip's icon and color, `None`, dimmed, without one, or the tag's value as written, marked "not a date", when it is no date | `Space` opens a field holding the date as `YYYY-MM-DD`, selected, and a character opens it empty and types the character; it takes what the date prompt takes, with its preview (§5), `Enter` setting the date, or removing it when the field is empty, and `Esc` leaving the field. `←`/`→` move the date a day back or forward, as from today when there is none (D-26); `Backspace` or `Delete` removes it |
+  | Starred, Flagged | The star or flag icon and `Starred` or `Flagged` in its chip's color when set, `Not starred` or `Not flagged`, dimmed, when not | `Space`; `*` and `!` as in navigate mode |
+  | Tags | Every other tag, one per row, as written but for escapes, `@name` or `@name(value)`, in the line's order; a tag the app does not read marked "unsupported" (FR-TAG-02). The first occurrence of a name counts, as TaskPaper reads it, and is the one listed | `Space` opens a field holding the tag without its `@`; a character opens it empty and types the character. `Enter` writes it: a name, or a name and a value in parentheses, a leading `@` dropped; an empty field removes the tag, and anything else that is not a tag keeps the field open, saying why: a name TaskPaper keeps (`id`, `text`, `type`) or `hidden`, which only special nodes carry ([special-nodes.md §1](special-nodes.md#1-special-nodes-fr-spc-01)), is not a tag here. `Backspace` or `Delete` removes the tag |
+  | + Add tag | The last row of Tags | As a tag row, its field opening empty; the new tag goes after the others and the focus stays on + Add tag for the next one. A name the block has already sets that tag's value. A name with a row of its own, such as `due`, changes that row |
+  | Hidden | The special nodes the block owns, as data the app does not show: each one's tags and line count, as the details popup listed them (D-3); only when there are some | Nothing; the focus skips it |
+
+- **Keys.** `Tab` or `↓` focus the next row, `Shift+Tab` or `↑` the previous one, stopping at the first and last. `Ctrl+T` changes the type from any row, the Text row included, as it cycles the type in edit mode (§2.4). `Enter` closes the dialog and applies every change as one step to undo; `Esc` closes it and changes nothing. While a field or the parent finder is open it takes the keys: `Enter` accepts and `Esc` leaves it, the dialog staying open. Every key is a plain key or `Ctrl` with a letter, so both key reportings send it (D-42); `Ctrl+Q` still quits.
+- **Applying.** When nothing changed, nothing happens. A changed text or type rewrites the line as edit mode writes it back (§2), the type's syntax as `convert_type` gives it (§5); then each tag that was removed goes with every occurrence, each changed tag gets its new value where it stands, and each added tag goes at the end, in the order added. Changing the type keeps every listed tag: `@section` stays on a block that is no longer a note, without effect, as `my` would not keep it. A task whose text is empty while it has tags gets the placeholder `…` as its text. The focus stays on the block; a block moved outside the pane's zoom is followed there as Move to does (§4). A read-only file shows the dialog but refuses the change with its notice.
+- **Reloading.** When the file is reloaded from disk ([file-io.md §3](file-io.md#3-external-changes)) the dialog closes, changing nothing, as the date prompt does.

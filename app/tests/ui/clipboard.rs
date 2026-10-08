@@ -159,7 +159,7 @@ fn text_pasted_in_edit_mode_goes_in_at_the_caret_without_tags() {
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     paste_into_terminal(&mut app, " mum @today");
     assert!(
-        status_line(&mut app).ends_with(" · Tags are set with commands"),
+        status_line(&mut app).ends_with(" · Tags are set in Edit Node (e)"),
         "{}",
         status_line(&mut app)
     );

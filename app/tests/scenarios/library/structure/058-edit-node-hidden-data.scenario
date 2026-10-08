@@ -1,0 +1,11 @@
+# mi on a block that owns a hidden node lists it in Edit Node as hidden data with its line count.
+file <<END
+Plan:
+	- B
+		LOG @hidden @log
+			entry one
+END
+keys j mi
+see Edit Node
+see @hidden @log · 2 lines
+quit
