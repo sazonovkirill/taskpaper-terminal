@@ -21,7 +21,7 @@ use ratatui::{
     buffer::{Buffer, CellWidth},
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Widget},
 };
 
@@ -1225,13 +1225,8 @@ impl Tui {
             Mode::Navigate => (Icon::Navigate, "NAVIGATE"),
             Mode::Edit => (Icon::Edit, "EDIT"),
         };
-        let mut spans = vec![format!("{} {mode}", icon.glyph(icons)).bold()];
-        if let Some(path) = self.state.path() {
-            spans.push(format!(" · {}", path.display()).into());
-        }
-        if self.state.origin() == Origin::Temporary {
-            spans.push(" · temporary".into());
-        }
+        let mode = format!("{} {mode}", icon.glyph(icons)).bold();
+        let temporary = (self.state.origin() == Origin::Temporary).then_some(" · temporary");
         let status = |notice| {
             widgets::file_status(
                 self.state.save_state(),
@@ -1248,8 +1243,26 @@ impl Tui {
             .state
             .notice()
             .or_else(|| self.animator.fading_notice(&theme));
-        let quiet = Line::from_iter(spans.iter().cloned().chain(status(None))).width();
-        spans.extend(status(notice));
+        let after_path = |notice| {
+            temporary
+                .into_iter()
+                .map(Span::raw)
+                .chain(status(notice))
+                .collect::<Vec<_>>()
+        };
+        // The path gives up its columns first, so the save state and messages stay in view.
+        let mut spans = vec![mode];
+        if let Some(path) = self.state.path() {
+            let path = effects::abbreviate_path(path, self.home.as_deref());
+            let separator = " · ";
+            let room = usize::from(area.width).saturating_sub(
+                Line::from_iter(spans.iter().cloned().chain(after_path(notice))).width()
+                    + Span::raw(separator).width(),
+            );
+            spans.push(format!("{separator}{}", widgets::fitted_path(&path, room)).into());
+        }
+        let quiet = Line::from_iter(spans.iter().cloned().chain(after_path(None))).width();
+        spans.extend(after_path(notice));
         let line = Line::from(spans);
         let quiet = u16::try_from(quiet).unwrap_or(u16::MAX);
         let notice = Rect {

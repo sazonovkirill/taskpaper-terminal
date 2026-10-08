@@ -66,7 +66,7 @@ fn a_read_only_file_opens_read_only() {
     let mut app = Harness::open_path(dir, &path, 80, 4);
     assert_eq!(
         status_line(&mut app),
-        format!("{} · read-only", app.status(80).trim_end())
+        app.status_with(80, " · read-only").trim_end().to_owned()
     );
     assert_eq!(outline_rows(&mut app), ["- Milk"]);
 }
@@ -93,7 +93,7 @@ fn a_file_opened_with_its_recovered_changes_saves_them_after_a_backup() {
     assert_eq!(outline_rows(&mut app), ["- Milk", "- Eggs"]);
     assert_eq!(
         status_line(&mut app),
-        format!("{} ●", app.status(60).trim_end())
+        app.status_with(60, " ●").trim_end().to_owned()
     );
     app.wait(Duration::from_secs(1));
     app.settle();

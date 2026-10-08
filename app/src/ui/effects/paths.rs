@@ -1,5 +1,7 @@
-//! Paths as the user types them in the Save As prompt: `~` for the home folder, and completing
-//! the folder being typed ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-06).
+//! Paths as the user types them in the Save As prompt and reads them on the status line: `~` for
+//! the home folder, and completing the folder being typed
+//! ([file-io.md §2](../../../../docs/specs/file-io.md#2-saving), FR-DOC-06,
+//! [ui.md §1](../../../../docs/specs/ui.md#1-layout)).
 
 use std::{
     fs,
@@ -18,6 +20,16 @@ pub fn expand(text: &str, home: Option<&Path>) -> PathBuf {
         _ => PathBuf::from(text),
     };
     std::path::absolute(&path).unwrap_or(path)
+}
+
+/// `path` as the user reads it: `~` for `home` when it is there or inside it.
+#[must_use]
+pub fn abbreviate(path: &Path, home: Option<&Path>) -> String {
+    match home.and_then(|home| path.strip_prefix(home).ok()) {
+        Some(rest) if rest.as_os_str().is_empty() => "~".to_owned(),
+        Some(rest) => format!("~/{}", rest.display()),
+        None => path.display().to_string(),
+    }
 }
 
 /// `text` with the name after its last `/` completed to the folders there whose names start
@@ -91,6 +103,31 @@ mod tests {
         assert_eq!(
             expand("a.taskpaper", Some(home)),
             std::env::current_dir().unwrap().join("a.taskpaper")
+        );
+    }
+
+    // ui.md §1
+    #[test]
+    fn a_path_in_the_home_folder_reads_with_a_tilde() {
+        let home = Path::new("/home/ann");
+        assert_eq!(abbreviate(Path::new("/home/ann"), Some(home)), "~");
+        assert_eq!(
+            abbreviate(Path::new("/home/ann/notes/a.taskpaper"), Some(home)),
+            "~/notes/a.taskpaper"
+        );
+        assert_eq!(
+            abbreviate(Path::new("/home/annex/a.taskpaper"), Some(home)),
+            "/home/annex/a.taskpaper",
+            "a folder whose name only starts like home's"
+        );
+        assert_eq!(
+            abbreviate(Path::new("/tmp/a.taskpaper"), Some(home)),
+            "/tmp/a.taskpaper"
+        );
+        assert_eq!(
+            abbreviate(Path::new("/home/ann/a.taskpaper"), None),
+            "/home/ann/a.taskpaper",
+            "without a home"
         );
     }
 

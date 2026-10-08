@@ -62,7 +62,7 @@ fn x_completes_the_focused_task_and_saves_it_dated_today() {
     assert_eq!(outline_rows(&mut app)[1], "  ✔ Milk");
     assert_eq!(
         status_line(&mut app),
-        format!("{} ●", app.status(50).trim_end())
+        app.status_with(50, " ●").trim_end().to_owned()
     );
     assert_eq!(
         saved(&mut app),
@@ -134,10 +134,9 @@ fn a_read_only_file_refuses_to_complete() {
     assert_eq!(outline_rows(&mut app), ["- Milk"]);
     assert_eq!(
         status_line(&mut app),
-        format!(
-            "{} · read-only · cannot edit a read-only file",
-            app.status(90).trim_end()
-        )
+        app.status_with(90, " · read-only · cannot edit a read-only file")
+            .trim_end()
+            .to_owned()
     );
     app.wait(Duration::from_secs(10));
     app.settle();

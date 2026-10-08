@@ -331,10 +331,12 @@ fn an_animations_setting_that_is_not_a_level_is_reported() {
     let status = line(app.render().buffer(), 7);
     assert_eq!(
         status,
-        format!(
-            "{} · config.toml: `animations` must be \"full\", \"reduced\" or \"off\"",
-            app.status(120).trim_end()
+        app.status_with(
+            120,
+            " · config.toml: `animations` must be \"full\", \"reduced\" or \"off\""
         )
+        .trim_end()
+        .to_owned()
     );
 }
 

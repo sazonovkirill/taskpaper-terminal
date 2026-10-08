@@ -93,10 +93,7 @@ q = \"frobnicate\"
     let status = line(app.render().buffer(), 7);
     assert_eq!(
         status,
-        format!(
-            "{} · config.toml: `theme` must be a built-in theme's name, such as \"nord\"; [keymap.navigate] \"q\": no command \"frobnicate\" here",
-            app.status(180).trim_end()
-        )
+        app.status_with(180, " · config.toml: `theme` must be a built-in theme's name, such as \"nord\"; [keymap.navigate] \"q\": no command \"frobnicate\" here").trim_end().to_owned()
     );
     app.press(KeyCode::Char('d'), KeyModifiers::CONTROL);
     app.wait(Duration::from_secs(11));

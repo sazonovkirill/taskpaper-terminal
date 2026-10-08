@@ -89,6 +89,40 @@ fn the_demo_is_a_new_temporary_file_marked_in_the_status_line() {
     assert_eq!(app.status(160).trim_end(), line(&buffer, 2));
 }
 
+// ui.md §1
+#[test]
+fn the_status_line_reads_the_home_folder_as_a_tilde() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("home/notes/todo.taskpaper");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, "- a\n").unwrap();
+    let mut app = Harness::open_path(dir, &path, 60, 3);
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        line(&buffer, 2),
+        format!("{NAVIGATE} · ~/notes/todo.taskpaper")
+    );
+}
+
+// ui.md §1
+#[test]
+fn a_path_too_long_for_the_status_line_gives_its_room_to_a_message() {
+    let mut app = Harness::with_text("- a\n", 60, 3);
+    app.type_keys("qi");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        line(&buffer, 2),
+        format!("{NAVIGATE} · ….taskpaper · No INBOX project in the Navigator")
+    );
+    app.terminal.backend_mut().resize(40, 3);
+    let buffer = app.render().buffer().clone();
+    assert_eq!(
+        line(&buffer, 2),
+        format!("{NAVIGATE} · … · No INBOX project in the"),
+        "the path keeps only its ellipsis"
+    );
+}
+
 // FR-DOC-05, file-io.md §2
 #[test]
 fn the_temporary_file_is_not_backed_up() {

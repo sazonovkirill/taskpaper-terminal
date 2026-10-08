@@ -29,7 +29,7 @@ pub use backup::{
 };
 pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
-pub use paths::{complete as complete_path, expand as expand_path};
+pub use paths::{abbreviate as abbreviate_path, complete as complete_path, expand as expand_path};
 pub(super) use plain_texts::PlainTexts;
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
 pub use views::{Views, ViewsError, file as views_file};

@@ -1,5 +1,4 @@
 # In a 40-column terminal the status line still shows a message such as Quick Add's "No INBOX project in the Navigator".
-# BUG: the file path fills the status line and pushes every transient message past its right edge (ui.md §1 lists messages in the status line but says nothing of a long path).
 size 40 10
 file <<END
 Work:

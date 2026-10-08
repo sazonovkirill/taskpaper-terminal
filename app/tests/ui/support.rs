@@ -383,13 +383,33 @@ impl Harness {
         self.tui.tick(self.now);
     }
 
-    /// The status line for the opened file: the mode, the file's path and whether it is
-    /// temporary.
+    /// The status line for the opened file: the mode, the file's path, `~` standing for the
+    /// home folder and cut from the left behind `…` to what the line has room for, and whether
+    /// it is temporary.
     pub fn status(&self, width: u16) -> String {
+        self.status_with(width, "")
+    }
+
+    /// The status line [`Harness::status`] gives when `after` follows what it shows, such as the
+    /// save state or a message, whose room the path gives up.
+    pub fn status_with(&self, width: u16, after: &str) -> String {
         let path = self.path.as_ref().expect("a file was opened");
+        let path = match path.strip_prefix(&self.home) {
+            Ok(rest) => format!("~/{}", rest.display()),
+            Err(_) => path.display().to_string(),
+        };
         let mark = if self.temporary { " · temporary" } else { "" };
-        let status = format!("{NAVIGATE} · {}{mark}", path.display());
-        format!("{status:width$.width$}", width = usize::from(width))
+        let width = usize::from(width);
+        let room = width.saturating_sub(format!("{NAVIGATE} · {mark}{after}").chars().count());
+        let count = path.chars().count();
+        let path: String = if count <= room {
+            path
+        } else {
+            let cut = count.saturating_sub(room.saturating_sub(1));
+            std::iter::once('…').chain(path.chars().skip(cut)).collect()
+        };
+        let status = format!("{NAVIGATE} · {path}{mark}{after}");
+        format!("{status:width$.width$}")
     }
 
     /// Draws a frame and returns the backend to check.

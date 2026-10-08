@@ -68,7 +68,9 @@ fn a_file_changed_elsewhere_is_reloaded_keeping_the_focus() {
     assert_eq!(focused_rows(&mut app), ["  - Eggs"]);
     assert_eq!(
         status_line(&mut app),
-        format!("{} · Reloaded (changed on disk)", app.status(80).trim_end())
+        app.status_with(80, " · Reloaded (changed on disk)")
+            .trim_end()
+            .to_owned()
     );
     app.wait(Duration::from_secs(10));
     assert_eq!(status_line(&mut app), app.status(80).trim_end());
@@ -98,7 +100,7 @@ fn a_deleted_file_is_kept_and_marked_not_on_disk() {
     );
     assert_eq!(
         status_line(&mut app),
-        format!("{} · not on disk", app.status(60).trim_end())
+        app.status_with(60, " · not on disk").trim_end().to_owned()
     );
 }
 

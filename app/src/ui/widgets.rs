@@ -391,6 +391,26 @@ fn view_title(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static>
     ])
 }
 
+/// `path` as the status line shows it in `room` columns: whole when it fits, else as much of its
+/// end as fits behind `…`, in whole graphemes, so the file's name stays longest (ui.md §1).
+#[must_use]
+pub fn fitted_path(path: &str, room: usize) -> Cow<'_, str> {
+    if Span::raw(path).width() <= room {
+        return Cow::Borrowed(path);
+    }
+    let mut used = 1;
+    let start = path
+        .grapheme_indices(true)
+        .rev()
+        .take_while(|(_, grapheme)| {
+            used += Span::raw(*grapheme).width();
+            used <= room
+        })
+        .last()
+        .map_or(path.len(), |(at, _)| at);
+    Cow::Owned(format!("…{}", path.get(start..).unwrap_or_default()))
+}
+
 /// What the status line says after the file's path (ui.md §1, file-io.md §1–3): the unsaved icon
 /// of `icons` while changes are unsaved, an error badge when the last save failed, `read-only`,
 /// `not on disk` when the file was deleted or moved away, the question a failed save on quit
@@ -3123,6 +3143,25 @@ mod tests {
             lines(&render("- buy milk and eggs @due(2026-10-05)", 20, 1)),
             [at_right("- buy milk …", &chip(Icon::Due, "today"), 20)]
         );
+    }
+
+    // ui.md §1
+    #[test]
+    fn a_path_too_long_for_its_room_keeps_its_end_behind_an_ellipsis() {
+        let path = "/home/ann/notes/a.taskpaper";
+        assert_eq!(fitted_path(path, 27), path, "it fits");
+        assert_eq!(fitted_path(path, 40), path);
+        assert_eq!(fitted_path(path, 26), "…ome/ann/notes/a.taskpaper");
+        assert_eq!(fitted_path(path, 13), "…/a.taskpaper");
+        assert_eq!(fitted_path(path, 12), "…a.taskpaper");
+        assert_eq!(fitted_path(path, 1), "…");
+        assert_eq!(fitted_path(path, 0), "…", "the ellipsis stays");
+        assert_eq!(
+            fitted_path("/x/日本.taskpaper", 13),
+            "…本.taskpaper",
+            "a wide character is kept whole or not at all"
+        );
+        assert_eq!(fitted_path("/x/日本.taskpaper", 12), "….taskpaper");
     }
 
     /// The spans `file_status` draws, as text and style.

@@ -97,8 +97,8 @@ fn the_temporary_file_is_kept_in_a_folder_under_home_completed_with_tab() {
     assert!(!rows.iter().any(|row| row.contains("Save As")), "{rows:#?}");
     assert_eq!(
         rows[15],
-        format!("{NAVIGATE} · {}", kept.display()),
-        "the new file, no longer marked temporary"
+        format!("{NAVIGATE} · ~/notes/todo.taskpaper"),
+        "the new file, no longer marked temporary, under home"
     );
     app.type_keys("x");
     app.wait(Duration::from_secs(1));
@@ -140,7 +140,7 @@ fn a_file_there_is_replaced_once_confirmed_after_a_backup_and_esc_goes_back() {
     assert_eq!(fs::read_to_string(&other).unwrap(), "- mine\n");
     assert_eq!(
         screen(&mut app)[15],
-        format!("{NAVIGATE} · {}", other.display())
+        format!("{NAVIGATE} · ~/other.taskpaper")
     );
     let folder = fs::read_dir(&app.backups)
         .unwrap()
@@ -157,7 +157,6 @@ fn a_file_there_is_replaced_once_confirmed_after_a_backup_and_esc_goes_back() {
 #[test]
 fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     let mut app = Harness::with_text("- mine\n", 70, 16);
-    let opened = app.path.clone().unwrap();
     let missing = app.home.join("missing/a.taskpaper");
     save_as(&mut app, &missing);
     let status = &prompt(&mut app)[2];
@@ -169,7 +168,7 @@ fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     press(&mut app, KeyCode::Esc);
     let rows = screen(&mut app);
     assert!(!rows.iter().any(|row| row.contains("Save As")), "{rows:#?}");
-    assert_eq!(rows[15], format!("{NAVIGATE} · {}", opened.display()));
+    assert_eq!(rows[15], app.status(70).trim_end());
 }
 
 // FR-DOC-06, keybindings.md §4: the prompt takes the standard text keys, pasting included.
