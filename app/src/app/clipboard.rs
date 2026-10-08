@@ -54,13 +54,16 @@ impl State {
         effects
     }
 
-    /// Pastes `text`. The open date prompt takes it as typed; in edit mode, a single line goes
+    /// Pastes `text`. The open date prompt or Quick Add panel takes it as typed; in edit mode, a single line goes
     /// into the text being edited, and several lines end editing and become blocks below the
     /// block, which they replace when it is empty and not the zoom title; in navigate mode, the
     /// text becomes blocks `at` the focused block (FR-OPS-06).
     pub(super) fn pasted(&mut self, text: &str, at: Paste) {
         if let Some(prompt) = &mut self.date_prompt {
             prompt.paste(text);
+            return;
+        }
+        if self.quick_add_paste(text) {
             return;
         }
         let line = text.trim_end_matches(breaks_line);

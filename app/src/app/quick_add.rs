@@ -122,6 +122,16 @@ impl QuickAdd {
         true
     }
 
+    /// Types `text` into the text as its characters would be typed, leaving out those that
+    /// break lines; `false` when a character was left out because it would type a tag (OQ-25).
+    fn paste(&mut self, text: &str) -> bool {
+        let mut typed = true;
+        for c in text.chars() {
+            typed &= self.edit(TextEdit::Insert(c));
+        }
+        typed
+    }
+
     /// Whether `/` typed now opens the project picker: nothing is selected and the caret is at
     /// the start of the text or after a space.
     fn at_word_start(&self) -> bool {
@@ -291,6 +301,18 @@ impl State {
         self.quick_add = Some(quick_add);
     }
 
+    /// Types `text` into the open panel's text, as [`QuickAdd::paste`] does, unless its project
+    /// picker is open, which takes no text pasted; `false` when no panel is open.
+    pub(super) fn quick_add_paste(&mut self, text: &str) -> bool {
+        let Some(quick_add) = &mut self.quick_add else {
+            return false;
+        };
+        if quick_add.picker.is_none() && !quick_add.paste(text) {
+            self.notify(Notice::TypedTag);
+        }
+        true
+    }
+
     /// Adds the block the open panel holds as its destination's last child and closes the
     /// panel; does nothing while it lacks a destination or text.
     fn add_quickly(&mut self) {
@@ -346,11 +368,9 @@ impl State {
             }
         };
         quick_add.picker = None;
-        let mut refused = false;
-        for c in literal.iter().flat_map(|text| text.chars()) {
-            refused |= !quick_add.edit(TextEdit::Insert(c));
-        }
-        if refused {
+        if let Some(text) = literal
+            && !quick_add.paste(&text)
+        {
             self.notify(Notice::TypedTag);
         }
     }
@@ -514,6 +534,30 @@ mod tests {
             (true, ""),
             "a selection is deleted"
         );
+    }
+
+    // editing.md §6: the panel takes pasted text as typed, and its project picker none.
+    #[test]
+    fn pasted_text_is_typed_into_the_panel_but_not_its_picker() {
+        let mut state = open(OUTLINE);
+        let paste = |state: &mut State, text: &str| {
+            let text = text.to_owned();
+            let at = crate::app::Paste::Below;
+            assert_eq!(state.update(Message::Pasted { text, at }), []);
+        };
+        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        paste(&mut state, "Renew\r\n passport");
+        assert_eq!(shown(&state).1, "Renew passport");
+        assert_eq!(state.notice(), None);
+        paste(&mut state, " for @ann");
+        assert_eq!(shown(&state).1, "Renew passport for ann", "as typed");
+        assert_eq!(state.notice(), Some(&Notice::TypedTag));
+        typed(&mut state, " /");
+        let all = listed(&state);
+        paste(&mut state, "Wo");
+        assert_eq!(shown(&state).1, "Renew passport for ann ");
+        assert_eq!(listed(&state), all, "the picker's filter is unchanged");
+        assert_eq!(lines(&state), lines(&open(OUTLINE)), "no block pasted");
     }
 
     // OQ-25

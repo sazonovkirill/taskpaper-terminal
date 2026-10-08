@@ -168,7 +168,7 @@ impl State {
     /// `message` as the pane takes it where it is: in a special view an intent that needs the
     /// outline's tree around the focused block, such as folding, moving to a parent, child or
     /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
-    /// edit mode and the date prompt, and ending an edit with `Enter` only stops editing (navigation.md §7).
+    /// edit mode, the date prompt and Quick Add, and ending an edit with `Enter` only stops editing (navigation.md §7).
     pub(super) fn as_located(&self, message: Message) -> Option<Message> {
         if let Location::Outline(_) = self.pane.location {
             return Some(message);
@@ -176,7 +176,9 @@ impl State {
         match message {
             Message::NewNext => Some(Message::StopEditing),
             Message::Paste(_) | Message::Pasted { .. }
-                if self.edit.is_none() && self.date_prompt.is_none() =>
+                if self.edit.is_none()
+                    && self.date_prompt.is_none()
+                    && self.quick_add.is_none() =>
             {
                 None
             }

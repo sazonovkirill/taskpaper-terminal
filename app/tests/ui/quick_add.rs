@@ -2,8 +2,10 @@
 
 use std::{fs, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::style::Modifier;
+
+use taskpaper_terminal::ui::Input;
 
 use crate::support::{Harness, line};
 
@@ -164,4 +166,25 @@ fn q_i_and_q_t_say_when_their_project_is_missing_or_turned_off() {
     assert!(said.contains("· No INBOX project"), "{said}");
     app.type_keys("qt");
     assert!(status(&mut app).ends_with("· No TODAY project"));
+}
+
+// editing.md §6, keybindings.md §4: the panel takes the standard text keys, pasting included.
+#[test]
+fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_panel() {
+    let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
+    app.type_keys("jyqi");
+    app.send(Input::Terminal(Event::Paste("Renew\n passport".to_owned())));
+    assert_eq!(screen(&mut app)[10], inside(" - Renew passport"));
+    app.type_keys(" ");
+    app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
+    assert_eq!(
+        screen(&mut app)[10],
+        inside(" - Renew passport - old"),
+        "what y copied, without its line break"
+    );
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(
+        saved(&mut app),
+        "INBOX:\n\t- old\n\t- Renew passport - old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
+    );
 }
