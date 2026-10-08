@@ -1,0 +1,9 @@
+# } on 31 October moves the due date to 1 November.
+file <<END
+- Halloween @due(2026-10-31)
+END
+keys } }
+quit
+saved <<END
+- Halloween @due(2026-11-02)
+END

@@ -1,0 +1,15 @@
+# md with several blocks selected sets the typed date on all of them.
+file <<END
+- A
+- B @due({today})
+- C
+END
+keys J J md
+type +2d
+keys <Enter>
+quit
+saved <<END
+- A @due({today+2})
+- B @due({today+2})
+- C @due({today+2})
+END

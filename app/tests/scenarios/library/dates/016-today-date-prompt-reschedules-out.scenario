@@ -1,0 +1,18 @@
+# md on a Today entry, typing tomorrow and Enter saves tomorrow's date and the entry leaves Today.
+file <<END
+- Report @due({today})
+- Mail @due({today})
+END
+keys gt
+see Report
+keys md
+see Due date
+type tomorrow
+keys <Enter>
+hide Report
+see ▌ - Mail
+quit
+saved <<END
+- Report @due({today+1})
+- Mail @due({today})
+END

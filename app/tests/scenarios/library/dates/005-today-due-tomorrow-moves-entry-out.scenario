@@ -1,0 +1,17 @@
+# Pressing W on a Today entry makes it due tomorrow: it leaves Today and focus moves to the next entry.
+file <<END
+- Post office @due({today})
+- Bank @due({today})
+- Pharmacy @due({today})
+END
+keys gt
+see Today
+keys j W
+hide Bank
+see ▌ - Pharmacy
+quit
+saved <<END
+- Post office @due({today})
+- Bank @due({today+1})
+- Pharmacy @due({today})
+END

@@ -1,0 +1,21 @@
+# Up and Down move editing to the neighbouring block keeping the caret column, or the end of a shorter text.
+file <<END
+Trip:
+	- Book flights
+	- Pack
+	Notes about hotels near the station
+END
+see Book flights
+keys j <Enter> <Home> <Right> <Right> <Right> <Right> <Down>
+type |
+keys <Down>
+type ^
+keys <Esc>
+see Notes^ about hotels
+quit
+saved <<END
+Trip:
+	- Book flights
+	- Pack|
+	Notes^ about hotels near the station
+END

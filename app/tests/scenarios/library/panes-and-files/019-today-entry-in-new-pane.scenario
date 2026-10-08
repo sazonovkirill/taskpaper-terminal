@@ -1,0 +1,11 @@
+# From the Today view, Ctrl+W v opens the focused entry zoomed in the outline in a new pane.
+file <<END
+Errands:
+	- Post office @due({today})
+	- Buy milk
+END
+keys gt
+see Today
+see - Post office  Errands
+keys <C-w> v
+see 󰋜 › Errands › Post office

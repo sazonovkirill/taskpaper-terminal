@@ -1,0 +1,18 @@
+# gz and Alt+l zoom in, gu and Alt+h zoom out, like . and >.
+file <<END
+Work:
+	Launch:
+		- Draft announcement
+Home
+END
+keys gz
+see › Work
+keys <A-l>
+see › Work › Launch
+keys gu
+see - Draft announcement
+hide › Launch
+keys <A-h>
+see Home
+hide › Work
+quit

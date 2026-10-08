@@ -1,0 +1,15 @@
+# Editing a project starts with the caret before its colon, so typing extends the name.
+file <<END
+Garden:
+	- Mow lawn
+END
+see Garden:
+keys <Enter>
+type  chores
+keys <Esc>
+see Garden chores:
+quit
+saved <<END
+Garden chores:
+	- Mow lawn
+END

@@ -1,0 +1,12 @@
+# Closing the right pane with Ctrl+W c leaves one pane at home, focused where it was.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G <C-w> v
+see 󰋜 › Work › Report
+keys <C-w> c
+hide │
+see ▌   - Report

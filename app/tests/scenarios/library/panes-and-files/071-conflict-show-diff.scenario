@@ -1,0 +1,24 @@
+# d in the conflict prompt shows a diff from the file on disk to the app's version, and d hides it again.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j o
+type Bank
+keys <Esc>
+outside <<END
+Errands:
+	- Post office
+	- Bakery
+END
+see The file changed on disk
+keys d
+see - on disk  + yours
+see -   - Bakery
+see +   - Bank
+see d hide diff
+keys d
+hide - on disk  + yours

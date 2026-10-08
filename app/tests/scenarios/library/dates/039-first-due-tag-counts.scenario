@@ -1,0 +1,12 @@
+# With two @due tags the first is the block's date, and } changes only that one.
+file <<END
+- Dup @due({today}) @due({today+20})
+END
+keys gt
+see - Dup
+keys }
+hide - Dup
+quit
+saved <<END
+- Dup @due({today+1}) @due({today+20})
+END

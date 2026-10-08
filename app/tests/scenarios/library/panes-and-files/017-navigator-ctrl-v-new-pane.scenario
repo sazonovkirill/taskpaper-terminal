@@ -1,0 +1,14 @@
+# In the Navigator, Ctrl+V opens the chosen project in a new pane and closes the Navigator.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys <C-g>
+see Navigator
+type work
+keys <C-v>
+hide Navigator
+see │  󰋜 › Work
+see │▌   - Report

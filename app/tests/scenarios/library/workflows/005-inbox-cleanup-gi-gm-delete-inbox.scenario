@@ -1,0 +1,48 @@
+# Cleaning up the inbox: gi zooms to INBOX, items go out one by one with gm (each move zooms to the destination, H comes back), the rest go together, then the empty INBOX is deleted and gi says so.
+file <<END
+Work:
+	- Email Sarah
+Personal:
+	- Gym
+INBOX:
+	- Buy printer paper
+	- Book dentist
+	- Idea: blog about outliners
+	- Reply to landlord
+END
+keys gi
+see 󰋜 › INBOX
+see ▌   - Buy printer paper
+keys j gm
+see Move to
+type work
+keys <Enter>
+see 󰋜 › Work
+see ▌   - Book dentist
+keys H
+see 󰋜 › INBOX
+keys j j gm
+type pers
+keys <Enter>
+see ▌   - Reply to landlord
+keys gi <C-a> gm
+type work
+keys <Enter>
+see ▌   - Idea: blog about outliners
+keys gi
+see ▌ INBOX:
+keys > dd
+hide INBOX
+keys gi
+status No INBOX project in the Navigator
+quit
+saved <<END
+Work:
+	- Email Sarah
+	- Book dentist
+	- Buy printer paper
+	- Idea: blog about outliners
+Personal:
+	- Gym
+	- Reply to landlord
+END

@@ -1,0 +1,15 @@
+# t, w, T and W set the start and due dates to today or tomorrow, replacing an existing date.
+file <<END
+- A
+- B @start({today-9})
+- C
+- D @due({today+9})
+END
+keys t j w j T j W
+quit
+saved <<END
+- A @start({today})
+- B @start({today+1})
+- C @due({today})
+- D @due({today+1})
+END

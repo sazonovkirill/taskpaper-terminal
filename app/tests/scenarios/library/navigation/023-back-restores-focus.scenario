@@ -1,0 +1,17 @@
+# Going back from a zoom returns to the previous page with the focus on the block that was zoomed into.
+file <<END
+Trip:
+	- Flights
+	Hotels:
+		- Kyoto ryokan
+	- Visa
+END
+keys . j . H x
+quit
+saved <<END
+Trip:
+	- Flights
+	Hotels: @done({today})
+		- Kyoto ryokan
+	- Visa
+END

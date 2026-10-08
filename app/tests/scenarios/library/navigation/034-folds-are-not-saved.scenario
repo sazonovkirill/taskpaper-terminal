@@ -1,0 +1,16 @@
+# Folding blocks changes only the view: the file on disk stays exactly as it was.
+file <<END
+Work:
+	- Report
+Home:
+	- Sink
+END
+keys _ <Space> j <Space>
+see Home: ▸ 1
+quit
+saved <<END
+Work:
+	- Report
+Home:
+	- Sink
+END

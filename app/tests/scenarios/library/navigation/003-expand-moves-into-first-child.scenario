@@ -1,0 +1,13 @@
+# Pressing l on an expanded project moves the focus to its first child.
+file <<END
+Groceries:
+	- Milk
+	- Eggs
+END
+keys l x
+quit
+saved <<END
+Groceries:
+	- Milk @done({today})
+	- Eggs
+END

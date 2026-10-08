@@ -1,0 +1,27 @@
+# Shrinking the terminal below 40x10 and back keeps the outline usable and the focus in view.
+file <<END
+Groceries:
+	- Milk
+	- Eggs
+	- Bread
+	- Butter
+	- Cheese
+	- Apples
+END
+keys G
+resize 20 5
+see Apples
+resize 100 30
+see Groceries:
+see - Apples
+keys x
+quit
+saved <<END
+Groceries:
+	- Milk
+	- Eggs
+	- Bread
+	- Butter
+	- Cheese
+	- Apples @done({today})
+END

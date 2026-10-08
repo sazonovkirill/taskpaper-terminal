@@ -1,0 +1,15 @@
+# Enter on text that is not a date keeps the prompt open and changes nothing.
+file <<END
+- Report @due({today})
+END
+keys md
+type soon
+see Not a date from “soon”
+keys <Enter>
+see Due date
+keys <Esc>
+hide Due date
+quit
+saved <<END
+- Report @due({today})
+END

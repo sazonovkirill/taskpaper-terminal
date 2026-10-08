@@ -1,0 +1,17 @@
+# Space collapses and expands the focused block, and ' does the same.
+file <<END
+Movies:
+	- Alien
+	- Heat
+Books
+END
+keys <Space>
+see Movies: ▸ 2
+hide Alien
+keys <Space>
+see - Alien
+keys '
+see Movies: ▸ 2
+keys '
+see - Heat
+quit

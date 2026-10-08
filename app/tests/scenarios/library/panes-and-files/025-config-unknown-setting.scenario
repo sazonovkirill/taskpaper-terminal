@@ -1,0 +1,15 @@
+# An unknown setting in config.toml is reported in the status line and the app still works.
+config <<END
+font = "mono"
+END
+file <<END
+Errands:
+	- Post office
+END
+status unknown setting `font`
+keys j x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+END

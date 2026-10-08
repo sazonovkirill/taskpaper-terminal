@@ -1,0 +1,18 @@
+# Markdown markers and link syntax are hidden in navigate mode and shown raw while editing.
+file <<END
+# Weekly review
+- Read **important** doc at [the wiki](https://wiki.example.com/x) and `cargo test`
+END
+see Weekly review
+hide # Weekly
+see - Read important doc at the wiki and cargo test
+keys j <Enter>
+see - Read **important** doc at [the wiki](https://wiki.example.com/x) and `cargo test`
+keys <Up>
+see # Weekly review
+keys <Esc>
+quit
+saved <<END
+# Weekly review
+- Read **important** doc at [the wiki](https://wiki.example.com/x) and `cargo test`
+END

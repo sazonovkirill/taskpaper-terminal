@@ -1,0 +1,14 @@
+# Turning Display starred items in Today view off in the settings window drops starred undated entries at once.
+file <<END
+- Call mom @star
+- Rent @due({today})
+END
+keys gt
+see - Call mom
+keys g,
+see Display starred items in Today view
+keys jjjjj <Enter>
+keys <Esc>
+hide Settings
+hide Call mom
+see - Rent

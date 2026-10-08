@@ -1,0 +1,11 @@
+# word_wrap = true wraps a long task onto a second line instead of ending it in an ellipsis.
+size 40 12
+config <<END
+word_wrap = true
+END
+file <<END
+Errands:
+	- Ask the post office about the parcel that never arrived
+END
+see parcel that never arrived
+hide …

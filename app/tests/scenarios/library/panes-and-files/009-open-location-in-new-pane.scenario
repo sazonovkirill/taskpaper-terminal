@@ -1,0 +1,12 @@
+# Ctrl+W s opens the pane's current location in a new pane, focused on the same block.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys . j <C-w> s
+see 󰋜 › Errands                                    │  󰋜 › Errands
+see     - Post office                                │    - Post office
+see │▌   - Buy milk

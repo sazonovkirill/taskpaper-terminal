@@ -1,0 +1,29 @@
+# Rescheduling through a session: due today and tomorrow keys, one day earlier and later with brackets, a typed +3d in the due prompt, a start date, and clearing a due date with an empty prompt.
+file <<END
+Chores:
+	- Laundry @due({today-2})
+	- Dishes
+	- Taxes @due({today+10})
+	- Vacuum
+END
+keys j } } }
+see 󱙬 tomorrow
+keys j T
+see 󱙬 today
+keys j {
+keys md
+see Due date
+type +3d
+keys <Enter>
+keys j w ] [ [
+keys k md
+see Due date
+keys <BS> <Enter>
+quit
+saved <<END
+Chores:
+	- Laundry @due({today+1})
+	- Dishes @due({today})
+	- Taxes
+	- Vacuum @start({today})
+END

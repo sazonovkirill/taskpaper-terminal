@@ -1,0 +1,21 @@
+# Ctrl+Down and Ctrl+Up move between top-level projects without stepping into their tasks.
+file <<END
+Alpha:
+	- a1
+	- a2
+Beta:
+	- b1
+Gamma:
+	- g1
+END
+keys <C-Down> <C-Down> x <C-Up> *
+quit
+saved <<END
+Alpha:
+	- a1
+	- a2
+Beta: @star
+	- b1
+Gamma: @done({today})
+	- g1
+END

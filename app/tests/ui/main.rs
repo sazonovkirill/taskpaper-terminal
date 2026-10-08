@@ -18,6 +18,7 @@ mod flagged;
 mod focus_and_scrolling;
 mod folding;
 mod formatting;
+mod fuzz;
 mod go_to_command;
 mod go_to_symbol;
 mod hang_up;

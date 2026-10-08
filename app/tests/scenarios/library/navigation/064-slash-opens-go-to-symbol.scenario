@@ -1,0 +1,11 @@
+# Until search exists, / opens Go to Symbol.
+file <<END
+Notes:
+	Recipe for pancakes
+END
+keys /
+see Go to Symbol
+type pancake
+keys <Enter>
+see › Notes
+quit

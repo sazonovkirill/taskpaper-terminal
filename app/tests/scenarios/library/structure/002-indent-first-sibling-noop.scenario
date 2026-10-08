@@ -1,0 +1,14 @@
+# Tab on the first child of a project does nothing, because there is no sibling above to indent under.
+file <<END
+Errands:
+	- Post office
+	- Bank
+END
+keys j <Tab>
+see ▌   - Post office
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank
+END

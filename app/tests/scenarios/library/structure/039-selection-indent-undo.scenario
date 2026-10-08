@@ -1,0 +1,20 @@
+# Indenting a selection of two blocks is one undo step.
+file <<END
+Plan:
+	- A
+	- B
+	- C
+	- D
+END
+keys j j J <Tab>
+see ▌     - C
+keys z
+see ▌   - C
+quit
+saved <<END
+Plan:
+	- A
+	- B
+	- C
+	- D
+END

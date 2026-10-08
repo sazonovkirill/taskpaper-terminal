@@ -1,0 +1,13 @@
+# Ctrl+B bolds the word at the caret, shows the markers while editing and hides them in navigate mode.
+file <<END
+- Read chapter three today
+END
+see Read chapter three today
+keys <Enter> <A-b> <A-b> <C-b>
+see - Read chapter **three** today
+keys <Esc>
+see - Read chapter three today
+quit
+saved <<END
+- Read chapter **three** today
+END

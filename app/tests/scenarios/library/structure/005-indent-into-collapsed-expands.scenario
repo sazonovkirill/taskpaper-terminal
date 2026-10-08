@@ -1,0 +1,25 @@
+# Indenting a task under a collapsed sibling expands that sibling so the moved task stays visible.
+file <<END
+Plan:
+	- A
+	- B
+		Note on B
+	- C
+Other:
+	- D
+END
+keys j j <Space>
+see - B ▸
+keys j <Tab>
+see       Note on B
+see ▌     - C
+quit
+saved <<END
+Plan:
+	- A
+	- B
+		Note on B
+		- C
+Other:
+	- D
+END

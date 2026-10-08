@@ -1,0 +1,19 @@
+# gj jumps to the next sibling over an expanded block's children, and gk jumps back.
+file <<END
+Work:
+	- Write report
+		- Outline
+		- Draft
+	- Call client
+	- Email boss
+END
+keys j gj gj x gk gk *
+quit
+saved <<END
+Work:
+	- Write report @star
+		- Outline
+		- Draft
+	- Call client
+	- Email boss @done({today})
+END

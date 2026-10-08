@@ -1,0 +1,13 @@
+# Choosing Today in the Navigator shows the Today view in the pane.
+file <<END
+Work:
+	- Pay rent @due({today})
+	- Later
+END
+keys <C-g>
+type tod
+keys <Enter>
+see Today
+see - Pay rent  Work
+hide Later
+quit

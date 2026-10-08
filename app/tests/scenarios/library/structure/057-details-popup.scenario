@@ -1,0 +1,15 @@
+# mi lists the block's tags, marking unsupported ones, and any key closes it.
+file <<END
+Packing:
+	- Toothbrush @due(2026-12-01) @owner(me)
+END
+keys j mi
+see Details:
+see @owner(me) unsupported
+keys <Esc>
+hide Details:
+quit
+saved <<END
+Packing:
+	- Toothbrush @due(2026-12-01) @owner(me)
+END

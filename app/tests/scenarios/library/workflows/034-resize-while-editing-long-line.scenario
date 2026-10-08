@@ -1,0 +1,21 @@
+# Typing a long line in a narrow terminal, shrinking the terminal mid-edit and typing on keeps the caret in view and saves the whole text.
+size 60 20
+file <<END
+Work:
+	- Report
+	- Slides
+END
+keys j <Enter>
+type  and also a very long continuation that goes beyond the width of the pane for sure
+see ▌   - ation that goes beyond the width of the pane for sure
+resize 40 15
+type  END
+see the pane for sure END
+keys <Esc>
+see ▌   - Report and also a very long conti…
+quit
+saved <<END
+Work:
+	- Report and also a very long continuation that goes beyond the width of the pane for sure END
+	- Slides
+END

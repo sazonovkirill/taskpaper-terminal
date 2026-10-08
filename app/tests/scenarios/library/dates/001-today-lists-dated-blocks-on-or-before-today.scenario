@@ -1,0 +1,23 @@
+# The Today view lists blocks due or started today or earlier, and leaves out future, undated and invalid dates.
+file <<END
+Errands:
+	- Post office @due({today})
+	- Bank @due({today-3})
+	- Pharmacy @start({today-1})
+	- Gym @start({today})
+	- Dentist @due({today+1})
+	- Groceries
+	- Someday @due(soon)
+	- Bad day @due(2026-02-30)
+END
+see Errands:
+keys gt
+see Today
+see - Post office  Errands
+see - Bank  Errands
+see - Pharmacy  Errands
+see - Gym  Errands
+hide Dentist
+hide Groceries
+hide Someday
+hide Bad day

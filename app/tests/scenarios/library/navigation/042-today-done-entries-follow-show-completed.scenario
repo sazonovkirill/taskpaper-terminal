@@ -1,0 +1,17 @@
+# In Today a completed entry stays (dimmed with ✔) until the user hides completed blocks with Ctrl+O.
+file <<END
+Work:
+	- Pay rent @due({today-1})
+	- Send report @due({today})
+END
+keys gt x
+see ✔ Pay rent
+keys <C-o>
+see - Send report
+hide Pay rent
+quit
+saved <<END
+Work:
+	- Pay rent @due({today-1}) @done({today})
+	- Send report @due({today})
+END

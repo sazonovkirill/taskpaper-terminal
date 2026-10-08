@@ -1,0 +1,9 @@
+# Wide Japanese text wraps on whole characters within the pane width.
+size 40 12
+file <<END
+- 東京の地図と電車の時刻表を印刷して持っていく
+END
+keys gw
+see - 東京の地図と電車の時刻表を印刷して持
+see っていく
+quit

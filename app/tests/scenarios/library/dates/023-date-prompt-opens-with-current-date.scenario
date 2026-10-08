@@ -1,0 +1,14 @@
+# The prompt opens with the block's date, and Enter keeps it unchanged.
+file <<END
+- Party @start(2026-12-24) @due(2026-12-25)
+END
+keys ms
+see 2026-12-24
+see Thu 24 Dec 2026
+keys <Esc> md
+see 2026-12-25
+keys <Enter>
+quit
+saved <<END
+- Party @start(2026-12-24) @due(2026-12-25)
+END

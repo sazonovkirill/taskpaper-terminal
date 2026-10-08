@@ -1,0 +1,22 @@
+# Copying a list with its children and pressing Ctrl+V in a just-opened empty block replaces that block with the copied blocks.
+file <<END
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys G k k y G o <C-v>
+status NAVIGATE
+see ▌     - Groceries
+quit
+saved <<END
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+		- Groceries
+			- Milk
+			- Eggs
+END

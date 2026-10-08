@@ -1,0 +1,19 @@
+# I adds a first child and i a last child of the focused block, with type suffixes n and p.
+file <<END
+Project:
+	- Task one
+END
+see Task one
+keys In
+type first child note
+keys <Esc> k ip
+type last child proj
+keys <Esc>
+see last child proj:
+quit
+saved <<END
+Project:
+	first child note
+	- Task one
+	last child proj:
+END

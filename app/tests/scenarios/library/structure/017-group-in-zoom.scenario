@@ -1,0 +1,25 @@
+# Ctrl+A inside a zoomed project selects its children, and gG groups them under the zoom title.
+file <<END
+Work:
+	Q4:
+		- Budget
+		- Hiring
+Home:
+	- Paint
+END
+keys j .
+see Q4:
+keys <C-a> gG
+type Admin
+keys <Esc>
+see ▌   Admin
+quit
+saved <<END
+Work:
+	Q4:
+		Admin
+			- Budget
+			- Hiring
+Home:
+	- Paint
+END

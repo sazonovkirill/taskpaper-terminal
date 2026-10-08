@@ -1,0 +1,17 @@
+# ] moves a Today entry's start date a day later; once it is in the future the entry leaves Today.
+file <<END
+- Read book @start({today-1})
+- Walk @due({today})
+END
+keys gt
+see Read book
+keys ]
+see Read book
+keys ]
+hide Read book
+see ▌ - Walk
+quit
+saved <<END
+- Read book @start({today+1})
+- Walk @due({today})
+END

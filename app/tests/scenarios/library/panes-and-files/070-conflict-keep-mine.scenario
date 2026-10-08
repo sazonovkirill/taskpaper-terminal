@@ -1,0 +1,20 @@
+# With an unsaved edit, m in the conflict prompt keeps the app's version and writes it over the file.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+outside <<END
+Errands:
+	- Bank
+END
+see The file changed on disk
+keys m
+status Kept your version
+saved <<END
+Errands:
+	- Post office @done({today})
+END

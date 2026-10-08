@@ -1,0 +1,22 @@
+# The conflict prompt has no Esc: other keys do nothing until a choice is made.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+outside <<END
+Errands:
+	- Bank
+END
+see The file changed on disk
+keys <Esc> j x
+see The file changed on disk
+keys t
+quit
+saved <<END
+Errands:
+	- Bank
+END

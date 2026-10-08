@@ -1,0 +1,15 @@
+# Emptying a block that has children keeps it, written with a placeholder so its children stay under it.
+file <<END
+First
+Parent
+	Child
+END
+see Parent
+keys j <Enter> <C-a> <BS> <BS> <Esc>
+see …
+quit
+saved <<END
+First
+…
+	Child
+END

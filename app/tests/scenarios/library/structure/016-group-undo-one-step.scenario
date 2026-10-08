@@ -1,0 +1,20 @@
+# Grouping and naming the group is one undo step, so one z gives back the flat list.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+	- Charger
+END
+keys j J gG
+type Docs
+keys <Esc>
+see Docs
+keys z
+hide Docs
+quit
+saved <<END
+Trip:
+	- Passport
+	- Tickets
+	- Charger
+END

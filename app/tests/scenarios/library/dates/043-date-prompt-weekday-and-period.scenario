@@ -1,0 +1,15 @@
+# The prompt resolves next week to a Monday and a weekday name to a day within the next week.
+file <<END
+- A
+END
+keys md
+type next week
+see Mon
+keys <Esc> md
+type fri
+see Fri
+keys <Esc>
+quit
+saved <<END
+- A
+END

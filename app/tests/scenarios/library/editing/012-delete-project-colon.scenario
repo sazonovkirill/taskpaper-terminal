@@ -1,0 +1,13 @@
+# End then Backspace deletes a project's colon and the project becomes a plain note.
+file <<END
+Someday:
+	- Learn Rust
+END
+see Someday:
+keys <Enter> <End> <BS> <Esc>
+hide Someday:
+quit
+saved <<END
+Someday
+	- Learn Rust
+END

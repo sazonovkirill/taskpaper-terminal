@@ -1,0 +1,18 @@
+# gt shows the Today view: tasks due today or earlier and starred tasks, each with its project path.
+file <<END
+Work:
+	- Pay rent @due({today-3})
+	- Send report @due({today})
+	- Plan sprint @due({today+2})
+	- Ship it @star
+Home:
+	- Fix sink
+END
+keys gt
+see Today
+see - Pay rent  Work
+see - Send report  Work
+see - Ship it
+hide Plan sprint
+hide Fix sink
+quit

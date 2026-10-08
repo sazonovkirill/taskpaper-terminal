@@ -1,0 +1,23 @@
+# gP lists only projects, and choosing one focuses it in the outline.
+file <<END
+Work:
+	- Hiring plan
+	Hiring:
+		- Screen resumes
+END
+keys gP
+see Go to Project
+type hiring
+see Hiring
+hide Hiring plan  Work
+keys <Enter>
+see › Work
+hide Go to Project
+keys x
+quit
+saved <<END
+Work:
+	- Hiring plan
+	Hiring: @done({today})
+		- Screen resumes
+END

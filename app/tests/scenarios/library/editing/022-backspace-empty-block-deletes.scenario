@@ -1,0 +1,17 @@
+# Backspace in a fresh empty task first drops its dash, then deletes the block and edits the previous one at its end.
+file <<END
+Ideas:
+	- Alpha
+END
+see Alpha
+keys j <Enter> <Enter>
+see -
+keys <BS> <BS>
+type !
+keys <Esc>
+see - Alpha!
+quit
+saved <<END
+Ideas:
+	- Alpha!
+END

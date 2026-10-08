@@ -1,0 +1,10 @@
+# An invalid icons value is reported, and the default Nerd Font icons are kept.
+config <<END
+icons = "fancy"
+END
+file <<END
+Errands:
+	- Post office
+END
+status `icons` must be "nerd" or "none"
+see   󰋜

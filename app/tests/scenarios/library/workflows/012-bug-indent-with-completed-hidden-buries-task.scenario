@@ -1,0 +1,21 @@
+# With completed tasks hidden, indenting a task puts it under the visible task above it, so it stays in view.
+# BUG: indent nests the task under the hidden done task above it, so it vanishes inside a completed task and focus jumps away.
+file <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+	- Pharmacy @done(2026-10-02)
+	- Hardware store
+END
+keys gc
+hide Pharmacy
+keys G <Tab>
+see ▌     - Hardware store
+quit
+saved <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+		- Hardware store
+	- Pharmacy @done(2026-10-02)
+END

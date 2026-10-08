@@ -1,0 +1,16 @@
+# Tasks with accents, CJK and emoji move, indent and undo like any other text.
+file <<END
+Voyage 🌍:
+	- Café crème ☕
+	- 日本語のタスク
+	- Ünïcödé
+END
+keys j <A-j> j <Tab> G dd z
+see ▌     - Ünïcödé
+quit
+saved <<END
+Voyage 🌍:
+	- 日本語のタスク
+	- Café crème ☕
+		- Ünïcödé
+END

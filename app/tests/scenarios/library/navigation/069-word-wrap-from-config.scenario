@@ -1,0 +1,10 @@
+# word_wrap = true in the config makes long blocks wrap from the start.
+size 40 12
+config <<END
+word_wrap = true
+END
+file <<END
+- Remember the universal power adapter and spare cables
+END
+see and spare cables
+quit

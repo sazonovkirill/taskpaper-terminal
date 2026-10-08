@@ -1,0 +1,37 @@
+# Pasting a small outline from the terminal: in navigate mode it goes below the focused task, and into a just-created empty block it replaces that block; undo removes each paste in one step.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+END
+keys j
+paste <<END
+- Alpha
+	- Beta
+- Gamma
+END
+see ▌   - Gamma
+see       - Beta
+keys z
+hide Alpha
+see ▌   - Report
+keys o
+paste <<END
+- Alpha
+	- Beta
+- Gamma
+END
+see ▌   - Gamma
+keys gg j j j
+see ▌   - Alpha
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	- Alpha
+		- Beta
+	- Gamma
+	- Slides
+END

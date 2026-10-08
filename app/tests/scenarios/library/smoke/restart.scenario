@@ -1,0 +1,10 @@
+# An edit survives quitting and starting again.
+file <<END
+- Milk
+END
+see Milk
+keys <Enter>
+type  and eggs
+keys <Esc>
+restart
+see Milk and eggs

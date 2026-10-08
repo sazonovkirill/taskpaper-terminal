@@ -1,0 +1,11 @@
+# Flagging a project that ends in tags and spaces appends the flag without touching other lines.
+file <<END
+Work: @area(job)  
+	- Report
+END
+keys mf
+quit
+saved <<END
+Work: @area(job)  @flag
+	- Report
+END

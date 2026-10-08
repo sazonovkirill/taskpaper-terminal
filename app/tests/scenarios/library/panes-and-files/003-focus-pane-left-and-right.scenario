@@ -1,0 +1,15 @@
+# Ctrl+W h and Ctrl+W l move the keys between two panes, so x completes the block of the focused pane.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys <C-w> v <C-w> h j j x
+see ✔ Buy milk
+keys <C-w> l x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Buy milk @done({today})
+END

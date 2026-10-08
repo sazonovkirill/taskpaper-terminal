@@ -1,0 +1,9 @@
+# Esc in the theme picker after moving through themes goes back to the theme in use.
+file <<END
+Errands:
+	- Post office
+END
+keys <C-t> <Down> <Down> <Down> <Esc>
+hide Catppuccin Mocha
+keys g,
+see Terminal Dark

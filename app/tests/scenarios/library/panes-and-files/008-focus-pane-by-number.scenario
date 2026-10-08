@@ -1,0 +1,25 @@
+# g1 and g3 focus panes by number, and the keys then act on that pane's focused block.
+file <<END
+A:
+	- one
+B:
+	- two
+C:
+	- three
+END
+keys j j <C-w> v
+see │  󰋜 › B
+keys g1 G <C-w> v
+see 󰋜 › C › three
+keys g3 x
+see ✔ two
+keys g1 x
+quit
+saved <<END
+A:
+	- one
+B:
+	- two @done({today})
+C:
+	- three @done({today})
+END

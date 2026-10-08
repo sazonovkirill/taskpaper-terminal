@@ -1,0 +1,15 @@
+# SIGTERM with an unsaved change saves it before the app ends.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+see ✔ Post office
+signal TERM
+saved <<END
+Errands:
+	- Post office @done({today})
+END

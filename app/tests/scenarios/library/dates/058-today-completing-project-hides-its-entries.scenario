@@ -1,0 +1,18 @@
+# With completed hidden, completing a dated project in Today removes it and its dated children from the view.
+file <<END
+Move: @due({today})
+	- Pack @due({today})
+- Other @start({today})
+END
+keys gc gt
+see - Pack  Move
+keys x
+hide Move:
+hide Pack
+see ▌ - Other
+quit
+saved <<END
+Move: @due({today}) @done({today})
+	- Pack @due({today})
+- Other @start({today})
+END

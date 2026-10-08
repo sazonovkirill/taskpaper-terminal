@@ -143,6 +143,18 @@ doctor() {
   echo 'doctor: all prerequisites found'
 }
 
+# Runs the real-user scenarios against the real binary, those whose path contains a filter when any is given.
+scenarios() {
+  cargo test --locked --test scenarios -- "$@"
+}
+
+# Runs the key-sequence fuzzer far longer than `all` does, on a fresh seed unless PROPTEST_RNG_SEED names one.
+fuzz() {
+  local seed="${PROPTEST_RNG_SEED:-$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')}"
+  echo "fuzz: seed $seed; rerun with PROPTEST_RNG_SEED=$seed"
+  PROPTEST_RNG_SEED="$seed" PROPTEST_CASES="${PROPTEST_CASES:-1000}" cargo test --locked --release --test ui fuzz::
+}
+
 # Lists Must requirements that no test or source file names yet (docs/quality/testing-strategy.md, Traceability).
 trace() {
   local id untraced=0 total=0
@@ -166,7 +178,9 @@ case "${1:-all}" in
   doctor) doctor ;;
   trace) trace ;;
   bench) bench ;;
+  scenarios) scenarios "${@:2}" ;;
+  fuzz) fuzz ;;
   # The coverage run is the test run: llvm-cov runs every test, and clippy above already denies warnings.
   all) static_checks; coverage ;;
-  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace|bench]' >&2; exit 2 ;;
+  *) echo 'Usage: bash app/scripts/validate.sh [all|static|test|coverage|mutants|format|doctor|trace|bench|scenarios [filter...]|fuzz]' >&2; exit 2 ;;
 esac

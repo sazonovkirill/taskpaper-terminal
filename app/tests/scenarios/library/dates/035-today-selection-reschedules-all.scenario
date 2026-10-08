@@ -1,0 +1,21 @@
+# Selecting two Today entries and pressing W makes both due tomorrow as one undo step.
+file <<END
+- A @due({today})
+- B @due({today})
+- C @due({today})
+END
+keys gt
+see - A
+keys J W
+hide - A
+hide - B
+see - C
+keys z
+see - A
+see - B
+quit
+saved <<END
+- A @due({today})
+- B @due({today})
+- C @due({today})
+END

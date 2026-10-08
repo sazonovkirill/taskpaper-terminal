@@ -1,0 +1,12 @@
+# x twice on a Today entry completes it and then removes @done again.
+file <<END
+- Report @due({today-1}) @done(2026-01-02)
+END
+keys gt
+see ✔ Report
+keys x
+see - Report
+quit
+saved <<END
+- Report @due({today-1})
+END

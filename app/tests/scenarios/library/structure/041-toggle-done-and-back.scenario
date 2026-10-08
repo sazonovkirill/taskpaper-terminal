@@ -1,0 +1,16 @@
+# x marks a task done with today's date and a second x removes it again.
+file <<END
+Launch:
+	- Write announcement @owner(kim)
+	- Update docs
+END
+keys j x
+see ✔ Write announcement
+keys j x x
+see ▌   - Update docs
+quit
+saved <<END
+Launch:
+	- Write announcement @owner(kim) @done({today})
+	- Update docs
+END

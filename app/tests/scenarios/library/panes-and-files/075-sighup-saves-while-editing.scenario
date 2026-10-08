@@ -1,0 +1,17 @@
+# SIGHUP while typing in edit mode ends editing and saves the typed text.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j o
+type Bank
+see EDIT
+signal HUP
+saved <<END
+Errands:
+	- Post office
+	- Bank
+END

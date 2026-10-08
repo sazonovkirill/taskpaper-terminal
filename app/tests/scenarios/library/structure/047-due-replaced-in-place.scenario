@@ -1,0 +1,11 @@
+# T on a task with a due date in the middle of its text replaces the date where it stands.
+file <<END
+Calls:
+	- Call @due(2026-10-20) mom about trip
+END
+keys j T
+quit
+saved <<END
+Calls:
+	- Call @due({today}) mom about trip
+END

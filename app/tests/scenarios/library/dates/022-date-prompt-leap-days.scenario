@@ -1,0 +1,17 @@
+# 2028-02-29 is accepted, 2027-02-29 is refused as no such day.
+file <<END
+- Leap
+END
+keys md
+type 2027-02-29
+see No such day: “2027-02-29”
+keys <Enter>
+see Due date
+keys <Esc> md
+type 2028-02-29
+see Tue 29 Feb 2028
+keys <Enter>
+quit
+saved <<END
+- Leap @due(2028-02-29)
+END

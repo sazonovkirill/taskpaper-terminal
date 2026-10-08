@@ -1,0 +1,41 @@
+# Starring the important tasks across projects, checking them in the Starred view, unstarring one there, then seeing the starred ones in Today and finishing one.
+file <<END
+Work:
+	- Budget review
+	- Hire a designer
+	- Team lunch
+Home:
+	- Call mom
+	- Fix the bike
+END
+keys j * j *
+keys G *
+keys g*
+see 󰓎 Starred
+see - Budget review 󰓎  Work
+see - Fix the bike 󰓎  Home
+keys j *
+hide Hire a designer
+see ▌ - Fix the bike 󰓎  Home
+keys gt
+see 󰖙 Today
+see - Budget review 󰓎  Work
+hide Hire a designer
+see ▌ - Fix the bike 󰓎  Home
+keys gg x
+see ✔ Budget review
+keys gc
+hide Budget review
+keys gh
+see Work:
+hide Budget review
+quit
+saved <<END
+Work:
+	- Budget review @star @done({today})
+	- Hire a designer
+	- Team lunch
+Home:
+	- Call mom
+	- Fix the bike @star
+END

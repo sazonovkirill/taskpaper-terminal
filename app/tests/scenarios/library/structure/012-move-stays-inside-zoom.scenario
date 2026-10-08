@@ -1,0 +1,21 @@
+# While zoomed into a project, Alt+j on its last task does not leave the zoom.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+Home:
+	- Water plants
+END
+keys .
+see Trip
+keys j j <A-j>
+see ▌   - Tickets
+hide Water plants
+quit
+saved <<END
+Trip:
+	- Passport
+	- Tickets
+Home:
+	- Water plants
+END

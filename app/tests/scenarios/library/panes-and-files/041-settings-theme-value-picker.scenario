@@ -1,0 +1,12 @@
+# Enter on the Theme setting opens a value picker, and choosing Dracula shows it as the theme.
+file <<END
+Errands:
+	- Post office
+END
+keys g, <Enter>
+see Kanagawa Wave
+type dracula
+keys <Enter>
+hide Kanagawa Wave
+see * 󰏘 Theme
+see Dracula

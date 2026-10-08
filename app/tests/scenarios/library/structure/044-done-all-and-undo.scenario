@@ -1,0 +1,18 @@
+# Ctrl+A then x marks every block done, and one undo clears them all.
+file <<END
+Trip:
+	- Passport
+Home:
+	- Plants
+END
+keys <C-a> x
+see ✔ Plants
+keys z
+see - Plants
+quit
+saved <<END
+Trip:
+	- Passport
+Home:
+	- Plants
+END

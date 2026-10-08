@@ -1,0 +1,14 @@
+# A block with the old @today tag is not starred and not in Today, and the tag is kept.
+file <<END
+- Old style @today
+- Starred @star(1)
+END
+keys gt
+see - Starred
+hide Old style
+keys *
+saved <<END
+- Old style @today
+- Starred
+END
+hide Starred

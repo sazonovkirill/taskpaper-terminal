@@ -1,0 +1,18 @@
+# Tab makes a task the last child of the task above it, and the file saves it one level deeper.
+file <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END
+keys j j <Tab>
+see ▌     - Bank
+quit
+saved <<END
+Errands:
+	- Post office
+		- Bank
+Home:
+	- Laundry
+END

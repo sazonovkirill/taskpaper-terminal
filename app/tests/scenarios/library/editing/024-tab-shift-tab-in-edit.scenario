@@ -1,0 +1,21 @@
+# Tab and Shift+Tab indent and outdent the edited task while typing goes on.
+file <<END
+Project:
+	- Write draft
+END
+see Write draft
+keys j <Enter> <Enter>
+type Outline
+keys <Tab>
+type  first
+keys <Enter>
+type Review
+keys <S-Tab> <Esc>
+see - Review
+quit
+saved <<END
+Project:
+	- Write draft
+		- Outline first
+	- Review
+END

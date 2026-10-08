@@ -1,0 +1,27 @@
+# Zooming into a note with no children and pressing Enter twice on its title, then o on the title, adds its first children inside the zoom rather than beside it.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+END
+keys j j .
+see 󰋜 › Work › Report › Draft due Friday
+keys <Enter> <Enter>
+type sub
+keys <Esc> gg o
+type o-sub
+keys <Esc>
+see ▌   o-sub
+see     sub
+keys >
+see ▌   Draft due Friday
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+			o-sub
+			sub
+	- Slides
+END

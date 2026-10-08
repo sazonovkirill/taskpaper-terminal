@@ -1,0 +1,24 @@
+# Pasting several lines into a new empty block replaces it with the pasted blocks, keeping their nesting.
+file <<END
+Shopping:
+	- Milk
+END
+see Milk
+keys j o
+paste <<END
+- Eggs
+- Butter
+	- salted
+- Jam
+END
+see - Jam
+status NAVIGATE
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Eggs
+	- Butter
+		- salted
+	- Jam
+END

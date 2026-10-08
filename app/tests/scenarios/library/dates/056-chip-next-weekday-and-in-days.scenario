@@ -1,0 +1,10 @@
+# Due dates 7 and 13 days ahead read "next <weekday>", 14 days ahead "in 14 days".
+file <<END
+- A @due({today+7})
+- B @due({today+13})
+- C @due({today+14})
+END
+see 󱙬 in 14 days
+see 󱙬 next
+hide in 7 days
+hide in 13 days

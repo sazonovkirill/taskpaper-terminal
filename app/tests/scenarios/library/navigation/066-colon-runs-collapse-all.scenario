@@ -1,0 +1,14 @@
+# : opens Go to Command, and running Collapse All folds every project.
+file <<END
+Work:
+	- Report
+Home:
+	- Sink
+END
+keys :
+see Go to Command
+type collapse all
+keys <Enter>
+see Work: ▸ 1
+see Home: ▸ 1
+quit

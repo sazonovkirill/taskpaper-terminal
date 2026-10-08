@@ -1,0 +1,48 @@
+# Weekly review: mark rent done, push slides out, star Home, move the inbox call to Home, then reschedule in Today and undo/redo there.
+file <<END
+INBOX:
+	- Call the plumber
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report @due({today-2})
+	- Review pull requests
+	- Prepare slides @due({today+1})
+Home:
+	- Fix the shelf
+	- Pay rent @due({today-7})
+END
+keys G x
+see ✔ Pay rent
+keys k k k } } }
+keys j *
+keys gg j gm
+see Move to
+type home
+keys <Enter>
+see ▌   - Call the plumber
+keys gt
+see Today
+see - Write quarterly report  Work
+keys j W
+hide Write quarterly report
+keys z
+see ▌ - Write quarterly report  Work
+keys Z
+hide Write quarterly report
+keys j .
+see ▌   ✔ Pay rent
+keys H
+see Today
+quit
+saved <<END
+INBOX:
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report @due({today+1})
+	- Review pull requests
+	- Prepare slides @due({today+4})
+Home: @star
+	- Fix the shelf
+	- Pay rent @due({today-7}) @done({today})
+	- Call the plumber
+END

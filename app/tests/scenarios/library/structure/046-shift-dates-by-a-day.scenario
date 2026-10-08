@@ -1,0 +1,13 @@
+# ] and } push the start and due dates a day later, [ and { a day earlier; a missing date counts from today.
+file <<END
+Launch:
+	- Write announcement @start(2026-11-10)
+	- Update docs
+END
+keys j ] ] [ j { {
+quit
+saved <<END
+Launch:
+	- Write announcement @start(2026-11-11)
+	- Update docs @due({today-2})
+END

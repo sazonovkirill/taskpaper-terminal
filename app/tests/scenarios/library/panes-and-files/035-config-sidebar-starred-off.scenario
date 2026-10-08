@@ -1,0 +1,12 @@
+# sidebar_starred = false leaves Starred out of the Navigator while Today stays.
+config <<END
+sidebar_starred = false
+END
+file <<END
+Errands:
+	- Post office @star
+END
+keys <C-g>
+see Navigator
+see Today
+hide Starred

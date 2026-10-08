@@ -1,0 +1,20 @@
+# Shift+Tab on a middle task makes it the project's next sibling while the tasks after it stay in the project.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+	- Charger
+Home:
+	- Water plants
+END
+keys j j <S-Tab>
+see ▌ - Tickets
+quit
+saved <<END
+Trip:
+	- Passport
+	- Charger
+- Tickets
+Home:
+	- Water plants
+END

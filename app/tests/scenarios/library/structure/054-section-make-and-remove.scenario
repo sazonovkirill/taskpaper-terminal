@@ -1,0 +1,17 @@
+# S makes a text block a section and skips tasks with a message; s removes the section again.
+file <<END
+Packing:
+	Clothes
+	- Socks
+	Shoes @section
+END
+keys j S j S
+status Only text can be a section: 1 skipped
+keys j s
+quit
+saved <<END
+Packing:
+	Clothes @section
+	- Socks
+	Shoes
+END

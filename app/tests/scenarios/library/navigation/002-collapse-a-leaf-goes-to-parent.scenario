@@ -1,0 +1,17 @@
+# Pressing h on a task with no children moves the focus up to its project, so x then completes the project.
+file <<END
+Trip to Japan:
+	- Book flights
+	- Reserve hotel
+Groceries:
+	- Milk
+END
+keys j j h x
+quit
+saved <<END
+Trip to Japan: @done({today})
+	- Book flights
+	- Reserve hotel
+Groceries:
+	- Milk
+END

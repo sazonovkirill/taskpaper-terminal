@@ -1,0 +1,12 @@
+# A breadcrumb too wide for the terminal is cut from the left with … and keeps the innermost crumbs.
+size 50 12
+file <<END
+Very long project name for the annual planning offsite:
+	Second level with a long descriptive name:
+		Third level:
+			- Deep task
+END
+keys G .
+see … › Third level › Deep task
+hide Very long project
+quit

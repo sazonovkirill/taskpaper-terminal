@@ -1,0 +1,14 @@
+# gw wraps a long task onto several lines instead of cutting it off with …, and gw again cuts it off.
+size 40 12
+file <<END
+Packing:
+	- Remember the universal power adapter and spare cables
+END
+see - Remember the universal power adap…
+keys gw
+see - Remember the universal power
+see adapter and spare cables
+keys <A-z>
+see - Remember the universal power adap…
+hide adapter and spare cables
+quit

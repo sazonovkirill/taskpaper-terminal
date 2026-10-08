@@ -1,0 +1,13 @@
+# A slash followed by text that matches no command, like a path or "a / b", stays as typed text.
+file <<END
+Paths
+END
+see Paths
+keys <Enter> <Space> /
+type home/docs and a / b
+keys <Esc>
+see Paths /home/docs and a / b
+quit
+saved <<END
+Paths /home/docs and a / b
+END

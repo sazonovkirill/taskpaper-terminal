@@ -1,0 +1,68 @@
+# Restructuring an outline: collapse all, open one project, zoom in, move a task out to a sibling project, zoom out, then undo three steps back past an unwanted indent and redo one.
+file <<END
+Garden:
+	- Buy seeds
+	- Water plants
+	- Fix the fence
+Kitchen:
+	- Paint walls
+	- New tap
+Garage:
+	- Sort tools
+	- Sell the bike
+END
+keys _
+see Garden: ▸ 3
+see Garage: ▸ 2
+keys j l
+see ▌ Kitchen:
+see     - New tap
+keys .
+see 󰋜 › Kitchen
+keys j j <Tab>
+see ▌     - New tap
+keys > 
+see ▌ Kitchen:
+keys j <A-j> <A-j>
+see ▌   - Paint walls
+see   Garage:
+keys gg j j
+saved <<END
+Garden:
+	- Buy seeds
+	- Water plants
+	- Fix the fence
+Kitchen:
+Garage:
+	- Sort tools
+	- Paint walls
+		- New tap
+	- Sell the bike
+END
+keys z z z
+saved <<END
+Garden:
+	- Buy seeds
+	- Water plants
+	- Fix the fence
+Kitchen:
+	- Paint walls
+	- New tap
+Garage:
+	- Sort tools
+	- Sell the bike
+END
+keys Z
+quit
+saved <<END
+Garden:
+	- Buy seeds
+	- Water plants
+	- Fix the fence
+Kitchen:
+	- Paint walls
+		- New tap
+Garage:
+	- Sort tools
+	- Sell the bike
+END

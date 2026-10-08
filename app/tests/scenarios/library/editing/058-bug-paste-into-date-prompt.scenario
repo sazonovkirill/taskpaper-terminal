@@ -1,0 +1,17 @@
+# Pasting a date into the due date prompt types it there, as in any text field.
+# BUG: text pasted into the terminal while the date prompt is open is dropped (keymap ignores Paste with an overlay open).
+file <<END
+- Renew passport
+END
+see Renew passport
+keys md
+see Due date
+paste <<END
+2026-12-24
+END
+see Thu 24 Dec 2026
+keys <Enter>
+quit
+saved <<END
+- Renew passport @due(2026-12-24)
+END

@@ -1,0 +1,23 @@
+# After copying a task and deleting everything, motions, structure and metadata keys do nothing on the empty page, paste brings the task back, and o below the pasted note starts a block beside it.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+END
+keys j y <C-a> dd
+hide Work
+keys j k x . > <Tab> <S-Tab> <A-j> <A-k> D gG * } cc h l ' = - + _
+hide Work
+keys p
+see ▌ - Report
+see     Draft due Friday
+keys G o
+type Fresh
+keys <Esc>
+quit
+saved <<END
+- Report
+	Draft due Friday
+	Fresh
+END

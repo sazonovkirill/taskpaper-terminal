@@ -1,0 +1,10 @@
+# Turning Word wrap on in the settings window wraps a long block behind the window at once.
+size 50 20
+file <<END
+Errands:
+	- Ask the post office about the parcel that never arrived
+END
+see Ask the post office about the parcel that n…
+keys g, j j <Space> <Esc>
+hide Settings
+see never arrived

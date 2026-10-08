@@ -1,0 +1,10 @@
+# Folding a block in one pane folds it in every pane, since folds are shared.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys <C-w> s <Space>
+see   Errands: ▸ 2                                   │▌ Errands: ▸ 2

@@ -1,0 +1,18 @@
+# D duplicates a task with its note right after the original and focuses the copy.
+file <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Hyperion
+END
+keys j D
+see ▌   - Dune
+quit
+saved <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Dune
+		Great worldbuilding
+	- Hyperion
+END

@@ -1,0 +1,15 @@
+# Undo after a paste removes the pasted blocks.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+END
+keys j y p p
+keys z
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Milk
+	- Eggs
+END

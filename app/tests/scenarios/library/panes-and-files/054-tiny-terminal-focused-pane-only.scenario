@@ -1,0 +1,16 @@
+# Below 40x10 only the focused pane and the status line are drawn; growing again brings both panes back.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G <C-w> v
+see │  󰋜 › Work › Report
+resize 39 9
+see   󰋜 › Work › Report
+hide │
+hide Errands:
+resize 100 30
+see │  󰋜 › Work › Report
+see   Errands:

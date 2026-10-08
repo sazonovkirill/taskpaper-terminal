@@ -1,0 +1,14 @@
+# Alt+k on the very first block of the file does nothing.
+file <<END
+Inbox:
+	- Call bank
+Later:
+END
+keys <A-k>
+see ▌ Inbox:
+quit
+saved <<END
+Inbox:
+	- Call bank
+Later:
+END

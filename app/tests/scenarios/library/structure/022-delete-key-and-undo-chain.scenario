@@ -1,0 +1,22 @@
+# Delete removes blocks one after another; undo brings them back in reverse order and redo removes again.
+file <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Neuromancer
+	- Hyperion
+END
+keys j dd <Del>
+see ▌   - Hyperion
+keys z
+see ▌   - Neuromancer
+keys z
+see ▌   - Dune
+keys Z
+see ▌   - Neuromancer
+quit
+saved <<END
+Reading:
+	- Neuromancer
+	- Hyperion
+END

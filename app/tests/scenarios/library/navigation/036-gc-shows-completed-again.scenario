@@ -1,0 +1,17 @@
+# gc hides completed blocks and a second gc shows them again, without changing the file.
+file <<END
+Chores:
+	- Laundry @done(2026-10-01)
+	- Dishes
+END
+keys gc
+see - Dishes
+hide Laundry
+keys gc
+see ✔ Laundry
+quit
+saved <<END
+Chores:
+	- Laundry @done(2026-10-01)
+	- Dishes
+END

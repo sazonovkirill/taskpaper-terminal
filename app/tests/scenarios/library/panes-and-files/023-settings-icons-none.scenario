@@ -1,0 +1,12 @@
+# Setting Icons to none in the settings window redraws the home crumb as the plain ⌂ at once.
+file <<END
+Errands:
+	- Post office
+END
+keys g,
+see Settings
+keys j l
+see none
+keys <Esc>
+hide Settings
+see   ⌂

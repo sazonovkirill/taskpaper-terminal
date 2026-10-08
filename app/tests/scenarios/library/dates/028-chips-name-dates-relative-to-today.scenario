@@ -1,0 +1,13 @@
+# Date chips name dates relative to today: today, tomorrow, yesterday, in N days and N days ago.
+file <<END
+- A @due({today})
+- B @due({today+1})
+- C @start({today-1})
+- D @due({today+20})
+- E @start({today-5})
+END
+see 󱙬 today
+see 󱙬 tomorrow
+see 󱙭 yesterday
+see 󱙬 in 20 days
+see 󱙭 5 days ago

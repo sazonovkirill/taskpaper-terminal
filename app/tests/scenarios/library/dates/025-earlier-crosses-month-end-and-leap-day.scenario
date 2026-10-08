@@ -1,0 +1,13 @@
+# { and [ step back over a month end: 1 March goes to 28 February, or 29 in a leap year.
+file <<END
+- Plain year @due(2027-03-01)
+- Leap year @start(2028-03-01)
+END
+keys {
+see Plain year
+keys j [
+quit
+saved <<END
+- Plain year @due(2027-02-28)
+- Leap year @start(2028-02-29)
+END

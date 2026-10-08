@@ -1,0 +1,22 @@
+# dd on a Today entry deletes the block with its children from the file; z restores it.
+file <<END
+Home: @due({today})
+	- Child task
+- Other @due({today})
+END
+keys gt
+see Home:
+keys dd
+hide Home:
+see ▌ - Other
+saved <<END
+- Other @due({today})
+END
+keys z
+see Home:
+quit
+saved <<END
+Home: @due({today})
+	- Child task
+- Other @due({today})
+END

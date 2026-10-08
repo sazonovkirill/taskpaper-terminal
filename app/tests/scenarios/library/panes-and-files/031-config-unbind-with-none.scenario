@@ -1,0 +1,16 @@
+# Binding x to "none" unbinds it, so x no longer completes a block.
+config <<END
+[keymap.navigate]
+"x" = "none"
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+see ▌   - Post office
+quit
+saved <<END
+Errands:
+	- Post office
+END

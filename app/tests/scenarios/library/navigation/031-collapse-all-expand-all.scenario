@@ -1,0 +1,17 @@
+# _ collapses every block in the outline and + expands every block again.
+file <<END
+Work:
+	Launch:
+		- Draft announcement
+Home:
+	- Fix sink
+	- Water plants @done(2026-10-01)
+END
+keys _
+see Work: ▸ 1
+see Home: ▸ 1
+hide Launch
+keys +
+see - Draft announcement
+see - Fix sink
+quit

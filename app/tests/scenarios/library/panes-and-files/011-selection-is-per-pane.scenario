@@ -1,0 +1,17 @@
+# A selection made in one pane does not apply in another: x there completes only that pane's focused block.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+	- Bank
+END
+keys <C-w> s j J
+keys g1 G x
+see ✔ Bank
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk
+	- Bank @done({today})
+END

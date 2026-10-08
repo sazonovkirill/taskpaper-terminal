@@ -1,0 +1,9 @@
+# A pane narrowed to its minimum keeps that width after a restart.
+file <<END
+Errands:
+	- Post office
+END
+keys <C-w> s <C-w> < <C-w> < <C-w> < <C-w> < <C-w> < <C-w> <
+see ─────────────────────────────────────────────────────────────────────│──────────────────────────────
+restart
+see ─────────────────────────────────────────────────────────────────────│──────────────────────────────

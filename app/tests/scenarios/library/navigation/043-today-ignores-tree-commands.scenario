@@ -1,0 +1,18 @@
+# In the Today view folding, parent and zoom-out keys do nothing, and the user stays in Today.
+file <<END
+Work:
+	- Pay rent @due({today})
+		- Transfer money
+	- Other
+END
+keys gt h gp > <Space> _ gk
+see Today
+see - Pay rent  Work
+keys x
+quit
+saved <<END
+Work:
+	- Pay rent @due({today}) @done({today})
+		- Transfer money
+	- Other
+END

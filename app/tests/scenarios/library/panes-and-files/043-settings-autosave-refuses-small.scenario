@@ -1,0 +1,15 @@
+# The autosave delay prompt refuses 50 ms with the reason and accepts 250 ms.
+file <<END
+Errands:
+	- Post office
+END
+keys g, <Tab> j <Tab> <Enter>
+see Autosave delay: 1000
+keys <BS> <BS> <BS> <BS>
+type 50
+keys <Enter>
+see Autosave delay must be a whole number, at least 100
+keys <BS> <BS>
+type 250
+keys <Enter>
+see 250 ms

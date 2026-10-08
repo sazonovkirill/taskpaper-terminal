@@ -1,0 +1,16 @@
+# Backspace at the start of a text block and Delete at its end do nothing: blocks are never merged.
+file <<END
+Ideas
+Garden shed
+Paint fence
+END
+see Garden shed
+keys j <Enter> <Home> <BS> <BS> <End> <Del> <Del>
+keys <Esc>
+see Garden shed
+quit
+saved <<END
+Ideas
+Garden shed
+Paint fence
+END

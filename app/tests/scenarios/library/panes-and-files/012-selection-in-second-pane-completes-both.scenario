@@ -1,0 +1,16 @@
+# Blocks selected with J in the second pane are completed together by x there.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+	- Bank
+END
+keys <C-w> v J x
+see │▌   ✔ Buy milk
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Buy milk @done({today})
+	- Bank
+END

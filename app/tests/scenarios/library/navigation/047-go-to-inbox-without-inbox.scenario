@@ -1,0 +1,9 @@
+# gi in a file without an INBOX project leaves the view as it is and says so.
+file <<END
+Inbox stuff:
+	- Not the inbox
+END
+keys gi
+status No INBOX project in the Navigator
+see Inbox stuff:
+quit

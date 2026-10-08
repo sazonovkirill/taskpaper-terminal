@@ -1,0 +1,39 @@
+# Building structure with the typed creation keys in one go: os adds a section below, It a first-child task, An a note at the start of the list, and ap a project at the end.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys j os
+type Later
+keys <Esc> It
+type Archive old drafts
+keys <Esc> An
+type Top note
+keys <Esc> G ap
+type Bulk
+keys <Esc>
+see ▌     Bulk:
+see       - Archive old drafts
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	Later @section
+		Top note
+		- Archive old drafts
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+		Bulk:
+END

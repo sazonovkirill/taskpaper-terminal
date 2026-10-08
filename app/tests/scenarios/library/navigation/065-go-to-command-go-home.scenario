@@ -1,0 +1,18 @@
+# Ctrl+P opens Go to Command, which shows a command's keys and runs it with Enter.
+file <<END
+Life:
+	Health:
+		- Run
+Elsewhere
+END
+keys . j .
+see › Life › Health
+keys <C-p>
+see Go to Command
+type go home
+see Go Home
+keys <Enter>
+see Elsewhere
+hide Go to Command
+hide › Life
+quit

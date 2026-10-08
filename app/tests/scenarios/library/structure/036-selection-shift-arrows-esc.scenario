@@ -1,0 +1,17 @@
+# Shift+Down extends the selection and Esc clears it, so the next dd deletes only the focused block.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+	- Bread
+END
+keys j <S-Down>
+keys <Esc>
+keys dd
+see ▌   - Bread
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Bread
+END

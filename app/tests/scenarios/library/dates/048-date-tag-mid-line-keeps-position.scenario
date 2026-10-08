@@ -1,0 +1,15 @@
+# Changing a date written mid-line updates it in place; new date tags go at the end of the line.
+file <<END
+- Call @due({today}) Bob
+Home:
+Note text
+- Email me@example.com
+END
+keys } j T j t j W
+quit
+saved <<END
+- Call @due({today+1}) Bob
+Home: @due({today})
+Note text @start({today})
+- Email me@example.com @due({today+1})
+END

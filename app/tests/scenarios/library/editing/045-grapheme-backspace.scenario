@@ -1,0 +1,12 @@
+# Backspace deletes a whole emoji, flag or accented letter (even a decomposed one) at once, never part of one.
+file <<END
+- Café ☕ 🇯🇵 👨‍👩‍👧
+END
+see Caf
+keys <Enter> <BS> <BS> <BS> <Left> <Left> <BS> <Left> <BS>
+type x
+keys <Esc>
+quit
+saved <<END
+- Caxé☕ 
+END

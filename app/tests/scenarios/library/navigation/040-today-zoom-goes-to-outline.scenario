@@ -1,0 +1,23 @@
+# Pressing . on a Today entry shows it in the outline under its project, and H returns to Today.
+file <<END
+Work:
+	- Pay rent @due({today-3})
+	- Send report @due({today})
+	- Plan sprint
+Home
+END
+keys gt j .
+see › Work
+see - Plan sprint
+hide Home
+keys x H
+see Today
+hide Plan sprint
+quit
+saved <<END
+Work:
+	- Pay rent @due({today-3})
+	- Send report @due({today}) @done({today})
+	- Plan sprint
+Home
+END

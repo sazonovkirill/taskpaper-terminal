@@ -1,0 +1,20 @@
+# A Today entry moved to the top keeps its place after leaving the view and coming back.
+file <<END
+- A @due({today})
+- B @due({today})
+- C @due({today})
+END
+keys gt G <A-k> <A-k>
+see ▌ - C
+keys W
+hide - C
+keys gh G {
+see - C
+keys gt gg
+see ▌ - C
+quit
+saved <<END
+- A @due({today})
+- B @due({today})
+- C @due({today})
+END

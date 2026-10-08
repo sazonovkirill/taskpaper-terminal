@@ -1,0 +1,14 @@
+# Wide CJK characters are edited one character at a time: Left moves over one and the typed one lands between them.
+size 40 10
+file <<END
+- 東京へ行く
+END
+see 東京へ行く
+keys <Enter> <Left> <Left>
+type 旅
+keys <Esc>
+see - 東京へ旅行く
+quit
+saved <<END
+- 東京へ旅行く
+END

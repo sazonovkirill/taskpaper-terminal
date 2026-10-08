@@ -1,0 +1,14 @@
+# Today lists its entries flat in document order, whatever their dates, each with its path.
+file <<END
+Work:
+	Reports:
+		- Quarterly @due({today-5})
+- Water plants @start({today})
+Home:
+	- Rent @due({today-1})
+END
+keys gt
+see Today
+see ▌ - Quarterly  Work › Reports
+see   - Water plants
+see   - Rent  Home

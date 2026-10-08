@@ -1,0 +1,20 @@
+# Choosing a project in the Navigator with the arrows and Enter zooms the pane to it and closes the window.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix sink
+END
+keys <C-g> <Down> <Down> <Down> <Enter>
+see › Home
+see - Fix sink
+hide Navigator
+hide Write report
+keys x
+quit
+saved <<END
+Work:
+	- Write report
+Home:
+	- Fix sink @done({today})
+END

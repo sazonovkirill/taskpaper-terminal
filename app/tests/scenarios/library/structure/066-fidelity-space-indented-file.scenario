@@ -1,0 +1,17 @@
+# In a file indented with four spaces, indenting a task writes four more spaces.
+file <<END
+A:
+    - one
+    - two
+B:
+    - three
+END
+keys j j <Tab>
+quit
+saved <<END
+A:
+    - one
+        - two
+B:
+    - three
+END

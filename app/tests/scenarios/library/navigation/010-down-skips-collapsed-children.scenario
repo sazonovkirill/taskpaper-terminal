@@ -1,0 +1,18 @@
+# j skips over the hidden children of a collapsed block to the next visible one.
+file <<END
+Reading list:
+	- Dune
+	- Neuromancer
+Movies:
+	- Alien
+END
+keys <Space> j x
+see Reading list: ▸ 2
+quit
+saved <<END
+Reading list:
+	- Dune
+	- Neuromancer
+Movies: @done({today})
+	- Alien
+END

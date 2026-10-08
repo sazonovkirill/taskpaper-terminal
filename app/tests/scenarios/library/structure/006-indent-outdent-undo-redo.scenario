@@ -1,0 +1,20 @@
+# Indent then outdent, then undo both and redo both, ends with the same file as after the two moves.
+file <<END
+Sprint:
+	- Design
+	- Build
+	- Test
+END
+keys j j <Tab> j <S-Tab>
+see ▌ - Test
+keys z z
+see ▌   - Build
+keys Z Z
+see ▌ - Test
+quit
+saved <<END
+Sprint:
+	- Design
+		- Build
+- Test
+END

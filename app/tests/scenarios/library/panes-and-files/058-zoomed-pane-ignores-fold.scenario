@@ -1,0 +1,11 @@
+# A pane zoomed into a project still lists its children after the project is folded in the home pane.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys <C-w> v <C-w> h <Space>
+see ▌ Errands: ▸ 2
+see │    - Buy milk

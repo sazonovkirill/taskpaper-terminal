@@ -1,0 +1,17 @@
+# A pane's zoom and its history come back after a restart, so H goes back to the earlier zoom.
+file <<END
+Errands:
+	- Post office
+		Ask about the parcel
+	- Buy milk
+END
+keys . .
+see 󰋜 › Errands › Post office
+restart
+see 󰋜 › Errands › Post office
+keys H
+see 󰋜 › Errands
+hide › Post office
+keys H
+see Buy milk
+hide 󰋜 ›

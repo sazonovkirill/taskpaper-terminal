@@ -1,0 +1,11 @@
+# Ctrl+O hides completed blocks only in the focused pane; the other pane keeps showing them.
+file <<END
+Errands:
+	- Post office @done(2026-01-02)
+	- Buy milk
+END
+keys <C-w> s <C-o>
+see │▌ Errands:
+see     ✔ Post office                                │
+hide │    ✔ Post office
+see │    - Buy milk

@@ -1,0 +1,9 @@
+# Starting to edit while the shortcuts panel is scrolled down shows the edit-mode keys from their top, since they cannot be scrolled while editing.
+size 100 20
+file <<END
+Errands:
+	- Post office
+END
+keys ? ) ) ) ) j <Enter>
+see EDIT
+see Stop Editing             Esc

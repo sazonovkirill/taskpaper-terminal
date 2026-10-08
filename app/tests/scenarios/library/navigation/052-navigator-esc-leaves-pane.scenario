@@ -1,0 +1,16 @@
+# Moving in the Navigator and pressing Esc closes it and leaves the pane where it was.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix sink
+END
+keys <C-g> <Down> <Down> <Esc>
+keys x
+quit
+saved <<END
+Work: @done({today})
+	- Write report
+Home:
+	- Fix sink
+END

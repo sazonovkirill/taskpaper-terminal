@@ -1,0 +1,19 @@
+# With completed hidden, completing a Today entry removes it, and z brings it back with its focus.
+file <<END
+- First @due({today})
+- Second @due({today})
+- Third @due({today})
+END
+keys gc gt
+see Today
+keys j x
+hide Second
+see ▌ - Third
+keys z
+see ▌ - Second
+quit
+saved <<END
+- First @due({today})
+- Second @due({today})
+- Third @due({today})
+END

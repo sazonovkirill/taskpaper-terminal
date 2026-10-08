@@ -1,0 +1,18 @@
+# Show Details from the command menu lists the tags, and any key returns to editing at the same column.
+file <<END
+- Pay rent @due(2026-11-01) @flag
+END
+see Pay rent
+keys <Enter> <Left> <Left> /
+type show
+keys <Enter>
+see Details:
+see @due(2026-11-01)
+keys x
+hide Details:
+type Z
+keys <Esc>
+quit
+saved <<END
+- Pay reZnt @due(2026-11-01) @flag
+END

@@ -1,0 +1,11 @@
+# A pane that hides completed blocks still hides them after a restart.
+file <<END
+Errands:
+	- Post office @done(2026-01-02)
+	- Buy milk
+END
+keys <C-o>
+hide Post office
+restart
+see Buy milk
+hide Post office

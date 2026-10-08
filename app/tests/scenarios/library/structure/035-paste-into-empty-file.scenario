@@ -1,0 +1,11 @@
+# Pasting an outline into an empty file creates its blocks with their structure.
+paste <<END
+Groceries:
+	- Milk
+	- Eggs
+END
+see ▌ Groceries:
+see     - Eggs
+keys j j <Tab>
+see ▌     - Eggs
+quit

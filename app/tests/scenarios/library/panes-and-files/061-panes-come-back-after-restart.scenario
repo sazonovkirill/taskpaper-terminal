@@ -1,0 +1,12 @@
+# Two panes, the second zoomed into a project, come back the same after quitting and starting again.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G <C-w> v
+see │  󰋜 › Work › Report
+restart
+see │  󰋜 › Work › Report
+see   Errands:

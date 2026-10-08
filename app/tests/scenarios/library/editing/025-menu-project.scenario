@@ -1,0 +1,16 @@
+# Typing / opens the command menu; /p then Enter makes the edited note a project, keeping its color tag.
+file <<END
+Kitchen renovation @red
+	- Pick tiles
+END
+see Kitchen renovation
+keys <Enter> /
+see Commands:
+keys p <Enter>
+see Kitchen renovation:
+keys <Esc>
+quit
+saved <<END
+Kitchen renovation: @red
+	- Pick tiles
+END

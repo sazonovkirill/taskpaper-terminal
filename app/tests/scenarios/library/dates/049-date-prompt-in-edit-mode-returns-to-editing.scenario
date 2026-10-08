@@ -1,0 +1,19 @@
+# Setting a due date from the command menu while editing returns to editing at the same caret.
+file <<END
+- Party
+END
+keys <Enter> <Left> <Left>
+type /due
+see Set Due Date
+keys <Enter>
+see Due date
+type tomorrow
+keys <Enter>
+type Z
+keys <Esc>
+see - ParZty
+see tomorrow
+quit
+saved <<END
+- ParZty @due({today+1})
+END

@@ -1,0 +1,10 @@
+# Projects and notes with dates are listed in Today as well as tasks.
+file <<END
+Move house: @due({today})
+	Pack books @start({today-2})
+	- Undated task
+END
+keys gt
+see Move house:
+see Pack books  Move house
+hide Undated task

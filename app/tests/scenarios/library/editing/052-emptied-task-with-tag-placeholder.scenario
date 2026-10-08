@@ -1,0 +1,13 @@
+# Emptying a task that has a due date keeps it a task, written with the placeholder … as its text.
+file <<END
+- Call plumber @due(2026-12-01)
+- Next
+END
+see Call plumber
+keys <Enter> <C-a> <BS> <Esc>
+see - …
+quit
+saved <<END
+- … @due(2026-12-01)
+- Next
+END

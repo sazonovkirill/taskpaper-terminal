@@ -1,0 +1,15 @@
+# x on a selection where one task is already done marks only the others, keeping the old date.
+file <<END
+Mixed:
+	- A @done(2026-10-01)
+	- B
+	- C
+END
+keys j J J x
+quit
+saved <<END
+Mixed:
+	- A @done(2026-10-01)
+	- B @done({today})
+	- C @done({today})
+END

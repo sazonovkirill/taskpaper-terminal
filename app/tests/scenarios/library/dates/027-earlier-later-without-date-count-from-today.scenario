@@ -1,0 +1,11 @@
+# [ and } on a block without that date give yesterday and tomorrow.
+file <<END
+- A
+- B
+END
+keys [ j }
+quit
+saved <<END
+- A @start({today-1})
+- B @due({today+1})
+END

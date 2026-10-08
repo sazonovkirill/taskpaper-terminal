@@ -1,0 +1,26 @@
+# With an unsaved edit, an outside change asks what to do, and t takes the version on disk.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+outside <<END
+Errands:
+	- Post office
+	- Bank
+END
+see The file changed on disk
+see m keep mine · t take theirs · d show diff
+keys t
+hide The file changed on disk
+status Took the version on disk
+see     - Bank
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank
+END

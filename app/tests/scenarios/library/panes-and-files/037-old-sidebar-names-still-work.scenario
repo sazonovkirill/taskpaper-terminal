@@ -1,0 +1,11 @@
+# The old command name toggle_sidebar in the keymap still opens the Navigator.
+config <<END
+[keymap.navigate]
+"f2" = "toggle_sidebar"
+END
+file <<END
+Errands:
+	- Post office
+END
+keys <F2>
+see Navigator

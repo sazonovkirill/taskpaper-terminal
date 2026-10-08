@@ -8,6 +8,12 @@ publish = false
 name = "tpt"
 path = "src/main.rs"
 
+# Real-user scenarios against the real binary; `main` runs the library and reports failures.
+[[test]]
+name = "scenarios"
+path = "tests/scenarios/main.rs"
+harness = false
+
 [[bench]]
 name = "perf"
 harness = false

@@ -1,0 +1,20 @@
+# Ctrl+X cuts a task with its note and P pastes it above the focused block.
+file <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Neuromancer
+	- Hyperion
+END
+keys j <C-x>
+see ▌   - Neuromancer
+keys G P
+see ▌   - Dune
+quit
+saved <<END
+Reading:
+	- Neuromancer
+	- Dune
+		Great worldbuilding
+	- Hyperion
+END

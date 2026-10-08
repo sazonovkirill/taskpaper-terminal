@@ -1,0 +1,11 @@
+# With one pane the context menu's pane commands are the two new-pane ones, without Close Pane.
+file <<END
+Errands:
+	- Post office
+END
+keys \
+see Commands:
+type pane
+see Open in New Pane
+see Open Location in New Pane
+hide Close Pane

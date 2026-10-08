@@ -1,0 +1,18 @@
+# Set Due Date from the command menu opens the date prompt and editing goes on after it closes.
+file <<END
+Plan trip
+END
+see Plan trip
+keys <Enter> /
+type due d
+keys <Enter>
+see Due date
+type tomorrow
+keys <Enter>
+type !
+keys <Esc>
+see Plan trip!
+quit
+saved <<END
+Plan trip! @due({today+1})
+END

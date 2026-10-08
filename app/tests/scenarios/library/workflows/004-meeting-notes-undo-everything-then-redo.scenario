@@ -1,0 +1,42 @@
+# After typing a page of meeting notes, undoing all the way restores the original file exactly, and redoing all the way brings every note back.
+file <<END
+Meetings:
+	Standup 1 Oct
+		All good
+END
+keys G gp o
+type Planning 8 Oct
+keys <Enter> <Tab>
+type Attendees: Ann, Bob
+keys <Enter>
+type Decision ship on Friday
+keys <C-b> <Enter>
+type - Ann writes the notes
+keys <Enter> <Tab>
+type by Monday
+keys <Enter> <S-Tab> <S-Tab>
+type Next steps
+keys <Esc>
+see ▌   - Next steps
+keys z z z z z z z z z z z z z z z z z z z z
+see ▌   Standup 1 Oct
+hide Planning
+saved <<END
+Meetings:
+	Standup 1 Oct
+		All good
+END
+keys Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z Z
+see ▌   - Next steps
+quit
+saved <<END
+Meetings:
+	Standup 1 Oct
+		All good
+	Planning 8 Oct
+		Attendees: Ann, Bob
+		Decision ship on **Friday**
+		- Ann writes the notes
+			- by Monday
+	- Next steps
+END

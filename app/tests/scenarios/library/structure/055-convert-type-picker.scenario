@@ -1,0 +1,24 @@
+# my opens the Node type picker; choosing Task, Project and Make Section converts three blocks.
+file <<END
+Packing:
+	Clothes
+	- Socks
+	Shoes
+END
+keys j my
+see Node type:
+type task
+keys <Enter>
+keys j my
+type proj
+keys <Enter>
+keys j my
+type make
+keys <Enter>
+quit
+saved <<END
+Packing:
+	- Clothes
+	Socks:
+	Shoes @section
+END

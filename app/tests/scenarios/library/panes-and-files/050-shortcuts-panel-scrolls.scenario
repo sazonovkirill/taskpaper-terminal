@@ -1,0 +1,12 @@
+# ) scrolls the shortcuts panel down to the panel commands and ( back up to the top.
+file <<END
+Errands:
+	- Post office
+END
+keys ? ) ) ) )
+see Quit                  Ctrl+Q
+see ↑ more                      (
+hide Next Block
+keys ( ( ( (
+see Next Block              j, ↓
+hide ↑ more

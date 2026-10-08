@@ -1,0 +1,7 @@
+# Ctrl+W waiting for its second key is shown in the status line as Ctrl+W, like other pending prefixes.
+file <<END
+Errands:
+	- Post office
+END
+keys <C-w>
+status Ctrl+W

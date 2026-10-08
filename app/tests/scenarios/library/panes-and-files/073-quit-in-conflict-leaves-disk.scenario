@@ -1,0 +1,19 @@
+# Quitting while the conflict prompt is open leaves the other program's version on disk.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+END
+keys j x
+outside <<END
+Errands:
+	- Theirs only
+END
+see The file changed on disk
+quit
+saved <<END
+Errands:
+	- Theirs only
+END

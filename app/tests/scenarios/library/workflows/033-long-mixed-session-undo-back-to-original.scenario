@@ -1,0 +1,35 @@
+# A long mixed session (editing in Today, star, done, move to another project, indent, color, copy and paste) is undone step by step back to the exact original file.
+file <<END
+INBOX:
+	- Call the plumber
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report @due({today-2})
+	- Review pull requests
+	- Prepare slides @due({today+1})
+Home:
+	- Fix the shelf
+	- Pay rent @due({today-7})
+END
+keys gt <Enter>
+type  online
+keys <Esc> * j x gh j gm
+type home
+keys <Enter> <Tab> c2 G y gg p
+see ▌ - Review pull requests
+keys z z z z z z z z z z z z z z
+see ▌   - Renew passport
+hide online
+quit
+saved <<END
+INBOX:
+	- Call the plumber
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report @due({today-2})
+	- Review pull requests
+	- Prepare slides @due({today+1})
+Home:
+	- Fix the shelf
+	- Pay rent @due({today-7})
+END

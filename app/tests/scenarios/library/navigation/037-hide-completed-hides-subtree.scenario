@@ -1,0 +1,14 @@
+# Hiding completed blocks also hides everything inside a done project.
+file <<END
+Old project: @done(2026-09-30)
+	- Leftover task
+	Some notes
+Current:
+	- Next step
+END
+keys <C-o>
+see - Next step
+hide Old project
+hide Leftover task
+hide Some notes
+quit

@@ -1,0 +1,26 @@
+# Duplicating a task from the slash menu keeps editing the original, and deleting the copy from the slash menu later leaves navigate mode on the block after it.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+END
+keys j <Enter>
+type /dup
+keys <Enter>
+type  v1
+keys <Esc>
+see ▌   - Report v1
+see     - Report
+keys j j <Enter>
+type /delete
+keys <Enter>
+see ▌   - Slides
+status NAVIGATE
+quit
+saved <<END
+Work:
+	- Report v1
+		Draft due Friday
+	- Slides
+END

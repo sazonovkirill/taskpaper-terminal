@@ -1,0 +1,17 @@
+# Delete from the command menu removes the edited block and leaves navigate mode on the next one.
+file <<END
+- One
+- Two
+- Three
+END
+see Two
+keys j <Enter> /
+type del
+keys <Enter>
+hide Two
+status NAVIGATE
+quit
+saved <<END
+- One
+- Three
+END

@@ -1,0 +1,26 @@
+# Ctrl+K finds a task by typing part of its name and Enter shows it under its project, focused.
+file <<END
+Work:
+	- Write report
+Home:
+	Garden:
+		- Plant tulips
+		- Mow lawn
+END
+keys <C-k>
+see Go to Symbol
+type tulip
+see - Plant tulips  Home › Garden
+keys <Enter>
+see › Home › Garden
+hide Go to Symbol
+keys x
+quit
+saved <<END
+Work:
+	- Write report
+Home:
+	Garden:
+		- Plant tulips @done({today})
+		- Mow lawn
+END

@@ -1,0 +1,11 @@
+# Shift+F10 opens the context menu, whose Close Pane closes the focused pane while there are two.
+file <<END
+Errands:
+	- Post office
+END
+keys <C-w> v <S-F10>
+type close
+see Close Pane
+keys <Enter>
+hide 󰋜 › Errands
+see ▌ Errands:

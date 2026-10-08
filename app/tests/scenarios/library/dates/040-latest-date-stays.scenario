@@ -1,0 +1,10 @@
+# ] on the last date the calendar has changes nothing.
+file <<END
+- End @start(9999-12-31)
+END
+keys ]
+keys }
+quit
+saved <<END
+- End @start(9999-12-31) @due({today+1})
+END

@@ -1,0 +1,11 @@
+# A color command on a task with two color tags leaves only the chosen one.
+file <<END
+Calls:
+	- Dentist @red @blue
+END
+keys j c1
+quit
+saved <<END
+Calls:
+	- Dentist @red
+END

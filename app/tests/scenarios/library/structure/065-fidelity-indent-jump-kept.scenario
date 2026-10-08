@@ -1,0 +1,13 @@
+# A task indented by three tabs under a project keeps its tabs when another task is completed.
+file <<END
+Trip:
+			- Deep jump
+	- Normal
+END
+keys G x
+quit
+saved <<END
+Trip:
+			- Deep jump
+	- Normal @done({today})
+END

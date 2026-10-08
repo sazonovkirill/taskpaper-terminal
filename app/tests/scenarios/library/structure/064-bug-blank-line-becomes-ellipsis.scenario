@@ -1,0 +1,19 @@
+# Moving a task down past a blank line keeps the blank line blank.
+# BUG: the blank line becomes a "…" text block once the task passes through it.
+file <<END
+A:
+	- one
+
+B:
+	- three
+END
+see three
+keys j <A-j> <A-j>
+quit
+saved <<END
+A:
+
+B:
+	- one
+	- three
+END

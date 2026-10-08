@@ -1,0 +1,9 @@
+# } on a task due 31 December moves it to 1 January of the next year.
+file <<END
+- New year @due(2026-12-31)
+END
+keys }
+quit
+saved <<END
+- New year @due(2027-01-01)
+END

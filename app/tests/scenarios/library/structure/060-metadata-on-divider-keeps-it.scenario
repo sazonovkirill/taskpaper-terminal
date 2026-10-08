@@ -1,0 +1,14 @@
+# Starring and dating a divider keeps it drawn as a rule.
+file <<END
+Notes:
+	---
+	Plain
+END
+keys j * t
+hide ---
+quit
+saved <<END
+Notes:
+	--- @star @start({today})
+	Plain
+END

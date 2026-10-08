@@ -1,0 +1,19 @@
+# A reload keeps a second pane zoomed into its project and shows the new block there.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G <C-w> v
+outside <<END
+Errands:
+	- Post office
+Work:
+	- Report
+	- Call Bob
+END
+status Reloaded (changed on disk)
+see │  󰋜 › Work › Report
+see   Work:
+see     - Call Bob

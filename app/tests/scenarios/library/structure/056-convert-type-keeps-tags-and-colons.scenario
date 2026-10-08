@@ -1,0 +1,28 @@
+# Converting keeps other tags: a task ending in a colon becomes a project once, and a section becomes a task.
+file <<END
+Conv:
+	- Plan: @due(2026-10-10)
+	- Ask::
+	Section me @section @red
+	- Note me @url(http://x.y)
+END
+keys j my
+type proj
+keys <Enter>
+keys j my
+type note
+keys <Enter>
+keys j my
+type task
+keys <Enter>
+keys j my
+type note
+keys <Enter>
+quit
+saved <<END
+Conv:
+	Plan: @due(2026-10-10)
+	Ask
+	- Section me @red
+	Note me @url(http://x.y)
+END

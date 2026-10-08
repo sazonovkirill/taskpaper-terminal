@@ -1,0 +1,18 @@
+# dd on the zoom title does nothing: the zoomed block stays.
+file <<END
+Trip:
+	- Passport
+Home:
+	- Plants
+END
+keys j .
+see Trip › Passport
+keys dd
+see ▌ - Passport
+quit
+saved <<END
+Trip:
+	- Passport
+Home:
+	- Plants
+END

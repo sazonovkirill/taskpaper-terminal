@@ -1,0 +1,18 @@
+# Cancelling the start date prompt opened from the command menu returns to editing at the same caret column.
+file <<END
+- Dentist
+END
+see Dentist
+keys <Enter> <Left> <Left> /
+type set start
+keys <Enter>
+see Start date
+keys <Esc>
+hide Start date
+status EDIT
+type Q
+keys <Esc>
+quit
+saved <<END
+- DentiQst
+END

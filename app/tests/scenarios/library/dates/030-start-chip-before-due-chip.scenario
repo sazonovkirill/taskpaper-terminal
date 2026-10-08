@@ -1,0 +1,5 @@
+# A block with both dates shows the start chip before the due chip, whatever their order in the file.
+file <<END
+- Trip @due({today+1}) @start({today-1})
+END
+see 󱙭 yesterday 󱙬 tomorrow

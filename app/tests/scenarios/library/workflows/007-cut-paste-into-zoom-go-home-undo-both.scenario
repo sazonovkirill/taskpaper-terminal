@@ -1,0 +1,51 @@
+# Cutting a task with its note, pasting it inside a zoomed grocery list, going home, then undoing the paste and the cut puts everything back where it was.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys j <C-x>
+hide Report
+see ▌   - Slides
+keys G k k .
+see 󰋜 › Home › Groceries
+keys j p
+see ▌   - Report
+see       Draft due Friday
+keys gh
+see ▌   - Groceries
+see         Draft due Friday
+saved <<END
+Work:
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+		- Report
+			Draft due Friday
+END
+keys z
+hide Report
+see ▌     - Eggs
+keys z
+see ▌   - Report
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END

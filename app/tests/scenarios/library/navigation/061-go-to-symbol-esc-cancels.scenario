@@ -1,0 +1,19 @@
+# gs opens Go to Symbol, and Esc closes it without moving anywhere.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix sink
+END
+keys gs
+see Go to Symbol
+type sink
+keys <Esc>
+keys x
+quit
+saved <<END
+Work: @done({today})
+	- Write report
+Home:
+	- Fix sink
+END

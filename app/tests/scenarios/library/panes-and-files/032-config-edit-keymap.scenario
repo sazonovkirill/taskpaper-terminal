@@ -1,0 +1,15 @@
+# A custom edit-mode key, ctrl+g for inline code, wraps the word at the caret in backticks.
+config <<END
+[keymap.edit]
+"ctrl+g" = "inline_code"
+END
+file <<END
+Tasks:
+	- run make
+END
+keys j <Enter> <C-g> <Esc>
+quit
+saved <<END
+Tasks:
+	- run `make`
+END

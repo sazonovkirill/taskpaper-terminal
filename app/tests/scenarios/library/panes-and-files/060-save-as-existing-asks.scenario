@@ -1,0 +1,11 @@
+# Save As to the file already open asks before replacing it, and Esc goes back to the path.
+file <<END
+Errands:
+	- Post office
+END
+keys :
+type save as
+keys <Enter> <Enter>
+see The file exists: Enter replaces it, Esc goes back
+keys <Esc>
+see Tab completes a folder, Enter saves

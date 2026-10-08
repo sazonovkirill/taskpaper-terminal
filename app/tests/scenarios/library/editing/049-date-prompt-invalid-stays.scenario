@@ -1,0 +1,19 @@
+# The date prompt explains text that is not a date, and Enter then does nothing until the text is fixed, such as +3d.
+file <<END
+- Renew passport
+END
+see Renew passport
+keys ms
+see Start date
+type blah
+see Not a date from “blah”
+keys <Enter>
+see Start date
+keys <C-a> <BS>
+type +3d
+keys <Enter>
+hide Start date
+quit
+saved <<END
+- Renew passport @start({today+3})
+END

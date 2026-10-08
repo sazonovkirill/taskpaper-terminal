@@ -1,0 +1,12 @@
+# Ctrl+W c on the only pane keeps it open and the outline usable.
+file <<END
+Errands:
+	- Post office
+END
+keys <C-w> c j x
+see ✔ Post office
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+END

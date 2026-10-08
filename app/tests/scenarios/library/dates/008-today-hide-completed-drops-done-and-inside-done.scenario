@@ -1,0 +1,16 @@
+# gc in Today hides done entries and entries inside done projects; gc again brings them back.
+file <<END
+Old: @done({today-1})
+	- Inside old @due({today})
+- Done task @due({today}) @done({today})
+- Open task @due({today})
+END
+keys gt
+see - Inside old  Old
+see ✔ Done task
+keys gc
+hide Inside old
+hide Done task
+see - Open task
+keys gc
+see - Inside old  Old

@@ -1,0 +1,12 @@
+# In a short pane with word wrap on, moving onto a task that wraps to five lines shows all five lines.
+# BUG: the 2-row scroll margin wins over the focused block's own lines, so its last line stays below the pane (ui.md §2 Wrap).
+size 25 8
+file <<END
+Packing:
+	- Remember to pack the universal power adapter and the spare charging cables for everyone
+Done
+END
+keys gw j
+see - Remember to pack
+see cables for everyone
+quit

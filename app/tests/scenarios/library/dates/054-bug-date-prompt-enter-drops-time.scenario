@@ -1,0 +1,11 @@
+# Enter on the date prompt that opened with a block's date keeps the tag as written.
+# BUG: a date written with a time, @due({today} 14:00), is rewritten as @due({today}) and the time is lost.
+file <<END
+- Call @due({today} 14:00)
+END
+see 󱙬 today
+keys md <Enter>
+quit
+saved <<END
+- Call @due({today} 14:00)
+END

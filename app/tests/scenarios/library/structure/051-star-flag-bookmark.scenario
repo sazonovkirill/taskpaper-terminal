@@ -1,0 +1,16 @@
+# * stars, mf flags, mf then ! flags and unflags, and mb bookmarks with a status message.
+file <<END
+Launch:
+	- Write announcement
+	Notes about launch
+END
+keys j * j mf
+keys gg mb
+status Bookmarked
+keys j mf !
+quit
+saved <<END
+Launch: @bookmark
+	- Write announcement @star
+	Notes about launch @flag
+END

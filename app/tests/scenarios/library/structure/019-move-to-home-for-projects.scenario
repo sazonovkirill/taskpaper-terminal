@@ -1,0 +1,23 @@
+# Moving a project with gm offers Home first, and choosing it makes the project the last top-level block.
+file <<END
+Shopping:
+	- Milk
+Work:
+	Q4:
+		- Budget
+Home:
+	- Paint
+END
+keys G k k k gm
+see Home
+keys <Enter>
+quit
+saved <<END
+Shopping:
+	- Milk
+Work:
+Home:
+	- Paint
+Q4:
+	- Budget
+END

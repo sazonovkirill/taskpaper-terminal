@@ -1,0 +1,20 @@
+# Back skips a page whose block the user has since deleted.
+file <<END
+Alpha:
+	- a1
+Beta:
+	- b1
+Gamma
+END
+keys j j .
+see › Beta
+keys gh dd
+keys H
+see Alpha:
+hide › Beta
+quit
+saved <<END
+Alpha:
+	- a1
+Gamma
+END

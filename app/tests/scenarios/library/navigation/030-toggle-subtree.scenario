@@ -1,0 +1,16 @@
+# " collapses a whole subtree, then a second " expands every level of it again.
+file <<END
+Work:
+	Launch:
+		- Draft announcement
+	Hiring:
+		- Screen resumes
+Home
+END
+keys "
+see Work: ▸ 2
+hide Launch
+keys "
+see - Draft announcement
+see - Screen resumes
+quit

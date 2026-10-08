@@ -1,0 +1,14 @@
+# t and w set the start date to today and tomorrow, T and W the due date.
+file <<END
+Launch:
+	- Write announcement
+	- Update docs
+END
+keys j t T j w W
+see tomorrow
+quit
+saved <<END
+Launch:
+	- Write announcement @start({today}) @due({today})
+	- Update docs @start({today+1}) @due({today+1})
+END

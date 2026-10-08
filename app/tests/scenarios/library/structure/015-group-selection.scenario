@@ -1,0 +1,23 @@
+# Selecting three tasks and pressing gG wraps them in a new parent that is typed in right away.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+	- Charger
+Home:
+	- Water plants
+END
+keys j J J gG
+type Documents
+keys <Esc>
+see ▌   Documents
+quit
+saved <<END
+Trip:
+	Documents
+		- Passport
+		- Tickets
+		- Charger
+Home:
+	- Water plants
+END

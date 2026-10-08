@@ -1,0 +1,17 @@
+# Blocks toggled with v move down together with Alt+j, each swapping with its own neighbour.
+file <<END
+Plan:
+	- A
+	- B
+	- C
+	- D
+END
+keys j v j j v <A-j>
+quit
+saved <<END
+Plan:
+	- B
+	- A
+	- D
+	- C
+END

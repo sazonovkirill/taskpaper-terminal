@@ -1,0 +1,23 @@
+# Pasting while the zoom title is focused makes the pasted blocks its first children.
+file <<END
+Inbox:
+	- Idea one
+		detail
+	- Idea two
+Archive:
+	- Old
+END
+keys j <C-x>
+keys G .
+see Archive › Old
+keys p
+see ▌   - Idea one
+quit
+saved <<END
+Inbox:
+	- Idea two
+Archive:
+	- Old
+		- Idea one
+			detail
+END

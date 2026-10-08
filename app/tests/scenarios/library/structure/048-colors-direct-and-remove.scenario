@@ -1,0 +1,13 @@
+# c3 gives a task yellow, c1 replaces it with red, and C removes the color.
+file <<END
+Sprint:
+	- Design
+	- Build @blue
+END
+keys j c3 c1 j C
+quit
+saved <<END
+Sprint:
+	- Design @red
+	- Build
+END

@@ -1,0 +1,10 @@
+# Done starred blocks are listed while completed blocks are shown and leave with gc.
+file <<END
+- Done star @star @done({today})
+- Open star @star
+END
+keys g*
+see ✔ Done star
+keys gc
+hide Done star
+see - Open star

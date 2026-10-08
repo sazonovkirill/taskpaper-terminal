@@ -1,0 +1,14 @@
+# Editing a task's text writes its mid-line tags after the text, and undo restores the original line exactly.
+file <<END
+- Call @phone mom about @due(2026-12-01) dinner
+END
+see Call mom about dinner
+keys <Enter>
+type  soon
+keys <Esc>
+see Call mom about dinner soon
+keys z
+quit
+saved <<END
+- Call @phone mom about @due(2026-12-01) dinner
+END

@@ -1,0 +1,13 @@
+# Enter with the caret in the middle of a task ends editing without splitting the line and opens an empty task below.
+file <<END
+- Renew passport
+END
+see Renew passport
+keys <Enter> <Left> <Left> <Left> <Enter>
+type Book photo booth
+keys <Esc>
+quit
+saved <<END
+- Renew passport
+- Book photo booth
+END

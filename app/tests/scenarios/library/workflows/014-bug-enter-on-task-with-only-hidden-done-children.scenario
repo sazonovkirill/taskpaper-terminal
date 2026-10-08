@@ -1,0 +1,22 @@
+# With completed tasks hidden, Enter at the end of a task whose only child is done makes the next sibling, since the task shows no children (editing.md §3: a new first child only for visible children).
+# BUG: the new block becomes a first child of the task, beside the hidden done child.
+file <<END
+Trip:
+	- Pack
+		- Socks @done
+	- Leave
+END
+keys gc
+hide Socks
+keys j <Enter> <Enter>
+type Shoes
+keys <Esc>
+see ▌   - Shoes
+quit
+saved <<END
+Trip:
+	- Pack
+		- Socks @done
+	- Shoes
+	- Leave
+END

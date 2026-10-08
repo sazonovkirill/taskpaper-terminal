@@ -1,0 +1,17 @@
+# With nothing unsaved, a change by another program reloads silently and keeps the focus.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys j j
+see ▌   - Buy milk
+outside <<END
+Errands:
+	- Post office
+	- Buy bread
+	- Buy milk
+END
+status Reloaded (changed on disk)
+see     - Buy bread
+see ▌   - Buy milk

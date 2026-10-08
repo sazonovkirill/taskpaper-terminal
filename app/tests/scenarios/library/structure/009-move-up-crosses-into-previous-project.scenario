@@ -1,0 +1,19 @@
+# Alt+k on the first task of a project moves it to the end of the previous project, and again up past its tasks.
+file <<END
+Plan:
+	- A
+	- B
+Other:
+	- D
+END
+keys G <A-k>
+see ▌   - D
+keys <A-k>
+quit
+saved <<END
+Plan:
+	- A
+	- D
+	- B
+Other:
+END

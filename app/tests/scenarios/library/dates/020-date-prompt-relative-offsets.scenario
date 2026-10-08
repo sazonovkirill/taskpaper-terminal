@@ -1,0 +1,27 @@
+# The prompt accepts offsets and day words: +3d, -2w, yesterday, 1d, 3 days, saving YYYY-MM-DD.
+file <<END
+- A
+- B
+- C
+- D
+- E
+END
+keys md
+type +3d
+keys <Enter> j md
+type -2w
+keys <Enter> j ms
+type YESTERDAY
+keys <Enter> j ms
+type 1d
+keys <Enter> j md
+type 3 days
+keys <Enter>
+quit
+saved <<END
+- A @due({today+3})
+- B @due({today-14})
+- C @start({today-1})
+- D @start({today+1})
+- E @due({today+3})
+END

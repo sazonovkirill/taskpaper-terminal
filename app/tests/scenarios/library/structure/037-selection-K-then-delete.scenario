@@ -1,0 +1,14 @@
+# K extends the selection upward and dd deletes both selected tasks.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+	- Bread
+END
+keys G K dd
+see ▌   - Milk
+quit
+saved <<END
+Shopping:
+	- Milk
+END

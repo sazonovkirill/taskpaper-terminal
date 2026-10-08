@@ -1,0 +1,16 @@
+# md opens the due date prompt with the current date selected; typing a new date replaces it and Enter saves it.
+file <<END
+- Renew passport @due(2026-12-01)
+END
+see Renew passport
+keys md
+see Due date
+see Tue 1 Dec 2026
+type 2026-11-15
+see Sun 15 Nov 2026
+keys <Enter>
+hide Due date
+quit
+saved <<END
+- Renew passport @due(2026-11-15)
+END

@@ -1,0 +1,20 @@
+# With completed tasks hidden, Alt+k moves a task above the visible task above it in one press.
+# BUG: the first Alt+k swaps the task with the hidden done task, so nothing visible happens; it takes a second press.
+file <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+	- Pharmacy @done(2026-10-02)
+	- Hardware store
+END
+keys gc G <A-k>
+see ▌   - Hardware store
+see     - Post office
+quit
+saved <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Hardware store
+	- Post office
+	- Pharmacy @done(2026-10-02)
+END

@@ -1,0 +1,11 @@
+# Pressing j on the last block and k on the first keeps the focus where it is.
+file <<END
+First
+Last
+END
+keys j j j x k k k *
+quit
+saved <<END
+First @star
+Last @done({today})
+END

@@ -1,0 +1,15 @@
+# Tags whose values are not dates show no chip and are kept in the file untouched.
+file <<END
+- Someday @due(soon)
+- Feb @due(2026-02-30)
+- Short @start(2026-1-5)
+END
+see - Someday
+hide 󱙬
+hide 󱙭
+quit
+saved <<END
+- Someday @due(soon)
+- Feb @due(2026-02-30)
+- Short @start(2026-1-5)
+END

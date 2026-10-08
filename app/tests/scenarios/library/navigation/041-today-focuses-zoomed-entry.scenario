@@ -1,0 +1,14 @@
+# Opening Today while zoomed into a task that is in Today focuses that task's entry.
+file <<END
+Work:
+	- Pay rent @due({today-3})
+	- Send report @due({today})
+END
+keys j j . gt x
+see Today
+quit
+saved <<END
+Work:
+	- Pay rent @due({today-3})
+	- Send report @due({today}) @done({today})
+END

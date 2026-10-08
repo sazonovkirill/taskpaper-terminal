@@ -1,0 +1,13 @@
+# x on a task done long ago removes its @done tag even in the middle of the line, keeping other tags.
+file <<END
+Calls:
+	- Bank @done(2026-09-30) @due(2026-09-29)
+	- Report @done(2026-09-01) more text
+END
+keys j x j x
+quit
+saved <<END
+Calls:
+	- Bank @due(2026-09-29)
+	- Report more text
+END

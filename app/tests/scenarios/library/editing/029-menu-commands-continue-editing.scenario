@@ -1,0 +1,22 @@
+# Color, star, due-tomorrow and complete from the command menu all apply to the edited task, and typing goes on.
+file <<END
+- Water plants
+END
+see Water plants
+keys <Enter> /
+type color b
+see Color: Blue
+keys <Enter> /
+type star
+keys <Enter> /
+type due tom
+keys <Enter> /
+type comp
+keys <Enter>
+type !
+keys <Esc>
+see ✔ Water plants!
+quit
+saved <<END
+- Water plants! @blue @star @due({today+1}) @done({today})
+END

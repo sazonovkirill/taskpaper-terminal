@@ -1,0 +1,16 @@
+# After going back, zooming somewhere new discards the forward history, so L does nothing.
+file <<END
+Alpha:
+	- a1
+Beta:
+	- b1
+END
+keys . H j j .
+see › Beta
+keys L
+see › Beta
+hide › Alpha
+keys H
+see Alpha:
+hide › Beta
+quit

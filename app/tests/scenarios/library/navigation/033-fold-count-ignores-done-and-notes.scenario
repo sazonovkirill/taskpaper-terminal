@@ -1,0 +1,16 @@
+# A collapsed block counts only open tasks, and shows a bare ▸ when it hides only notes and done tasks.
+file <<END
+Groceries:
+	- Milk
+	- Eggs @done(2026-10-01)
+	Remember the coupons
+	- Bread
+Archive:
+	- Old task @done(2026-09-01)
+	Some note
+END
+keys _
+see Groceries: ▸ 2
+see Archive: ▸
+hide Archive: ▸ 1
+quit

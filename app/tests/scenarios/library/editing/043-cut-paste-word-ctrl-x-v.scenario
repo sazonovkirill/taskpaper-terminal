@@ -1,0 +1,13 @@
+# Ctrl+X cuts the selected word and Ctrl+V pastes it into the next task.
+file <<END
+- milk eggs bread
+- jam
+END
+see milk eggs bread
+keys <Enter> <Home> <S-Right> <S-Right> <S-Right> <S-Right> <S-Right> <C-x> <Down> <End> <Space> <C-v> <Esc>
+see - jam milk
+quit
+saved <<END
+- eggs bread
+- jam milk 
+END

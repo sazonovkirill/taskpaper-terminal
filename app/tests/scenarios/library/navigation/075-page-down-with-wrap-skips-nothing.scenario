@@ -1,0 +1,39 @@
+# With word wrap on, Ctrl+D moves about one screenful, so the block just below the first page is still on screen.
+# BUG: Page Down moves the focus by the pane's height in blocks, not rows, so with two-line blocks it skips items 06-09 the user never saw.
+size 50 14
+config <<END
+word_wrap = true
+END
+file <<END
+Long list:
+	- Item 01 is a task with a fairly long description that will wrap
+	- Item 02 is a task with a fairly long description that will wrap
+	- Item 03 is a task with a fairly long description that will wrap
+	- Item 04 is a task with a fairly long description that will wrap
+	- Item 05 is a task with a fairly long description that will wrap
+	- Item 06 is a task with a fairly long description that will wrap
+	- Item 07 is a task with a fairly long description that will wrap
+	- Item 08 is a task with a fairly long description that will wrap
+	- Item 09 is a task with a fairly long description that will wrap
+	- Item 10 is a task with a fairly long description that will wrap
+	- Item 11 is a task with a fairly long description that will wrap
+	- Item 12 is a task with a fairly long description that will wrap
+	- Item 13 is a task with a fairly long description that will wrap
+	- Item 14 is a task with a fairly long description that will wrap
+	- Item 15 is a task with a fairly long description that will wrap
+	- Item 16 is a task with a fairly long description that will wrap
+	- Item 17 is a task with a fairly long description that will wrap
+	- Item 18 is a task with a fairly long description that will wrap
+	- Item 19 is a task with a fairly long description that will wrap
+	- Item 20 is a task with a fairly long description that will wrap
+	- Item 21 is a task with a fairly long description that will wrap
+	- Item 22 is a task with a fairly long description that will wrap
+	- Item 23 is a task with a fairly long description that will wrap
+	- Item 24 is a task with a fairly long description that will wrap
+	- Item 25 is a task with a fairly long description that will wrap
+END
+see - Item 05 is a task
+hide - Item 06 is a task
+keys <C-d>
+see - Item 06 is a task
+quit

@@ -1,0 +1,18 @@
+# Alt+j on the last task of a project moves it to the start of the next project.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+Home:
+	- Water plants
+END
+keys j j <A-j>
+see ▌   - Tickets
+quit
+saved <<END
+Trip:
+	- Passport
+Home:
+	- Tickets
+	- Water plants
+END

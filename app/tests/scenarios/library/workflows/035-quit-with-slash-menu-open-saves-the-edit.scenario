@@ -1,0 +1,16 @@
+# Quitting with Ctrl+Q while the slash menu is open in the middle of an edit saves the text typed so far, without the menu's filter.
+file <<END
+Work:
+	- Report
+	- Slides
+END
+keys j <Enter>
+type  edited
+type /du
+see Commands:
+quit
+saved <<END
+Work:
+	- Report edited
+	- Slides
+END

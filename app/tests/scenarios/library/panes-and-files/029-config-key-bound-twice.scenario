@@ -1,0 +1,19 @@
+# G and shift+g bound in one context are both reported as bound twice, and G still goes to the last block.
+config <<END
+[keymap.navigate]
+"G" = "move_up"
+"shift+g" = "move_down"
+END
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+status "G" is bound twice
+keys G x
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk @done({today})
+END

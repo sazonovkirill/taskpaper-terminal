@@ -1,0 +1,16 @@
+# Ctrl+T cycles the edited note through project, section and task, keeping its color tag.
+file <<END
+Packing list @blue
+END
+see Packing list
+keys <Enter> <C-t>
+see Packing list:
+keys <C-t>
+hide Packing list:
+keys <C-t>
+see - Packing list
+keys <Esc>
+quit
+saved <<END
+- Packing list @blue
+END

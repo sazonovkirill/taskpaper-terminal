@@ -1,0 +1,11 @@
+# Backups kept refuses 0 copies, saying the least it takes.
+file <<END
+Errands:
+	- Post office
+END
+keys g, <Tab> j <Tab> j j j <Enter>
+see Backups kept: 30
+keys <BS> <BS>
+type 0
+keys <Enter>
+see at least 1

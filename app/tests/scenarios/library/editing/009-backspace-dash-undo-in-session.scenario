@@ -1,0 +1,14 @@
+# Ctrl+Z right after deleting a task's dash brings the task back while still editing.
+file <<END
+- Bread
+END
+see Bread
+keys <Enter> <Home> <BS>
+hide - Bread
+keys <C-z>
+see - Bread
+keys <Esc>
+quit
+saved <<END
+- Bread
+END

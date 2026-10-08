@@ -1,0 +1,13 @@
+# Alt+j moves a Today entry down the list without changing the order in the file.
+file <<END
+Work:
+	- First due @due({today})
+	- Second due @due({today})
+END
+keys gt <A-j> x
+quit
+saved <<END
+Work:
+	- First due @due({today}) @done({today})
+	- Second due @due({today})
+END

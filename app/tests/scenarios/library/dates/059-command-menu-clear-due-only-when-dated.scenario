@@ -1,0 +1,18 @@
+# The edit-mode command menu offers Clear Due Date only on a block that has a due date, and it removes it.
+file <<END
+- Dated @due({today})
+- Plain
+END
+keys j <Enter>
+type /due
+see Set Due Date
+hide Clear Due Date
+keys <BS> <BS> <BS> <BS> <Esc> k <Enter>
+type /clear due
+see Clear Due Date
+keys <Enter> <Esc>
+quit
+saved <<END
+- Dated
+- Plain
+END

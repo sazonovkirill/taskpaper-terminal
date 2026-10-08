@@ -1,0 +1,12 @@
+# Ctrl+W v opens the focused project zoomed in a new pane to the right, focused on its first child.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys <C-w> v
+see │  󰋜 › Errands
+see │▌   - Post office
+hide │  Work:

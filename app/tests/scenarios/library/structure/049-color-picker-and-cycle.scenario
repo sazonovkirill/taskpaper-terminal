@@ -1,0 +1,17 @@
+# mc then 4 picks green; cc twice on an uncolored task gives orange.
+file <<END
+Sprint:
+	- Design
+	- Build
+END
+keys j mc
+see Color:
+keys 4
+hide Color:
+keys j cc cc
+quit
+saved <<END
+Sprint:
+	- Design @green
+	- Build @orange
+END

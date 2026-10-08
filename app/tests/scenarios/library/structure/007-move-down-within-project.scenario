@@ -1,0 +1,16 @@
+# Alt+j swaps a task with the next one, so reordering a reading list saves the new order.
+file <<END
+Reading:
+	- Dune
+	- Neuromancer
+	- Hyperion
+END
+keys j <A-j>
+see ▌   - Dune
+quit
+saved <<END
+Reading:
+	- Neuromancer
+	- Dune
+	- Hyperion
+END

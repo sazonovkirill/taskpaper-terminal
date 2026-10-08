@@ -1,0 +1,19 @@
+# Duplicate from the command menu copies the block and editing goes on in the original.
+file <<END
+- One
+- Two
+- Three
+END
+see Two
+keys j <Enter> /
+type dup
+keys <Enter>
+type X
+keys <Esc>
+quit
+saved <<END
+- One
+- TwoX
+- Two
+- Three
+END

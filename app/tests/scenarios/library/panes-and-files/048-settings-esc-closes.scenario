@@ -1,0 +1,15 @@
+# Esc closes the settings window, and the outline takes the keys again.
+file <<END
+Errands:
+	- Post office
+END
+keys g,
+see Settings file:
+keys <Esc>
+hide Settings file:
+keys j x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+END

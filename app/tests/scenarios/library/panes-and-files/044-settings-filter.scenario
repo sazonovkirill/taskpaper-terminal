@@ -1,0 +1,12 @@
+# Typing /wrap in the settings window lists only the Word wrap setting.
+file <<END
+Errands:
+	- Post office
+END
+keys g, /
+type wrap
+see Word wrap
+hide Icons
+hide Autosave delay
+keys <Esc>
+see Icons

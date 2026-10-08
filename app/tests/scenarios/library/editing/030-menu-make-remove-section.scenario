@@ -1,0 +1,16 @@
+# Make Section and Remove Section in the command menu add and remove @section on a note.
+file <<END
+Kitchen:
+	- Pick tiles
+END
+see Pick tiles
+keys j <Enter> /
+type note
+keys <Enter> /
+type make
+keys <Enter> <Esc>
+quit
+saved <<END
+Kitchen:
+	Pick tiles @section
+END

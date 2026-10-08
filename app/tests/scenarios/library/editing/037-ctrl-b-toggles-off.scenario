@@ -1,0 +1,10 @@
+# Ctrl+B with the caret inside bold text removes the bold markers.
+file <<END
+- Please **buy milk** now
+END
+see Please buy milk now
+keys <Enter> <C-Left> <Left> <Left> <Left> <Left> <Left> <Left> <C-b> <Esc>
+quit
+saved <<END
+- Please buy milk now
+END

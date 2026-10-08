@@ -1,0 +1,33 @@
+# Meeting notes typed in one go: Enter for each next block, Tab and Shift+Tab while editing, Ctrl+B bolds the word at the caret, a dash makes a task.
+file <<END
+Meetings:
+	Standup 1 Oct
+		All good
+END
+keys G gp o
+type Planning 8 Oct
+keys <Enter> <Tab>
+type Attendees: Ann, Bob
+keys <Enter>
+type Decision ship on Friday
+keys <C-b> <Enter>
+type - Ann writes the notes
+keys <Enter> <Tab>
+type by Monday
+keys <Enter> <S-Tab> <S-Tab>
+type Next steps
+keys <Esc>
+see ▌   - Next steps
+see         - by Monday
+quit
+saved <<END
+Meetings:
+	Standup 1 Oct
+		All good
+	Planning 8 Oct
+		Attendees: Ann, Bob
+		Decision ship on **Friday**
+		- Ann writes the notes
+			- by Monday
+	- Next steps
+END

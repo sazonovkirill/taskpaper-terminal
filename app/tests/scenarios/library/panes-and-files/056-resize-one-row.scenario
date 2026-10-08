@@ -1,0 +1,15 @@
+# Resizing to a sliver and back does not crash, and editing goes on afterwards.
+file <<END
+Errands:
+	- Post office
+END
+resize 5 2
+resize 2 2
+resize 200 60
+see Errands:
+keys j x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+END

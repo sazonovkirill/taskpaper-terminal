@@ -1,0 +1,13 @@
+# Deleting the last block of the file moves focus to the block before it.
+file <<END
+Groceries:
+	- Milk
+	- Eggs
+END
+keys G dd
+see ▌   - Milk
+quit
+saved <<END
+Groceries:
+	- Milk
+END

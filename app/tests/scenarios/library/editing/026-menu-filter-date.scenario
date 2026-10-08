@@ -1,0 +1,17 @@
+# Filtering the command menu with "date" leaves only the date prompts.
+file <<END
+Plan trip
+END
+see Plan trip
+keys <Enter> /
+see Color: Red
+type date
+see Set Start Date
+see Set Due Date
+hide Color: Red
+hide Project
+keys <Esc> <Esc>
+quit
+saved <<END
+Plan trip/date
+END

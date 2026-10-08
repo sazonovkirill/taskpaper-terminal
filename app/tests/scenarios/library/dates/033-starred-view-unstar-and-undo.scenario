@@ -1,0 +1,17 @@
+# * in the Starred view unstars the entry, which leaves the view; z brings it back.
+file <<END
+- One @star
+- Two @star
+END
+keys g*
+see - One
+keys *
+hide One
+see ▌ - Two
+keys z
+see - One
+quit
+saved <<END
+- One @star
+- Two @star
+END

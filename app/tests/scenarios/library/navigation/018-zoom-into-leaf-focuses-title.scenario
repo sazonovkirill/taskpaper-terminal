@@ -1,0 +1,16 @@
+# Zooming into a task with no children shows an empty page whose title row has the focus.
+file <<END
+Errands:
+	- Post office
+	- Bank
+END
+keys j .
+see › Errands › Post office
+hide Bank
+keys x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Bank
+END

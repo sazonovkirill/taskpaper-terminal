@@ -1,0 +1,15 @@
+# An autosave delay below 100 ms is reported at startup, and edits are still saved.
+size 200 30
+config <<END
+autosave_delay_ms = 5
+END
+file <<END
+Errands:
+	- Post office
+END
+status `autosave_delay_ms` must be a whole number of milliseconds, at least 100
+keys j x
+saved <<END
+Errands:
+	- Post office @done({today})
+END

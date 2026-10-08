@@ -1,0 +1,16 @@
+# Typing "- " at the start of a note turns it into a task, with the dash shown as its marker.
+file <<END
+Packing:
+	sunscreen
+END
+see sunscreen
+keys j <Enter> <Home>
+type -
+keys <Space>
+keys <Esc>
+see - sunscreen
+quit
+saved <<END
+Packing:
+	- sunscreen
+END

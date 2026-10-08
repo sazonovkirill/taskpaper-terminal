@@ -1,0 +1,16 @@
+# Alt+F and Alt+B move the caret by word, so a word can be inserted in the middle of a task.
+file <<END
+- Buy milk today
+END
+see Buy milk today
+keys <Enter> <Home> <A-f>
+type  oat
+keys <A-b> <A-b>
+type fresh
+keys <Space>
+keys <Esc>
+see - fresh Buy oat milk today
+quit
+saved <<END
+- fresh Buy oat milk today
+END

@@ -1,0 +1,12 @@
+# Alt+k and Alt+j do nothing in the Starred view.
+file <<END
+- One @star
+- Two @star
+END
+keys g* j <A-k>
+see ▌ - Two
+quit
+saved <<END
+- One @star
+- Two @star
+END

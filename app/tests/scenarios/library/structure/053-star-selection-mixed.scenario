@@ -1,0 +1,13 @@
+# * on a selection where only one block is starred stars the rest.
+file <<END
+Mixed:
+	- A @star
+	- B
+END
+keys j J *
+quit
+saved <<END
+Mixed:
+	- A @star
+	- B @star
+END

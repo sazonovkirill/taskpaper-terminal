@@ -1,0 +1,19 @@
+# Plain and titled dividers draw as rules, and a divider moves like any block.
+file <<END
+Notes:
+	Intro
+	---
+	---Ideas---
+	Plain
+END
+see ────── Ideas ──────
+hide ---Ideas---
+keys j j <A-j>
+quit
+saved <<END
+Notes:
+	Intro
+	---Ideas---
+	---
+	Plain
+END

@@ -1,0 +1,10 @@
+# An outline changed by another program while nothing is unsaved reloads at once.
+file <<END
+- Milk
+END
+see Milk
+outside <<END
+- Milk
+- Bread from the other laptop
+END
+see Bread from the other laptop

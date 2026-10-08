@@ -1,0 +1,18 @@
+# Zooming into a collapsed block shows its children, and zooming out finds it still collapsed.
+file <<END
+Trip:
+	- Flights
+	- Hotel
+		- Kyoto ryokan
+		- Tokyo capsule
+	- Visa
+END
+keys j j <Space>
+see - Hotel ▸ 2
+keys .
+see - Kyoto ryokan
+see - Tokyo capsule
+keys >
+see - Hotel ▸ 2
+hide Kyoto ryokan
+quit

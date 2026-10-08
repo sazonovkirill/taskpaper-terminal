@@ -1,0 +1,19 @@
+# The focused pane and its focused block are restored, so x after a restart completes that block.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys <C-w> v j g1 G
+restart
+keys x
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report @done({today})
+END

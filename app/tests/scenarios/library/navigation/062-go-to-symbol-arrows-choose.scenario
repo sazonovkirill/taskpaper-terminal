@@ -1,0 +1,18 @@
+# With an empty query the user arrows down Go to Symbol's list, projects first, and picks the second project.
+file <<END
+- Loose task
+Alpha:
+	- a1
+Beta:
+	- b1
+END
+keys <C-k> <Down> <Enter>
+keys x
+quit
+saved <<END
+- Loose task
+Alpha:
+	- a1
+Beta: @done({today})
+	- b1
+END

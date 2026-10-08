@@ -1,0 +1,14 @@
+# A new child of a project is a task, made with i and no type letter.
+file <<END
+Weekend:
+END
+see Weekend:
+keys i
+type Clean the bikes
+keys <Esc>
+see - Clean the bikes
+quit
+saved <<END
+Weekend:
+	- Clean the bikes
+END

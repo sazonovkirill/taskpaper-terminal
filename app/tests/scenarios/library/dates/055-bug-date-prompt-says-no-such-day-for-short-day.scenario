@@ -1,0 +1,9 @@
+# A date with a one-digit day is rejected for its form, not as a day the calendar lacks.
+# BUG: 2026-12-2 previews "No such day" although 2 December 2026 exists.
+file <<END
+- Party
+END
+keys md
+type 2026-12-2
+see Not a date
+hide No such day

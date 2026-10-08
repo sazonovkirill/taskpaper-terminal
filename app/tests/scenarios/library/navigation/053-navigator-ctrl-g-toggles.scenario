@@ -1,0 +1,14 @@
+# Pressing Ctrl+G again closes the Navigator, and keys go back to the outline.
+file <<END
+Work:
+	- Write report
+END
+keys <C-g>
+see Navigator
+keys <C-g>
+keys j x
+quit
+saved <<END
+Work:
+	- Write report @done({today})
+END

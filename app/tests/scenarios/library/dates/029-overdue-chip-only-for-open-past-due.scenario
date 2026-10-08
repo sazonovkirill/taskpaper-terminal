@@ -1,0 +1,15 @@
+# Only an open block's past due date gets the overdue icon; past start dates and done blocks do not.
+file <<END
+- Late @due({today-2})
+- Started @start({today-2})
+- Finished @due({today-3}) @done({today})
+Old: @done
+	- Inside old @due({today-4})
+END
+see - Late
+see 󰨱 2 days ago
+see 󱙭 2 days ago
+see 󱙬 3 days ago
+see 󱙬 4 days ago
+hide 󰨱 3 days ago
+hide 󰨱 4 days ago

@@ -1,0 +1,14 @@
+# Choosing a bookmark in the Navigator zooms into the bookmarked block.
+file <<END
+Areas:
+	Reading list @bookmark
+		- Dune
+Other
+END
+keys <C-g>
+type read
+keys <Enter>
+see › Areas › Reading list
+see - Dune
+hide Other
+quit

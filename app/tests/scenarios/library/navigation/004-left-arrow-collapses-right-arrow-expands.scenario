@@ -1,0 +1,20 @@
+# The arrow keys fold like h and l: Left collapses a project, Right expands it and a second Right enters it.
+file <<END
+Packing:
+	- Passport
+	- Charger
+Notes
+END
+keys <Left>
+see Packing: ▸ 2
+hide Passport
+keys <Right>
+see - Passport
+keys <Right> x
+quit
+saved <<END
+Packing:
+	- Passport @done({today})
+	- Charger
+Notes
+END

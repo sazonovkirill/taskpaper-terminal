@@ -1,0 +1,13 @@
+# T on an overdue Today entry makes it due today, and its chip stops being overdue.
+file <<END
+- Late report @due({today-3})
+END
+keys gt
+see 󰨱 3 days ago
+keys T
+see 󱙬 today
+hide 󰨱
+quit
+saved <<END
+- Late report @due({today})
+END

@@ -1,0 +1,22 @@
+# Zooming out with > returns to the parent and focuses the block the user was zoomed into.
+file <<END
+Trip to Japan:
+	- Book flights
+	Hotels:
+		- Kyoto ryokan
+Groceries:
+	- Milk
+END
+keys j j . >
+see - Book flights
+hide › Hotels
+keys x
+quit
+saved <<END
+Trip to Japan:
+	- Book flights
+	Hotels: @done({today})
+		- Kyoto ryokan
+Groceries:
+	- Milk
+END

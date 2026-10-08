@@ -1,0 +1,14 @@
+# z undoes a due-date change and Z redoes it.
+file <<END
+- Report @due({today})
+END
+keys }
+see tomorrow
+keys z
+see today
+keys Z
+see tomorrow
+quit
+saved <<END
+- Report @due({today+1})
+END

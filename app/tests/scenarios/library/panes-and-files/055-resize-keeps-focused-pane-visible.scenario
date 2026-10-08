@@ -1,0 +1,14 @@
+# Shrinking the terminal with three panes scrolls the pane strip so the focused pane stays whole.
+file <<END
+A:
+	- one
+B:
+	- two
+END
+keys G <C-w> v
+see 󰋜 › B › two
+resize 50 12
+see │  󰋜 › B › two
+hide   A:
+keys g1
+see   A:

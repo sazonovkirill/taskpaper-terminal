@@ -1,0 +1,13 @@
+# Esc in the date prompt changes nothing.
+file <<END
+- Report
+END
+keys ms
+see Start date
+type tomorrow
+keys <Esc>
+hide Start date
+quit
+saved <<END
+- Report
+END

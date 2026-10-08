@@ -1,0 +1,14 @@
+# The context menu's Open in New Pane, found by typing "pane", opens the focused block in a new pane.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G \
+see Commands:
+type pane
+see Open in New Pane
+see Open Location in New Pane
+keys <Enter>
+see │  󰋜 › Work › Report

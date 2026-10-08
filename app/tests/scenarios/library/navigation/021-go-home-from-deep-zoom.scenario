@@ -1,0 +1,15 @@
+# gh goes straight back to the whole document from three levels down.
+file <<END
+Life:
+	Health:
+		Running:
+			- 5k on Sunday
+Work
+END
+keys . j . j .
+see › Life › Health › Running
+keys gh
+see Work
+see Life:
+hide › Health
+quit

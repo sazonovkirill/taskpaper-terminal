@@ -1,0 +1,16 @@
+# Moving a task moves its note children with it.
+file <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Neuromancer
+END
+keys j <A-j>
+see       Great worldbuilding
+quit
+saved <<END
+Reading:
+	- Neuromancer
+	- Dune
+		Great worldbuilding
+END

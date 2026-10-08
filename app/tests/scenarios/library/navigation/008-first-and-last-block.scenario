@@ -1,0 +1,17 @@
+# G jumps to the very last visible block, nested or not, and gg back to the first.
+file <<END
+Errands:
+	- Post office
+Shopping:
+	- Bread
+	- Cheese
+END
+keys G x gg *
+quit
+saved <<END
+Errands: @star
+	- Post office
+Shopping:
+	- Bread
+	- Cheese @done({today})
+END

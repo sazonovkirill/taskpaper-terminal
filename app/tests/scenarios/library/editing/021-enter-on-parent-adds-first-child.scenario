@@ -1,0 +1,23 @@
+# Enter at the end of a block with visible children adds its first child; on a collapsed one it adds a sibling after it.
+file <<END
+Meeting notes:
+	- Agenda
+	Attendees
+Next:
+END
+see Agenda
+keys <Enter> <Enter>
+type Decisions
+keys <Esc> k <Space> <Enter> <Enter>
+type After
+keys <Esc>
+see After
+quit
+saved <<END
+Meeting notes:
+	- Decisions
+	- Agenda
+	Attendees
+After
+Next:
+END

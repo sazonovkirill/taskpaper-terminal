@@ -1,0 +1,43 @@
+# Grouping a task from one project with a task from another under a new heading puts the group where the first was, and one undo takes the whole group back apart.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys j j j v j j v gG
+type Mixed
+keys <Esc>
+see ▌   Mixed
+see       - Laundry
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	Mixed
+		- Slides
+		- Laundry
+Home:
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys z
+hide Mixed
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END

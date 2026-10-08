@@ -1,0 +1,14 @@
+# D on a Today entry duplicates the block below it in the file, and the copy is listed too.
+file <<END
+- Report @due({today})
+- Other
+END
+keys gt
+see - Report
+keys D
+quit
+saved <<END
+- Report @due({today})
+- Report @due({today})
+- Other
+END

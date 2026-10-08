@@ -1,0 +1,12 @@
+# ? opens the shortcuts panel at the top of the navigate keys, with a more line showing ) scrolls it.
+file <<END
+Errands:
+	- Post office
+END
+keys ?
+see Shortcuts
+see Next Block              j, ↓
+see ↓ more                      )
+see Kitty keyboard protocol: off
+keys ?
+hide Shortcuts

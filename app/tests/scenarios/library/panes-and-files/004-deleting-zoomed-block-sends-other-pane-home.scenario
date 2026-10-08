@@ -1,0 +1,16 @@
+# Deleting a project in the home pane moves the pane zoomed into it back to the nearest surviving ancestor, home.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys <C-w> v <C-w> h dd
+see │  󰋜
+hide 󰋜 › Errands
+see ▌ Work:
+quit
+saved <<END
+Work:
+	- Report
+END

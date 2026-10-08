@@ -1,0 +1,28 @@
+# Toggling done on one task leaves odd but valid lines elsewhere exactly as they were.
+file <<END
+Work: @area(job)  
+	- Report @done(2026-09-01) @priority(1)
+	- Email  bob   @due(2026-10-20)
+
+* star item
++ plus item
+			jumped
+foo@bar.com Proj:@x
+Home:
+	- Dishes
+END
+keys G x
+see ✔ Dishes
+quit
+saved <<END
+Work: @area(job)  
+	- Report @done(2026-09-01) @priority(1)
+	- Email  bob   @due(2026-10-20)
+
+* star item
++ plus item
+			jumped
+foo@bar.com Proj:@x
+Home:
+	- Dishes @done({today})
+END

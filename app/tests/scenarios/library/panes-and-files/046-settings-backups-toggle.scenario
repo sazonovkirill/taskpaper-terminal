@@ -1,0 +1,8 @@
+# Enter on Backups in the Files group turns backups off and marks the setting as changed.
+file <<END
+Errands:
+	- Post office
+END
+keys g, <Tab> j <Tab> j <Enter>
+see * 󰁯 Backups
+see off

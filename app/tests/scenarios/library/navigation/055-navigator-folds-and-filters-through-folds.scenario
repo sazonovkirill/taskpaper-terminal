@@ -1,0 +1,20 @@
+# Left folds a project entry in the Navigator, and a filter still finds the sub-project hidden by the fold.
+file <<END
+Work:
+	Launch:
+		- Draft announcement
+	Hiring:
+		- Screen resumes
+Personal:
+	- Gym
+END
+keys <C-g> <Down> <Down> <Left>
+see ▸Work
+hide Launch                                  1
+see Personal
+type hir
+see Hiring
+keys <Enter>
+see › Work › Hiring
+see - Screen resumes
+quit

@@ -1,0 +1,12 @@
+# With today_starred off, a starred undated block is not in Today, but a starred dated one is.
+config <<END
+today_starred = false
+END
+file <<END
+- Call mom @star
+- Pay rent @star @due({today})
+END
+keys gt
+see Today
+see - Pay rent
+hide Call mom

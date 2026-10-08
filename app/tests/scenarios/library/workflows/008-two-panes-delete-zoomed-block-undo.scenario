@@ -1,0 +1,34 @@
+# With the grocery list open in a second pane, deleting it in the first pane moves that pane up to Home, and undo brings the list back in both panes.
+file <<END
+Work:
+	- Report
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys G k k <C-w> v
+see 󰋜 › Home › Groceries
+keys g1 dd
+see 󰋜 › Home
+see ▌   - Laundry
+hide Groceries
+keys z
+see ▌   - Groceries
+see │      - Milk
+keys g2 j
+see │▌   - Groceries
+keys x
+quit
+saved <<END
+Work:
+	- Report
+	- Slides
+Home:
+	- Laundry
+	- Groceries @done({today})
+		- Milk
+		- Eggs
+END

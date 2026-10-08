@@ -1,0 +1,8 @@
+# With the shortcuts panel open from the top, entering edit mode lists the edit-mode keys.
+file <<END
+Errands:
+	- Post office
+END
+keys ? j <Enter>
+see Stop Editing             Esc
+see Command Menu               /

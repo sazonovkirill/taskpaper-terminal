@@ -1,7 +1,7 @@
 # Testing Strategy
 
 - Status: Accepted
-- Last updated: 2026-10-04
+- Last updated: 2026-10-08
 
 ## Owner requirements
 
@@ -22,13 +22,14 @@ The crate is split so that everything except terminal setup is testable without 
 - `app/src/lib.rs` holds all application logic; `app/src/main.rs` only sets up the terminal, runs the event loop and restores the terminal. Integration tests can only import a library crate, so logic never lives in `main.rs`.
 - Application code follows the Elm Architecture split: input mapping (`KeyEvent` to message), a state update function (model plus message to new model and effects), and a view that renders the model into a `Frame` without changing it. File I/O and the clock are passed in, never reached for from inside logic.
 
-There are exactly three kinds of tests:
+There are exactly four kinds of tests:
 
 | Kind | Where | What it exercises | Run with |
 | --- | --- | --- | --- |
 | Unit | `#[cfg(test)] mod tests` inside the file under test | One type or function through its contract | `cargo test --lib` |
 | Integration (UI) | `app/tests/ui/` (one test crate, `main.rs` plus modules) | The whole app through key events, rendered in a `TestBackend` and checked on screen and on disk | `cargo test --test ui` |
 | End-to-end smoke | `app/tests/e2e/` (one test crate) | The real binary in a pseudo-terminal | `cargo test --test e2e` |
+| Scenario | `app/tests/scenarios/library/` (`.scenario` files run by one test crate) | What a real user does in one session of the real binary in a pseudo-terminal, and what they see and what is saved | `bash app/scripts/validate.sh scenarios` |
 
 Unit tests never construct a `Terminal`. Integration tests never call private functions or inspect internal state; they use only what the library exports for driving the app. Shared integration helpers live in a module of the test crate, not in production code. Add a new integration file as a module of the existing crate rather than as a new top-level file under `tests/`, because every top-level file becomes its own binary and slows the build.
 
@@ -52,7 +53,21 @@ Unit tests never construct a `Terminal`. Integration tests never call private fu
 - Use a fixed terminal size in every test. Test layout at a few sizes, including a very small terminal, with `TestBackend::resize`.
 - Fixture `.taskpaper` files live under `app/tests/fixtures/` and are copied into the test's temporary directory before use; tests never modify fixtures in place.
 - Every integration test draws through `TestBackend`; none uses `CrosstermBackend` or another real backend. Only the end-to-end smoke tests below run in a real (pseudo-)terminal.
-- End-to-end smoke tests are few: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_tpt")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
+- End-to-end smoke tests are few, and [scenarios](#scenarios) cover what a user does in a real terminal: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_tpt")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
+
+## Scenarios
+
+Scenarios check the app the way a user meets it (owner, 2026-10-07): the real binary in a pseudo-terminal that, like most terminals, does not speak the kitty keyboard protocol, driven by key presses and checked on the screen and in the saved file. They complement the integration tests, which remain the place to cover every interaction; a scenario covers a realistic sequence of them. There can be hundreds, because each is a short text file and the runner runs them in parallel.
+
+- Each `.scenario` file under `app/tests/scenarios/library/<area>/` is one session. `app/tests/scenarios/main.rs` runs them all, starting the binary on a fresh file with `HOME` and every XDG folder in a temporary directory, `LANG=C.UTF-8` and `TERM=xterm-256color`, and reports each failing step with its line, the screen and the file. `bash app/scripts/validate.sh scenarios [filter...]` runs those whose path contains a filter; `all` runs every one.
+- The language has one command per line. The first comment line is the title, saying what the user does and expects. `size W H` and `env NAME=VALUE` set the terminal and the environment; `config <<END` and `file <<END` give the settings file and the outline, verbatim up to the line `END`. Steps: `keys` presses keys separated by spaces, a token without `<>` one character at a time (`gg`), named keys as `<Enter>`, `<Esc>`, `<Tab>`, `<S-Tab>`, `<BS>`, `<Del>`, arrows (`<Up>`), `<Home>`, `<End>`, `<PgUp>`, `<PgDn>`, `<Space>`, `<F1>`…`<F12>`, `<lt>`, and with modifiers `<C-x>`, `<A-x>`, `<S-Up>`, `<C-Down>`, `<A-S-Left>`, `<S-F10>`; `type` types the rest of the line; `paste <<END` pastes; `see TEXT` waits until the screen shows the text, `hide TEXT` requires that the drawn screen does not, `status TEXT` waits for it on the status line; `resize W H`; `quit` presses `Ctrl+Q` and requires a clean exit; `saved <<END` waits until the file holds exactly those lines. `{today}`, `{today+N}` and `{today-N}` stand for dates. The runner pauses after `Esc` so the next key is not read as an `Alt` chord.
+- A scenario that reproduces a known bug carries a `# BUG: <summary>` line: it is expected to fail and does not fail the run, and once it passes the run fails until the line goes, so a fixed bug stays fixed. Remove the line in the commit that fixes the bug.
+- Agents explore the app by hand in tmux and turn what they find into scenarios, as the [`explore-app` skill](../../.agents/skills/explore-app/SKILL.md) describes.
+- The binary reads the real clock, so dates are written as placeholders the runner fills in from today's date; that and the pause after `Esc` are the runner's only exceptions to [parallel execution](#parallel-execution). Waits poll the screen or the file with a timeout and never sleep. Check distinctive text and saved files, not columns or colors, which the integration tests check.
+
+## Fuzzing
+
+`app/tests/ui/fuzz.rs` feeds random sequences of key presses, pauses, pastes and resizes, drawn from every key the app binds and typical text, into the app through `TestBackend`, and checks invariants that hold whatever the keys do: the app does not panic while handling or drawing; the file it saves reopens and saves to the same text; and after `Esc` and one undo per step the saved file equals the one opened. `validate.sh all` runs a few dozen cases on a fixed seed, so it stays fast and deterministic. `bash app/scripts/validate.sh fuzz` runs a thousand cases in release mode on a fresh seed it prints (`PROPTEST_CASES` and `PROPTEST_RNG_SEED` override both); run it after changing input handling or editing, and commit the regression file proptest writes for a failure with the fix.
 
 ## Seeing the app without a terminal
 

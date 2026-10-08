@@ -1,0 +1,13 @@
+# Go to Symbol with Ctrl+T opens the found block zoomed in a new pane.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+		Draft by Friday
+END
+keys <C-k>
+type report
+keys <C-t>
+see │  󰋜 › Work › Report
+see │▌   Draft by Friday

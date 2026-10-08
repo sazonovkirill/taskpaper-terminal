@@ -1,0 +1,17 @@
+# A task longer than the pane scrolls while edited so the caret's end stays visible, and shows its start again with Home.
+size 40 10
+file <<END
+- word00 word01 word02 word03 word04 word05 word06 word07 word08 word09 word10 word11 word12 word13 word14 word15
+END
+see - word00 word01 word02
+keys <Enter>
+see word15
+hide word00
+keys <Home>
+see - word00
+type Start:
+keys <Esc>
+quit
+saved <<END
+- Start:word00 word01 word02 word03 word04 word05 word06 word07 word08 word09 word10 word11 word12 word13 word14 word15
+END

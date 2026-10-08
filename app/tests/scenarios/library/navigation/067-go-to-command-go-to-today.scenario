@@ -1,0 +1,13 @@
+# Go to Today from Go to Command shows the Today view.
+file <<END
+Work:
+	- Report @due({today})
+	- Other
+END
+keys :
+type go to today
+keys <Enter>
+see Today
+see - Report  Work
+hide Other
+quit

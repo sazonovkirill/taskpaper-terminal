@@ -1,0 +1,13 @@
+# Shift+Up selects from the caret to the start of the text, and typing replaces it while the task's dash stays.
+file <<END
+- Water the plants on the balcony
+END
+see Water the plants
+keys <Enter> <C-Left> <C-Left> <C-Left> <Left> <S-Up>
+type Repot the cactus
+keys <Esc>
+see - Repot the cactus on the balcony
+quit
+saved <<END
+- Repot the cactus on the balcony
+END

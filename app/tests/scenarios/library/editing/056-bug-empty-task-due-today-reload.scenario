@@ -1,0 +1,16 @@
+# Giving a new empty task a due date with T keeps it a task, so typing its text later does not start with a stray dash.
+file <<END
+- Plan party
+END
+see Plan party
+keys o <Esc> T
+see today
+keys <Enter> <C-a>
+type Buy gifts
+keys <Esc>
+see - Buy gifts
+quit
+saved <<END
+- Plan party
+- Buy gifts @due({today})
+END

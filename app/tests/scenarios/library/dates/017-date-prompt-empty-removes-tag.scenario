@@ -1,0 +1,18 @@
+# Clearing the due date prompt and pressing Enter removes @due, also from inside Today.
+file <<END
+- Report @due({today}) @red
+- Mail @due({today})
+END
+keys gt
+see Report
+keys md
+see Due date
+keys <BS>
+see No date: Enter removes it
+keys <Enter>
+hide Report
+quit
+saved <<END
+- Report @red
+- Mail @due({today})
+END

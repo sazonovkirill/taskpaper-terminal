@@ -1,0 +1,10 @@
+# Deleting every block saves an empty file.
+file <<END
+Plan:
+	- A
+END
+keys <C-a> dd
+hide Plan:
+quit
+saved <<END
+END

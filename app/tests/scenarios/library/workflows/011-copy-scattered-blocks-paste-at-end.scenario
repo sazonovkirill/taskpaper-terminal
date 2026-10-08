@@ -1,0 +1,31 @@
+# Picking three scattered blocks with v, copying them, clearing the selection and pasting at the end of the outline copies them in order, the first with its note.
+file <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys j v j j v j j v
+keys y <Esc> G p
+see ▌     - Laundry
+quit
+saved <<END
+Work:
+	- Report
+		Draft due Friday
+	- Slides
+Home:
+	- Laundry
+	- Groceries
+		- Milk
+		- Eggs
+		- Report
+			Draft due Friday
+		- Slides
+		- Laundry
+END

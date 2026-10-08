@@ -1,0 +1,13 @@
+# Enter at the end of an entry being edited in Today ends editing and adds no block.
+file <<END
+- Post office @due({today})
+END
+keys gt
+see Post office
+keys <Enter> <Enter>
+type j
+see ▌ - Post office
+quit
+saved <<END
+- Post office @due({today})
+END

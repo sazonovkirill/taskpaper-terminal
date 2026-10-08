@@ -1,0 +1,16 @@
+# Undo in navigate mode takes back a whole edit session, typing and Ctrl+T type change together.
+file <<END
+Ideas
+END
+see Ideas
+keys <Enter>
+type  for 2027
+keys <C-t> <Esc>
+see Ideas for 2027:
+keys z
+see Ideas
+hide 2027
+quit
+saved <<END
+Ideas
+END

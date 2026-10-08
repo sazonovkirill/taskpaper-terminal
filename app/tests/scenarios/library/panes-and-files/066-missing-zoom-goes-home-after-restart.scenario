@@ -1,0 +1,19 @@
+# When the zoomed project was renamed by another program, the pane opens at home after a restart.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G .
+see 󰋜 › Work › Report
+keys <C-q>
+outside <<END
+Errands:
+	- Post office
+Job:
+	- Report
+END
+restart
+see   Job:
+hide 󰋜 › Work

@@ -1,0 +1,21 @@
+# gi zooms to the INBOX project from anywhere in the outline.
+file <<END
+Work:
+	- Report
+INBOX:
+	- Call mom
+	- Buy milk
+END
+keys gi
+see › INBOX
+see - Call mom
+hide Report
+keys x
+quit
+saved <<END
+Work:
+	- Report
+INBOX:
+	- Call mom @done({today})
+	- Buy milk
+END

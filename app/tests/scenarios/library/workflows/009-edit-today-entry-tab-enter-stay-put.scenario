@@ -1,0 +1,35 @@
+# Editing an entry in the Today view: Tab and Shift+Tab do nothing there, Enter only ends editing, and the text change lands in the right project.
+file <<END
+INBOX:
+	- Call the plumber
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report @due({today-2})
+	- Review pull requests
+Home:
+	- Pay rent @due({today-7})
+END
+keys gt
+see ▌ - Renew passport  INBOX
+keys j <Enter>
+type  draft
+keys <Tab> <S-Tab> <Enter>
+see ▌ - Write quarterly report draft  Work
+status NAVIGATE
+keys j *
+keys g*
+see Starred
+see ▌ - Pay rent 󰓎  Home
+keys gh
+see Home: 
+quit
+saved <<END
+INBOX:
+	- Call the plumber
+	- Renew passport @due({today-3})
+Work:
+	- Write quarterly report draft @due({today-2})
+	- Review pull requests
+Home:
+	- Pay rent @due({today-7}) @star
+END

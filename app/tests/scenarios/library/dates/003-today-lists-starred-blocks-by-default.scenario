@@ -1,0 +1,9 @@
+# By default a starred block without dates is listed in Today too.
+file <<END
+- Call mom @star
+- Undated
+END
+keys gt
+see Today
+see - Call mom
+hide Undated

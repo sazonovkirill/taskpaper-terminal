@@ -1,0 +1,21 @@
+# gm opens the Move to picker; typing a project name and Enter moves the task to the end of that project.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+Chores:
+	- Sweep
+END
+keys G gm
+see Move to
+type shop
+keys <Enter>
+see ▌   - Sweep
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Eggs
+	- Sweep
+Chores:
+END

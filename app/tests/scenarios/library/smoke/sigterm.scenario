@@ -1,0 +1,12 @@
+# A termination signal saves the edit being typed.
+file <<END
+- Milk
+END
+see Milk
+keys <Enter>
+type  and eggs
+see and eggs
+signal TERM
+saved <<END
+- Milk and eggs
+END

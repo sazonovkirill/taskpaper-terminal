@@ -1,0 +1,16 @@
+# Adding a task under a project saves it indented under the project.
+file <<END
+Errands:
+	- Post office
+END
+see Post office
+keys j o
+type Buy milk
+keys <Esc>
+see - Buy milk
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk
+END

@@ -1,0 +1,15 @@
+# Typing "- " before a section makes it a task, and Backspace on the dash makes it a section again, keeping @section.
+file <<END
+Notes @section
+END
+see Notes
+keys <Enter> <Home>
+type -
+keys <Space>
+see - Notes
+keys <Home> <BS> <Esc>
+hide - Notes
+quit
+saved <<END
+Notes @section
+END

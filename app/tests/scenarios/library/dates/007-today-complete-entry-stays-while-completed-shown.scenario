@@ -1,0 +1,14 @@
+# x on a Today entry completes it with today's date and it stays listed, checked, while completed blocks are shown.
+file <<END
+- Post office @due({today})
+- Bank @due({today})
+END
+keys gt
+see Today
+keys x
+see ✔ Post office
+quit
+saved <<END
+- Post office @due({today}) @done({today})
+- Bank @due({today})
+END

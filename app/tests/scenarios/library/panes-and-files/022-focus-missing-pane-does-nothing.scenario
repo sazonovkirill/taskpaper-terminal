@@ -1,0 +1,14 @@
+# g9 with only two panes changes nothing, and Ctrl+W l on the rightmost pane stays there.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys <C-w> v g9 <C-w> l j x
+see │▌   ✔ Buy milk
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk @done({today})
+END

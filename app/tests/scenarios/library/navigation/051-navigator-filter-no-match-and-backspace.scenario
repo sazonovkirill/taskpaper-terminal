@@ -1,0 +1,15 @@
+# A Navigator filter that matches nothing says so, and erasing it with Backspace lists everything again.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix sink
+END
+keys <C-g>
+type zzz
+see Nothing matches
+keys <BS> <BS> <BS>
+see Work
+see Home
+hide Nothing matches
+quit

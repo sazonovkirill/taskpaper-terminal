@@ -1,0 +1,24 @@
+# Collapsing a project hides its tasks behind a count of open tasks, and expanding shows them again.
+file <<END
+Trip to Japan:
+	- Book flights
+	- Reserve hotel
+	- Get JR pass @done(2026-10-01)
+Groceries:
+	- Milk
+END
+keys h
+see Trip to Japan: ▸ 2
+hide Book flights
+keys l
+see - Book flights
+see ✔ Get JR pass
+quit
+saved <<END
+Trip to Japan:
+	- Book flights
+	- Reserve hotel
+	- Get JR pass @done(2026-10-01)
+Groceries:
+	- Milk
+END

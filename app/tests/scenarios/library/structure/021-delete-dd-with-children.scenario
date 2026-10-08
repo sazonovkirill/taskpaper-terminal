@@ -1,0 +1,17 @@
+# dd deletes a task together with its note, and focus goes to the next task.
+file <<END
+Reading:
+	- Dune
+		Great worldbuilding
+	- Neuromancer
+	- Hyperion
+END
+keys j dd
+see ▌   - Neuromancer
+hide Great worldbuilding
+quit
+saved <<END
+Reading:
+	- Neuromancer
+	- Hyperion
+END

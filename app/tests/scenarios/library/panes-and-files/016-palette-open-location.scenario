@@ -1,0 +1,14 @@
+# Go to Command runs Open Location in New Pane, which shows the same zoom in a second pane.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G .
+see 󰋜 › Work › Report
+keys :
+type open location
+keys <Enter>
+see │  󰋜 › Work › Report
+see   - Report                                       │▌ - Report

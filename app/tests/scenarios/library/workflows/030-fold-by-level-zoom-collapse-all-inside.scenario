@@ -1,0 +1,52 @@
+# Folding a book outline: collapse one level twice and expand one level, toggle a part's whole subtree, then collapse all inside a zoom leaves the rest of the outline folded as it was at home.
+file <<END
+Book:
+	Part 1
+		Chapter 1
+			- Outline
+			- Draft
+		Chapter 2
+			- Outline
+	Part 2
+		Chapter 3
+			- Research
+Notes:
+	- Misc
+END
+keys -
+see       Chapter 1 ▸ 2
+keys -
+see     Part 1 ▸ 3
+see     - Misc
+keys =
+see       Chapter 3 ▸ 1
+keys j "
+see ▌   Part 1 ▸ 3
+keys "
+see         - Draft
+keys .
+see 󰋜 › Book › Part 1
+keys _
+see ▌   Chapter 1 ▸ 2
+keys gh
+see ▌   Part 1
+see       Chapter 2 ▸ 1
+see       Chapter 3 ▸ 1
+see     - Misc
+keys j l j j x
+see ▌       ✔ Draft
+quit
+saved <<END
+Book:
+	Part 1
+		Chapter 1
+			- Outline
+			- Draft @done({today})
+		Chapter 2
+			- Outline
+	Part 2
+		Chapter 3
+			- Research
+Notes:
+	- Misc
+END

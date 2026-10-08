@@ -1,0 +1,19 @@
+# Pressing Enter at the end of a task opens a new task below, so an errand list is typed in one go.
+file <<END
+Errands:
+	- Post office
+END
+see Post office
+keys j <Enter> <Enter>
+type Bank
+keys <Enter>
+type Pharmacy
+keys <Esc>
+see - Pharmacy
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank
+	- Pharmacy
+END

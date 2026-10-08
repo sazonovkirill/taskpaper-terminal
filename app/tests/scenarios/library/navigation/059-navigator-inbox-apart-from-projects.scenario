@@ -1,0 +1,17 @@
+# The INBOX project is listed above Today in the Navigator and not again under Projects.
+file <<END
+Work:
+	- Report
+INBOX:
+	- Call mom
+END
+keys <C-g>
+type inbox
+see INBOX
+hide Projects
+keys <BS> <BS> <BS> <BS> <BS>
+see Projects
+see Work
+keys <Enter>
+see › INBOX
+quit

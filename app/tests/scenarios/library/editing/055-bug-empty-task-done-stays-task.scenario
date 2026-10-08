@@ -1,0 +1,16 @@
+# Completing a new empty task keeps it a task: it shows the done check mark and is saved as a task.
+file <<END
+Packing:
+	- Passport
+END
+see Passport
+keys j o <Esc>
+see -
+keys x
+see ✔
+quit
+saved <<END
+Packing:
+	- Passport
+	- … @done({today})
+END

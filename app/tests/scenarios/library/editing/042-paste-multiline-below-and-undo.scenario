@@ -1,0 +1,21 @@
+# Pasting several lines while editing a non-empty block adds them below it, and one z takes the paste back.
+file <<END
+Shopping:
+	- Milk
+	- Tea
+END
+see Milk
+keys j <Enter>
+paste <<END
+Eggs
+Butter
+END
+see Butter
+keys z
+hide Butter
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Tea
+END

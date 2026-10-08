@@ -1,0 +1,13 @@
+# Selecting the last word with Shift+Left and typing replaces it.
+file <<END
+- Meet Anna on Monday
+END
+see Meet Anna
+keys <Enter> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left>
+type Friday
+keys <Esc>
+see - Meet Anna on Friday
+quit
+saved <<END
+- Meet Anna on Friday
+END

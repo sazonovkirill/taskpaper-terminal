@@ -1,0 +1,18 @@
+# Text pasted into the terminal in navigate mode becomes blocks below the focused block.
+file <<END
+Shopping:
+	- Milk
+END
+keys j
+paste <<END
+- Bread
+- Butter
+END
+see ▌   - Butter
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Bread
+	- Butter
+END

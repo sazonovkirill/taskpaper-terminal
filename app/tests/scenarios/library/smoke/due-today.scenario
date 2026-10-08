@@ -1,0 +1,10 @@
+# Setting a task due today with T saves today's date as @due.
+file <<END
+- Call the bank
+END
+see Call the bank
+keys T
+quit
+saved <<END
+- Call the bank @due({today})
+END

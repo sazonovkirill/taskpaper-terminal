@@ -1,0 +1,12 @@
+# The Starred view lists every starred block flat in document order with its path.
+file <<END
+Home:
+	- Water plants @star
+	- Dust
+- Call mom @star
+END
+keys g*
+see Starred
+see ▌ - Water plants 󰓎  Home
+see   - Call mom 󰓎
+hide Dust

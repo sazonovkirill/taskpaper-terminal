@@ -1,0 +1,30 @@
+# Typing, setting a due date from the slash menu mid-edit, typing on, then undoing: the text after the menu, the date and the text before it come off one step each.
+file <<END
+Work:
+	- Report
+	- Slides
+END
+keys j <Enter>
+type  abc
+type /due tom
+see Due Tomorrow
+keys <Enter>
+type  def
+keys <Esc>
+see ▌   - Report abc def
+see 󱙬 tomorrow
+keys z
+see ▌   - Report abc
+see 󱙬 tomorrow
+keys z
+hide tomorrow
+keys z
+see ▌   - Report
+hide abc
+keys Z Z
+quit
+saved <<END
+Work:
+	- Report abc @due({today+1})
+	- Slides
+END

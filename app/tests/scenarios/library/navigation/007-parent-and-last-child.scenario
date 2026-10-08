@@ -1,0 +1,17 @@
+# gl goes to the last child of a block and gp goes back up to the parent.
+file <<END
+Home:
+	- Fix sink
+	- Paint fence
+	- Water plants
+Garden
+END
+keys gl x gp *
+quit
+saved <<END
+Home: @star
+	- Fix sink
+	- Paint fence
+	- Water plants @done({today})
+Garden
+END

@@ -1,0 +1,20 @@
+# Ctrl+Z undoes typing in edit mode, a run of characters at a time, and Ctrl+Y redoes it.
+file <<END
+- Plan
+END
+see Plan
+keys <Enter>
+type  the party
+keys <Left> <Left> <Left> <Left> <Left>
+type big
+keys <C-z>
+see - Plan the party
+keys <C-z>
+hide party
+keys <C-y>
+see - Plan the party
+keys <Esc>
+quit
+saved <<END
+- Plan the party
+END

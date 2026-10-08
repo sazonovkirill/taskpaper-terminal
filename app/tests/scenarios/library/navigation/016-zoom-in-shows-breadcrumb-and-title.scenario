@@ -1,0 +1,15 @@
+# Zooming into a project with . shows its path in the breadcrumb and only its children under a title row.
+file <<END
+Trip to Japan:
+	- Book flights
+	Hotels:
+		- Kyoto ryokan
+Groceries:
+	- Milk
+END
+keys j j .
+see › Trip to Japan › Hotels
+see - Kyoto ryokan
+hide Groceries
+hide Book flights
+quit

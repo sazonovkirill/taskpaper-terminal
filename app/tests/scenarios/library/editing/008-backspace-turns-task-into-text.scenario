@@ -1,0 +1,16 @@
+# Backspace at the start of a task's text deletes its dash, making it a plain note.
+file <<END
+Groceries:
+	- Apples
+	- Remember the reusable bags
+END
+see reusable bags
+keys G <Enter> <Home> <BS>
+keys <Esc>
+hide - Remember
+quit
+saved <<END
+Groceries:
+	- Apples
+	Remember the reusable bags
+END

@@ -1,0 +1,23 @@
+# z undoes each edit session in navigate mode and Z and Ctrl+Y redo them.
+file <<END
+- Milk
+END
+see Milk
+keys o
+type Bread
+keys <Enter>
+type Butter
+keys <Esc> z
+hide Butter
+keys z
+hide Bread
+keys Z
+see Bread
+keys <C-y>
+see Butter
+quit
+saved <<END
+- Milk
+- Bread
+- Butter
+END

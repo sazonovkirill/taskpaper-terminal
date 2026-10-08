@@ -1,0 +1,12 @@
+# y copies a Today entry; p in the outline pastes the copy with its tags below the focused block.
+file <<END
+- Report @due({today})
+Done:
+END
+keys gt y gh G p
+quit
+saved <<END
+- Report @due({today})
+Done:
+- Report @due({today})
+END

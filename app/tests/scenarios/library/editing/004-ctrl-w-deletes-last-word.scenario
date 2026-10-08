@@ -1,0 +1,13 @@
+# Ctrl+W deletes the word before the caret, one word per press.
+file <<END
+- Call the dentist tomorrow morning
+END
+see Call the dentist
+keys <Enter> <C-w> <C-w>
+keys <Esc>
+see - Call the dentist
+hide tomorrow
+quit
+saved <<END
+- Call the dentist 
+END

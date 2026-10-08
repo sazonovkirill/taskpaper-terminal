@@ -1,0 +1,23 @@
+# A hidden node under a task moves with it and is copied with it, and never shows as a row.
+file <<END
+Plan:
+	- A
+	- B
+		LOG @hidden @log
+			entry one
+	- C
+END
+keys j j <A-j> y G p
+hide entry one
+quit
+saved <<END
+Plan:
+	- A
+	- C
+	- B
+		LOG @hidden @log
+			entry one
+	- B
+		LOG @hidden @log
+			entry one
+END

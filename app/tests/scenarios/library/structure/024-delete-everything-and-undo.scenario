@@ -1,0 +1,20 @@
+# Ctrl+A then dd empties the outline, and undo restores every block.
+file <<END
+Plan:
+	- A
+	- B
+Other:
+	- D
+END
+keys <C-a> dd
+hide Plan:
+keys z
+see ▌ Plan:
+quit
+saved <<END
+Plan:
+	- A
+	- B
+Other:
+	- D
+END

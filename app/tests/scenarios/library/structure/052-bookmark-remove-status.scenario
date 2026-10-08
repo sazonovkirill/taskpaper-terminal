@@ -1,0 +1,12 @@
+# mb on a bookmarked task removes the bookmark and says so.
+file <<END
+Sprint:
+	- Design @bookmark
+END
+keys j mb
+status Bookmark removed
+quit
+saved <<END
+Sprint:
+	- Design
+END

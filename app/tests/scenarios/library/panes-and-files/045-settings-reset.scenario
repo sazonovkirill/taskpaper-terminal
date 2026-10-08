@@ -1,0 +1,10 @@
+# r resets a changed setting to its default: Icons goes back to nerd and loses its star.
+file <<END
+Errands:
+	- Post office
+END
+keys g, j l
+see * ◇ Icons
+keys r
+see   󰠲 Icons
+hide * ◇ Icons

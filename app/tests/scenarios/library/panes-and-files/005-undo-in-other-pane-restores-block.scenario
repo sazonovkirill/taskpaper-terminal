@@ -1,0 +1,19 @@
+# A block deleted in one pane comes back in both panes when undone from the other pane.
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys <C-w> s <C-w> h dd
+hide Errands:
+keys g2 z
+see │▌ Errands:
+see   Errands:                                       │
+quit
+saved <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END

@@ -1,0 +1,14 @@
+# Typing @ at the start of a word is refused with a hint, while an e-mail address is ordinary text.
+file <<END
+- Email
+END
+see Email
+keys <Enter>
+type  me@example.com about @lunch
+status Tags are set with commands
+keys <Esc>
+see - Email me@example.com about lunch
+quit
+saved <<END
+- Email me@example.com about lunch
+END

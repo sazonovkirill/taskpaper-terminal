@@ -1,0 +1,18 @@
+# gj and gk jump between siblings, skipping children, and stop at the ends.
+file <<END
+Shopping:
+	- Milk
+		Semi-skimmed
+	- Eggs
+Chores:
+	- Sweep
+END
+keys j gj
+see ▌   - Eggs
+keys gj
+see ▌   - Eggs
+keys gk gk
+see ▌   - Milk
+keys gg gj
+see ▌ Chores:
+quit

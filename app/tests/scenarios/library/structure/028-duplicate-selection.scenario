@@ -1,0 +1,20 @@
+# D on two selected blocks copies each one after its own subtree.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+Chores:
+	- Sweep
+END
+keys j j J D
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Eggs
+	- Eggs
+Chores:
+	- Sweep
+Chores:
+	- Sweep
+END

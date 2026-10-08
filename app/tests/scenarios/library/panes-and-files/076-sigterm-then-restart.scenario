@@ -1,0 +1,16 @@
+# After SIGTERM, starting again shows the saved change and the same pane layout.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+Errands:
+	- Post office
+Work:
+	- Report
+END
+keys G x <C-w> v
+see │  󰋜 › Work › Report
+signal TERM
+restart
+see │  󰋜 › Work › Report
+see ✔ Report

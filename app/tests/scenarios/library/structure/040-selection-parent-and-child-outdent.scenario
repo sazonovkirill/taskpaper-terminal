@@ -1,0 +1,15 @@
+# Outdenting a selected task with its selected child moves them together.
+file <<END
+A:
+	- a1
+		- a1x
+	- a2
+END
+keys j J <S-Tab>
+quit
+saved <<END
+A:
+	- a2
+- a1
+	- a1x
+END

@@ -1,0 +1,15 @@
+# Opening the Navigator while zoomed into a project starts on that project, so Up then Enter goes to the one above.
+file <<END
+Alpha:
+	- a1
+Beta:
+	- b1
+Gamma:
+	- g1
+END
+keys G .
+see › Gamma
+keys <C-g> <Up> <Enter>
+see › Beta
+see - b1
+quit

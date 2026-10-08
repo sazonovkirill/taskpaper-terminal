@@ -1,0 +1,19 @@
+# Moving down into a divider edits its raw dashes, and it stays a divider when left unchanged.
+file <<END
+Morning
+---
+Evening
+END
+see Morning
+keys <Enter> <Down>
+see ---
+keys <Down> <End>
+type  walk
+keys <Esc>
+see Evening walk
+quit
+saved <<END
+Morning
+---
+Evening walk
+END

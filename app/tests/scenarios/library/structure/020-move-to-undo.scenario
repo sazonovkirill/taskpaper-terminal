@@ -1,0 +1,22 @@
+# Undo after Move to puts the task back where it was.
+file <<END
+Trip:
+	- Passport
+	- Tickets
+Home:
+	- Plants
+END
+keys j gm
+type home
+keys <Enter>
+see ▌   - Passport
+keys z
+see ▌   - Passport
+quit
+saved <<END
+Trip:
+	- Passport
+	- Tickets
+Home:
+	- Plants
+END

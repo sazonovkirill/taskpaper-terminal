@@ -1,0 +1,19 @@
+# y copies a task and p pastes it below the focused block at that block's depth.
+file <<END
+Shopping:
+	- Milk
+	- Eggs
+Chores:
+	- Sweep
+END
+keys j y G p
+see ▌   - Milk
+quit
+saved <<END
+Shopping:
+	- Milk
+	- Eggs
+Chores:
+	- Sweep
+	- Milk
+END

@@ -1,0 +1,17 @@
+# A custom key in [keymap.navigate], named as the palette shows the command, works beside the default keys.
+config <<END
+[keymap.navigate]
+"q" = "Toggle Done"
+END
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys j q j x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Buy milk @done({today})
+END

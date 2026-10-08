@@ -1,0 +1,16 @@
+# Ctrl+W followed by a key that continues no sequence does nothing, and the next v selects as usual.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys j <C-w> x
+see ▌   - Post office
+hide │
+keys j x
+quit
+saved <<END
+Errands:
+	- Post office
+	- Buy milk @done({today})
+END

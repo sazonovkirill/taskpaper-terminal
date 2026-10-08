@@ -1,0 +1,22 @@
+# In a zoomed list, Enter on the title opens a new first child; Backspace twice removes its dash and then the block, and editing continues at the end of the title.
+file <<END
+Home:
+	- Groceries
+		- Milk
+		- Eggs
+END
+keys j . k <Enter> <Enter>
+see ▌   -
+keys <BS> <BS>
+status EDIT
+type X
+keys <Esc>
+see 󰋜 › Home › GroceriesX
+see     - Milk
+quit
+saved <<END
+Home:
+	- GroceriesX
+		- Milk
+		- Eggs
+END

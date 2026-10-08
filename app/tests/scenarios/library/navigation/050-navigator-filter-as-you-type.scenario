@@ -1,0 +1,18 @@
+# Typing in the Navigator filters its entries, and Enter goes to the first match.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix sink
+Hobbies:
+	- Guitar
+END
+keys <C-g>
+type hob
+see Hobbies
+see └hob
+hide Starred
+keys <Enter>
+see › Hobbies
+see - Guitar
+quit

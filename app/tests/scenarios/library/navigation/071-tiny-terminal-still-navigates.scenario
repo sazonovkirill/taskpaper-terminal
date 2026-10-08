@@ -1,0 +1,18 @@
+# In a 30x8 terminal the user can still move, zoom and go back without anything breaking.
+size 30 8
+file <<END
+Groceries:
+	- Milk
+	- Eggs
+	- Bread
+	- Butter
+	- Cheese
+	- Apples
+END
+keys G
+see - Apples
+keys gg .
+see › Groceries
+keys H
+see Groceries:
+quit

@@ -1,0 +1,11 @@
+# The shortcuts panel lists a key bound in config.toml before the command's default keys.
+config <<END
+[keymap.navigate]
+"q" = "toggle_done"
+END
+file <<END
+Errands:
+	- Post office
+END
+keys ? ) )
+see Toggle Done q, x, Ctrl+Enter

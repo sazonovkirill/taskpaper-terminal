@@ -1,0 +1,11 @@
+# A key sequence in [keymap.edit] is reported, since edit mode binds single keys only.
+size 200 30
+config <<END
+[keymap.edit]
+"g g" = "bold"
+END
+file <<END
+Tasks:
+	- one
+END
+status [keymap.edit] "g g": edit mode binds single keys, not sequences

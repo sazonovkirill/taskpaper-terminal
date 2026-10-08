@@ -1,0 +1,35 @@
+# Selecting a run with Shift+Down, adding a second run elsewhere, coloring them all red with c1, moving them all with gm, and undoing the move keeps the colors.
+file <<END
+Backlog:
+	- Login page
+	- Signup page
+	- Password reset
+	- Dark mode
+	- Export to CSV
+Sprint 12:
+	- Fix crash on start
+END
+keys j <S-Down>
+keys j j J
+see ▌   - Export to CSV
+keys c1
+keys gm
+see Move to
+type sprint
+keys <Enter>
+see     - Fix crash on start
+see ▌   - Login page
+keys z
+see   Sprint 12:
+hide ▌   - Password reset
+quit
+saved <<END
+Backlog:
+	- Login page @red
+	- Signup page @red
+	- Password reset
+	- Dark mode @red
+	- Export to CSV @red
+Sprint 12:
+	- Fix crash on start
+END

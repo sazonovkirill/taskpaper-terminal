@@ -1,0 +1,14 @@
+# Editing a Today entry's text in place saves the new text and keeps its date tag.
+file <<END
+- Post office @due({today})
+END
+keys gt
+see Post office
+keys <Enter>
+type  run
+keys <Esc>
+see - Post office run
+quit
+saved <<END
+- Post office run @due({today})
+END

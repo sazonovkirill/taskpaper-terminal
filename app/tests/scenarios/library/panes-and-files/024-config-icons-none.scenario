@@ -1,0 +1,10 @@
+# icons = "none" in config.toml starts the app with plain Unicode markers.
+config <<END
+icons = "none"
+END
+file <<END
+Errands:
+	- Post office
+END
+see   ⌂
+see ↕ NAVIGATE

@@ -1,0 +1,634 @@
+# A 300-line outline: jump to the end and back, page down and up, collapse everything, find a task with Go to Symbol, finish it, reorder tasks inside a zoom, go back with H, zoom in again and undo part of the reorder.
+file <<END
+Project 01:
+	- Task 01.1
+	- Task 01.2
+	- Task 01.3
+	- Task 01.4
+	- Task 01.5
+	- Task 01.6
+	- Task 01.7
+	- Task 01.8
+	Note for project 01
+Project 02:
+	- Task 02.1
+	- Task 02.2
+	- Task 02.3
+	- Task 02.4
+	- Task 02.5
+	- Task 02.6
+	- Task 02.7
+	- Task 02.8
+	Note for project 02
+Project 03:
+	- Task 03.1
+	- Task 03.2
+	- Task 03.3
+	- Task 03.4
+	- Task 03.5
+	- Task 03.6
+	- Task 03.7
+	- Task 03.8
+	Note for project 03
+Project 04:
+	- Task 04.1
+	- Task 04.2
+	- Task 04.3
+	- Task 04.4
+	- Task 04.5
+	- Task 04.6
+	- Task 04.7
+	- Task 04.8
+	Note for project 04
+Project 05:
+	- Task 05.1
+	- Task 05.2
+	- Task 05.3
+	- Task 05.4
+	- Task 05.5
+	- Task 05.6
+	- Task 05.7
+	- Task 05.8
+	Note for project 05
+Project 06:
+	- Task 06.1
+	- Task 06.2
+	- Task 06.3
+	- Task 06.4
+	- Task 06.5
+	- Task 06.6
+	- Task 06.7
+	- Task 06.8
+	Note for project 06
+Project 07:
+	- Task 07.1
+	- Task 07.2
+	- Task 07.3
+	- Task 07.4
+	- Task 07.5
+	- Task 07.6
+	- Task 07.7
+	- Task 07.8
+	Note for project 07
+Project 08:
+	- Task 08.1
+	- Task 08.2
+	- Task 08.3
+	- Task 08.4
+	- Task 08.5
+	- Task 08.6
+	- Task 08.7
+	- Task 08.8
+	Note for project 08
+Project 09:
+	- Task 09.1
+	- Task 09.2
+	- Task 09.3
+	- Task 09.4
+	- Task 09.5
+	- Task 09.6
+	- Task 09.7
+	- Task 09.8
+	Note for project 09
+Project 10:
+	- Task 10.1
+	- Task 10.2
+	- Task 10.3
+	- Task 10.4
+	- Task 10.5
+	- Task 10.6
+	- Task 10.7
+	- Task 10.8
+	Note for project 10
+Project 11:
+	- Task 11.1
+	- Task 11.2
+	- Task 11.3
+	- Task 11.4
+	- Task 11.5
+	- Task 11.6
+	- Task 11.7
+	- Task 11.8
+	Note for project 11
+Project 12:
+	- Task 12.1
+	- Task 12.2
+	- Task 12.3
+	- Task 12.4
+	- Task 12.5
+	- Task 12.6
+	- Task 12.7
+	- Task 12.8
+	Note for project 12
+Project 13:
+	- Task 13.1
+	- Task 13.2
+	- Task 13.3
+	- Task 13.4
+	- Task 13.5
+	- Task 13.6
+	- Task 13.7
+	- Task 13.8
+	Note for project 13
+Project 14:
+	- Task 14.1
+	- Task 14.2
+	- Task 14.3
+	- Task 14.4
+	- Task 14.5
+	- Task 14.6
+	- Task 14.7
+	- Task 14.8
+	Note for project 14
+Project 15:
+	- Task 15.1
+	- Task 15.2
+	- Task 15.3
+	- Task 15.4
+	- Task 15.5
+	- Task 15.6
+	- Task 15.7
+	- Task 15.8
+	Note for project 15
+Project 16:
+	- Task 16.1
+	- Task 16.2
+	- Task 16.3
+	- Task 16.4
+	- Task 16.5
+	- Task 16.6
+	- Task 16.7
+	- Task 16.8
+	Note for project 16
+Project 17:
+	- Task 17.1
+	- Task 17.2
+	- Task 17.3
+	- Task 17.4
+	- Task 17.5
+	- Task 17.6
+	- Task 17.7
+	- Task 17.8
+	Note for project 17
+Project 18:
+	- Task 18.1
+	- Task 18.2
+	- Task 18.3
+	- Task 18.4
+	- Task 18.5
+	- Task 18.6
+	- Task 18.7
+	- Task 18.8
+	Note for project 18
+Project 19:
+	- Task 19.1
+	- Task 19.2
+	- Task 19.3
+	- Task 19.4
+	- Task 19.5
+	- Task 19.6
+	- Task 19.7
+	- Task 19.8
+	Note for project 19
+Project 20:
+	- Task 20.1
+	- Task 20.2
+	- Task 20.3
+	- Task 20.4
+	- Task 20.5
+	- Task 20.6
+	- Task 20.7
+	- Task 20.8
+	Note for project 20
+Project 21:
+	- Task 21.1
+	- Task 21.2
+	- Task 21.3
+	- Task 21.4
+	- Task 21.5
+	- Task 21.6
+	- Task 21.7
+	- Task 21.8
+	Note for project 21
+Project 22:
+	- Task 22.1
+	- Task 22.2
+	- Task 22.3
+	- Task 22.4
+	- Task 22.5
+	- Task 22.6
+	- Task 22.7
+	- Task 22.8
+	Note for project 22
+Project 23:
+	- Task 23.1
+	- Task 23.2
+	- Task 23.3
+	- Task 23.4
+	- Task 23.5
+	- Task 23.6
+	- Task 23.7
+	- Task 23.8
+	Note for project 23
+Project 24:
+	- Task 24.1
+	- Task 24.2
+	- Task 24.3
+	- Task 24.4
+	- Task 24.5
+	- Task 24.6
+	- Task 24.7
+	- Task 24.8
+	Note for project 24
+Project 25:
+	- Task 25.1
+	- Task 25.2
+	- Task 25.3
+	- Task 25.4
+	- Task 25.5
+	- Task 25.6
+	- Task 25.7
+	- Task 25.8
+	Note for project 25
+Project 26:
+	- Task 26.1
+	- Task 26.2
+	- Task 26.3
+	- Task 26.4
+	- Task 26.5
+	- Task 26.6
+	- Task 26.7
+	- Task 26.8
+	Note for project 26
+Project 27:
+	- Task 27.1
+	- Task 27.2
+	- Task 27.3
+	- Task 27.4
+	- Task 27.5
+	- Task 27.6
+	- Task 27.7
+	- Task 27.8
+	Note for project 27
+Project 28:
+	- Task 28.1
+	- Task 28.2
+	- Task 28.3
+	- Task 28.4
+	- Task 28.5
+	- Task 28.6
+	- Task 28.7
+	- Task 28.8
+	Note for project 28
+Project 29:
+	- Task 29.1
+	- Task 29.2
+	- Task 29.3
+	- Task 29.4
+	- Task 29.5
+	- Task 29.6
+	- Task 29.7
+	- Task 29.8
+	Note for project 29
+Project 30:
+	- Task 30.1
+	- Task 30.2
+	- Task 30.3
+	- Task 30.4
+	- Task 30.5
+	- Task 30.6
+	- Task 30.7
+	- Task 30.8
+	Note for project 30
+END
+keys G
+see ▌   Note for project 30
+keys gg
+see ▌ Project 01:
+keys <C-d> <C-d> <C-d>
+see ▌   - Task 09.1
+keys <PgUp>
+hide Project 30:
+keys _
+see Project 30: ▸ 8
+keys gs
+see Go to Symbol
+type task 22.5
+keys <Enter>
+see 󰋜 › Project 22
+see ▌   - Task 22.5
+keys x
+see ✔ Task 22.5
+keys gg j <A-j> <A-j> <A-j>
+see ▌   - Task 22.1
+keys H
+see ▌ Project 22:
+keys .
+see 󰋜 › Project 22
+keys z z
+see ▌   - Task 22.1
+keys >
+see ▌ Project 22:
+quit
+saved <<END
+Project 01:
+	- Task 01.1
+	- Task 01.2
+	- Task 01.3
+	- Task 01.4
+	- Task 01.5
+	- Task 01.6
+	- Task 01.7
+	- Task 01.8
+	Note for project 01
+Project 02:
+	- Task 02.1
+	- Task 02.2
+	- Task 02.3
+	- Task 02.4
+	- Task 02.5
+	- Task 02.6
+	- Task 02.7
+	- Task 02.8
+	Note for project 02
+Project 03:
+	- Task 03.1
+	- Task 03.2
+	- Task 03.3
+	- Task 03.4
+	- Task 03.5
+	- Task 03.6
+	- Task 03.7
+	- Task 03.8
+	Note for project 03
+Project 04:
+	- Task 04.1
+	- Task 04.2
+	- Task 04.3
+	- Task 04.4
+	- Task 04.5
+	- Task 04.6
+	- Task 04.7
+	- Task 04.8
+	Note for project 04
+Project 05:
+	- Task 05.1
+	- Task 05.2
+	- Task 05.3
+	- Task 05.4
+	- Task 05.5
+	- Task 05.6
+	- Task 05.7
+	- Task 05.8
+	Note for project 05
+Project 06:
+	- Task 06.1
+	- Task 06.2
+	- Task 06.3
+	- Task 06.4
+	- Task 06.5
+	- Task 06.6
+	- Task 06.7
+	- Task 06.8
+	Note for project 06
+Project 07:
+	- Task 07.1
+	- Task 07.2
+	- Task 07.3
+	- Task 07.4
+	- Task 07.5
+	- Task 07.6
+	- Task 07.7
+	- Task 07.8
+	Note for project 07
+Project 08:
+	- Task 08.1
+	- Task 08.2
+	- Task 08.3
+	- Task 08.4
+	- Task 08.5
+	- Task 08.6
+	- Task 08.7
+	- Task 08.8
+	Note for project 08
+Project 09:
+	- Task 09.1
+	- Task 09.2
+	- Task 09.3
+	- Task 09.4
+	- Task 09.5
+	- Task 09.6
+	- Task 09.7
+	- Task 09.8
+	Note for project 09
+Project 10:
+	- Task 10.1
+	- Task 10.2
+	- Task 10.3
+	- Task 10.4
+	- Task 10.5
+	- Task 10.6
+	- Task 10.7
+	- Task 10.8
+	Note for project 10
+Project 11:
+	- Task 11.1
+	- Task 11.2
+	- Task 11.3
+	- Task 11.4
+	- Task 11.5
+	- Task 11.6
+	- Task 11.7
+	- Task 11.8
+	Note for project 11
+Project 12:
+	- Task 12.1
+	- Task 12.2
+	- Task 12.3
+	- Task 12.4
+	- Task 12.5
+	- Task 12.6
+	- Task 12.7
+	- Task 12.8
+	Note for project 12
+Project 13:
+	- Task 13.1
+	- Task 13.2
+	- Task 13.3
+	- Task 13.4
+	- Task 13.5
+	- Task 13.6
+	- Task 13.7
+	- Task 13.8
+	Note for project 13
+Project 14:
+	- Task 14.1
+	- Task 14.2
+	- Task 14.3
+	- Task 14.4
+	- Task 14.5
+	- Task 14.6
+	- Task 14.7
+	- Task 14.8
+	Note for project 14
+Project 15:
+	- Task 15.1
+	- Task 15.2
+	- Task 15.3
+	- Task 15.4
+	- Task 15.5
+	- Task 15.6
+	- Task 15.7
+	- Task 15.8
+	Note for project 15
+Project 16:
+	- Task 16.1
+	- Task 16.2
+	- Task 16.3
+	- Task 16.4
+	- Task 16.5
+	- Task 16.6
+	- Task 16.7
+	- Task 16.8
+	Note for project 16
+Project 17:
+	- Task 17.1
+	- Task 17.2
+	- Task 17.3
+	- Task 17.4
+	- Task 17.5
+	- Task 17.6
+	- Task 17.7
+	- Task 17.8
+	Note for project 17
+Project 18:
+	- Task 18.1
+	- Task 18.2
+	- Task 18.3
+	- Task 18.4
+	- Task 18.5
+	- Task 18.6
+	- Task 18.7
+	- Task 18.8
+	Note for project 18
+Project 19:
+	- Task 19.1
+	- Task 19.2
+	- Task 19.3
+	- Task 19.4
+	- Task 19.5
+	- Task 19.6
+	- Task 19.7
+	- Task 19.8
+	Note for project 19
+Project 20:
+	- Task 20.1
+	- Task 20.2
+	- Task 20.3
+	- Task 20.4
+	- Task 20.5
+	- Task 20.6
+	- Task 20.7
+	- Task 20.8
+	Note for project 20
+Project 21:
+	- Task 21.1
+	- Task 21.2
+	- Task 21.3
+	- Task 21.4
+	- Task 21.5
+	- Task 21.6
+	- Task 21.7
+	- Task 21.8
+	Note for project 21
+Project 22:
+	- Task 22.2
+	- Task 22.1
+	- Task 22.3
+	- Task 22.4
+	- Task 22.5 @done({today})
+	- Task 22.6
+	- Task 22.7
+	- Task 22.8
+	Note for project 22
+Project 23:
+	- Task 23.1
+	- Task 23.2
+	- Task 23.3
+	- Task 23.4
+	- Task 23.5
+	- Task 23.6
+	- Task 23.7
+	- Task 23.8
+	Note for project 23
+Project 24:
+	- Task 24.1
+	- Task 24.2
+	- Task 24.3
+	- Task 24.4
+	- Task 24.5
+	- Task 24.6
+	- Task 24.7
+	- Task 24.8
+	Note for project 24
+Project 25:
+	- Task 25.1
+	- Task 25.2
+	- Task 25.3
+	- Task 25.4
+	- Task 25.5
+	- Task 25.6
+	- Task 25.7
+	- Task 25.8
+	Note for project 25
+Project 26:
+	- Task 26.1
+	- Task 26.2
+	- Task 26.3
+	- Task 26.4
+	- Task 26.5
+	- Task 26.6
+	- Task 26.7
+	- Task 26.8
+	Note for project 26
+Project 27:
+	- Task 27.1
+	- Task 27.2
+	- Task 27.3
+	- Task 27.4
+	- Task 27.5
+	- Task 27.6
+	- Task 27.7
+	- Task 27.8
+	Note for project 27
+Project 28:
+	- Task 28.1
+	- Task 28.2
+	- Task 28.3
+	- Task 28.4
+	- Task 28.5
+	- Task 28.6
+	- Task 28.7
+	- Task 28.8
+	Note for project 28
+Project 29:
+	- Task 29.1
+	- Task 29.2
+	- Task 29.3
+	- Task 29.4
+	- Task 29.5
+	- Task 29.6
+	- Task 29.7
+	- Task 29.8
+	Note for project 29
+Project 30:
+	- Task 30.1
+	- Task 30.2
+	- Task 30.3
+	- Task 30.4
+	- Task 30.5
+	- Task 30.6
+	- Task 30.7
+	- Task 30.8
+	Note for project 30
+END

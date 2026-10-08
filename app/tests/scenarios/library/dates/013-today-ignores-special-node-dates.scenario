@@ -1,0 +1,11 @@
+# A date inside a hidden comments node does not put its block in Today.
+file <<END
+- Holder
+	COMMENTS @hidden @comments
+		[2026-10-01 10:00] call back @due({today-1})
+- Real @due({today})
+END
+keys gt
+see - Real
+hide Holder
+hide call back

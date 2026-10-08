@@ -1,0 +1,57 @@
+# Planning a trip from an empty file: project, a section cycled with Ctrl+T, tasks made with the type picker, an itinerary with dates, a reorder and a copied checklist.
+# The file holds only a line break, as an editor leaves a new file, so the save keeps one.
+file <<END
+
+END
+keys <Enter>
+type Trip to Japan:
+keys <Enter> <Tab>
+type Before we go
+keys <C-t> <C-t> <Enter>
+type Book flights
+keys <Enter>
+type Get a JR pass
+keys <Enter>
+type Exchange money
+keys <Enter> <S-Tab>
+type Itinerary:
+keys <Esc>
+see ▌ Itinerary:
+keys k k k J J <Tab>
+see ▌     Exchange money
+keys my
+see Node type:
+type task
+keys <Enter>
+see ▌     - Exchange money
+keys <Esc> G it
+type Day 1 Tokyo
+keys <Enter>
+type Day 2 Kyoto
+keys <Enter>
+type Day 3 Osaka
+keys <Esc> k k md
+see Due date
+type +14d
+keys <Enter>
+see in 14 days
+keys j W } j <A-k>
+see ▌   - Day 3 Osaka
+keys gg j y G p
+see ▌   Before we go
+quit
+saved <<END
+Trip to Japan:
+	Before we go @section
+		- Book flights
+		- Get a JR pass
+		- Exchange money
+Itinerary:
+	- Day 1 Tokyo @due({today+14})
+	- Day 3 Osaka
+	- Day 2 Kyoto @due({today+2})
+	Before we go @section
+		- Book flights
+		- Get a JR pass
+		- Exchange money
+END

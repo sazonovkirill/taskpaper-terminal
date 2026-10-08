@@ -1,0 +1,13 @@
+# End and Home jump to the last and first block like G and gg.
+file <<END
+One
+Two
+Three
+END
+keys <End> x <Home> *
+quit
+saved <<END
+One @star
+Two
+Three @done({today})
+END

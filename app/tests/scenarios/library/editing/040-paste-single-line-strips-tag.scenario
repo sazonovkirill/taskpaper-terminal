@@ -1,0 +1,18 @@
+# Pasting one line while editing inserts it at the caret, dropping the @ of a tag-shaped word with a notice.
+file <<END
+Shopping:
+	- Milk
+END
+see Milk
+keys j <Enter> <Space>
+paste <<END
+and @cheese please
+END
+status Tags are set with commands
+keys <Esc>
+see - Milk and cheese please
+quit
+saved <<END
+Shopping:
+	- Milk and cheese please
+END

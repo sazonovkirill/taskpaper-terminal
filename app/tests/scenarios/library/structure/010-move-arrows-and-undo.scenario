@@ -1,0 +1,18 @@
+# Alt+Down and Alt+Up move a task, and one undo takes back only the last move.
+file <<END
+Week:
+	- Mon
+	- Tue
+	- Wed
+END
+keys j <A-Down> <A-Down>
+see ▌   - Mon
+keys <A-Up>
+keys z
+quit
+saved <<END
+Week:
+	- Tue
+	- Wed
+	- Mon
+END

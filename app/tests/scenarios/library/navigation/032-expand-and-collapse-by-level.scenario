@@ -1,0 +1,19 @@
+# After collapsing everything, = expands one level at a time and - collapses the deepest level first.
+file <<END
+Work:
+	Launch:
+		- Draft announcement
+		- Book venue
+Home
+END
+keys _ =
+see Launch: ▸ 2
+hide Draft announcement
+keys =
+see - Draft announcement
+keys -
+see Launch: ▸ 2
+keys -
+see Work: ▸ 2
+hide Launch
+quit

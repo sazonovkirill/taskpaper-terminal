@@ -1,0 +1,11 @@
+# Enter on an unchanged date prompt adds no undo step: z then undoes the change before it.
+file <<END
+- A
+- B @due(2026-12-25)
+END
+keys T j md <Enter> z
+quit
+saved <<END
+- A
+- B @due(2026-12-25)
+END

@@ -1,0 +1,22 @@
+# While zoomed into a project, Up from its first child edits the title row, and Enter there adds a first child.
+file <<END
+Work:
+	- Agenda
+	- Budget
+Home:
+END
+see Agenda
+keys . <Enter> <Up> <End> <BS>
+type  stuff:
+keys <Enter>
+type Kickoff
+keys <Esc>
+see Work stuff
+quit
+saved <<END
+Work stuff:
+	- Kickoff
+	- Agenda
+	- Budget
+Home:
+END

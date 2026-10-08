@@ -1,0 +1,20 @@
+# Save As from Go to Command writes the outline to a new file and later edits go there, leaving the opened file as it was.
+file <<END
+Errands:
+	- Post office
+END
+keys :
+type save as
+keys <Enter>
+see Save As
+keys <End> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS> <BS>
+type copy.taskpaper
+keys <Enter>
+status copy.taskpaper
+keys j x
+see ✔ Post office
+quit
+saved <<END
+Errands:
+	- Post office
+END

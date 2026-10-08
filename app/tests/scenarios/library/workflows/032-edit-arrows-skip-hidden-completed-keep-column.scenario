@@ -1,0 +1,23 @@
+# With completed tasks hidden, Down and Up in edit mode skip the hidden tasks, keep the caret column, and stop before a project's colon.
+file <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+	- Pharmacy @done(2026-10-02)
+	- Hardware store
+END
+keys gc j <Enter> <Down>
+type  (Mon)
+keys <Up> <Up>
+type  today
+keys <Esc>
+see ▌ Errands today:
+see     - Hardware st (Mon)ore
+quit
+saved <<END
+Errands today:
+	- Bank @done(2026-10-01)
+	- Post office
+	- Pharmacy @done(2026-10-02)
+	- Hardware st (Mon)ore
+END

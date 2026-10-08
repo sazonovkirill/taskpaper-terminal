@@ -1,0 +1,12 @@
+# In a reordered Today view, an entry that leaves passes the focus to the row below it.
+# BUG: focus goes to the next block in document order (C) instead of the next row in the view (A).
+file <<END
+- A @due({today})
+- B @due({today})
+- C @due({today})
+END
+keys gt j <A-k>
+see ▌ - B
+keys W
+hide - B
+see ▌ - A

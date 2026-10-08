@@ -1,0 +1,15 @@
+# With Today and Starred left out and no projects, the Navigator says there is nothing to go to.
+config <<END
+sidebar_today = false
+sidebar_starred = false
+END
+file <<END
+- Just a task
+END
+keys <C-g>
+see Nothing to go to
+keys <Esc> x
+quit
+saved <<END
+- Just a task @done({today})
+END

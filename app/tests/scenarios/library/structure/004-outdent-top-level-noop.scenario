@@ -1,0 +1,16 @@
+# Shift+Tab on a top-level project does nothing and the file is unchanged.
+file <<END
+Trip:
+	- Passport
+Home:
+	- Water plants
+END
+keys <S-Tab> j j <S-Tab>
+see ▌ Home:
+quit
+saved <<END
+Trip:
+	- Passport
+Home:
+	- Water plants
+END

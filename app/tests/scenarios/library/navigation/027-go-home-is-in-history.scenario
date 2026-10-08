@@ -1,0 +1,12 @@
+# Going home is a step in the history, so H goes back to the zoom the user left.
+file <<END
+Garden:
+	- Plant tulips
+Kitchen
+END
+keys . gh
+see Kitchen
+keys H
+see › Garden
+hide Kitchen
+quit

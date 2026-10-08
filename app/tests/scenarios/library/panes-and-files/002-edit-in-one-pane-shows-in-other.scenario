@@ -1,0 +1,21 @@
+# A task added in a zoomed pane appears at once in the home pane beside it and is saved.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+Work:
+	- Report
+END
+keys <C-w> v o
+type Stamps
+keys <Esc>
+see     - Stamps                                     │▌   - Stamps
+quit
+saved <<END
+Errands:
+	- Post office
+	- Stamps
+	- Buy milk
+Work:
+	- Report
+END

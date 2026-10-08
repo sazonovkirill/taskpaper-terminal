@@ -1,0 +1,12 @@
+# gz on a Today entry shows it in the outline, zoomed to its parent and focused.
+file <<END
+Home:
+	- Dust
+	- Rent @due({today})
+END
+keys gt
+see - Rent  Home
+keys gz
+see › Home
+see ▌   - Rent
+see - Dust

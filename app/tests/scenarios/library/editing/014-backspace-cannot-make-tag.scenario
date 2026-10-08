@@ -1,0 +1,12 @@
+# Backspace that would turn the middle of an address into a tag is refused, so the text never becomes a tag on reload.
+file <<END
+- Write to x@home
+END
+see Write to x@home
+keys <Enter> <Left> <Left> <Left> <Left> <Left> <BS>
+status Tags are set with commands
+keys <Esc>
+quit
+saved <<END
+- Write to x@home
+END

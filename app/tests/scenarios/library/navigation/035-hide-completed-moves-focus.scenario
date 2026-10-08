@@ -1,0 +1,18 @@
+# Ctrl+O hides done tasks; with the focus on one, it moves to the next visible block.
+file <<END
+Groceries:
+	- Milk
+	- Eggs @done(2026-10-01)
+	- Bread
+END
+keys j j <C-o>
+see - Bread
+hide Eggs
+keys x
+quit
+saved <<END
+Groceries:
+	- Milk
+	- Eggs @done(2026-10-01)
+	- Bread @done({today})
+END

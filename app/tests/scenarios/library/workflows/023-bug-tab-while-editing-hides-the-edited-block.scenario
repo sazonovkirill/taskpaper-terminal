@@ -1,0 +1,22 @@
+# With completed tasks hidden, Tab while editing a task indents it under the visible task above and the editor stays on screen.
+# BUG: Tab nests the edited task under the hidden done task above it; the block being edited disappears while edit mode goes on, and typed text goes into the invisible block.
+file <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+	- Pharmacy @done(2026-10-02)
+	- Hardware store
+END
+keys gc G <Enter> <Tab>
+see ▌     - Hardware store
+type  XYZ
+see ▌     - Hardware store XYZ
+keys <Esc>
+quit
+saved <<END
+Errands:
+	- Bank @done(2026-10-01)
+	- Post office
+		- Hardware store XYZ
+	- Pharmacy @done(2026-10-02)
+END

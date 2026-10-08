@@ -1,0 +1,15 @@
+# g* shows the Starred view listing only starred blocks with their path.
+file <<END
+Ideas:
+	- Podcast @star
+	- Blog
+Hobbies:
+	- Guitar @star
+END
+keys g*
+see Starred
+see - Podcast
+see - Guitar
+see Hobbies
+hide Blog
+quit

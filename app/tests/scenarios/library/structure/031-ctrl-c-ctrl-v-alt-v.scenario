@@ -1,0 +1,19 @@
+# Ctrl+C copies, Ctrl+V pastes below and Alt+V pastes above.
+file <<END
+Shopping:
+	- Milk
+Chores:
+	- Sweep
+END
+keys j <C-c> G <C-v>
+see ▌   - Milk
+keys <A-v>
+quit
+saved <<END
+Shopping:
+	- Milk
+Chores:
+	- Sweep
+	- Milk
+	- Milk
+END

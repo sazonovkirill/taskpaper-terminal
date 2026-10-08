@@ -1,0 +1,17 @@
+# A key bound to a command that does not exist is reported, and the key keeps its default.
+size 200 30
+config <<END
+[keymap.navigate]
+"x" = "launch_rockets"
+END
+file <<END
+Errands:
+	- Post office
+END
+status [keymap.navigate] "x": no command "launch_rockets" here
+keys j x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+END

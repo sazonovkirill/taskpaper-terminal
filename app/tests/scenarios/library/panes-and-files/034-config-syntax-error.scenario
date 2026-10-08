@@ -1,0 +1,15 @@
+# A config.toml that is not valid TOML is reported with its line, and the app starts with defaults.
+config <<END
+theme = "nord
+END
+file <<END
+Tasks:
+	- one
+END
+status config.toml: line 1:
+keys j x
+quit
+saved <<END
+Tasks:
+	- one @done({today})
+END
