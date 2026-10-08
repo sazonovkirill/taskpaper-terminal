@@ -7,7 +7,10 @@ use std::{fs, path::Path, sync::mpsc::Sender, time::Duration};
 
 use notify_debouncer_full::{
     DebounceEventResult, Debouncer, RecommendedCache, new_debouncer,
-    notify::{self, RecommendedWatcher, RecursiveMode},
+    notify::{
+        self, EventKind, RecommendedWatcher, RecursiveMode,
+        event::{AccessKind, AccessMode},
+    },
 };
 
 use crate::{app::Message, ui::Input};
@@ -78,14 +81,28 @@ pub fn watch(path: &Path, inputs: Sender<Input>) -> notify::Result<Watcher> {
     })
 }
 
-/// Asks `inputs` for a check of the file after each burst. Reading the file again is cheap, so
-/// neither which file changed nor an error of the watcher, which may hide a change, needs
-/// telling apart.
+/// Asks `inputs` for a check of the file after each burst that may have changed something.
+/// Reading the file again is cheap, so neither which file changed nor an error of the watcher,
+/// which may hide a change, needs telling apart.
 fn ask_for_checks(inputs: Sender<Input>) -> impl FnMut(DebounceEventResult) + Send + 'static {
-    move |_| {
-        // A closed channel means the event loop has ended, and nobody is left to tell.
-        let _ = inputs.send(Input::Core(Message::CheckFile));
+    move |result| {
+        if may_change(&result) {
+            // A closed channel means the event loop has ended, and nobody is left to tell.
+            let _ = inputs.send(Input::Core(Message::CheckFile));
+        }
     }
+}
+
+/// Whether a burst may have changed a file: anything but files opened, read or closed
+/// unwritten, such as the check's own read of the file, which would otherwise ask for the next
+/// check and keep reading the file for as long as the app runs.
+fn may_change(result: &DebounceEventResult) -> bool {
+    result.as_ref().map_or(true, |events| {
+        events.iter().any(|event| match event.kind {
+            EventKind::Access(access) => access == AccessKind::Close(AccessMode::Write),
+            _ => true,
+        })
+    })
 }
 
 #[cfg(test)]
@@ -104,6 +121,27 @@ mod tests {
         fs::write(&path, "- a\n")?;
         let (inputs, received) = mpsc::channel();
         let _watcher = watch(&path, inputs)?;
+        fs::write(&path, "- b\n")?;
+        assert_eq!(
+            received.recv_timeout(Duration::from_secs(10))?,
+            Input::Core(Message::CheckFile)
+        );
+        Ok(())
+    }
+
+    // F-FILE-06, N-PERF-03: reading the file, as each check does, asks for no check.
+    #[test]
+    fn reading_the_file_asks_for_no_check() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "- a\n")?;
+        let (inputs, received) = mpsc::channel();
+        let _watcher = watch(&path, inputs)?;
+        fs::read_to_string(&path)?;
+        assert!(
+            received.recv_timeout(Duration::from_millis(600)).is_err(),
+            "a read is no change"
+        );
         fs::write(&path, "- b\n")?;
         assert_eq!(
             received.recv_timeout(Duration::from_secs(10))?,
