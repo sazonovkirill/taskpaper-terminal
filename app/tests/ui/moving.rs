@@ -129,17 +129,37 @@ fn indenting_a_text_line_after_a_text_line_leaves_them_apart() {
     );
 }
 
-// FR-OPS-03, file-format §3.1
+// FR-OPS-03, file-format §3.1, D-100
 #[test]
-fn moving_a_block_under_an_empty_line_gives_it_the_placeholder_and_says_so() {
-    let mut app = Harness::with_text("A:\n\t- one\n\nB:\n", 120, 10);
+fn alt_j_moves_a_block_past_an_empty_line_into_the_next_project() {
+    let mut app = Harness::with_text("A:\n\t- one\n\nB:\n\t- two\n", 120, 10);
     app.type_keys("j");
     app.press(KeyCode::Char('j'), KeyModifiers::ALT);
-    assert_eq!(outline_rows(&mut app)[..4], ["A:", "…", "  - one", "B:"]);
+    assert_eq!(
+        outline_rows(&mut app)[..5],
+        ["A:", "", "B:", "  - one", "  - two"]
+    );
+    assert_eq!(focused_rows(&mut app), ["  - one"]);
+    app.press(KeyCode::Char('k'), KeyModifiers::ALT);
+    app.press(KeyCode::Char('k'), KeyModifiers::ALT);
+    assert_eq!(
+        outline_rows(&mut app)[..5],
+        ["A:", "  - one", "", "B:", "  - two"]
+    );
+    assert_eq!(saved(&mut app), "A:\n\t- one\n\nB:\n\t- two\n");
+}
+
+// FR-MODE-04, file-format §3.1
+#[test]
+fn adding_a_child_to_an_empty_line_gives_it_the_placeholder_and_says_so() {
+    let mut app = Harness::with_text("A:\n\nB:\n", 120, 10);
+    app.type_keys("jIone");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(outline_rows(&mut app)[..4], ["A:", "…", "  one", "B:"]);
     assert!(
         status_line(&mut app).ends_with(" · An empty line with blocks under it now reads …"),
         "{}",
         status_line(&mut app)
     );
-    assert_eq!(saved(&mut app), "A:\n…\n\t- one\nB:\n");
+    assert_eq!(saved(&mut app), "A:\n…\n\tone\nB:\n");
 }

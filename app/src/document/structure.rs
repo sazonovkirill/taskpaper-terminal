@@ -230,9 +230,11 @@ pub enum Shift {
 
 /// The ops that move `block` with its subtree as `shift` says without leaving the children of
 /// the line `top`, the root or the zoom block; `None` when it has nowhere to go
-/// there or is not in `document`. Its neighbors are the blocks `shows` passes, those the pane
-/// shows, so a block it hides is passed over and stays where it is (FR-DONE-02). A line that gets
-/// children but has no text gets the placeholder (file-format.md §3.1, rule 2).
+/// there, is not in `document` or is not one of the blocks `shows` passes. Its neighbors are the
+/// blocks `shows` passes, those the pane shows, so a block it hides is passed over and stays
+/// where it is (FR-DONE-02). Looking for the line to go under, it passes over an empty line too,
+/// which would need the placeholder (file-format.md §3.1, rule 2; D-100), but moving up or down
+/// it passes one like any sibling.
 #[must_use]
 pub fn shift(
     document: &Document,
@@ -242,23 +244,30 @@ pub fn shift(
     shows: &impl Fn(&Block) -> bool,
 ) -> Option<Vec<Op>> {
     let parent = document.get(block.id())?.parent()?;
-    let siblings = shown_children(document, parent, shows);
-    let at = siblings
-        .iter()
-        .position(|sibling| sibling.id() == block.id())?;
-    let previous = at.checked_sub(1).and_then(|at| siblings.get(at));
-    let next = siblings.get(at + 1);
+    if !shows(block) {
+        return None;
+    }
+    let sibling = |by| neighbor(document, block.id(), top, by, shows, Role::Passed);
     let (to, spot) = match shift {
-        Shift::Indent => (previous?.id(), Spot::End),
+        Shift::Indent => (
+            neighbor(document, block.id(), top, -1, shows, Role::Parent)?,
+            Spot::End,
+        ),
         Shift::Outdent if parent != top => (document.get(parent)?.parent()?, Spot::After(parent)),
         Shift::Outdent => return None,
-        Shift::Up => match previous {
-            Some(previous) => (parent, Spot::Before(previous.id())),
-            None => (neighbor(document, parent, top, -1, shows)?, Spot::End),
+        Shift::Up => match sibling(-1) {
+            Some(previous) => (parent, Spot::Before(previous)),
+            None => (
+                neighbor(document, parent, top, -1, shows, Role::Parent)?,
+                Spot::End,
+            ),
         },
-        Shift::Down => match next {
-            Some(next) => (parent, Spot::After(next.id())),
-            None => (neighbor(document, parent, top, 1, shows)?, Spot::Start),
+        Shift::Down => match sibling(1) {
+            Some(next) => (parent, Spot::After(next)),
+            None => (
+                neighbor(document, parent, top, 1, shows, Role::Parent)?,
+                Spot::Start,
+            ),
         },
     };
     let mut ops = repairs(document, to);
@@ -297,8 +306,9 @@ pub fn shift_all(
         order.reverse();
     }
     let passes = match by {
-        Shift::Indent | Shift::Up => Some(-1),
-        Shift::Down => Some(1),
+        Shift::Indent => Some((-1, Role::Parent)),
+        Shift::Up => Some((-1, Role::Passed)),
+        Shift::Down => Some((1, Role::Passed)),
         Shift::Outdent => None,
     };
     let mut moved = document.clone();
@@ -306,7 +316,7 @@ pub fn shift_all(
     let mut ops = Vec::new();
     for block in order {
         let blocked = passes
-            .and_then(|by| neighbor(&moved, block.id(), top, by, shows))
+            .and_then(|(by, role)| neighbor(&moved, block.id(), top, by, shows, role))
             .is_some_and(|passed| stayed.contains(&passed));
         match shift(&moved, block, by, top, shows).filter(|_| !blocked) {
             Some(step) => {
@@ -372,32 +382,43 @@ fn append(document: &Document, mut ops: Vec<Op>, blocks: &[Block], to: ItemId) -
     Some(ops)
 }
 
-/// The block `by` places after (or before, when negative) the block `line` among the blocks
-/// `shows` passes, or `None` when `line` is `top` or has no such neighbor.
+/// What the neighbor a shift looks for is to the block that moves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Role {
+    /// A sibling it passes, whatever its text.
+    Passed,
+    /// The line it goes under, never an empty line, which would need the placeholder (D-100).
+    Parent,
+}
+
+/// The nearest block `by` steps after (or before, when negative) the block `line` among the
+/// blocks `shows` passes, in the `role` it has; `None` when `line` is `top`, is not among them or
+/// has no such neighbor.
 fn neighbor(
     document: &Document,
     line: ItemId,
     top: ItemId,
     by: isize,
     shows: &impl Fn(&Block) -> bool,
+    role: Role,
 ) -> Option<ItemId> {
     if line == top {
         return None;
     }
-    let siblings = shown_children(document, document.get(line)?.parent()?, shows);
+    let siblings: Vec<Block> = blocks::each_child(document, document.get(line)?.parent()?)
+        .filter(|sibling| shows(sibling))
+        .collect();
     let at = siblings.iter().position(|sibling| sibling.id() == line)?;
-    Some(siblings.get(at.checked_add_signed(by)?)?.id())
-}
-
-/// The child blocks of the line `parent` that `shows` passes.
-fn shown_children(
-    document: &Document,
-    parent: ItemId,
-    shows: &impl Fn(&Block) -> bool,
-) -> Vec<Block> {
-    blocks::each_child(document, parent)
-        .filter(|child| shows(child))
-        .collect()
+    std::iter::successors(Some(at), |&at| at.checked_add_signed(by))
+        .skip(1)
+        .map_while(|at| siblings.get(at))
+        .find(|sibling| {
+            role == Role::Passed
+                || document
+                    .get(sibling.id())
+                    .is_some_and(|item| !canonical::is_empty(item.text()))
+        })
+        .map(Block::id)
 }
 
 /// The op moving `line` with its subtree to `spot` among the children of the line `to`, the end
@@ -790,12 +811,51 @@ mod tests {
         assert_eq!(shifted("- a\n- b", "- a", Shift::Indent), None, "first");
     }
 
-    // FR-OPS-02, file-format §3.1
+    // FR-OPS-02, FR-OPS-03, file-format §3.1, D-100
     #[test]
-    fn a_blank_line_that_gets_children_gets_the_placeholder() {
+    fn no_block_goes_under_an_empty_line() {
         assert_eq!(
             shifted("n\n\n- t", "- t", Shift::Indent).unwrap(),
-            ["n", "…", "\t- t"]
+            ["n", "\t- t", ""],
+            "under the line before the empty one"
+        );
+        assert_eq!(
+            shifted("\n- t", "- t", Shift::Indent),
+            None,
+            "none before it"
+        );
+        let text = "P:\n\t- a\n\n\nQ:\n\t- b";
+        assert_eq!(
+            shifted(text, "- a", Shift::Down).unwrap(),
+            ["P:", "", "", "Q:", "\t- a", "\t- b"],
+            "into the next line that is not empty"
+        );
+        assert_eq!(
+            shifted(text, "- b", Shift::Up).unwrap(),
+            ["P:", "\t- a", "\t- b", "", "", "Q:"],
+            "into the previous line that is not empty"
+        );
+        assert_eq!(shifted("\nQ:\n\t- b", "- b", Shift::Up), None);
+        assert_eq!(shifted("P:\n\t- a\n\n", "- a", Shift::Down), None);
+    }
+
+    // FR-OPS-02, FR-OPS-03, D-100
+    #[test]
+    fn an_empty_line_is_passed_like_any_sibling_and_moves_like_one() {
+        let text = "- t\n\n- u";
+        assert_eq!(
+            shifted(text, "- t", Shift::Down).unwrap(),
+            ["", "- t", "- u"]
+        );
+        assert_eq!(shifted(text, "- u", Shift::Up).unwrap(), ["- t", "- u", ""]);
+        assert_eq!(
+            shifted(text, "", Shift::Indent).unwrap(),
+            ["- t", "\t", "- u"]
+        );
+        assert_eq!(
+            shifted_hiding_done("n\n- d @done\n\n- t", "- t", Shift::Indent).unwrap(),
+            ["n", "\t- t", "- d @done", ""],
+            "past hidden and empty lines alike"
         );
     }
 
@@ -918,6 +978,11 @@ mod tests {
             shifted_hiding_done("- a @done\n- b", "- b", Shift::Indent),
             None,
             "the first shown"
+        );
+        assert_eq!(
+            shifted_hiding_done("P:\n\t- b @done", "- b @done", Shift::Outdent),
+            None,
+            "a hidden block itself"
         );
     }
 
@@ -1053,6 +1118,20 @@ mod tests {
             ),
             ["- a", "- d @done", "- b", "- c"],
             "nothing passes the first shown that stayed"
+        );
+    }
+
+    // FR-OPS-02, FR-OPS-07, D-100
+    #[test]
+    fn many_blocks_indent_past_an_empty_line_together() {
+        assert_eq!(
+            all_shifted("n\n\n- t", &["", "- t"], Shift::Indent),
+            ["n", "\t", "\t- t"]
+        );
+        assert_eq!(
+            all_shifted("- a\n\n- t", &["- a", "- t"], Shift::Indent),
+            ["- a", "", "- t"],
+            "nothing goes under the first that stayed"
         );
     }
 

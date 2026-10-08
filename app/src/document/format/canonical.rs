@@ -37,13 +37,20 @@ pub fn needs_repair(text: &str, has_children: bool, only_line: bool) -> bool {
     repaired(text, has_children, only_line) != text
 }
 
+/// Whether a line reading `text` is empty, so that it needs the placeholder once it has children
+/// (rule 2).
+#[must_use]
+pub fn is_empty(text: &str) -> bool {
+    text.chars().all(is_whitespace)
+}
+
 /// Whether `ops` give an empty line the placeholder because it has children (rule 2), a repair
 /// the user is told about.
 #[must_use]
 pub fn fills_placeholder(ops: &[Op]) -> bool {
     ops.iter().any(|op| {
         matches!(op, Op::SetText { before, after, .. }
-            if after == PLACEHOLDER && before.chars().all(is_whitespace))
+            if after == PLACEHOLDER && is_empty(before))
     })
 }
 
@@ -157,6 +164,17 @@ mod tests {
         assert_eq!(repaired("", true, false), "…");
         assert_eq!(repaired("  ", true, false), "…");
         assert_eq!(repaired("", false, false), "", "an empty leaf stays empty");
+    }
+
+    // file-format §3.1
+    #[test]
+    fn a_line_of_whitespace_or_nothing_is_empty() {
+        for text in ["", " \t\u{3000}"] {
+            assert!(is_empty(text), "{text:?}");
+        }
+        for text in ["…", " a", "@x"] {
+            assert!(!is_empty(text), "{text:?}");
+        }
     }
 
     // file-format §3.1

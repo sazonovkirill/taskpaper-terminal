@@ -126,6 +126,8 @@ Selected blocks move one after another in document order, last first for `outden
 
 The siblings a block moves past or under are those the pane shows: while it hides completed blocks (FR-DONE-02), a done block is passed over and stays where it is, so `indent` goes under the previous shown sibling, `move_up`/`move_down` swap with the adjacent shown sibling and cross into the parent's previous or next shown sibling, and where only hidden blocks lie that way, the block does not move.
 
+No move or indent puts a block under an empty line, which would then need the `…` placeholder (D-100, [file-format.md §3.1](file-format.md#31-canonical-outlines)): the line to go under is looked for past empty lines as past hidden ones, so `indent` goes under the previous sibling that is not empty and a block at the first or last position crosses into the parent's previous or next sibling that is not empty, or does not move. Swapping with the adjacent sibling still passes an empty line one step like any block.
+
 | Command | Behavior |
 |---|---|
 | `indent` / `outdent` (FR-OPS-02) | Indent: become the last child of the previous sibling block (expanding it); no-op on the first sibling. Outdent: become the next sibling of the parent; following siblings stay where they are (Workflowy, inferred); no-op at the pane's zoom root level. |

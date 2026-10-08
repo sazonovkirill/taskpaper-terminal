@@ -239,7 +239,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Mode, SelectionChange, TextEdit, Version},
+        app::{Disk, Effect, Message, Mode, Paste, SelectionChange, TextEdit, Version},
         document::{Document, Op, format},
     };
 
@@ -291,11 +291,15 @@ mod tests {
         text
     }
 
-    // file-format §3.1, FR-OPS-03, FR-MODE-04, FR-OPS-04
+    // file-format §3.1, FR-OPS-06, FR-MODE-04, FR-OPS-04
     #[test]
     fn giving_an_empty_line_the_placeholder_says_so() {
-        let mut state = open("A:\n\t- one\n\nB:", 1);
-        state.update(Message::MoveDown);
+        let mut state = open("A:\n\nB:", 1);
+        state.update(Message::ZoomIn);
+        state.update(Message::Pasted {
+            text: "- one".to_owned(),
+            at: Paste::Below,
+        });
         assert_eq!(lines(&state), ["A:", "…", "\t- one", "B:"]);
         assert_eq!(state.notice(), Some(&Notice::PlaceholderFilled));
         let mut state = open("a\n\nb", 1);
@@ -310,12 +314,20 @@ mod tests {
         assert_eq!(state.notice(), Some(&Notice::PlaceholderFilled));
     }
 
-    // file-format §3.1
+    // file-format §3.1, FR-OPS-03, D-100
     #[test]
     fn a_change_that_gives_no_empty_line_the_placeholder_says_nothing() {
         let mut state = open("A:\n\t- one\nB:", 1);
         state.update(Message::MoveDown);
         assert_eq!(lines(&state), ["A:", "B:", "\t- one"]);
+        assert_eq!(state.notice(), None);
+        let mut state = open("A:\n\t- one\n\nB:", 1);
+        state.update(Message::MoveDown);
+        assert_eq!(
+            lines(&state),
+            ["A:", "", "B:", "\t- one"],
+            "past the empty line, not under it"
+        );
         assert_eq!(state.notice(), None);
         let mut state = open("a\n\n\t- b", 1);
         state.update(Message::EditAtEnd);
