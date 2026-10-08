@@ -13,6 +13,7 @@ use super::{
 use crate::document::{
     Block, DateTag, ItemId, blocks,
     dates::{self, DateError},
+    format::breaks_line,
     metadata,
 };
 
@@ -55,6 +56,14 @@ pub(super) struct DatePrompt {
 }
 
 impl DatePrompt {
+    /// Types `text` as its characters would be typed, leaving out those that break lines, which
+    /// the prompt's one line cannot hold.
+    pub(super) fn paste(&mut self, text: &str) {
+        for c in text.chars().filter(|&c| !breaks_line(c)) {
+            self.field = self.field.edited(TextEdit::Insert(c));
+        }
+    }
+
     /// The date the text resolves to, or `None` for a blank text, which removes the date.
     fn date(&self) -> Result<Option<Date>, DateError> {
         match dates::parse(self.field.text(), self.today, self.tag) {
@@ -275,6 +284,43 @@ mod tests {
         input(&mut state, DateInput::Apply);
         assert_eq!(texts(&state), ["- a @start(2026-10-01)"]);
         assert_eq!(state.date_prompt(), None);
+    }
+
+    // FR-TAG-03, keybindings.md §4: a prompt takes pasted text as typed, on its one line.
+    #[test]
+    fn pasted_text_is_typed_into_the_prompt_without_line_breaks() {
+        let paste = |state: &mut State, text: &str| {
+            let at = crate::app::Paste::Below;
+            let text = text.to_owned();
+            assert_eq!(state.update(Message::Pasted { text, at }), []);
+        };
+        let mut state = open(
+            "- a @due(2026-10-20)
+- b",
+            0,
+        );
+        state.update(prompt(DateTag::Due));
+        paste(&mut state, "12-24\n");
+        assert_eq!(
+            shown(&state),
+            ("12-24".to_owned(), 5, None, Ok(Some(date(2026, 12, 24))))
+        );
+        paste(&mut state, " +1\r\nd");
+        assert_eq!(shown(&state).0, "12-24 +1d");
+        assert_eq!(
+            texts(&state),
+            ["- a @due(2026-10-20)", "- b"],
+            "no block pasted"
+        );
+        input(&mut state, DateInput::Apply);
+        assert_eq!(texts(&state), ["- a @due(2026-12-25)", "- b"]);
+        let mut starred = open("- a @star", 0);
+        starred.update(Message::GoTo(crate::app::Location::View(
+            crate::app::SpecialView::Starred,
+        )));
+        starred.update(prompt(DateTag::Due));
+        paste(&mut starred, "fri");
+        assert_eq!(shown(&starred).0, "fri", "in a special view too");
     }
 
     // search.md §4: the prompt rejects unparseable input.

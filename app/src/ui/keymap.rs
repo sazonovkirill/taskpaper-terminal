@@ -338,11 +338,14 @@ const DATE_PROMPT: &[(Key, DateInput)] = &[
     (key!(Esc), DateInput::Cancel),
 ];
 
-/// The date-prompt message for `key`: `Ctrl+Q` quits, a prompt binding, else the change to the
-/// text it asks for.
+/// The date-prompt message for `key`: `Ctrl+Q` quits, `Ctrl+V` pastes into the text, a prompt
+/// binding, else the change to the text it asks for.
 fn date_prompt_message(key: Key) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'v') {
+        return Some(Message::Paste(Paste::Below));
     }
     let input = DATE_PROMPT
         .iter()
@@ -783,7 +786,7 @@ impl Keymap {
 
     /// What `event` completes at time `now`, if anything, a message carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
-    /// navigate and edit mode alone; repeats, releases and other events are ignored. A key that
+    /// navigate and edit mode and the date prompt alone; repeats, releases and other events are ignored. A key that
     /// continues no binding ends the pending sequence and does nothing, unless the sequence, or
     /// one that timed out, is a binding of its own: then what it asks for comes back and
     /// [`Keymap::replay`] says to handle `event` again once that is done.
@@ -799,8 +802,11 @@ impl Keymap {
                 self.replay = true;
                 return Some(action);
             }
-            let menu = context.command_menu || context.overlay.is_some() || context.sidebar;
-            return (!menu).then(|| {
+            let takes_text = match context.overlay {
+                Some(overlay) => overlay == Overlay::DatePrompt,
+                None => !context.command_menu && !context.sidebar,
+            };
+            return takes_text.then(|| {
                 KeyAction::Send(Message::Pasted {
                     text: text.clone(),
                     at: Paste::Below,
@@ -1180,6 +1186,7 @@ mod tests {
                 input(DateInput::Edit(TextEdit::DeleteWordBackward)),
             ),
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
+            (KeyCode::Char('v'), ctrl, Some(Message::Paste(Paste::Below))),
             (KeyCode::Tab, none, None),
             (KeyCode::Up, none, None),
             (KeyCode::Char('z'), ctrl, None),
@@ -2314,9 +2321,9 @@ mod tests {
         }
     }
 
-    // FR-OPS-06, editing.md §4
+    // FR-OPS-06, editing.md §4, keybindings.md §4: the date prompt takes text as edit mode does.
     #[test]
-    fn text_pasted_into_the_terminal_is_pasted_below_except_in_menus_and_prompts() {
+    fn text_pasted_into_the_terminal_is_pasted_below_or_into_the_date_prompt_but_not_menus() {
         let pasted = Event::Paste("a\nb".to_owned());
         let expected = Some(Message::Pasted {
             text: "a\nb".to_owned(),
@@ -2325,6 +2332,7 @@ mod tests {
         let mut keymap = Keymap::default();
         assert_eq!(keymap.message_for(&pasted, ms(0), CONTEXT), expected);
         assert_eq!(keymap.message_for(&pasted, ms(0), EDITING), expected);
+        assert_eq!(keymap.message_for(&pasted, ms(0), IN_DATE_PROMPT), expected);
         for context in [
             Context {
                 command_menu: true,
@@ -2332,10 +2340,6 @@ mod tests {
             },
             Context {
                 overlay: Some(Overlay::ColorPicker),
-                ..*CONTEXT
-            },
-            Context {
-                overlay: Some(Overlay::DatePrompt),
                 ..*CONTEXT
             },
             *IN_SIDEBAR,

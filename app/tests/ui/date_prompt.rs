@@ -2,8 +2,9 @@
 
 use std::{fs, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
+use taskpaper_terminal::ui::Input;
 
 use crate::support::{DUE, Harness, focused_rows, line};
 
@@ -231,4 +232,26 @@ fn the_demo_has_a_due_date_to_change_with_md() {
         .find(|row| row.contains("Return Piranesi to the library"))
         .expect("the task is shown");
     assert!(task.ends_with(&format!("{DUE} tomorrow")), "{task}");
+}
+
+// FR-TAG-03, keybindings.md §4: the prompt takes the standard text keys, pasting included.
+#[test]
+fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_prompt() {
+    let mut app = Harness::with_text("12-24\n- Milk\n", 50, 10);
+    app.type_keys("yjmd");
+    app.send(Input::Terminal(Event::Paste("fri\n".to_owned())));
+    assert_eq!(
+        prompt_box(&mut app)[1..3],
+        drawn("", "fri", "Fri 9 Oct 2026")[1..3],
+        "the pasted text replaced the selection"
+    );
+    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
+    assert_eq!(
+        prompt_box(&mut app)[1..3],
+        drawn("", "12-24", "Thu 24 Dec 2026")[1..3],
+        "what y copied, without its line break"
+    );
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(saved(&mut app), "12-24\n- Milk @due(2026-12-24)\n");
 }
