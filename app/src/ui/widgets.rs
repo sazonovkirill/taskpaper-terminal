@@ -454,6 +454,7 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
             error_style,
         ),
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
+        Notice::PlaceholderFilled => Span::raw("An empty line with blocks under it now reads …"),
         Notice::NotSections { skipped } => Span::styled(
             format!("Only text can be a section: {skipped} skipped"),
             warning_style,
@@ -3218,6 +3219,10 @@ mod tests {
             (
                 Notice::BlanksLifted,
                 plain("Empty lines at the end moved to the top level"),
+            ),
+            (
+                Notice::PlaceholderFilled,
+                plain("An empty line with blocks under it now reads …"),
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),

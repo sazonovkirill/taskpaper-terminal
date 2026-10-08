@@ -215,6 +215,9 @@ pub enum Notice {
     /// Empty lines ending the outline below the top level were moved to the top level before
     /// saving, where the file reads them back (file-format.md §3.1, rule 3).
     BlanksLifted,
+    /// An empty line that got children was given the placeholder text, as the file would read
+    /// it back elsewhere (file-format.md §3.1, rule 2).
+    PlaceholderFilled,
     /// Making sections, or plain text of sections, skipped this many blocks that are tasks or
     /// projects, which cannot be sections (D-52).
     NotSections {

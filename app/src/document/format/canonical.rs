@@ -37,6 +37,16 @@ pub fn needs_repair(text: &str, has_children: bool, only_line: bool) -> bool {
     repaired(text, has_children, only_line) != text
 }
 
+/// Whether `ops` give an empty line the placeholder because it has children (rule 2), a repair
+/// the user is told about.
+#[must_use]
+pub fn fills_placeholder(ops: &[Op]) -> bool {
+    ops.iter().any(|op| {
+        matches!(op, Op::SetText { before, after, .. }
+            if after == PLACEHOLDER && before.chars().all(is_whitespace))
+    })
+}
+
 /// The empty lines that end `document`, in order, when one of them is below the top level and
 /// would be read back at the top level (rule 3); none when the rule holds.
 #[must_use]
@@ -147,6 +157,24 @@ mod tests {
         assert_eq!(repaired("", true, false), "…");
         assert_eq!(repaired("  ", true, false), "…");
         assert_eq!(repaired("", false, false), "", "an empty leaf stays empty");
+    }
+
+    // file-format §3.1
+    #[test]
+    fn only_an_empty_line_given_the_placeholder_is_a_filled_placeholder() {
+        let mut document = parse("a");
+        let id = document.new_id();
+        let set = |before: &str, after: &str| Op::SetText {
+            id,
+            before: before.to_owned(),
+            after: after.to_owned(),
+        };
+        assert!(fills_placeholder(&[set("a", "b"), set(" \t", "…")]));
+        assert!(fills_placeholder(&[set("", "…")]));
+        for op in [set("@done", "…"), set("", "… @x"), set("", "b")] {
+            assert!(!fills_placeholder(std::slice::from_ref(&op)), "{op:?}");
+        }
+        assert!(!fills_placeholder(&[]));
     }
 
     #[test]

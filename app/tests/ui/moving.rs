@@ -128,3 +128,18 @@ fn indenting_a_text_line_after_a_text_line_leaves_them_apart() {
         ["  First note", "  Second note"]
     );
 }
+
+// FR-OPS-03, file-format §3.1
+#[test]
+fn moving_a_block_under_an_empty_line_gives_it_the_placeholder_and_says_so() {
+    let mut app = Harness::with_text("A:\n\t- one\n\nB:\n", 120, 10);
+    app.type_keys("j");
+    app.press(KeyCode::Char('j'), KeyModifiers::ALT);
+    assert_eq!(outline_rows(&mut app)[..4], ["A:", "…", "  - one", "B:"]);
+    assert!(
+        status_line(&mut app).ends_with(" · An empty line with blocks under it now reads …"),
+        "{}",
+        status_line(&mut app)
+    );
+    assert_eq!(saved(&mut app), "A:\n…\n\t- one\nB:\n");
+}

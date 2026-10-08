@@ -6,7 +6,7 @@
 use super::{Access, Notice, State};
 use crate::document::{
     Block, ItemId, Op, Transaction, blocks,
-    format::Typed,
+    format::{Typed, canonical},
     structure::{self, Place, Shift},
 };
 
@@ -98,8 +98,12 @@ impl State {
     }
 
     /// Applies `ops`, which make the new line `id`, and edits it with the focus on it; ending the
-    /// edit records them with the typing as one step to undo (FR-MODE-04).
+    /// edit records them with the typing as one step to undo (FR-MODE-04). Says so when they give
+    /// an empty line the placeholder (file-format.md §3.1).
     fn edit_created(&mut self, id: ItemId, ops: Vec<Op>) {
+        if canonical::fills_placeholder(&ops) {
+            self.notify(Notice::PlaceholderFilled);
+        }
         let mut transaction = Transaction::new(ops, (), ());
         self.document
             .apply(&mut transaction)
@@ -285,6 +289,40 @@ mod tests {
         let mut text = editor.text.to_owned();
         text.insert(editor.caret, '|');
         text
+    }
+
+    // file-format §3.1, FR-OPS-03, FR-MODE-04, FR-OPS-04
+    #[test]
+    fn giving_an_empty_line_the_placeholder_says_so() {
+        let mut state = open("A:\n\t- one\n\nB:", 1);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["A:", "…", "\t- one", "B:"]);
+        assert_eq!(state.notice(), Some(&Notice::PlaceholderFilled));
+        let mut state = open("a\n\nb", 1);
+        state.update(Message::New(NewBlock::FirstChild, None));
+        assert_eq!(lines(&state), ["a", "…", "\t", "b"]);
+        assert_eq!(state.notice(), Some(&Notice::PlaceholderFilled));
+        let mut state = open("- x", 0);
+        state.update(Message::Group);
+        assert_eq!(state.notice(), None, "not while the new parent is edited");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["…", "\t- x"]);
+        assert_eq!(state.notice(), Some(&Notice::PlaceholderFilled));
+    }
+
+    // file-format §3.1
+    #[test]
+    fn a_change_that_gives_no_empty_line_the_placeholder_says_nothing() {
+        let mut state = open("A:\n\t- one\nB:", 1);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["A:", "B:", "\t- one"]);
+        assert_eq!(state.notice(), None);
+        let mut state = open("a\n\n\t- b", 1);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "…");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["a", "\t…", "\t- b"]);
+        assert_eq!(state.notice(), None, "the user typed it");
     }
 
     // FR-MODE-04, OQ-03

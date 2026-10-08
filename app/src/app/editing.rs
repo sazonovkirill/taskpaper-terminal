@@ -6,7 +6,8 @@ use jiff::civil::Date;
 
 use super::{Access, History, Mode, Notice, Restore, State};
 use crate::document::{
-    Block, DateChange, DateTag, Document, EditError, Flag, ItemId, Op, Transaction, metadata,
+    Block, DateChange, DateTag, Document, EditError, Flag, ItemId, Op, Transaction,
+    format::canonical, metadata,
 };
 
 impl State {
@@ -77,19 +78,25 @@ impl State {
     }
 
     /// Applies `ops` as one undoable step, as [`State::commit`] does, that ends with the focus on
-    /// `focus`.
+    /// `focus`, and says so when they give an empty line the placeholder (file-format.md §3.1).
     pub(super) fn commit_focusing(&mut self, ops: Vec<Op>, focus: Option<ItemId>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
         self.record_edit_so_far();
+        let filled = canonical::fills_placeholder(&ops);
         let before = Restore {
             focus: self.pane.focus,
         };
         let transaction = Transaction::new(ops, before, Restore { focus });
         match self.edits.commit(&mut self.document, transaction) {
-            Ok(()) => self.pane.focus = focus,
+            Ok(()) => {
+                self.pane.focus = focus;
+                if filled {
+                    self.notify(Notice::PlaceholderFilled);
+                }
+            }
             Err(error) => self.edit_failed(&error),
         }
     }
