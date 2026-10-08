@@ -350,3 +350,62 @@ fn the_more_line_names_no_keys_while_the_navigator_or_a_popup_has_them() {
         "Go to Symbol has the keys"
     );
 }
+
+// FR-KEY-04, ui.md §4, keybindings.md §4: the panel lists the keys of the Navigator or picker
+// that has them, and the outline's again once it closes.
+#[test]
+fn the_panel_lists_the_keys_of_the_open_navigator_or_picker() {
+    let mut app = Harness::with_text(OUTLINE, 100, 30);
+    app.type_keys("?");
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    assert_eq!(
+        right_of(&mut app, 68)[..14],
+        [
+            "│Shortcuts",
+            "│ Navigator",
+            "│  Next Entry         ↓, Ctrl+N",
+            "│  Previous Entry     ↑, Ctrl+P",
+            "│  Collapse Entry             ←",
+            "│  Expand Entry               →",
+            "│  Go to Entry            Enter",
+            "│  O… Alt+Enter, Ctrl+V, Ctrl+T",
+            "│  Erase Filter Char… Backspace",
+            "│  Return to Outline        Esc",
+            "│  Con… Ctrl+R, Shift+F10, Menu",
+            "│  Open Navigator        Ctrl+G",
+            "│  Quit                  Ctrl+Q",
+            "│",
+        ]
+    );
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.type_keys("gs");
+    let picker = |open: Option<&'static str>| {
+        [
+            "│Shortcuts",
+            "│ Pickers and Palettes",
+            "│  Next Entry         ↓, Ctrl+N",
+            "│  Previous Entry     ↑, Ctrl+P",
+            "│  Choose Entry           Enter",
+        ]
+        .into_iter()
+        .chain(open)
+        .chain([
+            "│  Close                    Esc",
+            "│  Erase Filter Char… Backspace",
+            "│  Quit                  Ctrl+Q",
+            "│",
+        ])
+        .collect::<Vec<_>>()
+    };
+    let go_to_symbol = picker(Some("│  O… Alt+Enter, Ctrl+V, Ctrl+T"));
+    assert_eq!(right_of(&mut app, 68)[..10], go_to_symbol, "Go to Symbol");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.type_keys("mc");
+    assert_eq!(
+        right_of(&mut app, 68)[..9],
+        picker(None),
+        "the color picker"
+    );
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(right_of(&mut app, 68)[1], "│ Moving", "the outline's again");
+}

@@ -7,10 +7,11 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::Date;
 use thiserror::Error;
 
+use super::widgets::ShortcutGroup;
 use crate::app::{
     Animations, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, NavigatorInput,
     NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput, TextEdit,
-    commands::{NAVIGATOR, REGISTRY},
+    commands::{Group, NAVIGATOR, REGISTRY},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -114,6 +115,33 @@ pub enum Overlay {
     SaveAs,
     /// The context menu (FR-KEY-06).
     ContextMenu,
+}
+
+impl Overlay {
+    /// The menu or picker it is, which takes the keys of pickers, or `None` for a prompt or
+    /// dialog with keys of its own ([keybindings.md §4]).
+    ///
+    /// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+    fn menu(self) -> Option<Menu> {
+        match self {
+            Self::ColorPicker => Some(Menu::ColorPicker),
+            Self::QuickAddPicker => Some(Menu::QuickAdd),
+            Self::TypePicker => Some(Menu::TypePicker),
+            Self::NodeEditorFinder => Some(Menu::NodeEditor),
+            Self::GoToSymbol => Some(Menu::GoToSymbol),
+            Self::MoveTo => Some(Menu::MoveTo),
+            Self::GoToCommand => Some(Menu::GoToCommand),
+            Self::ThemePicker => Some(Menu::ThemePicker),
+            Self::ContextMenu => Some(Menu::ContextMenu),
+            Self::DatePrompt
+            | Self::QuickAdd
+            | Self::NodeEditor
+            | Self::Settings
+            | Self::SettingsText
+            | Self::SettingsPicker
+            | Self::SaveAs => None,
+        }
+    }
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
@@ -635,6 +663,14 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
     }
 }
 
+/// How `keys` read on screen, each as [`key_label`] writes it, separated by commas.
+fn keys_label(keys: impl IntoIterator<Item = Key>) -> String {
+    keys.into_iter()
+        .map(key_label)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// How one key reads on screen ([`sequence_label`]): its modifiers, then the key, a letter with `Ctrl` in
 /// capitals and a capital letter with a modifier marked with `Shift`.
 fn key_label((modifiers, code): Key) -> String {
@@ -832,6 +868,52 @@ impl Keymap {
             navigate().or_else(focused_navigator)
         };
         keys.unwrap_or_default()
+    }
+
+    /// What the shortcuts panel lists where `context` gives the keys to the Navigator or a
+    /// picker: their group with each intent's name and how its keys read; `None` where navigate
+    /// or edit mode has the keys, or a prompt or dialog of its own ([ui.md §4]).
+    ///
+    /// [ui.md §4]: ../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04
+    #[must_use]
+    pub fn popup_shortcuts(&self, context: &Context) -> Option<ShortcutGroup> {
+        if let Some(overlay) = context.overlay {
+            let menu = overlay.menu()?;
+            let mut entries: Vec<_> = [
+                MenuInput::Next,
+                MenuInput::Previous,
+                MenuInput::Choose,
+                MenuInput::Dismiss,
+                MenuInput::Erase,
+            ]
+            .into_iter()
+            .map(|input| {
+                let keys = MENU
+                    .iter()
+                    .filter(|&&(_, bound)| bound == input)
+                    .map(|&(key, _)| key);
+                (input.name(), keys_label(keys))
+            })
+            .collect();
+            if menu == Menu::GoToSymbol {
+                entries.insert(
+                    3,
+                    (
+                        Command::Pane(PaneChange::Open).name(),
+                        keys_label(OPEN_IN_NEW_PANE),
+                    ),
+                );
+            }
+            entries.push((Command::Quit.name(), key_label(key!(ctrl 'q'))));
+            return Some((Group::Picker, entries));
+        }
+        context.navigator.then(|| {
+            let entries = NAVIGATOR
+                .iter()
+                .map(|&(command, _)| (command.name(), self.bindings(command, true)))
+                .collect();
+            (Group::Navigator, entries)
+        })
     }
 
     /// What the navigate-mode binding whose keys are `keys` asks for, if any.
@@ -3612,6 +3694,105 @@ mod tests {
         assert_eq!(
             keymap.message_for(&char('g'), ms(3), moving),
             Some(Message::Menu(Menu::MoveTo, MenuInput::Type('g')))
+        );
+    }
+
+    // FR-KEY-04, ui.md §4: a menu or picker that has the keys lists the keys it takes, which
+    // move, choose, close and erase as they do there; the mode's own and other popups' keys are
+    // not listed here.
+    #[test]
+    fn the_shortcuts_of_a_menu_or_picker_are_the_keys_it_takes() {
+        let mut keymap = Keymap::default();
+        assert_eq!(keymap.popup_shortcuts(CONTEXT), None, "navigate mode");
+        assert_eq!(keymap.popup_shortcuts(EDITING), None, "edit mode");
+        for overlay in [
+            Overlay::ColorPicker,
+            Overlay::DatePrompt,
+            Overlay::QuickAdd,
+            Overlay::QuickAddPicker,
+            Overlay::TypePicker,
+            Overlay::NodeEditor,
+            Overlay::NodeEditorFinder,
+            Overlay::GoToSymbol,
+            Overlay::MoveTo,
+            Overlay::GoToCommand,
+            Overlay::ThemePicker,
+            Overlay::Settings,
+            Overlay::SettingsText,
+            Overlay::SettingsPicker,
+            Overlay::SaveAs,
+            Overlay::ContextMenu,
+        ] {
+            let context = &Context {
+                overlay: Some(overlay),
+                ..*CONTEXT
+            };
+            let listed = keymap.popup_shortcuts(context);
+            let Some(menu) = overlay.menu() else {
+                assert_eq!(listed, None, "{overlay:?} has keys of its own");
+                continue;
+            };
+            let (group, entries) = listed.expect("a picker lists its keys");
+            assert_eq!(group, Group::Picker);
+            let names: Vec<_> = entries.iter().map(|(name, _)| name.as_ref()).collect();
+            let open = (menu == Menu::GoToSymbol).then_some("Open in New Pane");
+            let expected: Vec<_> = ["Next Entry", "Previous Entry", "Choose Entry"]
+                .into_iter()
+                .chain(open)
+                .chain(["Close", "Erase Filter Character", "Quit"])
+                .collect();
+            assert_eq!(names, expected, "{overlay:?}");
+            for (code, modifiers, input) in [
+                (KeyCode::Down, KeyModifiers::NONE, MenuInput::Next),
+                (
+                    KeyCode::Char('p'),
+                    KeyModifiers::CONTROL,
+                    MenuInput::Previous,
+                ),
+                (KeyCode::Enter, KeyModifiers::NONE, MenuInput::Choose),
+                (KeyCode::Esc, KeyModifiers::NONE, MenuInput::Dismiss),
+                (KeyCode::Backspace, KeyModifiers::NONE, MenuInput::Erase),
+            ] {
+                assert_eq!(
+                    keymap.message_for(&key(code, modifiers), ms(0), context),
+                    Some(Message::Menu(menu, input)),
+                    "{overlay:?} takes {code:?}"
+                );
+            }
+            let keys = |name: &str| {
+                entries
+                    .iter()
+                    .find(|(listed, _)| listed == name)
+                    .map(|(_, keys)| keys.as_str())
+            };
+            assert_eq!(keys("Next Entry"), Some("↓, Ctrl+N"));
+            assert_eq!(keys("Erase Filter Character"), Some("Backspace"));
+            assert_eq!(keys("Quit"), Some("Ctrl+Q"));
+        }
+    }
+
+    // FR-KEY-04, ui.md §4: the open Navigator lists each of its keys, and a picker over it lists
+    // the picker's.
+    #[test]
+    fn the_shortcuts_of_the_open_navigator_are_its_keys() {
+        let keymap = Keymap::default();
+        let (group, entries) = keymap
+            .popup_shortcuts(IN_NAVIGATOR)
+            .expect("the Navigator lists its keys");
+        assert_eq!(group, Group::Navigator);
+        assert_eq!(entries.len(), NAVIGATOR.len());
+        assert_eq!(
+            entries.first(),
+            Some(&("Next Entry".into(), "↓, Ctrl+N".to_owned()))
+        );
+        assert_eq!(entries.last(), Some(&("Quit".into(), "Ctrl+Q".to_owned())));
+        let over = &Context {
+            overlay: Some(Overlay::ContextMenu),
+            ..*IN_NAVIGATOR
+        };
+        assert_eq!(
+            keymap.popup_shortcuts(over).map(|(group, _)| group),
+            Some(Group::Picker)
         );
     }
 }

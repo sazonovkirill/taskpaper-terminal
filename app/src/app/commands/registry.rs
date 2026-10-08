@@ -612,6 +612,10 @@ pub enum Group {
     View,
     /// Edit mode's own commands.
     Editing,
+    /// The keys of the open Navigator.
+    Navigator,
+    /// The keys of an open picker or palette.
+    Picker,
 }
 
 impl Group {
@@ -628,6 +632,8 @@ impl Group {
             Self::Metadata => "Block Metadata",
             Self::View => "View and Panels",
             Self::Editing => "Editing",
+            Self::Navigator => "Navigator",
+            Self::Picker => "Pickers and Palettes",
         }
     }
 }

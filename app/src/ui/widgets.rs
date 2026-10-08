@@ -908,6 +908,9 @@ pub struct Keyboard {
     pub alt_seen: bool,
 }
 
+/// A group of the shortcuts panel: its heading and each intent's name with how its keys read.
+pub type ShortcutGroup = (Group, Vec<(Cow<'static, str>, String)>);
+
 /// The shortcuts panel in the secondary sidebar ([ui.md §4](../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04),
 /// FR-KEY-04, D-28): titled "Shortcuts" beside a rule down its left edge, each group's name in
 /// the headers color over its commands, each command's name with its keys at the right in the
@@ -918,7 +921,7 @@ pub struct Keyboard {
 /// them off (ui.md §7).
 #[derive(Debug)]
 pub struct ShortcutsPanel<'a> {
-    groups: &'a [(Group, Vec<(Command, String)>)],
+    groups: &'a [ShortcutGroup],
     keyboard: Keyboard,
     icons: IconSet,
     theme: &'a Theme,
@@ -937,11 +940,11 @@ struct Window {
 }
 
 impl<'a> ShortcutsPanel<'a> {
-    /// The panel in `theme` listing `groups`, each command with how its keys read, from the top,
+    /// The panel in `theme` listing `groups`, each intent's name with how its keys read, from the top,
     /// noting what `keyboard` reports and how to turn off the `icons` drawn.
     #[must_use]
     pub fn new(
-        groups: &'a [(Group, Vec<(Command, String)>)],
+        groups: &'a [ShortcutGroup],
         keyboard: Keyboard,
         icons: IconSet,
         theme: &'a Theme,
@@ -1028,9 +1031,9 @@ impl<'a> ShortcutsPanel<'a> {
                 Line::styled(group.name(), Style::new().fg(self.theme.headers).bold()),
                 Line::default(),
             ));
-            for (command, keys) in entries {
+            for (name, keys) in entries {
                 rows.push((
-                    Line::from(format!(" {}", command.name())),
+                    Line::from(format!(" {name}")),
                     Line::styled(keys.clone(), Style::new().fg(self.theme.primary)),
                 ));
             }

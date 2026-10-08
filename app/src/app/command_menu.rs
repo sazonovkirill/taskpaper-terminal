@@ -4,6 +4,8 @@
 //! ([editing.md §2.3](../../../docs/specs/editing.md#23-command-menu),
 //! [ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06), D-50, FR-KEY-06).
 
+use std::borrow::Cow;
+
 use super::commands::{Command, NodeCommand};
 
 /// A key of an open menu or picker, as an intent.
@@ -21,6 +23,21 @@ pub enum MenuInput {
     Choose,
     /// Closing the menu.
     Dismiss,
+}
+
+impl MenuInput {
+    /// The intent's name, which the shortcuts panel shows (ui.md §4).
+    #[must_use]
+    pub fn name(self) -> Cow<'static, str> {
+        match self {
+            Self::Type(c) => format!("Type {c}").into(),
+            Self::Erase => "Erase Filter Character".into(),
+            Self::Previous => "Previous Entry".into(),
+            Self::Next => "Next Entry".into(),
+            Self::Choose => "Choose Entry".into(),
+            Self::Dismiss => "Close".into(),
+        }
+    }
 }
 
 /// The open menu as a frontend shows it.
@@ -465,5 +482,20 @@ mod tests {
         assert_eq!(menu.view().selected, 0, "Set Due Date is gone");
         menu.relist(fewer(&["Project"]));
         assert_eq!((menu.view().filter, shown(&menu)), ("", vec!["Project"]));
+    }
+
+    // ui.md §4
+    #[test]
+    fn each_input_has_a_name() {
+        for (input, name) in [
+            (MenuInput::Type('w'), "Type w"),
+            (MenuInput::Erase, "Erase Filter Character"),
+            (MenuInput::Previous, "Previous Entry"),
+            (MenuInput::Next, "Next Entry"),
+            (MenuInput::Choose, "Choose Entry"),
+            (MenuInput::Dismiss, "Close"),
+        ] {
+            assert_eq!(input.name(), name);
+        }
     }
 }

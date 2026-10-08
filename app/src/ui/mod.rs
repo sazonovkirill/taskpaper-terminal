@@ -29,7 +29,7 @@ use crate::{
     app::{
         Animations, Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView,
         Row, SaveAs, SaveState, SettingsInput, State,
-        commands::{Command, Group, REGISTRY},
+        commands::{Command, REGISTRY},
     },
     document::ItemId,
 };
@@ -918,17 +918,26 @@ impl Tui {
             });
         // The keys are the keymap's, so the panel shows the config file's bindings (ui.md §4); a
         // command the config file left without keys is not listed.
-        let groups: Vec<(Group, Vec<(Command, String)>)> = groups
-            .into_iter()
-            .map(|(group, entries)| {
-                let keys = entries
-                    .into_iter()
-                    .map(|entry| (entry.command, self.keymap.labels(entry.command, entry.mode)))
-                    .filter(|(_, keys)| !keys.is_empty())
-                    .collect();
-                (group, keys)
-            })
-            .collect();
+        // While the Navigator or a picker has the keys, the panel lists theirs (ui.md §4).
+        let groups: Vec<_> = match self.keymap.popup_shortcuts(&context) {
+            Some(group) => vec![group],
+            None => groups
+                .into_iter()
+                .map(|(group, entries)| {
+                    let keys = entries
+                        .into_iter()
+                        .map(|entry| {
+                            (
+                                entry.command.name(),
+                                self.keymap.labels(entry.command, entry.mode),
+                            )
+                        })
+                        .filter(|(_, keys)| !keys.is_empty())
+                        .collect();
+                    (group, keys)
+                })
+                .collect(),
+        };
         let theme = self.palette();
         let panel = ShortcutsPanel::new(&groups, self.keyboard, self.icons, &theme);
         let (last, page) = panel.scroll_range(area);
