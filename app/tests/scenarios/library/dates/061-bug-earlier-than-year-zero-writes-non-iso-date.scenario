@@ -1,5 +1,4 @@
 # { on a task due 0000-01-01 changes nothing, since the day before cannot be written as YYYY-MM-DD.
-# BUG: it writes @due(-000001-12-31), a six-digit signed year the date prompt itself rejects (D-6: stored as YYYY-MM-DD).
 file <<END
 - Ancient @due(0000-01-01)
 END

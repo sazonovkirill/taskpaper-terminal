@@ -10,7 +10,7 @@ use jiff::{
 };
 use thiserror::Error;
 
-use super::metadata::DateTag;
+use super::metadata::{self, DateTag};
 
 /// Why a text is not a date. Offsets are byte offsets into the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -30,7 +30,7 @@ pub enum DateError {
         /// Where the written date starts.
         offset: usize,
     },
-    /// The date falls outside the years -9999 to 9999.
+    /// The date falls outside 0000-01-01 to 9999-12-31, the dates `YYYY-MM-DD` writes (D-6).
     #[error("the date at position {offset} is out of range")]
     OutOfRange {
         /// Where the part that left the range starts.
@@ -206,6 +206,9 @@ impl<'a> Parser<'a> {
                 Kind::MonthDay(month, day) => self.month_day(month, day, offset)?,
                 Kind::Word(word) => self.named(&word.to_ascii_lowercase(), offset)?,
             };
+            if !metadata::writable(date) {
+                return Err(DateError::OutOfRange { offset });
+            }
             at_start = false;
         }
         Ok(date)
@@ -605,6 +608,15 @@ mod tests {
         fails("9999-12-31 +1d", DateError::OutOfRange { offset: 11 });
         fails_on(Date::MAX, "tomorrow", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MIN, "yesterday", DateError::OutOfRange { offset: 0 });
+        // D-6: dates are stored as YYYY-MM-DD, which has no room for a year before 0.
+        check("0000-01-01", date(0, 1, 1));
+        fails_on(
+            date(0, 1, 1),
+            "yesterday",
+            DateError::OutOfRange { offset: 0 },
+        );
+        fails("0000-01-01 -1d +1d", DateError::OutOfRange { offset: 11 });
+        fails("-2027y", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MAX, "fri", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MAX, "next fri", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MIN, "last fri", DateError::OutOfRange { offset: 0 });

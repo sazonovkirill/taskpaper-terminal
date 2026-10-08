@@ -98,6 +98,14 @@ fn brackets_and_braces_move_the_start_and_due_dates_a_day() {
     assert_eq!(saved(&mut app), "- a @start(2026-10-10) @due(2026-11-01)\n");
 }
 
+// D-6: dates are stored as YYYY-MM-DD, which has no day before 0000-01-01.
+#[test]
+fn a_date_does_not_move_before_the_first_day_yyyy_mm_dd_can_write() {
+    let mut app = Harness::with_text("- a @due(0000-01-02)\n", 40, 4);
+    app.type_keys("{{{");
+    assert_eq!(saved(&mut app), "- a @due(0000-01-01)\n");
+}
+
 // editing.md §5
 #[test]
 fn moving_a_missing_date_counts_from_today() {

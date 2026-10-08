@@ -63,7 +63,8 @@ pub enum DateChange {
 
 /// The op that sets the `tag` date of `block` as `change` says, `today` being the local date; a
 /// block without that date moves as if it were today (editing.md §5). `None` when the date stays
-/// as it is, would leave the calendar or the block is not in `document`.
+/// as it is, would leave the calendar or the dates `YYYY-MM-DD` can write, or the block is not in
+/// `document`.
 #[must_use]
 pub fn change_date(
     document: &Document,
@@ -88,8 +89,8 @@ pub fn change_date(
 
 /// The op that sets the `tag` date of `block` to `date` as `YYYY-MM-DD` (D-6), or removes the
 /// tag with any value when `date` is `None` (editing.md §5). `None` when the line stays as it is,
-/// as it does when the tag holds that date already, written in any form, or the block is not in
-/// `document`.
+/// as it does when the tag holds that date already, written in any form, or when `date` is not
+/// [`writable`], or the block is not in `document`.
 #[must_use]
 pub fn set_date(
     document: &Document,
@@ -102,6 +103,9 @@ pub fn set_date(
         DateTag::Start => ("start", block.start()),
         DateTag::Due => ("due", block.due()),
     };
+    if date.is_some_and(|date| !writable(date)) {
+        return None;
+    }
     // Rewriting such a tag would only drop what the app does not read, such as a time.
     if date.is_some() && date == current {
         return None;
@@ -115,6 +119,13 @@ pub fn set_date(
         before: before.to_owned(),
         after,
     })
+}
+
+/// Whether `date` can be stored as `YYYY-MM-DD` (D-6): a year before 0 would need a sign, and
+/// the calendar ends at 9999-12-31 anyway.
+#[must_use]
+pub fn writable(date: Date) -> bool {
+    date.year() >= 0
 }
 
 /// A bare tag that a command adds to a block or removes from it.
@@ -508,6 +519,16 @@ mod tests {
             changed("- a", DateTag::Due, DateChange::Tomorrow, Date::MAX),
             None
         );
+        assert_eq!(
+            changed(
+                "- a @due(0000-01-01)",
+                DateTag::Due,
+                DateChange::Earlier,
+                TODAY
+            ),
+            None,
+            "the day before needs a signed year, which YYYY-MM-DD cannot write (D-6)"
+        );
     }
 
     /// The first line's text after the op `make` returns for its block, or `None` without one.
@@ -758,6 +779,22 @@ mod tests {
             Some("…"),
             "a line left empty gets the placeholder"
         );
+    }
+
+    // D-6, search.md §4: dates are stored as YYYY-MM-DD.
+    #[test]
+    fn set_date_writes_only_dates_yyyy_mm_dd_can_hold() {
+        assert_eq!(
+            set("- a", DateTag::Due, Some(date(0, 1, 1))).as_deref(),
+            Some("- a @due(0000-01-01)")
+        );
+        assert_eq!(set("- a", DateTag::Due, Some(date(-1, 12, 31))), None);
+        assert_eq!(
+            set("- a @due(2026-10-09)", DateTag::Due, Some(Date::MIN)),
+            None
+        );
+        assert!(writable(date(0, 1, 1)) && writable(Date::MAX));
+        assert!(!writable(date(-1, 12, 31)));
     }
 
     #[test]

@@ -34,7 +34,7 @@ Saving the current query creates a block `Name @search(query) @bookmark` under a
 
 ## 4. Dates (Must, FR-TAG-03, D-6)
 
-Dates are stored as `YYYY-MM-DD` with no time (D-6). The date prompt and `due:`/`start:` accept:
+Dates are stored as `YYYY-MM-DD` with no time (D-6), so they run from 0000-01-01 to 9999-12-31: the prompt rejects a date outside that range as out of range, and moving a date a day stops at its ends. The date prompt and `due:`/`start:` accept:
 
 - Absolute `YYYY-MM-DD`, plus `MM-DD` and `MM/DD` (this year, or next year if already past for `due`).
 - `today`, `tomorrow`, `yesterday`.
