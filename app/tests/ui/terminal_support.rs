@@ -5,7 +5,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::buffer::CellWidth as _;
 
-use crate::support::{DUE, Harness, NAVIGATE, STAR, START, SUN};
+use crate::support::{DUE, FLAG, Harness, NAVIGATE, OVERDUE, STAR, START, SUN};
 
 const NONE: KeyModifiers = KeyModifiers::NONE;
 
@@ -15,6 +15,19 @@ const WIDE: &str = "日本語の仕事:
 \t- Cafe\u{301} e\u{301}clair @start(2026-10-06)
 \tメモ 🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉 終わり
 \t- 한국어 텍스트가 아주 길어서 줄바꿈이 필요합니다 @due(2026-10-07)
+";
+
+/// Wide text, an emoji sequence and combining marks in every special view, with an INBOX and a
+/// TODAY project: an overdue block, a colored and a flagged one and one done yesterday, on
+/// [`crate::support::TODAY`].
+const VIEWS: &str = "INBOX:
+\t- 受信箱 🎉 の仕事
+日本語の仕事:
+\t- 買い物 👨‍👩‍👧 family @star @flag
+\t- Cafe\u{301} e\u{301}clair @start(2026-10-06) @red
+\t- 期限切れのとても長い仕事の名前です @due(2026-10-01)
+\t- 終わった仕事 🎉🎉 とても長い名前です @done(2026-10-04) @blue
+TODAY:
 ";
 
 /// Row `y` as the terminal shows it, without trailing blanks: each cell's symbol, a wide one
@@ -178,21 +191,51 @@ fn every_size_down_to_nothing_shows_the_status_line_and_the_focused_block() {
     }
 }
 
-// N-PORT-02, D-79, D-80: every overlay, the Navigator and its context menu, and the Today view
-// open on every size without failing, and keys go on working.
+// N-PORT-02, D-79, D-80, D-96, D-101: every overlay, the Navigator, its filter and its context
+// menu, every special view, Quick Add and its project picker open on every size without failing,
+// and keys go on working.
 #[test]
 fn every_overlay_opens_on_every_size() {
     let overlays = [
-        "?", "md", "gs", "gP", ":", "mc", "my", "mi", "\\", "g,", "\n/", "\x07", "\x07j\\", "gt",
+        "?",
+        "md",
+        "gs",
+        "gP",
+        ":",
+        "mc",
+        "my",
+        "mi",
+        "\\",
+        "g,",
+        "\n/",
+        "\x07",
+        "\x07j\\",
+        "\x07\x0e\x12",
+        "gt",
         "gtj\\",
+        "gT",
+        "gU",
+        "gO",
+        "gC",
+        "gCj\\",
+        "gL",
+        "gS",
+        "gF",
+        "qq",
+        "qq/",
+        "qq/日本",
+        "qi",
+        "qt日本語 due tomorrow",
     ];
     for (width, height) in SIZES {
         for keys in overlays {
-            let mut app = Harness::with_text(WIDE, width, height);
+            let mut app = Harness::with_text(VIEWS, width, height);
             for key in keys.chars() {
                 match key {
                     '\n' => app.press(KeyCode::Enter, NONE),
                     '\x07' => app.press(KeyCode::Char('g'), KeyModifiers::CONTROL),
+                    '\x0e' => app.press(KeyCode::Char('n'), KeyModifiers::CONTROL),
+                    '\x12' => app.press(KeyCode::Char('r'), KeyModifiers::CONTROL),
                     key => app.type_keys(&key.to_string()),
                 }
                 app.render();
@@ -260,6 +303,75 @@ fn the_today_view_shows_wide_entries_and_paths_whole() {
             format!("▌ - 買い物 👨‍👩‍👧                    {DUE} today").as_str(),
             "▌   とても長い仕事の名前です",
             "▌   日本語のプロジェクト",
+        ]
+    );
+}
+
+// N-PORT-04, FR-TAG-07, FR-TAG-10, FR-TAG-11, D-80, D-92, D-93: every special view shows wide
+// text, emoji sequences and combining marks whole, cut before a whole grapheme.
+#[test]
+fn the_special_views_show_wide_entries_whole() {
+    let family = format!("▌ - 買い物 👨‍👩‍👧 family {FLAG} {STAR}  日本語の仕事");
+    let done = "✔ 終わった仕事 🎉🎉 とても長い名前で…";
+    for (keys, row, expected) in [
+        (
+            "gU",
+            3,
+            format!("▌ - Cafe\u{301} e\u{301}clair  日本語の仕事 {START} tomorrow"),
+        ),
+        (
+            "gO",
+            3,
+            format!("▌ - 期限切れのとても長い仕… {OVERDUE} 4 days ago"),
+        ),
+        ("gC", 6, format!("  {done}")),
+        ("gL", 3, format!("▌ {done}")),
+        ("gS", 2, family.clone()),
+        ("gF", 2, family),
+    ] {
+        let mut app = Harness::with_text(VIEWS, 40, 8);
+        app.type_keys(keys);
+        assert_eq!(screen(&mut app)[row], expected, "{keys}");
+    }
+}
+
+// N-PORT-04, FR-MODE-07, D-96, D-97: Quick Add scrolls wide text a whole grapheme at a time with
+// the caret at its display width, and its project picker lists wide project names whole.
+#[test]
+fn quick_add_keeps_wide_text_whole_as_it_scrolls() {
+    let mut app = Harness::with_text(VIEWS, 24, 8);
+    app.type_keys("qi");
+    for c in "とても長い仕事の名前です tomorrow 買い物".chars() {
+        app.type_keys(&c.to_string());
+    }
+    let caret = |app: &mut Harness| {
+        app.render();
+        app.terminal
+            .get_cursor_position()
+            .expect("the test terminal has a cursor")
+            .x
+    };
+    assert_eq!(shown(&mut app, 4), "│ - す tomorrow 買い物 │");
+    assert_eq!(caret(&mut app), 22);
+    app.press(KeyCode::Home, NONE);
+    assert_eq!(shown(&mut app, 4), "│ - とても長い仕事の名 │");
+    let mut columns = vec![caret(&mut app)];
+    for _ in 0..2 {
+        app.press(KeyCode::Right, NONE);
+        columns.push(caret(&mut app));
+    }
+    assert_eq!(columns, [4, 6, 8]);
+    let mut app = Harness::with_text(VIEWS, 40, 12);
+    app.type_keys("qq/");
+    assert_eq!(
+        screen(&mut app)[1..7],
+        [
+            "┌Project───────────────────────────────┐",
+            "│›                                     │",
+            "│ ▸ INBOX                              │",
+            "│ ▸ 日本語の仕事                       │",
+            "│ ▸ TODAY                              │",
+            "└──────────────────────────────────────┘",
         ]
     );
 }
