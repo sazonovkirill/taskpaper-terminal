@@ -225,7 +225,8 @@ impl State {
 
     /// Opens the highlighted entry of Go to Symbol or Go to Project, the focused Navigator entry or
     /// the focused block in a new pane, as [`PaneChange::Open`] says, closing the finder or the
-    /// Navigator.
+    /// Navigator; with no entry matching its filter, the Navigator stays open, as for `Enter`
+    /// (navigation.md §6).
     fn open_chosen(&mut self) {
         let chosen = if let Some((_, finder)) = self.symbols.take() {
             finder
@@ -234,7 +235,9 @@ impl State {
                 .map(|id| Location::Outline(Some(id)))
         } else if self.navigator_focused() {
             let location = self.navigator_location();
-            self.navigator_input(NavigatorInput::Leave);
+            if location.is_some() {
+                self.navigator_input(NavigatorInput::Leave);
+            }
             location
         } else {
             self.pane
@@ -777,6 +780,14 @@ mod tests {
         }
         pane(&mut state, PaneChange::Open);
         assert_eq!(panes(&state)[2], "*Today: ");
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(crate::app::NavigatorInput::Type('#')));
+        pane(&mut state, PaneChange::Open);
+        assert!(
+            state.navigator_focused(),
+            "nothing matched, so it stays open"
+        );
+        assert_eq!(state.panes().len(), 3, "and nothing opened");
     }
 
     // FR-KEY-06, ui.md §5
