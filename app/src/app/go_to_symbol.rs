@@ -57,11 +57,26 @@ impl State {
     /// `Ctrl+K`: opens Go to Symbol over every block in document order but dividers, or `gP`
     /// over the projects among them, as Go to Project.
     pub(super) fn open_go_to_symbol(&mut self, listed: Symbols) {
-        let candidates = match listed {
+        self.symbols = Some((listed, Finder::new(self.symbol_candidates(listed))));
+    }
+
+    /// The candidates Go to Symbol lists over `listed`.
+    fn symbol_candidates(&self, listed: Symbols) -> Vec<Candidate<ItemId>> {
+        match listed {
             Symbols::All => self.block_candidates(&[]),
             Symbols::Projects => self.project_candidates(),
-        };
-        self.symbols = Some((listed, Finder::new(candidates)));
+        }
+    }
+
+    /// Lists the blocks of a reloaded document in the open Go to Symbol or Go to Project, keeping
+    /// its query and highlighting `highlighted` (file-io.md §3, D-104).
+    pub(super) fn relist_symbols(&mut self, highlighted: Option<ItemId>) {
+        if let Some(listed) = self.symbols.as_ref().map(|(listed, _)| *listed) {
+            let candidates = self.symbol_candidates(listed);
+            if let Some((_, finder)) = &mut self.symbols {
+                finder.relist(candidates, highlighted.as_ref());
+            }
+        }
     }
 
     /// The candidates of [`State::block_candidates`] that are projects, as Go to Project and

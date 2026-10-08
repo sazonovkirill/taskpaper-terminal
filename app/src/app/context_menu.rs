@@ -10,11 +10,21 @@ use super::{
     commands::{Focused, NodeCommand, context_commands},
 };
 
+/// What the context menu is open on, which lists its commands again after a reload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MenuOn {
+    /// The focused Navigator entry while the Navigator is open, else the selected blocks, else
+    /// the focused block.
+    Focus,
+    /// The focused pane's header, or with a depth its breadcrumb at that depth.
+    Pane(Option<usize>),
+}
+
 impl State {
     /// The context menu, while it is open (FR-KEY-06).
     #[must_use]
     pub fn context_menu(&self) -> Option<CommandMenuView<'_>> {
-        self.context_menu.as_ref().map(CommandMenu::view)
+        self.context_menu.as_ref().map(|(_, menu)| menu.view())
     }
 
     /// `\`: opens the context menu on the focused Navigator entry while the Navigator is open,
@@ -22,12 +32,7 @@ impl State {
     /// what the view does not take (navigation.md §7, §7.1). Nothing opens without anything to
     /// offer.
     pub(super) fn open_context_menu(&mut self) {
-        let groups = if self.navigator_focused() {
-            self.navigator_commands().unwrap_or_default()
-        } else {
-            self.block_commands()
-        };
-        self.context_menu = (!groups.is_empty()).then(|| CommandMenu::new(groups));
+        self.open_menu_on(MenuOn::Focus);
     }
 
     /// Opens the context menu on the focused pane's header, or with a depth on its breadcrumb at
@@ -35,10 +40,52 @@ impl State {
     /// or on the header zooming out and going home where the pane can; then opening the pane's
     /// location in a new pane and closing the pane when there are others (ui.md §5).
     pub(super) fn open_pane_menu(&mut self, crumb: Option<usize>) {
+        self.open_menu_on(MenuOn::Pane(crumb));
+    }
+
+    /// Opens the context menu on `on`, when it has anything to offer.
+    fn open_menu_on(&mut self, on: MenuOn) {
+        self.context_menu = self
+            .context_groups(on)
+            .map(|groups| (on, CommandMenu::new(groups)));
+    }
+
+    /// Lists the open context menu's commands again on what it is open on in a reloaded
+    /// document, keeping its filter where it can, or closes it when that offers nothing any more
+    /// (file-io.md §3, D-104).
+    pub(super) fn relist_context_menu(&mut self) {
+        let Some(on) = self.context_menu.as_ref().map(|(on, _)| *on) else {
+            return;
+        };
+        let groups = self.context_groups(on);
+        self.context_menu = self
+            .context_menu
+            .take()
+            .zip(groups)
+            .map(|((on, mut menu), groups)| {
+                menu.relist(groups);
+                (on, menu)
+            });
+    }
+
+    /// The commands the context menu offers on `on`, or `None` when it offers nothing.
+    fn context_groups(&self, on: MenuOn) -> Option<Vec<Vec<NodeCommand>>> {
+        let crumb = match on {
+            MenuOn::Focus => {
+                let groups = if self.navigator_focused() {
+                    self.navigator_commands().unwrap_or_default()
+                } else {
+                    self.block_commands()
+                };
+                return (!groups.is_empty()).then_some(groups);
+            }
+            MenuOn::Pane(crumb) => crumb,
+        };
         let here = self.pane.location;
         let place: Vec<Command> = match crumb {
-            Some(depth) => match self.crumb(depth) {
-                Some(location) => (location != here)
+            Some(depth) => {
+                let location = self.crumb(depth)?;
+                (location != here)
                     .then_some(if depth == 0 {
                         Command::GoHome
                     } else {
@@ -46,9 +93,8 @@ impl State {
                     })
                     .into_iter()
                     .chain([Command::Pane(PaneChange::OpenCrumb(depth))])
-                    .collect(),
-                None => return,
-            },
+                    .collect()
+            }
             None => self
                 .zoom()
                 .map(|_| Command::ZoomOut)
@@ -57,11 +103,12 @@ impl State {
                 .collect(),
         };
         let place: Vec<NodeCommand> = place.into_iter().map(NodeCommand::named).collect();
-        let groups = [place, self.pane_commands(false)]
-            .into_iter()
-            .filter(|group| !group.is_empty())
-            .collect();
-        self.context_menu = Some(CommandMenu::new(groups));
+        Some(
+            [place, self.pane_commands(false)]
+                .into_iter()
+                .filter(|group| !group.is_empty())
+                .collect(),
+        )
     }
 
     /// The commands on the selected blocks, else the focused block, that the pane takes where it
@@ -104,7 +151,7 @@ impl State {
     /// asks the frontend to give the command as its keys would. `Esc` closes it; a character
     /// that would match nothing is not typed.
     pub(super) fn context_menu_input(&mut self, input: MenuInput) -> Option<Effect> {
-        let outcome = self.context_menu.as_mut()?.input(input)?;
+        let outcome = self.context_menu.as_mut()?.1.input(input)?;
         match outcome {
             Outcome::Run(command) => {
                 self.context_menu = None;

@@ -212,6 +212,19 @@ impl<T: Clone> Finder<T> {
         }
     }
 
+    /// Lists `candidates` in place of its own, keeping the query and highlighting `highlighted`
+    /// when the query matches it, else the first match.
+    pub(super) fn relist(&mut self, candidates: Vec<Candidate<T>>, highlighted: Option<&T>)
+    where
+        T: PartialEq,
+    {
+        self.candidates = candidates;
+        self.rank();
+        if let Some(value) = highlighted {
+            self.highlight(value);
+        }
+    }
+
     /// Ranks the candidates the query matches: by tier, then by how well their text matches,
     /// then in the order given. Each word of the query must match, fuzzily, ignoring case unless
     /// it has a capital (navigation.md §8); characters such as `!` or `^` match themselves.
@@ -439,5 +452,29 @@ mod tests {
         assert_eq!(listed(&finder).1, 0, "3 does not match");
         finder.highlight(&1);
         assert_eq!(listed(&finder).1, 1);
+    }
+
+    #[test]
+    fn relisting_keeps_the_query_and_the_highlighted_value_while_it_matches() {
+        let mut finder = sample();
+        typed(&mut finder, "re");
+        finder.input(MenuInput::Next);
+        let relisted = || {
+            vec![
+                candidate(5, "Reply", 2),
+                candidate(1, "Write the report", 2),
+                candidate(3, "Buy milk", 2),
+            ]
+        };
+        finder.relist(relisted(), Some(&2));
+        assert_eq!(finder.view().query, "re");
+        assert_eq!(listed(&finder), (vec![5, 1], 0), "2 is gone");
+        finder.relist(relisted(), Some(&1));
+        assert_eq!(listed(&finder), (vec![5, 1], 1));
+        finder.input(MenuInput::Erase);
+        finder.input(MenuInput::Erase);
+        finder.input(MenuInput::Next);
+        finder.relist(relisted(), None);
+        assert_eq!(listed(&finder), (vec![5, 1, 3], 0));
     }
 }

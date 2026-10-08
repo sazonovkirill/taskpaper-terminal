@@ -11,7 +11,7 @@ use jiff::civil::Date;
 use super::{
     Access, CommandMenuView, Effect, MenuInput, Notice, Restore, State,
     command_menu::{CommandMenu, Outcome},
-    commands::{Command, Inputs, node_commands},
+    commands::{Command, Inputs, NodeCommand, node_commands},
     editing::repair_notice,
     structure::NewBlock,
     text_field::{TextEdit, TextField},
@@ -77,6 +77,17 @@ pub(super) struct Session {
     /// The command menu, while `/` has it open, with the local date its date commands write
     /// (D-50).
     menu: Option<(CommandMenu, Date)>,
+}
+
+impl Resume {
+    /// Where editing resumes in a reloaded document: on the block `exact` finds for its own, or
+    /// nowhere when it finds none (file-io.md §3, D-104).
+    pub(super) fn rematched(self, exact: impl Fn(ItemId) -> Option<ItemId>) -> Option<Self> {
+        Some(Self {
+            id: exact(self.id)?,
+            ..self
+        })
+    }
 }
 
 impl Session {
@@ -339,14 +350,18 @@ impl State {
     /// `/` in edit mode: opens the command menu with the commands for the edited block, `today`
     /// being the local date they write (editing.md §2.3).
     pub(super) fn open_command_menu(&mut self, today: Date) {
-        let link = !self.open_url().is_empty();
-        let Some((session, block)) = self.edit.as_mut().and_then(|session| {
-            let block = blocks::block(&self.document, session.id)?;
-            Some((session, block))
-        }) else {
+        let Some(groups) = self.edited_block_commands() else {
             return;
         };
-        session.menu = Some((CommandMenu::new(node_commands(&block, link)), today));
+        if let Some(session) = &mut self.edit {
+            session.menu = Some((CommandMenu::new(groups), today));
+        }
+    }
+
+    /// The commands the command menu offers for the block being edited, if any.
+    fn edited_block_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
+        let block = blocks::block(&self.document, self.edit.as_ref()?.id)?;
+        Some(node_commands(&block, !self.open_url().is_empty()))
     }
 
     /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
@@ -449,6 +464,32 @@ impl State {
         self.start_editing();
         if let Some(session) = &mut self.edit {
             session.field = TextField::at_column(session.field.text().to_owned(), resume.column);
+        }
+    }
+
+    /// Ends the edit session before a reload replaces the document it edits, without writing to
+    /// or recording in that document, keeping where editing resumes; returns its command menu,
+    /// if open, for [`State::resume_after_reload`] (file-io.md §3, D-104).
+    pub(super) fn set_editing_aside(&mut self) -> Option<(CommandMenu, Date)> {
+        let session = self.edit.take()?;
+        self.resume = Some(Resume {
+            id: session.id,
+            column: session.field.column(),
+        });
+        session.menu
+    }
+
+    /// Edits again, after a reload, the block where editing resumes, once no prompt or popup is
+    /// open, with `menu`, the command menu it had open, listing the commands for the reloaded
+    /// block (file-io.md §3, D-104).
+    pub(super) fn resume_after_reload(&mut self, menu: Option<(CommandMenu, Date)>) {
+        self.resume_editing();
+        let Some(((mut menu, today), groups)) = menu.zip(self.edited_block_commands()) else {
+            return;
+        };
+        menu.relist(groups);
+        if let Some(session) = &mut self.edit {
+            session.menu = Some((menu, today));
         }
     }
 

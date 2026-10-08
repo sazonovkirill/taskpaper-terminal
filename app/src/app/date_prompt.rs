@@ -60,6 +60,13 @@ impl DatePrompt {
         self.field = self.field.pasted(text);
     }
 
+    /// The prompt on the blocks of a reloaded document that `exact` finds for its own, or `None`
+    /// when it finds none of them (file-io.md §3, D-104).
+    pub(super) fn rematched(self, exact: impl Fn(ItemId) -> Option<ItemId>) -> Option<Self> {
+        let ids: Vec<ItemId> = self.ids.iter().filter_map(|&id| exact(id)).collect();
+        (!ids.is_empty()).then_some(Self { ids, ..self })
+    }
+
     /// The date the text resolves to, or `None` for a blank text, which removes the date.
     fn date(&self) -> Result<Option<Date>, DateError> {
         match dates::parse(self.field.text(), self.today, self.tag) {

@@ -22,13 +22,21 @@ impl State {
     /// Go to Symbol lists them, after Home, the document's top level, when every block that would
     /// move is a project (D-56). A read-only file refuses with a notice.
     pub(super) fn open_move_to(&mut self) {
-        let moving = self.roots();
-        if moving.is_empty() {
+        let Some(candidates) = self.destination_candidates() else {
             return;
-        }
+        };
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
+        }
+        self.destinations = Some(Finder::new(candidates));
+    }
+
+    /// The candidates Move to lists for the blocks that would move, or `None` when none would.
+    fn destination_candidates(&self) -> Option<Vec<Candidate<ItemId>>> {
+        let moving = self.roots();
+        if moving.is_empty() {
+            return None;
         }
         let home = moving
             .iter()
@@ -39,8 +47,29 @@ impl State {
                 detail: "".into(),
                 tier: 0,
             });
-        let candidates = home.into_iter().chain(self.block_candidates(&moving));
-        self.destinations = Some(Finder::new(candidates.collect()));
+        Some(
+            home.into_iter()
+                .chain(self.block_candidates(&moving))
+                .collect(),
+        )
+    }
+
+    /// Lists the blocks of a reloaded document in the open Move to, keeping its query and
+    /// highlighting `highlighted`, or closes it when no block would move any more (file-io.md §3,
+    /// D-104).
+    pub(super) fn relist_destinations(&mut self, highlighted: Option<ItemId>) {
+        if self.destinations.is_none() {
+            return;
+        }
+        let candidates = self.destination_candidates();
+        self.destinations =
+            self.destinations
+                .take()
+                .zip(candidates)
+                .map(|(mut finder, candidates)| {
+                    finder.relist(candidates, highlighted.as_ref());
+                    finder
+                });
     }
 
     /// Applies `input` to Move to, and once a block is chosen, moves the selected blocks, else

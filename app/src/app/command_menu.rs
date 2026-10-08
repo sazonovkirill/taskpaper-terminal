@@ -80,6 +80,22 @@ impl CommandMenu {
         }
     }
 
+    /// Offers the commands of `groups` in place of its own, keeping the filter while it matches
+    /// one of them, else clearing it, and the highlighted command while it is offered.
+    pub(super) fn relist(&mut self, groups: Vec<Vec<NodeCommand>>) {
+        let highlighted = self
+            .matching()
+            .nth(self.selected)
+            .map(|entry| entry.command);
+        self.groups = groups;
+        if self.matching().next().is_none() {
+            self.filter.clear();
+        }
+        self.selected = highlighted
+            .and_then(|command| self.matching().position(|entry| entry.command == command))
+            .unwrap_or(0);
+    }
+
     /// What was typed into the menu.
     pub(super) fn filter(&self) -> &str {
         &self.filter
@@ -428,5 +444,26 @@ mod tests {
         typed(&mut menu, "de");
         assert_eq!(menu.input(MenuInput::Dismiss), Some(Outcome::Dismissed));
         assert_eq!(menu.filter(), "de");
+    }
+
+    #[test]
+    fn relisting_keeps_the_filter_while_it_matches_and_the_highlighted_command_while_offered() {
+        let mut menu = offering(&LABELS);
+        typed(&mut menu, "date");
+        menu.input(MenuInput::Next);
+        let fewer = |labels: &[&'static str]| offering(labels).groups;
+        menu.relist(fewer(&[
+            "Project",
+            "Section",
+            "Set Start Date",
+            "Set Due Date",
+        ]));
+        assert_eq!(menu.view().filter, "date");
+        assert_eq!(menu.view().selected, 1, "Set Due Date is still offered");
+        menu.relist(fewer(&["Project", "Section", "Set Start Date"]));
+        assert_eq!(shown(&menu), ["Set Start Date"]);
+        assert_eq!(menu.view().selected, 0, "Set Due Date is gone");
+        menu.relist(fewer(&["Project"]));
+        assert_eq!((menu.view().filter, shown(&menu)), ("", vec!["Project"]));
     }
 }

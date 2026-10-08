@@ -219,3 +219,42 @@ fn quitting_while_asked_keeps_both_versions() {
     );
     assert_eq!(fs::read(path(&app)).unwrap(), b"caf\xe9\n");
 }
+
+/// Lets the autosave write the file, then reads it.
+fn saved(app: &mut Harness) -> String {
+    app.wait(Duration::from_secs(2));
+    app.settle();
+    fs::read_to_string(path(app)).expect("a readable file")
+}
+
+// F-FILE-06, FR-MODE-01, D-104
+#[test]
+fn typing_carries_on_through_a_reload() {
+    let mut app = Harness::with_text(GROCERIES, 80, 7);
+    app.settle();
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(" and");
+    assert_eq!(saved(&mut app), "Groceries:\n\t- Milk and\n\t- Eggs\n");
+    fs::write(path(&app), "Groceries:\n\t- Milk and\n\t- Brown eggs\n").unwrap();
+    check(&mut app);
+    app.type_keys(" honey");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        "Groceries:\n\t- Milk and honey\n\t- Brown eggs\n"
+    );
+}
+
+// F-FILE-06, FR-OPS-05, D-104
+#[test]
+fn move_to_stays_open_through_a_reload() {
+    let mut app = Harness::with_text("Inbox:\n\t- Milk\nHome:\n", 80, 12);
+    app.settle();
+    app.type_keys("jgm");
+    fs::write(path(&app), "Inbox:\n\t- Milk\nHome:\n\t- Shelf\n").unwrap();
+    check(&mut app);
+    app.type_keys("home");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(saved(&mut app), "Inbox:\nHome:\n\t- Shelf\n\t- Milk\n");
+}

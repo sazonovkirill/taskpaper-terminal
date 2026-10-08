@@ -1,5 +1,4 @@
 # The due-date prompt stays open when another program changes an unrelated line, so the date typed next is set on the block.
-# BUG: a silent reload closes the date prompt, and the date typed next runs as navigate commands; Quick Add stays open across a reload (editing.md §6), file-io.md §3 is silent on prompts.
 file <<END
 INBOX:
 	- Call the plumber

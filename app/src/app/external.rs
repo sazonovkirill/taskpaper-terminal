@@ -11,8 +11,11 @@ use std::{
 
 use similar::{ChangeTag, TextDiff};
 
-use super::{Effect, History, Notice, SaveState, State, saving::Ending, text_path, update::Disk};
-use crate::document::{Document, ItemId, format};
+use super::{
+    Effect, History, Notice, SaveState, State, context_menu::MenuOn, finder::Finder,
+    saving::Ending, text_path, update::Disk,
+};
+use crate::document::{Block, Document, ItemId, format};
 
 /// Unchanged lines the diff shows around each change.
 const CONTEXT: usize = 3;
@@ -302,20 +305,22 @@ impl State {
 
     /// Replaces the document with `document`, keeping each pane's zoom, focus, history and
     /// selection, the collapsed blocks and project entries and the Today view's order on the
-    /// blocks they were on; a focus that finds no block moves as after any change. An edit
-    /// session ends with the document it edited, whose text is saved or in a conflict copy, and
-    /// the date prompt closes with it, as does an edit a command of the command menu would resume
-    /// (D-50), and so do Go to Symbol and Move to, whose candidates name blocks of the old
-    /// document, and the context menu, whose labels tell the old blocks' state. Quick Add stays
-    /// open, its destination kept on the same project.
+    /// blocks they were on; a focus that finds no block moves as after any change. Editing and
+    /// what is open over the outline carry on with the blocks they were on (D-104): editing goes
+    /// on with the reloaded block's text, the caret at the same column, as does an edit a command
+    /// of the command menu would resume (D-50), and the date prompt stays on its blocks;
+    /// each ends or closes once none of its blocks is found. Go to Symbol and Move to list the
+    /// reloaded blocks with their query kept, and the context menu its commands for them. Quick
+    /// Add stays open, its destination kept on the same project. The Edit Node dialog, a draft of
+    /// the block as it was, closes.
     fn reload(&mut self, document: Document) {
-        self.edit = None;
-        self.date_prompt = None;
+        let menu = self.set_editing_aside();
         self.node_editor = None;
-        self.symbols = None;
-        self.destinations = None;
-        self.context_menu = None;
-        self.resume = None;
+        let targets: Vec<ItemId> = if self.destinations.is_some() || self.context_menu.is_some() {
+            self.targets().iter().map(Block::id).collect()
+        } else {
+            Vec::new()
+        };
         let old = std::mem::replace(&mut self.document, document);
         let matches = text_path::matches(&old, &self.document);
         let found = |id: ItemId| matches.get(&id).copied();
@@ -330,9 +335,34 @@ impl State {
         if let Some(quick_add) = &mut self.quick_add {
             quick_add.rematch(exact);
         }
+        self.resume = self
+            .resume
+            .take()
+            .and_then(|resume| resume.rematched(exact));
+        self.date_prompt = (self.date_prompt.take()).and_then(|prompt| prompt.rematched(exact));
+        let symbol = (self.symbols.as_ref())
+            .and_then(|(_, finder)| finder.highlighted())
+            .and_then(|&id| exact(id));
+        // Home, when listed and matched, always ranks first, where the highlight falls back to.
+        let destination = (self.destinations.as_ref())
+            .and_then(Finder::highlighted)
+            .and_then(|&id| exact(id));
+        // Move to and a context menu on blocks act on the selected blocks, else the focused block,
+        // so with none of those found they close rather than act on where the focus fell back to.
+        let targets_found = targets.iter().any(|&id| exact(id).is_some());
         self.changed = changed_lines(&old, &self.document);
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
+        if !targets_found {
+            self.destinations = None;
+            let on_blocks = !self.navigator_focused();
+            self.context_menu
+                .take_if(|(on, _)| on_blocks && *on == MenuOn::Focus);
+        }
+        self.relist_symbols(symbol);
+        self.relist_destinations(destination);
+        self.relist_context_menu();
+        self.resume_after_reload(menu);
     }
 
     /// Whether the conflict prompt is open: the file changed on disk while there were unsaved
@@ -414,8 +444,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            DocumentText, Menu, MenuInput, Message, QuickAddInput, QuickAddTo, SelectionChange,
-            SpecialView, Symbols, TextEdit, state::NOTICE_TIME,
+            DateInput, DocumentText, Menu, MenuInput, MenuRow, Message, QuickAddInput, QuickAddTo,
+            SelectionChange, SpecialView, Symbols, TextEdit, state::NOTICE_TIME,
         },
         document::{Op, Transaction},
     };
@@ -853,55 +883,232 @@ mod tests {
         );
     }
 
-    // file-io.md §3, FR-TAG-03
-    #[test]
-    fn a_reload_closes_the_date_prompt() {
-        let mut state = opened("- a\n");
-        state.update(Message::OpenDatePrompt {
-            tag: crate::document::DateTag::Due,
-            today: jiff::civil::date(2026, 10, 5),
-        });
-        assert!(state.date_prompt().is_some());
-        state.update(found("- b\n"));
-        assert_eq!(state.date_prompt(), None);
+    /// Types `text` in edit mode.
+    fn typed(state: &mut State, text: &str) {
+        for c in text.chars() {
+            state.update(Message::Text(TextEdit::Insert(c)));
+        }
     }
 
-    // file-io.md §3, FR-NAV-05
+    /// Lets the autosave write the document, as holding `text`, at time `now`.
+    fn autosaved(state: &mut State, text: &str, now: Duration) {
+        state.update(Message::Tick {
+            now,
+            today: jiff::civil::Date::default(),
+        });
+        state.update(saved(text));
+        assert_eq!(state.save_state(), SaveState::Saved);
+    }
+
+    /// The text being edited with `|` at the caret.
+    fn shown(state: &State) -> String {
+        let editor = state.editor().expect("editing");
+        let mut text = editor.text.to_owned();
+        text.insert(editor.caret, '|');
+        text
+    }
+
+    // file-io.md §3, FR-MODE-01, D-104
     #[test]
-    fn a_reload_closes_go_to_symbol() {
-        let mut state = opened("A\nB\nC\n");
-        state.update(Message::OpenGoToSymbol(Symbols::All));
-        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type('c')));
-        state.update(found("X\nA\nB\nC\n"));
-        assert_eq!(state.go_to_symbol(), None);
-        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
+    fn a_reload_keeps_editing_the_block_with_the_caret_where_it_was() {
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "xy");
+        state.update(Message::Text(TextEdit::Move {
+            motion: crate::app::Motion::Left,
+            select: false,
+        }));
+        autosaved(&mut state, "- axy\n- b\n", ms(1000));
+        state.update(found("- new\n- axy @x\n- b\n"));
+        assert_eq!(state.notice(), Some(&Notice::Reloaded));
+        assert_eq!(state.editor().map(|editor| editor.id), state.focus());
+        assert_eq!(text_of(&state, state.focus()).as_deref(), Some("axy"));
+        assert_eq!(shown(&state), "ax|y");
+        typed(&mut state, "z");
         assert_eq!(
-            state.focus(),
-            Some(state.rows()[1].id),
-            "still on A, not moved to B"
+            format::serialize(state.document()),
+            "- new\n- axzy @x\n- b\n",
+            "the reloaded tag is kept"
         );
     }
 
-    // file-io.md §3, FR-OPS-05
+    // file-io.md §3, D-104
     #[test]
-    fn a_reload_closes_move_to() {
+    fn a_reload_that_changed_the_block_being_edited_ends_editing() {
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "x");
+        autosaved(&mut state, "- a\n- bx\n", ms(1000));
+        state.update(found("- a\n- by\n"));
+        assert_eq!(state.mode(), crate::app::Mode::Navigate);
+        assert_eq!(format::serialize(state.document()), "- a\n- by\n");
+    }
+
+    // file-io.md §3, D-50, D-104
+    #[test]
+    fn a_reload_keeps_the_command_menu_open_listing_the_reloaded_blocks_commands() {
+        let mut state = opened("- a\n");
+        state.update(Message::EditAtEnd);
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 5),
+        });
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type('c')));
+        let labels = |state: &State| -> Vec<String> {
+            let menu = state.command_menu().expect("open");
+            menu.rows
+                .iter()
+                .filter_map(|row| match row {
+                    MenuRow::Command { label, .. } => Some((*label).to_owned()),
+                    MenuRow::Divider => None,
+                })
+                .collect()
+        };
+        assert!(labels(&state).contains(&"Complete".to_owned()));
+        state.update(found("- a @done\n"));
+        assert_eq!(state.command_menu().map(|menu| menu.filter), Some("c"));
+        assert!(!labels(&state).contains(&"Complete".to_owned()));
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Dismiss));
+        assert_eq!(shown(&state), "a/c|", "the menu's text is typed");
+    }
+
+    // file-io.md §3, FR-TAG-03, D-104
+    #[test]
+    fn a_reload_keeps_the_date_prompt_on_its_block_while_it_is_there() {
+        let mut state = opened("- a\n");
+        let open = |state: &mut State| {
+            state.update(Message::OpenDatePrompt {
+                tag: crate::document::DateTag::Due,
+                today: jiff::civil::date(2026, 10, 5),
+            });
+        };
+        open(&mut state);
+        state.update(found("- b\n- a\n"));
+        for c in "2026-10-09".chars() {
+            state.update(Message::DatePrompt(DateInput::Edit(TextEdit::Insert(c))));
+        }
+        state.update(Message::DatePrompt(DateInput::Apply));
+        assert_eq!(
+            format::serialize(state.document()),
+            "- b\n- a @due(2026-10-09)\n"
+        );
+        open(&mut state);
+        autosaved(&mut state, "- b\n- a @due(2026-10-09)\n", ms(1000));
+        state.update(found("- b\n"));
+        assert_eq!(state.date_prompt(), None, "a is gone");
+    }
+
+    // file-io.md §3, FR-NAV-05, D-104
+    #[test]
+    fn a_reload_lists_the_reloaded_blocks_in_go_to_symbol_keeping_the_query_and_highlight() {
+        let mut state = opened("A\nB\nAB\n");
+        state.update(Message::OpenGoToSymbol(Symbols::All));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Type('b')));
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Next));
+        state.update(found("X\nA\nB\nAB\nBX\n"));
+        let view = state.go_to_symbol().expect("open");
+        assert_eq!(view.query, "b");
+        assert_eq!(view.entries.len(), 3, "BX is listed");
+        state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
+        assert_eq!(text_of(&state, state.focus()).as_deref(), Some("AB"));
+    }
+
+    // file-io.md §3, FR-OPS-05, D-104
+    #[test]
+    fn a_reload_lists_the_reloaded_blocks_in_move_to_and_closes_it_once_nothing_moves() {
         let mut state = opened("A\nB\nC\n");
         state.update(Message::OpenMoveTo);
         state.update(Message::Menu(Menu::MoveTo, MenuInput::Type('c')));
-        state.update(found("X\nA\nB\nC\n"));
-        assert_eq!(state.move_to(), None);
+        state.update(found("X\nA\nB\nC\nCX\n"));
+        assert_eq!(state.move_to().expect("open").entries.len(), 2);
         state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
-        assert_eq!(format::serialize(state.document()), "X\nA\nB\nC\n");
+        assert_eq!(format::serialize(state.document()), "X\nB\nC\n\tA\nCX\n");
+        let mut state = opened("A:\nB:\nC:\n");
+        state.update(Message::OpenMoveTo);
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Next));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Next));
+        state.update(found("X:\nA:\nB:\nC:\n"));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
+        assert_eq!(
+            format::serialize(state.document()),
+            "X:\nB:\nC:\n\tA:\n",
+            "C stays highlighted"
+        );
+        let mut state = opened("A:\nB:\n");
+        state.update(Message::OpenMoveTo);
+        state.update(found("X:\nA:\nB:\n"));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
+        assert_eq!(
+            format::serialize(state.document()),
+            "X:\nB:\nA:\n",
+            "Home stays highlighted"
+        );
+        let mut state = opened("Inbox:\n\t- Milk\nShop:\n");
+        state.update(Message::FocusNext);
+        state.update(Message::OpenMoveTo);
+        state.update(found("Inbox:\n\t- Oat milk\nShop:\n"));
+        assert_eq!(state.move_to(), None, "Milk is gone, so Inbox is not moved");
+        let mut state = opened("- a\n- b\n- c\n");
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::FocusNext);
+        state.update(Message::Select(SelectionChange::Toggle));
+        state.update(Message::OpenMoveTo);
+        state.update(found("- a\n- x\n- c\n"));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Type('c')));
+        state.update(Message::Menu(Menu::MoveTo, MenuInput::Choose));
+        assert_eq!(
+            format::serialize(state.document()),
+            "- x\n- c\n\t- a\n",
+            "a is still selected"
+        );
     }
 
-    // file-io.md §3, FR-KEY-06
+    // file-io.md §3, FR-KEY-06, D-104
     #[test]
-    fn a_reload_closes_the_context_menu() {
+    fn a_reload_lists_the_context_menus_commands_for_the_reloaded_blocks() {
         let mut state = opened("- A\n");
         state.update(Message::OpenContextMenu);
-        assert!(state.context_menu().is_some());
+        let completes =
+            |state: &State| {
+                state.context_menu().expect("open").rows.iter().any(
+                    |row| matches!(row, MenuRow::Command { label, .. } if *label == "Complete"),
+                )
+            };
+        assert!(completes(&state));
         state.update(found("- A @done\n"));
-        assert_eq!(state.context_menu(), None);
+        assert!(!completes(&state), "A is done");
+        let mut state = opened("Inbox:\n\t- Milk\n");
+        state.update(Message::FocusNext);
+        state.update(Message::OpenContextMenu);
+        state.update(found("Inbox:\n\t- Oat milk\n"));
+        assert_eq!(
+            state.context_menu(),
+            None,
+            "Milk is gone, so Inbox is not offered"
+        );
+        state.update(Message::FocusNext);
+        state.update(Message::OpenPaneMenu(None));
+        state.update(found("Inbox:\n\t- Milk\n"));
+        assert!(state.context_menu().is_some(), "the pane is still there");
+    }
+
+    // file-io.md §3, D-50, D-104
+    #[test]
+    fn a_reload_resumes_the_edit_a_menu_command_would_resume_on_its_block() {
+        let mut state = opened("- a\n");
+        state.update(Message::EditAtEnd);
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 5),
+        });
+        for c in "edit node".chars() {
+            state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type(c)));
+        }
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Choose));
+        assert!(state.node_editor().is_some());
+        state.update(found("- b\n- a\n"));
+        assert_eq!(state.node_editor(), None, "its draft is of the old block");
+        assert_eq!(shown(&state), "a|");
+        assert_eq!(text_of(&state, state.focus()).as_deref(), Some("a"));
     }
 
     // file-io.md §3, D-50
