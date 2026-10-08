@@ -1,7 +1,7 @@
 //! The update function: messages are user intents and reports from the frontend, effects are
 //! what the frontend must do.
 
-use std::{path::PathBuf, time::Duration};
+use std::{collections::HashSet, path::PathBuf, time::Duration};
 
 use jiff::civil::Date;
 
@@ -10,6 +10,7 @@ use super::{
     SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State, Symbols, TextEdit,
     Version,
     pane::{Pane, landing},
+    rows::Rows,
     saving::{DocumentText, Ending},
     structure::NewBlock,
 };
@@ -1033,19 +1034,21 @@ impl State {
     /// (navigation §2). A block no row showed, as one inside a fold, goes by document order
     /// instead. With no focus, as when every block was hidden, focuses the first row if one is
     /// back.
-    pub(super) fn repair_focus(&self, pane: &mut Pane, before: &[ItemId]) {
-        let visible: Vec<_> = self.rows_of(pane).iter().map(|row| row.id).collect();
+    pub(super) fn repair_focus(&self, pane: &mut Pane, before: Option<&Rows>) {
+        let rows = self.rows_of(pane);
         let Some(focus) = pane.focus else {
-            pane.focus = visible.first().copied();
+            pane.focus = rows.first().map(|row| row.id);
             return;
         };
-        if visible.contains(&focus) {
+        if rows.iter().any(|row| row.id == focus) {
             return;
         }
+        let visible: HashSet<ItemId> = rows.iter().map(|row| row.id).collect();
+        let before: Vec<ItemId> = before.into_iter().flatten().map(|row| row.id).collect();
         // The rows give the order a special view shows its entries in, which may not be the
         // document's (D-57).
         let order: Vec<_> = if before.contains(&focus) || self.document.get(focus).is_none() {
-            before.to_vec()
+            before
         } else {
             self.blocks_of(pane, false)
                 .into_iter()
@@ -1058,7 +1061,7 @@ impl State {
             .skip(at)
             .chain(order.iter().take(at).rev())
             .find(|id| visible.contains(id))
-            .or(visible.first())
+            .or(rows.first().map(|row| &row.id))
             .copied();
     }
 

@@ -144,8 +144,8 @@ pub(super) struct Landmark {
     id: PaneId,
     /// The zoom block and its ancestors, from the zoom block up.
     zoom_line: Vec<ItemId>,
-    /// The blocks its rows showed.
-    rows: Vec<ItemId>,
+    /// Its rows.
+    rows: Rows,
 }
 
 /// The block to focus on arriving at a location with `rows`: the first block under the title,
@@ -319,7 +319,7 @@ impl State {
                 )
                 .map(|block| block.id())
                 .collect(),
-                rows: self.rows_of(pane).iter().map(|row| row.id).collect(),
+                rows: self.rows_of(pane),
             })
             .collect()
     }
@@ -356,7 +356,7 @@ impl State {
             }
             pane.focus = landing(&self.rows_of(&pane));
         }
-        let before = landmark.map_or(&[][..], |landmark| &landmark.rows);
+        let before = landmark.map(|landmark| &landmark.rows);
         self.repair_focus(&mut pane, before);
         self.keep_visible_selection(&mut pane);
         pane
