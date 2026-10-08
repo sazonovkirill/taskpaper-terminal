@@ -489,22 +489,31 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
 const PROMPT_SIZE: (u16, u16) = (80, 20);
 
 /// The conflict prompt (file-io.md §3): a box over the middle of the screen saying the file
-/// changed on disk while there were unsaved changes, with the keys of the three choices. With the
-/// diff, the box is as large as prompts get and lists the diff from line `scroll` on.
+/// changed on disk, with the keys of the three choices. Without the diff it says why: there are
+/// unsaved changes, or else the file on disk is not UTF-8 (D-99). With the diff, the box is as
+/// large as prompts get and lists the diff from line `scroll` on.
 #[derive(Debug)]
 pub struct ConflictPrompt<'a> {
     diff: Option<&'a [DiffLine]>,
     scroll: usize,
+    unsaved: bool,
     theme: &'a Theme,
 }
 
 impl<'a> ConflictPrompt<'a> {
-    /// The prompt in `theme`, showing `diff` from line `scroll` on when there is one.
+    /// The prompt in `theme`, showing `diff` from line `scroll` on when there is one, for a file
+    /// with `unsaved` changes or without.
     #[must_use]
-    pub fn new(diff: Option<&'a [DiffLine]>, scroll: usize, theme: &'a Theme) -> Self {
+    pub fn new(
+        diff: Option<&'a [DiffLine]>,
+        scroll: usize,
+        unsaved: bool,
+        theme: &'a Theme,
+    ) -> Self {
         Self {
             diff,
             scroll,
+            unsaved,
             theme,
         }
     }
@@ -538,7 +547,12 @@ impl Widget for ConflictPrompt<'_> {
         ]));
         let toggle = match self.diff {
             None => {
-                Line::from("Your changes are not saved yet.").render(top, buf);
+                let reason = if self.unsaved {
+                    "Your changes are not saved yet."
+                } else {
+                    "The file on disk is not UTF-8, so it cannot be reloaded."
+                };
+                Line::from(reason).render(top, buf);
                 "show diff"
             }
             Some(diff) => {
@@ -3348,10 +3362,10 @@ mod tests {
         }
     }
 
-    /// Draws the conflict prompt over a blank `width` × `height` screen.
+    /// Draws the conflict prompt for unsaved changes over a blank `width` × `height` screen.
     fn prompt(diff: Option<&[DiffLine]>, scroll: usize, width: u16, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, width, height));
-        ConflictPrompt::new(diff, scroll, &THEME).render(buf.area, &mut buf);
+        ConflictPrompt::new(diff, scroll, true, &THEME).render(buf.area, &mut buf);
         buf
     }
 
@@ -3371,12 +3385,27 @@ mod tests {
         }
         assert_eq!(prompt(None, 0, 82, 6), expected);
         let mut covered = Buffer::with_lines(vec!["x".repeat(82); 6]);
-        ConflictPrompt::new(None, 0, &THEME).render(covered.area, &mut covered);
+        ConflictPrompt::new(None, 0, true, &THEME).render(covered.area, &mut covered);
         assert_eq!(covered[(0, 0)].symbol(), "x");
         assert_eq!(
             covered[(50, 2)].symbol(),
             " ",
             "the box hides what is under it"
+        );
+    }
+
+    // file-io.md §3, D-99
+    #[test]
+    fn the_conflict_prompt_without_unsaved_changes_says_the_file_is_not_utf8() {
+        let mut buf = Buffer::empty(Rect::new(0, 0, 82, 6));
+        ConflictPrompt::new(None, 0, false, &THEME).render(buf.area, &mut buf);
+        let row = (0..82).map(|x| buf[(x, 2)].symbol()).collect::<String>();
+        assert_eq!(
+            row,
+            format!(
+                " │{:78}│ ",
+                "The file on disk is not UTF-8, so it cannot be reloaded."
+            )
         );
     }
 

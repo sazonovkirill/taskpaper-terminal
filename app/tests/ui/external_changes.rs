@@ -118,7 +118,7 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
         [
             "─".repeat(80),
             top.clone(),
-            row("Your changes are not saved yet."),
+            row("The file on disk is not UTF-8, so it cannot be reloaded."),
             row("m keep mine · t take theirs · d show diff"),
             bottom.clone(),
         ]
@@ -182,6 +182,20 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
         focused_rows(&mut app),
         ["Groceries:"],
         "keys answer the prompt"
+    );
+}
+
+// F-FILE-06, OQ-16, D-99
+#[test]
+fn a_file_turned_not_utf8_under_unsaved_changes_says_they_are_not_saved() {
+    let mut app = Harness::with_text(GROCERIES, 140, 8);
+    app.settle();
+    app.type_keys("jx");
+    fs::write(path(&app), b"caf\xe9\n").unwrap();
+    check(&mut app);
+    assert_eq!(
+        middle(&mut app)[3],
+        format!("│{:78}│", "Your changes are not saved yet.")
     );
 }
 

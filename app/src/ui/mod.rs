@@ -27,7 +27,7 @@ use ratatui::{
 use crate::{
     app::{
         Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs,
-        SettingsInput, State,
+        SaveState, SettingsInput, State,
         commands::{Command, Group, REGISTRY},
     },
     document::ItemId,
@@ -826,9 +826,10 @@ impl Tui {
         self.diff_rows = ConflictPrompt::diff_rows(area);
         let lines = diff.as_ref().map_or(0, Vec::len);
         self.diff_scroll = self.diff_scroll.min(lines.saturating_sub(self.diff_rows));
+        let unsaved = self.state.save_state() != SaveState::Saved;
         let theme = self.palette();
         frame.render_widget(
-            ConflictPrompt::new(diff.as_deref(), self.diff_scroll, &theme),
+            ConflictPrompt::new(diff.as_deref(), self.diff_scroll, unsaved, &theme),
             area,
         );
     }
