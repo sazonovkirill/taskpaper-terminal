@@ -1148,6 +1148,39 @@ mod tests {
         assert_eq!(text_of(&state, state.focus()).as_deref(), Some("a"));
     }
 
+    // file-io.md §3, editing.md §2.3, D-104, D-105
+    #[test]
+    fn a_reload_keeps_holding_the_edited_block_a_menu_command_hid() {
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::ToggleShowDone);
+        state.update(Message::EditAtEnd);
+        state.update(Message::OpenCommandMenu {
+            today: jiff::civil::date(2026, 10, 5),
+        });
+        for c in "complete".chars() {
+            state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type(c)));
+        }
+        state.update(Message::Menu(Menu::CommandMenu, MenuInput::Choose));
+        autosaved(&mut state, "- a @done(2026-10-05)\n- b\n", ms(1000));
+        state.update(found("- z\n- a @done(2026-10-05)\n- b\n"));
+        let rows = |state: &State| -> Vec<String> {
+            state
+                .rows()
+                .iter()
+                .map(|row| row.text.to_string())
+                .collect()
+        };
+        assert_eq!(rows(&state), ["a", "z", "b"], "still held where it was");
+        assert_eq!(shown(&state), "a|");
+        typed(&mut state, "x");
+        assert_eq!(
+            format::serialize(state.document()),
+            "- z\n- ax @done(2026-10-05)\n- b\n"
+        );
+        state.update(Message::StopEditing);
+        assert_eq!(rows(&state), ["z", "b"], "it leaves once editing ends");
+    }
+
     // file-io.md §3, D-50
     #[test]
     fn a_reload_forgets_the_edit_a_menu_command_would_resume() {

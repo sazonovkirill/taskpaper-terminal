@@ -41,6 +41,11 @@ pub(super) struct Pane {
 }
 
 impl Pane {
+    /// What tells it apart from the other panes.
+    pub(super) fn id(&self) -> PaneId {
+        self.id
+    }
+
     /// The pane `id` at `location`, the only one in its history, that shows completed blocks and
     /// has nothing focused or selected yet.
     fn new(id: PaneId, location: Location) -> Self {

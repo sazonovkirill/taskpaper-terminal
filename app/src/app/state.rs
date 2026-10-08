@@ -606,7 +606,7 @@ impl State {
 
     /// The visible rows of `pane`: its outline's, or in a special view its entries (D-7, D-80).
     pub(super) fn rows_of(&self, pane: &Pane) -> Rows {
-        self.rows_folded(pane, &self.folds)
+        self.holding_edited(pane, self.rows_folded(pane, &self.folds))
     }
 
     /// The rows at `location` with nothing collapsed, completed blocks shown when `show_done`

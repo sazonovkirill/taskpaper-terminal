@@ -255,3 +255,32 @@ fn ctrl_t_cycles_the_edited_blocks_type() {
     press(&mut app, KeyCode::Esc);
     assert_eq!(saved(&mut app), "Mil!k:\n");
 }
+
+// D-50, D-105, editing.md §2.3, navigation.md §7: an entry that Complete takes out of Today
+// while completed blocks are hidden stays in place while it is edited, so typing goes into it,
+// and leaves once editing ends.
+#[test]
+fn an_entry_completed_from_the_menu_stays_in_its_view_until_editing_ends() {
+    let mut app = Harness::with_text("- Aa @due(2026-10-05)\n- Bb @due(2026-10-05)\n", 40, 8);
+    app.settle();
+    app.type_keys("gcgt");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("/comp");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("dd");
+    assert_eq!(
+        outline_rows(&mut app)[..2],
+        ["✔ Aadd", "- Bb                           ⇥ today"],
+        "typed into the completed entry, which stays"
+    );
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        outline_rows(&mut app)[..2],
+        ["- Bb                           ⇥ today", ""],
+        "it leaves, and the focus goes to the next entry"
+    );
+    assert_eq!(
+        saved(&mut app),
+        "- Aadd @due(2026-10-05) @done(2026-10-05)\n- Bb @due(2026-10-05)\n"
+    );
+}

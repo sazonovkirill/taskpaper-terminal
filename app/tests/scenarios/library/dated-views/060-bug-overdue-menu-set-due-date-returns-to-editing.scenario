@@ -1,5 +1,4 @@
 # Set Due Date from the command menu on an Overdue entry being edited returns to editing it when the prompt closes, so a typed x is text.
-# BUG: the entry leaves Overdue, editing ends, and the typed x completes the next entry
 file <<END
 - Aa @due({today-2})
 - Bb @due({today-1})

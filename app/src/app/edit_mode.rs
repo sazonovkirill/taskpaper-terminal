@@ -9,10 +9,11 @@ use std::{mem, ops::Range};
 use jiff::civil::Date;
 
 use super::{
-    Access, CommandMenuView, Effect, MenuInput, Notice, Restore, State,
+    Access, CommandMenuView, Effect, MenuInput, Notice, Restore, Row, Rows, State,
     command_menu::{CommandMenu, Outcome},
     commands::{Command, Inputs, NodeCommand, node_commands},
     editing::repair_notice,
+    pane::Pane,
     structure::NewBlock,
     text_field::{TextEdit, TextField},
 };
@@ -43,11 +44,23 @@ pub struct Editor<'a> {
     pub selection: Option<Range<usize>>,
 }
 
-/// Where editing resumes after a command of the command menu: the block and the caret's column.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Where editing resumes after a command of the command menu: the block, the caret's column and
+/// where the block is held on screen meanwhile.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Resume {
     id: ItemId,
     column: usize,
+    held: Option<Held>,
+}
+
+/// Where the edited block was shown when editing started: its row and the row's position, where
+/// it stays while it is edited although a command run from the command menu made the pane leave
+/// it out, as completing it does where completed blocks are hidden or an entry leaving a special
+/// view (editing.md §2.3, D-105).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Held {
+    index: usize,
+    row: Row,
 }
 
 /// One edit session: the block's line as it started and as it is written now, its parts and the
@@ -77,16 +90,21 @@ pub(super) struct Session {
     /// The command menu, while `/` has it open, with the local date its date commands write
     /// (D-50).
     menu: Option<(CommandMenu, Date)>,
+    /// Where the block was shown when the session started, if the pane showed it.
+    held: Option<Held>,
 }
 
 impl Resume {
     /// Where editing resumes in a reloaded document: on the block `exact` finds for its own, or
-    /// nowhere when it finds none (file-io.md §3, D-104).
+    /// nowhere when it finds none, still held where it was shown (file-io.md §3, D-104, D-105).
     pub(super) fn rematched(self, exact: impl Fn(ItemId) -> Option<ItemId>) -> Option<Self> {
-        Some(Self {
-            id: exact(self.id)?,
-            ..self
-        })
+        let id = exact(self.id)?;
+        // The held row is the block's own, so it shows the block found for it.
+        let held = (self.held).map(|Held { index, row }| Held {
+            index,
+            row: Row { id, ..row },
+        });
+        Some(Self { id, held, ..self })
     }
 }
 
@@ -108,6 +126,7 @@ impl Session {
             redo: Vec::new(),
             typing: false,
             menu: None,
+            held: None,
         }
     }
 
@@ -284,10 +303,23 @@ impl State {
         self.clear_selection();
     }
 
-    /// A session editing `block` with the caret at the end of its text.
+    /// A session editing `block` with the caret at the end of its text, held where the pane
+    /// shows it.
     fn session(&self, block: &Block) -> Option<Session> {
         let line = self.document.get(block.id())?.text();
-        Some(Session::new(block.id(), line))
+        let held = self
+            .rows()
+            .iter()
+            .enumerate()
+            .find(|(_, row)| row.id == block.id())
+            .map(|(index, row)| Held {
+                index,
+                row: row.clone(),
+            });
+        Some(Session {
+            held,
+            ..Session::new(block.id(), line)
+        })
     }
 
     /// Starts editing the new line `id`, which the applied `created` ops put in while the focus
@@ -442,26 +474,30 @@ impl State {
             self.resume = Some(Resume {
                 id: session.id,
                 column: session.field.column(),
+                held: session.held.clone(),
             });
             self.stop_editing();
         }
     }
 
     /// Edits the block that [`State::suspend_editing`] left again, with the caret at the column
-    /// it had, once no prompt or popup is open; a block that is gone, or that no row shows any
-    /// more, is not edited.
+    /// it had, once no prompt or popup is open; a block that is gone is not edited. The block is
+    /// held where it was shown until editing ends (editing.md §2.3, D-105).
     pub(super) fn resume_editing(&mut self) {
         if self.date_prompt.is_some() || self.node_editor.is_some() {
             return;
         }
-        let Some(resume) = self.resume.take() else {
+        let Some(resume) = self.resume.clone() else {
             return;
         };
+        // The block is held in the rows until its new session holds it.
         if !self.rows().iter().any(|row| row.id == resume.id) {
+            self.resume = None;
             return;
         }
         self.pane.focus = Some(resume.id);
         self.start_editing();
+        self.resume = None;
         if let Some(session) = &mut self.edit {
             session.field = TextField::at_column(session.field.text().to_owned(), resume.column);
         }
@@ -475,6 +511,7 @@ impl State {
         self.resume = Some(Resume {
             id: session.id,
             column: session.field.column(),
+            held: session.held,
         });
         session.menu
     }
@@ -491,6 +528,46 @@ impl State {
         if let Some(session) = &mut self.edit {
             session.menu = Some((menu, today));
         }
+    }
+
+    /// `rows`, the rows `pane` shows, with the block being edited, or waiting for a command of
+    /// the command menu to be edited again, in the row and place it had when editing started, if
+    /// they leave it out; only the focused pane edits (editing.md §2.3, D-105).
+    pub(super) fn holding_edited(&self, pane: &Pane, rows: Rows) -> Rows {
+        let held = match (&self.edit, &self.resume) {
+            (Some(session), _) => session.held.as_ref(),
+            (None, Some(resume)) => resume.held.as_ref(),
+            (None, None) => None,
+        };
+        let Some(Held { index, row }) = held.filter(|_| pane.id() == self.pane.id()) else {
+            return rows;
+        };
+        // Where nothing moved it, it is still at its index, found without going through every row.
+        if rows.get(*index).is_some_and(|shown| shown.id == row.id)
+            || rows.iter().any(|shown| shown.id == row.id)
+        {
+            return rows;
+        }
+        let Some(block) = blocks::block(&self.document, row.id) else {
+            return rows;
+        };
+        let mut rows: Vec<Row> = rows.iter().cloned().collect();
+        let index = (*index).min(rows.len());
+        // It takes the heading of the entry in its place, so it stands where it stood, or keeps
+        // its own as the only entry.
+        let heading = match rows.get_mut(index) {
+            Some(next) => next.heading.take(),
+            None => row.heading.filter(|_| index == 0),
+        };
+        rows.insert(
+            index,
+            Row {
+                path: row.path.clone(),
+                heading,
+                ..self.row(pane, &block, row.depth, row.title, row.inside_done)
+            },
+        );
+        rows.into_iter().collect()
     }
 
     /// `Enter` in edit mode: ends editing and adds the next block (editing.md §2–3, D-43).
@@ -1596,17 +1673,151 @@ Site @url(https://x.y)",
         assert_eq!(state.mode(), Mode::Navigate, "nothing to edit");
     }
 
-    // D-50, FR-DONE-02, navigation §2
+    // D-50, D-105, FR-DONE-02, navigation §2
     #[test]
-    fn completing_the_edited_block_while_done_blocks_are_hidden_ends_editing() {
-        let mut state = open("- a\n- b", 0);
+    fn a_block_completed_while_completed_blocks_are_hidden_stays_while_edited() {
+        let mut state = open("- a\n\t- c\n- b", 0);
         state.update(Message::ToggleShowDone);
         state.update(Message::EditAtEnd);
         slash(&mut state, "compl");
         menu(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["- a @done(2026-10-06)", "- b"]);
-        assert_eq!(state.mode(), Mode::Navigate, "nothing shown to edit");
+        assert_eq!(texts(&state), ["- a @done(2026-10-06)", "- c", "- b"]);
+        assert_eq!(state.mode(), Mode::Edit, "editing goes on");
+        let shown: Vec<_> = state
+            .rows()
+            .iter()
+            .map(|row| row.text.to_string())
+            .collect();
+        assert_eq!(shown, ["a", "b"], "held where it was, without its children");
+        assert!(state.rows()[0].done);
+        typed(&mut state, "x");
+        assert_eq!(texts(&state), ["- ax @done(2026-10-06)", "- c", "- b"]);
+        state.update(Message::StopEditing);
+        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.rows().len(), 1, "it leaves once editing ends");
         assert_eq!(state.focus(), Some(state.rows()[0].id), "the next block");
+    }
+
+    /// `text` on [`TODAY`] in the Overdue view, editing its first entry.
+    fn editing_overdue(text: &str) -> State {
+        let mut state = State::new(format::parse(text), None);
+        state.update(Message::Tick {
+            now: Duration::ZERO,
+            today: TODAY,
+        });
+        state.update(Message::GoTo(crate::app::Location::View(
+            crate::app::SpecialView::Overdue,
+        )));
+        state.update(Message::EditAtEnd);
+        state
+    }
+
+    /// The text of each row, with its heading's group when it starts one.
+    fn entries(state: &State) -> Vec<(String, bool)> {
+        state
+            .rows()
+            .iter()
+            .map(|row| (row.text.to_string(), row.heading.is_some()))
+            .collect()
+    }
+
+    // D-50, D-105, navigation §7
+    #[test]
+    fn an_entry_a_command_takes_out_of_its_view_stays_in_place_while_edited() {
+        let outline =
+            "Home:\n\t- a @due(2026-10-01)\n\t- b @due(2026-10-01)\n\t- c @due(2026-10-02)";
+        let mut state = editing_overdue(outline);
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(state.mode(), Mode::Edit, "editing goes on");
+        assert_eq!(
+            entries(&state),
+            [("a".into(), true), ("b".into(), false), ("c".into(), true)],
+            "in its place, under its heading"
+        );
+        assert_eq!(*state.rows()[0].path, ["Home".into()], "with its path");
+        assert!(state.rows()[0].done);
+        typed(&mut state, "x");
+        assert_eq!(
+            texts(&state),
+            [
+                "Home:",
+                "- ax @due(2026-10-01) @done(2026-10-06)",
+                "- b @due(2026-10-01)",
+                "- c @due(2026-10-02)"
+            ],
+            "typed, not a command on the next entry"
+        );
+        state.update(Message::StopEditing);
+        assert_eq!(
+            entries(&state),
+            [("b".into(), true), ("c".into(), true)],
+            "it leaves once editing ends"
+        );
+        assert_eq!(state.focus(), Some(state.rows()[0].id), "the next entry");
+    }
+
+    // D-50, D-105, navigation §7: the last entry of a group that leaves takes the next group's
+    // heading, and an entry held at the end stays last.
+    #[test]
+    fn a_held_entry_stands_where_it_was_among_the_entries_left() {
+        let mut state = editing_overdue("- a @due(2026-10-01)\n- c @due(2026-10-02)");
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(entries(&state), [("a".into(), true), ("c".into(), false)]);
+        state.update(Message::StopEditing);
+        state.update(Message::EditAtEnd);
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(entries(&state), [("c".into(), true)], "the only entry");
+        assert_eq!(state.mode(), Mode::Edit);
+        state.update(Message::StopEditing);
+        assert!(state.rows().is_empty());
+        let mut state = editing_overdue("- a @due(2026-10-01)\n- c @due(2026-10-02)");
+        state.update(Message::StopEditing);
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(
+            entries(&state),
+            [("a".into(), true), ("c".into(), false)],
+            "last, after the group before it"
+        );
+    }
+
+    // D-50, D-105, editing.md §2.3
+    #[test]
+    fn a_date_set_from_the_menu_that_takes_an_entry_out_of_its_view_keeps_it_while_edited() {
+        let mut state = editing_overdue("- a @due(2026-10-01)\n- b @due(2026-10-02)");
+        slash(&mut state, "set due");
+        menu(&mut state, MenuInput::Choose);
+        for c in "tomorrow".chars() {
+            state.update(Message::DatePrompt(DateInput::Edit(TextEdit::Insert(c))));
+        }
+        assert_eq!(entries(&state).len(), 2, "held while the prompt is open");
+        state.update(Message::DatePrompt(DateInput::Apply));
+        assert_eq!(state.mode(), Mode::Edit, "editing goes on");
+        typed(&mut state, "x");
+        assert_eq!(
+            texts(&state),
+            ["- ax @due(2026-10-07)", "- b @due(2026-10-02)"]
+        );
+        assert_eq!(entries(&state), [("ax".into(), true), ("b".into(), false)]);
+    }
+
+    // D-50, D-105: only the pane that edits holds the block.
+    #[test]
+    fn another_pane_does_not_hold_the_edited_block() {
+        let mut state = editing_overdue("- a @due(2026-10-01)\n- b @due(2026-10-02)");
+        state.update(Message::StopEditing);
+        state.update(Message::Pane(crate::app::PaneChange::OpenLocation));
+        state.update(Message::EditAtEnd);
+        slash(&mut state, "compl");
+        menu(&mut state, MenuInput::Choose);
+        assert_eq!(state.mode(), Mode::Edit);
+        let others: Vec<usize> = state.panes().iter().map(|pane| pane.rows.len()).collect();
+        assert_eq!(others, [1, 2], "the other pane leaves it out");
     }
 
     // D-44, D-50, editing.md §2.3

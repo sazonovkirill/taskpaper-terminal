@@ -1,5 +1,4 @@
 # With completed hidden, Complete from the command menu while editing a Today entry keeps editing it, so typed text does not run commands on the next entry.
-# BUG: the entry leaves Today, editing ends, and the typed dd deletes the next entry
 file <<END
 - Aa @due({today})
 - Bb @due({today})
