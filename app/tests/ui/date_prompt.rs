@@ -177,7 +177,13 @@ fn a_text_that_is_no_date_says_why_and_enter_keeps_the_prompt() {
     press(&mut app, KeyCode::End);
     press(&mut app, KeyCode::Backspace);
     press(&mut app, KeyCode::Backspace);
-    app.type_keys("28");
+    app.type_keys("2");
+    assert_eq!(
+        prompt_box(&mut app)[1..3],
+        drawn("", "2026-02-2", "Not a date from “2026-02-2”")[1..3],
+        "a day that exists but is not written as DD"
+    );
+    app.type_keys("8");
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Milk @due(2026-02-28)\n");
 }

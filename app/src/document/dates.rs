@@ -197,6 +197,9 @@ impl<'a> Parser<'a> {
                 }
                 Kind::Number(digits) => self.shift(date, Sign::Plus, digits, offset)?,
                 _ if !at_start => return Err(DateError::Unexpected { offset }),
+                Kind::FullDate(text) if !text.split('-').map(str::len).eq([4, 2, 2]) => {
+                    return Err(DateError::Unexpected { offset });
+                }
                 Kind::FullDate(text) => {
                     text.parse().map_err(|_| DateError::NoSuchDay { offset })?
                 }
@@ -406,9 +409,14 @@ mod tests {
     fn rejects_full_dates_the_calendar_lacks_or_not_written_in_full() {
         fails("2026-02-30", DateError::NoSuchDay { offset: 0 });
         fails("2026-13-01", DateError::NoSuchDay { offset: 0 });
-        fails("2026-1-5", DateError::NoSuchDay { offset: 0 });
-        fails("226-10-05", DateError::NoSuchDay { offset: 0 });
         fails(" 2027-02-29", DateError::NoSuchDay { offset: 1 });
+        // search.md §4: a full date is `YYYY-MM-DD`; other digit counts are not the form, whether
+        // or not the day they mean exists.
+        fails("2026-1-5", DateError::Unexpected { offset: 0 });
+        fails("2026-12-2", DateError::Unexpected { offset: 0 });
+        fails("226-10-05", DateError::Unexpected { offset: 0 });
+        fails(" 20260-10-05", DateError::Unexpected { offset: 1 });
+        fails("2026-10-005", DateError::Unexpected { offset: 0 });
     }
 
     #[test]
