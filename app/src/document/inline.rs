@@ -242,7 +242,12 @@ fn elements(text: &str, syntax: Syntax) -> Vec<Element> {
 /// Adds the elements of the bytes `range` of `text` that `scope` allows to `found`.
 fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>) {
     let mut at = range.start;
-    while let Some(next) = text.get(at..range.end).and_then(|rest| rest.chars().next()) {
+    // Every element starts with one of these bytes, so the bytes before the next one start none.
+    while let Some(skipped) = text
+        .get(at..range.end)
+        .and_then(|rest| rest.bytes().position(|byte| b"`*[<h".contains(&byte)))
+    {
+        at += skipped;
         let end = range.end;
         let element = code_at(text, at, end)
             .or_else(|| scope.bold.then(|| bold_at(text, at, end)).flatten())
@@ -250,7 +255,8 @@ fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>)
             .or_else(|| scope.links.then(|| autolink_at(text, at, end)).flatten())
             .or_else(|| scope.links.then(|| url_at(text, at, end)).flatten());
         let Some(element) = element else {
-            at += next.len_utf8();
+            // The byte is ASCII, so the next one starts a character.
+            at += 1;
             continue;
         };
         at = element.outer.end;
