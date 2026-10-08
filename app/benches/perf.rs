@@ -228,7 +228,8 @@ const SCENARIOS: &[Scenario] = &[
         name: "x in the Today view",
         run: |app| {
             app.keys("gT");
-            let done = app.keys("x").max(app.keys("x"));
+            // Undone rather than toggled back, which would date a block done before as done today.
+            let done = app.keys("x").max(app.keys("z"));
             app.keys("H");
             done
         },
