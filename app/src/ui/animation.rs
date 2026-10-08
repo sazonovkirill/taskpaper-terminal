@@ -377,6 +377,8 @@ pub(super) struct Animator {
     manager: EffectManager<Key>,
     /// What each pane with effects showed when they started.
     running: HashMap<PaneId, Shown>,
+    /// The blocks the change highlight in each pane covers and when it started.
+    highlights: HashMap<PaneId, (Vec<ItemId>, Duration)>,
     /// What the input being handled asked to show.
     fresh: Pending,
     /// Whether the input being handled expanded blocks.
@@ -422,6 +424,7 @@ impl Animator {
             setting,
             manager: EffectManager::default(),
             running: HashMap::new(),
+            highlights: HashMap::new(),
             fresh: Pending::default(),
             expanded: false,
             pending: Pending::default(),
@@ -550,6 +553,7 @@ impl Animator {
             .process_effects(elapsed, &mut Buffer::empty(Rect::ZERO), Rect::ZERO);
         if !self.manager.is_running() {
             self.running.clear();
+            self.highlights.clear();
         }
         if let Some(effect) = self
             .fading
@@ -617,22 +621,55 @@ impl Animator {
                 REFUSAL,
                 &at_focus,
             ),
-            (
-                Kind::Change,
-                !pending.changed.is_empty(),
-                theme.accent,
-                FLASH,
-                &|id| pending.changed.contains(&id),
-            ),
         ];
+        let fades = |color| self.setting == Animations::Full && rgb(color) && rgb(theme.background);
         let mut started = Vec::new();
         for (kind, asked, color, duration, wanted) in effects {
             let lines = lines(wanted);
             if !asked || lines.is_empty() {
                 continue;
             }
-            let fades = self.setting == Animations::Full && rgb(color) && rgb(theme.background);
-            started.push((kind, flash(lines, color, theme.background, duration, fades)));
+            started.push((
+                kind,
+                flash(lines, color, theme.background, duration, fades(color)),
+            ));
+        }
+        // The landing flash tints its block as the highlight does, so the highlight leaves it
+        // alone rather than tinting it twice, also when focus lands on it while the highlight
+        // runs: then the highlight starts over without it, as far through as it was.
+        let highlight = if pending.changed.is_empty() {
+            self.highlights
+                .get(&pane.id)
+                .filter(|_| pending.landing)
+                .cloned()
+        } else {
+            Some((pending.changed.clone(), self.now))
+        };
+        if let Some((mut changed, since)) = highlight {
+            if pending.landing {
+                changed.retain(|&id| !at_focus(id));
+            }
+            let lines = lines(&|id| changed.contains(&id));
+            if !lines.is_empty() {
+                let mut effect = flash(
+                    lines,
+                    theme.accent,
+                    theme.background,
+                    FLASH,
+                    fades(theme.accent),
+                );
+                effect.process(
+                    self.now.saturating_sub(since),
+                    &mut Buffer::empty(Rect::ZERO),
+                    Rect::ZERO,
+                );
+                started.push((Kind::Change, effect));
+                self.highlights.insert(pane.id, (changed, since));
+            } else if pending.changed.is_empty() {
+                self.manager
+                    .cancel_unique_effect((Some(pane.id), Kind::Change));
+                self.highlights.remove(&pane.id);
+            }
         }
         if self.fades(theme) {
             started.extend(fades_over(pane, pending, revealed, theme, &self.last));
@@ -700,6 +737,7 @@ impl Animator {
             self.manager.cancel_unique_effect((Some(id), kind));
         }
         self.running.remove(&id);
+        self.highlights.remove(&id);
     }
 
     /// Ends every effect.
@@ -1070,6 +1108,7 @@ mod tests {
             (grey(160), BLACK, Modifier::empty()),
             (grey(200), BLACK, Modifier::DIM),
             (accent, BLACK, Modifier::empty()),
+            (Color::Blue, BLACK, Modifier::empty()),
         ];
         let now = [
             (grey(200), BLACK, Modifier::DIM),
@@ -1078,8 +1117,9 @@ mod tests {
             (grey(200), BLACK, Modifier::DIM),
             (grey(200), BLACK, Modifier::DIM),
             (accent, BLACK, Modifier::empty()),
+            (grey(200), BLACK, Modifier::DIM),
         ];
-        let line = [Rect::new(0, 0, 6, 1)];
+        let line = [Rect::new(0, 0, 7, 1)];
         let eased = |was: &[_], now: &[_]| {
             after(
                 ease(&line, &line_of(was), grey(200), BLACK),
@@ -1096,9 +1136,10 @@ mod tests {
                 (grey(115), BLACK, Modifier::empty()),
                 (grey(200), BLACK, Modifier::DIM),
                 (accent, BLACK, Modifier::empty()),
+                (grey(200), BLACK, Modifier::DIM),
             ],
-            "three quarters of the way to a half shade, from the color drawn before, an ANSI \
-             color, text dimmed either way and the focus marker left as they are"
+            "three quarters of the way to a half shade, from the color drawn before; text in or \
+             from an ANSI color, text dimmed either way and the focus marker left as they are"
         );
         assert_eq!(
             eased(&now[..1], &was[..1])[0],

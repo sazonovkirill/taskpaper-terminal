@@ -504,6 +504,67 @@ fn the_ease_leaves_the_focus_marker_and_what_is_dimmed_either_way_as_it_is() {
     }
 }
 
+// UI-ANIM-01, UI-ANIM-02, ui.md §9.4
+#[test]
+fn a_landing_on_a_block_a_command_changed_tints_it_no_more_than_either() {
+    let mut landed = app("full");
+    landed.type_keys("G");
+    let tint = background(&mut landed, E);
+    let mut app = app("full");
+    app.type_keys("dd");
+    frame(&mut app);
+    app.type_keys("G");
+    wait(&mut app, 250);
+    frame(&mut app);
+    app.type_keys("z");
+    let restored = frame(&mut app);
+    let still = still("ddGz");
+    assert!(
+        differ_in_row(&restored, &still, A),
+        "the block undo brings back, where focus lands"
+    );
+    assert_eq!(background(&mut app, A), tint);
+}
+
+// UI-ANIM-01, UI-ANIM-02, ui.md §9.4
+#[test]
+fn focus_landing_on_a_block_another_pane_highlights_tints_it_no_more_than_either() {
+    let start = || {
+        let settings = "theme = \"nord\"\nanimations = \"full\"\n";
+        let mut app = Harness::with_config("- a\n- b\n\t- c\n- d\n", settings, 80, 10)
+            .with_colors(ColorSupport::TrueColor);
+        app.type_keys("jj");
+        app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        app.type_keys("vghk");
+        frame(&mut app);
+        wait(&mut app, 250);
+        app
+    };
+    let mut landed = start();
+    landed.type_keys("g1");
+    let tint = background(&mut landed, 4);
+    wait(&mut landed, 100);
+    let faded = background(&mut landed, 4);
+    let mut app = start();
+    app.press(KeyCode::Tab, KeyModifiers::NONE);
+    let indented = app.render().buffer().clone();
+    assert!(
+        line(&indented, 4).starts_with("      - c "),
+        "c in the left pane"
+    );
+    let plain = indented[(5, 2)].bg;
+    assert_ne!(indented[(5, 4)].bg, plain, "is highlighted");
+    app.type_keys("g1");
+    assert_eq!(background(&mut app, 4), tint, "where focus lands at once");
+    wait(&mut app, 100);
+    assert_eq!(background(&mut app, 4), faded, "and as it fades");
+    assert_ne!(
+        background(&mut app, 3),
+        plain,
+        "while b keeps its highlight"
+    );
+}
+
 // FR-UI-11, UI-ANIM-05, ui.md §9.2
 #[test]
 fn zooming_in_fades_the_pane_in_from_the_top_and_flashes_the_new_crumb() {
@@ -763,4 +824,36 @@ fn expanding_fades_in_only_what_the_pane_it_expands_in_did_not_show() {
     );
     wait(&mut full, 250);
     assert_eq!(frame(&mut full), expanded);
+}
+
+// UI-ANIM-01, UI-ANIM-02, ui.md §9.4
+#[test]
+fn focus_landing_on_the_one_block_another_pane_highlights_ends_its_highlight() {
+    let settings = "theme = \"nord\"\nanimations = \"full\"\n";
+    let start = || {
+        let mut app = Harness::with_config("- a\n- b\n\t- c\n- d\n", settings, 80, 10)
+            .with_colors(ColorSupport::TrueColor);
+        app.type_keys("jj");
+        app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        app.type_keys("vgh");
+        app.press(KeyCode::Enter, KeyModifiers::NONE);
+        app.type_keys("x");
+        app.press(KeyCode::Esc, KeyModifiers::NONE);
+        frame(&mut app);
+        wait(&mut app, 250);
+        app
+    };
+    let mut landed = start();
+    landed.type_keys("g1");
+    let tint = background(&mut landed, 4);
+    let mut app = start();
+    app.type_keys("z");
+    let restored = app.render().buffer().clone();
+    assert_ne!(
+        restored[(5, 4)].bg,
+        restored[(5, 2)].bg,
+        "the undo highlights c"
+    );
+    app.type_keys("g1");
+    assert_eq!(background(&mut app, 4), tint, "focus lands on it");
 }
