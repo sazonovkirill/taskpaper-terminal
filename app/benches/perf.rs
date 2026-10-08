@@ -158,6 +158,10 @@ const SCENARIOS: &[Scenario] = &[
         run: |app| app.keys("_").max(app.keys("+")),
     },
     Scenario {
+        name: "- then = (by level)",
+        run: |app| app.keys("-").max(app.keys("=")),
+    },
+    Scenario {
         name: ". then > (zoom in, out)",
         run: |app| app.keys(".").max(app.keys(">")),
     },

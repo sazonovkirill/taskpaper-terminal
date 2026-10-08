@@ -900,25 +900,8 @@ impl State {
             .map_or(self.document.root(), |block| block.id())
     }
 
-    /// Every block below the zoom in order with its depth; with `visible`, only those the rows
-    /// show: none hidden by a collapsed ancestor or, while completed blocks are hidden, by being
-    /// done or inside a done block. The zoom block's own fold hides nothing.
-    pub(super) fn blocks(&self, visible: bool) -> Vec<(Block, usize)> {
-        self.blocks_of(&self.pane, visible)
-    }
-
-    /// Every block below `pane`'s zoom, as [`State::blocks`] gives them.
-    pub(super) fn blocks_of(&self, pane: &Pane, visible: bool) -> Vec<(Block, usize)> {
-        self.walk(pane, visible).collect()
-    }
-
-    /// The blocks [`State::blocks_of`] gives, one at a time, so a walk over a large outline does
-    /// not first collect them.
-    fn walk<'a>(
-        &'a self,
-        pane: &'a Pane,
-        visible: bool,
-    ) -> impl Iterator<Item = (Block, usize)> + 'a {
+    /// Every block below `pane`'s zoom in order with its depth, collapsed, done or not.
+    pub(super) fn blocks_of(&self, pane: &Pane) -> Vec<(Block, usize)> {
         let top = self.top_of(pane);
         // The blocks still to visit at each depth on the way down to the current one.
         let mut levels = vec![blocks::each_child(&self.document, top)];
@@ -929,15 +912,11 @@ impl State {
                     levels.pop();
                     continue;
                 };
-                if visible && !pane.shows(&block) {
-                    continue;
-                }
-                if !(visible && self.folds.contains(&block.id())) {
-                    levels.push(blocks::each_child(&self.document, block.id()));
-                }
+                levels.push(blocks::each_child(&self.document, block.id()));
                 return Some((block, depth));
             }
         })
+        .collect()
     }
 
     /// Whether `block` shows in the pane where the blocks around it do (FR-DONE-02).
@@ -1248,7 +1227,7 @@ mod tests {
     /// Each row's text and count of hidden open tasks with the blocks reading `folded` collapsed.
     fn hidden_tasks(text: &str, folded: &[&str]) -> Vec<(String, Option<usize>)> {
         let mut state = State::new(format::parse(text), None);
-        for (block, _) in state.blocks(false) {
+        for (block, _) in state.blocks_of(&state.pane) {
             if folded.contains(&state.document.get(block.id()).map_or("", Item::plain_text)) {
                 state.folds.insert(block.id());
             }
@@ -1567,7 +1546,7 @@ mod tests {
         }
         let mut state = State::new(format::parse(&text), None);
         state.folds = state
-            .blocks(false)
+            .blocks_of(&state.pane)
             .into_iter()
             .filter(|&(_, depth)| depth == 1)
             .map(|(block, _)| block.id())

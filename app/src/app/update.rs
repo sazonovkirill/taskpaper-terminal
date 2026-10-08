@@ -7,7 +7,7 @@ use jiff::civil::Date;
 
 use super::{
     Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput, PaneChange, Paste,
-    QuickAddInput, SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State,
+    QuickAddInput, Row, SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State,
     Symbols, TextEdit, Version,
     pane::{Pane, landing},
     rows::Rows,
@@ -978,33 +978,39 @@ impl State {
     }
 
     fn expand_level(&mut self) {
-        let collapsed: Vec<(Block, usize)> = self
-            .blocks(false)
-            .into_iter()
-            .filter(|(block, _)| self.folds.contains(&block.id()) && self.has_children(block))
+        let rows = self.below_zoom();
+        let collapsed: Vec<(ItemId, usize)> = parents(&rows)
+            .filter(|row| self.folds.contains(&row.id))
+            .map(|row| (row.id, row.depth))
             .collect();
         let Some(depth) = collapsed.iter().map(|&(_, depth)| depth).min() else {
             return;
         };
-        for (block, _) in collapsed.iter().filter(|&&(_, d)| d == depth) {
-            self.folds.remove(block.id());
+        for (id, _) in collapsed.into_iter().filter(|&(_, d)| d == depth) {
+            self.folds.remove(id);
         }
     }
 
     fn collapse_level(&mut self) {
-        let expanded: Vec<(Block, usize)> = self
-            .blocks(true)
-            .into_iter()
-            .filter(|(block, _)| self.is_expanded(block))
-            .collect();
+        let rows = self.below_zoom();
+        // The depth of the collapsed or hidden block whose rows are being passed.
+        let mut passing = None;
+        let mut expanded = Vec::new();
+        for (row, parent) in with_children(&rows).filter(|(row, _)| !row.title) {
+            if passing.is_some_and(|depth| row.depth > depth) {
+                continue;
+            }
+            let hidden = row.done && !self.pane.show_done;
+            passing = (hidden || self.folds.contains(&row.id)).then_some(row.depth);
+            if passing.is_none() && parent {
+                expanded.push((row.id, row.depth));
+            }
+        }
         let Some(depth) = expanded.iter().map(|&(_, depth)| depth).max() else {
             return;
         };
-        let deepest = expanded
-            .into_iter()
-            .filter(|&(_, d)| d == depth)
-            .map(|(block, _)| block);
-        self.fold(deepest);
+        let deepest = expanded.into_iter().filter(|&(_, d)| d == depth);
+        self.folds.extend(deepest.map(|(id, _)| id));
     }
 
     fn expand_all(&mut self) {
@@ -1017,12 +1023,7 @@ impl State {
 
     fn collapse_all(&mut self) {
         let rows = self.below_zoom();
-        let parents = rows
-            .iter()
-            .zip(rows.iter().skip(1))
-            .filter(|(row, next)| !row.title && next.depth > row.depth)
-            .map(|(row, _)| row.id);
-        self.folds.extend(parents);
+        self.folds.extend(parents(&rows).map(|row| row.id));
     }
 
     /// Every block below the pane's zoom, collapsed or not, done or not, each followed by those
@@ -1067,7 +1068,7 @@ impl State {
         let order: Vec<_> = if before.contains(&focus) || self.document.get(focus).is_none() {
             before
         } else {
-            self.blocks_of(pane, false)
+            self.blocks_of(pane)
                 .into_iter()
                 .map(|(block, _)| block.id())
                 .collect()
@@ -1103,6 +1104,24 @@ impl State {
             self.pane.focus = Some(row.id);
         }
     }
+}
+
+/// Each of `rows` with whether the row after it is deeper: in rows with nothing collapsed, whether
+/// its block has children.
+fn with_children(rows: &Rows) -> impl Iterator<Item = (&Row, bool)> {
+    let mut after = rows.iter().skip(1);
+    rows.iter().map(move |row| {
+        let parent = after.next().is_some_and(|next| next.depth > row.depth);
+        (row, parent)
+    })
+}
+
+/// The rows of blocks with children among `rows`, which have nothing collapsed, but the zoom
+/// block's title row.
+fn parents(rows: &Rows) -> impl Iterator<Item = &Row> {
+    with_children(rows)
+        .filter(|&(row, parent)| parent && !row.title)
+        .map(|(row, _)| row)
 }
 
 #[cfg(test)]
@@ -1334,6 +1353,47 @@ mod tests {
         state.update(Message::CollapseLevel);
         assert_eq!(visible(&state), [(0, "a".to_owned(), Some(1))]);
         assert_eq!(state.folds.len(), 1, "only a");
+        let mut state = open("- a\n\t- b @done\n- c\n\t- d\n\t\t- e", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::CollapseLevel);
+        state.update(Message::CollapseLevel);
+        assert_eq!(
+            visible(&state),
+            [(0, "a".to_owned(), Some(0)), (0, "c".to_owned(), Some(2))],
+            "a holds only a hidden completed block, yet folds"
+        );
+        state.update(Message::ExpandLevel);
+        assert_eq!(state.folds.len(), 1, "d stayed collapsed inside c");
+    }
+
+    // FR-NAV-02
+    #[test]
+    fn collapse_level_goes_on_past_a_collapsed_block_to_its_siblings() {
+        let mut state = open("- a\n\t- b\n- c\n\t- d", 0);
+        state.update(Message::Collapse);
+        state.update(Message::CollapseLevel);
+        assert_eq!(
+            visible(&state),
+            [(0, "a".to_owned(), Some(1)), (0, "c".to_owned(), Some(1))]
+        );
+    }
+
+    // FR-NAV-02, FR-NAV-03
+    #[test]
+    fn levels_count_from_the_zoom_and_leave_the_zoom_block_alone() {
+        let mut state = open("A:\n\t- b\n\t\t- c\n- d\n\t- e\n\t\t- f", 0);
+        state.update(Message::Collapse);
+        state.update(Message::ZoomIn);
+        state.update(Message::CollapseLevel);
+        assert_eq!(
+            visible(&state),
+            [(0, "A".to_owned(), None), (1, "b".to_owned(), Some(1))]
+        );
+        state.update(Message::CollapseLevel);
+        assert_eq!(state.folds.len(), 2, "only b below A, and A itself");
+        state.update(Message::ExpandLevel);
+        state.update(Message::ExpandLevel);
+        assert_eq!(state.folds.len(), 1, "A stays collapsed outside its zoom");
     }
 
     // FR-NAV-02
