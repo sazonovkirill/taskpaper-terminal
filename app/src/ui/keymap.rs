@@ -908,11 +908,7 @@ impl Keymap {
     /// The keys of the pending sequence for the status line, empty when none is pending.
     #[must_use]
     pub fn pending(&self) -> String {
-        self.pending
-            .iter()
-            .map(|(_, code)| code.to_string())
-            .collect::<Vec<_>>()
-            .join(" ")
+        sequence_label(&self.pending)
     }
 }
 

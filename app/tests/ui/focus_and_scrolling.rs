@@ -201,6 +201,15 @@ fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
     assert_focus(&mut app, &format!("Trip to Lisbon: {BOOKMARK}"));
 }
 
+// keybindings.md §1: the pending prefix reads as the keys are written, modifiers included.
+#[test]
+fn a_pending_control_key_shows_with_its_modifier() {
+    let mut app = Harness::with_text("- a\n", 40, 4);
+    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    let status: String = app.status(40).chars().take(33).collect();
+    assert_eq!(status_line(&mut app), format!("{status} Ctrl+W"));
+}
+
 #[test]
 fn a_pending_prefix_covers_the_end_of_a_long_path() {
     let mut app = Harness::with_text("- a\n", 16, 4);
