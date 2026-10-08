@@ -138,16 +138,18 @@ impl QuickAdd {
     }
 
     /// The line the text adds with the dates found in it on `today`: the text without them,
-    /// as a task or a note that colons ending it do not make a project, then `@start` and
-    /// `@due`; `None` when no text is left (D-96, D-97).
+    /// as a task, whose text keeps the colons ending it, or as a note without the colons that
+    /// would make it a project, then `@start` and `@due`; `None` when no text is left
+    /// (editing.md §6, D-96, D-97).
     fn line(&self, today: Date) -> Option<String> {
         let found = dates::find(self.field.text(), today);
-        let text = without(self.field.text(), &found);
+        let typed = if self.task { Typed::Task } else { Typed::Text };
+        // The text is typed into a block of that type, so its colons are never a project's.
+        let (parts, _) = LineParts::default().retyped(typed, "");
+        let (parts, text) = parts.retyped(typed, &without(self.field.text(), &found));
         if text.is_empty() {
             return None;
         }
-        let typed = if self.task { Typed::Task } else { Typed::Text };
-        let (parts, text) = LineParts::default().retyped(typed, &text);
         let mut line = parts.line(&text);
         for date in found {
             let name = match date.tag {
@@ -631,6 +633,38 @@ mod tests {
             lines(&state)[5..7],
             ["TODAY:", "\tGroceries @start(2026-10-07)"]
         );
+    }
+
+    // D-96
+    #[test]
+    fn a_task_keeps_the_colon_ending_its_text() {
+        let mut state = open(OUTLINE);
+        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+        typed(&mut state, "Questions for Ana: tomorrow");
+        input(&mut state, QuickAddInput::Add);
+        assert_eq!(
+            lines(&state)[5..7],
+            ["TODAY:", "\t- Questions for Ana: @start(2026-10-08)"]
+        );
+    }
+
+    // D-96
+    #[test]
+    fn a_note_of_only_colons_and_dates_has_no_text() {
+        for text in [":", " :: ", ":: tomorrow"] {
+            let mut state = open(OUTLINE);
+            state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+            input(&mut state, QuickAddInput::Edit(TextEdit::DeleteBackward));
+            typed(&mut state, text);
+            assert_eq!(
+                state.quick_add().unwrap().missing,
+                Some(Missing::Text),
+                "{text}"
+            );
+            input(&mut state, QuickAddInput::Add);
+            assert!(state.quick_add().is_some(), "{text}: nothing added");
+            assert_eq!(lines(&state), lines(&open(OUTLINE)), "{text}");
+        }
     }
 
     // D-96
