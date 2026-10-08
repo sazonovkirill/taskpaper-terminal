@@ -1,0 +1,10 @@
+# The context menu on an Upcoming entry leaves out Move Up and Move Down, which do nothing there, while still offering Complete.
+file <<END
+- Alpha @due({today+1})
+- Beta @due({today+2})
+END
+keys gU \
+see Commands:
+see Complete
+hide Move Up
+hide Move Down

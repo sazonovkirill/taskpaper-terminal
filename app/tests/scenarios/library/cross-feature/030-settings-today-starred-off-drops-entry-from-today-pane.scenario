@@ -1,0 +1,22 @@
+# Turning Display starred items in Today view off from the settings window, while a Today pane shows a starred task, drops it from the list at once and keeps the setting after a restart.
+file <<END
+Work:
+	- Write report @due({today})
+	- Plan sprint @star
+END
+keys <C-w> s gt g,
+see Settings
+keys /
+type in today
+keys <Enter> <Space> <Esc>
+hide Plan sprint  Work
+restart
+see 󰖙 Today
+hide Plan sprint  Work
+keys g2 x
+quit
+saved <<END
+Work:
+	- Write report @due({today}) @done({today})
+	- Plan sprint @star
+END

@@ -1,0 +1,27 @@
+# The picker filters projects by name with their paths; Enter makes one the destination, keeping the text as typed.
+file <<END
+Work:
+	Launch:
+		- Draft plan
+Home:
+	Garden:
+END
+keys qq
+type Book venue
+keys <Space> /
+see Launch  Work
+type lau
+keys <Enter>
+see Quick Add → Work › Launch
+see - Book venue
+keys <Enter>
+status Added to Launch
+quit
+saved <<END
+Work:
+	Launch:
+		- Draft plan
+		- Book venue
+Home:
+	Garden:
+END

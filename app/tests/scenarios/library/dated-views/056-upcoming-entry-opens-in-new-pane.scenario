@@ -1,0 +1,12 @@
+# Ctrl+W v on an Upcoming entry opens that block zoomed in a new pane, and Upcoming stays in the first.
+file <<END
+Trip:
+	- Book hotel @due({today+2})
+		- Compare prices
+END
+keys gU
+see ▌ - Book hotel  Trip
+keys <C-w> v
+see │  󰋜 › Trip › Book hotel
+see - Compare prices
+see 󱄵 Upcoming

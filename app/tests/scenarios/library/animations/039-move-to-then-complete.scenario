@@ -1,0 +1,21 @@
+# Moving a block to another project and completing it at once completes the moved block in its new place.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys j gm
+type Home
+keys <Enter> x
+quit
+saved <<END
+Errands:
+Home:
+	- Laundry
+	- Post office @done({today})
+END

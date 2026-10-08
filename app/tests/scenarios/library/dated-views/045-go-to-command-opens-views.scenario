@@ -1,0 +1,15 @@
+# Go to Command runs Go to Upcoming and Go to Logbook.
+file <<END
+- Soon @due({today+1})
+- Shipped @done({today})
+END
+keys :
+type go to upcoming
+keys <Enter>
+see 󱄵 Upcoming
+see ▌ - Soon
+keys :
+type go to logbook
+keys <Enter>
+see 󱓳 Logbook
+see ▌ ✔ Shipped

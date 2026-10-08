@@ -1,0 +1,19 @@
+# Flagging a Today entry with ! lists it in the Flagged view; mf there unflags it and it leaves, while the Today view keeps it.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs
+END
+keys gt !
+keys gF
+see - Write report 󰈻  Work
+keys mf
+hide Write report
+keys gt
+see - Write report  Work
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs
+END

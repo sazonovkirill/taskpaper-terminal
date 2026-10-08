@@ -1,0 +1,21 @@
+# Going from an Overdue entry to the outline, quitting and reopening, then Back still returns to the Overdue view, whose entries work as before.
+file <<END
+INBOX:
+	- Renew passport @due({today-3})
+Work:
+	- Write report @due({today-2})
+END
+keys gO j .
+see 󰋜 › Work
+restart
+see 󰋜 › Work
+keys H
+see 󰨱 Overdue
+keys G }
+quit
+saved <<END
+INBOX:
+	- Renew passport @due({today-3})
+Work:
+	- Write report @due({today-1})
+END

@@ -1,0 +1,15 @@
+# Delete from the command menu on an Overdue entry being edited deletes it and leaves navigate mode on the next entry.
+file <<END
+- Aa @due({today-2})
+- Bb @due({today-1})
+END
+keys gO <Enter> /
+type delete
+keys <Enter>
+hide Aa
+see ▌ - Bb
+keys x
+quit
+saved <<END
+- Bb @due({today-1}) @done({today})
+END

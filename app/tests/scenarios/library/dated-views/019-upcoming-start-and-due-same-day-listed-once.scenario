@@ -1,0 +1,17 @@
+# A block starting and due on the same day next week is listed once in Upcoming.
+file <<END
+- Same day @start({today+1}) @due({today+1})
+- Next @due({today+2})
+END
+keys gU
+see ▌ - Same day
+keys j
+see ▌ - Next
+keys k
+see ▌ - Same day
+keys j j x
+quit
+saved <<END
+- Same day @start({today+1}) @due({today+1})
+- Next @due({today+2}) @done({today})
+END

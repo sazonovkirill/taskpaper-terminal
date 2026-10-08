@@ -1,0 +1,26 @@
+# The Upcoming view lists blocks started or due from tomorrow to a week from today, and leaves out today, the past, day eight, undated blocks and @today alone.
+file <<END
+Errands:
+	- Today due @due({today})
+	- Tomorrow due @due({today+1})
+	- Week due @due({today+7})
+	- Eight days @due({today+8})
+	- Start soon @start({today+3})
+	- Past due @due({today-1})
+	- Undated
+	- Today tag @today
+	- Not a date @due(soon)
+END
+see Errands:
+keys gU
+see Upcoming
+see Tomorrow ·
+see - Tomorrow due  Errands
+see - Week due  Errands
+see - Start soon  Errands
+hide Today due
+hide Eight days
+hide Past due
+hide Undated
+hide Today tag
+hide Not a date

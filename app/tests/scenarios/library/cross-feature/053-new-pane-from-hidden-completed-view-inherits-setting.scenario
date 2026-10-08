@@ -1,0 +1,16 @@
+# A pane opened with Ctrl+W s from a Today pane hiding completed hides them too, and has no history to go back to.
+file <<END
+Work:
+	- Write report @due({today}) @done({today})
+	- Review PRs @due({today})
+END
+keys gt gc
+hide Write report
+keys <C-w> s
+see │  󰖙 Today
+keys H
+see │  󰖙 Today
+hide Write report
+keys gc
+see Write report
+quit

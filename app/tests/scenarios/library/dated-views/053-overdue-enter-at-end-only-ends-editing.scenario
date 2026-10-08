@@ -1,0 +1,11 @@
+# Enter at the end of an Overdue entry being edited ends editing and adds no block.
+file <<END
+- Renew passport @due({today-3})
+END
+keys gO <Enter> <Enter>
+type x
+hide Renew passport
+quit
+saved <<END
+- Renew passport @due({today-3}) @done({today})
+END

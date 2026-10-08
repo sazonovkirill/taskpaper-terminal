@@ -1,0 +1,20 @@
+# Zooming in and straight back out, then completing, acts on the block focused at the top level.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys j . > x
+see ✔ Post office
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+Home:
+	- Laundry
+END

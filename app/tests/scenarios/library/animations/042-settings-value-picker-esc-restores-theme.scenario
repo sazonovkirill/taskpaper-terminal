@@ -1,0 +1,21 @@
+# Previewing themes in the settings window's value picker and going back with Esc keeps the theme that was set.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys g,
+type /theme
+keys <Enter>
+see Nord  │
+keys <Enter> <Down> <Down> <Esc>
+see Nord  │
+keys <Esc>
+restart
+keys g,
+type /theme
+see Nord  │
+keys <Esc> <Esc>
+quit

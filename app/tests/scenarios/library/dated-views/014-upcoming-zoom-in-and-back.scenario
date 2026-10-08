@@ -1,0 +1,17 @@
+# gz on an Upcoming entry shows it in the outline under its project, and H returns to Upcoming.
+file <<END
+Work:
+	- Plan sprint
+	- Ship @due({today+2})
+Home:
+	- Rent @due({today+1})
+END
+keys gU j
+see ▌ - Ship  Work
+keys gz
+see › Work
+see ▌   - Ship
+hide Rent
+keys H
+see Upcoming
+see - Rent  Home

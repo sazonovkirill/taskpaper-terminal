@@ -1,0 +1,14 @@
+# [ on an Upcoming entry starting tomorrow moves its start to today: it leaves Upcoming and shows in Today.
+file <<END
+- Start tomorrow @start({today+1})
+END
+keys gU
+see ▌ - Start tomorrow
+keys [
+hide Start tomorrow
+keys gt
+see ▌ - Start tomorrow
+quit
+saved <<END
+- Start tomorrow @start({today})
+END

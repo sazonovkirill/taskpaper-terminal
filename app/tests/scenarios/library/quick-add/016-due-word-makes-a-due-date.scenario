@@ -1,0 +1,19 @@
+# "due" right before a date makes it a due date; "due" alone, or before a non-date, stays text; case does not matter.
+file <<END
+INBOX:
+END
+keys qi
+type Pay rent DUE Tomorrow
+see Due 
+keys <Enter> qi
+type Pay what is due
+keys <Enter> qi
+type Overdue report today
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Pay rent @due({today+1})
+	- Pay what is due
+	- Overdue report @start({today})
+END

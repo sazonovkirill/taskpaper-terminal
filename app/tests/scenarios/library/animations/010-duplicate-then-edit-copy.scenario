@@ -1,0 +1,19 @@
+# Duplicating a block and editing at once changes the copy, where focus landed, not the original.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Call mom
+- Pay rent
+END
+keys D <Enter>
+type  today
+keys <Esc>
+see - Call mom today
+quit
+saved <<END
+- Call mom
+- Call mom today
+- Pay rent
+END

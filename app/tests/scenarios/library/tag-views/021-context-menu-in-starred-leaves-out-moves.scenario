@@ -1,0 +1,11 @@
+# The context menu of a Starred entry leaves out Move Up and Move Down, which do nothing outside the Today view.
+size 100 50
+file <<END
+Work:
+	- Report @star
+	- Email @star
+END
+keys gS \
+see Toggle Star
+hide Move Down
+hide Move Up

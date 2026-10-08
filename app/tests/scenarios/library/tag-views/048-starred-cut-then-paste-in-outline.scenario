@@ -1,0 +1,20 @@
+# Cutting a Starred entry removes it with its children, and pasting it in the outline puts it back there, star and all.
+file <<END
+Work:
+	- Report @star
+		- Gather numbers
+Home:
+	- Sink
+END
+keys gS <C-x>
+hide Report
+keys p gh G p
+see - Report 󰓎
+quit
+saved <<END
+Work:
+Home:
+	- Sink
+	- Report @star
+		- Gather numbers
+END

@@ -1,0 +1,16 @@
+# Backspace in Quick Add deletes a whole grapheme: an e with a combining accent, or an emoji with its skin tone.
+file <<END
+INBOX:
+END
+keys qi
+type café
+keys <BS>
+type e and 👍🏽
+keys <BS>
+type ok
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- cafe and ok
+END

@@ -1,0 +1,14 @@
+# H and L walk back and forward through home, Upcoming, Overdue and Logbook in the order they were opened.
+file <<END
+- Soon @due({today+1})
+- Late @due({today-1})
+- Shipped @done({today})
+END
+keys gU gO gL H
+see 󰨱 Overdue
+keys H
+see 󱄵 Upcoming
+keys H
+see 󰋜
+keys L L
+see 󰨱 Overdue

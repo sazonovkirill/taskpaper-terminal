@@ -1,0 +1,25 @@
+# With the focus on the second of two same-named Today entries, a reload caused by another program keeps it there, so x completes that one.
+file <<END
+Work:
+	- Call Ann @due({today})
+	- Call Ann @due({today})
+Home:
+END
+keys gt j
+outside <<END
+Work:
+	- Call Ann @due({today})
+	- Call Ann @due({today})
+Home:
+	- Fix the shelf
+END
+status Reloaded
+keys x
+quit
+saved <<END
+Work:
+	- Call Ann @due({today})
+	- Call Ann @due({today}) @done({today})
+Home:
+	- Fix the shelf
+END

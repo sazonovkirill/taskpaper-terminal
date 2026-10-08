@@ -1,0 +1,19 @@
+# In a 40x10 terminal, previewing themes and pressing Esc during the crossfade returns to a working outline.
+size 40 10
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+- Eggs
+END
+keys <C-t>
+see Theme
+keys <Down> <Down> <Down> <Esc> j x
+see ✔ Eggs
+quit
+saved <<END
+- Milk
+- Eggs @done({today})
+END

@@ -1,0 +1,26 @@
+# Turning Special handling of INBOX off mid-session makes qi and gi say there is no inbox, the Navigator lists INBOX among the projects, and the setting holds after a restart.
+file <<END
+INBOX:
+	- Call the plumber
+Work:
+END
+keys g,
+see Settings
+keys /
+type inbox
+keys <Enter> <Space> <Esc>
+keys qi
+status No INBOX project in the Navigator
+restart
+keys gi
+status No INBOX project in the Navigator
+keys <C-g>
+see Projects
+see INBOX
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Call the plumber
+Work:
+END

@@ -1,0 +1,17 @@
+# Being told to end while a zoom fades in saves the edit made just before and ends cleanly.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+END
+keys . x
+see ✔
+keys .
+signal TERM
+saved <<END
+Errands:
+	- Post office @done({today})
+END

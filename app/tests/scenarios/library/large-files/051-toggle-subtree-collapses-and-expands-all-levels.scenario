@@ -1,0 +1,19 @@
+# Toggling the whole subtree of a three-level project collapses every level, and toggling again expands every level; with only the top expanded it collapses again.
+file <<END
+Top:
+	- a
+		- b
+			- c
+	- d
+END
+keys "
+see ▌ Top: ▸ 4
+keys "
+see - c
+keys "
+hide - a
+keys l
+see - a ▸ 2
+keys "
+hide - a
+quit

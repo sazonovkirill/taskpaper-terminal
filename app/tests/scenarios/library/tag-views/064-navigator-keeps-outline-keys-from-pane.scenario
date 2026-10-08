@@ -1,0 +1,16 @@
+# While the Navigator is open, outline keys such as undo, cut, select all and pane focus do nothing to the pane behind it.
+file <<END
+Work:
+	- Report
+	- Email
+END
+keys j x <C-g> <C-z> <C-x> <C-a> <A-1> <A-j> <Tab> <Del> <C-o>
+see Navigator
+keys <Esc>
+hide Navigator
+quit
+saved <<END
+Work:
+	- Report @done({today})
+	- Email
+END

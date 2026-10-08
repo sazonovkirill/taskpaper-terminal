@@ -1,0 +1,16 @@
+# With sidebar_upcoming and sidebar_logbook off the Navigator leaves them out, but gU still opens Upcoming.
+config <<END
+sidebar_upcoming = false
+sidebar_logbook = false
+END
+file <<END
+- Soon @due({today+1})
+END
+keys <C-g>
+see Navigator
+see Overdue
+hide Upcoming
+hide Logbook
+keys <Esc> gU
+see 󱄵 Upcoming
+see ▌ - Soon

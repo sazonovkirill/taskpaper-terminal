@@ -1,0 +1,25 @@
+# A quick add is one undo step: z removes the added task with its dates, Z puts it back.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type Call plumber due tomorrow
+keys <Enter>
+saved <<END
+INBOX:
+	- Old item
+	- Call plumber @due({today+1})
+END
+keys z
+saved <<END
+INBOX:
+	- Old item
+END
+keys Z
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Call plumber @due({today+1})
+END

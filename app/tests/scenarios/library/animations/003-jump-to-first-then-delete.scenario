@@ -1,0 +1,17 @@
+# Jumping to the top with gg and deleting at once with dd removes the first block, not the one focus left.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Alpha
+- Beta
+- Gamma
+END
+keys G gg dd
+hide Alpha
+quit
+saved <<END
+- Beta
+- Gamma
+END

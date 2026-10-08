@@ -1,0 +1,21 @@
+# Deleting a project in the outline drops its starred tasks from the Starred view in the other pane.
+file <<END
+Work:
+	- Report @star
+	Launch:
+		- Venue @star
+		- Catering @star
+END
+keys <C-g>
+type starred
+keys <C-t>
+see │▌ - Report
+keys <C-w> h j j dd
+hide Venue
+hide Catering
+see - Report 󰓎  Work
+quit
+saved <<END
+Work:
+	- Report @star
+END

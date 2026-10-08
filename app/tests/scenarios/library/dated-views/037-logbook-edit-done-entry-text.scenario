@@ -1,0 +1,12 @@
+# Editing a Logbook entry's text keeps it done and listed, and the edit is saved.
+file <<END
+- Fixed bug @done({today})
+END
+keys gL <Enter>
+type  #42
+keys <Esc>
+see ✔ Fixed bug #42
+quit
+saved <<END
+- Fixed bug #42 @done({today})
+END

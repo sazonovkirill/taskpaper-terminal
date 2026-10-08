@@ -1,0 +1,21 @@
+# With completed blocks hidden, a completed block disappears at once, and the next x completes the block after it.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Alpha
+- Beta
+- Gamma
+END
+keys gc
+keys x
+hide Alpha
+keys x
+see ▌ - Gamma
+quit
+saved <<END
+- Alpha @done({today})
+- Beta @done({today})
+- Gamma
+END

@@ -1,0 +1,15 @@
+# D on an Upcoming entry adds a copy below it in the file, listed in the same day's group.
+file <<END
+- Plain @due({today+2})
+- Other @due({today+1})
+END
+keys gU j
+see ▌ - Plain
+keys D x
+see ✔ Plain
+quit
+saved <<END
+- Plain @due({today+2})
+- Plain @due({today+2}) @done({today})
+- Other @due({today+1})
+END

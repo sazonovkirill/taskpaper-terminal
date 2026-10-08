@@ -1,0 +1,17 @@
+# A picker filter that matches no project closes the picker and the slash, filter and later keys are typed as text.
+file <<END
+Work:
+	- a
+END
+keys qq
+type see /usr/bin
+see - see /usr/bin
+keys <Space> /
+type wor
+keys <Enter> <Enter>
+quit
+saved <<END
+Work:
+	- a
+	- see /usr/bin
+END

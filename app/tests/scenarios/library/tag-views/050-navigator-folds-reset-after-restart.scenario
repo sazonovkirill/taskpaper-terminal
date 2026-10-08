@@ -1,0 +1,16 @@
+# A project folded in the Navigator stays folded while the window is closed and reopened, but not after quitting and reopening the file.
+file <<END
+Work:
+	Launch:
+		- Venue
+END
+keys . <C-g> <Left>
+see ▸Work
+keys <Esc> <C-g>
+see ▸Work
+hide Launch                                  1
+restart
+keys <C-g>
+see ▾Work
+see    Launch                                  1 │
+quit

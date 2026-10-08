@@ -1,0 +1,17 @@
+# Ctrl+R on the Starred entry opens its context menu, whose Open in New Pane shows the Starred view in a new pane.
+size 100 30
+file <<END
+Ideas:
+	- Podcast @star
+END
+keys <C-g>
+type starred
+keys <C-r>
+see Go to Entry
+see Return to Outline
+type open
+keys <Enter>
+see │  󰓎 Starred
+see │▌ - Podcast 󰓎  Ideas
+hide Navigator
+quit

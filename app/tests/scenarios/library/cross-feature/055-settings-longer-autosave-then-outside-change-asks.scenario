@@ -1,0 +1,30 @@
+# Raising the autosave delay in the settings window mid-session leaves the next change unsaved long enough that another program's edit opens the conflict prompt.
+file <<END
+Work:
+	- Write report
+END
+keys g,
+see Settings
+keys /
+type autosave
+keys <Enter> <Enter>
+see Autosave delay: 1000
+keys <BS> <BS> <BS> <BS>
+type 9000
+keys <Enter> <Esc>
+keys j x
+see ✔ Write report
+outside <<END
+Work:
+	- Write report
+	- Review PRs
+END
+see Your changes are not saved yet.
+keys t
+see Review PRs
+quit
+saved <<END
+Work:
+	- Write report
+	- Review PRs
+END

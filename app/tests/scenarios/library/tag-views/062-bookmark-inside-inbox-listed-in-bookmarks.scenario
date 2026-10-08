@@ -1,0 +1,15 @@
+# A bookmarked project inside the INBOX is listed under Bookmarks though not under Projects, and choosing it zooms there.
+file <<END
+INBOX:
+	Sorted: @bookmark
+		- a
+	- b
+END
+keys <C-g>
+see Bookmarks
+see Sorted                                    1 │
+hide Projects
+type sorted
+keys <Enter>
+see 󰋜 › INBOX › Sorted
+quit

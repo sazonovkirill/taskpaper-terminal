@@ -1,0 +1,17 @@
+# Undoing a delete and redoing it at once, both with change highlights, leaves the block deleted.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+- Eggs
+- Bread
+END
+keys j dd z Z
+hide Eggs
+quit
+saved <<END
+- Milk
+- Bread
+END

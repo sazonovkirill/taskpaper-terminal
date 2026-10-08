@@ -1,0 +1,19 @@
+# A block selection survives a quick add, so x afterwards completes the selected blocks, not the new one.
+file <<END
+INBOX:
+Work:
+	- One
+	- Two
+END
+keys j j J
+keys qi
+type Three
+keys <Enter> x
+quit
+saved <<END
+INBOX:
+	- Three
+Work:
+	- One @done({today})
+	- Two @done({today})
+END

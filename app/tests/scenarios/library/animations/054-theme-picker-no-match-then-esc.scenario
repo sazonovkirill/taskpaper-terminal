@@ -1,0 +1,22 @@
+# Typing a filter no theme matches in the picker, then Esc, closes it and keeps the theme in use.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys <C-t>
+see Theme
+type zzz
+keys <Esc> x
+see ✔ Milk
+restart
+keys g,
+type /theme
+see Nord  │
+keys <Esc> <Esc>
+quit
+saved <<END
+- Milk @done({today})
+END

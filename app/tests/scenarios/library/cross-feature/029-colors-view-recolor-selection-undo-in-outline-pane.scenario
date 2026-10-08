@@ -1,0 +1,18 @@
+# Selecting a red and a blue entry in a Colors pane and making both orange moves them into one group; undo in the outline pane brings the old colors back.
+file <<END
+Work:
+	- Write report @red
+	- Review PRs @blue
+	- Plan sprint
+END
+keys <C-w> s gC J c2
+see Orange
+hide Red
+keys g1 z
+quit
+saved <<END
+Work:
+	- Write report @red
+	- Review PRs @blue
+	- Plan sprint
+END

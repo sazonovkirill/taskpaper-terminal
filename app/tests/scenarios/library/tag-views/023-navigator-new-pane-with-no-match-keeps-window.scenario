@@ -1,0 +1,16 @@
+# With a Navigator filter that matches nothing, Ctrl+T opens nothing and leaves the window open with its filter, as Enter does.
+file <<END
+- Call mom
+- Pay bill
+END
+keys <C-g>
+type zzz
+keys <C-t>
+type x
+see └zzzx
+keys <Esc>
+quit
+saved <<END
+- Call mom
+- Pay bill
+END

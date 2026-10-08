@@ -1,0 +1,26 @@
+# Taking their version of the file while the Today view is open shows their dates in the view, and undo then has nothing to take back.
+config <<END
+autosave_delay_ms = 5000
+END
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs
+END
+keys gt x
+see ✔ Write report
+outside <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+END
+see Your changes are not saved yet.
+keys t
+see - Review PRs  Work
+keys z
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+END

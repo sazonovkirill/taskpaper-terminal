@@ -1,0 +1,19 @@
+# z undoes a } that moved an Upcoming entry to a later day, and Z redoes it, the focus staying on the entry.
+file <<END
+- Moved @due({today+1})
+- Fixed @due({today+2})
+END
+keys gU
+see ▌ - Moved
+keys }} z Z z
+saved <<END
+- Moved @due({today+2})
+- Fixed @due({today+2})
+END
+keys j
+see ▌ - Fixed
+quit
+saved <<END
+- Moved @due({today+2})
+- Fixed @due({today+2})
+END

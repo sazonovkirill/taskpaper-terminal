@@ -1,0 +1,22 @@
+# Cycling the theme in the settings window and closing it during the crossfade keeps the new theme.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys g,
+type /theme
+keys <Enter>
+see Nord  │
+keys l
+hide Nord  │
+keys <Esc>
+restart
+keys g,
+type /theme
+hide Nord  │
+see Theme
+keys <Esc> <Esc>
+quit

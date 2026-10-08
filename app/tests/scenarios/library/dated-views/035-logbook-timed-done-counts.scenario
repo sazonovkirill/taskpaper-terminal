@@ -1,0 +1,7 @@
+# A completion written with a time of day is listed under its day in the Logbook.
+file <<END
+- Standup @done({today-1} 09:30)
+END
+keys gL
+see Yesterday ·
+see ✔ Standup

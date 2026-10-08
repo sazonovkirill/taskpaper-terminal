@@ -1,0 +1,17 @@
+# Copying a Flagged entry and pasting it in the outline adds a copy with its tags, which the Flagged view then lists too.
+file <<END
+Shop:
+	- Milk @flag(urgent) @blue
+Done list:
+	- Eggs
+END
+keys gF y gh G p gF
+see - Milk 󰈻  Done list
+quit
+saved <<END
+Shop:
+	- Milk @flag(urgent) @blue
+Done list:
+	- Eggs
+	- Milk @flag(urgent) @blue
+END

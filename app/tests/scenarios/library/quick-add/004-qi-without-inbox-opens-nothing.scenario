@@ -1,0 +1,13 @@
+# qi with no INBOX project says so in the status line and opens no panel; Inbox in lower case does not count.
+file <<END
+Inbox:
+	- Old item
+END
+keys qi
+status No INBOX project in the Navigator
+hide Quick Add
+quit
+saved <<END
+Inbox:
+	- Old item
+END

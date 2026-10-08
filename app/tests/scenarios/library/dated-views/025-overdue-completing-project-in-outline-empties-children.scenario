@@ -1,0 +1,22 @@
+# Completing a project in the outline pane removes its overdue tasks from Overdue in the other pane.
+file <<END
+Launch:
+	- Book venue @due({today-2})
+	- Send invites @due({today-1})
+Other:
+	- Fix sink @due({today-1})
+END
+keys gO <C-w> s
+see │  󰨱 Overdue
+keys g1 gh gg x
+see │  - Fix sink  Other
+hide Book venue  Launch
+hide Send invites  Launch
+quit
+saved <<END
+Launch: @done({today})
+	- Book venue @due({today-2})
+	- Send invites @due({today-1})
+Other:
+	- Fix sink @due({today-1})
+END

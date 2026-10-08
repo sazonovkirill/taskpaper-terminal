@@ -1,0 +1,16 @@
+# Completing a task in the outline pane lists it under Today in the Logbook shown in the other pane.
+file <<END
+- Water plants
+- Pay rent
+END
+keys gL <C-w> s
+see │  󱓳 Logbook
+keys g1 gh j x
+see │  Today ·
+see │  ✔ Pay rent
+hide │  ✔ Water plants
+quit
+saved <<END
+- Water plants
+- Pay rent @done({today})
+END

@@ -1,0 +1,17 @@
+# x on an Overdue entry removes it although completed blocks are shown, and z brings it back focused.
+file <<END
+- First @due({today-2})
+- Second @due({today-2})
+- Third @due({today-1})
+END
+keys gO j x
+hide Second
+see ▌ - Third
+keys z
+see ▌ - Second
+quit
+saved <<END
+- First @due({today-2})
+- Second @due({today-2})
+- Third @due({today-1})
+END

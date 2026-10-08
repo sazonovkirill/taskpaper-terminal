@@ -1,0 +1,9 @@
+# Completing an Overdue entry lowers the Overdue count in the Navigator.
+file <<END
+- Aa @due({today-2})
+- Bb @due({today-1})
+END
+keys <C-g>
+see 󰨱 Overdue                                 2 │
+keys <Esc> gO x <C-g>
+see 󰨱 Overdue                                 1 │

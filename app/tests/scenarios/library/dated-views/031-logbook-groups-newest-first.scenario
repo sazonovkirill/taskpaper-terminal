@@ -1,0 +1,25 @@
+# Logbook groups entries by completion day, newest first, document order within a day.
+file <<END
+- Old @done({today-5})
+- New A @done({today})
+- Mid @done({today-1})
+- New B @done({today})
+END
+keys gL
+see Yesterday ·
+see 5 days ago ·
+see ▌ ✔ New A
+keys j
+see ▌ ✔ New B
+keys j
+see ▌ ✔ Mid
+keys j
+see ▌ ✔ Old
+keys x
+quit
+saved <<END
+- Old
+- New A @done({today})
+- Mid @done({today-1})
+- New B @done({today})
+END

@@ -1,0 +1,15 @@
+# Quitting right after a jump, while the landing flash still runs, saves and exits cleanly.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Alpha
+- Beta
+END
+keys G x gg
+quit
+saved <<END
+- Alpha
+- Beta @done({today})
+END

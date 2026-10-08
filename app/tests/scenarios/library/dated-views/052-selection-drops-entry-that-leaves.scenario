@@ -1,0 +1,17 @@
+# Selecting two Overdue entries and pressing T makes both due today; both leave and the third entry is focused and unselected.
+file <<END
+- One @due({today-3})
+- Two @due({today-2})
+- Three @due({today-1})
+END
+keys gO J T
+hide One
+hide Two
+see ▌ - Three
+keys x
+quit
+saved <<END
+- One @due({today})
+- Two @due({today})
+- Three @due({today-1}) @done({today})
+END

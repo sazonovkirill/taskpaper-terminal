@@ -1,0 +1,18 @@
+# With a light truecolor theme, zooming in and completing a block in a burst works as in a dark one.
+env COLORTERM=truecolor
+config <<END
+theme = "catppuccin-latte"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+END
+keys . j x
+see ✔ Bank
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank @done({today})
+END

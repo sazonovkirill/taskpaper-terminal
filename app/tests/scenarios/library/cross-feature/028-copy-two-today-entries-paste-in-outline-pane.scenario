@@ -1,0 +1,21 @@
+# Copying two Today entries from a Today pane and pasting them in the outline pane next to it puts copies with their tags after the focused last block, at its depth; p in the Today pane pastes nothing.
+file <<END
+Work:
+	- Write report @due({today})
+Home:
+	- Pay rent @due({today-1}) @flag
+Later:
+END
+keys <C-w> s gt J y p
+keys g1 G p
+see - Write report
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+Home:
+	- Pay rent @due({today-1}) @flag
+Later:
+- Write report @due({today})
+- Pay rent @due({today-1}) @flag
+END

@@ -1,0 +1,14 @@
+# { on an Overdue entry moves it to an older date group, ahead of the others, keeping the focus on it.
+file <<END
+- Alpha @due({today-2})
+- Beta @due({today-1})
+END
+keys gO j
+see ▌ - Beta
+keys {{ j
+see ▌ - Alpha
+quit
+saved <<END
+- Alpha @due({today-2})
+- Beta @due({today-3})
+END

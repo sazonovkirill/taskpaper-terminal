@@ -1,0 +1,33 @@
+# Reordering the Today view, quitting and reopening keeps the order, and so does another program editing an unrelated line.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+Home:
+	- Pay rent @due({today-1})
+END
+keys gt G <A-k> <A-k>
+see ▌ - Pay rent  Home
+restart
+see 󰖙 Today
+keys gg
+see ▌ - Pay rent  Home
+outside <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+Home:
+	- Pay rent @due({today-1})
+	- Fix the shelf
+END
+status Reloaded
+keys j x
+quit
+saved <<END
+Work:
+	- Write report @due({today}) @done({today})
+	- Review PRs @due({today})
+Home:
+	- Pay rent @due({today-1})
+	- Fix the shelf
+END

@@ -1,0 +1,26 @@
+# Choosing a project in the Navigator and adding a block at once puts it in that project.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys <C-g>
+see Home
+type Home
+keys <Enter> a
+type Dishes
+keys <Esc>
+see - Dishes
+quit
+saved <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+	- Dishes
+END

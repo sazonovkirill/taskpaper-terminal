@@ -1,0 +1,28 @@
+# Two projects named Ideas are told apart by their paths in the picker; the one chosen is the one added to.
+file <<END
+Work:
+	Ideas:
+		- w
+Home:
+	Ideas:
+		- h
+END
+keys qq
+type Paint fence
+keys <Space> /
+see Ideas  Work
+see Ideas  Home
+type ideas
+keys <Down> <Enter>
+see Quick Add → Home › Ideas
+keys <Enter>
+quit
+saved <<END
+Work:
+	Ideas:
+		- w
+Home:
+	Ideas:
+		- h
+		- Paint fence
+END

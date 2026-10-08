@@ -1,0 +1,21 @@
+# A run starting with a bare number ("3 days", "2 weeks") stays text, while "+3d" and an ISO date are dates.
+file <<END
+INBOX:
+END
+keys qi
+type Call back in 3 days
+keys <Enter> qi
+type Renew due 2 weeks
+keys <Enter> qi
+type Check +3d
+keys <Enter> qi
+type Flight 2030-01-15 due 2030-01-20
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Call back in 3 days
+	- Renew due 2 weeks
+	- Check @start({today+3})
+	- Flight @start(2030-01-15) @due(2030-01-20)
+END

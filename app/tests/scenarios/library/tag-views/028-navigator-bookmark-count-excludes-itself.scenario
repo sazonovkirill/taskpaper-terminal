@@ -1,0 +1,16 @@
+# A bookmarked task counts only the open tasks below it, and a done bookmark shows no count.
+file <<END
+Plan:
+	- Big task @bookmark
+		- Step one
+		- Step two @done
+		Some note
+	- Old task @bookmark @done
+		- Leftover
+END
+keys <C-g>
+see Bookmarks
+see Big task                                  1 │
+see Old task                                    │
+see Plan                                      2 │
+quit

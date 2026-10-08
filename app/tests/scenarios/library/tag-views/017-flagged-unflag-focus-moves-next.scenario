@@ -1,0 +1,18 @@
+# mf on a Flagged entry drops it and focuses the next entry, so a second mf unflags that one.
+file <<END
+Shop:
+	- Milk @flag
+	- Eggs @flag
+	- Bread @flag
+END
+keys gF mf
+hide Milk
+keys mf
+hide Eggs
+quit
+saved <<END
+Shop:
+	- Milk
+	- Eggs
+	- Bread @flag
+END

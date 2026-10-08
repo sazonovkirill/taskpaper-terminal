@@ -1,0 +1,21 @@
+# x on a Logbook entry removes @done so it leaves the Logbook; z puts it back with the focus on it.
+file <<END
+- Wrote report @done({today})
+- Called bank @done({today-1})
+END
+keys gL
+see ▌ ✔ Wrote report
+keys x
+hide Wrote report
+see ▌ ✔ Called bank
+saved <<END
+- Wrote report
+- Called bank @done({today-1})
+END
+keys z
+see ▌ ✔ Wrote report
+quit
+saved <<END
+- Wrote report @done({today})
+- Called bank @done({today-1})
+END

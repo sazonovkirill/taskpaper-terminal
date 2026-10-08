@@ -1,0 +1,13 @@
+# In the Starred view, move, indent, outdent, group and paste outside edit mode change nothing.
+file <<END
+Work:
+	- Report @star
+	- Email @star
+END
+keys gS y j <A-j> <A-k> <Tab> <S-Tab> gG p P
+quit
+saved <<END
+Work:
+	- Report @star
+	- Email @star
+END

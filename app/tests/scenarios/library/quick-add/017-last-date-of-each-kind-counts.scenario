@@ -1,0 +1,12 @@
+# With several start or due dates typed, the last of each counts and the earlier ones stay in the text.
+file <<END
+INBOX:
+END
+keys qi
+type Report tomorrow then today due +3d or due +5d
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Report tomorrow then due +3d or @start({today}) @due({today+5})
+END

@@ -1,0 +1,17 @@
+# Toggle Star from the edit-mode command menu on a Starred entry drops it from the view and ends editing.
+file <<END
+Work:
+	- Report @star
+	- Email @star
+END
+keys gS <Enter>
+type /toggle star
+keys <Enter>
+hide Report
+status NAVIGATE
+quit
+saved <<END
+Work:
+	- Report
+	- Email @star
+END

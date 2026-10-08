@@ -1,0 +1,16 @@
+# Overdue in one pane and Logbook in another come back after a restart, with the Logbook pane focused.
+file <<END
+- Late @due({today-2})
+- Finished @done({today-1})
+END
+keys gO <C-w> s gL
+see │  󱓳 Logbook
+restart
+see 󰨱 Overdue
+see │  󱓳 Logbook
+keys x
+quit
+saved <<END
+- Late @due({today-2})
+- Finished
+END

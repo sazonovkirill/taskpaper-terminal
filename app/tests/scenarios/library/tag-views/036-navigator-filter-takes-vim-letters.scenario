@@ -1,0 +1,19 @@
+# In the Navigator j, k, h and l are typed into the filter rather than moving or folding.
+file <<END
+Khaki pants:
+	- Buy
+Jolly:
+	- Plan
+END
+keys <C-g>
+type kh
+see └kh
+see │▌ Khaki pants
+keys <Enter>
+see 󰋜 › Khaki pants
+keys <C-g>
+type jol
+see │▌ Jolly
+keys <Enter>
+see 󰋜 › Jolly
+quit

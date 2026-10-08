@@ -1,0 +1,24 @@
+# Starring, flagging and coloring a task in the outline raise the Starred, Flagged and Colors counts in the Navigator.
+config <<END
+sidebar_today = false
+sidebar_upcoming = false
+sidebar_overdue = false
+sidebar_logbook = false
+END
+file <<END
+Chores:
+	- Dishes @star @flag @red
+	- Laundry
+END
+keys <C-g>
+see 󰓎 Starred                                 1 │
+keys <Esc> j j * ! c2 <C-g>
+see 󰓎 Starred                                 2 │
+see 󰈻 Flagged                                 2 │
+see 󰸌 Colors                                  2 │
+quit
+saved <<END
+Chores:
+	- Dishes @star @flag @red
+	- Laundry @star @flag @orange
+END

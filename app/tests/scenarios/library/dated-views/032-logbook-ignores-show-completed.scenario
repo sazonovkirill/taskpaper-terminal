@@ -1,0 +1,13 @@
+# Logbook keeps listing done blocks and blocks inside done projects while completed blocks are hidden.
+file <<END
+Trip: @done({today-1})
+	- Book flights @done({today-2})
+	- Pack
+- Loose end @done({today})
+END
+keys gc gL
+see Logbook
+see Trip:
+see ✔ Book flights  Trip
+see ✔ Loose end
+hide Pack

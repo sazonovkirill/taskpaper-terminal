@@ -1,0 +1,18 @@
+# Moving the last entry up in a Today pane that hides completed swaps it with the entry above there, while the done entry the pane hides keeps its place in the other Today pane.
+file <<END
+W:
+	- Alpha @due({today})
+	- Bravo @due({today}) @done({today})
+	- Charlie @due({today})
+END
+keys gt <C-w> s gc G <A-k>
+see │▌ - Charlie  W
+keys g1 gg j x
+keys G x
+quit
+saved <<END
+W:
+	- Alpha @due({today}) @done({today})
+	- Bravo @due({today})
+	- Charlie @due({today})
+END

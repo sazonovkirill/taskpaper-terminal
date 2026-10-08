@@ -1,0 +1,11 @@
+# Backspace at the end of a line of 200 accented letters made with combining marks deletes one whole letter.
+file <<END
+Accents:
+	- éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+END
+keys j <Enter> <BS> <Esc>
+quit
+saved <<END
+Accents:
+	- ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+END

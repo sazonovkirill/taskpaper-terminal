@@ -1,0 +1,19 @@
+# Choosing Animations: Off in Go to Command writes the setting, so after a restart the settings window shows it off.
+file <<END
+- Milk
+END
+keys :
+type Animations: Off
+keys <Enter>
+restart
+keys g,
+type /anim
+see Animations
+see off  │
+see *
+keys <Esc> <Esc>
+keys x
+quit
+saved <<END
+- Milk @done({today})
+END

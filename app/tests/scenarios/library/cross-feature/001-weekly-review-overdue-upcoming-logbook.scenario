@@ -1,0 +1,35 @@
+# Weekly review: in Overdue push a task a day later and the next one to today, complete one from Upcoming, then find it in the Logbook and uncomplete it there.
+file <<END
+INBOX:
+	- Renew passport @due({today-3})
+Work:
+	- Write report @due({today-2})
+	- Prepare slides @due({today+1})
+	- Ship release @done({today-1})
+Home:
+	- Pay rent @due({today-7})
+END
+keys gO
+see 7 days ago
+keys j }
+keys } }
+hide Renew passport
+keys gU
+see Tomorrow · 
+keys x
+see ✔ Prepare slides
+keys gL
+see Yesterday · 
+see ✔ Ship release
+keys x
+quit
+saved <<END
+INBOX:
+	- Renew passport @due({today})
+Work:
+	- Write report @due({today-2})
+	- Prepare slides @due({today+1})
+	- Ship release @done({today-1})
+Home:
+	- Pay rent @due({today-7})
+END

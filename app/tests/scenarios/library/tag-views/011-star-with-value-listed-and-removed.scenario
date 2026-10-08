@@ -1,0 +1,16 @@
+# A hand-written @star(high) counts as starred, and * removes it with its value.
+file <<END
+Work:
+	- Report @star(high)
+	- Email
+END
+keys gS
+see - Report 󰓎  Work
+keys *
+hide Report
+quit
+saved <<END
+Work:
+	- Report
+	- Email
+END

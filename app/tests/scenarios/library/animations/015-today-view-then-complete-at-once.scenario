@@ -1,0 +1,19 @@
+# Opening the Today view and pressing x before it has faded in completes its first entry.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Work:
+	- Report @due({today})
+	- Call @due({today})
+END
+keys gt x
+see Today
+see ✔ Report
+quit
+saved <<END
+Work:
+	- Report @due({today}) @done({today})
+	- Call @due({today})
+END

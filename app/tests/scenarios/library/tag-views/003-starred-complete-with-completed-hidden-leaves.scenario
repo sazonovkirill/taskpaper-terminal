@@ -1,0 +1,19 @@
+# With completed blocks hidden, completing a Starred entry removes it from the view and undo restores it.
+file <<END
+Errands:
+	- Post office @star
+	- Bank @star
+END
+keys gS gc x
+hide Post office
+see - Bank
+keys z
+see - Post office
+keys j x
+hide Bank
+quit
+saved <<END
+Errands:
+	- Post office @star
+	- Bank @star @done({today})
+END

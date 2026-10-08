@@ -1,0 +1,27 @@
+# Undoing, in a pane zoomed into Home, an edit made in the outline pane takes the edit back without moving that pane, and redo there puts it back.
+file <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+END
+keys G k <C-w> v
+see 󰋜 › Home
+keys g1 gg j <Enter>
+type  now
+keys <Esc> g2 z
+saved <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+END
+see 󰋜 › Home
+keys Z
+quit
+saved <<END
+INBOX:
+	- Call the plumber now
+Home:
+	- Fix the shelf
+END

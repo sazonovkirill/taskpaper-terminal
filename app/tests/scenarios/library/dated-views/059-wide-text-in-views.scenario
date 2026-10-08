@@ -1,0 +1,25 @@
+# CJK, emoji and combining text show in Upcoming and Logbook rows with their paths, and edits to them are saved.
+size 40 10
+file <<END
+日本語のプロジェクト:
+	サブ項目:
+		- 東京で買い物 @due({today+1})
+		- éclair café @done({today})
+	- 🎉 Party @due({today+2})
+END
+keys gU
+see ▌ - 東京で買い物
+keys j <Enter>
+type 🎂
+keys <Esc>
+see - 🎉 Party🎂
+keys gL
+see ✔ éclair café
+quit
+saved <<END
+日本語のプロジェクト:
+	サブ項目:
+		- 東京で買い物 @due({today+1})
+		- éclair café @done({today})
+	- 🎉 Party🎂 @due({today+2})
+END

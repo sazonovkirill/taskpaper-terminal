@@ -1,0 +1,19 @@
+# Overdue in the left pane and the Logbook with completed hidden in the right one come back after quitting and reopening, the right pane focused.
+file <<END
+Work:
+	- Write report @due({today-2})
+	- Ship release @done({today-1})
+END
+keys gO <C-w> s gL gc
+see ✔ Ship release
+restart
+see 󰨱 Overdue
+see 󱓳 Logbook
+see ▌ ✔ Ship release  Work
+keys x
+quit
+saved <<END
+Work:
+	- Write report @due({today-2})
+	- Ship release
+END

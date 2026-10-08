@@ -1,0 +1,23 @@
+# After collapsing everything, expanding one level and stepping down at once, while rows fade in, lands on the first child.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+		- Stamps
+Home:
+	- Laundry
+END
+keys _ = j x
+see ✔ Post office
+hide Stamps
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+		- Stamps
+Home:
+	- Laundry
+END

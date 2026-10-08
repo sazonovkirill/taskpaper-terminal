@@ -1,0 +1,15 @@
+# Backspace at the start deletes the dash, so a note is added; colons ending it are dropped so it stays a note.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi <BS>
+type Questions for Ana::
+keys <Enter>
+status Added to INBOX
+quit
+saved <<END
+INBOX:
+	- Old item
+	Questions for Ana
+END

@@ -1,0 +1,18 @@
+# md with +10d on an Upcoming entry moves its due date past the week and it leaves the view; the next entry takes the focus.
+file <<END
+- Report @due({today+2})
+- Mail @due({today+3})
+END
+keys gU
+see ▌ - Report
+keys md
+see Due date
+type +10d
+keys <Enter>
+hide Report
+see ▌ - Mail
+quit
+saved <<END
+- Report @due({today+10})
+- Mail @due({today+3})
+END

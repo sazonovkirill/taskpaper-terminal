@@ -1,0 +1,18 @@
+# Ctrl+N and Ctrl+P move the Navigator's focus down and up, skipping headings and blank lines.
+config <<END
+sidebar_today = false
+sidebar_upcoming = false
+sidebar_overdue = false
+sidebar_colors = false
+sidebar_logbook = false
+END
+file <<END
+Reading @bookmark
+Work:
+	- a
+END
+keys <C-g> <C-n> <C-n> <C-n> <C-n> <C-p>
+see │▌ Reading
+keys <C-n> <C-n> <Enter>
+see 󰋜 › Work
+quit

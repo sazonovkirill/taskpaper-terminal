@@ -1,0 +1,23 @@
+# After another program changes the file, undo has nothing to take back, so an edit made before the reload stays.
+file <<END
+Work:
+	- Write report
+END
+keys j x
+saved <<END
+Work:
+	- Write report @done({today})
+END
+outside <<END
+Work:
+	- Write report @done({today})
+	- Review PRs
+END
+see Review PRs
+keys z
+quit
+saved <<END
+Work:
+	- Write report @done({today})
+	- Review PRs
+END

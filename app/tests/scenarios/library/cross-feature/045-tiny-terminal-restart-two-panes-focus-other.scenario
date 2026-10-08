@@ -1,0 +1,23 @@
+# Two panes come back after a restart; in a 30x8 terminal only the focused Today pane shows, g1 shows the outline pane instead, and growing the terminal shows both again.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs
+END
+keys <C-w> s gt
+restart
+resize 30 8
+see 󰖙 Today
+hide Review PRs
+keys g1
+see Review PRs
+hide 󰖙 Today
+resize 100 30
+see 󰖙 Today
+keys G x
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @done({today})
+END

@@ -1,0 +1,17 @@
+# T on an Overdue entry makes it due today, so it leaves Overdue and still shows in Today.
+file <<END
+- Pay bill @due({today-5})
+- Call bank @due({today-1})
+END
+keys gO
+see ▌ - Pay bill
+keys T
+hide Pay bill
+see ▌ - Call bank
+keys gt
+see - Pay bill
+quit
+saved <<END
+- Pay bill @due({today})
+- Call bank @due({today-1})
+END

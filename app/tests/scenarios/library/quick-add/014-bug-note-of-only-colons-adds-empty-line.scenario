@@ -1,0 +1,15 @@
+# A note of only colons has no text once they are dropped, so Enter adds nothing and the panel says "Type the text".
+# BUG: the panel says "Enter adds it" and Enter adds an empty line under the project.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi <BS>
+type :
+see Type the text
+keys <Enter> <Esc>
+quit
+saved <<END
+INBOX:
+	- Old item
+END

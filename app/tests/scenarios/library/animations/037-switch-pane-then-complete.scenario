@@ -1,0 +1,22 @@
+# Focusing the other pane and completing at once, during its landing flash, completes the block focused there.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys j <C-w> v
+see │
+keys <C-w> h x
+see ✔ Post office
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+Home:
+	- Laundry
+END

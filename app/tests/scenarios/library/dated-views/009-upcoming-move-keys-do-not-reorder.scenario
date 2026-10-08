@@ -1,0 +1,18 @@
+# Alt+j and Alt+k do nothing in Upcoming: the entries keep their order and the file is untouched.
+file <<END
+- One @due({today+1})
+- Two @due({today+1})
+- Three @due({today+1})
+END
+keys gU j
+see ▌ - Two
+keys <A-j> <A-j> <A-k> k
+see ▌ - One
+keys j j
+see ▌ - Three
+quit
+saved <<END
+- One @due({today+1})
+- Two @due({today+1})
+- Three @due({today+1})
+END

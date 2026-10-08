@@ -1,0 +1,20 @@
+# With completed hidden, the new task still goes last, after the project's hidden done child, and shows.
+file <<END
+INBOX:
+	- Open item
+	- Done item @done(2026-10-01)
+END
+keys gc
+hide Done item
+keys qi
+type Next item
+keys <Enter>
+see - Next item
+hide Done item
+quit
+saved <<END
+INBOX:
+	- Open item
+	- Done item @done(2026-10-01)
+	- Next item
+END

@@ -1,0 +1,18 @@
+# Shrinking the terminal while the Navigator is open keeps its focused entry in view, and growing it back shows the full list.
+file <<END
+Alpha:
+	- a
+Omega:
+	- z
+END
+keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+see │▌ Omega
+resize 30 7
+see │▌ Omega
+hide Today
+resize 100 30
+see 󰖙 Today
+see │▌ Omega
+keys <Enter>
+see 󰋜 › Omega
+quit

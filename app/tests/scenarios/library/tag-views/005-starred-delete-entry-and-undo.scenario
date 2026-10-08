@@ -1,0 +1,19 @@
+# dd on a Starred entry deletes the block from the outline, and z brings it back with its children.
+file <<END
+Trip:
+	- Book flights @star
+		- Compare prices
+	- Pack bags @star
+END
+keys gS dd
+hide Book flights
+see - Pack bags
+keys z
+see - Book flights
+quit
+saved <<END
+Trip:
+	- Book flights @star
+		- Compare prices
+	- Pack bags @star
+END

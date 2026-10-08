@@ -1,0 +1,20 @@
+# Pasting several lines while editing a Starred entry ends editing and adds the lines after the entry in the outline, outside the view.
+file <<END
+Work:
+	- Report @star
+	- Email @star
+END
+keys gS <Enter>
+paste <<END
+Draft one
+Draft two
+END
+status NAVIGATE
+quit
+saved <<END
+Work:
+	- Report @star
+	Draft one
+	Draft two
+	- Email @star
+END

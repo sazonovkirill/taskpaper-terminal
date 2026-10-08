@@ -1,0 +1,18 @@
+# Indenting a project under another in the outline pane updates the breadcrumbs of its tasks in the Today pane at once.
+file <<END
+Work:
+	- Ship it
+Launch:
+	- Write post @due({today})
+END
+keys <C-w> s gt
+see - Write post  Launch
+keys g1 G k <Tab>
+see - Write post  Work › Launch
+quit
+saved <<END
+Work:
+	- Ship it
+	Launch:
+		- Write post @due({today})
+END

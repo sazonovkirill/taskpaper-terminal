@@ -1,0 +1,16 @@
+# A block with both a start and a due date in the coming week is listed once, under the earlier of the two.
+file <<END
+- Both @start({today+4}) @due({today+2})
+- Other @due({today+3})
+END
+keys gU
+see Upcoming
+see ▌ - Both
+keys j
+see ▌ - Other
+keys j x
+quit
+saved <<END
+- Both @start({today+4}) @due({today+2})
+- Other @due({today+3}) @done({today})
+END

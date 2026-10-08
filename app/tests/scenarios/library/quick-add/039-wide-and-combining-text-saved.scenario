@@ -1,0 +1,19 @@
+# CJK, accented and emoji text, and a project with such a name, are added and saved as typed.
+file <<END
+Проекты 日本:
+	- 既存
+END
+keys qq
+type 牛乳を買う café 👍🏽 tomorrow
+keys <Space> /
+type 日本
+keys <Enter>
+see Quick Add → Проекты 日本
+keys <Enter>
+see - 牛乳を買う café
+quit
+saved <<END
+Проекты 日本:
+	- 既存
+	- 牛乳を買う café 👍🏽 @start({today+1})
+END

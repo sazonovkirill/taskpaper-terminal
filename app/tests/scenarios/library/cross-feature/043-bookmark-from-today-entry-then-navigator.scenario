@@ -1,0 +1,22 @@
+# Bookmarking a project from its Today entry lists it under Bookmarks in the Navigator, and choosing it there zooms the pane into it.
+file <<END
+Launch: @due({today})
+	- Write post
+	- Record demo
+Home:
+END
+keys gt mb
+status Bookmarked
+keys <C-g>
+see Bookmarks
+type launch
+keys <Enter>
+see 󰋜 › Launch
+keys j x
+quit
+saved <<END
+Launch: @due({today}) @bookmark
+	- Write post @done({today})
+	- Record demo
+Home:
+END

@@ -1,0 +1,42 @@
+# With many projects in a short terminal, the Navigator opens scrolled to the project the pane is zoomed into.
+size 80 16
+file <<END
+Proj 01:
+	- t
+Proj 02:
+	- t
+Proj 03:
+	- t
+Proj 04:
+	- t
+Proj 05:
+	- t
+Proj 06:
+	- t
+Proj 07:
+	- t
+Proj 08:
+	- t
+Proj 09:
+	- t
+Proj 10:
+	- t
+Proj 11:
+	- t
+Proj 12:
+	- t
+Proj 13:
+	- t
+Proj 14:
+	- t
+Proj 15:
+	- t
+END
+keys <C-g>
+type proj 14
+keys <Enter> <C-g>
+see │▌ Proj 14
+hide Today
+keys <Down> <Enter>
+see 󰋜 › Proj 15
+quit

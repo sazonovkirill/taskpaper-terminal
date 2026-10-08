@@ -1,0 +1,10 @@
+# A task due over a year ago is listed in Overdue under a heading counting the days.
+file <<END
+- Ancient @due({today-400})
+- Recent @due({today-1})
+END
+keys gO
+see 400 days ago ·
+see ▌ - Ancient
+keys j
+see ▌ - Recent

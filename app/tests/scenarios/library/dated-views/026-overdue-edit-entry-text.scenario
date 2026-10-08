@@ -1,0 +1,12 @@
+# Editing an Overdue entry's text in place saves it and keeps its due tag and its row.
+file <<END
+- Renew passport @due({today-3})
+END
+keys gO <Enter>
+type  online
+keys <Esc>
+see ▌ - Renew passport online
+quit
+saved <<END
+- Renew passport online @due({today-3})
+END

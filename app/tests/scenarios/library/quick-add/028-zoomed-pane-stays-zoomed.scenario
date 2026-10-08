@@ -1,0 +1,26 @@
+# Quick Add from a pane zoomed into another project adds to INBOX and leaves the zoom and focus as they were.
+file <<END
+INBOX:
+	- Old item
+Work:
+	- Email boss
+	- Ship it
+END
+keys j j . j
+see 󰋜 › Work
+keys qi
+type Idea
+keys <Enter>
+status Added to INBOX
+see 󰋜 › Work
+see ▌   - Ship it
+hide Idea
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Idea
+Work:
+	- Email boss
+	- Ship it
+END

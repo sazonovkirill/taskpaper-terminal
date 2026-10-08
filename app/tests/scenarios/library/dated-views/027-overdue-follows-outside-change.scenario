@@ -1,0 +1,15 @@
+# When another program completes one overdue block and adds another, Overdue drops the first and lists the new one.
+file <<END
+- Aa @due({today-3})
+- Bb @due({today-2})
+END
+keys gO
+see - Bb
+outside <<END
+- Aa @due({today-3}) @done({today})
+- Bb @due({today-2})
+- Dd @due({today-5})
+END
+see 5 days ago ·
+see - Dd
+hide Aa

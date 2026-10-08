@@ -1,0 +1,17 @@
+# Going from Upcoming to Today focuses the same block when Today lists it too.
+file <<END
+- Spans @start({today}) @due({today+2})
+- Late start @start({today-1}) @due({today+3})
+- Over @due({today-1})
+END
+keys gU j
+see ▌ - Late start
+keys gt
+see 󰖙 Today
+keys x
+quit
+saved <<END
+- Spans @start({today}) @due({today+2})
+- Late start @start({today-1}) @due({today+3}) @done({today})
+- Over @due({today-1})
+END

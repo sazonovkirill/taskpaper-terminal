@@ -1,0 +1,13 @@
+# Ctrl+T on the Flagged entry opens the Flagged view in a new pane on the right and closes the Navigator.
+file <<END
+Shop:
+	- Milk @flag
+	- Eggs
+END
+keys <C-g>
+type flag
+keys <C-t>
+see │  󰈻 Flagged
+see │▌ - Milk 󰈻  Shop
+hide Navigator
+quit

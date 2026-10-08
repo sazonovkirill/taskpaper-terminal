@@ -1,0 +1,26 @@
+# The Today pane hiding completed was on the second entry; another program completes it while the app is closed, and on reopening the focus is on the entry after it.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+	- Plan sprint @due({today})
+END
+keys gt gc j
+quit
+outside <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today}) @done({today})
+	- Plan sprint @due({today})
+END
+restart
+see 󰖙 Today
+see ▌ - Plan sprint  Work
+keys x
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today}) @done({today})
+	- Plan sprint @due({today}) @done({today})
+END

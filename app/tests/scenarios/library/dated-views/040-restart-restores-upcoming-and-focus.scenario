@@ -1,0 +1,18 @@
+# Quitting in Upcoming and starting again shows Upcoming with the same entry focused.
+file <<END
+- Alpha @due({today+1})
+- Beta @due({today+2})
+- Gamma @due({today+3})
+END
+keys gU j
+see ▌ - Beta
+restart
+see Upcoming
+see ▌ - Beta
+keys x
+quit
+saved <<END
+- Alpha @due({today+1})
+- Beta @due({today+2}) @done({today})
+- Gamma @due({today+3})
+END

@@ -1,0 +1,22 @@
+# Turning Show Overdue in Navigator off in the settings window drops the entry from the Navigator for good, while gO still opens the view.
+file <<END
+Work:
+	- Write report @due({today-2})
+END
+keys g,
+see Settings
+keys /
+type overdue
+keys <Enter> <Space> <Esc>
+keys <C-g>
+see Navigator
+hide Overdue
+keys <Esc>
+restart
+keys <C-g>
+see Navigator
+hide Overdue
+keys <Esc> gO
+see 󰨱 Overdue
+see - Write report  Work
+quit

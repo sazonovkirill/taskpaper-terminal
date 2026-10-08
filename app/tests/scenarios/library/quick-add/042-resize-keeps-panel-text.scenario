@@ -1,0 +1,21 @@
+# Resizing the terminal while Quick Add is open keeps its text and destination, and Enter still adds.
+size 100 30
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type Pack charger
+resize 40 10
+see - Pack charger
+resize 30 8
+resize 100 30
+see Quick Add → INBOX
+see - Pack charger
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Pack charger
+END

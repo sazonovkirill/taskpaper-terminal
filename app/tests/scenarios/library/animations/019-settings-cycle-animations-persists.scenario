@@ -1,0 +1,15 @@
+# Cycling the Animations setting with l in the settings window goes from full to reduced and keeps it after a restart.
+file <<END
+- Milk
+END
+keys g,
+type /anim
+keys <Enter> l
+see reduced  │
+keys <Esc>
+restart
+keys g,
+type /anim
+see reduced  │
+keys <Esc> <Esc>
+quit

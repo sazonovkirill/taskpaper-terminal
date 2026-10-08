@@ -1,0 +1,14 @@
+# An INBOX project carrying tags is still the inbox, listed apart, and its star lists it in the Starred view.
+file <<END
+INBOX: @red @star
+	- Call mom
+Work:
+	- Report
+END
+keys <C-g>
+see 󰚇 INBOX                                   1 │
+see Projects
+hide   INBOX
+keys <Esc> gS
+see INBOX: 󰓎
+quit

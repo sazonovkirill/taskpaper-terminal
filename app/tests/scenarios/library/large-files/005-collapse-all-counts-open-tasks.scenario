@@ -1,0 +1,193 @@
+# Collapse all on a 90-line project shows only the project, counting the 48 open tasks it hides, and expand all shows them again.
+file <<END
+Big:
+	- t0 @done(2026-10-01)
+		- s0
+		note 0
+	- t1
+		- s1
+		note 1
+	- t2
+		- s2
+		note 2
+	- t3
+		- s3
+		note 3
+	- t4
+		- s4
+		note 4
+	- t5 @done(2026-10-01)
+		- s5
+		note 5
+	- t6
+		- s6
+		note 6
+	- t7
+		- s7
+		note 7
+	- t8
+		- s8
+		note 8
+	- t9
+		- s9
+		note 9
+	- t10 @done(2026-10-01)
+		- s10
+		note 10
+	- t11
+		- s11
+		note 11
+	- t12
+		- s12
+		note 12
+	- t13
+		- s13
+		note 13
+	- t14
+		- s14
+		note 14
+	- t15 @done(2026-10-01)
+		- s15
+		note 15
+	- t16
+		- s16
+		note 16
+	- t17
+		- s17
+		note 17
+	- t18
+		- s18
+		note 18
+	- t19
+		- s19
+		note 19
+	- t20 @done(2026-10-01)
+		- s20
+		note 20
+	- t21
+		- s21
+		note 21
+	- t22
+		- s22
+		note 22
+	- t23
+		- s23
+		note 23
+	- t24
+		- s24
+		note 24
+	- t25 @done(2026-10-01)
+		- s25
+		note 25
+	- t26
+		- s26
+		note 26
+	- t27
+		- s27
+		note 27
+	- t28
+		- s28
+		note 28
+	- t29
+		- s29
+		note 29
+END
+keys _
+see ▌ Big: ▸ 48
+hide - t1
+keys +
+see - s8
+quit
+saved <<END
+Big:
+	- t0 @done(2026-10-01)
+		- s0
+		note 0
+	- t1
+		- s1
+		note 1
+	- t2
+		- s2
+		note 2
+	- t3
+		- s3
+		note 3
+	- t4
+		- s4
+		note 4
+	- t5 @done(2026-10-01)
+		- s5
+		note 5
+	- t6
+		- s6
+		note 6
+	- t7
+		- s7
+		note 7
+	- t8
+		- s8
+		note 8
+	- t9
+		- s9
+		note 9
+	- t10 @done(2026-10-01)
+		- s10
+		note 10
+	- t11
+		- s11
+		note 11
+	- t12
+		- s12
+		note 12
+	- t13
+		- s13
+		note 13
+	- t14
+		- s14
+		note 14
+	- t15 @done(2026-10-01)
+		- s15
+		note 15
+	- t16
+		- s16
+		note 16
+	- t17
+		- s17
+		note 17
+	- t18
+		- s18
+		note 18
+	- t19
+		- s19
+		note 19
+	- t20 @done(2026-10-01)
+		- s20
+		note 20
+	- t21
+		- s21
+		note 21
+	- t22
+		- s22
+		note 22
+	- t23
+		- s23
+		note 23
+	- t24
+		- s24
+		note 24
+	- t25 @done(2026-10-01)
+		- s25
+		note 25
+	- t26
+		- s26
+		note 26
+	- t27
+		- s27
+		note 27
+	- t28
+		- s28
+		note 28
+	- t29
+		- s29
+		note 29
+END

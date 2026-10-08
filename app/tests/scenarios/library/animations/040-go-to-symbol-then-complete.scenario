@@ -1,0 +1,24 @@
+# Jumping to a block with Go to Symbol and completing it during the landing flash completes that block.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+	- Dishes
+END
+keys <C-k>
+type Dishes
+keys <Enter> x
+see ✔ Dishes
+quit
+saved <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+	- Dishes @done({today})
+END

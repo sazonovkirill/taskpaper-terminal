@@ -1,0 +1,31 @@
+# Completing an Overdue entry, keeping my version when the file changes on disk, then undoing in the view brings the entry back and saves that.
+config <<END
+autosave_delay_ms = 5000
+END
+file <<END
+Work:
+	- Write report @due({today-2})
+	- Review PRs
+END
+keys gO x
+hide Write report
+outside <<END
+Work:
+	- Write report @due({today-2})
+	- Review PRs today
+END
+see Your changes are not saved yet.
+keys m
+saved <<END
+Work:
+	- Write report @due({today-2}) @done({today})
+	- Review PRs
+END
+keys z
+see - Write report  Work
+quit
+saved <<END
+Work:
+	- Write report @due({today-2})
+	- Review PRs
+END

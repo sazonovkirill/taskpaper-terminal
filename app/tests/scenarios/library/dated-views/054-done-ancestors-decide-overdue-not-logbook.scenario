@@ -1,0 +1,16 @@
+# Inside a done task, an open child due in the past is not overdue, and a child done long ago stays out of the Logbook while one done today inside an old project is in it.
+file <<END
+- Parent task @done({today-1})
+	- Child overdue @due({today-2})
+	- Child done @done({today-10})
+Old: @done({today-20})
+	- Recent done @done({today})
+END
+keys gO
+see 󰨱 Overdue
+hide Child overdue
+keys gL
+see ▌ ✔ Recent done  Old
+see ✔ Parent task
+hide Child done
+hide Old:

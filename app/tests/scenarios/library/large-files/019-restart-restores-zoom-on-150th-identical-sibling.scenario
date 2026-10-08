@@ -1,0 +1,816 @@
+# Zoomed into the 150th of 200 tasks with the same text, quitting and reopening shows the same one, told apart by its place among equal siblings.
+file <<END
+Many:
+	- same
+		- child 0
+	- same
+		- child 1
+	- same
+		- child 2
+	- same
+		- child 3
+	- same
+		- child 4
+	- same
+		- child 5
+	- same
+		- child 6
+	- same
+		- child 7
+	- same
+		- child 8
+	- same
+		- child 9
+	- same
+		- child 10
+	- same
+		- child 11
+	- same
+		- child 12
+	- same
+		- child 13
+	- same
+		- child 14
+	- same
+		- child 15
+	- same
+		- child 16
+	- same
+		- child 17
+	- same
+		- child 18
+	- same
+		- child 19
+	- same
+		- child 20
+	- same
+		- child 21
+	- same
+		- child 22
+	- same
+		- child 23
+	- same
+		- child 24
+	- same
+		- child 25
+	- same
+		- child 26
+	- same
+		- child 27
+	- same
+		- child 28
+	- same
+		- child 29
+	- same
+		- child 30
+	- same
+		- child 31
+	- same
+		- child 32
+	- same
+		- child 33
+	- same
+		- child 34
+	- same
+		- child 35
+	- same
+		- child 36
+	- same
+		- child 37
+	- same
+		- child 38
+	- same
+		- child 39
+	- same
+		- child 40
+	- same
+		- child 41
+	- same
+		- child 42
+	- same
+		- child 43
+	- same
+		- child 44
+	- same
+		- child 45
+	- same
+		- child 46
+	- same
+		- child 47
+	- same
+		- child 48
+	- same
+		- child 49
+	- same
+		- child 50
+	- same
+		- child 51
+	- same
+		- child 52
+	- same
+		- child 53
+	- same
+		- child 54
+	- same
+		- child 55
+	- same
+		- child 56
+	- same
+		- child 57
+	- same
+		- child 58
+	- same
+		- child 59
+	- same
+		- child 60
+	- same
+		- child 61
+	- same
+		- child 62
+	- same
+		- child 63
+	- same
+		- child 64
+	- same
+		- child 65
+	- same
+		- child 66
+	- same
+		- child 67
+	- same
+		- child 68
+	- same
+		- child 69
+	- same
+		- child 70
+	- same
+		- child 71
+	- same
+		- child 72
+	- same
+		- child 73
+	- same
+		- child 74
+	- same
+		- child 75
+	- same
+		- child 76
+	- same
+		- child 77
+	- same
+		- child 78
+	- same
+		- child 79
+	- same
+		- child 80
+	- same
+		- child 81
+	- same
+		- child 82
+	- same
+		- child 83
+	- same
+		- child 84
+	- same
+		- child 85
+	- same
+		- child 86
+	- same
+		- child 87
+	- same
+		- child 88
+	- same
+		- child 89
+	- same
+		- child 90
+	- same
+		- child 91
+	- same
+		- child 92
+	- same
+		- child 93
+	- same
+		- child 94
+	- same
+		- child 95
+	- same
+		- child 96
+	- same
+		- child 97
+	- same
+		- child 98
+	- same
+		- child 99
+	- same
+		- child 100
+	- same
+		- child 101
+	- same
+		- child 102
+	- same
+		- child 103
+	- same
+		- child 104
+	- same
+		- child 105
+	- same
+		- child 106
+	- same
+		- child 107
+	- same
+		- child 108
+	- same
+		- child 109
+	- same
+		- child 110
+	- same
+		- child 111
+	- same
+		- child 112
+	- same
+		- child 113
+	- same
+		- child 114
+	- same
+		- child 115
+	- same
+		- child 116
+	- same
+		- child 117
+	- same
+		- child 118
+	- same
+		- child 119
+	- same
+		- child 120
+	- same
+		- child 121
+	- same
+		- child 122
+	- same
+		- child 123
+	- same
+		- child 124
+	- same
+		- child 125
+	- same
+		- child 126
+	- same
+		- child 127
+	- same
+		- child 128
+	- same
+		- child 129
+	- same
+		- child 130
+	- same
+		- child 131
+	- same
+		- child 132
+	- same
+		- child 133
+	- same
+		- child 134
+	- same
+		- child 135
+	- same
+		- child 136
+	- same
+		- child 137
+	- same
+		- child 138
+	- same
+		- child 139
+	- same
+		- child 140
+	- same
+		- child 141
+	- same
+		- child 142
+	- same
+		- child 143
+	- same
+		- child 144
+	- same
+		- child 145
+	- same
+		- child 146
+	- same
+		- child 147
+	- same
+		- child 148
+	- same
+		- child 149
+	- same
+		- child 150
+	- same
+		- child 151
+	- same
+		- child 152
+	- same
+		- child 153
+	- same
+		- child 154
+	- same
+		- child 155
+	- same
+		- child 156
+	- same
+		- child 157
+	- same
+		- child 158
+	- same
+		- child 159
+	- same
+		- child 160
+	- same
+		- child 161
+	- same
+		- child 162
+	- same
+		- child 163
+	- same
+		- child 164
+	- same
+		- child 165
+	- same
+		- child 166
+	- same
+		- child 167
+	- same
+		- child 168
+	- same
+		- child 169
+	- same
+		- child 170
+	- same
+		- child 171
+	- same
+		- child 172
+	- same
+		- child 173
+	- same
+		- child 174
+	- same
+		- child 175
+	- same
+		- child 176
+	- same
+		- child 177
+	- same
+		- child 178
+	- same
+		- child 179
+	- same
+		- child 180
+	- same
+		- child 181
+	- same
+		- child 182
+	- same
+		- child 183
+	- same
+		- child 184
+	- same
+		- child 185
+	- same
+		- child 186
+	- same
+		- child 187
+	- same
+		- child 188
+	- same
+		- child 189
+	- same
+		- child 190
+	- same
+		- child 191
+	- same
+		- child 192
+	- same
+		- child 193
+	- same
+		- child 194
+	- same
+		- child 195
+	- same
+		- child 196
+	- same
+		- child 197
+	- same
+		- child 198
+	- same
+		- child 199
+END
+keys <C-k>
+type child 149
+see › child 149
+keys <Enter> gu .
+see ▌   - child 149
+restart
+see ▌   - child 149
+keys x
+quit
+saved <<END
+Many:
+	- same
+		- child 0
+	- same
+		- child 1
+	- same
+		- child 2
+	- same
+		- child 3
+	- same
+		- child 4
+	- same
+		- child 5
+	- same
+		- child 6
+	- same
+		- child 7
+	- same
+		- child 8
+	- same
+		- child 9
+	- same
+		- child 10
+	- same
+		- child 11
+	- same
+		- child 12
+	- same
+		- child 13
+	- same
+		- child 14
+	- same
+		- child 15
+	- same
+		- child 16
+	- same
+		- child 17
+	- same
+		- child 18
+	- same
+		- child 19
+	- same
+		- child 20
+	- same
+		- child 21
+	- same
+		- child 22
+	- same
+		- child 23
+	- same
+		- child 24
+	- same
+		- child 25
+	- same
+		- child 26
+	- same
+		- child 27
+	- same
+		- child 28
+	- same
+		- child 29
+	- same
+		- child 30
+	- same
+		- child 31
+	- same
+		- child 32
+	- same
+		- child 33
+	- same
+		- child 34
+	- same
+		- child 35
+	- same
+		- child 36
+	- same
+		- child 37
+	- same
+		- child 38
+	- same
+		- child 39
+	- same
+		- child 40
+	- same
+		- child 41
+	- same
+		- child 42
+	- same
+		- child 43
+	- same
+		- child 44
+	- same
+		- child 45
+	- same
+		- child 46
+	- same
+		- child 47
+	- same
+		- child 48
+	- same
+		- child 49
+	- same
+		- child 50
+	- same
+		- child 51
+	- same
+		- child 52
+	- same
+		- child 53
+	- same
+		- child 54
+	- same
+		- child 55
+	- same
+		- child 56
+	- same
+		- child 57
+	- same
+		- child 58
+	- same
+		- child 59
+	- same
+		- child 60
+	- same
+		- child 61
+	- same
+		- child 62
+	- same
+		- child 63
+	- same
+		- child 64
+	- same
+		- child 65
+	- same
+		- child 66
+	- same
+		- child 67
+	- same
+		- child 68
+	- same
+		- child 69
+	- same
+		- child 70
+	- same
+		- child 71
+	- same
+		- child 72
+	- same
+		- child 73
+	- same
+		- child 74
+	- same
+		- child 75
+	- same
+		- child 76
+	- same
+		- child 77
+	- same
+		- child 78
+	- same
+		- child 79
+	- same
+		- child 80
+	- same
+		- child 81
+	- same
+		- child 82
+	- same
+		- child 83
+	- same
+		- child 84
+	- same
+		- child 85
+	- same
+		- child 86
+	- same
+		- child 87
+	- same
+		- child 88
+	- same
+		- child 89
+	- same
+		- child 90
+	- same
+		- child 91
+	- same
+		- child 92
+	- same
+		- child 93
+	- same
+		- child 94
+	- same
+		- child 95
+	- same
+		- child 96
+	- same
+		- child 97
+	- same
+		- child 98
+	- same
+		- child 99
+	- same
+		- child 100
+	- same
+		- child 101
+	- same
+		- child 102
+	- same
+		- child 103
+	- same
+		- child 104
+	- same
+		- child 105
+	- same
+		- child 106
+	- same
+		- child 107
+	- same
+		- child 108
+	- same
+		- child 109
+	- same
+		- child 110
+	- same
+		- child 111
+	- same
+		- child 112
+	- same
+		- child 113
+	- same
+		- child 114
+	- same
+		- child 115
+	- same
+		- child 116
+	- same
+		- child 117
+	- same
+		- child 118
+	- same
+		- child 119
+	- same
+		- child 120
+	- same
+		- child 121
+	- same
+		- child 122
+	- same
+		- child 123
+	- same
+		- child 124
+	- same
+		- child 125
+	- same
+		- child 126
+	- same
+		- child 127
+	- same
+		- child 128
+	- same
+		- child 129
+	- same
+		- child 130
+	- same
+		- child 131
+	- same
+		- child 132
+	- same
+		- child 133
+	- same
+		- child 134
+	- same
+		- child 135
+	- same
+		- child 136
+	- same
+		- child 137
+	- same
+		- child 138
+	- same
+		- child 139
+	- same
+		- child 140
+	- same
+		- child 141
+	- same
+		- child 142
+	- same
+		- child 143
+	- same
+		- child 144
+	- same
+		- child 145
+	- same
+		- child 146
+	- same
+		- child 147
+	- same
+		- child 148
+	- same
+		- child 149 @done({today})
+	- same
+		- child 150
+	- same
+		- child 151
+	- same
+		- child 152
+	- same
+		- child 153
+	- same
+		- child 154
+	- same
+		- child 155
+	- same
+		- child 156
+	- same
+		- child 157
+	- same
+		- child 158
+	- same
+		- child 159
+	- same
+		- child 160
+	- same
+		- child 161
+	- same
+		- child 162
+	- same
+		- child 163
+	- same
+		- child 164
+	- same
+		- child 165
+	- same
+		- child 166
+	- same
+		- child 167
+	- same
+		- child 168
+	- same
+		- child 169
+	- same
+		- child 170
+	- same
+		- child 171
+	- same
+		- child 172
+	- same
+		- child 173
+	- same
+		- child 174
+	- same
+		- child 175
+	- same
+		- child 176
+	- same
+		- child 177
+	- same
+		- child 178
+	- same
+		- child 179
+	- same
+		- child 180
+	- same
+		- child 181
+	- same
+		- child 182
+	- same
+		- child 183
+	- same
+		- child 184
+	- same
+		- child 185
+	- same
+		- child 186
+	- same
+		- child 187
+	- same
+		- child 188
+	- same
+		- child 189
+	- same
+		- child 190
+	- same
+		- child 191
+	- same
+		- child 192
+	- same
+		- child 193
+	- same
+		- child 194
+	- same
+		- child 195
+	- same
+		- child 196
+	- same
+		- child 197
+	- same
+		- child 198
+	- same
+		- child 199
+END

@@ -1,0 +1,14 @@
+# A due date written with a time of day still lists the block in Upcoming, and editing its text keeps the time.
+file <<END
+- Call @due({today+1} 14:00)
+END
+keys gU
+see - Call
+keys <Enter>
+type  back
+keys <Esc>
+see - Call back
+quit
+saved <<END
+- Call back @due({today+1} 14:00)
+END

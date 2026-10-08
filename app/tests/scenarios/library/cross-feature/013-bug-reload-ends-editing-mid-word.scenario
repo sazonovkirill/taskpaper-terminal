@@ -1,0 +1,32 @@
+# Typing in a block when a sync tool changes another line of the file keeps the block in edit mode, so the rest of the words land in the text.
+# BUG: a silent reload ends edit mode, so the next typed characters run as navigate commands (here `a s` adds a section "e"); file-io.md §3 keeps focus and zoom but says nothing of edit mode.
+file <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+END
+keys j <Enter>
+type  now
+saved <<END
+INBOX:
+	- Call the plumber now
+Home:
+	- Fix the shelf
+END
+outside <<END
+INBOX:
+	- Call the plumber now
+Home:
+	- Fix the big shelf
+END
+see Fix the big shelf
+type  please
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Call the plumber now please
+Home:
+	- Fix the big shelf
+END

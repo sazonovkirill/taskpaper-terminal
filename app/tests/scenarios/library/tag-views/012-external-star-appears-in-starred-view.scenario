@@ -1,0 +1,20 @@
+# A star added to the file by another program shows up in the open Starred view.
+file <<END
+Work:
+	- Report @star
+	- Email
+END
+keys gS
+see - Report 󰓎  Work
+outside <<END
+Work:
+	- Report @star
+	- Email @star
+END
+see - Email 󰓎  Work
+quit
+saved <<END
+Work:
+	- Report @star
+	- Email @star
+END

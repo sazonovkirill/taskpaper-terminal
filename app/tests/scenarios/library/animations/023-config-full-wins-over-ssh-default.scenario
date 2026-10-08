@@ -1,0 +1,14 @@
+# Over SSH, animations set to full in the config stay full; the SSH default applies only when unset.
+env SSH_TTY=/dev/pts/3
+config <<END
+animations = "full"
+END
+file <<END
+- Milk
+END
+keys g,
+type /anim
+see full  │
+hide reduced  │
+keys <Esc> <Esc>
+quit

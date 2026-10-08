@@ -1,0 +1,14 @@
+# Duplicating a Starred entry adds a starred copy right after the original, listed in the view.
+file <<END
+Garden:
+	- Plant tulips @star
+	- Mow lawn
+END
+keys gS D
+quit
+saved <<END
+Garden:
+	- Plant tulips @star
+	- Plant tulips @star
+	- Mow lawn
+END

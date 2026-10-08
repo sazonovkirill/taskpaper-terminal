@@ -1,0 +1,18 @@
+# Esc in the project picker closes it and types "/" and the filter into the text, as text.
+file <<END
+Work:
+	- a
+END
+keys qq
+type Read
+keys <Space> / wo <Esc>
+see - Read /wo
+keys <Space> / <Enter>
+see Quick Add → Work
+keys <Enter>
+quit
+saved <<END
+Work:
+	- a
+	- Read /wo
+END

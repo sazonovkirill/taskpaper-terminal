@@ -1,0 +1,22 @@
+# Logbook lists blocks done today and the six days before, and leaves out older, future, undated and invalid completions.
+file <<END
+Home:
+	- Done today @done({today})
+	- Six days @done({today-6})
+	- Seven days @done({today-7})
+	- Tomorrow done @done({today+1})
+	- No date @done
+	- Bad date @done(yesterday)
+	- Open task
+END
+keys gL
+see Logbook
+see Today ·
+see 6 days ago ·
+see ✔ Done today  Home
+see ✔ Six days  Home
+hide Seven days
+hide Tomorrow done
+hide No date
+hide Bad date
+hide Open task

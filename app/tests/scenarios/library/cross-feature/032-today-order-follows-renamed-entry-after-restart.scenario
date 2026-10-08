@@ -1,0 +1,20 @@
+# A Today entry moved to the top and then renamed in place stays at the top after quitting and reopening.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+	- Pay rent @due({today})
+END
+keys gt G <A-k> <A-k> <Enter>
+type  online
+keys <Esc>
+restart
+see 󰖙 Today
+keys gg x
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+	- Pay rent online @due({today}) @done({today})
+END

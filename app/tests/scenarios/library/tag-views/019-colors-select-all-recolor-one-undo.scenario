@@ -1,0 +1,20 @@
+# Selecting all Colors entries and pressing c3 moves them all under Yellow, and one undo puts each back.
+file <<END
+Sprint:
+	- Design @red
+	- Build @green
+	- Ship @violet
+END
+keys gC <C-a> c3
+see 󰏘 Yellow
+hide Red
+hide Violet
+keys z
+see 󰏘 Violet
+quit
+saved <<END
+Sprint:
+	- Design @red
+	- Build @green
+	- Ship @violet
+END

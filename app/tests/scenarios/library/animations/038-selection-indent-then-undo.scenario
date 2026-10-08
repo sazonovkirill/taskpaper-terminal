@@ -1,0 +1,21 @@
+# Indenting a selection and undoing at once, while the moved rows are tinted, puts every block back.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Alpha
+- Beta
+- Gamma
+- Delta
+END
+keys j J J <Tab>
+see ▌   - Delta
+keys z
+quit
+saved <<END
+- Alpha
+- Beta
+- Gamma
+- Delta
+END

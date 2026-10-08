@@ -1,0 +1,22 @@
+# Expanding a collapsed block and stepping down at once, while the new rows fade in, lands on its first child.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Bank
+		- Deposit
+		- Withdraw
+	- Post office
+END
+keys j h l j x
+see ✔ Deposit
+quit
+saved <<END
+Errands:
+	- Bank
+		- Deposit @done({today})
+		- Withdraw
+	- Post office
+END

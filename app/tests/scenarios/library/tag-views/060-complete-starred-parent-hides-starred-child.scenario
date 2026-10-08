@@ -1,0 +1,20 @@
+# With completed blocks hidden, completing a starred task drops it and its starred subtask from the Starred view and its count.
+file <<END
+Trip:
+	- Book hotel @star
+		- Compare prices @star
+	- Pack @star
+END
+keys gS gc x
+hide Book hotel
+hide Compare prices
+keys <C-g>
+see │▌ 󰓎 Starred                                 1 │
+keys <Esc>
+quit
+saved <<END
+Trip:
+	- Book hotel @star @done({today})
+		- Compare prices @star
+	- Pack @star
+END

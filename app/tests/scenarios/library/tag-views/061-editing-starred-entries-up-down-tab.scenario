@@ -1,0 +1,23 @@
+# While editing a Starred entry, Tab does nothing and Down moves editing to the next entry at the same column.
+file <<END
+INBOX:
+	- Call mom @star
+Work:
+	- Report @star
+	Launch:
+		- Venue @star
+END
+keys gS j <Enter> <Tab> <S-Tab>
+type X
+keys <Down>
+type Y
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Call mom @star
+Work:
+	- ReportX @star
+	Launch:
+		- VenueY @star
+END

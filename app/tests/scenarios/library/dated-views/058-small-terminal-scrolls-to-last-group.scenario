@@ -1,0 +1,18 @@
+# In a 40x10 terminal, G in a long Upcoming list scrolls to the last entry with its day heading above it, and gg scrolls back to Tomorrow.
+size 40 10
+file <<END
+- A1 @due({today+1})
+- A2 @due({today+1})
+- B1 @due({today+2})
+- B2 @due({today+2})
+- C1 @due({today+3})
+- C2 @due({today+3})
+- D1 @due({today+7})
+END
+keys gU G
+see ▌ - D1
+see Next
+hide Tomorrow ·
+keys gg
+see Tomorrow ·
+see ▌ - A1

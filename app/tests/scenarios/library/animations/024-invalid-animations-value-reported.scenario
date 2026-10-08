@@ -1,0 +1,18 @@
+# An unknown animations value in the config is reported in the status line, and the setting falls back to full.
+size 140 30
+config <<END
+animations = "fast"
+END
+file <<END
+- Milk
+END
+status `animations` must be "full", "reduced" or "off"
+keys g,
+type /anim
+see full  │
+keys <Esc> <Esc>
+keys x
+quit
+saved <<END
+- Milk @done({today})
+END

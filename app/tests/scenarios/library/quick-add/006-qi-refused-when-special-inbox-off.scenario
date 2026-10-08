@@ -1,0 +1,22 @@
+# With special_inbox off, qi says there is no INBOX, yet the INBOX project can still be picked with /.
+config <<END
+special_inbox = false
+END
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+status No INBOX project in the Navigator
+hide Quick Add
+keys qq
+type Sort mail /
+keys INB <Enter>
+see Quick Add → INBOX
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Sort mail
+END

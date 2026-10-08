@@ -1,0 +1,28 @@
+# An outside change with an unsaved quick add asks first; after Keep mine the open panel is back and adds too.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type First
+keys <Enter> qi
+type Second
+outside <<END
+INBOX:
+	- Old item
+	- From outside
+END
+see Your changes are not saved yet.
+keys m
+see - Second
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Old item
+	- First
+	- Second
+END

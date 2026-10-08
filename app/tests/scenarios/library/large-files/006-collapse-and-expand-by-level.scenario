@@ -1,0 +1,21 @@
+# Collapse by level folds the deepest open level first, and expand by level reopens the shallowest folded level.
+file <<END
+A:
+	- a1
+		- a2
+			- a3
+B:
+	- b1
+END
+keys -
+see - a2 ▸ 1
+keys -
+see - a1 ▸ 2
+see - b1
+keys -
+see A: ▸ 3
+see B: ▸ 1
+keys =
+see - a1 ▸ 2
+hide - a2
+quit

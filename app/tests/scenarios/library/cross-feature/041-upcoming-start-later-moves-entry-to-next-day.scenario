@@ -1,0 +1,17 @@
+# In Upcoming, ] on an entry starting tomorrow moves it to the next day's group with the focus, and } on it later leaves the start date alone.
+file <<END
+Work:
+	- Review PRs @start({today+1})
+	- Write report @due({today+3})
+END
+keys gU
+see Tomorrow · 
+keys ]
+hide Tomorrow · 
+keys }
+quit
+saved <<END
+Work:
+	- Review PRs @start({today+2}) @due({today+1})
+	- Write report @due({today+3})
+END

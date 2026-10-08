@@ -1,0 +1,19 @@
+# The Navigator lists Upcoming, Overdue and Logbook after Today, counting the open tasks each lists, and Enter on Overdue shows it.
+file <<END
+Work:
+	- Late A @due({today-2})
+	- Late B @due({today-1})
+	- Soon @due({today+2})
+	- Done @done({today})
+	Late project: @due({today-1})
+END
+keys <C-g>
+see Navigator
+see 󱄵 Upcoming                                1 │
+see 󰨱 Overdue                                 2 │
+see 󱓳 Logbook
+keys <Down> <Down>
+keys <Enter>
+see 󰨱 Overdue
+see 2 days ago ·
+see Late project:  Work

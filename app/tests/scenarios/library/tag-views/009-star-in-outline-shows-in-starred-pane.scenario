@@ -1,0 +1,22 @@
+# Starring a task in the outline pane adds it, in document order, to a Starred view open in a second pane.
+file <<END
+Inbox stuff:
+	- Call mom @star
+	- Pay bill
+Work:
+	- Report @star
+END
+keys <C-g>
+type starred
+keys <C-t>
+see │▌ - Call mom
+keys <C-w> h j j *
+see - Pay bill 󰓎  Inbox stuff
+quit
+saved <<END
+Inbox stuff:
+	- Call mom @star
+	- Pay bill @star
+Work:
+	- Report @star
+END

@@ -1,0 +1,16 @@
+# Being told to end while Quick Add is open saves the change made before it and adds nothing from the unfinished panel.
+config <<END
+autosave_delay_ms = 5000
+END
+file <<END
+INBOX:
+	- Call the plumber
+END
+keys j x qi
+type Half typed
+see - Half typed
+signal TERM
+saved <<END
+INBOX:
+	- Call the plumber @done({today})
+END

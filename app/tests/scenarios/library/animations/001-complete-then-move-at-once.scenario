@@ -1,0 +1,20 @@
+# Completing a task and moving on before its ease ends completes it and the next key acts on the next block.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+	- Pharmacy
+END
+keys j x j x j
+see ✔ Bank
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Bank @done({today})
+	- Pharmacy
+END

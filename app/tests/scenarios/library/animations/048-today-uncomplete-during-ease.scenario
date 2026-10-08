@@ -1,0 +1,19 @@
+# In the Today view, completing and uncompleting an entry in a burst leaves it open and listed.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Work:
+	- Report @due({today})
+END
+keys gt
+see Today
+keys x x
+see - Report
+hide ✔
+quit
+saved <<END
+Work:
+	- Report @due({today})
+END

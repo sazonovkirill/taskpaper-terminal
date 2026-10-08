@@ -1,0 +1,18 @@
+# Switching icons to none in the settings window while Overdue and Flagged views are open redraws their headers and chips with the fallback glyphs at once.
+file <<END
+Work:
+	- Write report @due({today-2})
+	- Fix the shelf @flag
+END
+keys gO <C-w> s gF g,
+see Settings
+keys /
+type icons
+keys <Enter> <Enter>
+see none
+keys <Down> <Enter> <Esc>
+see ! Overdue
+see ⚐ Flagged
+see - Fix the shelf ⚐  Work
+see ! 2 days ago
+quit

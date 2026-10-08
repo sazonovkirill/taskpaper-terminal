@@ -1,0 +1,27 @@
+# Tags inside a hidden special node list nothing in the Starred, Flagged and Colors views, and a project in it is not in the Navigator.
+file <<END
+Work:
+	- Real @star
+	LOG @hidden @log
+		- Ghost @star @flag @red
+		GhostProject:
+			- g
+END
+keys <C-g>
+see 󰓎 Starred                                 1 │
+see 󰈻 Flagged                                   │
+hide GhostProject
+keys <Esc> gS
+see - Real 󰓎  Work
+hide Ghost
+keys gC
+hide Ghost
+quit
+saved <<END
+Work:
+	- Real @star
+	LOG @hidden @log
+		- Ghost @star @flag @red
+		GhostProject:
+			- g
+END

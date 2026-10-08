@@ -1,0 +1,20 @@
+# A Today entry duplicated and moved to the end of the list goes away on undo and comes back at the end on redo.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+	- Plan sprint @due({today})
+END
+keys gt D <A-j> <A-j>
+see ▌ - Write report  Work
+keys z
+keys Z
+keys gg G x
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Write report @due({today}) @done({today})
+	- Review PRs @due({today})
+	- Plan sprint @due({today})
+END

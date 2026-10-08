@@ -1,0 +1,12 @@
+# With the ? panel open, opening the Navigator makes the panel list the Navigator's keys instead of the outline's.
+# BUG: the ? panel keeps listing navigate-mode bindings (New Block Below, Toggle Fold, ...) while the Navigator has the keys, though it should follow the context, Navigator included (ui.md §4); it does switch for edit mode.
+size 120 40
+file <<END
+Work:
+	- Report
+END
+keys ?
+see New Block Below
+keys <C-g>
+see Navigator
+hide New Block Below

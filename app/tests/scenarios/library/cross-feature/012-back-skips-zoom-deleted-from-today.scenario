@@ -1,0 +1,18 @@
+# Zooming into a project, going to Today and deleting that project there, Back skips the deleted zoom and lands on the home page.
+file <<END
+Work: @due({today})
+	- Write report
+Home:
+	- Pay rent
+END
+keys . gt
+see 󰖙 Today
+keys dd
+hide Work
+keys H
+see ▌ Home:
+quit
+saved <<END
+Home:
+	- Pay rent
+END

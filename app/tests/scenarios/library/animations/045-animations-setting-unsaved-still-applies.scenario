@@ -1,0 +1,18 @@
+# When the config cannot be written, choosing Animations: Off reports that it was not saved and still applies it for the session.
+size 140 30
+env XDG_CONFIG_HOME=/dev/null
+file <<END
+- Milk
+END
+keys :
+type Animations: Off
+keys <Enter>
+status `animations` not saved
+keys g,
+type /anim
+see off  │
+keys <Esc> <Esc> x
+quit
+saved <<END
+- Milk @done({today})
+END

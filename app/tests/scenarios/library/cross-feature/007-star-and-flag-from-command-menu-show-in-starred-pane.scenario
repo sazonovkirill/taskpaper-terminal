@@ -1,0 +1,25 @@
+# While editing in the outline pane, starring and flagging the block through the command menu lists it in a Starred view in the other pane at once.
+file <<END
+INBOX:
+	- Call the plumber
+	- Renew passport
+END
+keys <C-w> s gS g1 j <Enter>
+type  now
+keys /
+type star
+keys <Enter>
+see - Call the plumber now 󰓎  INBOX
+status EDIT
+type !
+keys /
+type flag
+keys <Enter>
+see - Call the plumber now! 󰈻 󰓎  INBOX
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Call the plumber now! @star @flag
+	- Renew passport
+END

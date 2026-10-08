@@ -1,0 +1,12 @@
+# Tab, Shift+Tab and Ctrl+J type nothing and break nothing in Quick Add; the text stays one line.
+file <<END
+INBOX:
+END
+keys qi a <Tab> b <S-Tab> c <C-j> d
+see - abcd
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- abcd
+END

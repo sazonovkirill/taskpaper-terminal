@@ -1,0 +1,21 @@
+# Dates count only as whole words: "today's", "a-tomorrow" and "tomorrow/friday" stay text, while "tomorrow." counts.
+file <<END
+INBOX:
+END
+keys qi
+type Read today's paper
+keys <Enter> qi
+type Fix a-tomorrow bug
+keys <Enter> qi
+type Pick tomorrow/friday
+keys <Enter> qi
+type Call mom tomorrow.
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Read today's paper
+	- Fix a-tomorrow bug
+	- Pick tomorrow/friday
+	- Call mom. @start({today+1})
+END

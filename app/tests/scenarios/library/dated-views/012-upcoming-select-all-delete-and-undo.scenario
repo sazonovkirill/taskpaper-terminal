@@ -1,0 +1,28 @@
+# Ctrl+A then dd in Upcoming deletes every listed block with its children, and z brings them all back.
+file <<END
+Keep:
+	- Stay
+	- Parent @due({today+2})
+		- Child undated
+		- Child dated @due({today+1})
+	- Over @due({today-1})
+END
+keys gU
+see Child dated
+keys <C-a> dd
+saved <<END
+Keep:
+	- Stay
+	- Over @due({today-1})
+END
+keys z
+see ▌ - Child dated
+quit
+saved <<END
+Keep:
+	- Stay
+	- Parent @due({today+2})
+		- Child undated
+		- Child dated @due({today+1})
+	- Over @due({today-1})
+END

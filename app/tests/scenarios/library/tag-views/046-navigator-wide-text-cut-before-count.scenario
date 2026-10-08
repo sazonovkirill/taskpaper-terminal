@@ -1,0 +1,11 @@
+# A long project name in wide characters is cut before its right-aligned count, with no half character left.
+size 60 24
+file <<END
+日本語のプロジェクト名前がとても長いですよ本当に長い:
+	- タスク
+	- 二つ目
+END
+keys <C-g>
+see │  日本語のプロジェクト名前がとても長いです  2 │
+keys <Esc>
+quit

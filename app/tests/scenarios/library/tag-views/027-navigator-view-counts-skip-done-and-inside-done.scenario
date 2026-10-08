@@ -1,0 +1,23 @@
+# A special view's Navigator count leaves out done tasks, tasks inside done projects, notes and projects, even though the view lists them.
+config <<END
+sidebar_today = false
+sidebar_upcoming = false
+sidebar_overdue = false
+sidebar_logbook = false
+END
+file <<END
+Old: @done(2026-01-01) @star
+	- Inside old @star @flag @red
+New: @flag
+	- Open one @star @flag @red
+	- Closed one @star @flag @red @done(2026-01-02)
+	A note @star @red
+END
+keys <C-g>
+see 󰓎 Starred                                 1 │
+see 󰈻 Flagged                                 1 │
+see 󰸌 Colors                                  1 │
+keys <Enter>
+see - Inside old
+see A note
+quit

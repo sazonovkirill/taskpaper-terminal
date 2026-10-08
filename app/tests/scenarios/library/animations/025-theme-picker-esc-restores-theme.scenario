@@ -1,0 +1,21 @@
+# Previewing other themes in the picker and pressing Esc during the crossfade keeps the theme in use, after a restart too.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys <C-t>
+see Theme
+keys <Down> <Down> <Esc> x
+see ✔ Milk
+restart
+keys g,
+type /theme
+see Nord  │
+keys <Esc> <Esc>
+quit
+saved <<END
+- Milk @done({today})
+END

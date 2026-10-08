@@ -1,0 +1,18 @@
+# Opening Overdue while zoomed into an overdue task focuses that task's entry.
+file <<END
+Work:
+	- One @due({today-1})
+	- Two @due({today-1})
+	- Three @due({today-1})
+END
+keys j j j .
+see › Three
+keys gO x
+see Overdue
+quit
+saved <<END
+Work:
+	- One @due({today-1})
+	- Two @due({today-1})
+	- Three @due({today-1}) @done({today})
+END

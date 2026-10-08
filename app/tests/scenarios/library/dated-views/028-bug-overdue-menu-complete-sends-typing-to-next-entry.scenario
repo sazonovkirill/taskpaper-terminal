@@ -1,0 +1,16 @@
+# Complete from the command menu while editing an Overdue entry keeps editing that block, so a typed x is text and the next entry stays open.
+# BUG: the completed entry leaves the view, editing ends, and the typed x completes the next entry instead
+file <<END
+- Aa @due({today-2})
+- Bb @due({today-1})
+END
+keys gO <Enter> /
+type comp
+keys <Enter>
+type x
+keys <Esc>
+quit
+saved <<END
+- Aax @due({today-2}) @done({today})
+- Bb @due({today-1})
+END

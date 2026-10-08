@@ -1,0 +1,16 @@
+# If the focused Overdue entry was completed by another program while the app was closed, the view opens on another entry.
+file <<END
+- First @due({today-3})
+- Second @due({today-2})
+END
+keys gO j
+see ▌ - Second
+quit
+outside <<END
+- First @due({today-3})
+- Second @due({today-2}) @done({today})
+END
+restart
+see Overdue
+see ▌ - First
+hide Second

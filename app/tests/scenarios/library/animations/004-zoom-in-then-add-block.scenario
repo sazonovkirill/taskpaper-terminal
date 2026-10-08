@@ -1,0 +1,23 @@
+# Zooming into a project and adding a block at once, while the pane fades in, adds it inside the zoom.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys .o
+type Bank
+keys <Esc>
+see - Bank
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END

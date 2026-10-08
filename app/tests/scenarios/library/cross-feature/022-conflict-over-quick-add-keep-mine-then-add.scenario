@@ -1,0 +1,32 @@
+# With an unsaved change, another program edits the file while Quick Add is open; keeping mine leaves the panel open and the task is added after.
+config <<END
+autosave_delay_ms = 5000
+END
+file <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+END
+keys j x qi
+type Buy milk
+see - Buy milk
+outside <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the big shelf
+END
+see Your changes are not saved yet.
+keys m
+see Quick Add → INBOX
+type  now
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Call the plumber @done({today})
+	- Buy milk now
+Home:
+	- Fix the shelf
+END

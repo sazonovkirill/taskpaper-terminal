@@ -1,0 +1,18 @@
+# In the Today view the focus on the second of two tasks with the same text comes back on that one after quitting and reopening.
+file <<END
+Work:
+	- Call Ann @due({today})
+	- Call Ann @due({today}) @star
+	- Write report @due({today})
+END
+keys gt j
+restart
+see 󰖙 Today
+keys x
+quit
+saved <<END
+Work:
+	- Call Ann @due({today})
+	- Call Ann @due({today}) @star @done({today})
+	- Write report @due({today})
+END

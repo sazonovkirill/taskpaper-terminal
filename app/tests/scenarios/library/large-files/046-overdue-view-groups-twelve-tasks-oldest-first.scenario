@@ -1,0 +1,22 @@
+# The Overdue view groups 12 overdue tasks by due date, the oldest group first, each group in document order.
+file <<END
+Work:
+	- w0 @due({today-1})
+	- w1 @due({today-2})
+	- w2 @due({today-3})
+	- w3 @due({today-4})
+	- w4 @due({today-1})
+	- w5 @due({today-2})
+	- w6 @due({today-3})
+	- w7 @due({today-4})
+	- w8 @due({today-1})
+	- w9 @due({today-2})
+	- w10 @due({today-3})
+	- w11 @due({today-4})
+END
+keys gO
+see 4 days ago · 
+see ▌ - w3  Work
+keys j j j
+see ▌ - w2  Work
+quit

@@ -1,0 +1,13 @@
+# In a 20x6 terminal the Navigator shrinks to fit, scrolls to keep the focused entry in view, and Enter still goes there.
+size 20 6
+file <<END
+Work:
+	- Report
+Home:
+	- Sink
+END
+keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+see │▌ Home
+keys <Enter>
+see 󰋜 › Home
+quit

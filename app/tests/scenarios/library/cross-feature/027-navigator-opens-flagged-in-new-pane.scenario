@@ -1,0 +1,20 @@
+# From the Navigator, Ctrl+T opens the Flagged view in a new pane; flagging a task with ! in the outline pane lists it there.
+file <<END
+Home:
+	- Fix the shelf @flag
+	- Pay rent
+END
+keys <C-g>
+see Navigator
+type flag
+keys <C-t>
+see 󰈻 Flagged
+see - Fix the shelf 󰈻  Home
+keys g1 G !
+see - Pay rent 󰈻  Home
+quit
+saved <<END
+Home:
+	- Fix the shelf @flag
+	- Pay rent @flag
+END

@@ -1,0 +1,19 @@
+# Going home from Upcoming focuses the block that was focused there.
+file <<END
+Work:
+	- Plan
+	- Ship @due({today+2})
+	- Review
+END
+keys gU
+see ▌ - Ship  Work
+keys gh
+see 󰋜
+keys x
+quit
+saved <<END
+Work:
+	- Plan
+	- Ship @due({today+2}) @done({today})
+	- Review
+END

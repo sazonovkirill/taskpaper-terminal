@@ -1,0 +1,17 @@
+# J extends the selection over the heading into the next day's group, and x completes both entries.
+file <<END
+- A1 @due({today+1})
+- B2 @due({today+2})
+- C1 @due({today+1})
+- D3 @due({today+3})
+END
+keys gU j J x
+see ✔ C1
+see ✔ B2
+quit
+saved <<END
+- A1 @due({today+1})
+- B2 @due({today+2}) @done({today})
+- C1 @due({today+1}) @done({today})
+- D3 @due({today+3})
+END

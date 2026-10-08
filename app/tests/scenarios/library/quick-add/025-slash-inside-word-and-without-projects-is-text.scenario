@@ -1,0 +1,16 @@
+# "/" inside a word is typed, and in a file with no projects "/" at a word start is typed too, as there is none to pick.
+file <<END
+- Loose task
+END
+keys qq
+type and/or
+keys <Space> /
+see - and/or /
+hide Project
+keys <Enter>
+see Choose a project with /
+keys <Esc>
+quit
+saved <<END
+- Loose task
+END

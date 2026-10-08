@@ -1,0 +1,17 @@
+# Pasting a copied block and undoing at once, during the change highlight, leaves the outline as it was.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+- Eggs
+END
+keys y j p
+see - Milk
+keys z
+quit
+saved <<END
+- Milk
+- Eggs
+END

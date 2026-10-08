@@ -1,0 +1,23 @@
+# Shrinking the terminal to 20x6 in Upcoming and growing it back keeps the focused entry, and the view still works.
+file <<END
+- One @due({today+1})
+- Two @due({today+2})
+- Three @due({today+3})
+- Four @due({today+4})
+- Five @due({today+5})
+END
+keys gU G k
+see ▌ - Four
+resize 20 6
+see Four
+resize 100 30
+see ▌ - Four
+keys x
+quit
+saved <<END
+- One @due({today+1})
+- Two @due({today+2})
+- Three @due({today+3})
+- Four @due({today+4}) @done({today})
+- Five @due({today+5})
+END

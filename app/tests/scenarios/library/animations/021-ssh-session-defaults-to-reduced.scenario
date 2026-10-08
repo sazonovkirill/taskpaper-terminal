@@ -1,0 +1,11 @@
+# Over SSH, with no setting in the config, the settings window shows Animations as reduced.
+env SSH_CONNECTION=10.0.0.1 22 10.0.0.2 22
+file <<END
+- Milk
+END
+keys g,
+type /anim
+see reduced  │
+hide full  │
+keys <Esc> <Esc>
+quit

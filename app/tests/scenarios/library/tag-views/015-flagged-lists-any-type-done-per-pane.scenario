@@ -1,0 +1,21 @@
+# The Flagged view lists flagged tasks, notes and projects, values included, and hides done ones once completed blocks are hidden.
+file <<END
+Old: @done(2026-01-01)
+	- Inside old @flag
+New:
+	- Open one @flag(urgent)
+	- Closed one @flag @done(2026-01-02)
+	Plain note @flag
+	Sub: @flag
+END
+keys gF
+see - Inside old 󰈻  Old
+see - Open one 󰈻  New
+see ✔ Closed one 󰈻  New
+see Plain note 󰈻  New
+see Sub: 󰈻  New
+keys gc
+hide Inside old
+hide Closed one
+see - Open one
+quit

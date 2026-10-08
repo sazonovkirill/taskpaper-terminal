@@ -1,0 +1,26 @@
+# The Move to picker stays open when another program changes an unrelated line, so the project typed next is where the task goes.
+# BUG: a silent reload closes Move to (and Go to Symbol, Go to Project, the context menu), so the typed filter runs as navigate commands; Go to Command, the Navigator and the color picker stay open; file-io.md §3 is silent.
+file <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+END
+keys j gm
+see Move to
+outside <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the big shelf
+END
+see Fix the big shelf
+type home
+keys <Enter>
+quit
+saved <<END
+INBOX:
+Home:
+	- Fix the big shelf
+	- Call the plumber
+END

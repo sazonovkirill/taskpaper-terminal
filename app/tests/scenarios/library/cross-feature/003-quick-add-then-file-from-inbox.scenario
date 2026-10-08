@@ -1,0 +1,28 @@
+# Capture two things with Quick Add, then go to the inbox and file one into a project with Move to; the moved task keeps its due date.
+file <<END
+INBOX:
+Home:
+	- Fix the shelf
+END
+keys qi
+type Buy milk due tomorrow
+keys <Enter>
+status Added to INBOX
+keys qi
+type Call the plumber
+keys <Enter>
+keys gi
+see › INBOX
+keys gm
+see Move to
+type home
+keys <Enter>
+see › Home
+quit
+saved <<END
+INBOX:
+	- Call the plumber
+Home:
+	- Fix the shelf
+	- Buy milk @due({today+1})
+END

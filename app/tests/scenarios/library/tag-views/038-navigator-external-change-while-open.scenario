@@ -1,0 +1,22 @@
+# When another program removes projects while the Navigator is open, it relists what is left and Enter goes to a remaining entry.
+file <<END
+Alpha:
+	- a
+Beta:
+	- b
+END
+keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+see │▌ Beta
+outside <<END
+Solo:
+	- s
+END
+see Solo
+hide Beta
+keys <Enter>
+hide Navigator
+quit
+saved <<END
+Solo:
+	- s
+END

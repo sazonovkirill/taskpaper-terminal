@@ -1,0 +1,23 @@
+# In a 20x6 terminal Quick Add still opens, scrolls its text to the caret, and adds with a picked project.
+size 20 6
+file <<END
+INBOX:
+Work:
+	- a
+END
+keys qq
+see Quick Add
+type Buy a long list of things
+see things
+keys <Space> /
+type wo
+keys <Enter>
+see Quick Add → Work
+keys <Enter>
+quit
+saved <<END
+INBOX:
+Work:
+	- a
+	- Buy a long list of things
+END

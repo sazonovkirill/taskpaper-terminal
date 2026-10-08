@@ -1,0 +1,22 @@
+# Jumping to the last block with G and pressing x before its landing flash ends completes that block.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END
+keys Gx
+see ✔ Laundry
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry @done({today})
+END

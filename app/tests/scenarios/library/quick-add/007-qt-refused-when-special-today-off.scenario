@@ -1,0 +1,16 @@
+# With special_today off, qt says "No TODAY project" and adds nothing.
+config <<END
+special_today = false
+END
+file <<END
+TODAY:
+	- Stand-up
+END
+keys qt
+status No TODAY project
+hide Quick Add
+quit
+saved <<END
+TODAY:
+	- Stand-up
+END

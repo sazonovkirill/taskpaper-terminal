@@ -1,0 +1,16 @@
+# Upcoming follows show-completed: gc hides done entries and entries inside done projects, and gc again shows them.
+file <<END
+Old: @done({today})
+	- Inside @due({today+2})
+- Done task @due({today+1}) @done({today})
+- Open task @due({today+1})
+END
+keys gU
+see - Inside  Old
+see ✔ Done task
+keys gc
+hide Inside
+hide Done task
+see ▌ - Open task
+keys gc
+see - Inside  Old

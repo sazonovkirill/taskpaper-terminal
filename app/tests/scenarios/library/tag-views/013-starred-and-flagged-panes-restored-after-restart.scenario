@@ -1,0 +1,18 @@
+# Two panes showing Flagged and Starred come back as they were after quitting and reopening the file.
+size 80 12
+file <<END
+Home:
+	- Sink @flag
+	- Plants @star
+END
+keys gF
+see 󰈻 Flagged
+keys <C-g>
+type starred
+keys <C-t>
+see │  󰓎 Starred
+restart
+see 󰈻 Flagged
+see │  󰓎 Starred
+see │▌ - Plants
+quit

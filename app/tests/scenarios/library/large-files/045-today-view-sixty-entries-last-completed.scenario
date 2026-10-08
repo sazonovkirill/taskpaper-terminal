@@ -1,0 +1,191 @@
+# The Today view of 10 projects lists their 60 due tasks in document order; G reaches the last, and completing it saves it done.
+file <<END
+P0:
+	- t0.0 @due({today-0})
+	- t0.1 @due({today-1})
+	- t0.2 @due({today-2})
+	- t0.3 @due({today-3})
+	- t0.4 @due({today-4})
+	- t0.5 @due({today-0})
+	- t0.6
+	- t0.7
+P1:
+	- t1.0 @due({today-1})
+	- t1.1 @due({today-2})
+	- t1.2 @due({today-3})
+	- t1.3 @due({today-4})
+	- t1.4 @due({today-0})
+	- t1.5 @due({today-1})
+	- t1.6
+	- t1.7
+P2:
+	- t2.0 @due({today-2})
+	- t2.1 @due({today-3})
+	- t2.2 @due({today-4})
+	- t2.3 @due({today-0})
+	- t2.4 @due({today-1})
+	- t2.5 @due({today-2})
+	- t2.6
+	- t2.7
+P3:
+	- t3.0 @due({today-3})
+	- t3.1 @due({today-4})
+	- t3.2 @due({today-0})
+	- t3.3 @due({today-1})
+	- t3.4 @due({today-2})
+	- t3.5 @due({today-3})
+	- t3.6
+	- t3.7
+P4:
+	- t4.0 @due({today-4})
+	- t4.1 @due({today-0})
+	- t4.2 @due({today-1})
+	- t4.3 @due({today-2})
+	- t4.4 @due({today-3})
+	- t4.5 @due({today-4})
+	- t4.6
+	- t4.7
+P5:
+	- t5.0 @due({today-0})
+	- t5.1 @due({today-1})
+	- t5.2 @due({today-2})
+	- t5.3 @due({today-3})
+	- t5.4 @due({today-4})
+	- t5.5 @due({today-0})
+	- t5.6
+	- t5.7
+P6:
+	- t6.0 @due({today-1})
+	- t6.1 @due({today-2})
+	- t6.2 @due({today-3})
+	- t6.3 @due({today-4})
+	- t6.4 @due({today-0})
+	- t6.5 @due({today-1})
+	- t6.6
+	- t6.7
+P7:
+	- t7.0 @due({today-2})
+	- t7.1 @due({today-3})
+	- t7.2 @due({today-4})
+	- t7.3 @due({today-0})
+	- t7.4 @due({today-1})
+	- t7.5 @due({today-2})
+	- t7.6
+	- t7.7
+P8:
+	- t8.0 @due({today-3})
+	- t8.1 @due({today-4})
+	- t8.2 @due({today-0})
+	- t8.3 @due({today-1})
+	- t8.4 @due({today-2})
+	- t8.5 @due({today-3})
+	- t8.6
+	- t8.7
+P9:
+	- t9.0 @due({today-4})
+	- t9.1 @due({today-0})
+	- t9.2 @due({today-1})
+	- t9.3 @due({today-2})
+	- t9.4 @due({today-3})
+	- t9.5 @due({today-4})
+	- t9.6
+	- t9.7
+END
+keys gt
+see - t0.0  P0
+keys G
+see ▌ - t9.5  P9
+keys x
+quit
+saved <<END
+P0:
+	- t0.0 @due({today-0})
+	- t0.1 @due({today-1})
+	- t0.2 @due({today-2})
+	- t0.3 @due({today-3})
+	- t0.4 @due({today-4})
+	- t0.5 @due({today-0})
+	- t0.6
+	- t0.7
+P1:
+	- t1.0 @due({today-1})
+	- t1.1 @due({today-2})
+	- t1.2 @due({today-3})
+	- t1.3 @due({today-4})
+	- t1.4 @due({today-0})
+	- t1.5 @due({today-1})
+	- t1.6
+	- t1.7
+P2:
+	- t2.0 @due({today-2})
+	- t2.1 @due({today-3})
+	- t2.2 @due({today-4})
+	- t2.3 @due({today-0})
+	- t2.4 @due({today-1})
+	- t2.5 @due({today-2})
+	- t2.6
+	- t2.7
+P3:
+	- t3.0 @due({today-3})
+	- t3.1 @due({today-4})
+	- t3.2 @due({today-0})
+	- t3.3 @due({today-1})
+	- t3.4 @due({today-2})
+	- t3.5 @due({today-3})
+	- t3.6
+	- t3.7
+P4:
+	- t4.0 @due({today-4})
+	- t4.1 @due({today-0})
+	- t4.2 @due({today-1})
+	- t4.3 @due({today-2})
+	- t4.4 @due({today-3})
+	- t4.5 @due({today-4})
+	- t4.6
+	- t4.7
+P5:
+	- t5.0 @due({today-0})
+	- t5.1 @due({today-1})
+	- t5.2 @due({today-2})
+	- t5.3 @due({today-3})
+	- t5.4 @due({today-4})
+	- t5.5 @due({today-0})
+	- t5.6
+	- t5.7
+P6:
+	- t6.0 @due({today-1})
+	- t6.1 @due({today-2})
+	- t6.2 @due({today-3})
+	- t6.3 @due({today-4})
+	- t6.4 @due({today-0})
+	- t6.5 @due({today-1})
+	- t6.6
+	- t6.7
+P7:
+	- t7.0 @due({today-2})
+	- t7.1 @due({today-3})
+	- t7.2 @due({today-4})
+	- t7.3 @due({today-0})
+	- t7.4 @due({today-1})
+	- t7.5 @due({today-2})
+	- t7.6
+	- t7.7
+P8:
+	- t8.0 @due({today-3})
+	- t8.1 @due({today-4})
+	- t8.2 @due({today-0})
+	- t8.3 @due({today-1})
+	- t8.4 @due({today-2})
+	- t8.5 @due({today-3})
+	- t8.6
+	- t8.7
+P9:
+	- t9.0 @due({today-4})
+	- t9.1 @due({today-0})
+	- t9.2 @due({today-1})
+	- t9.3 @due({today-2})
+	- t9.4 @due({today-3})
+	- t9.5 @due({today-4}) @done({today})
+	- t9.6
+	- t9.7
+END

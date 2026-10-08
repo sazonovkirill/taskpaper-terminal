@@ -1,0 +1,15 @@
+# Zooming in on a Starred entry shows it in the outline under its parent, and H returns to the Starred view.
+file <<END
+Work:
+	Launch:
+		- Venue @star
+		- Catering
+	- Report @star
+END
+keys gS .
+see 󰋜 › Work › Launch
+see - Catering
+keys H
+see 󰓎 Starred
+hide Catering
+quit

@@ -1,0 +1,22 @@
+# Zooming into a project with wide and combining characters, with its crumb flashing, shows its title and children intact.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+日本語の本:
+	- Café crème
+	- 読む
+- Other
+END
+keys .
+see › 日本語の本
+keys j x
+see ✔ 読む
+quit
+saved <<END
+日本語の本:
+	- Café crème
+	- 読む @done({today})
+- Other
+END

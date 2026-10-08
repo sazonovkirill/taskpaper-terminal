@@ -1,0 +1,16 @@
+# Ctrl+V in Quick Add pastes the text copied last, as it does in the date prompt and edit mode.
+file <<END
+INBOX:
+Work:
+	- Renew passport
+END
+keys j j <Enter> <C-a> <C-c> <Esc> qi <C-v>
+see Enter adds it
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Renew passport
+Work:
+	- Renew passport
+END

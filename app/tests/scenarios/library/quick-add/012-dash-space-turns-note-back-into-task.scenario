@@ -1,0 +1,14 @@
+# After Backspace makes a note, typing "- " at the start of its text makes it a task again.
+file <<END
+INBOX:
+END
+keys qi <BS>
+type Pay bills
+keys <Home>
+keys - <Space>
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Pay bills
+END

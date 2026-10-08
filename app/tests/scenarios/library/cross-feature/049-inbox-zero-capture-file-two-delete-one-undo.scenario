@@ -1,0 +1,33 @@
+# Inbox zero: capture three tasks with qi, move two of them to Work together, delete the third, then undo the delete.
+file <<END
+INBOX:
+Work:
+	- Write report
+END
+keys qi
+type Email Bob tomorrow
+keys <Enter> qi
+type Order toner
+keys <Enter> qi
+type Lunch idea
+keys <Enter>
+keys gi
+see › INBOX
+keys J gm
+see Move to
+type work
+keys <Enter>
+see › Work
+keys gi dd
+hide Lunch idea
+keys z
+see - Lunch idea
+quit
+saved <<END
+INBOX:
+	- Lunch idea
+Work:
+	- Write report
+	- Email Bob @start({today+1})
+	- Order toner
+END

@@ -1,0 +1,21 @@
+# Overdue lists open blocks due before today, and leaves out due today, start dates, done blocks and blocks inside done ones.
+file <<END
+Work:
+	- Late report @due({today-3})
+	- Due today @due({today})
+	- Started @start({today-2})
+	- Finished @due({today-2}) @done({today-1})
+	Closed: @done({today})
+		- Inside closed @due({today-4})
+	Old project: @due({today-1})
+END
+keys gO
+see Overdue
+see 3 days ago ·
+see Yesterday ·
+see - Late report  Work
+see Old project:  Work
+hide Due today
+hide Started
+hide Finished
+hide Inside closed

@@ -1,0 +1,21 @@
+# After another program adds a block, the reload highlights it, and completing it at once marks the reloaded block done.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+see - Milk
+outside <<END
+- Milk
+- Bread
+END
+see - Bread
+keys jx
+see ✔ Bread
+quit
+saved <<END
+- Milk
+- Bread @done({today})
+END

@@ -1,0 +1,190 @@
+# Zoomed into the 55th of 60 projects, the Navigator opens scrolled to that project's entry with its count of 2.
+file <<END
+Proj 0:
+	- open 0
+	- also 0
+Proj 1:
+	- open 1
+	- also 1
+Proj 2:
+	- open 2
+	- also 2
+Proj 3:
+	- open 3
+	- also 3
+Proj 4:
+	- open 4
+	- also 4
+Proj 5:
+	- open 5
+	- also 5
+Proj 6:
+	- open 6
+	- also 6
+Proj 7:
+	- open 7
+	- also 7
+Proj 8:
+	- open 8
+	- also 8
+Proj 9:
+	- open 9
+	- also 9
+Proj 10:
+	- open 10
+	- also 10
+Proj 11:
+	- open 11
+	- also 11
+Proj 12:
+	- open 12
+	- also 12
+Proj 13:
+	- open 13
+	- also 13
+Proj 14:
+	- open 14
+	- also 14
+Proj 15:
+	- open 15
+	- also 15
+Proj 16:
+	- open 16
+	- also 16
+Proj 17:
+	- open 17
+	- also 17
+Proj 18:
+	- open 18
+	- also 18
+Proj 19:
+	- open 19
+	- also 19
+Proj 20:
+	- open 20
+	- also 20
+Proj 21:
+	- open 21
+	- also 21
+Proj 22:
+	- open 22
+	- also 22
+Proj 23:
+	- open 23
+	- also 23
+Proj 24:
+	- open 24
+	- also 24
+Proj 25:
+	- open 25
+	- also 25
+Proj 26:
+	- open 26
+	- also 26
+Proj 27:
+	- open 27
+	- also 27
+Proj 28:
+	- open 28
+	- also 28
+Proj 29:
+	- open 29
+	- also 29
+Proj 30:
+	- open 30
+	- also 30
+Proj 31:
+	- open 31
+	- also 31
+Proj 32:
+	- open 32
+	- also 32
+Proj 33:
+	- open 33
+	- also 33
+Proj 34:
+	- open 34
+	- also 34
+Proj 35:
+	- open 35
+	- also 35
+Proj 36:
+	- open 36
+	- also 36
+Proj 37:
+	- open 37
+	- also 37
+Proj 38:
+	- open 38
+	- also 38
+Proj 39:
+	- open 39
+	- also 39
+Proj 40:
+	- open 40
+	- also 40
+Proj 41:
+	- open 41
+	- also 41
+Proj 42:
+	- open 42
+	- also 42
+Proj 43:
+	- open 43
+	- also 43
+Proj 44:
+	- open 44
+	- also 44
+Proj 45:
+	- open 45
+	- also 45
+Proj 46:
+	- open 46
+	- also 46
+Proj 47:
+	- open 47
+	- also 47
+Proj 48:
+	- open 48
+	- also 48
+Proj 49:
+	- open 49
+	- also 49
+Proj 50:
+	- open 50
+	- also 50
+Proj 51:
+	- open 51
+	- also 51
+Proj 52:
+	- open 52
+	- also 52
+Proj 53:
+	- open 53
+	- also 53
+Proj 54:
+	- open 54
+	- also 54
+Proj 55:
+	- open 55
+	- also 55
+Proj 56:
+	- open 56
+	- also 56
+Proj 57:
+	- open 57
+	- also 57
+Proj 58:
+	- open 58
+	- also 58
+Proj 59:
+	- open 59
+	- also 59
+END
+keys gP
+type Proj 55
+see › Proj 55
+keys <Enter> . <C-g>
+see ▌ Proj 55
+keys <Esc>
+quit

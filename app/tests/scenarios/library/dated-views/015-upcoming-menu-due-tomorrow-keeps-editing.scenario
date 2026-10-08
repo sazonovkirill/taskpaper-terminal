@@ -1,0 +1,16 @@
+# Due Tomorrow from the command menu while editing an Upcoming entry moves it to Tomorrow and typing goes on in it.
+file <<END
+- Later @due({today+4})
+- Early @due({today+1})
+END
+keys gU j <Enter> /
+type due tom
+keys <Enter>
+type !
+keys <Esc>
+see - Later!
+quit
+saved <<END
+- Later! @due({today+1})
+- Early @due({today+1})
+END

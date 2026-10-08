@@ -1,0 +1,24 @@
+# Adding to a collapsed project expands nothing: the project stays folded and its count grows.
+file <<END
+INBOX:
+	- One
+	- Two
+Work:
+	- a
+END
+keys <Space>
+see INBOX: ▸ 2
+keys qi
+type Three
+keys <Enter>
+see INBOX: ▸ 3
+hide - Three
+quit
+saved <<END
+INBOX:
+	- One
+	- Two
+	- Three
+Work:
+	- a
+END

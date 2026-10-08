@@ -1,0 +1,24 @@
+# Shrinking the terminal to two rows during a landing flash and growing it back leaves a clean, usable screen.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Alpha
+- Beta
+- Gamma
+END
+keys G
+resize 12 2
+resize 4 3
+resize 100 30
+see - Alpha
+see ▌ - Gamma
+keys x
+see ✔ Gamma
+quit
+saved <<END
+- Alpha
+- Beta
+- Gamma @done({today})
+END

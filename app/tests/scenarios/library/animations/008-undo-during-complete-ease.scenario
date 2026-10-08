@@ -1,0 +1,17 @@
+# Undoing right after completing, while the text still eases, leaves the task open.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Water plants
+- Feed cat
+END
+keys x z
+see - Water plants
+hide ✔
+quit
+saved <<END
+- Water plants
+- Feed cat
+END

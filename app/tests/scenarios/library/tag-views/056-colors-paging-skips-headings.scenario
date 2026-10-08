@@ -1,0 +1,36 @@
+# In a 40x10 terminal, paging down the Colors view lands on entries, never on a group heading, and paging up returns to the first entry.
+size 40 10
+file <<END
+P:
+	- t1 @red
+	- t2 @red
+	- t3 @red
+	- t4 @red
+	- t5 @green
+	- t6 @green
+	- t7 @green
+	- t8 @green
+	- t9 @blue
+	- t10 @blue
+END
+keys gC <C-d>
+see ▌ - t5  P
+keys <C-d>
+see ▌ - t9  P
+keys <C-u> <C-u>
+see ▌ - t1  P
+keys x
+quit
+saved <<END
+P:
+	- t1 @red @done({today})
+	- t2 @red
+	- t3 @red
+	- t4 @red
+	- t5 @green
+	- t6 @green
+	- t7 @green
+	- t8 @green
+	- t9 @blue
+	- t10 @blue
+END

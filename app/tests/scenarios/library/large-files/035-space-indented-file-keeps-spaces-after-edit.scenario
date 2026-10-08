@@ -1,0 +1,96 @@
+# In a 40-task file indented with four spaces, editing one task keeps every line indented with spaces.
+file <<END
+Spaces:
+    - s0
+    - s1
+    - s2
+    - s3
+    - s4
+    - s5
+    - s6
+    - s7
+    - s8
+    - s9
+    - s10
+    - s11
+    - s12
+    - s13
+    - s14
+    - s15
+    - s16
+    - s17
+    - s18
+    - s19
+    - s20
+    - s21
+    - s22
+    - s23
+    - s24
+    - s25
+    - s26
+    - s27
+    - s28
+    - s29
+    - s30
+    - s31
+    - s32
+    - s33
+    - s34
+    - s35
+    - s36
+    - s37
+    - s38
+    - s39
+        deep note
+END
+keys <C-k>
+type s19
+see › s19
+keys <Enter> <Enter>
+type  edited
+keys <Esc>
+quit
+saved <<END
+Spaces:
+    - s0
+    - s1
+    - s2
+    - s3
+    - s4
+    - s5
+    - s6
+    - s7
+    - s8
+    - s9
+    - s10
+    - s11
+    - s12
+    - s13
+    - s14
+    - s15
+    - s16
+    - s17
+    - s18
+    - s19 edited
+    - s20
+    - s21
+    - s22
+    - s23
+    - s24
+    - s25
+    - s26
+    - s27
+    - s28
+    - s29
+    - s30
+    - s31
+    - s32
+    - s33
+    - s34
+    - s35
+    - s36
+    - s37
+    - s38
+    - s39
+        deep note
+END

@@ -1,0 +1,24 @@
+# A project inside INBOX is listed by the picker with its path and can be the destination.
+file <<END
+INBOX:
+	- Loose
+	Errands:
+		- Bank
+END
+keys qq
+type Post office
+keys <Space> /
+see Errands  INBOX
+type err
+keys <Enter>
+see Quick Add → INBOX › Errands
+keys <Enter>
+status Added to Errands
+quit
+saved <<END
+INBOX:
+	- Loose
+	Errands:
+		- Bank
+		- Post office
+END

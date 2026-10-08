@@ -1,0 +1,16 @@
+# Opening the Starred view and unstarring at once, during its fade-in, unstars the first starred block.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Call mom @star
+- Pay rent @star
+END
+keys gS *
+see Starred
+quit
+saved <<END
+- Call mom
+- Pay rent @star
+END

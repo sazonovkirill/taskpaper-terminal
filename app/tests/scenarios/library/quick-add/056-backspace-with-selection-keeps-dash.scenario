@@ -1,0 +1,16 @@
+# Backspace at the start deletes the dash only with nothing selected: with text selected it deletes that text.
+file <<END
+INBOX:
+END
+keys qi
+type Draft memo
+keys <Home> <S-Right> <S-Right> <S-Right> <S-Right> <S-Right> <S-Right> <BS>
+see - memo
+keys <Del>
+see - emo
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- emo
+END

@@ -1,0 +1,15 @@
+# Enter on a Navigator filter that matches nothing keeps the window open, and more typing still goes into the filter.
+file <<END
+- Call mom
+END
+keys <C-g>
+type zzz
+keys <Enter>
+type q
+see └zzzq
+keys <Esc>
+hide Navigator
+quit
+saved <<END
+- Call mom
+END

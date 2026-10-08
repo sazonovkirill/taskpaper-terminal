@@ -1,0 +1,17 @@
+# Told to end while a second Quick Add is open, the app saves the first quick add and drops the half-typed second.
+config <<END
+autosave_delay_ms = 60000
+END
+file <<END
+INBOX:
+END
+keys qi
+type Saved one
+keys <Enter> qi
+type Lost one
+see - Lost one
+signal TERM
+saved <<END
+INBOX:
+	- Saved one
+END

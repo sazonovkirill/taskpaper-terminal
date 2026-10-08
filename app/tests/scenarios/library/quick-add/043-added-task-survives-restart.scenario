@@ -1,0 +1,18 @@
+# A quick add saved before quitting is there when the file is opened again, with its start chip.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type Dentist tomorrow
+keys <Enter>
+restart
+see - Dentist
+see 󱙭 tomorrow
+hide Quick Add
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Dentist @start({today+1})
+END

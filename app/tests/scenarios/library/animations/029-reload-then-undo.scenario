@@ -1,0 +1,24 @@
+# A reload clears the undo history, so undo pressed during its change highlight leaves the reloaded outline alone.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys x
+see ✔ Milk
+saved <<END
+- Milk @done({today})
+END
+outside <<END
+- Milk
+- Bread
+END
+see - Bread
+keys z
+quit
+saved <<END
+- Milk
+- Bread
+END

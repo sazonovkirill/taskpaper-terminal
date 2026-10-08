@@ -1,0 +1,20 @@
+# With every special view left out of the Navigator in config.toml and no projects, the Navigator says there is nothing to go to, while gt still opens Today.
+config <<END
+sidebar_today = false
+sidebar_upcoming = false
+sidebar_overdue = false
+sidebar_colors = false
+sidebar_logbook = false
+sidebar_starred = false
+sidebar_flagged = false
+END
+file <<END
+- Loose task @due({today})
+END
+keys <C-g>
+see Nothing to go to
+hide Today
+keys <Esc> gt
+see 󰖙 Today
+see - Loose task
+quit

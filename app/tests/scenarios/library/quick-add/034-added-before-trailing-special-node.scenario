@@ -1,0 +1,20 @@
+# A quick add goes after the project's last child but before a trailing special node, which stays last.
+file <<END
+INBOX:
+	- Old item
+	LOG @hidden @log
+		[2026-10-04 12:09] Started
+Work:
+END
+keys qi
+type New item
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Old item
+	- New item
+	LOG @hidden @log
+		[2026-10-04 12:09] Started
+Work:
+END

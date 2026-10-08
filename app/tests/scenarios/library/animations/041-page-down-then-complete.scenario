@@ -1,0 +1,21 @@
+# Paging down in a short terminal and completing at once acts on the block the page landed on.
+size 40 8
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- One
+- Two
+- Three
+- Four
+- Five
+- Six
+- Seven
+- Eight
+- Nine
+- Ten
+END
+keys <C-d> x
+see ✔
+quit

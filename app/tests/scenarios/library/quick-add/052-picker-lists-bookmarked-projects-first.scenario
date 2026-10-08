@@ -1,0 +1,20 @@
+# The project picker lists bookmarked projects first, as Go to Project does, so / then Enter picks one.
+file <<END
+Alpha:
+Work:
+	Deep:
+Zeta: @bookmark
+END
+keys qq
+type Read
+keys <Space> / <Enter>
+see Quick Add → Zeta
+keys <Enter>
+quit
+saved <<END
+Alpha:
+Work:
+	Deep:
+Zeta: @bookmark
+	- Read
+END

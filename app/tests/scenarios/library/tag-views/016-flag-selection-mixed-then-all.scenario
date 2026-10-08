@@ -1,0 +1,22 @@
+# ! on a mixed selection flags only the unflagged blocks, keeping a flag's value, and ! again removes every flag.
+file <<END
+Shop:
+	- Milk @flag(x)
+	- Eggs
+	- Bread
+END
+keys j J J !
+saved <<END
+Shop:
+	- Milk @flag(x)
+	- Eggs @flag
+	- Bread @flag
+END
+keys !
+quit
+saved <<END
+Shop:
+	- Milk
+	- Eggs
+	- Bread
+END

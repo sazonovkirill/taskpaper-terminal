@@ -1,0 +1,23 @@
+# Taking theirs in the conflict prompt and completing during the change highlight completes the block from disk.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+autosave_delay_ms = 100000
+END
+file <<END
+- Milk
+END
+keys x
+see ✔ Milk
+outside <<END
+- Bread
+END
+see The file changed on disk
+keys t
+status Took the version on disk
+keys x
+see ✔ Bread
+quit
+saved <<END
+- Bread @done({today})
+END

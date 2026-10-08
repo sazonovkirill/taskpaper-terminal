@@ -1,0 +1,22 @@
+# Zooming in, going back and forward in a burst, then completing, acts on the first block of the zoom.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END
+keys . H L x
+see ✔ Post office
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Bank
+Home:
+	- Laundry
+END

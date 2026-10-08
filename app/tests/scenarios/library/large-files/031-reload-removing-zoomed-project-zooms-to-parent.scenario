@@ -1,0 +1,643 @@
+# Zoomed into a sub-project of a 120-line outline, another program deletes that sub-project; the reload zooms to its parent, which still exists.
+file <<END
+Area 0:
+	Sub 0.0:
+		- task 0.0
+	Sub 0.1:
+		- task 0.1
+	Sub 0.2:
+		- task 0.2
+Area 1:
+	Sub 1.0:
+		- task 1.0
+	Sub 1.1:
+		- task 1.1
+	Sub 1.2:
+		- task 1.2
+Area 2:
+	Sub 2.0:
+		- task 2.0
+	Sub 2.1:
+		- task 2.1
+	Sub 2.2:
+		- task 2.2
+Area 3:
+	Sub 3.0:
+		- task 3.0
+	Sub 3.1:
+		- task 3.1
+	Sub 3.2:
+		- task 3.2
+Area 4:
+	Sub 4.0:
+		- task 4.0
+	Sub 4.1:
+		- task 4.1
+	Sub 4.2:
+		- task 4.2
+Area 5:
+	Sub 5.0:
+		- task 5.0
+	Sub 5.1:
+		- task 5.1
+	Sub 5.2:
+		- task 5.2
+Area 6:
+	Sub 6.0:
+		- task 6.0
+	Sub 6.1:
+		- task 6.1
+	Sub 6.2:
+		- task 6.2
+Area 7:
+	Sub 7.0:
+		- task 7.0
+	Sub 7.1:
+		- task 7.1
+	Sub 7.2:
+		- task 7.2
+Area 8:
+	Sub 8.0:
+		- task 8.0
+	Sub 8.1:
+		- task 8.1
+	Sub 8.2:
+		- task 8.2
+Area 9:
+	Sub 9.0:
+		- task 9.0
+	Sub 9.1:
+		- task 9.1
+	Sub 9.2:
+		- task 9.2
+Area 10:
+	Sub 10.0:
+		- task 10.0
+	Sub 10.1:
+		- task 10.1
+	Sub 10.2:
+		- task 10.2
+Area 11:
+	Sub 11.0:
+		- task 11.0
+	Sub 11.1:
+		- task 11.1
+	Sub 11.2:
+		- task 11.2
+Area 12:
+	Sub 12.0:
+		- task 12.0
+	Sub 12.1:
+		- task 12.1
+	Sub 12.2:
+		- task 12.2
+Area 13:
+	Sub 13.0:
+		- task 13.0
+	Sub 13.1:
+		- task 13.1
+	Sub 13.2:
+		- task 13.2
+Area 14:
+	Sub 14.0:
+		- task 14.0
+	Sub 14.1:
+		- task 14.1
+	Sub 14.2:
+		- task 14.2
+Area 15:
+	Sub 15.0:
+		- task 15.0
+	Sub 15.1:
+		- task 15.1
+	Sub 15.2:
+		- task 15.2
+Area 16:
+	Sub 16.0:
+		- task 16.0
+	Sub 16.1:
+		- task 16.1
+	Sub 16.2:
+		- task 16.2
+Area 17:
+	Sub 17.0:
+		- task 17.0
+	Sub 17.1:
+		- task 17.1
+	Sub 17.2:
+		- task 17.2
+Area 18:
+	Sub 18.0:
+		- task 18.0
+	Sub 18.1:
+		- task 18.1
+	Sub 18.2:
+		- task 18.2
+Area 19:
+	Sub 19.0:
+		- task 19.0
+	Sub 19.1:
+		- task 19.1
+	Sub 19.2:
+		- task 19.2
+Area 20:
+	Sub 20.0:
+		- task 20.0
+	Sub 20.1:
+		- task 20.1
+	Sub 20.2:
+		- task 20.2
+Area 21:
+	Sub 21.0:
+		- task 21.0
+	Sub 21.1:
+		- task 21.1
+	Sub 21.2:
+		- task 21.2
+Area 22:
+	Sub 22.0:
+		- task 22.0
+	Sub 22.1:
+		- task 22.1
+	Sub 22.2:
+		- task 22.2
+Area 23:
+	Sub 23.0:
+		- task 23.0
+	Sub 23.1:
+		- task 23.1
+	Sub 23.2:
+		- task 23.2
+Area 24:
+	Sub 24.0:
+		- task 24.0
+	Sub 24.1:
+		- task 24.1
+	Sub 24.2:
+		- task 24.2
+Area 25:
+	Sub 25.0:
+		- task 25.0
+	Sub 25.1:
+		- task 25.1
+	Sub 25.2:
+		- task 25.2
+Area 26:
+	Sub 26.0:
+		- task 26.0
+	Sub 26.1:
+		- task 26.1
+	Sub 26.2:
+		- task 26.2
+Area 27:
+	Sub 27.0:
+		- task 27.0
+	Sub 27.1:
+		- task 27.1
+	Sub 27.2:
+		- task 27.2
+Area 28:
+	Sub 28.0:
+		- task 28.0
+	Sub 28.1:
+		- task 28.1
+	Sub 28.2:
+		- task 28.2
+Area 29:
+	Sub 29.0:
+		- task 29.0
+	Sub 29.1:
+		- task 29.1
+	Sub 29.2:
+		- task 29.2
+END
+keys <C-k>
+type Sub 20.1
+see › Sub 20.1
+keys <Enter> .
+see ▌   - task 20.1
+outside <<END
+Area 0:
+	Sub 0.0:
+		- task 0.0
+	Sub 0.1:
+		- task 0.1
+	Sub 0.2:
+		- task 0.2
+Area 1:
+	Sub 1.0:
+		- task 1.0
+	Sub 1.1:
+		- task 1.1
+	Sub 1.2:
+		- task 1.2
+Area 2:
+	Sub 2.0:
+		- task 2.0
+	Sub 2.1:
+		- task 2.1
+	Sub 2.2:
+		- task 2.2
+Area 3:
+	Sub 3.0:
+		- task 3.0
+	Sub 3.1:
+		- task 3.1
+	Sub 3.2:
+		- task 3.2
+Area 4:
+	Sub 4.0:
+		- task 4.0
+	Sub 4.1:
+		- task 4.1
+	Sub 4.2:
+		- task 4.2
+Area 5:
+	Sub 5.0:
+		- task 5.0
+	Sub 5.1:
+		- task 5.1
+	Sub 5.2:
+		- task 5.2
+Area 6:
+	Sub 6.0:
+		- task 6.0
+	Sub 6.1:
+		- task 6.1
+	Sub 6.2:
+		- task 6.2
+Area 7:
+	Sub 7.0:
+		- task 7.0
+	Sub 7.1:
+		- task 7.1
+	Sub 7.2:
+		- task 7.2
+Area 8:
+	Sub 8.0:
+		- task 8.0
+	Sub 8.1:
+		- task 8.1
+	Sub 8.2:
+		- task 8.2
+Area 9:
+	Sub 9.0:
+		- task 9.0
+	Sub 9.1:
+		- task 9.1
+	Sub 9.2:
+		- task 9.2
+Area 10:
+	Sub 10.0:
+		- task 10.0
+	Sub 10.1:
+		- task 10.1
+	Sub 10.2:
+		- task 10.2
+Area 11:
+	Sub 11.0:
+		- task 11.0
+	Sub 11.1:
+		- task 11.1
+	Sub 11.2:
+		- task 11.2
+Area 12:
+	Sub 12.0:
+		- task 12.0
+	Sub 12.1:
+		- task 12.1
+	Sub 12.2:
+		- task 12.2
+Area 13:
+	Sub 13.0:
+		- task 13.0
+	Sub 13.1:
+		- task 13.1
+	Sub 13.2:
+		- task 13.2
+Area 14:
+	Sub 14.0:
+		- task 14.0
+	Sub 14.1:
+		- task 14.1
+	Sub 14.2:
+		- task 14.2
+Area 15:
+	Sub 15.0:
+		- task 15.0
+	Sub 15.1:
+		- task 15.1
+	Sub 15.2:
+		- task 15.2
+Area 16:
+	Sub 16.0:
+		- task 16.0
+	Sub 16.1:
+		- task 16.1
+	Sub 16.2:
+		- task 16.2
+Area 17:
+	Sub 17.0:
+		- task 17.0
+	Sub 17.1:
+		- task 17.1
+	Sub 17.2:
+		- task 17.2
+Area 18:
+	Sub 18.0:
+		- task 18.0
+	Sub 18.1:
+		- task 18.1
+	Sub 18.2:
+		- task 18.2
+Area 19:
+	Sub 19.0:
+		- task 19.0
+	Sub 19.1:
+		- task 19.1
+	Sub 19.2:
+		- task 19.2
+Area 20:
+	Sub 20.0:
+		- task 20.0
+	Sub 20.2:
+		- task 20.2
+Area 21:
+	Sub 21.0:
+		- task 21.0
+	Sub 21.1:
+		- task 21.1
+	Sub 21.2:
+		- task 21.2
+Area 22:
+	Sub 22.0:
+		- task 22.0
+	Sub 22.1:
+		- task 22.1
+	Sub 22.2:
+		- task 22.2
+Area 23:
+	Sub 23.0:
+		- task 23.0
+	Sub 23.1:
+		- task 23.1
+	Sub 23.2:
+		- task 23.2
+Area 24:
+	Sub 24.0:
+		- task 24.0
+	Sub 24.1:
+		- task 24.1
+	Sub 24.2:
+		- task 24.2
+Area 25:
+	Sub 25.0:
+		- task 25.0
+	Sub 25.1:
+		- task 25.1
+	Sub 25.2:
+		- task 25.2
+Area 26:
+	Sub 26.0:
+		- task 26.0
+	Sub 26.1:
+		- task 26.1
+	Sub 26.2:
+		- task 26.2
+Area 27:
+	Sub 27.0:
+		- task 27.0
+	Sub 27.1:
+		- task 27.1
+	Sub 27.2:
+		- task 27.2
+Area 28:
+	Sub 28.0:
+		- task 28.0
+	Sub 28.1:
+		- task 28.1
+	Sub 28.2:
+		- task 28.2
+Area 29:
+	Sub 29.0:
+		- task 29.0
+	Sub 29.1:
+		- task 29.1
+	Sub 29.2:
+		- task 29.2
+END
+see Reloaded (changed on disk)
+see Area 20
+see Sub 20.2:
+hide task 20.1
+quit
+saved <<END
+Area 0:
+	Sub 0.0:
+		- task 0.0
+	Sub 0.1:
+		- task 0.1
+	Sub 0.2:
+		- task 0.2
+Area 1:
+	Sub 1.0:
+		- task 1.0
+	Sub 1.1:
+		- task 1.1
+	Sub 1.2:
+		- task 1.2
+Area 2:
+	Sub 2.0:
+		- task 2.0
+	Sub 2.1:
+		- task 2.1
+	Sub 2.2:
+		- task 2.2
+Area 3:
+	Sub 3.0:
+		- task 3.0
+	Sub 3.1:
+		- task 3.1
+	Sub 3.2:
+		- task 3.2
+Area 4:
+	Sub 4.0:
+		- task 4.0
+	Sub 4.1:
+		- task 4.1
+	Sub 4.2:
+		- task 4.2
+Area 5:
+	Sub 5.0:
+		- task 5.0
+	Sub 5.1:
+		- task 5.1
+	Sub 5.2:
+		- task 5.2
+Area 6:
+	Sub 6.0:
+		- task 6.0
+	Sub 6.1:
+		- task 6.1
+	Sub 6.2:
+		- task 6.2
+Area 7:
+	Sub 7.0:
+		- task 7.0
+	Sub 7.1:
+		- task 7.1
+	Sub 7.2:
+		- task 7.2
+Area 8:
+	Sub 8.0:
+		- task 8.0
+	Sub 8.1:
+		- task 8.1
+	Sub 8.2:
+		- task 8.2
+Area 9:
+	Sub 9.0:
+		- task 9.0
+	Sub 9.1:
+		- task 9.1
+	Sub 9.2:
+		- task 9.2
+Area 10:
+	Sub 10.0:
+		- task 10.0
+	Sub 10.1:
+		- task 10.1
+	Sub 10.2:
+		- task 10.2
+Area 11:
+	Sub 11.0:
+		- task 11.0
+	Sub 11.1:
+		- task 11.1
+	Sub 11.2:
+		- task 11.2
+Area 12:
+	Sub 12.0:
+		- task 12.0
+	Sub 12.1:
+		- task 12.1
+	Sub 12.2:
+		- task 12.2
+Area 13:
+	Sub 13.0:
+		- task 13.0
+	Sub 13.1:
+		- task 13.1
+	Sub 13.2:
+		- task 13.2
+Area 14:
+	Sub 14.0:
+		- task 14.0
+	Sub 14.1:
+		- task 14.1
+	Sub 14.2:
+		- task 14.2
+Area 15:
+	Sub 15.0:
+		- task 15.0
+	Sub 15.1:
+		- task 15.1
+	Sub 15.2:
+		- task 15.2
+Area 16:
+	Sub 16.0:
+		- task 16.0
+	Sub 16.1:
+		- task 16.1
+	Sub 16.2:
+		- task 16.2
+Area 17:
+	Sub 17.0:
+		- task 17.0
+	Sub 17.1:
+		- task 17.1
+	Sub 17.2:
+		- task 17.2
+Area 18:
+	Sub 18.0:
+		- task 18.0
+	Sub 18.1:
+		- task 18.1
+	Sub 18.2:
+		- task 18.2
+Area 19:
+	Sub 19.0:
+		- task 19.0
+	Sub 19.1:
+		- task 19.1
+	Sub 19.2:
+		- task 19.2
+Area 20:
+	Sub 20.0:
+		- task 20.0
+	Sub 20.2:
+		- task 20.2
+Area 21:
+	Sub 21.0:
+		- task 21.0
+	Sub 21.1:
+		- task 21.1
+	Sub 21.2:
+		- task 21.2
+Area 22:
+	Sub 22.0:
+		- task 22.0
+	Sub 22.1:
+		- task 22.1
+	Sub 22.2:
+		- task 22.2
+Area 23:
+	Sub 23.0:
+		- task 23.0
+	Sub 23.1:
+		- task 23.1
+	Sub 23.2:
+		- task 23.2
+Area 24:
+	Sub 24.0:
+		- task 24.0
+	Sub 24.1:
+		- task 24.1
+	Sub 24.2:
+		- task 24.2
+Area 25:
+	Sub 25.0:
+		- task 25.0
+	Sub 25.1:
+		- task 25.1
+	Sub 25.2:
+		- task 25.2
+Area 26:
+	Sub 26.0:
+		- task 26.0
+	Sub 26.1:
+		- task 26.1
+	Sub 26.2:
+		- task 26.2
+Area 27:
+	Sub 27.0:
+		- task 27.0
+	Sub 27.1:
+		- task 27.1
+	Sub 27.2:
+		- task 27.2
+Area 28:
+	Sub 28.0:
+		- task 28.0
+	Sub 28.1:
+		- task 28.1
+	Sub 28.2:
+		- task 28.2
+Area 29:
+	Sub 29.0:
+		- task 29.0
+	Sub 29.1:
+		- task 29.1
+	Sub 29.2:
+		- task 29.2
+END

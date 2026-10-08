@@ -1,0 +1,18 @@
+# Esc closes Quick Add with its typed text and destination, adding nothing; the next qi starts empty.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type Half typed
+keys <Esc>
+hide Quick Add
+keys qi
+see Type the text
+hide Half typed
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Old item
+END

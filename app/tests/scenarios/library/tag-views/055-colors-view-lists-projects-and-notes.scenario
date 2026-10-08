@@ -1,0 +1,16 @@
+# The Colors view lists colored projects and notes alongside tasks, each under its color with its path.
+file <<END
+Garden: @green
+	Soil notes @green
+	- Water @yellow
+Shed:
+	Tools: @yellow
+END
+keys gC
+see 󰏘 Yellow
+see - Water  Garden
+see Tools:  Shed
+see 󰏘 Green
+see Garden:
+see Soil notes  Garden
+quit

@@ -1,0 +1,24 @@
+# Typing a theme's name in the picker and pressing Enter keeps that theme, and the next key goes to the outline.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+- Eggs
+END
+keys <C-t>
+see Theme
+type dracula
+keys <Enter> j x
+see ✔ Eggs
+restart
+keys g,
+type /theme
+see Dracula  │
+keys <Esc> <Esc>
+quit
+saved <<END
+- Milk
+- Eggs @done({today})
+END

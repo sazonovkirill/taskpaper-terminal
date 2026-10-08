@@ -1,0 +1,13 @@
+# A task typed as "Questions:" keeps its colon, as edit mode keeps it; only a note's ending colons are dropped.
+# BUG: Quick Add drops the colon ending a task's text, saving "- Questions for Ana".
+file <<END
+INBOX:
+END
+keys qi
+type Questions for Ana:
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- Questions for Ana:
+END

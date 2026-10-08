@@ -1,0 +1,20 @@
+# Go to Flagged and Toggle Flag from Go to Command open the view and unflag its focused entry.
+file <<END
+Shop:
+	- Milk @flag
+	- Eggs @flag
+END
+keys :
+type go to flagged
+keys <Enter>
+see 󰈻 Flagged
+keys :
+type toggle flag
+keys <Enter>
+hide Milk
+quit
+saved <<END
+Shop:
+	- Milk
+	- Eggs @flag
+END

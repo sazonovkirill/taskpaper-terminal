@@ -1,0 +1,19 @@
+# In the Colors view, removing the color of a group's only entry drops the group and focuses the next group's first entry.
+file <<END
+Sprint:
+	- Design @red
+	- Build @green
+	- Test @green
+END
+keys gC C
+hide Red
+see 󰏘 Green
+keys C
+hide Build
+quit
+saved <<END
+Sprint:
+	- Design
+	- Build
+	- Test @green
+END

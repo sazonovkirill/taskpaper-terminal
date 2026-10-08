@@ -1,0 +1,17 @@
+# Enter with only the dash, or only spaces, adds nothing and the panel stays open saying "Type the text".
+file <<END
+INBOX:
+	- Old item
+END
+keys qi <Enter>
+see Type the text
+keys <Space> <Space> <Space>
+keys <Enter>
+see Type the text
+see Quick Add → INBOX
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Old item
+END

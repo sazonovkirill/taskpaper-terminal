@@ -1,0 +1,10 @@
+# Ctrl+G in the Logbook opens the Navigator on the Logbook entry, and Enter on Upcoming from there switches views.
+file <<END
+- Shipped @done({today})
+- Soon @due({today+1})
+END
+keys gL <C-g>
+see ▌ 󱓳 Logbook
+keys <Up> <Up> <Up> <Enter>
+see 󱄵 Upcoming
+see ▌ - Soon

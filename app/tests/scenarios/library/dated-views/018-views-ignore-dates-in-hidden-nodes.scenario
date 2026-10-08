@@ -1,0 +1,23 @@
+# Dates inside hidden comments and note nodes put nothing in Upcoming, Overdue or Logbook.
+file <<END
+- Holder
+	COMMENTS @hidden @comments
+		[2026-10-01 10:00] call back @due({today-1})
+		[2026-10-01 10:00] later @due({today+2})
+		[2026-10-01 10:00] finished @done({today})
+	NOTE @hidden @note
+		Body @due({today+1}) @done({today-1})
+- Real @due({today+3})
+END
+keys gU
+see ▌ - Real
+hide later
+hide Body
+keys gO
+see 󰨱 Overdue
+hide call back
+hide Holder
+keys gL
+see 󱓳 Logbook
+hide finished
+hide Body

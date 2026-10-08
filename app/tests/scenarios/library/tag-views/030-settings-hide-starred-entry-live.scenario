@@ -1,0 +1,16 @@
+# Turning off Show Starred in Navigator in the settings window drops the Starred entry at once and writes the setting.
+size 100 30
+file <<END
+Work:
+	- Report @star
+END
+keys g,
+type /show starred
+keys <Enter> <Enter>
+see off
+keys <Esc> <Esc> <C-g>
+see 󰈻 Flagged
+hide Starred
+keys <Esc> gS
+see - Report 󰓎  Work
+quit

@@ -1,0 +1,15 @@
+# SIGTERM while Overdue is shown saves the pending completion, and the next start shows Overdue again.
+file <<END
+- Aa @due({today-2})
+- Bb @due({today-1})
+END
+keys gO x
+hide Aa
+signal TERM
+saved <<END
+- Aa @due({today-2}) @done({today})
+- Bb @due({today-1})
+END
+restart
+see 󰨱 Overdue
+see ▌ - Bb

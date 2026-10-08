@@ -1,0 +1,20 @@
+# Reordering the Today view is not an undo step: undo after it takes back the earlier edit and leaves the new order as it was.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+	- Pay rent @due({today})
+END
+keys gt G T
+keys <A-k> <A-k>
+see ▌ - Pay rent  Work
+keys z
+see ▌ - Pay rent  Work
+keys j x
+quit
+saved <<END
+Work:
+	- Write report @due({today}) @done({today})
+	- Review PRs @due({today})
+	- Pay rent @due({today})
+END

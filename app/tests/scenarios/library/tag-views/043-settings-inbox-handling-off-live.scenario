@@ -1,0 +1,19 @@
+# Turning off special handling of INBOX in the settings window lists it among the projects at once, focused while the pane is zoomed into it.
+size 100 30
+file <<END
+INBOX:
+	- Call mom
+Work:
+	- Report
+END
+keys gi g,
+type /inbox
+keys <Enter> <Enter>
+see off
+keys <Esc> <Esc> <C-g>
+see Projects
+see │▌ INBOX                                     1 │
+hide 󰚇
+keys <Esc> gi
+status No INBOX project in the Navigator
+quit

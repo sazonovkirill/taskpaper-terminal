@@ -1,0 +1,19 @@
+# With animations off, previewing a theme and pressing Esc restores the theme in use without a crossfade.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+animations = "off"
+END
+file <<END
+- Milk
+END
+keys <C-t>
+see Theme
+keys <Down> <Esc>
+hide Theme
+restart
+keys g,
+type /theme
+see Nord  │
+keys <Esc> <Esc>
+quit

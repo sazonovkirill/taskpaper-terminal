@@ -1,0 +1,24 @@
+# In a 20x6 terminal, zooming in and out with every animation on lands focus back on the project, which x completes.
+size 20 6
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END
+keys .
+see Errands
+keys j > x
+quit
+saved <<END
+Errands: @done({today})
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END

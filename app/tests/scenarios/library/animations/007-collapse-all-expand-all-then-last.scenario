@@ -1,0 +1,22 @@
+# Collapsing everything, expanding everything and jumping to the end in one burst completes the deepest last block.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Release:
+	- Tag the build
+		- Run tests
+			- Unit
+			- Integration
+END
+keys _ + G x
+see ✔ Integration
+quit
+saved <<END
+Release:
+	- Tag the build
+		- Run tests
+			- Unit
+			- Integration @done({today})
+END

@@ -1,0 +1,12 @@
+# In an empty Starred view, block commands and new-block keys change nothing in the file.
+file <<END
+Work:
+	- Report
+END
+keys gS * ! x dd D c1 o i a <Enter> <Esc>
+hide Report
+quit
+saved <<END
+Work:
+	- Report
+END

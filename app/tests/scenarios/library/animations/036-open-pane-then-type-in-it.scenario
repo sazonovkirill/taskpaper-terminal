@@ -1,0 +1,25 @@
+# Opening the focused block in a new pane and adding a block at once, while the pane fades in, adds it in the new pane's zoom.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+END
+keys j j <C-w> v
+see │
+keys a
+type Dishes
+keys <Esc>
+see - Dishes
+quit
+saved <<END
+Errands:
+	- Post office
+Home:
+	- Laundry
+	- Dishes
+END

@@ -1,0 +1,12 @@
+# Ctrl+Q quits the app from the open Navigator, saving the outline.
+file <<END
+Work:
+	- Report
+END
+keys x <C-g>
+see Navigator
+quit
+saved <<END
+Work: @done({today})
+	- Report
+END

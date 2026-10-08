@@ -1,0 +1,25 @@
+# With completed hidden, the project picker leaves done projects out; shown again, they can be picked.
+file <<END
+Archive: @done(2026-09-01)
+	- Old
+Active:
+	- a
+END
+keys gc qq
+type Note this
+keys <Space> /
+see Active
+hide Archive
+keys <Esc> <BS> <BS> <Esc> gc qq
+type Note this
+keys <Space> /
+type arch
+keys <Enter> <Enter>
+quit
+saved <<END
+Archive: @done(2026-09-01)
+	- Old
+	- Note this
+Active:
+	- a
+END

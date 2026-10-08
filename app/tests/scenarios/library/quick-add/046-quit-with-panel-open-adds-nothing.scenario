@@ -1,0 +1,13 @@
+# Ctrl+Q with Quick Add open quits without adding the half-typed text.
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type Unfinished thought
+see - Unfinished thought
+quit
+saved <<END
+INBOX:
+	- Old item
+END

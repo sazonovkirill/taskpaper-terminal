@@ -1,0 +1,21 @@
+# Resizing while the theme picker previews a theme, then choosing it, keeps the theme and redraws at the new size.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Milk
+END
+keys <C-t>
+see Theme
+keys <Down>
+resize 60 15
+keys <Down> <Enter>
+hide Theme
+see ▌ - Milk
+keys x
+see ✔ Milk
+quit
+saved <<END
+- Milk @done({today})
+END

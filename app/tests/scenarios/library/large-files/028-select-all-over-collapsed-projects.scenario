@@ -1,0 +1,21 @@
+# With every project collapsed, select all and complete marks only the projects, leaving the tasks they hide untouched.
+file <<END
+A:
+	- a1
+	- a2
+B:
+	- b1
+C:
+	- c1
+END
+keys _ <C-a> x
+quit
+saved <<END
+A: @done({today})
+	- a1
+	- a2
+B: @done({today})
+	- b1
+C: @done({today})
+	- c1
+END

@@ -1,0 +1,20 @@
+# Over SSH, resetting Animations writes reduced, the default that applies to the session.
+env SSH_TTY=/dev/pts/3
+config <<END
+animations = "full"
+END
+file <<END
+- Milk
+END
+keys g,
+type /anim
+see full  │
+keys <Enter> r
+see reduced  │
+keys <Esc>
+restart
+keys g,
+type /anim
+see reduced  │
+keys <Esc> <Esc>
+quit

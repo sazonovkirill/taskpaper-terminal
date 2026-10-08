@@ -1,0 +1,26 @@
+# Upcoming groups entries by day, earliest first, document order within a day, so j walks them in that order past the headings.
+file <<END
+- Late @due({today+5})
+- Soon A @due({today+1})
+- Middle @start({today+3})
+- Soon B @due({today+1})
+END
+keys gU
+see Tomorrow ·
+see ▌ - Soon A
+keys j
+see ▌ - Soon B
+keys j
+see ▌ - Middle
+keys j
+see ▌ - Late
+keys j
+see ▌ - Late
+keys x
+quit
+saved <<END
+- Late @due({today+5}) @done({today})
+- Soon A @due({today+1})
+- Middle @start({today+3})
+- Soon B @due({today+1})
+END

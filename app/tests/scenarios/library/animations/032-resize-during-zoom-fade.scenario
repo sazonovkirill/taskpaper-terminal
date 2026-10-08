@@ -1,0 +1,26 @@
+# Resizing the terminal right after zooming in, while the pane fades in, shows the zoomed list at the new size.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+Errands:
+	- Post office
+	- Bank
+Home:
+	- Laundry
+END
+keys .
+resize 30 8
+see - Bank
+hide Laundry
+keys G x
+see ✔ Bank
+quit
+saved <<END
+Errands:
+	- Post office
+	- Bank @done({today})
+Home:
+	- Laundry
+END

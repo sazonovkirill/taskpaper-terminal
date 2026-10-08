@@ -1,0 +1,14 @@
+# With NO_COLOR the refusal flash is skipped, but the status line still says why @ was refused.
+env NO_COLOR=1
+file <<END
+- Call
+END
+keys <Enter>
+type  @mom
+status Tags are set with commands
+keys <Esc>
+see - Call mom
+quit
+saved <<END
+- Call mom
+END

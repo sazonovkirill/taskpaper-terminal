@@ -1,0 +1,25 @@
+# Two tasks selected before another program adds a project to the file are still selected after the reload, so x completes both.
+file <<END
+Work:
+	- Write report
+	- Review PRs
+	- Plan sprint
+END
+keys j J
+outside <<END
+Work:
+	- Write report
+	- Review PRs
+	- Plan sprint
+Home:
+END
+see Home:
+keys x
+quit
+saved <<END
+Work:
+	- Write report @done({today})
+	- Review PRs @done({today})
+	- Plan sprint
+Home:
+END

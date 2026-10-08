@@ -1,0 +1,18 @@
+# } on an Upcoming entry moves it under a later day and the focus goes with it.
+file <<END
+- First @due({today+1})
+- Second @due({today+1})
+- Third @due({today+3})
+END
+keys gU
+see ▌ - First
+keys }} k
+see ▌ - Second
+keys j j
+see ▌ - Third
+quit
+saved <<END
+- First @due({today+3})
+- Second @due({today+1})
+- Third @due({today+3})
+END

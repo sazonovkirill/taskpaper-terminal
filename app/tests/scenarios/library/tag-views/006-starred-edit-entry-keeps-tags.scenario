@@ -1,0 +1,14 @@
+# Editing a Starred entry's text in place keeps its star, color and flag tags in the file.
+file <<END
+Work:
+	- Report @star @red @flag
+END
+keys gS <Enter>
+type  draft
+keys <Esc>
+see - Report draft
+quit
+saved <<END
+Work:
+	- Report draft @star @red @flag
+END

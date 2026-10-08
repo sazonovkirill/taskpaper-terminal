@@ -1,0 +1,11 @@
+# A block overdue but starting tomorrow is listed in Upcoming under Tomorrow and in Overdue too.
+file <<END
+- Mixed @due({today-1}) @start({today+1})
+END
+keys gU
+see Tomorrow ·
+see ▌ - Mixed
+keys gO
+see Overdue
+see Yesterday ·
+see ▌ - Mixed

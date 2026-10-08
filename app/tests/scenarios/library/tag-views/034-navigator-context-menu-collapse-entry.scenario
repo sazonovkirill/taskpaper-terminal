@@ -1,0 +1,19 @@
+# Ctrl+R on a project entry with child projects offers Collapse Entry, which folds it in the Navigator.
+size 100 30
+file <<END
+Work:
+	Launch:
+		- Venue
+Home:
+	- Sink
+END
+keys . <C-g>
+see │▌▾Work
+keys <C-r>
+see Collapse Entry
+type collapse
+keys <Enter>
+see ▸Work
+hide Launch                                  1
+see Home
+quit

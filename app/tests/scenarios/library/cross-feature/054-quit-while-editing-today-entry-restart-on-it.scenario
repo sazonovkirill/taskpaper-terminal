@@ -1,0 +1,24 @@
+# Quitting while editing a Today entry saves the edit, and reopening shows the Today view on that entry in navigate mode.
+file <<END
+Work:
+	- Write report @due({today})
+	- Review PRs @due({today})
+END
+keys gt j <Enter>
+type  today
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs today @due({today})
+END
+restart
+see 󰖙 Today
+status NAVIGATE
+keys x
+quit
+saved <<END
+Work:
+	- Write report @due({today})
+	- Review PRs today @due({today}) @done({today})
+END

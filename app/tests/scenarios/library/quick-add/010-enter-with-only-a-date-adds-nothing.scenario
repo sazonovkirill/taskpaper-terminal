@@ -1,0 +1,16 @@
+# Text that is only a date ("due tomorrow") is not text to add: Enter does nothing and says "Type the text".
+file <<END
+INBOX:
+	- Old item
+END
+keys qi
+type due tomorrow
+keys <Enter>
+see Type the text
+see - due tomorrow
+keys <Esc>
+quit
+saved <<END
+INBOX:
+	- Old item
+END

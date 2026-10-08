@@ -1,0 +1,21 @@
+# An entry that leaves Upcoming passes the focus to the row below it in the list, not to the next block in the file.
+file <<END
+Work:
+	- Email @due({today+1})
+	- Slides @due({today+4})
+Home:
+	- Rent @due({today+1})
+END
+keys gc gU
+see ▌ - Email
+keys x
+hide Email
+see ▌ - Rent
+quit
+saved <<END
+Work:
+	- Email @due({today+1}) @done({today})
+	- Slides @due({today+4})
+Home:
+	- Rent @due({today+1})
+END

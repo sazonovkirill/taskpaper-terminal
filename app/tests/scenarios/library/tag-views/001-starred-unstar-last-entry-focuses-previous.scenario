@@ -1,0 +1,18 @@
+# In the Starred view, unstarring the last entry drops it and focuses the entry above it.
+file <<END
+Ideas:
+	- Podcast @star
+	- Blog
+	- Newsletter @star
+END
+keys gS G *
+hide Newsletter
+keys *
+hide Podcast
+quit
+saved <<END
+Ideas:
+	- Podcast
+	- Blog
+	- Newsletter
+END

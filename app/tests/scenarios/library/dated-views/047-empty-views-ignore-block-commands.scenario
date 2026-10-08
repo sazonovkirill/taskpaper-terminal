@@ -1,0 +1,12 @@
+# In empty Upcoming, Overdue and Logbook views, block commands do nothing and the file is untouched.
+file <<END
+- Plain task
+END
+keys gU x dd T * <Enter>
+keys <Esc> gO x D W
+keys gL x dd <C-a> c1
+keys gh x
+quit
+saved <<END
+- Plain task @done({today})
+END

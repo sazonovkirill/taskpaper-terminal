@@ -1,0 +1,14 @@
+# cc on a red Colors entry makes it orange, listed under a new Orange heading after Red's other entries.
+file <<END
+Sprint:
+	- Design @red
+	- Build @red
+END
+keys gC cc
+see 󰏘 Orange
+quit
+saved <<END
+Sprint:
+	- Design @orange
+	- Build @red
+END

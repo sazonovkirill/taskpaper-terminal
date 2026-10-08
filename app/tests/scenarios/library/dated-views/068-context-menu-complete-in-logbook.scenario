@@ -1,0 +1,16 @@
+# The context menu on a Logbook entry offers Uncomplete, and running it removes the entry from the Logbook.
+file <<END
+- Shipped @done({today})
+- Earlier @done({today-1})
+END
+keys gL \
+see Commands:
+type uncomplete
+keys <Enter>
+hide Shipped
+see ▌ ✔ Earlier
+quit
+saved <<END
+- Shipped
+- Earlier @done({today-1})
+END

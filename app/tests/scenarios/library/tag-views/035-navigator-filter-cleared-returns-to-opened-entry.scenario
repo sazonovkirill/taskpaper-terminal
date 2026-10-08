@@ -1,0 +1,15 @@
+# After typing a Navigator filter and erasing it, Enter goes to the entry the window opened on, the Starred view the pane shows.
+file <<END
+Work:
+	- Report @star
+	Launch:
+		- Venue
+END
+keys gS <C-g>
+type lau
+see │▌   Launch
+keys <BS> <BS> <BS> <Enter>
+hide Navigator
+hide Venue
+see - Report 󰓎  Work
+quit

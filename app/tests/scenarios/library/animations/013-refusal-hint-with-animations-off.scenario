@@ -1,0 +1,16 @@
+# With animations off nothing flashes, but a refused @ is still reported in the status line.
+config <<END
+animations = "off"
+END
+file <<END
+- Call
+END
+keys <Enter>
+type  @mom
+status Tags are set with commands
+keys <Esc>
+see - Call mom
+quit
+saved <<END
+- Call mom
+END

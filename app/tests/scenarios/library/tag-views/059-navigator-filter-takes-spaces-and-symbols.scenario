@@ -1,0 +1,19 @@
+# Spaces and symbols such as ? go into the Navigator filter, so "g p" finds "Big Plan" and "t?" finds "What?".
+file <<END
+Big Plan:
+	- a
+Big:
+	- b
+What?:
+	- c
+END
+keys <C-g>
+type g p
+see │▌ Big Plan
+hide │  What?
+keys <BS> <BS> <BS>
+type t?
+see │▌ What?
+keys <Enter>
+see 󰋜 › What?
+quit

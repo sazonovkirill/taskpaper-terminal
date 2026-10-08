@@ -1,0 +1,17 @@
+# Typing @ at the start of a word is refused with a hint, and the letters typed during the error flash still go in.
+env COLORTERM=truecolor
+config <<END
+theme = "nord"
+END
+file <<END
+- Call
+END
+keys <Enter>
+type  @mom
+status Tags are set with commands
+keys <Esc>
+see - Call mom
+quit
+saved <<END
+- Call mom
+END

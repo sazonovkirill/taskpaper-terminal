@@ -1,0 +1,12 @@
+# The Navigator opens on the special view the pane shows: Colors after gC, Flagged after gF.
+file <<END
+Work:
+	- Report @red @flag
+END
+keys gC <C-g>
+see │▌ 󰸌 Colors
+keys <Esc> gF <C-g>
+see │▌ 󰈻 Flagged
+keys <Esc>
+hide Navigator
+quit

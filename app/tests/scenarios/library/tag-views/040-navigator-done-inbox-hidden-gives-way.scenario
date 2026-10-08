@@ -1,0 +1,14 @@
+# With completed blocks hidden, a done INBOX is not shown, so the next top-level INBOX becomes the inbox.
+file <<END
+INBOX: @done(2026-01-01)
+	- old
+INBOX:
+	- new
+END
+keys gc gi
+see - new
+hide - old
+keys <C-g>
+see │▌ 󰚇 INBOX                                   1 │
+hide Projects
+quit

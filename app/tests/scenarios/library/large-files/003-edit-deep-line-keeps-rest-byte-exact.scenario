@@ -1,0 +1,1333 @@
+# In a 340-line file with trailing spaces, indent jumps and blank lines, editing one line found with Go to Symbol saves only that line changed.
+file <<END
+Area 0: @tag(a\(b\))  
+	- item 0.0   
+				jumped note 0.0
+
+		- child 0.0 @due(2026-01-01)
+	- item 0.1   
+				jumped note 0.1
+
+		- child 0.1 @due(2026-01-02)
+	- item 0.2   
+				jumped note 0.2
+
+		- child 0.2 @due(2026-01-03)
+	- item 0.3   
+				jumped note 0.3
+
+		- child 0.3 @due(2026-01-04)
+	- item 0.4   
+				jumped note 0.4
+
+		- child 0.4 @due(2026-01-05)
+	- item 0.5   
+				jumped note 0.5
+
+		- child 0.5 @due(2026-01-06)
+	- item 0.6   
+				jumped note 0.6
+
+		- child 0.6 @due(2026-01-07)
+	- item 0.7   
+				jumped note 0.7
+
+		- child 0.7 @due(2026-01-08)
+Area 1: @tag(a\(b\))  
+	- item 1.0   
+				jumped note 1.0
+
+		- child 1.0 @due(2026-01-01)
+	- item 1.1   
+				jumped note 1.1
+
+		- child 1.1 @due(2026-01-02)
+	- item 1.2   
+				jumped note 1.2
+
+		- child 1.2 @due(2026-01-03)
+	- item 1.3   
+				jumped note 1.3
+
+		- child 1.3 @due(2026-01-04)
+	- item 1.4   
+				jumped note 1.4
+
+		- child 1.4 @due(2026-01-05)
+	- item 1.5   
+				jumped note 1.5
+
+		- child 1.5 @due(2026-01-06)
+	- item 1.6   
+				jumped note 1.6
+
+		- child 1.6 @due(2026-01-07)
+	- item 1.7   
+				jumped note 1.7
+
+		- child 1.7 @due(2026-01-08)
+Area 2: @tag(a\(b\))  
+	- item 2.0   
+				jumped note 2.0
+
+		- child 2.0 @due(2026-01-01)
+	- item 2.1   
+				jumped note 2.1
+
+		- child 2.1 @due(2026-01-02)
+	- item 2.2   
+				jumped note 2.2
+
+		- child 2.2 @due(2026-01-03)
+	- item 2.3   
+				jumped note 2.3
+
+		- child 2.3 @due(2026-01-04)
+	- item 2.4   
+				jumped note 2.4
+
+		- child 2.4 @due(2026-01-05)
+	- item 2.5   
+				jumped note 2.5
+
+		- child 2.5 @due(2026-01-06)
+	- item 2.6   
+				jumped note 2.6
+
+		- child 2.6 @due(2026-01-07)
+	- item 2.7   
+				jumped note 2.7
+
+		- child 2.7 @due(2026-01-08)
+Area 3: @tag(a\(b\))  
+	- item 3.0   
+				jumped note 3.0
+
+		- child 3.0 @due(2026-01-01)
+	- item 3.1   
+				jumped note 3.1
+
+		- child 3.1 @due(2026-01-02)
+	- item 3.2   
+				jumped note 3.2
+
+		- child 3.2 @due(2026-01-03)
+	- item 3.3   
+				jumped note 3.3
+
+		- child 3.3 @due(2026-01-04)
+	- item 3.4   
+				jumped note 3.4
+
+		- child 3.4 @due(2026-01-05)
+	- item 3.5   
+				jumped note 3.5
+
+		- child 3.5 @due(2026-01-06)
+	- item 3.6   
+				jumped note 3.6
+
+		- child 3.6 @due(2026-01-07)
+	- item 3.7   
+				jumped note 3.7
+
+		- child 3.7 @due(2026-01-08)
+Area 4: @tag(a\(b\))  
+	- item 4.0   
+				jumped note 4.0
+
+		- child 4.0 @due(2026-01-01)
+	- item 4.1   
+				jumped note 4.1
+
+		- child 4.1 @due(2026-01-02)
+	- item 4.2   
+				jumped note 4.2
+
+		- child 4.2 @due(2026-01-03)
+	- item 4.3   
+				jumped note 4.3
+
+		- child 4.3 @due(2026-01-04)
+	- item 4.4   
+				jumped note 4.4
+
+		- child 4.4 @due(2026-01-05)
+	- item 4.5   
+				jumped note 4.5
+
+		- child 4.5 @due(2026-01-06)
+	- item 4.6   
+				jumped note 4.6
+
+		- child 4.6 @due(2026-01-07)
+	- item 4.7   
+				jumped note 4.7
+
+		- child 4.7 @due(2026-01-08)
+Area 5: @tag(a\(b\))  
+	- item 5.0   
+				jumped note 5.0
+
+		- child 5.0 @due(2026-01-01)
+	- item 5.1   
+				jumped note 5.1
+
+		- child 5.1 @due(2026-01-02)
+	- item 5.2   
+				jumped note 5.2
+
+		- child 5.2 @due(2026-01-03)
+	- item 5.3   
+				jumped note 5.3
+
+		- child 5.3 @due(2026-01-04)
+	- item 5.4   
+				jumped note 5.4
+
+		- child 5.4 @due(2026-01-05)
+	- item 5.5   
+				jumped note 5.5
+
+		- child 5.5 @due(2026-01-06)
+	- item 5.6   
+				jumped note 5.6
+
+		- child 5.6 @due(2026-01-07)
+	- item 5.7   
+				jumped note 5.7
+
+		- child 5.7 @due(2026-01-08)
+Area 6: @tag(a\(b\))  
+	- item 6.0   
+		- needle
+
+		- child 6.0 @due(2026-01-01)
+	- item 6.1   
+				jumped note 6.1
+
+		- child 6.1 @due(2026-01-02)
+	- item 6.2   
+				jumped note 6.2
+
+		- child 6.2 @due(2026-01-03)
+	- item 6.3   
+				jumped note 6.3
+
+		- child 6.3 @due(2026-01-04)
+	- item 6.4   
+				jumped note 6.4
+
+		- child 6.4 @due(2026-01-05)
+	- item 6.5   
+				jumped note 6.5
+
+		- child 6.5 @due(2026-01-06)
+	- item 6.6   
+				jumped note 6.6
+
+		- child 6.6 @due(2026-01-07)
+	- item 6.7   
+				jumped note 6.7
+
+		- child 6.7 @due(2026-01-08)
+Area 7: @tag(a\(b\))  
+	- item 7.0   
+				jumped note 7.0
+
+		- child 7.0 @due(2026-01-01)
+	- item 7.1   
+				jumped note 7.1
+
+		- child 7.1 @due(2026-01-02)
+	- item 7.2   
+				jumped note 7.2
+
+		- child 7.2 @due(2026-01-03)
+	- item 7.3   
+				jumped note 7.3
+
+		- child 7.3 @due(2026-01-04)
+	- item 7.4   
+				jumped note 7.4
+
+		- child 7.4 @due(2026-01-05)
+	- item 7.5   
+				jumped note 7.5
+
+		- child 7.5 @due(2026-01-06)
+	- item 7.6   
+				jumped note 7.6
+
+		- child 7.6 @due(2026-01-07)
+	- item 7.7   
+				jumped note 7.7
+
+		- child 7.7 @due(2026-01-08)
+Area 8: @tag(a\(b\))  
+	- item 8.0   
+				jumped note 8.0
+
+		- child 8.0 @due(2026-01-01)
+	- item 8.1   
+				jumped note 8.1
+
+		- child 8.1 @due(2026-01-02)
+	- item 8.2   
+				jumped note 8.2
+
+		- child 8.2 @due(2026-01-03)
+	- item 8.3   
+				jumped note 8.3
+
+		- child 8.3 @due(2026-01-04)
+	- item 8.4   
+				jumped note 8.4
+
+		- child 8.4 @due(2026-01-05)
+	- item 8.5   
+				jumped note 8.5
+
+		- child 8.5 @due(2026-01-06)
+	- item 8.6   
+				jumped note 8.6
+
+		- child 8.6 @due(2026-01-07)
+	- item 8.7   
+				jumped note 8.7
+
+		- child 8.7 @due(2026-01-08)
+Area 9: @tag(a\(b\))  
+	- item 9.0   
+				jumped note 9.0
+
+		- child 9.0 @due(2026-01-01)
+	- item 9.1   
+				jumped note 9.1
+
+		- child 9.1 @due(2026-01-02)
+	- item 9.2   
+				jumped note 9.2
+
+		- child 9.2 @due(2026-01-03)
+	- item 9.3   
+				jumped note 9.3
+
+		- child 9.3 @due(2026-01-04)
+	- item 9.4   
+				jumped note 9.4
+
+		- child 9.4 @due(2026-01-05)
+	- item 9.5   
+				jumped note 9.5
+
+		- child 9.5 @due(2026-01-06)
+	- item 9.6   
+				jumped note 9.6
+
+		- child 9.6 @due(2026-01-07)
+	- item 9.7   
+				jumped note 9.7
+
+		- child 9.7 @due(2026-01-08)
+Area 10: @tag(a\(b\))  
+	- item 10.0   
+				jumped note 10.0
+
+		- child 10.0 @due(2026-01-01)
+	- item 10.1   
+				jumped note 10.1
+
+		- child 10.1 @due(2026-01-02)
+	- item 10.2   
+				jumped note 10.2
+
+		- child 10.2 @due(2026-01-03)
+	- item 10.3   
+				jumped note 10.3
+
+		- child 10.3 @due(2026-01-04)
+	- item 10.4   
+				jumped note 10.4
+
+		- child 10.4 @due(2026-01-05)
+	- item 10.5   
+				jumped note 10.5
+
+		- child 10.5 @due(2026-01-06)
+	- item 10.6   
+				jumped note 10.6
+
+		- child 10.6 @due(2026-01-07)
+	- item 10.7   
+				jumped note 10.7
+
+		- child 10.7 @due(2026-01-08)
+Area 11: @tag(a\(b\))  
+	- item 11.0   
+				jumped note 11.0
+
+		- child 11.0 @due(2026-01-01)
+	- item 11.1   
+				jumped note 11.1
+
+		- child 11.1 @due(2026-01-02)
+	- item 11.2   
+				jumped note 11.2
+
+		- child 11.2 @due(2026-01-03)
+	- item 11.3   
+				jumped note 11.3
+
+		- child 11.3 @due(2026-01-04)
+	- item 11.4   
+				jumped note 11.4
+
+		- child 11.4 @due(2026-01-05)
+	- item 11.5   
+				jumped note 11.5
+
+		- child 11.5 @due(2026-01-06)
+	- item 11.6   
+				jumped note 11.6
+
+		- child 11.6 @due(2026-01-07)
+	- item 11.7   
+				jumped note 11.7
+
+		- child 11.7 @due(2026-01-08)
+Area 12: @tag(a\(b\))  
+	- item 12.0   
+				jumped note 12.0
+
+		- child 12.0 @due(2026-01-01)
+	- item 12.1   
+				jumped note 12.1
+
+		- child 12.1 @due(2026-01-02)
+	- item 12.2   
+				jumped note 12.2
+
+		- child 12.2 @due(2026-01-03)
+	- item 12.3   
+				jumped note 12.3
+
+		- child 12.3 @due(2026-01-04)
+	- item 12.4   
+				jumped note 12.4
+
+		- child 12.4 @due(2026-01-05)
+	- item 12.5   
+				jumped note 12.5
+
+		- child 12.5 @due(2026-01-06)
+	- item 12.6   
+				jumped note 12.6
+
+		- child 12.6 @due(2026-01-07)
+	- item 12.7   
+				jumped note 12.7
+
+		- child 12.7 @due(2026-01-08)
+Area 13: @tag(a\(b\))  
+	- item 13.0   
+				jumped note 13.0
+
+		- child 13.0 @due(2026-01-01)
+	- item 13.1   
+				jumped note 13.1
+
+		- child 13.1 @due(2026-01-02)
+	- item 13.2   
+				jumped note 13.2
+
+		- child 13.2 @due(2026-01-03)
+	- item 13.3   
+				jumped note 13.3
+
+		- child 13.3 @due(2026-01-04)
+	- item 13.4   
+				jumped note 13.4
+
+		- child 13.4 @due(2026-01-05)
+	- item 13.5   
+				jumped note 13.5
+
+		- child 13.5 @due(2026-01-06)
+	- item 13.6   
+				jumped note 13.6
+
+		- child 13.6 @due(2026-01-07)
+	- item 13.7   
+				jumped note 13.7
+
+		- child 13.7 @due(2026-01-08)
+Area 14: @tag(a\(b\))  
+	- item 14.0   
+				jumped note 14.0
+
+		- child 14.0 @due(2026-01-01)
+	- item 14.1   
+				jumped note 14.1
+
+		- child 14.1 @due(2026-01-02)
+	- item 14.2   
+				jumped note 14.2
+
+		- child 14.2 @due(2026-01-03)
+	- item 14.3   
+				jumped note 14.3
+
+		- child 14.3 @due(2026-01-04)
+	- item 14.4   
+				jumped note 14.4
+
+		- child 14.4 @due(2026-01-05)
+	- item 14.5   
+				jumped note 14.5
+
+		- child 14.5 @due(2026-01-06)
+	- item 14.6   
+				jumped note 14.6
+
+		- child 14.6 @due(2026-01-07)
+	- item 14.7   
+				jumped note 14.7
+
+		- child 14.7 @due(2026-01-08)
+Area 15: @tag(a\(b\))  
+	- item 15.0   
+				jumped note 15.0
+
+		- child 15.0 @due(2026-01-01)
+	- item 15.1   
+				jumped note 15.1
+
+		- child 15.1 @due(2026-01-02)
+	- item 15.2   
+				jumped note 15.2
+
+		- child 15.2 @due(2026-01-03)
+	- item 15.3   
+				jumped note 15.3
+
+		- child 15.3 @due(2026-01-04)
+	- item 15.4   
+				jumped note 15.4
+
+		- child 15.4 @due(2026-01-05)
+	- item 15.5   
+				jumped note 15.5
+
+		- child 15.5 @due(2026-01-06)
+	- item 15.6   
+				jumped note 15.6
+
+		- child 15.6 @due(2026-01-07)
+	- item 15.7   
+				jumped note 15.7
+
+		- child 15.7 @due(2026-01-08)
+Area 16: @tag(a\(b\))  
+	- item 16.0   
+				jumped note 16.0
+
+		- child 16.0 @due(2026-01-01)
+	- item 16.1   
+				jumped note 16.1
+
+		- child 16.1 @due(2026-01-02)
+	- item 16.2   
+				jumped note 16.2
+
+		- child 16.2 @due(2026-01-03)
+	- item 16.3   
+				jumped note 16.3
+
+		- child 16.3 @due(2026-01-04)
+	- item 16.4   
+				jumped note 16.4
+
+		- child 16.4 @due(2026-01-05)
+	- item 16.5   
+				jumped note 16.5
+
+		- child 16.5 @due(2026-01-06)
+	- item 16.6   
+				jumped note 16.6
+
+		- child 16.6 @due(2026-01-07)
+	- item 16.7   
+				jumped note 16.7
+
+		- child 16.7 @due(2026-01-08)
+Area 17: @tag(a\(b\))  
+	- item 17.0   
+				jumped note 17.0
+
+		- child 17.0 @due(2026-01-01)
+	- item 17.1   
+				jumped note 17.1
+
+		- child 17.1 @due(2026-01-02)
+	- item 17.2   
+				jumped note 17.2
+
+		- child 17.2 @due(2026-01-03)
+	- item 17.3   
+				jumped note 17.3
+
+		- child 17.3 @due(2026-01-04)
+	- item 17.4   
+				jumped note 17.4
+
+		- child 17.4 @due(2026-01-05)
+	- item 17.5   
+				jumped note 17.5
+
+		- child 17.5 @due(2026-01-06)
+	- item 17.6   
+				jumped note 17.6
+
+		- child 17.6 @due(2026-01-07)
+	- item 17.7   
+				jumped note 17.7
+
+		- child 17.7 @due(2026-01-08)
+Area 18: @tag(a\(b\))  
+	- item 18.0   
+				jumped note 18.0
+
+		- child 18.0 @due(2026-01-01)
+	- item 18.1   
+				jumped note 18.1
+
+		- child 18.1 @due(2026-01-02)
+	- item 18.2   
+				jumped note 18.2
+
+		- child 18.2 @due(2026-01-03)
+	- item 18.3   
+				jumped note 18.3
+
+		- child 18.3 @due(2026-01-04)
+	- item 18.4   
+				jumped note 18.4
+
+		- child 18.4 @due(2026-01-05)
+	- item 18.5   
+				jumped note 18.5
+
+		- child 18.5 @due(2026-01-06)
+	- item 18.6   
+				jumped note 18.6
+
+		- child 18.6 @due(2026-01-07)
+	- item 18.7   
+				jumped note 18.7
+
+		- child 18.7 @due(2026-01-08)
+Area 19: @tag(a\(b\))  
+	- item 19.0   
+				jumped note 19.0
+
+		- child 19.0 @due(2026-01-01)
+	- item 19.1   
+				jumped note 19.1
+
+		- child 19.1 @due(2026-01-02)
+	- item 19.2   
+				jumped note 19.2
+
+		- child 19.2 @due(2026-01-03)
+	- item 19.3   
+				jumped note 19.3
+
+		- child 19.3 @due(2026-01-04)
+	- item 19.4   
+				jumped note 19.4
+
+		- child 19.4 @due(2026-01-05)
+	- item 19.5   
+				jumped note 19.5
+
+		- child 19.5 @due(2026-01-06)
+	- item 19.6   
+				jumped note 19.6
+
+		- child 19.6 @due(2026-01-07)
+	- item 19.7   
+				jumped note 19.7
+
+		- child 19.7 @due(2026-01-08)
+END
+keys <C-k>
+type needle
+keys <Enter>
+see ▌   - needle
+keys <Enter>
+type  found
+keys <Esc>
+quit
+saved <<END
+Area 0: @tag(a\(b\))  
+	- item 0.0   
+				jumped note 0.0
+
+		- child 0.0 @due(2026-01-01)
+	- item 0.1   
+				jumped note 0.1
+
+		- child 0.1 @due(2026-01-02)
+	- item 0.2   
+				jumped note 0.2
+
+		- child 0.2 @due(2026-01-03)
+	- item 0.3   
+				jumped note 0.3
+
+		- child 0.3 @due(2026-01-04)
+	- item 0.4   
+				jumped note 0.4
+
+		- child 0.4 @due(2026-01-05)
+	- item 0.5   
+				jumped note 0.5
+
+		- child 0.5 @due(2026-01-06)
+	- item 0.6   
+				jumped note 0.6
+
+		- child 0.6 @due(2026-01-07)
+	- item 0.7   
+				jumped note 0.7
+
+		- child 0.7 @due(2026-01-08)
+Area 1: @tag(a\(b\))  
+	- item 1.0   
+				jumped note 1.0
+
+		- child 1.0 @due(2026-01-01)
+	- item 1.1   
+				jumped note 1.1
+
+		- child 1.1 @due(2026-01-02)
+	- item 1.2   
+				jumped note 1.2
+
+		- child 1.2 @due(2026-01-03)
+	- item 1.3   
+				jumped note 1.3
+
+		- child 1.3 @due(2026-01-04)
+	- item 1.4   
+				jumped note 1.4
+
+		- child 1.4 @due(2026-01-05)
+	- item 1.5   
+				jumped note 1.5
+
+		- child 1.5 @due(2026-01-06)
+	- item 1.6   
+				jumped note 1.6
+
+		- child 1.6 @due(2026-01-07)
+	- item 1.7   
+				jumped note 1.7
+
+		- child 1.7 @due(2026-01-08)
+Area 2: @tag(a\(b\))  
+	- item 2.0   
+				jumped note 2.0
+
+		- child 2.0 @due(2026-01-01)
+	- item 2.1   
+				jumped note 2.1
+
+		- child 2.1 @due(2026-01-02)
+	- item 2.2   
+				jumped note 2.2
+
+		- child 2.2 @due(2026-01-03)
+	- item 2.3   
+				jumped note 2.3
+
+		- child 2.3 @due(2026-01-04)
+	- item 2.4   
+				jumped note 2.4
+
+		- child 2.4 @due(2026-01-05)
+	- item 2.5   
+				jumped note 2.5
+
+		- child 2.5 @due(2026-01-06)
+	- item 2.6   
+				jumped note 2.6
+
+		- child 2.6 @due(2026-01-07)
+	- item 2.7   
+				jumped note 2.7
+
+		- child 2.7 @due(2026-01-08)
+Area 3: @tag(a\(b\))  
+	- item 3.0   
+				jumped note 3.0
+
+		- child 3.0 @due(2026-01-01)
+	- item 3.1   
+				jumped note 3.1
+
+		- child 3.1 @due(2026-01-02)
+	- item 3.2   
+				jumped note 3.2
+
+		- child 3.2 @due(2026-01-03)
+	- item 3.3   
+				jumped note 3.3
+
+		- child 3.3 @due(2026-01-04)
+	- item 3.4   
+				jumped note 3.4
+
+		- child 3.4 @due(2026-01-05)
+	- item 3.5   
+				jumped note 3.5
+
+		- child 3.5 @due(2026-01-06)
+	- item 3.6   
+				jumped note 3.6
+
+		- child 3.6 @due(2026-01-07)
+	- item 3.7   
+				jumped note 3.7
+
+		- child 3.7 @due(2026-01-08)
+Area 4: @tag(a\(b\))  
+	- item 4.0   
+				jumped note 4.0
+
+		- child 4.0 @due(2026-01-01)
+	- item 4.1   
+				jumped note 4.1
+
+		- child 4.1 @due(2026-01-02)
+	- item 4.2   
+				jumped note 4.2
+
+		- child 4.2 @due(2026-01-03)
+	- item 4.3   
+				jumped note 4.3
+
+		- child 4.3 @due(2026-01-04)
+	- item 4.4   
+				jumped note 4.4
+
+		- child 4.4 @due(2026-01-05)
+	- item 4.5   
+				jumped note 4.5
+
+		- child 4.5 @due(2026-01-06)
+	- item 4.6   
+				jumped note 4.6
+
+		- child 4.6 @due(2026-01-07)
+	- item 4.7   
+				jumped note 4.7
+
+		- child 4.7 @due(2026-01-08)
+Area 5: @tag(a\(b\))  
+	- item 5.0   
+				jumped note 5.0
+
+		- child 5.0 @due(2026-01-01)
+	- item 5.1   
+				jumped note 5.1
+
+		- child 5.1 @due(2026-01-02)
+	- item 5.2   
+				jumped note 5.2
+
+		- child 5.2 @due(2026-01-03)
+	- item 5.3   
+				jumped note 5.3
+
+		- child 5.3 @due(2026-01-04)
+	- item 5.4   
+				jumped note 5.4
+
+		- child 5.4 @due(2026-01-05)
+	- item 5.5   
+				jumped note 5.5
+
+		- child 5.5 @due(2026-01-06)
+	- item 5.6   
+				jumped note 5.6
+
+		- child 5.6 @due(2026-01-07)
+	- item 5.7   
+				jumped note 5.7
+
+		- child 5.7 @due(2026-01-08)
+Area 6: @tag(a\(b\))  
+	- item 6.0   
+		- needle found
+
+		- child 6.0 @due(2026-01-01)
+	- item 6.1   
+				jumped note 6.1
+
+		- child 6.1 @due(2026-01-02)
+	- item 6.2   
+				jumped note 6.2
+
+		- child 6.2 @due(2026-01-03)
+	- item 6.3   
+				jumped note 6.3
+
+		- child 6.3 @due(2026-01-04)
+	- item 6.4   
+				jumped note 6.4
+
+		- child 6.4 @due(2026-01-05)
+	- item 6.5   
+				jumped note 6.5
+
+		- child 6.5 @due(2026-01-06)
+	- item 6.6   
+				jumped note 6.6
+
+		- child 6.6 @due(2026-01-07)
+	- item 6.7   
+				jumped note 6.7
+
+		- child 6.7 @due(2026-01-08)
+Area 7: @tag(a\(b\))  
+	- item 7.0   
+				jumped note 7.0
+
+		- child 7.0 @due(2026-01-01)
+	- item 7.1   
+				jumped note 7.1
+
+		- child 7.1 @due(2026-01-02)
+	- item 7.2   
+				jumped note 7.2
+
+		- child 7.2 @due(2026-01-03)
+	- item 7.3   
+				jumped note 7.3
+
+		- child 7.3 @due(2026-01-04)
+	- item 7.4   
+				jumped note 7.4
+
+		- child 7.4 @due(2026-01-05)
+	- item 7.5   
+				jumped note 7.5
+
+		- child 7.5 @due(2026-01-06)
+	- item 7.6   
+				jumped note 7.6
+
+		- child 7.6 @due(2026-01-07)
+	- item 7.7   
+				jumped note 7.7
+
+		- child 7.7 @due(2026-01-08)
+Area 8: @tag(a\(b\))  
+	- item 8.0   
+				jumped note 8.0
+
+		- child 8.0 @due(2026-01-01)
+	- item 8.1   
+				jumped note 8.1
+
+		- child 8.1 @due(2026-01-02)
+	- item 8.2   
+				jumped note 8.2
+
+		- child 8.2 @due(2026-01-03)
+	- item 8.3   
+				jumped note 8.3
+
+		- child 8.3 @due(2026-01-04)
+	- item 8.4   
+				jumped note 8.4
+
+		- child 8.4 @due(2026-01-05)
+	- item 8.5   
+				jumped note 8.5
+
+		- child 8.5 @due(2026-01-06)
+	- item 8.6   
+				jumped note 8.6
+
+		- child 8.6 @due(2026-01-07)
+	- item 8.7   
+				jumped note 8.7
+
+		- child 8.7 @due(2026-01-08)
+Area 9: @tag(a\(b\))  
+	- item 9.0   
+				jumped note 9.0
+
+		- child 9.0 @due(2026-01-01)
+	- item 9.1   
+				jumped note 9.1
+
+		- child 9.1 @due(2026-01-02)
+	- item 9.2   
+				jumped note 9.2
+
+		- child 9.2 @due(2026-01-03)
+	- item 9.3   
+				jumped note 9.3
+
+		- child 9.3 @due(2026-01-04)
+	- item 9.4   
+				jumped note 9.4
+
+		- child 9.4 @due(2026-01-05)
+	- item 9.5   
+				jumped note 9.5
+
+		- child 9.5 @due(2026-01-06)
+	- item 9.6   
+				jumped note 9.6
+
+		- child 9.6 @due(2026-01-07)
+	- item 9.7   
+				jumped note 9.7
+
+		- child 9.7 @due(2026-01-08)
+Area 10: @tag(a\(b\))  
+	- item 10.0   
+				jumped note 10.0
+
+		- child 10.0 @due(2026-01-01)
+	- item 10.1   
+				jumped note 10.1
+
+		- child 10.1 @due(2026-01-02)
+	- item 10.2   
+				jumped note 10.2
+
+		- child 10.2 @due(2026-01-03)
+	- item 10.3   
+				jumped note 10.3
+
+		- child 10.3 @due(2026-01-04)
+	- item 10.4   
+				jumped note 10.4
+
+		- child 10.4 @due(2026-01-05)
+	- item 10.5   
+				jumped note 10.5
+
+		- child 10.5 @due(2026-01-06)
+	- item 10.6   
+				jumped note 10.6
+
+		- child 10.6 @due(2026-01-07)
+	- item 10.7   
+				jumped note 10.7
+
+		- child 10.7 @due(2026-01-08)
+Area 11: @tag(a\(b\))  
+	- item 11.0   
+				jumped note 11.0
+
+		- child 11.0 @due(2026-01-01)
+	- item 11.1   
+				jumped note 11.1
+
+		- child 11.1 @due(2026-01-02)
+	- item 11.2   
+				jumped note 11.2
+
+		- child 11.2 @due(2026-01-03)
+	- item 11.3   
+				jumped note 11.3
+
+		- child 11.3 @due(2026-01-04)
+	- item 11.4   
+				jumped note 11.4
+
+		- child 11.4 @due(2026-01-05)
+	- item 11.5   
+				jumped note 11.5
+
+		- child 11.5 @due(2026-01-06)
+	- item 11.6   
+				jumped note 11.6
+
+		- child 11.6 @due(2026-01-07)
+	- item 11.7   
+				jumped note 11.7
+
+		- child 11.7 @due(2026-01-08)
+Area 12: @tag(a\(b\))  
+	- item 12.0   
+				jumped note 12.0
+
+		- child 12.0 @due(2026-01-01)
+	- item 12.1   
+				jumped note 12.1
+
+		- child 12.1 @due(2026-01-02)
+	- item 12.2   
+				jumped note 12.2
+
+		- child 12.2 @due(2026-01-03)
+	- item 12.3   
+				jumped note 12.3
+
+		- child 12.3 @due(2026-01-04)
+	- item 12.4   
+				jumped note 12.4
+
+		- child 12.4 @due(2026-01-05)
+	- item 12.5   
+				jumped note 12.5
+
+		- child 12.5 @due(2026-01-06)
+	- item 12.6   
+				jumped note 12.6
+
+		- child 12.6 @due(2026-01-07)
+	- item 12.7   
+				jumped note 12.7
+
+		- child 12.7 @due(2026-01-08)
+Area 13: @tag(a\(b\))  
+	- item 13.0   
+				jumped note 13.0
+
+		- child 13.0 @due(2026-01-01)
+	- item 13.1   
+				jumped note 13.1
+
+		- child 13.1 @due(2026-01-02)
+	- item 13.2   
+				jumped note 13.2
+
+		- child 13.2 @due(2026-01-03)
+	- item 13.3   
+				jumped note 13.3
+
+		- child 13.3 @due(2026-01-04)
+	- item 13.4   
+				jumped note 13.4
+
+		- child 13.4 @due(2026-01-05)
+	- item 13.5   
+				jumped note 13.5
+
+		- child 13.5 @due(2026-01-06)
+	- item 13.6   
+				jumped note 13.6
+
+		- child 13.6 @due(2026-01-07)
+	- item 13.7   
+				jumped note 13.7
+
+		- child 13.7 @due(2026-01-08)
+Area 14: @tag(a\(b\))  
+	- item 14.0   
+				jumped note 14.0
+
+		- child 14.0 @due(2026-01-01)
+	- item 14.1   
+				jumped note 14.1
+
+		- child 14.1 @due(2026-01-02)
+	- item 14.2   
+				jumped note 14.2
+
+		- child 14.2 @due(2026-01-03)
+	- item 14.3   
+				jumped note 14.3
+
+		- child 14.3 @due(2026-01-04)
+	- item 14.4   
+				jumped note 14.4
+
+		- child 14.4 @due(2026-01-05)
+	- item 14.5   
+				jumped note 14.5
+
+		- child 14.5 @due(2026-01-06)
+	- item 14.6   
+				jumped note 14.6
+
+		- child 14.6 @due(2026-01-07)
+	- item 14.7   
+				jumped note 14.7
+
+		- child 14.7 @due(2026-01-08)
+Area 15: @tag(a\(b\))  
+	- item 15.0   
+				jumped note 15.0
+
+		- child 15.0 @due(2026-01-01)
+	- item 15.1   
+				jumped note 15.1
+
+		- child 15.1 @due(2026-01-02)
+	- item 15.2   
+				jumped note 15.2
+
+		- child 15.2 @due(2026-01-03)
+	- item 15.3   
+				jumped note 15.3
+
+		- child 15.3 @due(2026-01-04)
+	- item 15.4   
+				jumped note 15.4
+
+		- child 15.4 @due(2026-01-05)
+	- item 15.5   
+				jumped note 15.5
+
+		- child 15.5 @due(2026-01-06)
+	- item 15.6   
+				jumped note 15.6
+
+		- child 15.6 @due(2026-01-07)
+	- item 15.7   
+				jumped note 15.7
+
+		- child 15.7 @due(2026-01-08)
+Area 16: @tag(a\(b\))  
+	- item 16.0   
+				jumped note 16.0
+
+		- child 16.0 @due(2026-01-01)
+	- item 16.1   
+				jumped note 16.1
+
+		- child 16.1 @due(2026-01-02)
+	- item 16.2   
+				jumped note 16.2
+
+		- child 16.2 @due(2026-01-03)
+	- item 16.3   
+				jumped note 16.3
+
+		- child 16.3 @due(2026-01-04)
+	- item 16.4   
+				jumped note 16.4
+
+		- child 16.4 @due(2026-01-05)
+	- item 16.5   
+				jumped note 16.5
+
+		- child 16.5 @due(2026-01-06)
+	- item 16.6   
+				jumped note 16.6
+
+		- child 16.6 @due(2026-01-07)
+	- item 16.7   
+				jumped note 16.7
+
+		- child 16.7 @due(2026-01-08)
+Area 17: @tag(a\(b\))  
+	- item 17.0   
+				jumped note 17.0
+
+		- child 17.0 @due(2026-01-01)
+	- item 17.1   
+				jumped note 17.1
+
+		- child 17.1 @due(2026-01-02)
+	- item 17.2   
+				jumped note 17.2
+
+		- child 17.2 @due(2026-01-03)
+	- item 17.3   
+				jumped note 17.3
+
+		- child 17.3 @due(2026-01-04)
+	- item 17.4   
+				jumped note 17.4
+
+		- child 17.4 @due(2026-01-05)
+	- item 17.5   
+				jumped note 17.5
+
+		- child 17.5 @due(2026-01-06)
+	- item 17.6   
+				jumped note 17.6
+
+		- child 17.6 @due(2026-01-07)
+	- item 17.7   
+				jumped note 17.7
+
+		- child 17.7 @due(2026-01-08)
+Area 18: @tag(a\(b\))  
+	- item 18.0   
+				jumped note 18.0
+
+		- child 18.0 @due(2026-01-01)
+	- item 18.1   
+				jumped note 18.1
+
+		- child 18.1 @due(2026-01-02)
+	- item 18.2   
+				jumped note 18.2
+
+		- child 18.2 @due(2026-01-03)
+	- item 18.3   
+				jumped note 18.3
+
+		- child 18.3 @due(2026-01-04)
+	- item 18.4   
+				jumped note 18.4
+
+		- child 18.4 @due(2026-01-05)
+	- item 18.5   
+				jumped note 18.5
+
+		- child 18.5 @due(2026-01-06)
+	- item 18.6   
+				jumped note 18.6
+
+		- child 18.6 @due(2026-01-07)
+	- item 18.7   
+				jumped note 18.7
+
+		- child 18.7 @due(2026-01-08)
+Area 19: @tag(a\(b\))  
+	- item 19.0   
+				jumped note 19.0
+
+		- child 19.0 @due(2026-01-01)
+	- item 19.1   
+				jumped note 19.1
+
+		- child 19.1 @due(2026-01-02)
+	- item 19.2   
+				jumped note 19.2
+
+		- child 19.2 @due(2026-01-03)
+	- item 19.3   
+				jumped note 19.3
+
+		- child 19.3 @due(2026-01-04)
+	- item 19.4   
+				jumped note 19.4
+
+		- child 19.4 @due(2026-01-05)
+	- item 19.5   
+				jumped note 19.5
+
+		- child 19.5 @due(2026-01-06)
+	- item 19.6   
+				jumped note 19.6
+
+		- child 19.6 @due(2026-01-07)
+	- item 19.7   
+				jumped note 19.7
+
+		- child 19.7 @due(2026-01-08)
+END

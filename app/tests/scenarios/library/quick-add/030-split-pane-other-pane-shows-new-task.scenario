@@ -1,0 +1,22 @@
+# With two panes, Quick Add from the right pane adds to INBOX and the left pane shows it, the right pane unchanged.
+file <<END
+INBOX:
+	- Old item
+Work:
+	- Email boss
+END
+keys j j <C-w> v
+see 󰋜 › Work
+keys qi
+type From the right
+keys <Enter>
+see     - From the right
+see 󰋜 › Work
+quit
+saved <<END
+INBOX:
+	- Old item
+	- From the right
+Work:
+	- Email boss
+END

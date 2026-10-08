@@ -1,0 +1,19 @@
+# The Navigator nests a project found under a task or a note directly under the nearest project above it.
+file <<END
+Garden:
+	- Plant bulbs
+		Tulips:
+			- Red ones
+	Notes on soil
+		Compost:
+			- Turn pile
+END
+keys <C-g>
+see ▾Garden                                    3 │
+see    Tulips                                  1 │
+see    Compost                                 1 │
+type comp
+see │▌   Compost
+keys <Enter>
+see 󰋜 › Garden › Notes on soil › Compost
+quit

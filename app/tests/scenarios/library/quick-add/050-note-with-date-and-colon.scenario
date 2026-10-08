@@ -1,0 +1,13 @@
+# A note "Agenda: tomorrow" is added as the note "Agenda" with tomorrow's start date, not as a project.
+file <<END
+TODAY:
+END
+keys qt <BS>
+type Agenda: tomorrow
+see Start 
+keys <Enter>
+quit
+saved <<END
+TODAY:
+	Agenda @start({today+1})
+END

@@ -1,0 +1,14 @@
+# W on the last Upcoming entry makes it due tomorrow and moves it into the Tomorrow group in document order, keeping the focus on it.
+file <<END
+- Late @due({today+6})
+- Early @due({today+1})
+END
+keys gU G
+see ▌ - Late
+keys W j
+see ▌ - Early
+quit
+saved <<END
+- Late @due({today+1})
+- Early @due({today+1})
+END

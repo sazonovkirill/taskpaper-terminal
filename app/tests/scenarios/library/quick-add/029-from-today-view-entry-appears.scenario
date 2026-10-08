@@ -1,0 +1,22 @@
+# Quick Add from the Today view with "today" in the text adds to INBOX and the new task joins the view.
+file <<END
+INBOX:
+	- Old item
+Work:
+	- Report @due({today})
+END
+keys gt
+see 󰖙 Today
+keys qi
+type Buy stamps today
+keys <Enter>
+see - Buy stamps  INBOX
+see 󰖙 Today
+quit
+saved <<END
+INBOX:
+	- Old item
+	- Buy stamps @start({today})
+Work:
+	- Report @due({today})
+END

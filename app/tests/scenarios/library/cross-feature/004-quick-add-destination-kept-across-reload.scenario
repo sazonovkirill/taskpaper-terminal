@@ -1,0 +1,33 @@
+# A project chosen in Quick Add stays the destination when another program changes the file while the panel is open.
+file <<END
+Work:
+	- Write report
+Home:
+	- Fix the shelf
+END
+keys qq
+type Fix sink /ho
+see Home
+keys <Enter>
+see Quick Add → Home
+outside <<END
+Garden:
+	- Rake leaves
+Work:
+	- Write report
+Home:
+	- Fix the shelf
+END
+see Garden:
+keys <Enter>
+see - Fix sink
+quit
+saved <<END
+Garden:
+	- Rake leaves
+Work:
+	- Write report
+Home:
+	- Fix the shelf
+	- Fix sink
+END

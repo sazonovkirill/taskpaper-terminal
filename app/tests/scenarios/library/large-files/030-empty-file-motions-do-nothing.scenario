@@ -1,0 +1,10 @@
+# In an empty file G, gg, x, dd and z change nothing, and o starts the first block, which is still there after reopening.
+keys G gg x dd z <PgDn> _ +
+hide ✔
+keys o
+type First
+keys <Esc>
+see ▌ First
+restart
+see ▌ First
+quit

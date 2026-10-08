@@ -1,0 +1,9 @@
+# Typing log in the Navigator and Ctrl+T opens the Logbook in a new pane beside the outline.
+file <<END
+- Shipped @done({today})
+END
+keys <C-g>
+type log
+keys <C-t>
+see │  󱓳 Logbook
+see │▌ ✔ Shipped

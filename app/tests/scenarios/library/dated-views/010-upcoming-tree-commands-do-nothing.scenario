@@ -1,0 +1,18 @@
+# Copy then Tab, Shift+Tab, zoom out, folding, grouping and paste do nothing on an Upcoming entry; only the final x changes the file.
+file <<END
+Work:
+	- Plan @due({today+2})
+		- Step
+	- Ship @due({today+3})
+END
+keys gU j
+see ▌ - Ship  Work
+keys y <Tab> <S-Tab> > <Space> gG p P
+keys k x
+quit
+saved <<END
+Work:
+	- Plan @due({today+2}) @done({today})
+		- Step
+	- Ship @due({today+3})
+END

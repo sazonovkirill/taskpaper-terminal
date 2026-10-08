@@ -1,0 +1,18 @@
+# In a narrow terminal a long Quick Add text scrolls to the caret; Home and word moves edit its start.
+size 30 8
+file <<END
+INBOX:
+END
+keys qi
+type The quick brown fox jumps over the lazy dog
+see lazy dog
+keys <Home>
+see - The quick brown
+keys <C-Right> <C-Right>
+type er
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- The quicker brown fox jumps over the lazy dog
+END

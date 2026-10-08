@@ -1,0 +1,25 @@
+# Overdue groups entries by due date, oldest first, document order within a date.
+file <<END
+- Recent @due({today-1})
+- Oldest @due({today-9})
+- Middle A @due({today-4})
+- Middle B @due({today-4})
+END
+keys gO
+see 9 days ago ·
+see 4 days ago ·
+see ▌ - Oldest
+keys j
+see ▌ - Middle A
+keys j
+see ▌ - Middle B
+keys j
+see ▌ - Recent
+keys x
+quit
+saved <<END
+- Recent @due({today-1}) @done({today})
+- Oldest @due({today-9})
+- Middle A @due({today-4})
+- Middle B @due({today-4})
+END

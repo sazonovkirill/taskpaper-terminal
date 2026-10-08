@@ -1,0 +1,20 @@
+# Resetting the Animations setting with r writes the default, full, which a restart keeps.
+config <<END
+animations = "off"
+END
+file <<END
+- Milk
+END
+keys g,
+type /anim
+see off  │
+keys <Enter> r
+see full  │
+keys <Esc>
+restart
+keys g,
+type /anim
+see full  │
+hide off  │
+keys <Esc> <Esc>
+quit
