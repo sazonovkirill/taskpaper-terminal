@@ -142,7 +142,8 @@ fn outline() -> impl Strategy<Value = &'static str> {
 /// Starts the app on `outline` and does `actions`, drawing after each one as the event loop
 /// does, until they end or the app quits.
 fn play(outline: &str, actions: &[Action]) -> Harness {
-    let mut app = Harness::with_text(outline, 100, 30);
+    // An empty settings file, so that settings changed in the app are saved for the next launch.
+    let mut app = Harness::with_config(outline, "", 100, 30);
     for action in actions {
         if app.tui.should_quit() {
             break;

@@ -253,6 +253,13 @@ impl Harness {
         let Self { tui, _dir: dir, .. } = self;
         // Dropping the app waits for the disk work it asked for.
         drop(tui);
+        // The next launch reads the settings file this one wrote, if it had one.
+        let file = dir.path().join("config.toml");
+        if file.exists() {
+            let state = effects::open(&path).expect("the file opens");
+            let config = config::load(&file, Some(&dir.path().join("home")));
+            return Self::start_with(state, dir, config, width, height);
+        }
         Self::open_path(dir, &path, width, height)
     }
 
