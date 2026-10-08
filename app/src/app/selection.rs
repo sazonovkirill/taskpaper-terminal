@@ -25,8 +25,8 @@ pub enum SelectionChange {
 /// The selected blocks and the run that extending grows.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct Selection {
-    /// The selected blocks, in the order they were selected.
-    picked: Vec<ItemId>,
+    /// The selected blocks; a set, as every row asks whether it is one of them.
+    picked: HashSet<ItemId>,
     /// The run of rows the latest extensions selected, while the focus is still at its end.
     run: Option<Run>,
 }
@@ -37,7 +37,7 @@ pub(super) struct Selection {
 struct Run {
     anchor: ItemId,
     head: ItemId,
-    before: Vec<ItemId>,
+    before: HashSet<ItemId>,
 }
 
 impl Selection {
@@ -48,9 +48,10 @@ impl Selection {
 
     /// The blocks selected in only one of this selection and `other`.
     pub(super) fn differences(&self, other: &Self) -> HashSet<ItemId> {
-        let mine: HashSet<ItemId> = self.picked.iter().copied().collect();
-        let theirs: HashSet<ItemId> = other.picked.iter().copied().collect();
-        mine.symmetric_difference(&theirs).copied().collect()
+        self.picked
+            .symmetric_difference(&other.picked)
+            .copied()
+            .collect()
     }
 
     /// This selection with each block replaced by the one `to` finds for it, or dropped when it
@@ -99,11 +100,7 @@ impl State {
             .position(|&id| id == run.anchor)
             .unwrap_or_default();
         let mut picked = run.before.clone();
-        for &id in rows.get(from.min(to)..=from.max(to)).unwrap_or_default() {
-            if !picked.contains(&id) {
-                picked.push(id);
-            }
-        }
+        picked.extend(rows.get(from.min(to)..=from.max(to)).unwrap_or_default());
         self.pane.focus = rows.get(to).copied();
         self.pane.selection = Selection {
             picked,
@@ -115,10 +112,8 @@ impl State {
     fn toggle_selected(&mut self) {
         let Some(focus) = self.pane.focus else { return };
         let picked = &mut self.pane.selection.picked;
-        if let Some(at) = picked.iter().position(|&id| id == focus) {
-            picked.remove(at);
-        } else {
-            picked.push(focus);
+        if !picked.remove(&focus) {
+            picked.insert(focus);
         }
         self.pane.selection.run = None;
     }
@@ -145,7 +140,7 @@ impl State {
         if pane.selection.picked.is_empty() {
             return;
         }
-        let rows: Vec<ItemId> = self.rows_of(pane).iter().map(|row| row.id).collect();
+        let rows: HashSet<ItemId> = self.rows_of(pane).iter().map(|row| row.id).collect();
         pane.selection.picked.retain(|id| rows.contains(id));
         // A run whose head is hidden ends anyway, because the focus left it.
         if pane
