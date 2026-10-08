@@ -532,6 +532,43 @@ fn expanding_a_block_fades_in_the_rows_it_shows() {
     assert_eq!(frame(&mut full), expanded);
 }
 
+/// 600 projects, each holding a task, which take several chunks of rows.
+fn long_outline() -> String {
+    (0..600).fold(String::new(), |text, at| {
+        text + &format!("P{at}:\n\t- c{at}\n")
+    })
+}
+
+// FR-UI-11, UI-ANIM-04, N-PERF-02
+#[test]
+fn completing_in_a_long_outline_eases_only_what_it_completes() {
+    let text = long_outline();
+    let (mut full, mut off) = both(&text, "jj", 250);
+    for app in [&mut full, &mut off] {
+        app.type_keys("x");
+    }
+    let done = frame(&mut off);
+    assert_eq!(differing(&frame(&mut full), &done), [4, 5], "P1 and c1");
+    wait(&mut full, 250);
+    assert_eq!(frame(&mut full), done);
+}
+
+// FR-UI-11, UI-ANIM-06, N-PERF-02
+#[test]
+fn expanding_in_a_long_outline_fades_in_only_the_rows_it_shows() {
+    let text = long_outline();
+    let (mut full, mut off) = both(&text, "_", 250);
+    for (keys, revealed) in [("l", [3].as_slice()), ("+", &[5, 7])] {
+        for app in [&mut full, &mut off] {
+            app.type_keys(keys);
+        }
+        let expanded = frame(&mut off);
+        assert_eq!(differing(&frame(&mut full), &expanded), revealed, "{keys}");
+        wait(&mut full, 250);
+        assert_eq!(frame(&mut full), expanded);
+    }
+}
+
 /// The status line of an app 10 rows tall.
 fn status(app: &mut Harness) -> String {
     line(app.render().buffer(), 9)
@@ -670,4 +707,27 @@ fn a_click_on_the_fold_marker_of_another_pane_fades_in_the_rows_it_shows_there()
     );
     wait(&mut full, 120);
     assert_eq!(differing(&frame(&mut full), &expanded), [2]);
+}
+
+// FR-UI-11, UI-ANIM-06: the pane on the left hides completed blocks, so it never showed `d`.
+#[test]
+fn expanding_fades_in_only_what_the_pane_it_expands_in_did_not_show() {
+    let [mut full, mut off] =
+        ["full", "off"].map(|animations| on("P:\n\t- c\n- d @done\n", animations));
+    for app in [&mut full, &mut off] {
+        app.type_keys("_gc");
+        app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        app.type_keys("sgc");
+        frame(app);
+        wait(app, 250);
+        app.type_keys("l");
+    }
+    let expanded = frame(&mut off);
+    assert_eq!(
+        differing(&frame(&mut full), &expanded),
+        [3],
+        "only `c` fades in"
+    );
+    wait(&mut full, 250);
+    assert_eq!(frame(&mut full), expanded);
 }

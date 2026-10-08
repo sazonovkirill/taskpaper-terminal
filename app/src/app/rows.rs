@@ -89,6 +89,29 @@ impl Rows {
         }
     }
 
+    /// The rows in the chunks `other` does not share, in order, each with its index: of rows
+    /// built from `other` or it from them, those that may not be in `other` as they are here,
+    /// found without going through the rest.
+    pub fn apart_from<'a>(
+        &'a self,
+        other: &Self,
+    ) -> impl Iterator<Item = (usize, &'a Row)> + use<'a> {
+        let shared: HashSet<*const [Entry]> = other
+            .chunks
+            .iter()
+            .map(|(_, chunk)| Rc::as_ptr(chunk))
+            .collect();
+        self.chunks
+            .iter()
+            .filter(move |(_, chunk)| !shared.contains(&Rc::as_ptr(chunk)))
+            .flat_map(|(start, chunk)| {
+                chunk
+                    .iter()
+                    .enumerate()
+                    .map(move |(at, entry)| (start + at, &entry.row))
+            })
+    }
+
     /// How many rows the subtree of the row at `index` takes, its own included.
     pub(super) fn span(&self, index: usize) -> Option<usize> {
         self.entry(index).map(|entry| entry.span)
@@ -565,6 +588,36 @@ mod tests {
         assert_eq!(Builder::new(None).keep(0), None);
         let later: Rows = tasks(3).iter().skip(1).cloned().collect();
         assert_ne!(later, tasks(2), "as many rows, but others");
+    }
+
+    // N-PERF-02
+    #[test]
+    fn the_rows_apart_from_other_rows_are_those_of_the_chunks_they_do_not_share() {
+        let old = tasks(CHUNK * 4);
+        let ids = |rows: &Rows| rows.iter().map(|row| row.id).collect::<Vec<_>>();
+        let apart = |rows: &Rows, other: &Rows| {
+            rows.apart_from(other)
+                .map(|(at, row)| {
+                    assert_eq!(rows.get(at), Some(row));
+                    row.id
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(apart(&old, &Rows::default()), ids(&old));
+        assert_eq!(old.apart_from(&old.clone()).count(), 0);
+        let mut builder = Builder::new(Some(&old));
+        builder.keep(0);
+        for at in 2..old.len() {
+            builder.keep(at);
+        }
+        let rows = builder.finish();
+        let gone = old.get(1).unwrap().id;
+        let left = apart(&old, &rows);
+        let apart = apart(&rows, &old);
+        assert!(left.contains(&gone) && !apart.contains(&gone));
+        assert!(apart.len() < CHUNK * 2, "only the chunk the row left");
+        assert_eq!(left.len(), apart.len() + 1);
+        assert!(apart.iter().all(|id| ids(&rows).contains(id)));
     }
 
     // N-PERF-02

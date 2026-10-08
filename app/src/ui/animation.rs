@@ -159,9 +159,11 @@ impl Before {
     /// effect to show.
     fn receded_in(&self, after: &Self) -> Vec<(ItemId, bool)> {
         let recedes = |row: &Row| row.done || row.inside_done;
-        self.rows
-            .iter()
-            .zip(after.rows.iter())
+        // A row in a chunk both share is the same in both, so only the others are compared.
+        after
+            .rows
+            .apart_from(&self.rows)
+            .filter_map(|(at, now)| Some((self.rows.get(at)?, now)))
             .filter(|(was, now)| was.id == now.id && recedes(was) != recedes(now))
             .map(|(_, now)| (now.id, recedes(now)))
             .collect()
@@ -183,20 +185,24 @@ impl Before {
     }
 
     /// The rows of the pane with the keys in `after` that it did not show here in the same
-    /// place, as after an expand, which may give the keys to the pane it expands in (UI-ANIM-06).
-    fn revealed_in(&self, after: &Self) -> Vec<ItemId> {
-        let before: HashSet<ItemId> = self
+    /// place, as after an expand, which may give the keys to the pane it expands in, or `None`
+    /// when it shows the same rows (UI-ANIM-06).
+    fn revealed_in(&self, after: &Self) -> Option<Revealed> {
+        let before = self
             .panes
             .iter()
-            .filter(|&&(id, location, _)| Some(id) == after.pane && location == after.location)
-            .flat_map(|(.., rows)| rows.iter().map(|row| row.id))
-            .collect();
+            .find(|&&(id, location, _)| Some(id) == after.pane && location == after.location)
+            .map(|(.., rows)| rows.clone())
+            .unwrap_or_default();
         after
             .rows
-            .iter()
-            .map(|row| row.id)
-            .filter(|id| !before.contains(id))
-            .collect()
+            .apart_from(&before)
+            .next()
+            .is_some()
+            .then(|| Revealed {
+                before,
+                after: after.rows.clone(),
+            })
     }
 
     /// Whether focus jumped from here to `after`: it moved, other than to a block next to the
@@ -218,6 +224,45 @@ impl Before {
                 .is_some_and(|(a, b)| a.abs_diff(b) == 1)
         };
         !(next_to(&self.rows) || next_to(&after.rows))
+    }
+}
+
+/// The rows of a pane after an expand that it did not show before, worked out only for the rows
+/// a frame shows, since an expand may show most of a large outline (UI-ANIM-06, N-PERF-02).
+#[derive(Debug)]
+struct Revealed {
+    before: Rows,
+    after: Rows,
+}
+
+impl Revealed {
+    /// The rows revealed among those `panes` show.
+    fn among(&self, panes: &[DrawnPane]) -> HashSet<ItemId> {
+        let mut shown: Vec<ItemId> = panes
+            .iter()
+            .flat_map(|pane| pane.rows.iter().map(|&(id, _)| id))
+            .collect();
+        shown.sort_unstable();
+        // Rows built from one another share the chunks an expand left alone, which hold no row
+        // it revealed, so those are not gone through; of the rest, only the few shown are kept
+        // to look for before.
+        let mut changed: Vec<ItemId> = self
+            .after
+            .apart_from(&self.before)
+            .map(|(_, row)| row.id)
+            .filter(|id| shown.binary_search(id).is_ok())
+            .collect();
+        changed.sort_unstable();
+        let before: Vec<ItemId> = self
+            .before
+            .apart_from(&self.after)
+            .map(|(_, row)| row.id)
+            .filter(|id| changed.binary_search(id).is_ok())
+            .collect();
+        changed
+            .into_iter()
+            .filter(|id| !before.contains(id))
+            .collect()
     }
 }
 
@@ -270,7 +315,7 @@ struct Pending {
     /// The panes whose root changed.
     rooted: Vec<PaneId>,
     /// The rows an expanded block shows.
-    revealed: Vec<ItemId>,
+    revealed: Option<Revealed>,
 }
 
 impl Pending {
@@ -280,7 +325,7 @@ impl Pending {
             && self.changed.is_empty()
             && self.receded.is_empty()
             && self.rooted.is_empty()
-            && self.revealed.is_empty()
+            && self.revealed.is_none()
     }
 }
 
@@ -514,8 +559,13 @@ impl Animator {
             }
         }
         if colors != ColorSupport::None && self.setting != Animations::Off {
+            let revealed = pending
+                .revealed
+                .as_ref()
+                .map(|revealed| revealed.among(&panes))
+                .unwrap_or_default();
             for pane in &panes {
-                self.start(pane, &pending, theme);
+                self.start(pane, &pending, &revealed, theme);
             }
         }
         // Drops effects that new ones replaced before they are drawn.
@@ -525,8 +575,15 @@ impl Animator {
         self.manager.process_effects(Duration::ZERO, buf, area);
     }
 
-    /// Starts over `pane` the effects `pending` asks for there.
-    fn start(&mut self, pane: &DrawnPane, pending: &Pending, theme: &Theme) {
+    /// Starts over `pane` the effects `pending` asks for there, `revealed` being the rows it
+    /// reveals among those the frame shows.
+    fn start(
+        &mut self,
+        pane: &DrawnPane,
+        pending: &Pending,
+        revealed: &HashSet<ItemId>,
+        theme: &Theme,
+    ) {
         let lines = |wanted: &dyn Fn(ItemId) -> bool| -> Vec<Rect> {
             pane.rows
                 .iter()
@@ -569,7 +626,7 @@ impl Animator {
             started.push((kind, flash(lines, color, theme.background, duration, fades)));
         }
         if self.fades(theme) {
-            started.extend(fades_over(pane, pending, theme));
+            started.extend(fades_over(pane, pending, revealed, theme));
         }
         for (kind, effect) in started {
             self.manager
@@ -733,8 +790,13 @@ impl Animator {
 
 /// The fades `pending` asks for over `pane` in `theme`'s colors: the text of blocks completed
 /// or uncompleted easing, the body of a pane whose root changed fading in from the top down with
-/// a flash of its last crumb, and the rows an expand showed fading in (UI-ANIM-04–06).
-fn fades_over(pane: &DrawnPane, pending: &Pending, theme: &Theme) -> Vec<(Kind, Effect)> {
+/// a flash of its last crumb, and the rows an expand showed, `revealed`, fading in (UI-ANIM-04–06).
+fn fades_over(
+    pane: &DrawnPane,
+    pending: &Pending,
+    revealed: &HashSet<ItemId>,
+    theme: &Theme,
+) -> Vec<(Kind, Effect)> {
     let mut fades = Vec::new();
     let eased: Vec<(Rect, bool)> = pane
         .rows
@@ -765,7 +827,7 @@ fn fades_over(pane: &DrawnPane, pending: &Pending, theme: &Theme) -> Vec<(Kind, 
     let revealed: Vec<Rect> = pane
         .rows
         .iter()
-        .filter(|(id, _)| pending.revealed.contains(id))
+        .filter(|(id, _)| revealed.contains(id))
         .map(|&(_, lines)| lines)
         .collect();
     if !revealed.is_empty() {
