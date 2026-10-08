@@ -10,7 +10,9 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, selection_style, view_title};
+use super::{
+    FOCUS_MARKER, GUTTER_WIDTH, current_line_style, drawable, selection_style, view_title,
+};
 use crate::{
     app::{Fold, NavigatorEntry, NavigatorView},
     ui::{
@@ -198,7 +200,7 @@ fn entry_line<'a>(entry: &'a NavigatorEntry, icons: IconSet, theme: &Theme) -> L
             Span::raw(" "),
             Span::raw(text.as_str()),
         ]),
-        NavigatorEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
+        NavigatorEntry::Bookmark { text, .. } => Line::raw(drawable(text)),
         NavigatorEntry::View { view, .. } => view_title(*view, icons, theme),
         NavigatorEntry::Project {
             text, depth, fold, ..
@@ -210,7 +212,7 @@ fn entry_line<'a>(entry: &'a NavigatorEntry, icons: IconSet, theme: &Theme) -> L
             };
             Line::from(vec![
                 Span::raw(format!("{:indent$}{marker}", "", indent = depth * 2)),
-                Span::raw(text.as_str()),
+                Span::raw(drawable(text)),
             ])
         }
     }
@@ -468,6 +470,15 @@ mod tests {
         let view = view(&opened("INBOX:\n\tA:"));
         let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
+    }
+
+    // FR-UI-01, D-79
+    #[test]
+    fn a_tab_in_a_bookmarks_or_projects_text_is_drawn_as_a_space() {
+        assert_eq!(
+            rows(&draw("a\tb @bookmark\nc\td:"))[2..7],
+            ["  Bookmarks", "  a b", "", "  Projects", "  c d"]
+        );
     }
 
     // D-77

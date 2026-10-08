@@ -1263,7 +1263,7 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
 
 /// `text` as the buffer can draw it: a tab shows as a space, the one column its width counts,
 /// where the buffer would skip it as a control character and run the words it separates together.
-fn drawable(text: &str) -> Cow<'_, str> {
+pub(super) fn drawable(text: &str) -> Cow<'_, str> {
     if text.contains('\t') {
         Cow::Owned(text.replace('\t', " "))
     } else {
@@ -1290,7 +1290,7 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
     match row.kind {
         _ if row.divider => {
             if let Some(title) = title {
-                line.push_span(Span::styled(format!(" {title}"), style));
+                line.push_span(Span::styled(format!(" {}", drawable(title)), style));
             }
         }
         // TaskPaper marks a project with a trailing colon, which the display text drops.
@@ -2359,6 +2359,14 @@ mod tests {
             ),
             expected
         );
+    }
+
+    // FR-BLK-07, D-76
+    #[test]
+    fn a_tab_in_a_divider_title_is_drawn_as_a_space_and_counts_in_its_centering() {
+        let buf = render("---a\tb---", 12, 1);
+        let row: String = (0..12).map(|x| buf[(x, 0)].symbol()).collect();
+        assert_eq!(row, "─── a b ────");
     }
 
     // D-91, ui.md §2

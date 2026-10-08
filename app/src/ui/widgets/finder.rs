@@ -13,6 +13,7 @@ use super::super::{
     layout,
     theme::{Icon, IconSet, Theme},
 };
+use super::drawable;
 use crate::app::FinderView;
 
 /// The largest the overlay gets.
@@ -135,11 +136,11 @@ impl<T> Widget for FinderPopup<'_, T> {
                 Span::raw(" "),
                 Span::styled(icon.glyph(self.icons), style.patch(text_style)),
                 Span::raw(" "),
-                Span::styled(&*entry.text, text_style),
+                Span::styled(drawable(&entry.text), text_style),
             ]);
             if !entry.detail.is_empty() {
                 line.push_span(Span::styled(
-                    format!("  {}", entry.detail),
+                    format!("  {}", drawable(&entry.detail)),
                     Style::new().dim(),
                 ));
             }
@@ -247,6 +248,24 @@ mod tests {
         expected.set_style(Rect::new(2, 3, 1, 1), Style::new().fg(Color::Indexed(2)));
         expected.set_style(Rect::new(7, 3, 6, 1), Style::new().dim());
         assert_eq!(buf, expected);
+    }
+
+    // FR-NAV-05
+    #[test]
+    fn a_tab_in_an_entrys_text_or_detail_is_drawn_as_a_space() {
+        let candidates = [Candidate {
+            detail: "c\td".into(),
+            ..candidate("a\tb")
+        }];
+        let view = FinderView {
+            query: "",
+            entries: Entries::new(&candidates, &[0]),
+            selected: 0,
+        };
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 4));
+        FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME).render(buf.area, &mut buf);
+        let row: String = (0..14).map(|x| buf[(x, 2)].symbol()).collect();
+        assert_eq!(row, "│ › a b  c d │");
     }
 
     #[test]

@@ -421,3 +421,37 @@ fn a_tab_inside_the_text_shows_as_a_space_and_is_saved_as_a_tab() {
     assert_caret(&mut app, 10, 2);
     assert_eq!(saved(&mut app), "- Name\tsPhone\n");
 }
+
+// FR-BLK-07, FR-NAV-05, FR-UI-01, D-76: a tab inside the text shows as a space wherever the
+// text is drawn, in Go to Symbol's entries and their paths, the Navigator and a divider's title.
+#[test]
+fn a_tab_inside_the_text_shows_as_a_space_in_the_finders_the_navigator_and_a_divider() {
+    let mut app = Harness::with_text("Work\tHome:\n\t- Call\tAnn\n---Next\tweek---\n", 40, 12);
+    let rows = |app: &mut Harness| -> Vec<String> {
+        let buffer = app.render().buffer().clone();
+        (0..buffer.area.height).map(|y| line(&buffer, y)).collect()
+    };
+    assert_eq!(
+        outline_rows(&mut app)[2],
+        "───────────── Next week ──────────────"
+    );
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    assert_eq!(
+        rows(&mut app)[5..8],
+        [
+            "│›                                     │",
+            "│ ▸ Work Home                          │",
+            "│ - Call Ann  Work Home                │",
+        ]
+    );
+    press(&mut app, KeyCode::Esc, 1);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.type_keys("work");
+    assert_eq!(
+        rows(&mut app)[6..8],
+        [
+            "│  Projects                            │",
+            "│▌ Work Home                         1 │",
+        ]
+    );
+}
