@@ -3,7 +3,7 @@ file <<END
 - Done star @star @done({today})
 - Open star @star
 END
-keys g*
+keys gS
 see ✔ Done star
 keys gc
 hide Done star

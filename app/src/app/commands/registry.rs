@@ -82,17 +82,17 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::GoToView(SpecialView::Today),
         Mode::Navigate,
-        &["g t"]
+        &["g t", "g T"]
     ),
     entry!(
         Command::GoToView(SpecialView::Upcoming),
         Mode::Navigate,
-        &["g n"]
+        &["g U"]
     ),
     entry!(
         Command::GoToView(SpecialView::Overdue),
         Mode::Navigate,
-        &["g o"]
+        &["g O"]
     ),
     entry!(
         Command::GoToView(SpecialView::Colors),
@@ -102,17 +102,17 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::GoToView(SpecialView::Logbook),
         Mode::Navigate,
-        &["g D"]
+        &["g L"]
     ),
     entry!(
         Command::GoToView(SpecialView::Starred),
         Mode::Navigate,
-        &["g *"]
+        &["g S"]
     ),
     entry!(
         Command::GoToView(SpecialView::Flagged),
         Mode::Navigate,
-        &["g f"]
+        &["g F"]
     ),
     entry!(
         Command::Navigator(NavigatorInput::GoToInbox),

@@ -1,5 +1,5 @@
 //! The Flagged view (FR-TAG-14, D-93): every block with `@flag`, flat, in document order, chosen
-//! by `gf` or in the Navigator.
+//! by `gF` or in the Navigator.
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
@@ -38,12 +38,12 @@ fn navigator(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-14, D-93, FR-DONE-02, navigation §7.1: `gf` lists the flagged blocks under a red flag,
+// FR-TAG-14, D-93, FR-DONE-02, navigation §7.1: `gF` lists the flagged blocks under a red flag,
 // done ones per show-completed, and Back returns to the outline.
 #[test]
-fn g_f_lists_the_flagged_blocks_with_their_paths_and_back_returns() {
+fn g_shift_f_lists_the_flagged_blocks_with_their_paths_and_back_returns() {
     let mut app = Harness::with_text(OUTLINE, 60, 10);
-    app.type_keys("gf");
+    app.type_keys("gF");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{FLAG} Flagged"));
     assert_eq!(buffer[(2, 0)].fg, Color::Red, "the header's flag is red");
@@ -102,10 +102,10 @@ fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
     assert_eq!(shown(&mut app).len(), 3);
 }
 
-// D-93, ui.md §8: `sidebar_flagged = false` leaves the entry out while `gf` still opens the
+// D-93, ui.md §8: `sidebar_flagged = false` leaves the entry out while `gF` still opens the
 // view, and Show Flagged in Navigator in the settings window turns it back on.
 #[test]
-fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_gf_still_opens_it() {
+fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_still_opens_it() {
     let mut app = Harness::with_config(OUTLINE, "sidebar_flagged = false\n", 70, 30);
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
@@ -121,7 +121,7 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_gf_still_open
         ]
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-    app.type_keys("gf");
+    app.type_keys("gF");
     assert_eq!(
         outline_line(app.render().buffer(), 0),
         format!("{FLAG} Flagged")

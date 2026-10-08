@@ -1,5 +1,5 @@
 //! The Overdue view: the open blocks whose due date has passed, grouped by due date under
-//! headings, opened with `go` or from the Navigator (D-80, D-82).
+//! headings, opened with `gO` or from the Navigator (D-80, D-82).
 
 use std::time::Duration;
 
@@ -37,15 +37,15 @@ fn listed() -> Vec<String> {
 /// Opens `text` on a 60×12 screen in the Overdue view.
 fn overdue(text: &str) -> Harness {
     let mut app = Harness::with_text(text, 60, 12);
-    app.type_keys("go");
+    app.type_keys("gO");
     app
 }
 
-// FR-TAG-09, D-82, D-80, D-42, ui.md §1, §2: `go` shows the open blocks due before today under
+// FR-TAG-09, D-82, D-80, D-42, ui.md §1, §2: `gO` shows the open blocks due before today under
 // the Overdue header, oldest due date first, each date's entries in document order under a bold
 // heading naming the date as a chip does and then the date.
 #[test]
-fn g_o_shows_the_overdue_blocks_under_a_heading_per_due_date() {
+fn g_shift_o_shows_the_overdue_blocks_under_a_heading_per_due_date() {
     let mut app = overdue(OUTLINE);
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{OVERDUE} Overdue"));
@@ -66,7 +66,7 @@ fn g_o_shows_the_overdue_blocks_under_a_heading_per_due_date() {
 #[test]
 fn the_header_shows_the_overdue_chips_icon_in_its_color() {
     let mut app = Harness::with_config(OUTLINE, "icons = \"nerd\"\n", 60, 12);
-    app.type_keys("go");
+    app.type_keys("gO");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), "\u{f0a31} Overdue");
     let chip = (0..60)
@@ -132,7 +132,7 @@ fn go_to_command_lists_go_to_overdue_with_its_key_and_gives_it() {
     let rows: Vec<String> = (0..buffer.area.height).map(|y| line(&buffer, y)).collect();
     assert!(
         rows.iter()
-            .any(|row| row.contains(&format!("│ {OVERDUE} Go to Overdue  go "))),
+            .any(|row| row.contains(&format!("│ {OVERDUE} Go to Overdue  gO "))),
         "{rows:#?}"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -174,16 +174,16 @@ fn the_navigator_entry_counts_the_open_tasks_it_lists_and_opens_the_view() {
     assert_eq!(outline_line(&buffer, 0), format!("{OVERDUE} Overdue"));
 }
 
-// D-80, ui.md §8: `sidebar_overdue = false` drops the entry, and `go` still opens the view.
+// D-80, ui.md §8: `sidebar_overdue = false` drops the entry, and `gO` still opens the view.
 #[test]
-fn with_its_setting_off_the_navigator_leaves_it_out_and_g_o_still_opens_it() {
+fn with_its_setting_off_the_navigator_leaves_it_out_and_g_shift_o_still_opens_it() {
     let (mut app, rows) = navigator(OUTLINE, "sidebar_overdue = false\n");
     assert!(
         !rows.iter().any(|row| row.contains(" Overdue")),
         "{rows:#?}"
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-    app.type_keys("go");
+    app.type_keys("gO");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{OVERDUE} Overdue"));
 }

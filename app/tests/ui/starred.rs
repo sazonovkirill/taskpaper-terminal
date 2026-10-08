@@ -1,4 +1,4 @@
-//! The Starred view: every starred block, opened with `g*` or from the Navigator (D-92).
+//! The Starred view: every starred block, opened with `gS` or from the Navigator (D-92).
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
@@ -22,13 +22,13 @@ fn shown(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-13, D-92, D-42
+// FR-TAG-13, D-92, D-95, D-42: `gS`, with `S` plain or with `Shift` as the kitty protocol sends it
 #[test]
-fn g_star_lists_every_starred_block_with_its_path_under_the_starred_header() {
+fn g_shift_s_lists_every_starred_block_with_its_path_under_the_starred_header() {
     for star in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
         let mut app = Harness::with_text(OUTLINE, 80, 10);
         app.type_keys("g");
-        app.press(KeyCode::Char('*'), star);
+        app.press(KeyCode::Char('S'), star);
         let buffer = app.render().buffer().clone();
         assert_eq!(outline_line(&buffer, 0), format!("{STAR} Starred"));
         assert_eq!(
@@ -66,11 +66,11 @@ fn the_navigator_lists_starred_after_the_other_views_unless_its_setting_is_off()
         format!("{FLAG} Flagged"),
         "the view after it"
     );
-    app.type_keys("g*");
+    app.type_keys("gS");
     let buffer = app.render().buffer().clone();
     assert_eq!(
         outline_line(&buffer, 0),
         format!("{STAR} Starred"),
-        "g* still opens it"
+        "gS still opens it"
     );
 }

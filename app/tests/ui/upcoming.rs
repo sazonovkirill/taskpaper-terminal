@@ -25,15 +25,14 @@ fn row(text: &str, chips: &str) -> String {
 /// Opens `text` on an 80×12 screen, on Monday 5 October 2026, in the Upcoming view.
 fn upcoming(text: &str) -> Harness {
     let mut app = Harness::with_text(text, 80, 12);
-    app.type_keys("gn");
+    app.type_keys("gU");
     app
 }
 
-// FR-TAG-08, D-81, D-80, D-42, ui.md §1, §2: `gn`, a plain key sequence under either keyboard
-// protocol, shows the Upcoming view under its header, each day's entries under a bold heading
-// naming the day, a blank line above every heading but the first.
+// FR-TAG-08, D-81, D-80, D-42, ui.md §1, §2: `gU` shows the Upcoming view under its header, each
+// day's entries under a bold heading naming the day, a blank line above every heading but the first.
 #[test]
-fn gn_shows_the_blocks_of_the_coming_week_under_a_heading_per_day() {
+fn g_shift_u_shows_the_blocks_of_the_coming_week_under_a_heading_per_day() {
     let mut app = upcoming(OUTLINE);
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{ARROW} Upcoming"));
@@ -74,7 +73,7 @@ fn the_list_changes_at_local_midnight() {
 #[test]
 fn the_header_shows_a_calendar_with_an_arrow() {
     let mut app = Harness::with_config(OUTLINE, "icons = \"nerd\"\n", 80, 12);
-    app.type_keys("gn");
+    app.type_keys("gU");
     assert_eq!(outline_line(app.render().buffer(), 0), "\u{f1135} Upcoming");
 }
 
@@ -87,7 +86,7 @@ fn go_to_command_lists_go_to_upcoming_with_its_key_and_gives_it() {
     let rows: Vec<String> = (0..buffer.area.height).map(|y| line(&buffer, y)).collect();
     assert!(
         rows.iter()
-            .any(|row| row.contains(&format!("│ {ARROW} Go to Upcoming  gn "))),
+            .any(|row| row.contains(&format!("│ {ARROW} Go to Upcoming  gU "))),
         "{rows:#?}"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -124,10 +123,10 @@ fn the_navigator_lists_upcoming_after_today_unless_its_setting_is_off() {
     assert_eq!(second_entry(&mut app), format!("{ARROW} Upcoming"));
     let mut app = Harness::with_config(OUTLINE, "sidebar_upcoming = false\n", 80, 16);
     assert_ne!(second_entry(&mut app), format!("{ARROW} Upcoming"));
-    app.type_keys("gn");
+    app.type_keys("gU");
     assert_eq!(
         outline_line(app.render().buffer(), 0),
         format!("{ARROW} Upcoming"),
-        "gn still opens it"
+        "gU still opens it"
     );
 }

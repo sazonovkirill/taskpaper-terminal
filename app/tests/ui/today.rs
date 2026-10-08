@@ -71,6 +71,27 @@ fn choosing_today_in_the_navigator_lists_the_blocks_for_today_with_their_paths()
     );
 }
 
+// D-95, D-42, navigation §7: `gT` shows the Today view as `gt` does, with `T` plain or with `Shift`
+// as the kitty protocol sends it.
+#[test]
+fn g_shift_t_shows_the_today_view_with_and_without_the_kitty_protocol() {
+    for kitty in [false, true] {
+        for shift in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
+            let mut app = Harness::with_text(OUTLINE, 80, 10);
+            app.tui = app.tui.with_kitty_keyboard(kitty);
+            app.type_keys("g");
+            app.press(KeyCode::Char('T'), shift);
+            let buffer = app.render().buffer().clone();
+            assert_eq!(
+                outline_line(&buffer, 0),
+                format!("{SUN} Today"),
+                "kitty {kitty}, {shift:?}"
+            );
+            assert_eq!(shown(&mut app).len(), 3);
+        }
+    }
+}
+
 // D-64, navigation §7: `gt` shows the Today view in the focused pane as choosing it in the
 // Navigator does, and Back returns to the outline.
 #[test]
@@ -105,7 +126,7 @@ fn go_to_command_lists_go_to_today_with_its_key_and_gives_it() {
         .collect();
     assert!(
         rows.iter()
-            .any(|row| row.contains(&format!("│ {SUN} Go to Today  gt "))),
+            .any(|row| row.contains(&format!("│ {SUN} Go to Today  gt, gT "))),
         "{rows:#?}"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);

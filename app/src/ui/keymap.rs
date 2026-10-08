@@ -3208,85 +3208,62 @@ mod tests {
         assert_eq!(messages("t", CONTEXT), [Some(start)]);
     }
 
-    // FR-TAG-09, D-80, D-42: `go` is plain characters, which both key reportings send alike.
+    // FR-TAG-04, FR-TAG-08, FR-TAG-09, FR-TAG-10, FR-TAG-11, FR-TAG-13, FR-TAG-14, D-95, D-42: a
+    // special view's capital `g` key works whether the capital arrives plain or, under the kitty
+    // protocol, with `Shift`, which also reports each key's release.
     #[test]
-    fn g_o_goes_to_overdue() {
-        assert_eq!(
-            messages("go", CONTEXT),
-            [
-                None,
-                Some(Message::GoTo(Location::View(SpecialView::Overdue)))
-            ]
-        );
-        assert_eq!(
-            Keymap::default().bindings(Command::GoToView(SpecialView::Overdue), true),
-            "go"
-        );
-    }
-
-    // FR-TAG-13, D-92, D-42: `g*` goes to Starred whether `*` arrives plain or, under the kitty
-    // protocol, with `Shift`.
-    #[test]
-    fn g_star_goes_to_starred_in_both_key_reportings() {
-        let starred = Some(Message::GoTo(Location::View(SpecialView::Starred)));
-        assert_eq!(messages("g*", CONTEXT), [None, starred.clone()]);
-        let mut keymap = Keymap::default();
-        let sent: Vec<_> = [
-            key(KeyCode::Char('g'), KeyModifiers::NONE),
-            key(KeyCode::Char('*'), KeyModifiers::SHIFT),
-        ]
-        .iter()
-        .map(|key| keymap.message_for(key, ms(0), CONTEXT))
-        .collect();
-        assert_eq!(sent, [None, starred]);
-        assert_eq!(
-            Keymap::default().bindings(Command::GoToView(SpecialView::Starred), true),
-            "g*"
-        );
-    }
-
-    // FR-TAG-14, D-93, D-42: `gf` is plain characters, which both key reportings send alike;
-    // the kitty protocol also reports each key's release, which changes nothing.
-    #[test]
-    fn g_f_goes_to_flagged_with_and_without_the_kitty_protocol() {
-        let flagged = Some(Message::GoTo(Location::View(SpecialView::Flagged)));
-        assert_eq!(messages("gf", CONTEXT), [None, flagged.clone()]);
-        let event = |c, kind| {
+    fn capital_g_keys_go_to_the_special_views_with_and_without_the_kitty_protocol() {
+        let event = |c, modifiers, kind| {
             Event::Key(KeyEvent::new_with_kind_and_state(
                 KeyCode::Char(c),
-                KeyModifiers::NONE,
+                modifiers,
                 kind,
                 KeyEventState::NONE,
             ))
         };
-        let mut keymap = Keymap::default();
-        let kitty: Vec<_> = [
-            event('g', KeyEventKind::Press),
-            event('g', KeyEventKind::Release),
-            event('f', KeyEventKind::Press),
-            event('f', KeyEventKind::Release),
-        ]
-        .iter()
-        .map(|event| keymap.message_for(event, ms(0), CONTEXT))
-        .collect();
-        assert_eq!(kitty, [None, None, flagged, None]);
+        let (none, shift) = (KeyModifiers::NONE, KeyModifiers::SHIFT);
+        let (press, release) = (KeyEventKind::Press, KeyEventKind::Release);
+        for (letter, view, keys) in [
+            ('T', SpecialView::Today, "gt, gT"),
+            ('U', SpecialView::Upcoming, "gU"),
+            ('O', SpecialView::Overdue, "gO"),
+            ('C', SpecialView::Colors, "gC"),
+            ('L', SpecialView::Logbook, "gL"),
+            ('S', SpecialView::Starred, "gS"),
+            ('F', SpecialView::Flagged, "gF"),
+        ] {
+            let goes = Some(Message::GoTo(Location::View(view)));
+            assert_eq!(
+                messages(&format!("g{letter}"), CONTEXT),
+                [None, goes.clone()],
+                "plain g{letter}"
+            );
+            for shifted in [letter, letter.to_ascii_lowercase()] {
+                let mut keymap = Keymap::default();
+                let kitty: Vec<_> = [
+                    event('g', none, press),
+                    event('g', none, release),
+                    event(shifted, shift, press),
+                    event(shifted, shift, release),
+                ]
+                .iter()
+                .map(|event| keymap.message_for(event, ms(0), CONTEXT))
+                .collect();
+                assert_eq!(kitty, [None, None, goes.clone(), None], "g Shift+{shifted}");
+            }
+            assert_eq!(
+                Keymap::default().bindings(Command::GoToView(view), true),
+                keys
+            );
+        }
     }
 
-    // FR-TAG-08, D-80, D-42: `gn` goes to Upcoming, plain keys either keyboard protocol reports
-    // alike.
+    // D-95: the special views' former keys go to no view.
     #[test]
-    fn gn_goes_to_upcoming() {
-        assert_eq!(
-            messages("gn", CONTEXT),
-            [
-                None,
-                Some(Message::GoTo(Location::View(SpecialView::Upcoming)))
-            ]
-        );
-        assert_eq!(
-            Keymap::default().bindings(Command::GoToView(SpecialView::Upcoming), true),
-            "gn"
-        );
+    fn the_former_special_view_keys_go_to_no_view() {
+        for keys in ["gn", "go", "gD", "g*", "gf"] {
+            assert_eq!(messages(keys, CONTEXT), [None, None], "{keys}");
+        }
     }
 
     // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with

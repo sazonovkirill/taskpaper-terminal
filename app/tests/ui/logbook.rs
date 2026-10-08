@@ -31,17 +31,17 @@ const LISTED: [&str; 9] = [
     "✔ Bills",
 ];
 
-// FR-TAG-11, D-84, D-80, D-42, ui.md §1, §2: `gD` shows the Logbook under its header, with and
+// FR-TAG-11, D-84, D-80, D-42, ui.md §1, §2: `gL` shows the Logbook under its header, with and
 // without the kitty protocol: each day's completions under a bold heading naming the day, newest
 // first, a blank line above every heading but the first.
 #[test]
-fn g_shift_d_shows_the_last_weeks_completions_under_a_heading_per_day() {
+fn g_shift_l_shows_the_last_weeks_completions_under_a_heading_per_day() {
     for kitty in [false, true] {
         for shift in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
             let mut app = Harness::with_text(OUTLINE, 80, 12);
             app.tui = app.tui.with_kitty_keyboard(kitty);
             app.type_keys("g");
-            app.press(KeyCode::Char('D'), shift);
+            app.press(KeyCode::Char('L'), shift);
             let buffer = app.render().buffer().clone();
             assert_eq!(outline_line(&buffer, 0), format!("{BOOK} Logbook"));
             assert_eq!(outline_rows(&mut app), LISTED, "kitty {kitty}, {shift:?}");
@@ -57,7 +57,7 @@ fn g_shift_d_shows_the_last_weeks_completions_under_a_heading_per_day() {
 #[test]
 fn hiding_completed_blocks_leaves_the_list_as_it_is() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.type_keys("gD");
+    app.type_keys("gL");
     let before = outline_rows(&mut app);
     app.press(KeyCode::Char('o'), KeyModifiers::CONTROL);
     assert_eq!(outline_rows(&mut app), before);
@@ -68,7 +68,7 @@ fn hiding_completed_blocks_leaves_the_list_as_it_is() {
 #[test]
 fn the_list_and_its_headings_change_at_local_midnight() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.type_keys("gD");
+    app.type_keys("gL");
     assert_eq!(outline_rows(&mut app), LISTED);
     let deadline = app.tui.deadline().expect("a redraw at midnight");
     app.wait(deadline);
@@ -90,7 +90,7 @@ fn the_list_and_its_headings_change_at_local_midnight() {
 
 // FR-TAG-07, D-80, D-85, ui.md §7: the Navigator lists Logbook after Colors with its icon and no
 // count, since it lists no open task, and choosing it shows it; with `sidebar_logbook` off it is
-// left out, and `gD` still opens it.
+// left out, and `gL` still opens it.
 #[test]
 fn the_navigator_lists_logbook_unless_its_setting_is_off() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
@@ -127,11 +127,11 @@ fn the_navigator_lists_logbook_unless_its_setting_is_off() {
         "left out"
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-    app.type_keys("gD");
+    app.type_keys("gL");
     assert_eq!(
         outline_line(app.render().buffer(), 0),
         format!("{BOOK} Logbook"),
-        "gD still opens it"
+        "gL still opens it"
     );
 }
 
@@ -146,7 +146,7 @@ fn go_to_command_lists_go_to_logbook_with_its_key_and_gives_it() {
         .collect();
     assert!(
         rows.iter()
-            .any(|row| row.contains(&format!("│ {BOOK} Go to Logbook  gD "))),
+            .any(|row| row.contains(&format!("│ {BOOK} Go to Logbook  gL "))),
         "{rows:#?}"
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -160,6 +160,6 @@ fn go_to_command_lists_go_to_logbook_with_its_key_and_gives_it() {
 #[test]
 fn with_nerd_font_icons_the_header_shows_a_book_with_a_check() {
     let mut app = Harness::with_config(OUTLINE, "icons = \"nerd\"\n", 80, 12);
-    app.type_keys("gD");
+    app.type_keys("gL");
     assert_eq!(outline_line(app.render().buffer(), 0), "\u{f14f3} Logbook");
 }

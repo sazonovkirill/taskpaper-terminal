@@ -1,4 +1,4 @@
-# g* shows the Starred view listing only starred blocks with their path.
+# gS shows the Starred view listing only starred blocks with their path.
 file <<END
 Ideas:
 	- Podcast @star
@@ -6,7 +6,7 @@ Ideas:
 Hobbies:
 	- Guitar @star
 END
-keys g*
+keys gS
 see Starred
 see - Podcast
 see - Guitar

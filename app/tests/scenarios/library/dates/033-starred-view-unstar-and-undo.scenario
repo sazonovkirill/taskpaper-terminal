@@ -3,7 +3,7 @@ file <<END
 - One @star
 - Two @star
 END
-keys g*
+keys gS
 see - One
 keys *
 hide One

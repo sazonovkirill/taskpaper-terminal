@@ -3,7 +3,7 @@ file <<END
 - One @star
 - Two @star
 END
-keys g* j <A-k>
+keys gS j <A-k>
 see ▌ - Two
 quit
 saved <<END

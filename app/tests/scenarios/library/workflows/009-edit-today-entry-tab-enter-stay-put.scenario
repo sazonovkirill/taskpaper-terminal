@@ -17,7 +17,7 @@ keys <Tab> <S-Tab> <Enter>
 see ▌ - Write quarterly report draft  Work
 status NAVIGATE
 keys j *
-keys g*
+keys gS
 see Starred
 see ▌ - Pay rent 󰓎  Home
 keys gh
