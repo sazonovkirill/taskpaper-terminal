@@ -3,10 +3,10 @@
 //! ([editing.md §2–4](../../../docs/specs/editing.md#3-creating-blocks-fr-mode-04), FR-MODE-04,
 //! FR-OPS-02, FR-OPS-03, FR-OPS-04, FR-OPS-06).
 
-use super::{Access, Notice, State};
+use super::{Access, Notice, State, editing::repair_notice};
 use crate::document::{
     Block, ItemId, Op, Transaction, blocks,
-    format::{Typed, canonical},
+    format::Typed,
     structure::{self, Place, Shift},
 };
 
@@ -98,11 +98,11 @@ impl State {
     }
 
     /// Applies `ops`, which make the new line `id`, and edits it with the focus on it; ending the
-    /// edit records them with the typing as one step to undo (FR-MODE-04). Says so when they give
-    /// an empty line the placeholder (file-format.md §3.1).
+    /// edit records them with the typing as one step to undo (FR-MODE-04). Says so when they
+    /// repair a line as [`repair_notice`] tells.
     fn edit_created(&mut self, id: ItemId, ops: Vec<Op>) {
-        if canonical::fills_placeholder(&ops) {
-            self.notify(Notice::PlaceholderFilled);
+        if let Some(notice) = repair_notice(&ops) {
+            self.notify(notice);
         }
         let mut transaction = Transaction::new(ops, (), ());
         self.document
@@ -337,6 +337,68 @@ mod tests {
         state.update(Message::StopEditing);
         assert_eq!(lines(&state), ["a", "\t…", "\t- b"]);
         assert_eq!(state.notice(), None, "the user typed it");
+    }
+
+    // file-format §3.1, FR-OPS-06, FR-MODE-04
+    #[test]
+    fn taking_whitespace_off_the_start_of_a_line_says_so() {
+        let paste = |state: &mut State, text: &str| {
+            let text = text.to_owned();
+            state.update(Message::Pasted {
+                text,
+                at: Paste::Below,
+            });
+        };
+        let mut state = open("- a\n- b", 0);
+        paste(&mut state, "  - x");
+        assert_eq!(lines(&state), ["- a", "- x", "- b"]);
+        assert_eq!(state.notice(), Some(&Notice::WhitespaceTrimmed));
+        let mut state = open("  a", 0);
+        paste(&mut state, "b");
+        assert_eq!(lines(&state), ["a", "b"], "the line that was the only one");
+        assert_eq!(state.notice(), Some(&Notice::WhitespaceTrimmed));
+        let mut state = open("  a", 0);
+        state.update(Message::New(NewBlock::Below, None));
+        assert_eq!(lines(&state), ["a", ""]);
+        assert_eq!(state.notice(), Some(&Notice::WhitespaceTrimmed));
+        let mut state = open("a", 0);
+        state.update(Message::New(NewBlock::Below, None));
+        paste(&mut state, " \tb");
+        assert_eq!(state.notice(), None, "not while the line is edited");
+        state.update(Message::StopEditing);
+        assert_eq!(lines(&state), ["a", "b"]);
+        assert_eq!(state.notice(), Some(&Notice::WhitespaceTrimmed));
+    }
+
+    // file-format §3.1, FR-OPS-06
+    #[test]
+    fn a_change_that_takes_no_whitespace_off_a_line_says_nothing() {
+        let mut state = open("- a", 0);
+        state.update(Message::Pasted {
+            text: "- x".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(lines(&state), ["- a", "- x"]);
+        assert_eq!(state.notice(), None);
+        let mut state = open("", 0);
+        state.update(Message::Pasted {
+            text: "  - x".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(lines(&state), ["  - x"], "the only line keeps it");
+        assert_eq!(state.notice(), None);
+        let mut state = open("A:\n\nB:", 1);
+        state.update(Message::ZoomIn);
+        state.update(Message::Pasted {
+            text: "  - one".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(lines(&state), ["A:", "…", "\t- one", "B:"]);
+        assert_eq!(
+            state.notice(),
+            Some(&Notice::PlaceholderFilled),
+            "the placeholder is told first"
+        );
     }
 
     // FR-MODE-04, OQ-03

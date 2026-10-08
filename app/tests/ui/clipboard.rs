@@ -173,6 +173,19 @@ fn text_pasted_in_edit_mode_goes_in_at_the_caret_without_tags() {
     assert_eq!(saved(&mut app), "- Call mum todayay\n");
 }
 
+// FR-OPS-06, file-format §3.1
+#[test]
+fn a_line_pasted_with_spaces_at_its_start_loses_them_and_says_so() {
+    let mut app = Harness::with_text("- Milk\n", 100, 10);
+    paste_into_terminal(&mut app, "    - Eggs\n");
+    assert!(
+        status_line(&mut app).ends_with(" · Spaces at the start of a line removed"),
+        "{}",
+        status_line(&mut app)
+    );
+    assert_eq!(saved(&mut app), "- Milk\n- Eggs\n");
+}
+
 // FR-OPS-06
 #[test]
 fn several_lines_pasted_into_a_new_block_become_blocks_in_its_place() {

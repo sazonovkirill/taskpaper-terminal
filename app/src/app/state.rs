@@ -233,6 +233,9 @@ pub enum Notice {
     /// An empty line that got children was given the placeholder text, as the file would read
     /// it back elsewhere (file-format.md §3.1, rule 2).
     PlaceholderFilled,
+    /// Whitespace starting a line was removed, as the file would read it as indentation
+    /// (file-format.md §3.1, rule 4).
+    WhitespaceTrimmed,
     /// Making sections, or plain text of sections, skipped this many blocks that are tasks or
     /// projects, which cannot be sections (D-52).
     NotSections {
@@ -288,6 +291,7 @@ impl Notice {
             | Self::ConflictCopyFailed { .. }
             | Self::BlanksLifted
             | Self::PlaceholderFilled
+            | Self::WhitespaceTrimmed
             | Self::NotSections { .. }
             | Self::NoInbox
             | Self::NoTodayProject

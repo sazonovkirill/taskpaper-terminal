@@ -54,6 +54,16 @@ pub fn fills_placeholder(ops: &[Op]) -> bool {
     })
 }
 
+/// Whether `ops` take the whitespace off the start of a line (rule 4), a repair the user is told
+/// about.
+#[must_use]
+pub fn trims_whitespace(ops: &[Op]) -> bool {
+    ops.iter().any(|op| {
+        matches!(op, Op::SetText { before, after, .. }
+            if after.len() < before.len() && before.trim_start_matches(is_whitespace) == after)
+    })
+}
+
 /// The empty lines that end `document`, in order, when one of them is below the top level and
 /// would be read back at the top level (rule 3); none when the rule holds.
 #[must_use]
@@ -193,6 +203,30 @@ mod tests {
             assert!(!fills_placeholder(std::slice::from_ref(&op)), "{op:?}");
         }
         assert!(!fills_placeholder(&[]));
+    }
+
+    // file-format §3.1
+    #[test]
+    fn only_a_line_losing_the_whitespace_at_its_start_is_trimmed() {
+        let mut document = parse("a");
+        let id = document.new_id();
+        let set = |before: &str, after: &str| Op::SetText {
+            id,
+            before: before.to_owned(),
+            after: after.to_owned(),
+        };
+        assert!(trims_whitespace(&[set("a", "b"), set(" \ta", "a")]));
+        assert!(trims_whitespace(&[set("  ", "")]));
+        for op in [
+            set("a", "a"),
+            set(" a", "b"),
+            set(" a", " a"),
+            set("  ", "…"),
+            set("a ", "a"),
+        ] {
+            assert!(!trims_whitespace(std::slice::from_ref(&op)), "{op:?}");
+        }
+        assert!(!trims_whitespace(&[]));
     }
 
     #[test]

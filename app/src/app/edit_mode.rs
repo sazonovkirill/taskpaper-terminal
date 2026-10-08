@@ -12,6 +12,7 @@ use super::{
     Access, CommandMenuView, Effect, MenuInput, Notice, Restore, State,
     command_menu::{CommandMenu, Outcome},
     commands::{Command, Inputs, node_commands},
+    editing::repair_notice,
     structure::NewBlock,
     text_field::{TextEdit, TextField},
 };
@@ -580,8 +581,8 @@ impl State {
 
     /// Writes the text being edited to the block's line, outside the undo history, so that
     /// saving and every view see it at once; with `repair`, repaired where it breaks
-    /// canonical-outline rule 2 or 4, saying so when that gives it the placeholder. A line that
-    /// already reads so is left alone.
+    /// canonical-outline rule 2 or 4, saying so as [`repair_notice`] tells. A line that already
+    /// reads so is left alone.
     fn write(&mut self, repair: bool) {
         let only_line = only_line(&self.document);
         let Some((session, item)) = self.edit.as_mut().and_then(|session| {
@@ -604,13 +605,13 @@ impl State {
             before: item.text().to_owned(),
             after: after.clone(),
         };
-        let filled = repair && canonical::fills_placeholder(std::slice::from_ref(&op));
+        let repaired = repair_notice(std::slice::from_ref(&op)).filter(|_| repair);
         self.document
             .apply(&mut Transaction::new(vec![op], (), ()))
             .expect("the op is built from the line as it is");
         session.written = Some(after);
-        if filled {
-            self.notify(Notice::PlaceholderFilled);
+        if let Some(notice) = repaired {
+            self.notify(notice);
         }
     }
 }

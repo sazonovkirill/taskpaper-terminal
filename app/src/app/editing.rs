@@ -78,14 +78,14 @@ impl State {
     }
 
     /// Applies `ops` as one undoable step, as [`State::commit`] does, that ends with the focus on
-    /// `focus`, and says so when they give an empty line the placeholder (file-format.md §3.1).
+    /// `focus`, and says so when they repair a line as [`repair_notice`] tells.
     pub(super) fn commit_focusing(&mut self, ops: Vec<Op>, focus: Option<ItemId>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
         }
         self.record_edit_so_far();
-        let filled = canonical::fills_placeholder(&ops);
+        let repaired = repair_notice(&ops);
         let before = Restore {
             focus: self.pane.focus,
         };
@@ -93,8 +93,8 @@ impl State {
         match self.edits.commit(&mut self.document, transaction) {
             Ok(()) => {
                 self.pane.focus = focus;
-                if filled {
-                    self.notify(Notice::PlaceholderFilled);
+                if let Some(notice) = repaired {
+                    self.notify(notice);
                 }
             }
             Err(error) => self.edit_failed(&error),
@@ -126,6 +126,19 @@ impl State {
         self.notify(Notice::EditFailed {
             reason: error.to_string(),
         });
+    }
+}
+
+/// The notice for the repair of a line `ops` make that the user is told about
+/// (file-format.md §3.1): an empty line given the placeholder, else a line losing the whitespace
+/// at its start.
+pub(super) fn repair_notice(ops: &[Op]) -> Option<Notice> {
+    if canonical::fills_placeholder(ops) {
+        Some(Notice::PlaceholderFilled)
+    } else if canonical::trims_whitespace(ops) {
+        Some(Notice::WhitespaceTrimmed)
+    } else {
+        None
     }
 }
 
