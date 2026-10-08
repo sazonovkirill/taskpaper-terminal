@@ -1,5 +1,4 @@
 # With completed blocks hidden, Alt+j moves a task below the next visible task, so the move is visible.
-# BUG: Alt+j swaps with the hidden done sibling, so nothing visibly changes while the file order does.
 file <<END
 Week:
 	- Laundry @done(2026-10-01)

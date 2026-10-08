@@ -218,12 +218,19 @@ pub enum Shift {
 
 /// The ops that move `block` with its subtree as `shift` says without leaving the children of
 /// the line `top`, the root or the zoom block; `None` when it has nowhere to go
-/// there or is not in `document`. A line that gets children but has no text gets the
-/// placeholder (file-format.md §3.1, rule 2).
+/// there or is not in `document`. Its neighbors are the blocks `shows` passes, those the pane
+/// shows, so a block it hides is passed over and stays where it is (FR-DONE-02). A line that gets
+/// children but has no text gets the placeholder (file-format.md §3.1, rule 2).
 #[must_use]
-pub fn shift(document: &Document, block: &Block, shift: Shift, top: ItemId) -> Option<Vec<Op>> {
+pub fn shift(
+    document: &Document,
+    block: &Block,
+    shift: Shift,
+    top: ItemId,
+    shows: &impl Fn(&Block) -> bool,
+) -> Option<Vec<Op>> {
     let parent = document.get(block.id())?.parent()?;
-    let siblings = blocks::children(document, parent);
+    let siblings = shown_children(document, parent, shows);
     let at = siblings
         .iter()
         .position(|sibling| sibling.id() == block.id())?;
@@ -235,11 +242,11 @@ pub fn shift(document: &Document, block: &Block, shift: Shift, top: ItemId) -> O
         Shift::Outdent => return None,
         Shift::Up => match previous {
             Some(previous) => (parent, Spot::Before(previous.id())),
-            None => (neighbor(document, parent, top, -1)?, Spot::End),
+            None => (neighbor(document, parent, top, -1, shows)?, Spot::End),
         },
         Shift::Down => match next {
             Some(next) => (parent, Spot::After(next.id())),
-            None => (neighbor(document, parent, top, 1)?, Spot::Start),
+            None => (neighbor(document, parent, top, 1, shows)?, Spot::Start),
         },
     };
     let mut ops = repairs(document, to);
@@ -258,7 +265,7 @@ enum Spot {
 }
 
 /// The ops that shift each of `blocks`, none inside another and in document order, as [`shift`]
-/// does, one after another so that they keep their order: last first when they move out or down,
+/// does with the neighbors `shows` passes, one after another so that they keep their order: last first when they move out or down,
 /// and a block stays when the neighbor it would pass is one of them that stayed (FR-OPS-02,
 /// FR-OPS-03, FR-OPS-07). Empty when none of them moves.
 ///
@@ -266,7 +273,13 @@ enum Spot {
 ///
 /// Never: each block's ops are built from a copy of the document as the ops before them left it.
 #[must_use]
-pub fn shift_all(document: &Document, blocks: &[Block], by: Shift, top: ItemId) -> Vec<Op> {
+pub fn shift_all(
+    document: &Document,
+    blocks: &[Block],
+    by: Shift,
+    top: ItemId,
+    shows: &impl Fn(&Block) -> bool,
+) -> Vec<Op> {
     let mut order: Vec<&Block> = blocks.iter().collect();
     if matches!(by, Shift::Outdent | Shift::Down) {
         order.reverse();
@@ -281,9 +294,9 @@ pub fn shift_all(document: &Document, blocks: &[Block], by: Shift, top: ItemId) 
     let mut ops = Vec::new();
     for block in order {
         let blocked = passes
-            .and_then(|by| neighbor(&moved, block.id(), top, by))
+            .and_then(|by| neighbor(&moved, block.id(), top, by, shows))
             .is_some_and(|passed| stayed.contains(&passed));
-        match shift(&moved, block, by, top).filter(|_| !blocked) {
+        match shift(&moved, block, by, top, shows).filter(|_| !blocked) {
             Some(step) => {
                 moved
                     .apply(&mut Transaction::new(step.clone(), (), ()))
@@ -347,15 +360,32 @@ fn append(document: &Document, mut ops: Vec<Op>, blocks: &[Block], to: ItemId) -
     Some(ops)
 }
 
-/// The block `by` places after (or before, when negative) the block `line`, or `None` when
-/// `line` is `top` or has no such neighbor.
-fn neighbor(document: &Document, line: ItemId, top: ItemId, by: isize) -> Option<ItemId> {
+/// The block `by` places after (or before, when negative) the block `line` among the blocks
+/// `shows` passes, or `None` when `line` is `top` or has no such neighbor.
+fn neighbor(
+    document: &Document,
+    line: ItemId,
+    top: ItemId,
+    by: isize,
+    shows: &impl Fn(&Block) -> bool,
+) -> Option<ItemId> {
     if line == top {
         return None;
     }
-    let siblings = blocks::children(document, document.get(line)?.parent()?);
+    let siblings = shown_children(document, document.get(line)?.parent()?, shows);
     let at = siblings.iter().position(|sibling| sibling.id() == line)?;
     Some(siblings.get(at.checked_add_signed(by)?)?.id())
+}
+
+/// The child blocks of the line `parent` that `shows` passes.
+fn shown_children(
+    document: &Document,
+    parent: ItemId,
+    shows: &impl Fn(&Block) -> bool,
+) -> Vec<Block> {
+    blocks::each_child(document, parent)
+        .filter(|child| shows(child))
+        .collect()
 }
 
 /// The op moving `line` with its subtree to `spot` among the children of the line `to`, the end
@@ -656,13 +686,30 @@ mod tests {
         assert_eq!(delete(&format::parse("- a"), &stale), None);
     }
 
+    /// Every block shows.
+    fn every(_: &Block) -> bool {
+        true
+    }
+
+    /// The blocks a pane hiding completed blocks shows (FR-DONE-02).
+    fn undone(block: &Block) -> bool {
+        !block.done()
+    }
+
     /// The lines of `text` once the block reading `of` shifts below the line reading `top`
-    /// (the root when `None`), with the ops checked to undo; `None` when it does not move.
+    /// (the root when `None`) among the blocks `shows` passes, with the ops checked to undo;
+    /// `None` when it does not move.
     #[track_caller]
-    fn shifted_below(text: &str, of: &str, by: Shift, top: Option<&str>) -> Option<Vec<String>> {
+    fn shifted_among(
+        text: &str,
+        of: &str,
+        by: Shift,
+        top: Option<&str>,
+        shows: fn(&Block) -> bool,
+    ) -> Option<Vec<String>> {
         let mut document = format::parse(text);
         let top = top.map_or(document.root(), |top| block(&document, top).id());
-        let ops = shift(&document, &block(&document, of), by, top)?;
+        let ops = shift(&document, &block(&document, of), by, top, &shows)?;
         let mut transaction = Transaction::new(ops, (), ());
         document.apply(&mut transaction).unwrap();
         let after = lines(&document, None);
@@ -672,8 +719,19 @@ mod tests {
     }
 
     #[track_caller]
+    fn shifted_below(text: &str, of: &str, by: Shift, top: Option<&str>) -> Option<Vec<String>> {
+        shifted_among(text, of, by, top, every)
+    }
+
+    #[track_caller]
     fn shifted(text: &str, of: &str, by: Shift) -> Option<Vec<String>> {
         shifted_below(text, of, by, None)
+    }
+
+    /// The lines of `text` once the block reading `of` shifts while completed blocks are hidden.
+    #[track_caller]
+    fn shifted_hiding_done(text: &str, of: &str, by: Shift) -> Option<Vec<String>> {
+        shifted_among(text, of, by, None, undone)
     }
 
     // FR-OPS-02
@@ -791,29 +849,94 @@ mod tests {
         );
     }
 
+    // FR-OPS-02, FR-OPS-03, FR-DONE-02
+    #[test]
+    fn a_block_the_pane_hides_is_no_neighbor_and_stays_where_it_is() {
+        let text = "- a\n- b @done\n- c\n- d @done";
+        assert_eq!(
+            shifted_hiding_done(text, "- c", Shift::Indent).unwrap(),
+            ["- a", "\t- c", "- b @done", "- d @done"],
+            "under the block shown above it"
+        );
+        assert_eq!(
+            shifted_hiding_done(text, "- c", Shift::Up).unwrap(),
+            ["- c", "- a", "- b @done", "- d @done"],
+            "above the block shown above it"
+        );
+        assert_eq!(
+            shifted_hiding_done(text, "- a", Shift::Down).unwrap(),
+            ["- b @done", "- c", "- a", "- d @done"],
+            "below the block shown below it"
+        );
+        assert_eq!(
+            shifted_hiding_done(text, "- c", Shift::Down),
+            None,
+            "the last shown"
+        );
+        assert_eq!(
+            shifted_hiding_done("- a @done\n- b", "- b", Shift::Indent),
+            None,
+            "the first shown"
+        );
+    }
+
+    // FR-OPS-03, FR-DONE-02
+    #[test]
+    fn at_the_edge_the_block_crosses_into_the_parents_shown_neighbor() {
+        let text = "P:\n\t- a\nD: @done\nQ:\n\t- b\nE: @done";
+        assert_eq!(
+            shifted_hiding_done(text, "- b", Shift::Up).unwrap(),
+            ["P:", "\t- a", "\t- b", "D: @done", "Q:", "E: @done"]
+        );
+        assert_eq!(
+            shifted_hiding_done(text, "- a", Shift::Down).unwrap(),
+            ["P:", "D: @done", "Q:", "\t- a", "\t- b", "E: @done"]
+        );
+        assert_eq!(
+            shifted_hiding_done("D: @done\nQ:\n\t- b", "- b", Shift::Up),
+            None,
+            "no shown one before"
+        );
+        assert_eq!(
+            shifted_hiding_done("Q:\n\t- b\nD: @done", "- b", Shift::Down),
+            None,
+            "no shown one after"
+        );
+    }
+
     #[test]
     fn a_block_not_in_the_document_does_not_shift() {
         let other = format::parse("- x\n- y");
         let stale = block(&other, "- y");
         let document = format::parse("- a");
         for by in [Shift::Indent, Shift::Outdent, Shift::Up, Shift::Down] {
-            assert_eq!(shift(&document, &stale, by, document.root()), None);
+            assert_eq!(shift(&document, &stale, by, document.root(), &every), None);
         }
     }
 
-    /// The lines of `text` once the blocks reading `of` all shift together, with the ops checked
-    /// to undo.
+    /// The lines of `text` once the blocks reading `of` all shift together among the blocks
+    /// `shows` passes, with the ops checked to undo.
     #[track_caller]
-    fn all_shifted(text: &str, of: &[&str], by: Shift) -> Vec<String> {
+    fn all_shifted_among(
+        text: &str,
+        of: &[&str],
+        by: Shift,
+        shows: fn(&Block) -> bool,
+    ) -> Vec<String> {
         let mut document = format::parse(text);
         let blocks: Vec<Block> = of.iter().map(|of| block(&document, of)).collect();
-        let ops = shift_all(&document, &blocks, by, document.root());
+        let ops = shift_all(&document, &blocks, by, document.root(), &shows);
         let mut transaction = Transaction::new(ops, (), ());
         document.apply(&mut transaction).unwrap();
         let after = lines(&document, None);
         document.apply(&mut transaction.inverse()).unwrap();
         assert_eq!(lines(&document, None), lines(&format::parse(text), None));
         after
+    }
+
+    #[track_caller]
+    fn all_shifted(text: &str, of: &[&str], by: Shift) -> Vec<String> {
+        all_shifted_among(text, of, by, every)
     }
 
     // FR-OPS-02, FR-OPS-07
@@ -868,10 +991,37 @@ mod tests {
         );
     }
 
+    // FR-OPS-03, FR-OPS-07, FR-DONE-02
+    #[test]
+    fn many_blocks_pass_only_shown_blocks_together() {
+        assert_eq!(
+            all_shifted_among(
+                "- x\n- d @done\n- a\n- b",
+                &["- a", "- b"],
+                Shift::Up,
+                undone
+            ),
+            ["- a", "- b", "- x", "- d @done"]
+        );
+        assert_eq!(
+            all_shifted_among(
+                "- a\n- d @done\n- b\n- c",
+                &["- a", "- b"],
+                Shift::Up,
+                undone
+            ),
+            ["- a", "- d @done", "- b", "- c"],
+            "nothing passes the first shown that stayed"
+        );
+    }
+
     #[test]
     fn no_blocks_shift_without_ops() {
         let document = format::parse("- a");
-        assert_eq!(shift_all(&document, &[], Shift::Up, document.root()), []);
+        assert_eq!(
+            shift_all(&document, &[], Shift::Up, document.root(), &every),
+            []
+        );
     }
 
     /// The lines of `text` once the blocks reading `of` are grouped, with the new line marked

@@ -56,7 +56,11 @@ impl State {
                 NewBlock::Above => Place::Above(block),
                 NewBlock::FirstChild => Place::FirstChild(block),
                 NewBlock::LastChild => Place::LastChild(block),
-                NewBlock::Next if self.is_expanded(block) => Place::FirstChild(block),
+                NewBlock::Next
+                    if self.is_expanded(block) && !self.shown_children(block).is_empty() =>
+                {
+                    Place::FirstChild(block)
+                }
                 NewBlock::Below | NewBlock::Next => Place::Below(block),
                 NewBlock::Start => list
                     .first()
@@ -202,13 +206,14 @@ impl State {
 
     /// Moves the selected blocks, else the focused block, with their subtrees as `by` says
     /// without leaving the zoom, as one step to undo, expanding the blocks they land under
-    /// (FR-OPS-02, FR-OPS-03, FR-OPS-07). The zoom title, which stands for the view's root, stays.
+    /// (FR-OPS-02, FR-OPS-03, FR-OPS-07). Blocks the pane hides as done are passed over, so what
+    /// moves stays in view (FR-DONE-02). The zoom title, which stands for the view's root, stays.
     pub(super) fn shift_selected(&mut self, by: Shift) {
         let roots = self.roots();
         let top = self
             .zoom_block()
             .map_or(self.document.root(), |zoom| zoom.id());
-        let ops = structure::shift_all(&self.document, &roots, by, top);
+        let ops = structure::shift_all(&self.document, &roots, by, top, &|block| self.shows(block));
         if ops.is_empty() {
             return;
         }
@@ -381,6 +386,16 @@ mod tests {
             ["P:", "\t- ", "\t- a", "Q:", "\t- b", ""],
             "a collapsed block gets a block below its subtree"
         );
+    }
+
+    // editing.md §3, FR-DONE-02
+    #[test]
+    fn enter_on_a_block_whose_children_are_all_hidden_adds_a_block_below() {
+        let mut state = open("- a\n\t- x @done\n- b", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::EditAtEnd);
+        state.update(Message::NewNext);
+        assert_eq!(lines(&state), ["- a", "\t- x @done", "- ", "- b"]);
     }
 
     // FR-NAV-03, FR-MODE-04
@@ -863,6 +878,18 @@ mod tests {
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["P:", "\t- b", "\t- a", "Q:", "\t- c"]);
         assert_eq!(focused(&state), "a", "one step per move");
+    }
+
+    // FR-OPS-02, FR-OPS-03, FR-DONE-02
+    #[test]
+    fn moves_pass_over_the_blocks_the_pane_hides_as_done() {
+        let mut state = open("- a\n- x @done\n- b", 0);
+        state.update(Message::ToggleShowDone);
+        state.update(Message::MoveDown);
+        assert_eq!(lines(&state), ["- x @done", "- b", "- a"]);
+        state.update(Message::Indent);
+        assert_eq!(lines(&state), ["- x @done", "- b", "\t- a"]);
+        assert_eq!(focused(&state), "a");
     }
 
     // FR-OPS-03

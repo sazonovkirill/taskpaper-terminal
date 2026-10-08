@@ -124,6 +124,8 @@ All act on the selection, or on the focused block when nothing is selected. Each
 
 Selected blocks move one after another in document order, last first for `outdent` and `move_down`, so they keep their order. A block that cannot move stays, and so does a selected block whose move would pass it: with the first of a list and the block after it selected, `indent` moves neither.
 
+The siblings a block moves past or under are those the pane shows: while it hides completed blocks (FR-DONE-02), a done block is passed over and stays where it is, so `indent` goes under the previous shown sibling, `move_up`/`move_down` swap with the adjacent shown sibling and cross into the parent's previous or next shown sibling, and where only hidden blocks lie that way, the block does not move.
+
 | Command | Behavior |
 |---|---|
 | `indent` / `outdent` (FR-OPS-02) | Indent: become the last child of the previous sibling block (expanding it); no-op on the first sibling. Outdent: become the next sibling of the parent; following siblings stay where they are (Workflowy, inferred); no-op at the pane's zoom root level. |

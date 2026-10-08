@@ -1,5 +1,4 @@
 # With completed blocks hidden, Alt+k on the first task of a project keeps the task in view instead of burying it in a hidden done project.
-# BUG: Alt+k moves the task into the hidden completed project above, so it vanishes and focus jumps to the project.
 file <<END
 Old: @done(2026-10-01)
 	- finished

@@ -1,5 +1,4 @@
 # With completed tasks hidden, indenting a task puts it under the visible task above it, so it stays in view.
-# BUG: indent nests the task under the hidden done task above it, so it vanishes inside a completed task and focus jumps away.
 file <<END
 Errands:
 	- Bank @done(2026-10-01)
