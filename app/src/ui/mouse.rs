@@ -321,6 +321,7 @@ impl Tui {
                     widgets::OutlineView::new(&shown, (self.clock)().date(), &theme)
                         .editor(editor.as_ref())
                         .wrap(self.wrap)
+                        .kept(&self.kept_lines)
                         .icons(self.icons)
                         .offset(scroll.line)
                         .hit(drawn.width, line, column)?;

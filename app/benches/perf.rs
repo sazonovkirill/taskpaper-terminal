@@ -70,16 +70,20 @@ fn main() -> ExitCode {
     let mut results = Vec::new();
     let (mut app, open) = App::open(&path, dir.path());
     results.push(Result::new("open and first frame", open, OPEN_BUDGET));
-    for scenario in SCENARIOS.iter().filter(|scenario| {
+    let wanted = |scenario: &&Scenario| {
         only.iter()
             .all(|wanted| scenario.name.contains(wanted.as_str()))
-    }) {
-        let mut took = Vec::new();
-        while took.len() < runs && took.iter().sum::<Duration>() < SCENARIO_TIME {
-            took.push((scenario.run)(&mut app));
-        }
-        let slowest = took.iter().max().copied().unwrap_or_default();
-        results.push(Result::new(scenario.name, slowest, KEY_BUDGET));
+    };
+    for scenario in SCENARIOS.iter().filter(wanted) {
+        results.push(scenario.measure(&mut app, runs));
+    }
+    let long = dir.path().join("long.taskpaper");
+    let line = if timed { LONG_LINE } else { 20_000 };
+    std::fs::write(&long, long_line(line)).expect("the temporary folder is writable");
+    let (mut app, _) = App::open(&long, dir.path());
+    app.keys("gw");
+    for scenario in LONG_LINE_SCENARIOS.iter().filter(wanted) {
+        results.push(scenario.measure(&mut app, runs));
     }
     if !timed {
         return ExitCode::SUCCESS;
@@ -126,6 +130,18 @@ struct Result {
 impl Result {
     fn new(name: &'static str, time: Duration, budget: Duration) -> Self {
         Self { name, time, budget }
+    }
+}
+
+impl Scenario {
+    /// Runs the scenario on `app` up to `runs` times and gives the slowest run.
+    fn measure(&self, app: &mut App, runs: usize) -> Result {
+        let mut took = Vec::new();
+        while took.len() < runs && took.iter().sum::<Duration>() < SCENARIO_TIME {
+            took.push((self.run)(app));
+        }
+        let slowest = took.iter().max().copied().unwrap_or_default();
+        Result::new(self.name, slowest, KEY_BUDGET)
     }
 }
 
@@ -304,6 +320,28 @@ const SCENARIOS: &[Scenario] = &[
         },
     },
 ];
+
+/// The length of the block of [`long_line`]: a large file pasted into one line.
+const LONG_LINE: usize = 1_600_000;
+
+/// Keystroke scenarios on [`long_line`] with wrap on, which draws every line of the long block.
+const LONG_LINE_SCENARIOS: &[Scenario] = &[
+    Scenario {
+        name: "j, k by a wrapped 1.6 MB line",
+        run: |app| app.keys("j").max(app.keys("k")),
+    },
+    Scenario {
+        name: "x beside a wrapped 1.6 MB line",
+        run: |app| app.keys("x").max(app.keys("x")),
+    },
+];
+
+/// A short block, a block of about `bytes` bytes of words, and a short block after it, the first
+/// focused.
+fn long_line(bytes: usize) -> String {
+    let words = "- a long line of words that wraps ".repeat(bytes / 34);
+    format!("- before\n{words}\n- after\n")
+}
 
 /// The app on a file, drawn on a test terminal; disk work runs on the I/O thread as in `tpt`.
 struct App {

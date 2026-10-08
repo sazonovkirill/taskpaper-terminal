@@ -44,8 +44,9 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, NavigatorPanel, NodeEditorWindow,
-    OutlineView, Popup, QuickAddPanel, SaveAsPrompt, SettingsWindow, ShortcutsPanel,
+    ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard, NavigatorPanel,
+    NodeEditorWindow, OutlineView, Popup, QuickAddPanel, SaveAsPrompt, SettingsWindow,
+    ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -108,6 +109,8 @@ pub struct Tui {
     page_anchor: Option<usize>,
     /// The first Navigator line on screen.
     navigator_scroll: usize,
+    /// The screen lines of the outline rows drawn lately.
+    kept_lines: KeptLines,
     /// Whether the process was told to end, so only saving is left.
     ending: bool,
     /// The first line of the conflict prompt's diff on screen.
@@ -183,6 +186,7 @@ impl Tui {
             focus_line: None,
             page_anchor: None,
             navigator_scroll: 0,
+            kept_lines: KeptLines::default(),
             ending: false,
             diff_scroll: 0,
             diff_rows: 0,
@@ -634,6 +638,7 @@ impl Tui {
     /// shortcuts panel at the right while open, the date prompt's panel below them while open, and
     /// the status line, all dimmed behind a dialog that takes the keys, such as the Navigator.
     pub fn draw(&mut self, frame: &mut Frame) {
+        self.kept_lines.next_frame();
         let theme = self.palette();
         let screen = frame.area();
         let icons = self.icons;
@@ -968,6 +973,7 @@ impl Tui {
         let view = OutlineView::new(&[], (self.clock)().date(), &theme)
             .editor(editor.as_ref())
             .wrap(self.wrap)
+            .kept(&self.kept_lines)
             .icons(icons);
         let scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
         let anchor = pane.focused.then(|| self.page_anchor.take()).flatten();

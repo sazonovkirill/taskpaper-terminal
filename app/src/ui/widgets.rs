@@ -1,8 +1,9 @@
 //! Widgets that draw the core's view state ([ui.md §2](../../../docs/specs/ui.md#2-blocks)).
 
+mod kept_lines;
 mod wrap;
 
-use std::{borrow::Cow, ops::Range};
+use std::{borrow::Cow, ops::Range, rc::Rc};
 
 use jiff::civil::Date;
 use ratatui::{
@@ -18,6 +19,7 @@ use unicode_segmentation::UnicodeSegmentation;
 mod finder;
 
 pub use finder::FinderPopup;
+pub use kept_lines::KeptLines;
 
 use super::{
     layout,
@@ -65,6 +67,7 @@ pub struct OutlineView<'a> {
     editor: Option<&'a Editor<'a>>,
     wrap: bool,
     icons: IconSet,
+    kept: Option<&'a KeptLines>,
 }
 
 impl<'a> OutlineView<'a> {
@@ -81,6 +84,7 @@ impl<'a> OutlineView<'a> {
             editor: None,
             wrap: false,
             icons: IconSet::Nerd,
+            kept: None,
         }
     }
 
@@ -121,6 +125,15 @@ impl<'a> OutlineView<'a> {
     #[must_use]
     pub fn icons(self, icons: IconSet) -> Self {
         Self { icons, ..self }
+    }
+
+    /// Lays rows out through `kept`, which keeps their lines from one frame to the next.
+    #[must_use]
+    pub fn kept(self, kept: &'a KeptLines) -> Self {
+        Self {
+            kept: Some(kept),
+            ..self
+        }
     }
 
     /// How many screen lines each row takes in an area `width` columns wide, the gutter
@@ -171,26 +184,37 @@ impl<'a> OutlineView<'a> {
     fn blocks(
         &self,
         width: usize,
-    ) -> impl Iterator<Item = (usize, &'a Row, Vec<Line<'a>>, Line<'static>)> {
+    ) -> impl Iterator<Item = (usize, &'a Row, Rc<[Line<'a>]>, Line<'static>)> {
         self.rows.iter().enumerate().map(move |(index, row)| {
             if let Some(editor) = self.editor.filter(|editor| editor.id == row.id) {
-                return (
-                    index,
-                    row,
-                    vec![editor_line(row, editor, width, self.icons, self.theme).0],
-                    Line::default(),
-                );
+                let line = editor_line(row, editor, width, self.icons, self.theme).0;
+                return (index, row, Rc::from([line]), Line::default());
             }
-            let chips = chips(row, self.today, self.icons, self.theme);
-            let room = width.saturating_sub(chips.width());
-            let line = row_line(row, room, self.icons, self.theme);
-            let lines = if self.wrap {
-                wrap::wrap(&line, text_column(row, self.icons), room, width)
-            } else {
-                vec![wrap::truncate(&line, room)]
+            let lay_out = || self.lay_out(row, width);
+            let (lines, chips) = match self.kept {
+                Some(kept) => kept.get(
+                    row,
+                    width,
+                    (self.wrap, self.today, self.icons, *self.theme),
+                    lay_out,
+                ),
+                None => lay_out(),
             };
             (index, row, lines, chips)
         })
+    }
+
+    /// The screen lines of `row` `width` columns wide and its chips.
+    fn lay_out(&self, row: &Row, width: usize) -> (Rc<[Line<'static>]>, Line<'static>) {
+        let chips = chips(row, self.today, self.icons, self.theme);
+        let room = width.saturating_sub(chips.width());
+        let line = row_line(row, room, self.icons, self.theme);
+        let lines = if self.wrap {
+            wrap::wrap(&line, text_column(row, self.icons), room, width).into()
+        } else {
+            Rc::from([wrap::truncate(&line, room)])
+        };
+        (lines, chips)
     }
 }
 
@@ -200,20 +224,28 @@ impl Widget for OutlineView<'_> {
             Constraint::Length(GUTTER_WIDTH),
             Constraint::Fill(1),
         ]));
-        let lines =
-            self.blocks(usize::from(text.width))
-                .flat_map(|(index, row, lines, chips)| {
-                    let mut chips = Some(chips);
-                    let heading = heading_lines(row, self.today, self.icons, self.theme)
-                        .into_iter()
-                        .map(|line| (None, line, Line::default()));
-                    heading.chain(lines.into_iter().map(move |line| {
-                        (Some((index, row)), line, chips.take().unwrap_or_default())
-                    }))
-                });
-        for ((shown, line, chips), (gutter_area, line_area)) in
+        // Rows of long blocks have many lines, so only those shown are gone through.
+        let lines = self
+            .blocks(usize::from(text.width))
+            .flat_map(|(index, row, lines, chips)| {
+                let mut chips = Some(chips);
+                let heading: Rc<[Line]> =
+                    heading_lines(row, self.today, self.icons, self.theme).into();
+                let heading = (0..heading.len())
+                    .map(move |at| (None, Rc::clone(&heading), at, Line::default()));
+                heading.chain((0..lines.len()).map(move |at| {
+                    (
+                        Some((index, row)),
+                        Rc::clone(&lines),
+                        at,
+                        chips.take().unwrap_or_default(),
+                    )
+                }))
+            });
+        for ((shown, lines, at, chips), (gutter_area, line_area)) in
             lines.skip(self.offset).zip(gutter.rows().zip(text.rows()))
         {
+            let line = lines.get(at).cloned().unwrap_or_default();
             let Some((index, row)) = shown else {
                 line.render(line_area, buf);
                 continue;
@@ -3092,6 +3124,32 @@ mod tests {
             assert_eq!(buf[(4, y)].bg, THEME.tint(TagColor::Red, true), "line {y}");
         }
         assert_eq!(buf[(0, 2)].bg, Color::Reset);
+    }
+
+    // FR-UI-05, N-PERF-02
+    #[test]
+    fn kept_lines_draw_and_measure_as_rows_laid_out_afresh() {
+        let mut kept = KeptLines::default();
+        for text in ["- aaa bbb ccc @due(2026-10-05)\n- d", "- aaa bbb\n- d"] {
+            let rows = State::new(format::parse(text), None).rows().to_vec();
+            for wrap in [true, false] {
+                let view = outline(&rows).wrap(wrap).focused(Some(0)).offset(1);
+                let draw = |view: OutlineView| {
+                    let mut buf = Buffer::empty(Rect::new(0, 0, 18, 3));
+                    view.render(buf.area, &mut buf);
+                    buf
+                };
+                kept.next_frame();
+                for _ in 0..2 {
+                    assert_eq!(draw(view.kept(&kept)), draw(view), "{text:?}, wrap {wrap}");
+                    let drawn = (wrap, TODAY, ICONS, *THEME);
+                    let (lines, _) = kept.get(&rows[0], 16, drawn, Default::default);
+                    assert!(!lines.is_empty(), "the drawn row is kept");
+                    assert_eq!(view.kept(&kept).heights(18), view.heights(18));
+                    assert_eq!(view.kept(&kept).hit(18, 0, 4), view.hit(18, 0, 4));
+                }
+            }
+        }
     }
 
     // FR-UI-05
