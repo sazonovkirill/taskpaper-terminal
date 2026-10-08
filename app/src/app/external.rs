@@ -11,9 +11,7 @@ use std::{
 
 use similar::{ChangeTag, TextDiff};
 
-use super::{
-    Effect, History, Notice, SaveState, State, saving::Ending, text_path::TextPath, update::Disk,
-};
+use super::{Effect, History, Notice, SaveState, State, saving::Ending, text_path, update::Disk};
 use crate::document::{Document, ItemId, format};
 
 /// Unchanged lines the diff shows around each change.
@@ -319,7 +317,8 @@ impl State {
         self.context_menu = None;
         self.resume = None;
         let old = std::mem::replace(&mut self.document, document);
-        let found = |id: ItemId| TextPath::of(&old, id)?.find(&self.document);
+        let matches = text_path::matches(&old, &self.document);
+        let found = |id: ItemId| matches.get(&id).copied();
         let nearest = |id: ItemId| found(id).map(|(id, _)| id);
         let exact = |id: ItemId| found(id).and_then(|(id, exact)| exact.then_some(id));
         for pane in std::iter::once(&mut self.pane).chain(&mut self.others) {

@@ -3,6 +3,8 @@
 //! between sessions with the file ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes),
 //! [§5](../../../docs/specs/file-io.md#5-view-state-persistence)).
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::document::{Document, Item, ItemId, blocks};
@@ -45,6 +47,65 @@ impl TextPath {
         }
         found.map(|id| (id, true))
     }
+}
+
+/// Where each block of `old` is in `new`, as [`TextPath::find`] finds its [`TextPath::of`]: the
+/// block at its whole path with `true`, else the nearest block on it with `false`; a block of
+/// which not even the top-level block matched is left out. One walk over `old` that groups each
+/// line's children in `new` by text once, so that matching every collapsed block of a large
+/// outline, as a reload does, takes time in proportion to the outline rather than to its blocks
+/// times their siblings (N-PERF-02).
+pub(super) fn matches(old: &Document, new: &Document) -> HashMap<ItemId, (ItemId, bool)> {
+    let top = children_by_text(new, new.root());
+    let mut found = HashMap::new();
+    // Each line of `old` whose children are still to match, with the block of `new` its path
+    // led to and whether all of it matched. The paths of the children of the root and of a
+    // special node start again at the top level.
+    let mut lines = vec![(old.root(), None, true)];
+    while let Some((line, at, whole)) = lines.pop() {
+        let here;
+        let candidates = match (whole, at) {
+            (false, _) => None,
+            (true, None) => Some(&top),
+            (true, Some(at)) => {
+                here = children_by_text(new, at);
+                Some(&here)
+            }
+        };
+        let mut seen: HashMap<&str, usize> = HashMap::new();
+        let children = old.get(line).map_or(&[][..], Item::children);
+        for (id, item) in children.iter().filter_map(|&id| Some((id, old.get(id)?))) {
+            if blocks::is_special(item) {
+                lines.push((id, None, true));
+                continue;
+            }
+            let nth = seen.entry(item.display_text()).or_default();
+            let next = candidates
+                .and_then(|candidates| candidates.get(item.display_text())?.get(*nth))
+                .copied();
+            *nth += 1;
+            let (at, whole) = next.map_or((at, false), |next| (Some(next), true));
+            if let Some(at) = at {
+                found.insert(id, (at, whole));
+            }
+            lines.push((id, at, whole));
+        }
+    }
+    found
+}
+
+/// The child blocks of the line `parent` grouped by text, in order.
+fn children_by_text(document: &Document, parent: ItemId) -> HashMap<&str, Vec<ItemId>> {
+    let mut children: HashMap<&str, Vec<ItemId>> = HashMap::new();
+    for block in blocks::each_child(document, parent) {
+        if let Some(item) = document.get(block.id()) {
+            children
+                .entry(item.display_text())
+                .or_default()
+                .push(block.id());
+        }
+    }
+    children
 }
 
 /// The text of block `id` and how many earlier sibling blocks have the same one.
@@ -149,5 +210,70 @@ mod tests {
     fn only_a_block_has_a_place() {
         let document = format::parse("- a\n");
         assert_eq!(TextPath::of(&document, document.root()), None);
+    }
+
+    /// Where `matches` puts each line of `from` in `to`, as `(line, whole path)` texts.
+    fn matched(from: &str, to: &str) -> Vec<(String, Option<(String, bool)>)> {
+        let (from, to) = (format::parse(from), format::parse(to));
+        let found = matches(&from, &to);
+        from.descendants(from.root())
+            .map(|(id, _)| {
+                let at = found
+                    .get(&id)
+                    .map(|&(at, whole)| (line(&to, at).to_owned(), whole));
+                (line(&from, id).to_owned(), at)
+            })
+            .collect()
+    }
+
+    // file-io.md §3, N-PERF-02
+    #[test]
+    fn matches_puts_every_block_where_its_path_leads() {
+        let found = |text: &str, whole| Some((text.to_owned(), whole));
+        assert_eq!(
+            matched(
+                "A:\n\t- x\n\t- x\n\t\t- y\nH @hidden\n\tA:\nZ:\n",
+                "A: @t\n\t- x\n\tnote\n\t- x\nA:\n"
+            ),
+            [
+                ("A:".to_owned(), found("A: @t", true)),
+                ("- x".to_owned(), found("- x", true)),
+                ("- x".to_owned(), found("- x", true)),
+                ("- y".to_owned(), found("- x", false)),
+                ("H @hidden".to_owned(), None),
+                ("A:".to_owned(), found("A: @t", true)),
+                ("Z:".to_owned(), None),
+            ]
+        );
+    }
+
+    /// A line of an outline: its depth, at most one more than the line before's, and its text.
+    fn lines() -> impl proptest::strategy::Strategy<Value = String> {
+        use proptest::prelude::*;
+        let text = prop::sample::select(vec!["A:", "- b", "- b @t", "c", "h @hidden"]);
+        proptest::collection::vec((0..3_usize, text), 0..20).prop_map(|lines| {
+            let mut depth = 0;
+            let mut outline = String::new();
+            for (deeper, text) in lines {
+                depth = deeper.min(depth + 1);
+                outline.push_str(&"\t".repeat(depth));
+                outline.push_str(text);
+                outline.push('\n');
+            }
+            outline
+        })
+    }
+
+    proptest::proptest! {
+        // file-io.md §3, N-PERF-02
+        #[test]
+        fn matches_finds_what_each_blocks_path_finds(from in lines(), to in lines()) {
+            let (from, to) = (format::parse(&from), format::parse(&to));
+            let found = matches(&from, &to);
+            for (id, _) in from.descendants(from.root()) {
+                let path = TextPath::of(&from, id).and_then(|path| path.find(&to));
+                proptest::prop_assert_eq!(found.get(&id).copied(), path);
+            }
+        }
     }
 }

@@ -1,5 +1,4 @@
 # With 5000 projects collapsed, a change on disk reloads at once and keeps the folds.
-# BUG: re-matching folds after a reload compares every collapsed block with every block, freezing the app for seconds on a large folded outline (5 s for a 100,000-line file in a release build).
 file <<END
 a:
 	- b
