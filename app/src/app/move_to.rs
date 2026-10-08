@@ -89,7 +89,7 @@ impl State {
         let zoom = self.zoom();
         if zoom.is_none_or(|zoom| above.contains(&zoom)) {
             for line in above.iter().take_while(|&&line| Some(line) != zoom) {
-                self.folds.remove(line);
+                self.folds.remove(*line);
             }
         } else {
             self.go_to(Location::Outline((!home).then_some(to)));

@@ -3,8 +3,6 @@
 //! ([navigation.md §7, §7.1](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7),
 //! FR-TAG-04, FR-TAG-07, D-7, D-80).
 
-use std::collections::HashSet;
-
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
@@ -150,11 +148,9 @@ impl State {
     /// nothing collapsed, completed blocks shown when `show_done` says so: the rows a change
     /// builds again only where it changed, gone through rather than the document's tree.
     fn matching(&self, pane: &Pane, show_done: bool, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
-        let mut every = Pane::first();
-        every.show_done = show_done;
         let mut above = Above::default();
         let mut entries = Vec::new();
-        for row in &self.rows_folded(&every, &HashSet::new()) {
+        for row in &self.unfolded_rows(Location::Outline(None), show_done) {
             above.reach(row.depth);
             if blocks::block(&self.document, row.id).is_some_and(|block| lists(&block)) {
                 entries.push(Row {

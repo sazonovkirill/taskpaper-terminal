@@ -272,7 +272,7 @@ Work: @done
         ] {
             assert_eq!(state.update(message.clone()), [], "{message:?}");
             assert_eq!(focused(&state), "a", "{message:?}");
-            assert_eq!(state.folds, HashSet::new(), "{message:?}");
+            assert_eq!(*state.folds, HashSet::new(), "{message:?}");
             assert_eq!(state.mode(), Mode::Navigate, "{message:?}");
             assert_eq!(format::serialize(state.document()), before, "{message:?}");
             assert_eq!(

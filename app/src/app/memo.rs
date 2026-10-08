@@ -37,8 +37,11 @@ impl<K: PartialEq + Clone, V: Clone> Memo<K, V> {
         compute: impl FnOnce(Option<(K, V)>) -> V,
     ) -> V {
         let base = {
-            let entries = self.entries.borrow();
-            if let Some((_, value)) = entries.iter().find(|(kept, _)| *kept == key) {
+            let mut entries = self.entries.borrow_mut();
+            if let Some((kept, value)) = entries.iter_mut().find(|(kept, _)| *kept == key) {
+                // An equal key may share what it holds with the keys after it, which then
+                // compare at once (N-PERF-02).
+                *kept = key;
                 return value.clone();
             }
             entries
@@ -106,5 +109,27 @@ mod tests {
         assert_eq!(derive(5), (5, Some(3)), "the latest that fits");
         assert_eq!(derive(13), (13, Some(3)), "the one that fits best");
         assert_eq!(derive(1), (1, None), "kept for the key");
+    }
+
+    /// A key equal to another of the same value, whatever its label.
+    #[derive(Debug, Clone)]
+    struct Labelled(usize, &'static str);
+
+    impl PartialEq for Labelled {
+        fn eq(&self, other: &Self) -> bool {
+            self.0 == other.0
+        }
+    }
+
+    // N-PERF-02
+    #[test]
+    fn the_latest_of_equal_keys_is_kept() {
+        let memo = Memo::default();
+        let derive = |key: Labelled| {
+            memo.get_or_derive(key, |_| Some(()), |base| base.map(|(kept, _)| kept.1))
+        };
+        assert_eq!(derive(Labelled(1, "first")), None);
+        assert_eq!(derive(Labelled(1, "again")), None, "kept for the equal key");
+        assert_eq!(derive(Labelled(2, "other")), Some("again"));
     }
 }

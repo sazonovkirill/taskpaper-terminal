@@ -4,13 +4,10 @@
 //! ([navigation.md §8](../../../docs/specs/navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06),
 //! FR-NAV-05, D-65).
 
-use std::collections::HashSet;
-
 use super::{
     Location, MenuInput, Row, State,
     above::Above,
     finder::{Candidate, Detail, Finder, FinderView},
-    pane::Pane,
     picker::Picked,
 };
 use crate::document::{Block, BlockKind, ItemId, blocks};
@@ -89,13 +86,11 @@ impl State {
         excluded: &[Block],
         lists: impl Fn(&Row) -> bool,
     ) -> Vec<Candidate<ItemId>> {
-        let mut every = Pane::first();
-        every.show_done = self.pane.show_done;
         let mut above = Above::default();
         let mut candidates = Vec::new();
         // The depth of the excluded block whose rows are being passed.
         let mut passing = None;
-        for row in &self.rows_folded(&every, &HashSet::new()) {
+        for row in &self.unfolded_rows(Location::Outline(None), self.pane.show_done) {
             if passing.is_some_and(|depth| row.depth > depth) {
                 continue;
             }

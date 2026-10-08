@@ -907,7 +907,7 @@ impl State {
         };
         if let Some(child) = self.shown_children(&block).last() {
             if !title {
-                self.folds.remove(&block.id());
+                self.folds.remove(block.id());
             }
             self.pane.focus = Some(child.id());
         }
@@ -928,7 +928,7 @@ impl State {
         let Some((block, title)) = self.focused() else {
             return;
         };
-        if (title || !self.folds.remove(&block.id()))
+        if (title || !self.folds.remove(block.id()))
             && let Some(child) = self.shown_children(&block).first()
         {
             self.pane.focus = Some(child.id());
@@ -939,7 +939,7 @@ impl State {
         let Some(block) = self.focused_block() else {
             return;
         };
-        if !self.folds.remove(&block.id()) {
+        if !self.folds.remove(block.id()) {
             self.fold([block]);
         }
     }
@@ -959,7 +959,7 @@ impl State {
             self.fold(subtree);
         } else {
             for block in &subtree {
-                self.folds.remove(&block.id());
+                self.folds.remove(block.id());
             }
         }
     }
@@ -976,15 +976,13 @@ impl State {
         let collapsed: Vec<(Block, usize)> = self
             .blocks(false)
             .into_iter()
-            .filter(|(block, _)| {
-                self.folds.contains(&block.id()) && !self.children(block).is_empty()
-            })
+            .filter(|(block, _)| self.folds.contains(&block.id()) && self.has_children(block))
             .collect();
         let Some(depth) = collapsed.iter().map(|&(_, depth)| depth).min() else {
             return;
         };
         for (block, _) in collapsed.iter().filter(|&&(_, d)| d == depth) {
-            self.folds.remove(&block.id());
+            self.folds.remove(block.id());
         }
     }
 
@@ -1005,25 +1003,42 @@ impl State {
     }
 
     fn expand_all(&mut self) {
-        for (block, _) in self.blocks(false) {
-            self.folds.remove(&block.id());
+        for row in &self.below_zoom() {
+            if !row.title {
+                self.folds.remove(row.id);
+            }
         }
     }
 
     fn collapse_all(&mut self) {
-        let all = self.blocks(false).into_iter().map(|(block, _)| block);
-        self.fold(all);
+        let rows = self.below_zoom();
+        let parents: Vec<ItemId> = rows
+            .iter()
+            .zip(rows.iter().skip(1))
+            .filter(|(row, next)| !row.title && next.depth > row.depth)
+            .map(|(row, _)| row.id)
+            .collect();
+        for id in parents {
+            self.folds.insert(id);
+        }
+    }
+
+    /// Every block below the pane's zoom, collapsed or not, done or not, each followed by those
+    /// inside it a level deeper, with the zoom block's title row first when zoomed: kept from one
+    /// change to the next, unlike a walk over a large outline's lines (N-PERF-02).
+    fn below_zoom(&self) -> Rows {
+        self.unfolded_rows(Location::Outline(self.pane.zoom()), true)
     }
 
     /// Whether `block` has children and is not collapsed.
     pub(super) fn is_expanded(&self, block: &Block) -> bool {
-        !self.folds.contains(&block.id()) && !self.children(block).is_empty()
+        !self.folds.contains(&block.id()) && self.has_children(block)
     }
 
     /// Collapses each of `blocks` that has children; a leaf has nothing to fold.
     fn fold(&mut self, blocks: impl IntoIterator<Item = Block>) {
         for block in blocks {
-            if !self.children(&block).is_empty() {
+            if self.has_children(&block) {
                 self.folds.insert(block.id());
             }
         }
@@ -1261,7 +1276,7 @@ mod tests {
         assert_eq!(visible(&state)[1], (1, "b".to_owned(), None));
         let mut leaf = open(TREE, 4);
         leaf.update(Message::ToggleFold);
-        assert_eq!(leaf.folds, HashSet::new());
+        assert_eq!(*leaf.folds, HashSet::new());
     }
 
     // FR-NAV-02
@@ -1276,7 +1291,7 @@ mod tests {
         assert_eq!(state.folds.len(), 2);
         state.update(Message::ToggleSubtree);
         assert_eq!(visible(&state).len(), 5);
-        assert_eq!(state.folds, HashSet::new());
+        assert_eq!(*state.folds, HashSet::new());
     }
 
     // FR-NAV-02
@@ -1295,7 +1310,7 @@ mod tests {
         state.update(Message::ExpandLevel);
         assert_eq!(visible(&state).len(), 5);
         state.update(Message::ExpandLevel);
-        assert_eq!(state.folds, HashSet::new());
+        assert_eq!(*state.folds, HashSet::new());
     }
 
     // FR-NAV-02, FR-DONE-02
@@ -1465,7 +1480,7 @@ mod tests {
         state.update(Message::ToggleSubtree);
         state.update(Message::CollapseAll);
         state.update(Message::Collapse);
-        assert_eq!(state.folds, HashSet::new());
+        assert_eq!(*state.folds, HashSet::new());
         assert_eq!(visible(&state)[0], (0, "a".to_owned(), None));
     }
 
@@ -1594,7 +1609,7 @@ mod tests {
         ] {
             state.update(message.clone());
             assert_eq!(focus_text(&state), "b", "{message:?}");
-            assert_eq!(state.folds, HashSet::new(), "{message:?}");
+            assert_eq!(*state.folds, HashSet::new(), "{message:?}");
         }
         state.update(Message::Expand);
         assert_eq!(focus_text(&state), "c");
@@ -1612,7 +1627,7 @@ mod tests {
         state.update(Message::FocusPrevious);
         state.update(Message::ToggleSubtree);
         assert_eq!(
-            state.folds,
+            *state.folds,
             HashSet::new(),
             "the title expands what is below it"
         );

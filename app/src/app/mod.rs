@@ -16,6 +16,7 @@ mod edit_mode;
 mod editing;
 pub mod external;
 mod finder;
+mod folds;
 mod go_to_command;
 mod go_to_symbol;
 pub mod history;

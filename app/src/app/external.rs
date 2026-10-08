@@ -4,7 +4,7 @@
 //! ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes), F-FILE-06, OQ-16).
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     hash::{DefaultHasher, Hasher as _},
     path::PathBuf,
 };
@@ -324,11 +324,7 @@ impl State {
         for pane in std::iter::once(&mut self.pane).chain(&mut self.others) {
             pane.rematch(nearest, exact);
         }
-        self.folds = self
-            .folds
-            .iter()
-            .filter_map(|&id| exact(id))
-            .collect::<HashSet<_>>();
+        self.folds = self.folds.iter().filter_map(|&id| exact(id)).collect();
         self.navigator.rematch_folds(exact);
         self.today_order.rematch(exact);
         if let Some(quick_add) = &mut self.quick_add {

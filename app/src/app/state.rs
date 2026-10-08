@@ -17,6 +17,7 @@ use super::{
     edit_mode::{Resume, Session},
     external::External,
     finder::Finder,
+    folds::Folds,
     memo::Memo,
     navigator::Navigator,
     pane::Pane,
@@ -102,7 +103,7 @@ pub struct State {
     /// Where editing resumes once a command run from the command menu is done (D-50).
     pub(super) resume: Option<Resume>,
     /// The ids of collapsed blocks, kept in memory only (D-26).
-    pub(super) folds: HashSet<ItemId>,
+    pub(super) folds: Folds,
     /// Whether the shortcuts panel is open (FR-KEY-04).
     pub(super) shortcuts: bool,
     /// The Navigator (FR-UI-01).
@@ -124,7 +125,7 @@ pub struct State {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RowsKey {
     document: Stamp,
-    folds: HashSet<ItemId>,
+    folds: Folds,
     location: Location,
     show_done: bool,
     selection: Selection,
@@ -396,7 +397,7 @@ impl State {
             save_as: None,
             context_menu: None,
             resume: None,
-            folds: HashSet::new(),
+            folds: Folds::default(),
             shortcuts: false,
             navigator: Navigator::default(),
             today_order: TodayOrder::default(),
@@ -584,8 +585,19 @@ impl State {
         self.rows_folded(pane, &self.folds)
     }
 
+    /// The rows at `location` with nothing collapsed, completed blocks shown when `show_done`
+    /// says so: every block shown there, each followed by those inside it a level deeper. Walks
+    /// over the outline go through these rather than the document, since a change builds them
+    /// again only where it changed (N-PERF-02).
+    pub(super) fn unfolded_rows(&self, location: Location, show_done: bool) -> Rows {
+        let mut every = Pane::first();
+        every.location = location;
+        every.show_done = show_done;
+        self.rows_folded(&every, &Folds::default())
+    }
+
     /// The visible rows of `pane` with the blocks `folds` collapsed.
-    pub(super) fn rows_folded(&self, pane: &Pane, folds: &HashSet<ItemId>) -> Rows {
+    pub(super) fn rows_folded(&self, pane: &Pane, folds: &Folds) -> Rows {
         let key = RowsKey {
             document: self.document.stamp(),
             folds: folds.clone(),
@@ -622,12 +634,7 @@ impl State {
     /// and special nodes are never shown (FR-NAV-02, FR-NAV-03, FR-DONE-02, FR-SPC-01). A row
     /// inside a done block, also one above the zoom, says so (D-40). Rows of `before`, the
     /// pane's rows at an earlier key, are kept where nothing they show changed since.
-    fn outline_rows(
-        &self,
-        pane: &Pane,
-        folds: &HashSet<ItemId>,
-        before: Option<(RowsKey, Rows)>,
-    ) -> Rows {
+    fn outline_rows(&self, pane: &Pane, folds: &Folds, before: Option<(RowsKey, Rows)>) -> Rows {
         let title = self.zoom_block_of(pane).map(|block| {
             let inside_done =
                 std::iter::successors(blocks::parent(&self.document, block.id()), |above| {
@@ -659,12 +666,7 @@ impl State {
 
     /// The blocks whose rows may differ from those at `key` in `pane`, with every line above
     /// them, or `None` when the document cannot tell what changed since.
-    fn changed_blocks(
-        &self,
-        pane: &Pane,
-        folds: &HashSet<ItemId>,
-        key: &RowsKey,
-    ) -> Option<HashSet<ItemId>> {
+    fn changed_blocks(&self, pane: &Pane, folds: &Folds, key: &RowsKey) -> Option<HashSet<ItemId>> {
         let changed = self
             .document
             .changed_since(&key.document)?
@@ -688,7 +690,7 @@ impl State {
     /// whose rows may have changed since, it keeps the rows of each unchanged block.
     fn push_rows(
         &self,
-        (pane, folds): (&Pane, &HashSet<ItemId>),
+        (pane, folds): (&Pane, &Folds),
         parent: ItemId,
         (depth, inside_done): (usize, bool),
         kept: Option<(Range<usize>, &HashSet<ItemId>)>,
@@ -854,6 +856,13 @@ impl State {
     /// The child blocks of `block`.
     pub(super) fn children(&self, block: &Block) -> Vec<Block> {
         blocks::children(&self.document, block.id())
+    }
+
+    /// Whether `block` has child blocks, without collecting them.
+    pub(super) fn has_children(&self, block: &Block) -> bool {
+        blocks::each_child(&self.document, block.id())
+            .next()
+            .is_some()
     }
 }
 
@@ -1236,7 +1245,7 @@ mod tests {
                 })
             }
             Change::Fold(at) => {
-                if !state.folds.remove(&line(at)) {
+                if !state.folds.remove(line(at)) {
                     state.folds.insert(line(at));
                 }
                 None
@@ -1310,14 +1319,13 @@ mod tests {
             }
         }
         let mut state = State::new(format::parse(&text), None);
-        let projects: Vec<ItemId> = state
+        state.folds = state
             .blocks(false)
             .into_iter()
             .filter(|&(_, depth)| depth == 1)
             .map(|(block, _)| block.id())
             .collect();
-        state.folds.extend(projects);
-        let unfolded = |state: &State| state.rows_folded(&Pane::first(), &HashSet::new());
+        let unfolded = |state: &State| state.rows_folded(&Pane::first(), &Folds::default());
         let before = unfolded(&state);
         let _ = state.rows();
         make(&mut state, &Change::Text(20 * 51 + 5, "- t @done"));
@@ -1325,7 +1333,7 @@ mod tests {
         let rows = unfolded(&state);
         assert_eq!(
             rows,
-            state.outline_rows(&Pane::first(), &HashSet::new(), None)
+            state.outline_rows(&Pane::first(), &Folds::default(), None)
         );
         let built = rows.chunks_apart_from(&before);
         assert!(built <= 4, "built {built} chunks again");

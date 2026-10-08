@@ -8,8 +8,8 @@ use jiff::civil::Date;
 use super::{
     Location, Notice, PaneChange, Row, Rows, SpecialView, State,
     commands::{Command, NodeCommand},
+    folds::Folds,
     memo::Memo,
-    pane::Pane,
 };
 use crate::document::{Block, BlockKind, ItemId, Stamp, blocks};
 
@@ -28,7 +28,7 @@ pub(super) struct Navigator {
     focus: Option<usize>,
     /// What was typed to filter the entries while it is open (D-86).
     filter: String,
-    folds: HashSet<ItemId>,
+    folds: Folds,
     entries: Memo<EntriesKey, Rc<[NavigatorEntry]>>,
     filtered: Memo<FilteredKey, Rc<[NavigatorEntry]>>,
     current: Memo<CurrentKey, Option<usize>>,
@@ -39,7 +39,7 @@ pub(super) struct Navigator {
 struct EntriesKey {
     document: Stamp,
     /// The folded entries, none while a filter is typed.
-    folds: HashSet<ItemId>,
+    folds: Folds,
     show_done: bool,
     special_inbox: bool,
     unlisted: HashSet<SpecialView>,
@@ -97,7 +97,7 @@ impl Default for Navigator {
             unlisted: HashSet::new(),
             focus: None,
             filter: String::new(),
-            folds: HashSet::new(),
+            folds: Folds::default(),
             entries: Memo::default(),
             filtered: Memo::default(),
             current: Memo::default(),
@@ -332,7 +332,7 @@ impl State {
                 if let Some(NavigatorEntry::Project { id, .. }) = focused
                     && self.navigator.filter.is_empty()
                 {
-                    self.navigator.folds.remove(id);
+                    self.navigator.folds.remove(*id);
                 }
             }
             NavigatorInput::Choose | NavigatorInput::GoToInbox => {
@@ -466,7 +466,7 @@ impl State {
             return self.unfiltered_entries(&self.navigator.folds);
         }
         // A filter looks through folded entries.
-        let entries = self.unfiltered_entries(&HashSet::new());
+        let entries = self.unfiltered_entries(&Folds::default());
         let key = FilteredKey {
             entries: Rc::clone(&entries),
             filter: filter.clone(),
@@ -477,7 +477,7 @@ impl State {
     }
 
     /// The entries with the project entries `folds` folded, before any filter.
-    fn unfiltered_entries(&self, folds: &HashSet<ItemId>) -> Rc<[NavigatorEntry]> {
+    fn unfiltered_entries(&self, folds: &Folds) -> Rc<[NavigatorEntry]> {
         let key = EntriesKey {
             document: self.document().stamp(),
             folds: folds.clone(),
@@ -492,9 +492,7 @@ impl State {
             let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
             // Every block that shows, from the outline's rows with nothing collapsed, which a
             // change builds again only where it changed.
-            let mut every = Pane::first();
-            every.show_done = self.pane.show_done;
-            let rows = self.rows_folded(&every, &HashSet::new());
+            let rows = self.unfolded_rows(Location::Outline(None), self.pane.show_done);
             let views = self.views_open_tasks(&rows);
             inbox
                 .into_iter()
@@ -730,7 +728,7 @@ fn end_project(above: &mut Vec<Above>, out: &mut [NavigatorEntry], open: usize) 
 mod tests {
     use super::*;
     use crate::{
-        app::{Configuration, Message, Mode},
+        app::{Configuration, Message, Mode, pane::Pane},
         document::{Document, Flag, format},
     };
 

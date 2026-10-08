@@ -77,7 +77,7 @@ impl State {
         if let (Place::FirstChild(block) | Place::LastChild(block), Some((_, false))) =
             (place, &focused)
         {
-            self.folds.remove(&block.id());
+            self.folds.remove(block.id());
         }
         self.edit_created(id, ops);
     }
@@ -224,7 +224,7 @@ impl State {
         self.commit(ops);
         for block in &roots {
             if let Some(parent) = blocks::parent(&self.document, block.id()) {
-                self.folds.remove(&parent.id());
+                self.folds.remove(parent.id());
             }
         }
     }
