@@ -5,11 +5,14 @@
 use jiff::civil::Date;
 
 use super::{Row, SpecialView, State, pane::Pane};
+use crate::document::BlockKind;
 
 /// Whether the Today view lists the block of `row` on `today`: it has a start or due date on or
-/// before `today`, or, when `starred` says to list starred blocks, `@star` (FR-TAG-04, D-88).
-pub(super) fn for_today(row: &Row, today: Date, starred: bool) -> bool {
+/// before `today`, or, when `starred` says to list starred blocks, `@star` (FR-TAG-04, D-88), or
+/// it is a task `in_today_project`, inside the TODAY project (D-102).
+pub(super) fn for_today(row: &Row, today: Date, starred: bool, in_today_project: bool) -> bool {
     starred && row.starred
+        || in_today_project && row.kind == BlockKind::Task
         || [row.start, row.due]
             .into_iter()
             .flatten()
@@ -20,7 +23,7 @@ impl State {
     /// The Today view's entries in `pane`, as [`State::matching_rows`] gives them, in the order
     /// the user gave them, else in document order (D-57).
     pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
-        let mut rows = self.matching_rows(pane, |row| self.lists(SpecialView::Today, row));
+        let mut rows = self.matching_rows(pane, SpecialView::Today);
         self.today_order.arrange(&mut rows, |row| row.id);
         rows
     }
@@ -41,8 +44,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Configuration, Effect, Location, Menu, Message, Mode, NewBlock, Paste, SelectionChange,
-            SpecialView, TextEdit,
+            Configuration, Effect, Location, Menu, Message, Mode, NewBlock, PaneChange, Paste,
+            SelectionChange, SpecialView, TextEdit,
         },
         document::{DateChange, DateTag, Flag, format},
     };
@@ -143,6 +146,73 @@ Work: @done
         assert_eq!(listed(&state), ["b"]);
         state.update(Message::Configure(Configuration::TodayStarred(true)));
         assert_eq!(listed(&state), ["a", "b"]);
+    }
+
+    // FR-TAG-04, D-102
+    #[test]
+    fn tasks_inside_the_today_project_are_listed_while_its_setting_is_on() {
+        let text = "\
+- a @star
+TODAY:
+\t- call
+\tLater:
+\t\t- write
+\t\tnote
+\t- dated @due(2026-10-05)
+Home:
+\t- other
+\tTODAY:
+\t\t- nested
+";
+        let mut state = today(text);
+        assert!(state.special_today(), "on by default");
+        assert_eq!(
+            listed(&state),
+            [
+                "a",
+                "TODAY › call",
+                "TODAY › Later › write",
+                "TODAY › dated"
+            ],
+            "tasks at any depth, not the project, its projects or notes, nor a TODAY below the \
+             top level"
+        );
+        state.update(Message::Configure(Configuration::SpecialToday(false)));
+        assert_eq!(listed(&state), ["a", "TODAY › dated"]);
+        state.update(Message::Configure(Configuration::SpecialToday(true)));
+        assert_eq!(listed(&state).len(), 4, "the list follows the setting");
+    }
+
+    // FR-TAG-04, D-102
+    #[test]
+    fn only_the_first_shown_today_project_counts_and_an_emoji_may_name_it() {
+        let state = today("☀️ TODAY:\n\t- a\nTODAY:\n\t- b\n");
+        assert_eq!(listed(&state), ["☀️ TODAY › a"]);
+        let mut done = today("TODAY: @done\n\t- a\nTODAY:\n\t- b\n");
+        assert_eq!(listed(&done), ["TODAY › a"], "a done project still shows");
+        done.update(Message::ToggleShowDone);
+        assert_eq!(listed(&done), ["TODAY › b"]);
+    }
+
+    // D-98, D-102: the TODAY project is the first one the Today pane shows, wherever the keys are.
+    #[test]
+    fn each_today_pane_finds_the_today_project_among_the_blocks_it_shows() {
+        let mut state = today("TODAY: @done\n\t- a\nTODAY:\n\t- b\n");
+        state.update(Message::Pane(PaneChange::OpenLocation));
+        state.go_to(Location::Outline(None));
+        state.update(Message::ToggleShowDone);
+        // A change, so the Today pane's entries are built again while the other pane has the keys.
+        state.update(Message::SetColor(Some(crate::document::TagColor::Red)));
+        let first = |state: &State| -> Vec<String> {
+            state.panes()[0]
+                .rows
+                .iter()
+                .map(|row| format!("{} › {}", row.path.join(" › "), row.text))
+                .collect()
+        };
+        assert_eq!(first(&state), ["TODAY › a"]);
+        state.update(Message::Pane(PaneChange::Focus(0)));
+        assert_eq!(first(&state), ["TODAY › a"]);
     }
 
     // D-7, D-40

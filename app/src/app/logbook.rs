@@ -28,7 +28,7 @@ impl State {
     /// grouped by that day, newest first, in document order within a day (D-84).
     pub(super) fn logbook_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows_with_done(pane, |row| self.lists(SpecialView::Logbook, row))
+            .matching_rows_with_done(pane, SpecialView::Logbook)
             .into_iter()
             .filter_map(|row| Some((row.done_date?, row)))
             .collect();

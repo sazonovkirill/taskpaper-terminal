@@ -1,4 +1,4 @@
-# qt adds to the TODAY project, which has nothing to do with the Today view: an undated task does not join the view.
+# qt adds to the TODAY project, and the Today view lists its tasks, an undated one too.
 file <<END
 TODAY:
 Work:
@@ -10,7 +10,7 @@ keys qt
 type Undated chore
 keys <Enter>
 status Added to TODAY
-hide Undated chore
+see - Undated chore  TODAY
 quit
 saved <<END
 TODAY:

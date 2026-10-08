@@ -1,6 +1,5 @@
 # Ctrl+N and Ctrl+P move the Navigator's focus down and up, skipping headings and blank lines.
 config <<END
-sidebar_today = false
 sidebar_upcoming = false
 sidebar_overdue = false
 sidebar_colors = false

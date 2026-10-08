@@ -25,7 +25,7 @@ impl State {
     /// the day each is listed under, earliest first, in document order within a day (D-81).
     pub(super) fn upcoming_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows(pane, |row| self.lists(SpecialView::Upcoming, row))
+            .matching_rows(pane, SpecialView::Upcoming)
             .into_iter()
             .filter_map(|row| Some((upcoming_day(row.start, row.due, self.today)?, row)))
             .collect();

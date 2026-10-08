@@ -28,13 +28,14 @@ pub enum Configuration {
     /// List the `INBOX` project above Today in the Navigator, or among the projects when `false`
     /// (`special_inbox`, navigation.md §6).
     SpecialInbox(bool),
-    /// List this special view in the Navigator, or not when `false` (`sidebar_today` and so on,
-    /// navigation.md §6, D-77, D-80).
+    /// List this special view in the Navigator, or not when `false` (`sidebar_upcoming` and so
+    /// on, navigation.md §6, D-80); Today is always listed (D-102).
     NavigatorView(SpecialView, bool),
     /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
     /// (`today_starred`, navigation.md §7, D-88).
     TodayStarred(bool),
-    /// Let `qt` add to the `TODAY` project, or not when `false` (`special_today`, D-98).
+    /// Let `qt` add to the `TODAY` project and the Today view list its tasks, or neither when
+    /// `false` (`special_today`, D-98, D-102).
     SpecialToday(bool),
 }
 

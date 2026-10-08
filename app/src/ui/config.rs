@@ -21,18 +21,52 @@ use super::{
 };
 use crate::app::{Animations, Mode, SpecialView};
 
-/// The key of the setting that says whether the Navigator lists `view` (D-77, D-80).
-/// The keys keep the names they had before the Navigator replaced the sidebar (D-79), so files
-/// that set them keep working.
-pub(super) fn navigator_key(view: SpecialView) -> &'static str {
-    match view {
-        SpecialView::Today => "sidebar_today",
-        SpecialView::Upcoming => "sidebar_upcoming",
-        SpecialView::Overdue => "sidebar_overdue",
-        SpecialView::Colors => "sidebar_colors",
-        SpecialView::Logbook => "sidebar_logbook",
-        SpecialView::Starred => "sidebar_starred",
-        SpecialView::Flagged => "sidebar_flagged",
+/// A special view that a setting says whether the Navigator lists: every one but Today, which it
+/// always lists (D-80, D-102).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum OptionalView {
+    Upcoming,
+    Overdue,
+    Colors,
+    Logbook,
+    Starred,
+    Flagged,
+}
+
+impl OptionalView {
+    /// Every one, in the Navigator's order.
+    pub(super) const ALL: [Self; 6] = [
+        Self::Upcoming,
+        Self::Overdue,
+        Self::Colors,
+        Self::Logbook,
+        Self::Starred,
+        Self::Flagged,
+    ];
+
+    /// The special view it is.
+    pub(super) fn view(self) -> SpecialView {
+        match self {
+            Self::Upcoming => SpecialView::Upcoming,
+            Self::Overdue => SpecialView::Overdue,
+            Self::Colors => SpecialView::Colors,
+            Self::Logbook => SpecialView::Logbook,
+            Self::Starred => SpecialView::Starred,
+            Self::Flagged => SpecialView::Flagged,
+        }
+    }
+
+    /// The key of its setting. The keys keep the names they had before the Navigator replaced
+    /// the sidebar (D-79), so files that set them keep working.
+    pub(super) fn key(self) -> &'static str {
+        match self {
+            Self::Upcoming => "sidebar_upcoming",
+            Self::Overdue => "sidebar_overdue",
+            Self::Colors => "sidebar_colors",
+            Self::Logbook => "sidebar_logbook",
+            Self::Starred => "sidebar_starred",
+            Self::Flagged => "sidebar_flagged",
+        }
     }
 }
 
@@ -103,12 +137,13 @@ pub struct Config {
     /// Whether the Navigator lists the `INBOX` project apart, when the file says
     /// (`special_inbox`, D-75).
     pub(super) special_inbox: Option<bool>,
-    /// Whether the Navigator lists each special view the file says about (`sidebar_today` and so
-    /// on, D-77, D-80).
+    /// Whether the Navigator lists each special view the file says about (`sidebar_upcoming` and
+    /// so on, D-80).
     pub(super) navigator_views: Vec<(SpecialView, bool)>,
     /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
     pub(super) today_starred: Option<bool>,
-    /// Whether `qt` adds to the `TODAY` project, when the file says (`special_today`, D-98).
+    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks, when the file
+    /// says (`special_today`, D-98, D-102).
     pub(super) special_today: Option<bool>,
     /// How much the app animates, when the file says (`animations`, FR-UI-11).
     pub(super) animations: Option<Animations>,
@@ -196,11 +231,11 @@ impl Config {
     }
 
     /// Takes whether the Navigator lists `view` from `item`: `true` or `false`.
-    fn read_navigator_view(&mut self, view: SpecialView, item: &Item) {
+    fn read_navigator_view(&mut self, view: OptionalView, item: &Item) {
         match item.as_bool() {
-            Some(on) => self.navigator_views.push((view, on)),
+            Some(on) => self.navigator_views.push((view.view(), on)),
             None => self.problems.push(Problem::InvalidValue {
-                key: navigator_key(view).to_owned(),
+                key: view.key().to_owned(),
                 expected: "true or false",
             }),
         }
@@ -386,10 +421,7 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "special_inbox" => config.read_special_inbox(item),
             "special_today" => config.read_special_today(item),
             "today_starred" => config.read_today_starred(item),
-            key => match SpecialView::ALL
-                .into_iter()
-                .find(|&view| navigator_key(view) == key)
-            {
+            key => match OptionalView::ALL.into_iter().find(|view| view.key() == key) {
                 Some(view) => config.read_navigator_view(view, item),
                 None => config.problems.push(Problem::UnknownSetting {
                     key: key.to_owned(),
@@ -815,18 +847,18 @@ mod tests {
         );
     }
 
-    // D-77, FR-SET-04
+    // D-80, FR-SET-04
     #[test]
-    fn sidebar_today_is_true_or_false_and_anything_else_is_reported() {
+    fn sidebar_views_are_true_or_false_and_anything_else_is_reported() {
         assert_eq!(read("", None).navigator_views, []);
         assert_eq!(
-            read("sidebar_today = false\n", None).navigator_views,
-            [(SpecialView::Today, false)]
+            read("sidebar_logbook = false\n", None).navigator_views,
+            [(SpecialView::Logbook, false)]
         );
         assert_eq!(
-            read("sidebar_colors = false\nsidebar_today = true\n", None).navigator_views,
-            [(SpecialView::Colors, false), (SpecialView::Today, true)],
-            "each special view has its key (D-80)"
+            read("sidebar_colors = false\nsidebar_logbook = true\n", None).navigator_views,
+            [(SpecialView::Colors, false), (SpecialView::Logbook, true)],
+            "each special view has its key"
         );
         assert_eq!(
             read("sidebar_overdue = false\n", None).navigator_views,
@@ -836,13 +868,26 @@ mod tests {
             read("sidebar_upcoming = false\n", None).navigator_views,
             [(SpecialView::Upcoming, false)]
         );
-        let config = read("sidebar_today = \"no\"\n", None);
+        let config = read("sidebar_logbook = \"no\"\n", None);
         assert_eq!(config.navigator_views, []);
         assert_eq!(
             config.problems(),
             [Problem::InvalidValue {
-                key: "sidebar_today".to_owned(),
+                key: "sidebar_logbook".to_owned(),
                 expected: "true or false",
+            }]
+        );
+    }
+
+    // D-102: the Navigator always lists Today.
+    #[test]
+    fn sidebar_today_is_no_setting() {
+        let config = read("sidebar_today = false\n", None);
+        assert_eq!(config.navigator_views, []);
+        assert_eq!(
+            config.problems(),
+            [Problem::UnknownSetting {
+                key: "sidebar_today".to_owned(),
             }]
         );
     }
@@ -851,8 +896,8 @@ mod tests {
     #[test]
     fn sidebar_flagged_says_whether_the_navigator_lists_flagged() {
         assert_eq!(
-            read("sidebar_flagged = false\nsidebar_today = true\n", None).navigator_views,
-            [(SpecialView::Flagged, false), (SpecialView::Today, true)]
+            read("sidebar_flagged = false\nsidebar_starred = true\n", None).navigator_views,
+            [(SpecialView::Flagged, false), (SpecialView::Starred, true)]
         );
     }
 

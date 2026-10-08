@@ -296,7 +296,7 @@ fn turning_off_starred_items_in_today_leaves_only_dated_blocks_and_is_kept() {
         shown(&mut app),
         [format!("- a {STAR}"), row("- b", &format!("{DUE} today"))]
     );
-    app.type_keys("g,jjjjjj");
+    app.type_keys("g,jjjjj");
     app.press(KeyCode::Char('l'), KeyModifiers::NONE);
     app.settle();
     let config = std::fs::read_to_string(app.config_file()).expect("the settings file");

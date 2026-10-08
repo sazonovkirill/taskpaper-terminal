@@ -1,6 +1,5 @@
-# With every special view and the inbox turned off, the Navigator starts with the Bookmarks heading, and gS still opens the Starred view.
+# With every special view but Today and the inbox turned off, the Navigator lists Today above the Bookmarks heading, and gS still opens the Starred view.
 config <<END
-sidebar_today = false
 sidebar_upcoming = false
 sidebar_overdue = false
 sidebar_colors = false
@@ -17,11 +16,12 @@ Reading @bookmark
 END
 keys <C-g>
 see ┌Navigator
+see │▌ 󰖙 Today
 see │  Bookmarks
 hide Starred
 keys <Esc> gS
 see 󰓎 Starred
 see - Call mom 󰓎  INBOX
-keys <C-g>
+keys <C-g> <Down>
 see │▌ Reading
 quit

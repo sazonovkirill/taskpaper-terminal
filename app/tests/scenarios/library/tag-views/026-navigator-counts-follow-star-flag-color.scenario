@@ -1,6 +1,5 @@
 # Starring, flagging and coloring a task in the outline raise the Starred, Flagged and Colors counts in the Navigator.
 config <<END
-sidebar_today = false
 sidebar_upcoming = false
 sidebar_overdue = false
 sidebar_logbook = false

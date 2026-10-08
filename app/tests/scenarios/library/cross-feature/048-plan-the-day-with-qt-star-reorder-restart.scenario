@@ -1,4 +1,4 @@
-# Planning the day: add two tasks to the TODAY project with qt, star an undated one so Today lists it, put it first in Today, and find the same list after reopening.
+# Planning the day: add two tasks to the TODAY project with qt, which Today lists with the dated ones, put a dated one first in Today, and find the same list after reopening.
 file <<END
 TODAY:
 Work:
@@ -12,10 +12,10 @@ status Added to TODAY
 keys qt
 type Water plants
 keys <Enter>
-keys gh G k *
 keys gt
-see - Review PRs 󰓎  Work
-keys G k <A-k>
+see - Water plants
+hide Review PRs
+keys G <A-k> <A-k>
 restart
 see 󰖙 Today
 keys gg x
@@ -25,6 +25,6 @@ TODAY:
 	- Call the bank @due({today})
 	- Water plants
 Work:
-	- Review PRs @star @done({today})
-	- Write report @due({today})
+	- Review PRs
+	- Write report @due({today}) @done({today})
 END

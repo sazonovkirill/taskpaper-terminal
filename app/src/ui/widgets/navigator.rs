@@ -234,13 +234,9 @@ impl Widget for NavigatorPanel<'_> {
             .title_bottom(self.view.filter.as_str());
         let inner = frame.inner(area);
         frame.render(area, buf);
+        // Today is always listed, so only a filter leaves no entries (D-102).
         if self.view.entries.is_empty() {
-            let empty = if self.view.filter.is_empty() {
-                " Nothing to go to"
-            } else {
-                " Nothing matches"
-            };
-            Line::from(empty).dim().render(inner, buf);
+            Line::from(" Nothing matches").dim().render(inner, buf);
             return;
         }
         // The text keeps a column clear of the right border, as the gutter does of the left.
@@ -396,38 +392,24 @@ mod tests {
         );
     }
 
-    // D-77, D-79
-    #[test]
-    fn a_window_with_no_entries_says_so() {
-        let mut state = State::new(format::parse("- a"), None);
-        for view in SpecialView::ALL {
-            state.update(Message::Configure(
-                crate::app::Configuration::NavigatorView(view, false),
-            ));
-        }
-        state.update(Message::ToggleNavigator);
-        let view = view(&state);
-        assert_eq!(view.focused, None);
-        let buf = render(&view, 2);
-        assert_eq!(rows(&buf), [" Nothing to go to", ""]);
-        assert_eq!(cell(&buf, 1, 0).modifier, Modifier::DIM);
-        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
-        assert_eq!(panel.focused_line(), None);
-        assert_eq!(panel.scroll(3, 2), 0);
-        assert_eq!(panel.area(Rect::new(0, 0, 60, 20)).height, 3, "one line");
-    }
-
     // D-86
     #[test]
     fn a_filter_matching_nothing_says_so_and_shows_in_the_bottom_border() {
         let mut state = opened("- a");
         state.update(Message::Navigator(NavigatorInput::Type('z')));
-        let buf = render(&view(&state), 1);
+        let view = view(&state);
+        assert_eq!(view.focused, None);
+        let buf = render(&view, 1);
         assert_eq!(rows(&buf), [" Nothing matches"]);
+        assert_eq!(cell(&buf, 1, 0).modifier, Modifier::DIM);
         assert_eq!(
             (0..4).map(|x| buf[(x, 2)].symbol()).collect::<String>(),
             "└z──"
         );
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
+        assert_eq!(panel.focused_line(), None);
+        assert_eq!(panel.scroll(3, 2), 0);
+        assert_eq!(panel.area(Rect::new(0, 0, 60, 20)).height, 3, "one line");
     }
 
     // FR-UI-01, D-68
@@ -481,39 +463,32 @@ mod tests {
         );
     }
 
-    // D-77
+    // D-77, D-86, D-102
     #[test]
     fn without_today_the_first_section_starts_at_the_top_or_below_the_inbox() {
-        let draw_without = |views: &[SpecialView], text: &str| {
-            let mut state = State::new(format::parse(text), None);
-            for &view in views {
-                state.update(Message::Configure(
-                    crate::app::Configuration::NavigatorView(view, false),
-                ));
-            }
-            state.update(Message::ToggleNavigator);
+        // Only a filter leaves Today out; none of the views' names holds a `q` or an `x`.
+        let filtered = |filter: char, text: &str| {
+            let mut state = opened(text);
+            state.update(Message::Navigator(NavigatorInput::Type(filter)));
             rows(&render(&view(&state), 5))
         };
         // D-80, D-92, D-93: the special views stand together, a blank line after the last one
         // listed; Flagged's flag is red.
         let buf = {
             let mut state = State::new(format::parse("A:"), None);
-            for view in [
-                SpecialView::Today,
-                SpecialView::Overdue,
-                SpecialView::Colors,
-            ] {
+            for view in [SpecialView::Overdue, SpecialView::Colors] {
                 state.update(Message::Configure(
                     crate::app::Configuration::NavigatorView(view, false),
                 ));
             }
             state.update(Message::ToggleNavigator);
-            render(&view(&state), 6)
+            render(&view(&state), 7)
         };
         assert_eq!(
             rows(&buf),
             [
-                format!("▌ {} Upcoming", Icon::Upcoming.glyph(IconSet::Unicode)),
+                format!("▌ {} Today", Icon::Today.glyph(IconSet::Unicode)),
+                format!("  {} Upcoming", Icon::Upcoming.glyph(IconSet::Unicode)),
                 format!("  {} Logbook", Icon::Logbook.glyph(IconSet::Unicode)),
                 format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
                 format!("  {} Flagged", Icon::Flag.glyph(IconSet::Unicode)),
@@ -522,23 +497,22 @@ mod tests {
             ]
         );
         assert_eq!(
-            cell(&buf, 2, 3).fg,
+            cell(&buf, 2, 4).fg,
             THEME.tag(crate::document::TagColor::Red),
             "the flag's red"
         );
-        let draw_without_today = |text: &str| draw_without(&SpecialView::ALL, text);
         assert_eq!(
-            draw_without_today("A: @bookmark"),
-            ["  Bookmarks", "▌ A", "", "  Projects", "  A"]
+            filtered('q', "Q: @bookmark"),
+            ["  Bookmarks", "▌ Q", "", "  Projects", "  Q"]
         );
-        assert_eq!(draw_without_today("A:"), ["  Projects", "▌ A", "", "", ""]);
+        assert_eq!(filtered('q', "Q:"), ["  Projects", "▌ Q", "", "", ""]);
         assert_eq!(
-            draw_without_today("INBOX:\nA:"),
+            filtered('x', "INBOX:\nX:"),
             [
                 format!("▌ {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
-                "  A".to_owned(),
+                "  X".to_owned(),
                 String::new(),
             ]
         );

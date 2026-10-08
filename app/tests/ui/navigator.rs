@@ -441,42 +441,14 @@ fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
     );
 }
 
-// D-77
+// D-102
 #[test]
-fn the_today_entry_leaves_the_window_with_its_setting_off_and_gt_still_opens_today() {
-    let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 80, 16);
+fn the_window_always_lists_today_and_an_old_setting_to_leave_it_out_is_reported() {
+    let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 100, 16);
+    let status = line(app.render().buffer(), 15);
+    assert!(status.contains("sidebar_today"), "{status}");
     ctrl_g(&mut app);
-    assert_eq!(
-        window(&mut app).expect("open"),
-        [
-            format!("{:44}1", "▌ ⊔ INBOX"),
-            format!("  {ARROW} Upcoming"),
-            format!("  {OVERDUE} Overdue"),
-            format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
-            format!("  {STAR} Starred"),
-            format!("  {FLAG} Flagged"),
-            String::new(),
-            "  Projects".to_owned(),
-            "  Work".to_owned(),
-        ]
-    );
-    press(&mut app, KeyCode::Esc);
-    app.type_keys("gt");
-    assert_eq!(pane(&mut app)[0], format!("  {SUN} Today"));
-    app.type_keys("g,jjjj ");
-    app.settle();
-    press(&mut app, KeyCode::Esc);
-    ctrl_g(&mut app);
-    assert_eq!(
-        window(&mut app).expect("open")[1],
-        format!("▌ {SUN} Today"),
-        "back on, focused as where the pane is"
-    );
-    assert_eq!(
-        std::fs::read_to_string(app.config_file()).expect("written"),
-        "sidebar_today = true\n"
-    );
+    assert_eq!(window(&mut app).expect("open")[1], format!("  {SUN} Today"));
 }
 
 // D-78

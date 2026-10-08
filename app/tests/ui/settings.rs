@@ -81,7 +81,7 @@ fn files(app: &mut Harness) {
 // FR-SET-02, FR-SET-03, ui.md §7, §8
 #[test]
 fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
-    // Taller than the window, which stops at 30 rows, one short of the Appearance group.
+    // Taller than the window, which stops at 30 rows, short of the whole Appearance group.
     let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 34);
     app.type_keys("g,");
     let file = app.config_file();
@@ -99,10 +99,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Wrap long text, or end it in … on one line     │",
             "│               │   ⊔ Special handling of INBOX project          on  │",
             "│               │     Show INBOX: above Today, not under Projects    │",
-            "│               │   ☼ Show Today in Navigator                    on  │",
-            "│               │     List the Today view in the Navigator           │",
             "│               │   ☼ Special handling of TODAY project          on  │",
-            "│               │     qt adds to TODAY:, as qi adds to INBOX:        │",
+            "│               │     Today lists its tasks, and qt adds to it       │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
             "│               │   » Show Upcoming in Navigator                 on  │",
@@ -116,6 +114,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │   ★ Show Starred in Navigator                  on  │",
             "│               │     List the Starred view in the Navigator         │",
             "│               │   ⚐ Show Flagged in Navigator                  on  │",
+            "│               │     List the Flagged view in the Navigator         │",
+            "│               │   ≈ Animations                                off  │",
         ]
     );
     assert!(

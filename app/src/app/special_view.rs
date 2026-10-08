@@ -105,18 +105,17 @@ impl State {
             SpecialView::Overdue => self.overdue_rows(pane),
             SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Logbook => self.logbook_rows(pane),
-            SpecialView::Starred | SpecialView::Flagged => {
-                self.matching_rows(pane, |row| self.lists(view, row))
-            }
+            SpecialView::Starred | SpecialView::Flagged => self.matching_rows(pane, view),
         }
     }
 
-    /// Whether `view` lists the block of `row`, by what its line says; the Overdue view also
-    /// leaves out done blocks and what is inside them (D-82). The Navigator counts the open tasks
-    /// it lists by this.
-    pub(super) fn lists(&self, view: SpecialView, row: &Row) -> bool {
+    /// Whether `view` lists the block of `row`, by what its line says and, for Today, whether
+    /// it is `in_today_project`, inside the TODAY project (D-102); the Overdue view also leaves
+    /// out done blocks and what is inside them (D-82). The Navigator counts the open tasks it
+    /// lists by this.
+    pub(super) fn lists(&self, view: SpecialView, row: &Row, in_today_project: bool) -> bool {
         match view {
-            SpecialView::Today => for_today(row, self.today, self.today_starred),
+            SpecialView::Today => for_today(row, self.today, self.today_starred, in_today_project),
             SpecialView::Upcoming => upcoming_day(row.start, row.due, self.today).is_some(),
             SpecialView::Overdue => row.due.is_some_and(|due| due < self.today),
             SpecialView::Colors => row.color.is_some(),
@@ -126,33 +125,33 @@ impl State {
         }
     }
 
-    /// Every block `pane` shows for which `lists` holds, in document order, each at depth 0 with
-    /// the path of the blocks above it. Completed blocks, each with everything inside it, are
-    /// left out while hidden, as in the outline (FR-DONE-02); special nodes never show
-    /// (FR-SPC-01).
-    pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Row) -> bool) -> Vec<Row> {
-        self.matching(pane, pane.show_done, lists)
+    /// Every block `pane` shows that `view` lists, in document order, each at depth 0 with the
+    /// path of the blocks above it. Completed blocks, each with everything inside it, are left
+    /// out while hidden, as in the outline (FR-DONE-02); special nodes never show (FR-SPC-01).
+    pub(super) fn matching_rows(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
+        self.matching(pane, pane.show_done, view)
     }
 
     /// The rows [`State::matching_rows`] gives, completed blocks and what is inside them
     /// included whatever the pane's show-completed setting (D-82, D-84).
-    pub(super) fn matching_rows_with_done(
-        &self,
-        pane: &Pane,
-        lists: impl Fn(&Row) -> bool,
-    ) -> Vec<Row> {
-        self.matching(pane, true, lists)
+    pub(super) fn matching_rows_with_done(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
+        self.matching(pane, true, view)
     }
 
-    /// The entries in `pane` of the blocks for which `lists` holds among the outline's rows with
-    /// nothing collapsed, completed blocks shown when `show_done` says so: the rows a change
-    /// builds again only where it changed, gone through rather than the document's tree.
-    fn matching(&self, pane: &Pane, show_done: bool, lists: impl Fn(&Row) -> bool) -> Vec<Row> {
+    /// The entries in `pane` of the blocks `view` lists among the outline's rows with nothing
+    /// collapsed, completed blocks shown when `show_done` says so: the rows a change builds
+    /// again only where it changed, gone through rather than the document's tree.
+    fn matching(&self, pane: &Pane, show_done: bool, view: SpecialView) -> Vec<Row> {
+        let today_project = self.today_project(pane);
         let mut above = Above::default();
         let mut entries = Vec::new();
         for row in &self.unfolded_rows(Location::Outline(None), show_done) {
             above.reach(row.depth);
-            if lists(row) {
+            if self.lists(
+                view,
+                row,
+                today_project.is_some() && above.top() == today_project,
+            ) {
                 entries.push(Row {
                     depth: 0,
                     selected: pane.selection.contains(row.id),

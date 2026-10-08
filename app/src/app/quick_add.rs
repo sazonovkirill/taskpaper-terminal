@@ -1,5 +1,5 @@
 //! Quick Add: a one-line prompt that adds a task or note, with the dates its words name, as the
-//! last child of a project chosen in it, and the `TODAY` project it can open with
+//! last child of a project chosen in it or the INBOX or TODAY project it opens with
 //! ([editing.md §6](../../../docs/specs/editing.md#6-quick-add-fr-mode-07-fr-mode-08),
 //! FR-MODE-07, FR-MODE-08, D-96, D-97, D-98).
 
@@ -19,9 +19,6 @@ use crate::document::{
     format::{self, LineParts, Typed, tags},
     structure::{self, Place},
 };
-
-/// The text of the project `qt` adds to (D-98).
-const TODAY: &str = "TODAY";
 
 /// The project Quick Add opens with as its destination.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,7 +202,8 @@ impl State {
         self.quick_add.as_ref()?.picker.as_ref().map(Finder::view)
     }
 
-    /// Whether `qt` adds to the `TODAY` project (`special_today`, D-98).
+    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks
+    /// (`special_today`, D-98, D-102).
     #[must_use]
     pub fn special_today(&self) -> bool {
         self.special_today
@@ -216,15 +214,6 @@ impl State {
         quick_add
             .destination
             .and_then(|id| blocks::block(&self.document, id))
-    }
-
-    /// The first shown top-level project whose text is `TODAY` while `special_today` is on
-    /// (D-98).
-    fn today_project(&self) -> Option<ItemId> {
-        self.special_today
-            .then(|| self.top_project(TODAY))
-            .flatten()
-            .map(|block| block.id())
     }
 
     /// `qq`, `qi` and `qt`: opens Quick Add with the destination `to` names, or, when that
@@ -244,7 +233,7 @@ impl State {
                 Some(inbox)
             }
             QuickAddTo::Today => {
-                let Some(today) = self.today_project() else {
+                let Some(today) = self.today_project(&self.pane) else {
                     self.notify(Notice::NoTodayProject);
                     return;
                 };

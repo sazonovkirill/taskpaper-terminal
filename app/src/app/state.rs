@@ -78,7 +78,8 @@ pub struct State {
     pub(super) date_prompt: Option<DatePrompt>,
     /// Quick Add, while it is open (FR-MODE-07).
     pub(super) quick_add: Option<QuickAdd>,
-    /// Whether `qt` adds to the `TODAY` project (`special_today`, D-98).
+    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks
+    /// (`special_today`, D-98, D-102).
     pub(super) special_today: bool,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
@@ -129,9 +130,9 @@ struct RowsKey {
     location: Location,
     show_done: bool,
     selection: Selection,
-    /// The day, order and starred setting of the Today view; `None` elsewhere, which does not
-    /// depend on them.
-    today: Option<(Date, TodayOrder, bool)>,
+    /// The day, order, starred setting and TODAY project setting of the Today view; `None`
+    /// elsewhere, which does not depend on them.
+    today: Option<(Date, TodayOrder, bool, bool)>,
     /// The day of a view whose entries depend on it, Upcoming, Overdue or Logbook; `None` elsewhere.
     day: Option<Date>,
 }
@@ -616,8 +617,14 @@ impl State {
             location: pane.location,
             show_done: pane.show_done,
             selection: pane.selection.clone(),
-            today: (pane.location == Location::View(SpecialView::Today))
-                .then(|| (self.today, self.today_order.clone(), self.today_starred)),
+            today: (pane.location == Location::View(SpecialView::Today)).then(|| {
+                (
+                    self.today,
+                    self.today_order.clone(),
+                    self.today_starred,
+                    self.special_today,
+                )
+            }),
             day: matches!(
                 pane.location,
                 Location::View(SpecialView::Upcoming | SpecialView::Overdue | SpecialView::Logbook)

@@ -5,7 +5,9 @@
 use std::time::Duration;
 
 use super::{
-    Tui, animation, config, effects,
+    Tui, animation,
+    config::{self, OptionalView},
+    effects,
     theme::{BuiltIn, Icon, IconSetting},
     widgets,
 };
@@ -20,8 +22,8 @@ enum Listed {
     Icons,
     Wrap,
     SpecialInbox,
-    /// Whether the Navigator lists this special view (D-77, D-80).
-    NavigatorView(SpecialView),
+    /// Whether the Navigator lists this special view (D-80).
+    NavigatorView(OptionalView),
     /// Whether the Today view lists starred blocks (D-88).
     TodayStarred,
     /// Whether `qt` adds to the `TODAY` project (D-98).
@@ -34,20 +36,19 @@ enum Listed {
 }
 
 /// The settings the window lists, in order.
-const LISTED: [Listed; 18] = [
+const LISTED: [Listed; 17] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
     Listed::SpecialInbox,
-    Listed::NavigatorView(SpecialView::Today),
     Listed::SpecialToday,
     Listed::TodayStarred,
-    Listed::NavigatorView(SpecialView::Upcoming),
-    Listed::NavigatorView(SpecialView::Overdue),
-    Listed::NavigatorView(SpecialView::Colors),
-    Listed::NavigatorView(SpecialView::Logbook),
-    Listed::NavigatorView(SpecialView::Starred),
-    Listed::NavigatorView(SpecialView::Flagged),
+    Listed::NavigatorView(OptionalView::Upcoming),
+    Listed::NavigatorView(OptionalView::Overdue),
+    Listed::NavigatorView(OptionalView::Colors),
+    Listed::NavigatorView(OptionalView::Logbook),
+    Listed::NavigatorView(OptionalView::Starred),
+    Listed::NavigatorView(OptionalView::Flagged),
     Listed::Animations,
     Listed::AutosaveDelay,
     Listed::Backups,
@@ -66,7 +67,7 @@ impl Listed {
             Self::Icons => "icons",
             Self::Wrap => "word_wrap",
             Self::SpecialInbox => "special_inbox",
-            Self::NavigatorView(view) => config::navigator_key(view),
+            Self::NavigatorView(view) => view.key(),
             Self::TodayStarred => "today_starred",
             Self::SpecialToday => "special_today",
             Self::Animations => "animations",
@@ -84,7 +85,7 @@ impl Listed {
             Self::Icons => Icon::Glyphs,
             Self::Wrap => Icon::Wrap,
             Self::SpecialInbox => Icon::Inbox,
-            Self::NavigatorView(view) => widgets::view_icon(view),
+            Self::NavigatorView(view) => widgets::view_icon(view.view()),
             Self::TodayStarred => Icon::Star,
             Self::SpecialToday => widgets::view_icon(SpecialView::Today),
             Self::Animations => Icon::Animations,
@@ -100,35 +101,30 @@ pub(super) fn icon(at: usize) -> Icon {
     LISTED.get(at).map_or(Icon::Command, |listed| listed.icon())
 }
 
-/// The name and description of the setting that says whether the Navigator lists `view` (D-77,
-/// D-80).
-fn navigator_setting(view: SpecialView) -> (&'static str, &'static str) {
+/// The name and description of the setting that says whether the Navigator lists `view` (D-80).
+fn navigator_setting(view: OptionalView) -> (&'static str, &'static str) {
     match view {
-        SpecialView::Today => (
-            "Show Today in Navigator",
-            "List the Today view in the Navigator",
-        ),
-        SpecialView::Upcoming => (
+        OptionalView::Upcoming => (
             "Show Upcoming in Navigator",
             "List the Upcoming view in the Navigator",
         ),
-        SpecialView::Overdue => (
+        OptionalView::Overdue => (
             "Show Overdue in Navigator",
             "List the Overdue view in the Navigator",
         ),
-        SpecialView::Colors => (
+        OptionalView::Colors => (
             "Show Colors in Navigator",
             "List the Colors view in the Navigator",
         ),
-        SpecialView::Logbook => (
+        OptionalView::Logbook => (
             "Show Logbook in Navigator",
             "List the Logbook view in the Navigator",
         ),
-        SpecialView::Starred => (
+        OptionalView::Starred => (
             "Show Starred in Navigator",
             "List the Starred view in the Navigator",
         ),
-        SpecialView::Flagged => (
+        OptionalView::Flagged => (
             "Show Flagged in Navigator",
             "List the Flagged view in the Navigator",
         ),
@@ -221,13 +217,13 @@ impl Tui {
                     "Appearance",
                     name,
                     description,
-                    self.state.navigator_lists(view),
+                    self.state.navigator_lists(view.view()),
                 )
             }
             Listed::SpecialToday => switch_on_by_default(
                 "Appearance",
                 "Special handling of TODAY project",
-                "qt adds to TODAY:, as qi adds to INBOX:",
+                "Today lists its tasks, and qt adds to it",
                 self.state.special_today(),
             ),
             Listed::TodayStarred => switch_on_by_default(
@@ -348,7 +344,7 @@ impl Tui {
             }
             (Listed::NavigatorView(view), SettingValue::Switch(on)) => {
                 self.send(
-                    Message::Configure(Configuration::NavigatorView(view, on)),
+                    Message::Configure(Configuration::NavigatorView(view.view(), on)),
                     now,
                 );
                 Some(on.into())
@@ -460,7 +456,7 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
-            (13, SettingValue::Choice(3)),
+            (12, SettingValue::Choice(3)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
@@ -487,7 +483,6 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
-            SettingValue::Switch(false),
             SettingValue::Choice(2),
             SettingValue::Number(300),
             SettingValue::Switch(false),
@@ -499,9 +494,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(16, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(15, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[16].value,
+            tui.listed_settings()[15].value,
             SettingValue::Text(String::new())
         );
         assert!(

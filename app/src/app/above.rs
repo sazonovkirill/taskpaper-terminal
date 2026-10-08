@@ -36,6 +36,11 @@ impl Above {
         });
     }
 
+    /// The top-level block above the row reached, if it is not at the top level.
+    pub(super) fn top(&self) -> Option<ItemId> {
+        self.lines.first().map(|line| line.id)
+    }
+
     /// The text of each block above the row reached, as [`State::shown_text`] gives it.
     pub(super) fn path(&self, state: &State) -> Arc<[Arc<str>]> {
         self.path_of(self.lines.len(), state)

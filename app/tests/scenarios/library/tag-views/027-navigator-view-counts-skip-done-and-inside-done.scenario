@@ -1,6 +1,5 @@
 # A special view's Navigator count leaves out done tasks, tasks inside done projects, notes and projects, even though the view lists them.
 config <<END
-sidebar_today = false
 sidebar_upcoming = false
 sidebar_overdue = false
 sidebar_logbook = false
