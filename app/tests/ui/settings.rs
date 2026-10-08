@@ -4,9 +4,9 @@
 
 use std::{fs, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
-use taskpaper_terminal::ui::ColorSupport;
+use taskpaper_terminal::ui::{ColorSupport, Input};
 
 use crate::support::{Harness, line};
 
@@ -465,6 +465,34 @@ fn slash_filters_the_settings_by_name() {
     assert_eq!(
         window(&mut app)[1],
         "│ Appearance    │   ● Theme                           Terminal Dark  │"
+    );
+}
+
+// ui.md §8, keybindings.md §4: the filter and the prompt take the standard text keys, pasting
+// included.
+#[test]
+fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_filter_or_prompt() {
+    let mut app = Harness::with_config("~/copies\n", SETTINGS, 70, 20);
+    app.type_keys("yg,/");
+    app.send(Input::Terminal(Event::Paste("back\n".to_owned())));
+    assert_eq!(
+        window(&mut app)[1],
+        "│ Files         │   ↺ Backups                                    on  │"
+    );
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Char('j'));
+    press(&mut app, KeyCode::Enter);
+    app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
+    assert_eq!(
+        window(&mut app)[16],
+        "│ Backup folder: ~/copies                                            │",
+        "what y copied, without its line break"
+    );
+    press(&mut app, KeyCode::Enter);
+    app.settle();
+    assert_eq!(
+        config(&app),
+        format!("{SETTINGS}\n[backups]\ndir = \"~/copies\"\n")
     );
 }
 

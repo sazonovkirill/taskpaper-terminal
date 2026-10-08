@@ -13,7 +13,6 @@ use super::{
 use crate::document::{
     Block, DateTag, ItemId, blocks,
     dates::{self, DateError},
-    format::breaks_line,
     metadata,
 };
 
@@ -56,12 +55,9 @@ pub(super) struct DatePrompt {
 }
 
 impl DatePrompt {
-    /// Types `text` as its characters would be typed, leaving out those that break lines, which
-    /// the prompt's one line cannot hold.
+    /// Types `text` as [`TextField::pasted`] does.
     pub(super) fn paste(&mut self, text: &str) {
-        for c in text.chars().filter(|&c| !breaks_line(c)) {
-            self.field = self.field.edited(TextEdit::Insert(c));
-        }
+        self.field = self.field.pasted(text);
     }
 
     /// The date the text resolves to, or `None` for a blank text, which removes the date.

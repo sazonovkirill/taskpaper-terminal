@@ -7,7 +7,10 @@ use std::ops::Range;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::document::inline::{self, Marker};
+use crate::document::{
+    format::breaks_line,
+    inline::{self, Marker},
+};
 
 /// A change to a [`TextField`], as a text key asks for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -141,6 +144,18 @@ impl TextField {
             },
             TextEdit::Toggle(marker) => self.toggled(marker),
         }
+    }
+
+    /// The field with `text` typed in place of the selection, or at the caret, leaving out the
+    /// characters that break lines, which its one line cannot hold; unchanged when that leaves
+    /// nothing to type.
+    #[must_use]
+    pub fn pasted(&self, text: &str) -> Self {
+        let typed: String = text.chars().filter(|&c| !breaks_line(c)).collect();
+        if typed.is_empty() {
+            return self.clone();
+        }
+        self.replaced(self.selection_or(self.caret), &typed)
     }
 
     /// The field with `marker` toggled on the selection, which stays on the same text, or on
@@ -331,6 +346,21 @@ mod tests {
         check("|", TextEdit::Insert('é'), "é|");
         check("a[bc|d", TextEdit::Insert('x'), "ax|d");
         check("a|bc[d", TextEdit::Insert('x'), "ax|d");
+    }
+
+    // keybindings.md §4: a prompt takes pasted text as typed, on its one line.
+    #[test]
+    fn pastes_at_the_caret_or_over_the_selection_without_line_breaks() {
+        let pasted = |before: &str, text: &str| marked(&field(before).pasted(text));
+        assert_eq!(pasted("a|b", "xy"), "axy|b");
+        assert_eq!(pasted("a[bc|d", "x\r\ny\u{2029}z\n"), "axyz|d");
+        assert_eq!(pasted("|", "日本"), "日本|");
+        assert_eq!(
+            pasted("a[bc|d", "\n"),
+            "a[bc|d",
+            "nothing typed, so nothing replaced"
+        );
+        assert_eq!(pasted("a[bc|d", ""), "a[bc|d");
     }
 
     // FR-MODE-03

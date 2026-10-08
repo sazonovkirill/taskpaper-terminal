@@ -322,6 +322,20 @@ impl Window {
         Outcome::Open(None)
     }
 
+    /// Types `text` into the prompt or the filter being typed as [`TextField::pasted`] does;
+    /// nothing else in the window takes text.
+    fn paste(&mut self, text: &str) {
+        match &mut self.editor {
+            Some(Editor::Typing(field)) => *field = field.pasted(text),
+            None if self.filtering => {
+                self.filter = self.filter.as_ref().map(|filter| filter.pasted(text));
+                self.group = 0;
+                self.selected = 0;
+            }
+            Some(Editor::Picking(_)) | None => {}
+        }
+    }
+
     /// Applies `input` while the filter is being typed.
     fn filter_input(&mut self, input: &SettingsInput) {
         match input {
@@ -573,6 +587,15 @@ impl State {
                 None
             }
         }
+    }
+
+    /// Types `text` into the open window as [`Window::paste`] does; `false` when it is closed.
+    pub(super) fn settings_paste(&mut self, text: &str) -> bool {
+        let Some(window) = &mut self.settings else {
+            return false;
+        };
+        window.paste(text);
+        true
     }
 
     /// Shows the problems of the frontend's settings file, `problems`, in the status line and,
@@ -982,6 +1005,51 @@ mod tests {
             shown(&state).1[1],
             ("Folder: ~/copies".into(), true),
             "unchanged"
+        );
+    }
+
+    // ui.md §8, keybindings.md §4: the prompt and the filter take pasted text as typed, on
+    // their one line, and the rest of the window none.
+    #[test]
+    fn pasted_text_is_typed_into_the_prompt_or_filter_but_nothing_else() {
+        let paste = |state: &mut State, text: &str| {
+            let text = text.to_owned();
+            let at = crate::app::Paste::Below;
+            assert_eq!(state.update(Message::Pasted { text, at }), []);
+        };
+        let mut state = opened();
+        key(&mut state, SettingsInput::Next);
+        paste(&mut state, "- b");
+        assert_eq!(shown(&state).2, 1, "browsing, nothing changes");
+        key(&mut state, SettingsInput::Filter);
+        paste(&mut state, "D\nEL");
+        assert_eq!(
+            shown(&state),
+            (vec!["Files"], vec![("Delay: 1000 ms".into(), false)], 0)
+        );
+        key(&mut state, SettingsInput::Cancel);
+        key(&mut state, SettingsInput::Change);
+        paste(&mut state, "x");
+        assert_eq!(
+            state.settings().unwrap().picker.unwrap().1.query,
+            "",
+            "the value picker takes none"
+        );
+        key(&mut state, SettingsInput::Pick(MenuInput::Dismiss));
+        key(&mut state, SettingsInput::SwitchColumn);
+        key(&mut state, SettingsInput::Next);
+        key(&mut state, SettingsInput::SwitchColumn);
+        key(&mut state, SettingsInput::Next);
+        key(&mut state, SettingsInput::Change);
+        paste(&mut state, "~/cop\r\nies\n");
+        assert_eq!(
+            key(&mut state, SettingsInput::Accept),
+            change(3, SettingValue::Text("~/copies".into()))
+        );
+        assert_eq!(
+            format::serialize(state.document()),
+            "- a\n",
+            "no block pasted"
         );
     }
 

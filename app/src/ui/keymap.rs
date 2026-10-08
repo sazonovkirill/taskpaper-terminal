@@ -313,10 +313,13 @@ const SETTINGS_TEXT: &[(Key, SettingsInput)] = &[
 ];
 
 /// The settings window's message for `key` while its filter or a prompt takes text: `Ctrl+Q`
-/// quits, a binding, else the change to the text it asks for.
+/// quits, `Ctrl+V` pastes into the text, a binding, else the change to the text it asks for.
 fn settings_text_message(key: Key) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'v') {
+        return Some(Message::Paste(Paste::Below));
     }
     let input = SETTINGS_TEXT
         .iter()
@@ -397,11 +400,14 @@ const SAVE_AS: &[(Key, SaveAs)] = &[
     (key!(Tab), SaveAs::Complete),
 ];
 
-/// The Save As message for `key`: `Ctrl+Q` quits, a prompt binding, else the change to the path
-/// it asks for.
+/// The Save As message for `key`: `Ctrl+Q` quits, `Ctrl+V` pastes into the path, a prompt
+/// binding, else the change to the path it asks for.
 fn save_as_message(key: Key) -> Option<Message> {
     if key == key!(ctrl 'q') {
         return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'v') {
+        return Some(Message::Paste(Paste::Below));
     }
     let event = SAVE_AS
         .iter()
@@ -819,7 +825,8 @@ impl Keymap {
 
     /// What `event` completes at time `now`, if anything, a message carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
-    /// navigate and edit mode, the date prompt and the Quick Add panel alone; repeats, releases
+    /// navigate and edit mode, the date prompt, the Quick Add panel, the Save As prompt and the
+    /// settings window's prompt and filter alone; repeats, releases
     /// and other events are ignored. A key that continues no binding ends the pending sequence
     /// and does nothing, unless the sequence, or one that timed out, is a binding of its own:
     /// then what it asks for comes back and [`Keymap::replay`] says to handle `event` again once
@@ -837,7 +844,13 @@ impl Keymap {
                 return Some(action);
             }
             let takes_text = match context.overlay {
-                Some(overlay) => matches!(overlay, Overlay::DatePrompt | Overlay::QuickAdd),
+                Some(overlay) => matches!(
+                    overlay,
+                    Overlay::DatePrompt
+                        | Overlay::QuickAdd
+                        | Overlay::SaveAs
+                        | Overlay::SettingsText
+                ),
                 None => !context.command_menu && !context.navigator,
             };
             return takes_text.then(|| {
@@ -2749,6 +2762,40 @@ mod tests {
                 expected,
                 "{code:?}"
             );
+        }
+    }
+
+    // FR-DOC-06, ui.md §8, keybindings.md §4: the Save As prompt and the settings window's
+    // prompt and filter take pasted text, and the rest of the window none.
+    #[test]
+    fn save_as_and_the_settings_text_fields_take_text_pasted_into_the_terminal_or_with_ctrl_v() {
+        let pasted = Event::Paste("a\nb".to_owned());
+        let mut keymap = Keymap::default();
+        for overlay in [Overlay::SaveAs, Overlay::SettingsText] {
+            let context = Context {
+                overlay: Some(overlay),
+                ..*CONTEXT
+            };
+            assert_eq!(
+                keymap.message_for(&pasted, ms(0), &context),
+                Some(Message::Pasted {
+                    text: "a\nb".to_owned(),
+                    at: Paste::Below,
+                }),
+                "{overlay:?}"
+            );
+            assert_eq!(
+                overlay_message(overlay, KeyCode::Char('v'), KeyModifiers::CONTROL),
+                Some(Message::Paste(Paste::Below)),
+                "{overlay:?}"
+            );
+        }
+        for overlay in [Overlay::Settings, Overlay::SettingsPicker] {
+            let context = Context {
+                overlay: Some(overlay),
+                ..*CONTEXT
+            };
+            assert_eq!(keymap.message_for(&pasted, ms(0), &context), None);
         }
     }
 

@@ -172,6 +172,19 @@ impl State {
         Vec::new()
     }
 
+    /// Types `text` into the open prompt's path as [`TextField::pasted`] does, unless it is
+    /// writing the file; `false` when no prompt is open.
+    pub(super) fn save_as_paste(&mut self, text: &str) -> bool {
+        let Some(prompt) = self.save_as.as_mut() else {
+            return false;
+        };
+        if let Stage::Typing { .. } | Stage::Replacing { .. } = prompt.stage {
+            prompt.field = prompt.field.pasted(text);
+            prompt.stage = Stage::Typing { failure: None };
+        }
+        true
+    }
+
     /// Writes the document to `path`, which must be at `expected`, or not exist when `None`,
     /// after keeping a backup of a file it replaces.
     fn write_as(&mut self, path: PathBuf, expected: Option<Version>) -> Vec<Effect> {
@@ -294,6 +307,58 @@ mod tests {
         let mut unnamed = State::new(format::parse("- a\n"), None);
         event(&mut unnamed, SaveAs::Open);
         assert_eq!(unnamed.save_as().unwrap().text, "");
+    }
+
+    // FR-DOC-06, keybindings.md §4: the prompt takes pasted text as typed, on its one line.
+    #[test]
+    fn pasted_text_is_typed_into_the_path_without_line_breaks() {
+        let paste = |state: &mut State, text: &str| {
+            let text = text.to_owned();
+            let at = crate::app::Paste::Below;
+            assert_eq!(state.update(Message::Pasted { text, at }), []);
+        };
+        let mut state = State::new(format::parse("- a\n"), Some(PathBuf::from(FILE)));
+        event(&mut state, SaveAs::Open);
+        paste(&mut state, "/notes\n/todo");
+        assert_eq!(
+            state.save_as().unwrap().text,
+            "/notes/todo",
+            "in place of the selected path"
+        );
+        paste(&mut state, ".taskpaper\r\n");
+        assert_eq!(state.save_as().unwrap().text, NEW);
+        assert_eq!(
+            event(&mut state, SaveAs::Accept),
+            [Effect::ResolvePath(NEW.to_owned())]
+        );
+        event(&mut state, SaveAs::Resolved(PathBuf::from(NEW)));
+        paste(&mut state, "x");
+        assert_eq!(state.save_as().unwrap().text, NEW, "not while writing");
+        event(&mut state, SaveAs::Refused { contents: None });
+        assert_eq!(status(&state), Some(SaveAsStatus::Replacing));
+        paste(&mut state, "2");
+        assert_eq!(state.save_as().unwrap().text, format!("{NEW}2"));
+        assert_eq!(
+            status(&state),
+            Some(SaveAsStatus::Typing),
+            "back to the path"
+        );
+        assert_eq!(
+            format::serialize(state.document()),
+            "- a\n",
+            "no block pasted"
+        );
+        let mut starred = opened();
+        starred.update(Message::GoTo(crate::app::Location::View(
+            crate::app::SpecialView::Starred,
+        )));
+        event(&mut starred, SaveAs::Open);
+        paste(&mut starred, "~/a");
+        assert_eq!(
+            starred.save_as().unwrap().text,
+            "~/a",
+            "in a special view too"
+        );
     }
 
     // FR-DOC-06, file-io.md §2

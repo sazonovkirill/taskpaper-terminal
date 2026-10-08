@@ -3,7 +3,8 @@
 
 use std::{fs, path::Path, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
+use taskpaper_terminal::ui::Input;
 
 use crate::support::{Harness, NAVIGATE, line};
 
@@ -169,4 +170,31 @@ fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     let rows = screen(&mut app);
     assert!(!rows.iter().any(|row| row.contains("Save As")), "{rows:#?}");
     assert_eq!(rows[15], format!("{NAVIGATE} · {}", opened.display()));
+}
+
+// FR-DOC-06, keybindings.md §4: the prompt takes the standard text keys, pasting included.
+#[test]
+fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_path() {
+    let mut app = Harness::with_text("todo.taskpaper\n", 70, 16);
+    fs::create_dir(app.home.join("notes")).unwrap();
+    app.type_keys("y");
+    open_save_as(&mut app);
+    app.send(Input::Terminal(Event::Paste("~/notes/\n".to_owned())));
+    assert_eq!(
+        prompt(&mut app)[1],
+        "│ ~/notes/                                                           │",
+        "the pasted text replaced the selected path"
+    );
+    app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
+    assert_eq!(
+        prompt(&mut app)[1],
+        "│ ~/notes/todo.taskpaper                                             │",
+        "what y copied, without its line break"
+    );
+    press(&mut app, KeyCode::Enter);
+    app.settle();
+    assert_eq!(
+        fs::read_to_string(app.home.join("notes/todo.taskpaper")).unwrap(),
+        "todo.taskpaper\n"
+    );
 }
