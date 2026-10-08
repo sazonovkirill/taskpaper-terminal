@@ -38,6 +38,17 @@ impl Deref for Folds {
     }
 }
 
+impl Extend<ItemId> for Folds {
+    /// Collapses each of `ids` at once, making room for them together. When every one is
+    /// collapsed already, the folds stay shared.
+    fn extend<I: IntoIterator<Item = ItemId>>(&mut self, ids: I) {
+        let new: Vec<ItemId> = ids.into_iter().filter(|id| !self.0.contains(id)).collect();
+        if !new.is_empty() {
+            Rc::make_mut(&mut self.0).extend(new);
+        }
+    }
+}
+
 impl FromIterator<ItemId> for Folds {
     fn from_iter<I: IntoIterator<Item = ItemId>>(ids: I) -> Self {
         Self(Rc::new(ids.into_iter().collect()))
@@ -77,5 +88,12 @@ mod tests {
             [a, b].into_iter().collect::<Folds>(),
             Folds::from_iter([b, a])
         );
+        let mut folds = Folds::from_iter([a]);
+        let shared = folds.clone();
+        folds.extend([a]);
+        assert!(Rc::ptr_eq(&folds.0, &shared.0), "already collapsed");
+        folds.extend([a, b]);
+        assert_eq!(*folds, HashSet::from([a, b]));
+        assert_eq!(*shared, HashSet::from([a]), "the clone keeps what it had");
     }
 }

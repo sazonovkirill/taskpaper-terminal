@@ -27,11 +27,13 @@ pub struct Rows {
 
 type Chunk = Rc<[Entry]>;
 
-/// A row with the number of rows its block's subtree takes, its own included.
+/// A row with the number of rows its block's subtree takes, its own included, and the open
+/// tasks among them below it (D-67).
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Entry {
     row: Row,
     span: usize,
+    open: usize,
 }
 
 impl Rows {
@@ -266,6 +268,8 @@ pub(super) struct Builder<'a> {
     /// The new rows, in order.
     fresh: Vec<Entry>,
     len: usize,
+    /// How many of the rows are open tasks.
+    open: usize,
 }
 
 /// A row [`Builder::open`] added, whose subtree's rows follow until it is closed.
@@ -274,6 +278,7 @@ pub(super) struct Builder<'a> {
 pub(super) struct Opened {
     fresh: usize,
     len: usize,
+    open: usize,
 }
 
 impl<'a> Builder<'a> {
@@ -284,6 +289,7 @@ impl<'a> Builder<'a> {
             kept: Vec::new(),
             fresh: Vec::new(),
             len: 0,
+            open: 0,
         }
     }
 
@@ -295,11 +301,17 @@ impl<'a> Builder<'a> {
     /// Adds `row`, whose subtree's rows are the ones added until [`Builder::close`] is given what
     /// this returns.
     pub(super) fn open(&mut self, row: Row) -> Opened {
+        self.open += usize::from(row.open_task());
         let opened = Opened {
             fresh: self.fresh.len(),
             len: self.len,
+            open: self.open,
         };
-        self.fresh.push(Entry { row, span: 1 });
+        self.fresh.push(Entry {
+            row,
+            span: 1,
+            open: 0,
+        });
         self.len += 1;
         opened
     }
@@ -308,13 +320,15 @@ impl<'a> Builder<'a> {
     pub(super) fn close(&mut self, opened: Opened) {
         if let Some(entry) = self.fresh.get_mut(opened.fresh) {
             entry.span = self.len - opened.len;
+            entry.open = self.open - opened.open;
         }
     }
 
     /// Adds the old row at `index` with its subtree's rows, as they were; returns how many rows
     /// that is, or `None` without an old row there.
     pub(super) fn keep(&mut self, index: usize) -> Option<usize> {
-        let span = self.old?.span(index)?;
+        let entry = self.old?.entry(index)?;
+        let span = entry.span;
         let rows = index..index + span;
         match self.kept.last_mut() {
             Some((before, old)) if *before == self.fresh.len() && old.end == rows.start => {
@@ -323,6 +337,7 @@ impl<'a> Builder<'a> {
             _ => self.kept.push((self.fresh.len(), rows)),
         }
         self.len += span;
+        self.open += usize::from(entry.row.open_task()) + entry.open;
         Some(span)
     }
 
@@ -340,6 +355,47 @@ impl<'a> Builder<'a> {
         }
         chunks.extend(fresh);
         chunks.finish()
+    }
+}
+
+/// The rows of one block's children among the rows with nothing collapsed, gone through in order
+/// while rows with blocks collapsed are built, so that a collapsed block's open tasks come from
+/// its row there rather than from a walk over the document's lines.
+#[derive(Debug)]
+pub(super) struct Unfolded<'a> {
+    rows: &'a Rows,
+    /// The first of the children's rows.
+    start: usize,
+    /// The first row not yet passed.
+    at: usize,
+}
+
+impl<'a> Unfolded<'a> {
+    /// The children's rows among `rows`, from `start` on.
+    pub(super) fn new(rows: &'a Rows, start: usize) -> Self {
+        Self {
+            rows,
+            start,
+            at: start,
+        }
+    }
+
+    /// The rows of the children of the block `id`, the next of these children that is, passing
+    /// those before it; `None` when it has no row.
+    pub(super) fn below(&mut self, id: ItemId) -> Option<Self> {
+        loop {
+            let at = self.at;
+            self.at += self.rows.span(at)?;
+            if self.rows.get(at)?.id == id {
+                return Some(Self::new(self.rows, at + 1));
+            }
+        }
+    }
+
+    /// How many open tasks these rows hold (D-67), or `None` when they are not the children of
+    /// a row.
+    pub(super) fn open_tasks(&self) -> Option<usize> {
+        Some(self.rows.entry(self.start.checked_sub(1)?)?.open)
     }
 }
 

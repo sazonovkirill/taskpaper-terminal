@@ -6,7 +6,7 @@ use std::{collections::HashSet, rc::Rc};
 use jiff::civil::Date;
 
 use super::{
-    Location, Notice, PaneChange, Row, Rows, SpecialView, State,
+    Location, Notice, PaneChange, Rows, SpecialView, State,
     commands::{Command, NodeCommand},
     folds::Folds,
     memo::Memo,
@@ -514,7 +514,7 @@ impl State {
     /// block a view could list as an open task.
     fn views_open_tasks(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
         let mut counts = [0; SpecialView::ALL.len()];
-        for row in rows.iter().filter(|row| open_task(row)) {
+        for row in rows.iter().filter(|row| row.open_task()) {
             for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
                 *count += usize::from(self.lists(view, row));
             }
@@ -565,7 +565,7 @@ impl State {
                 end(&mut above, &mut out, open_so_far);
             }
             // A bookmarked task holds the tasks below it, not itself.
-            open_so_far += usize::from(open_task(row));
+            open_so_far += usize::from(row.open_task());
             if row.bookmark {
                 above.push((row.depth, out.len(), open_so_far));
                 out.push(NavigatorEntry::Bookmark {
@@ -611,7 +611,7 @@ impl State {
             {
                 end_project(&mut above, &mut out, open);
             }
-            open += usize::from(open_task(row));
+            open += usize::from(row.open_task());
             if row.kind != BlockKind::Project {
                 continue;
             }
@@ -688,12 +688,6 @@ fn filtered(entries: Vec<NavigatorEntry>, filter: &str) -> Vec<NavigatorEntry> {
             kept.then_some(entry)
         })
         .collect()
-}
-
-/// Whether `row` is an open task: neither done nor inside a done block (D-67), so a done block
-/// holds none.
-fn open_task(row: &Row) -> bool {
-    row.kind == BlockKind::Task && !row.done && !row.inside_done
 }
 
 /// A project above a row of the outline.
@@ -1107,7 +1101,7 @@ INBOX:",
                 .into_iter()
                 .map(|view| {
                     let rows = state.view_rows(&every, view);
-                    rows.iter().filter(|row| open_task(row)).count()
+                    rows.iter().filter(|row| row.open_task()).count()
                 })
                 .collect();
             assert_eq!(counts, listed, "show_done {show_done}");

@@ -1012,15 +1012,12 @@ impl State {
 
     fn collapse_all(&mut self) {
         let rows = self.below_zoom();
-        let parents: Vec<ItemId> = rows
+        let parents = rows
             .iter()
             .zip(rows.iter().skip(1))
             .filter(|(row, next)| !row.title && next.depth > row.depth)
-            .map(|(row, _)| row.id)
-            .collect();
-        for id in parents {
-            self.folds.insert(id);
-        }
+            .map(|(row, _)| row.id);
+        self.folds.extend(parents);
     }
 
     /// Every block below the pane's zoom, collapsed or not, done or not, each followed by those

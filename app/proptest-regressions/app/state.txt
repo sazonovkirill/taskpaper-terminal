@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 961da507e464bb65bf31492ee3556ddef0e444a5b8548cde9a0f1660ccf5a902 # shrinks to changes = [Insert(3458986482049), Text(4112682110453537497, "- t @done")]
+cc 608082d7d126f99b12c37d1b8da839ea0f103673241a171e7c4dbc75147a5e77 # shrinks to changes = [Fold(12763764159844526710), Fold(21174492679545091), Move(7676830028077354635, 6517293534509335708), Fold(26169138244695981), Zoom(13597913589757942798), Move(841815284308369215, 1441480801048586045), Fold(176941722603080411)], seen = [false, false, false, false, true, false, false, false, false, false, false, false]

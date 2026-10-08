@@ -23,7 +23,7 @@ use super::{
     pane::Pane,
     picker::Picker,
     quick_add::QuickAdd,
-    rows::{Builder, OldSiblings, Rows},
+    rows::{Builder, OldSiblings, Rows, Unfolded},
     save_as,
     saving::Autosave,
     selection::Selection,
@@ -362,6 +362,12 @@ impl Row {
     pub fn overdue(&self, today: Date) -> bool {
         !self.done && !self.inside_done && self.due.is_some_and(|due| due < today)
     }
+
+    /// Whether it is an open task: neither done nor inside a done block (D-67), so a done block
+    /// holds none.
+    pub(super) fn open_task(&self) -> bool {
+        self.kind == BlockKind::Task && !self.done && !self.inside_done
+    }
 }
 
 impl State {
@@ -653,27 +659,83 @@ impl State {
             before.and_then(|(key, rows)| Some((rows, self.changed_blocks(pane, folds, &key)?)));
         let mut rows = Builder::new(before.as_ref().map(|(rows, _)| rows));
         let opened = title.map(|row| rows.open(row));
-        let top = self
-            .zoom_block_of(pane)
-            .map_or(self.document.root(), |block| block.id());
+        let top = self.top_of(pane);
         let kept = before
             .as_ref()
             .map(|(rows, changed)| (below..rows.len(), changed));
-        self.push_rows((pane, folds), top, (below, top_done), kept, &mut rows);
+        // The outline's rows with nothing collapsed, as the pane showed them before any block
+        // collapsed, kept from one change to the next, which hold the open tasks of each
+        // collapsed block (N-PERF-02). Those of a zoom block they leave out, one inside a
+        // special node, are the pane's own.
+        let (home, here);
+        let mut unfolded = if folds.is_empty() {
+            None
+        } else {
+            home = self.unfolded_rows(Location::Outline(None), pane.show_done);
+            if let Some(level) = self.unfolded_below(&home, top) {
+                Some(level)
+            } else {
+                here = self.unfolded_rows(pane.location, pane.show_done);
+                Some(Unfolded::new(&here, below))
+            }
+        };
+        self.push_rows(
+            (pane, folds),
+            top,
+            (below, top_done),
+            kept,
+            unfolded.as_mut(),
+            &mut rows,
+        );
         if let Some(opened) = opened {
             rows.close(opened);
         }
         rows.finish()
     }
 
+    /// The rows of the children of the line `top` among `every`, the outline's rows with nothing
+    /// collapsed, or `None` when `top` is a block they leave out.
+    fn unfolded_below<'a>(&self, every: &'a Rows, top: ItemId) -> Option<Unfolded<'a>> {
+        let mut path: Vec<ItemId> =
+            std::iter::successors(Some(top), |&line| self.document.get(line)?.parent()).collect();
+        // The root, whose children the rows begin with.
+        path.pop();
+        path.into_iter()
+            .rev()
+            .try_fold(Unfolded::new(every, 0), |mut level, line| level.below(line))
+    }
+
     /// The blocks whose rows may differ from those at `key` in `pane`, with every line above
     /// them, or `None` when the document cannot tell what changed since.
     fn changed_blocks(&self, pane: &Pane, folds: &Folds, key: &RowsKey) -> Option<HashSet<ItemId>> {
+        let top = self.top_of(pane);
+        let parent = |id: ItemId| self.document.get(id).and_then(Item::parent);
+        // A block collapsed or expanded inside one collapsed before or after shows the same:
+        // hidden on both sides, or inside a block whose own fold changed and that is built
+        // again whole. Passing over those keeps collapsing every block from going through
+        // each of them (N-PERF-02).
+        let shown_before_and_after = |&id: &ItemId| {
+            let mut above = parent(id);
+            while let Some(line) = above
+                && line != top
+            {
+                if folds.contains(&line) || key.folds.contains(&line) {
+                    return false;
+                }
+                above = parent(line);
+            }
+            true
+        };
         let changed = self
             .document
             .changed_since(&key.document)?
             .into_iter()
-            .chain(folds.symmetric_difference(&key.folds).copied())
+            .chain(
+                folds
+                    .symmetric_difference(&key.folds)
+                    .copied()
+                    .filter(shown_before_and_after),
+            )
             .chain(pane.selection.differences(&key.selection));
         let mut above = HashSet::new();
         for id in changed {
@@ -689,13 +751,16 @@ impl State {
 
     /// Adds the rows of the blocks below the line `parent` at `depth`, inside a done block when
     /// `inside_done` says so. With `kept`, the old rows of `parent`'s children and the blocks
-    /// whose rows may have changed since, it keeps the rows of each unchanged block.
+    /// whose rows may have changed since, it keeps the rows of each unchanged block. `unfolded`,
+    /// the rows of `parent`'s children with nothing collapsed, counts what a collapsed block
+    /// hides; there is one whenever `folds` holds a block.
     fn push_rows(
         &self,
         (pane, folds): (&Pane, &Folds),
         parent: ItemId,
         (depth, inside_done): (usize, bool),
         kept: Option<(Range<usize>, &HashSet<ItemId>)>,
+        mut unfolded: Option<&mut Unfolded>,
         rows: &mut Builder,
     ) {
         let children = self.document.get(parent).map_or(&[][..], Item::children);
@@ -715,9 +780,17 @@ impl State {
                 continue;
             };
             let folded = folds.contains(&id);
+            let mut every = unfolded.as_mut().and_then(|siblings| siblings.below(id));
+            let hidden_tasks = (folded && blocks::each_child(&self.document, id).next().is_some())
+                .then(|| {
+                    every
+                        .as_ref()
+                        .expect("the rows with nothing collapsed hold every block shown")
+                        .open_tasks()
+                })
+                .flatten();
             let opened = rows.open(Row {
-                hidden_tasks: (folded && blocks::each_child(&self.document, id).next().is_some())
-                    .then(|| self.open_tasks(&block, inside_done)),
+                hidden_tasks,
                 ..self.row(pane, &block, depth, false, inside_done)
             });
             if !folded {
@@ -729,6 +802,7 @@ impl State {
                     id,
                     (depth + 1, inside_done || block.done()),
                     below,
+                    every.as_mut(),
                     rows,
                 );
             }
@@ -785,6 +859,12 @@ impl State {
         blocks::block(&self.document, pane.zoom()?)
     }
 
+    /// The line whose children are `pane`'s top-level blocks: its zoom block, else the root.
+    fn top_of(&self, pane: &Pane) -> ItemId {
+        self.zoom_block_of(pane)
+            .map_or(self.document.root(), |block| block.id())
+    }
+
     /// Every block below the zoom in order with its depth; with `visible`, only those the rows
     /// show: none hidden by a collapsed ancestor or, while completed blocks are hidden, by being
     /// done or inside a done block. The zoom block's own fold hides nothing.
@@ -804,9 +884,7 @@ impl State {
         pane: &'a Pane,
         visible: bool,
     ) -> impl Iterator<Item = (Block, usize)> + 'a {
-        let top = self
-            .zoom_block_of(pane)
-            .map_or(self.document.root(), |block| block.id());
+        let top = self.top_of(pane);
         // The blocks still to visit at each depth on the way down to the current one.
         let mut levels = vec![blocks::each_child(&self.document, top)];
         std::iter::from_fn(move || {
@@ -1145,6 +1223,102 @@ mod tests {
         assert_eq!(inside[1], ("B".to_owned(), Some(0)), "inside a done block");
     }
 
+    /// The line of `state`'s document that reads `text`.
+    fn line(state: &State, text: &str) -> ItemId {
+        let document = &state.document;
+        document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .find(|&id| document.get(id).map(Item::plain_text) == Some(text))
+            .expect("a line with the text")
+    }
+
+    // N-PERF-02, D-67, special-nodes.md §1
+    #[test]
+    fn the_rows_with_nothing_collapsed_give_those_below_a_block_unless_they_leave_it_out() {
+        let text = "A:\n\tB:\n\t\t- c\n\t\t\t- d\n\t- e\nH @hidden\n\tE:\n\t\t- f";
+        let state = State::new(format::parse(text), None);
+        let every = state.unfolded_rows(Location::Outline(None), true);
+        let root = state.document.root();
+        let below = |top| {
+            state
+                .unfolded_below(&every, top)
+                .map(|rows| rows.open_tasks())
+        };
+        assert_eq!(below(root), Some(None), "below no row");
+        assert_eq!(below(line(&state, "A")), Some(Some(3)));
+        assert_eq!(below(line(&state, "B")), Some(Some(2)), "below A");
+        assert_eq!(below(line(&state, "E")), None, "inside a special node");
+    }
+
+    // D-67, FR-DONE-02
+    #[test]
+    fn a_fold_counts_the_same_while_completed_blocks_are_hidden() {
+        let text = "A:\n\t- b @done\n\t\t- c\n\t- d\nE:\n\t- f @done";
+        let mut state = State::new(format::parse(text), None);
+        state.pane.show_done = false;
+        state.folds = Folds::from_iter([line(&state, "A"), line(&state, "E")]);
+        let rows: Vec<_> = state
+            .rows()
+            .iter()
+            .map(|row| (row.text.to_string(), row.hidden_tasks))
+            .collect();
+        assert_eq!(
+            rows,
+            [("A".to_owned(), Some(1)), ("E".to_owned(), Some(0))],
+            "E still folds a completed block"
+        );
+    }
+
+    // N-PERF-02
+    #[test]
+    fn only_folds_that_show_before_and_after_are_changes() {
+        let text = "A:\n\tB:\n\t\t- c\nE:\n\tF:\n\t\t- g";
+        let mut state = State::new(format::parse(text), None);
+        let [a, b, e, f] = ["A", "B", "E", "F"].map(|text| line(&state, text));
+        state.folds = Folds::from_iter([e]);
+        let key = RowsKey {
+            document: state.document.stamp(),
+            folds: state.folds.clone(),
+            location: state.pane.location,
+            show_done: state.pane.show_done,
+            selection: state.pane.selection.clone(),
+            today: None,
+            day: None,
+        };
+        // B inside A collapsed after, F inside E collapsed before.
+        state.folds = Folds::from_iter([a, b, f]);
+        assert_eq!(
+            state.changed_blocks(&state.pane, &state.folds, &key),
+            Some(HashSet::from([a, e, state.document.root()]))
+        );
+    }
+
+    // D-67, D-31, special-nodes.md §1
+    #[test]
+    fn a_fold_counts_the_open_tasks_it_hides_when_zoomed_in_even_inside_a_special_node() {
+        let text = "A:\n\tB:\n\t\t- c\n\t\t\t- d\n\t- e\nH @hidden\n\tE:\n\t\tF:\n\t\t\t- g";
+        let mut state = State::new(format::parse(text), None);
+        let [a, b, e, f] = ["A", "B", "E", "F"].map(|text| line(&state, text));
+        for (zoom, folded, shown) in [
+            (a, b, [("A", None), ("B", Some(2)), ("e", None)].as_slice()),
+            (e, f, &[("E", None), ("F", Some(1))]),
+        ] {
+            state.pane.location = Location::Outline(Some(zoom));
+            state.folds = Folds::from_iter([folded]);
+            let rows: Vec<_> = state
+                .rows()
+                .iter()
+                .map(|row| (row.text.to_string(), row.hidden_tasks))
+                .collect();
+            let shown: Vec<_> = shown
+                .iter()
+                .map(|&(text, hidden)| (text.to_owned(), hidden))
+                .collect();
+            assert_eq!(rows, shown);
+        }
+    }
+
     // D-67, special-nodes.md §1
     #[test]
     fn a_fold_hiding_no_block_counts_nothing_and_one_hiding_no_task_counts_0() {
@@ -1345,19 +1519,33 @@ mod tests {
     proptest::proptest! {
         // N-PERF-02: rows built again from earlier ones are the rows built anew.
         #[test]
-        fn rows_kept_from_before_a_change_are_those_built_anew(changes in changes()) {
+        fn rows_kept_from_before_a_change_are_those_built_anew(
+            changes in changes(),
+            seen in proptest::collection::vec(proptest::bool::ANY, 12),
+        ) {
             let mut state = State::new(
                 format::parse("A:\n\t- a\n\t\t- b @done\n\t\tn\nB: @done\n\t- c\n\t\t\th @hidden\n- d\n\t- e"),
                 None,
             );
-            for change in &changes {
-                // Kept, for the rows after the change to be built from.
-                let _ = state.rows();
+            // Kept, for the rows after the changes to be built from.
+            let _ = state.rows();
+            for (change, seen) in changes.iter().zip(seen) {
                 make(&mut state, change);
-                let rows = state.rows();
-                let anew = state.outline_rows(&state.pane, &state.folds, None);
-                proptest::prop_assert_eq!(rows, anew, "after {:?}", change);
+                // Not after every change, so that rows are also built after several at once,
+                // such as blocks collapsed inside other collapsed ones.
+                if seen {
+                    proptest::prop_assert_eq!(state.rows(), anew(&state), "after {:?}", change);
+                }
             }
+            proptest::prop_assert_eq!(state.rows(), anew(&state), "after {:?}", changes);
         }
+    }
+
+    /// The rows of `state`'s pane worked out with no rows kept from before, those with nothing
+    /// collapsed that count what a collapsed block hides included.
+    fn anew(state: &State) -> Rows {
+        let mut fresh = State::new(state.document.clone(), None);
+        fresh.folds = state.folds.clone();
+        fresh.rows_of(&state.pane)
     }
 }
