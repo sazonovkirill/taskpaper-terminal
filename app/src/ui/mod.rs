@@ -1,6 +1,7 @@
 //! The terminal frontend: turns crossterm events into app messages, carries out effects and
 //! draws the state with Ratatui.
 
+pub mod animation;
 pub mod config;
 pub mod effects;
 pub mod keymap;
@@ -26,12 +27,13 @@ use ratatui::{
 
 use crate::{
     app::{
-        Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView, SaveAs,
-        SaveState, SettingsInput, State,
+        Animations, Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView,
+        Row, SaveAs, SaveState, SettingsInput, State,
         commands::{Command, Group, REGISTRY},
     },
     document::ItemId,
 };
+use animation::{Animator, Before, DrawnPane, Shown};
 use config::{Config, WriteError};
 use effects::{BackupSettings, Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
@@ -132,6 +134,10 @@ pub struct Tui {
     wheel: HashMap<PaneId, isize>,
     /// Where a right-click opened the context menu, which shows there while it is open (ui.md §5).
     menu_anchor: Option<(u16, u16)>,
+    /// The effects drawn over the frames and the spinner (ui.md §9).
+    animator: Animator,
+    /// The `animations` setting a session runs with unless the settings file sets it (ui.md §9.3).
+    default_animations: Animations,
     quit: bool,
 }
 
@@ -186,6 +192,8 @@ impl Tui {
             drawn: mouse::Drawn::default(),
             wheel: HashMap::new(),
             menu_anchor: None,
+            animator: Animator::new(Animations::Full),
+            default_animations: Animations::Full,
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -219,6 +227,15 @@ impl Tui {
         self
     }
 
+    /// The frontend animating as `setting` allows unless a settings file says otherwise, which the
+    /// settings window shows as the default (ui.md §9.3).
+    #[must_use]
+    pub fn with_animations(mut self, setting: Animations) -> Self {
+        self.default_animations = setting;
+        self.animator.set(setting);
+        self
+    }
+
     /// The frontend drawing in the colors `colors` allows (ui.md §3, N-UX-03).
     #[must_use]
     pub fn with_colors(mut self, colors: ColorSupport) -> Self {
@@ -226,10 +243,11 @@ impl Tui {
         self
     }
 
-    /// The frontend running with the key bindings, autosave delay, icons, word wrap,
-    /// theme, inbox handling, special views in the Navigator and backups `config` holds, keeping settings changed in the app in its
-    /// file and reporting once what it ignored of the file (FR-SET-04). The disk worker makes its
-    /// backups as `config` says until the settings window changes them.
+    /// The frontend running with the key bindings, autosave delay, icons, word wrap, theme,
+    /// animations, inbox handling, special views in the Navigator and backups `config` holds,
+    /// keeping settings changed in the app in its file and reporting once what it ignored of the
+    /// file (FR-SET-04). The disk worker makes its backups as `config` says until the settings
+    /// window changes them.
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         let problems: Vec<String> = config.problems().iter().map(ToString::to_string).collect();
@@ -244,6 +262,9 @@ impl Tui {
         }
         if let Some(wrap) = config.wrap {
             self.wrap = wrap;
+        }
+        if let Some(setting) = config.animations {
+            self.animator.set(setting);
         }
         if let Some(delay) = config.autosave_delay {
             self.send(
@@ -283,10 +304,16 @@ impl Tui {
 
     /// Handles one input at time `now` (since the frontend started).
     pub fn handle(&mut self, input: Input, now: Duration) {
+        self.animator.at(now);
+        let before = Before::of(&self.state);
         match input {
             Input::Terminal(event) => self.handle_event(&event, now),
-            Input::Core(message) => self.send(message, now),
+            Input::Core(message) => {
+                self.animator.received(&message);
+                self.send(message, now);
+            }
         }
+        self.animator.settle(&before, &self.state);
     }
 
     /// Handles one terminal event at time `now` (since the frontend started): maps it to a
@@ -363,15 +390,18 @@ impl Tui {
     /// message when it is a binding of its own, such as a lone `o`, and lets the core start a save
     /// that is due.
     pub fn tick(&mut self, now: Duration) {
+        self.animator.at(now);
+        let before = Before::of(&self.state);
         if let Some(action) = self.keymap.expire(now, &self.context()) {
             self.act(action, now);
         }
-        let effects = self.state.update(Message::Tick {
+        let effects = self.update(Message::Tick {
             now,
             today: (self.clock)().date(),
         });
         self.run(effects, now);
         self.midnight = self.next_midnight(now);
+        self.animator.settle(&before, &self.state);
     }
 
     /// When [`Tui::tick`] next has work to do or the screen changes by itself, or `None` when
@@ -383,6 +413,7 @@ impl Tui {
             .into_iter()
             .chain(self.state.deadline())
             .chain(self.midnight)
+            .chain(self.animator.deadline())
             .min()
     }
 
@@ -467,6 +498,7 @@ impl Tui {
                 let current = self.theme.position();
                 self.send(Message::OpenThemePicker { names, current }, now);
             }
+            KeyAction::SetAnimations(setting) => self.set_animations(setting, now),
         }
     }
 
@@ -475,13 +507,22 @@ impl Tui {
         if message == Message::Terminate {
             self.ending = true;
         }
-        let mut effects = self.state.update(Message::Tick {
+        let mut effects = self.update(Message::Tick {
             now,
             today: (self.clock)().date(),
         });
-        effects.extend(self.state.update(message));
+        effects.extend(self.update(message));
         self.run(effects, now);
         self.midnight = self.next_midnight(now);
+    }
+
+    /// Sends the core `message` and returns the effects it asks for, letting the animator take in
+    /// what it changed and whether it refused it.
+    fn update(&mut self, message: Message) -> Vec<Effect> {
+        let brought = animation::brings_blocks(&message);
+        let effects = self.state.update(message);
+        self.animator.observe(brought, &self.state);
+        effects
     }
 
     /// Carries out `effects` at time `now`.
@@ -494,6 +535,7 @@ impl Tui {
                 }
                 Effect::Disk(disk) => {
                     let saving = matches!(disk, Disk::Save { .. });
+                    self.animator.submitted(&disk, now);
                     self.io.submit(disk);
                     if saving {
                         self.keep_view();
@@ -502,14 +544,14 @@ impl Tui {
                 Effect::CopyToClipboard(text) => self.clipboard.copy(&text),
                 Effect::ReadClipboard(at) => {
                     if let Some(text) = self.clipboard.paste() {
-                        let effects = self.state.update(Message::Pasted { text, at });
+                        let effects = self.update(Message::Pasted { text, at });
                         self.run(effects, now);
                     }
                 }
                 Effect::OpenUrl(url) => {
                     if let Err(error) = self.browser.open(&url) {
                         let reason = error.to_string();
-                        let effects = self.state.update(Message::OpenUrlFailed { url, reason });
+                        let effects = self.update(Message::OpenUrlFailed { url, reason });
                         self.run(effects, now);
                     }
                 }
@@ -576,15 +618,16 @@ impl Tui {
     /// terminal may be gone. A terminal that cannot be drawn on is gone, as after `SIGHUP`, so
     /// the session ends as on [`Message::Terminate`], saving first.
     pub fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>, now: Duration) {
+        self.animator.at(now);
         if !self.ending && terminal.draw(|frame| self.draw(frame)).is_err() {
             self.send(Message::Terminate, now);
         }
     }
 
-    /// Draws the whole screen: the panes side by side, each a breadcrumb header over
-    /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
-    /// while open, the date prompt's panel below them while open, and the status line, all dimmed
-    /// behind a dialog that takes the keys, such as the Navigator.
+    /// Draws the whole screen: the panes side by side, each a breadcrumb header over a rule and
+    /// its outline scrolled to keep its focus visible, with the effects running over them, the
+    /// shortcuts panel at the right while open, the date prompt's panel below them while open, and
+    /// the status line, all dimmed behind a dialog that takes the keys, such as the Navigator.
     pub fn draw(&mut self, frame: &mut Frame) {
         let theme = self.palette();
         let screen = frame.area();
@@ -618,6 +661,8 @@ impl Tui {
         ]));
         let small = screen.width < 40 || screen.height < 10;
         let focused = self.draw_panes(frame, strip, small);
+        self.animator
+            .process(frame.buffer_mut(), &theme, self.colors);
         // Centered popups go over the secondary sidebar, which a narrow screen draws over the
         // outline.
         self.draw_shortcuts(frame, sidebar);
@@ -754,7 +799,7 @@ impl Tui {
             });
             if shown == width {
                 let area = Rect::new(x, strip.y, width, strip.height);
-                let drawn = self.draw_pane(frame.buffer_mut(), area, pane, divider);
+                let drawn = self.draw_pane(frame.buffer_mut(), area, pane, divider, true);
                 if pane.focused {
                     focused = drawn;
                 }
@@ -764,7 +809,7 @@ impl Tui {
                 // need nothing of it.
                 let area = Rect::new(0, strip.y, width, strip.height);
                 let mut whole = Buffer::empty(area);
-                self.draw_pane(&mut whole, area, pane, divider);
+                self.draw_pane(&mut whole, area, pane, divider, false);
                 let shown = Rect::new(x, strip.y, shown, strip.height);
                 copy(&whole, skipped, frame.buffer_mut(), shown);
             }
@@ -774,13 +819,15 @@ impl Tui {
 
     /// `pane` in `area` with a rule on its right edge when `divider` says another pane follows:
     /// its breadcrumb header, dimmed unless it has the keys (ui.md §1), over a rule and its
-    /// outline; returns what overlays need of it.
+    /// outline, which effects go over when `on_screen` says `area` is where it shows; returns what
+    /// overlays need of it.
     fn draw_pane(
         &mut self,
         buf: &mut Buffer,
         area: Rect,
         pane: &PaneView,
         divider: bool,
+        on_screen: bool,
     ) -> FocusedPane {
         let theme = self.palette();
         let area = if divider {
@@ -817,7 +864,7 @@ impl Tui {
             widgets::rule_style(&theme),
         )
         .render(separator, buf);
-        self.draw_outline(buf, outline, pane)
+        self.draw_outline(buf, outline, pane, on_screen)
     }
 
     /// The conflict prompt over `area`, its diff scrolled no further than its last page.
@@ -881,9 +928,16 @@ impl Tui {
     }
 
     /// `pane`'s outline in `area`, scrolled to keep its focused block in view, which is marked
-    /// when the pane has the keys, and drawn as its editor while editing; returns, for the pane
+    /// when the pane has the keys, and drawn as its editor while editing, telling the animator
+    /// where its blocks are when `on_screen` says `area` is where it shows; returns, for the pane
     /// with the keys, where the caret and the focused block's text are on screen.
-    fn draw_outline(&mut self, buf: &mut Buffer, area: Rect, pane: &PaneView) -> FocusedPane {
+    fn draw_outline(
+        &mut self,
+        buf: &mut Buffer,
+        area: Rect,
+        pane: &PaneView,
+        on_screen: bool,
+    ) -> FocusedPane {
         let rows = &pane.rows;
         let focused = pane
             .focus
@@ -935,6 +989,20 @@ impl Tui {
             )
             .offset(scroll.line)
             .render(area, buf);
+        if on_screen {
+            let rows = block_lines(area, scroll.line, &shown, (scroll.row..).map(&row_height));
+            self.animator.drawn(DrawnPane {
+                id: pane.id,
+                focused: pane.focused,
+                shown: Shown {
+                    area,
+                    scroll,
+                    focus: pane.focus,
+                    rows: pane.rows.clone(),
+                },
+                rows,
+            });
+        }
         if !pane.focused {
             return FocusedPane::default();
         }
@@ -1135,6 +1203,9 @@ impl Tui {
         frame.render_widget(Line::from(spans), area);
         // The pending keys are what the user is typing right now, so they cover the end of a
         // long path rather than the other way round.
+        if let Some(spinner) = self.animator.spinner(icons) {
+            frame.render_widget(Line::from(format!(" {spinner}")).right_aligned(), area);
+        }
         let pending = self.keymap.pending();
         if !pending.is_empty() {
             frame.render_widget(Line::from(format!(" {pending}")).right_aligned(), area);
@@ -1242,6 +1313,24 @@ fn copy(from: &Buffer, skipped: u16, to: &mut Buffer, area: Rect) {
             }
         }
     }
+}
+
+/// The screen lines in `area` of the blocks of `shown`, drawn from `line` lines into the first,
+/// each as tall as `heights` says with its group's heading, which is not the block's (D-80).
+fn block_lines(
+    area: Rect,
+    line: usize,
+    shown: &[Row],
+    heights: impl Iterator<Item = usize>,
+) -> Vec<(ItemId, Rect)> {
+    let lines = shown.iter().zip(heights).flat_map(|(row, height)| {
+        let heading = widgets::heading_height(row);
+        [(None, heading), (Some(row.id), height - heading)]
+    });
+    layout::row_lines(area, line, lines)
+        .into_iter()
+        .filter_map(|(id, lines)| Some((id?, lines)))
+        .collect()
 }
 
 /// `popup` anchored at the caret or element at `anchor` inside `area`, no taller than the room

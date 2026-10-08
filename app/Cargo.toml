@@ -31,6 +31,7 @@ serde_json = "1.0.151"
 signal-hook = "0.3.18"
 similar = "2.7.0"
 slotmap = "1.1.1"
+tachyonfx = { version = "0.25.2", default-features = false, features = ["std", "std-duration"] }
 tempfile = "3.27.0"
 thiserror = "2.0.21"
 toml_edit = { version = "0.25", default-features = false, features = ["parse", "display"] }

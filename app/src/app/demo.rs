@@ -316,6 +316,22 @@ mod tests {
         }
     }
 
+    // FR-DOC-05, FR-UI-11
+    #[test]
+    fn demo_has_a_text_line_that_points_to_the_landing_flash_and_its_setting() {
+        let rows = State::new(format::parse(&text(TODAY)), None).rows();
+        for (hint, what) in [
+            ("the block focus lands on flashes", "the landing flash"),
+            ("animations, autosave delay", "the animations setting"),
+        ] {
+            assert!(
+                rows.iter()
+                    .any(|row| row.kind == BlockKind::Text && row.text.contains(hint)),
+                "demo lacks a hint at {what}"
+            );
+        }
+    }
+
     // FR-DOC-05, D-52
     #[test]
     fn demo_has_a_text_line_that_points_to_the_section_keys() {

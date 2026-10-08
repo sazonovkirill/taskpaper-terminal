@@ -123,6 +123,32 @@ pub struct Scroll {
     pub line: usize,
 }
 
+/// The screen lines in `area` of each row of an outline view drawn from `line` lines into its
+/// first row, given each row's id and how many lines it takes, for the rows that show.
+pub fn row_lines<T>(
+    area: Rect,
+    line: usize,
+    rows: impl IntoIterator<Item = (T, usize)>,
+) -> Vec<(T, Rect)> {
+    let height = usize::from(area.height);
+    let mut top = 0usize;
+    let mut skip = line;
+    let mut lines = Vec::new();
+    let at = |offset: usize| u16::try_from(offset).unwrap_or(u16::MAX);
+    for (id, taken) in rows {
+        if top >= height {
+            break;
+        }
+        let skipped = skip.min(taken);
+        skip -= skipped;
+        let end = top.saturating_add(taken - skipped).min(height);
+        let y = area.y.saturating_add(at(top));
+        lines.extend((end > top).then(|| (id, Rect::new(area.x, y, area.width, at(end - top)))));
+        top = end;
+    }
+    lines
+}
+
 /// Where a view `height` lines tall over `rows` rows starts, as [`scroll_offset`] places it from
 /// `scroll` to show the row `focus`, one of the `rows` (the first line when there is none), or
 /// with the focus `anchor` lines from the top, as after a page motion; returns it with the screen
@@ -330,6 +356,25 @@ pub fn secondary_sidebar(screen: Rect, body: Rect) -> (Rect, Option<Rect>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn row_lines_place_the_rows_that_show_from_the_line_drawn_first() {
+        let area = Rect::new(3, 2, 20, 5);
+        assert_eq!(
+            row_lines(area, 1, [('a', 2), ('b', 1), ('c', 3), ('d', 1)]),
+            [
+                ('a', Rect::new(3, 2, 20, 1)),
+                ('b', Rect::new(3, 3, 20, 1)),
+                ('c', Rect::new(3, 4, 20, 3)),
+            ],
+            "a's first line is above the view, d below it"
+        );
+        assert_eq!(
+            row_lines(area, 2, [('a', 2), ('b', 6)]),
+            [('b', Rect::new(3, 2, 20, 5))],
+            "a is wholly above the view, b cut at its foot"
+        );
+    }
 
     #[test]
     fn a_popup_opens_below_the_caret_or_above_it_without_room() {

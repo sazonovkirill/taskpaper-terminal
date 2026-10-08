@@ -341,7 +341,31 @@ impl Document {
             }
             self.changes.push_back((self.revision, lines));
         }
+        for op in &transaction.ops {
+            self.touch(op);
+        }
         Ok(())
+    }
+
+    /// Takes the lines the transactions applied since the last call changed, put in place or
+    /// moved, a moved line with the lines below it, in the order they were applied; a line may
+    /// be named more than once, and one that was put in place may have been removed again.
+    pub fn take_touched(&mut self) -> Vec<ItemId> {
+        std::mem::take(&mut self.touched)
+    }
+
+    /// Notes the lines `op`, just applied, changed, put in place or moved.
+    fn touch(&mut self, op: &Op) {
+        match op {
+            Op::SetText { id, .. } | Op::SetExtraIndent { id, .. } => self.touched.push(*id),
+            Op::Insert { subtree, .. } => self.touched.extend(subtree.lines().map(|&(id, _)| id)),
+            Op::Move { id, .. } => {
+                let below: Vec<ItemId> = self.descendants(*id).map(|(line, _)| line).collect();
+                self.touched.push(*id);
+                self.touched.extend(below);
+            }
+            Op::Remove { .. } => {}
+        }
     }
 
     /// Applies one op without the placement repairs [`Document::apply`] makes after a whole
@@ -1030,6 +1054,57 @@ mod tests {
         assert_eq!(
             document.apply(&mut transaction(vec![removal])),
             Err(EditError::Missing { id: b })
+        );
+    }
+
+    // FR-UI-11
+    #[test]
+    fn applied_ops_touch_their_lines_until_taken() {
+        let mut document = parse("A:\n\t- b\n\t\tc\n\t- e\nF:\ng");
+        let project_a = id(&document, "A:");
+        let task_b = id(&document, "- b");
+        let note_c = id(&document, "c");
+        let task_e = id(&document, "- e");
+        let project_f = id(&document, "F:");
+        let note_g = id(&document, "g");
+        assert_eq!(document.take_touched(), [], "reading touches nothing");
+        let new = document.new_id();
+        let mut change = transaction(vec![
+            set_text(&document, "- e", "- E"),
+            Op::Move {
+                id: task_b,
+                from: (project_a, 0),
+                to: (project_f, 0),
+            },
+            Op::Insert {
+                parent: project_a,
+                index: 0,
+                subtree: Snapshot::line(new, "- n".into()),
+            },
+            remove(&document, note_g),
+        ]);
+        document.apply(&mut change).unwrap();
+        assert_eq!(document.take_touched(), [task_e, task_b, note_c, new]);
+        assert_eq!(document.take_touched(), [], "taken");
+        document.apply(&mut change.inverse()).unwrap();
+        document
+            .apply(&mut transaction(vec![set_text(&document, "F:", "F2:")]))
+            .unwrap();
+        assert_eq!(
+            document.take_touched(),
+            [note_g, task_b, note_c, task_e, project_f],
+            "an undone removal puts the line back, an undone insert is no line left"
+        );
+        let mut failing = transaction(vec![
+            set_text(&document, "F2:", "F3:"),
+            remove(&document, note_g),
+            remove(&document, note_g),
+        ]);
+        assert!(document.apply(&mut failing).is_err());
+        assert_eq!(
+            document.take_touched(),
+            [],
+            "a failed transaction touches nothing"
         );
     }
 

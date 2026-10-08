@@ -408,6 +408,94 @@ mod tests {
         assert_eq!(state.document().revision(), 0);
     }
 
+    /// The text of each block the latest update changed.
+    fn changed(state: &State) -> Vec<String> {
+        state
+            .changed()
+            .iter()
+            .map(|&id| state.document().get(id).unwrap().text().to_owned())
+            .collect()
+    }
+
+    // FR-UI-11
+    #[test]
+    fn each_update_reports_the_blocks_it_changed() {
+        let mut state = open("A:\n\t- b\n\t\tc\n- d\n- e", 1);
+        state.update(done());
+        assert_eq!(changed(&state), ["- b @done(2026-10-05)"]);
+        state.update(Message::FocusNext);
+        assert_eq!(
+            changed(&state),
+            Vec::<String>::new(),
+            "a motion changes nothing"
+        );
+        state.update(Message::FocusPrevious);
+        state.update(Message::Outdent);
+        assert_eq!(
+            changed(&state),
+            ["- b @done(2026-10-05)", "c"],
+            "a block moves with the blocks inside it"
+        );
+        state.update(Message::Undo);
+        assert_eq!(changed(&state), ["- b @done(2026-10-05)", "c"]);
+        state.update(Message::Delete);
+        assert_eq!(
+            changed(&state),
+            Vec::<String>::new(),
+            "deleted blocks are no longer there"
+        );
+        state.update(Message::Undo);
+        assert_eq!(changed(&state), ["- b @done(2026-10-05)", "c"]);
+        assert!(!state.refused());
+    }
+
+    // FR-UI-11, file-io.md §1
+    #[test]
+    fn an_update_refused_says_so_until_the_next_one() {
+        let mut state = State::new(
+            format::parse("- a\n- b"),
+            Some(PathBuf::from("/notes/todo.taskpaper")),
+        )
+        .with_access(Access::ReadOnly);
+        state.update(done());
+        assert!(state.refused());
+        assert_eq!(state.changed(), []);
+        state.update(Message::FocusNext);
+        assert!(!state.refused(), "the next update is not refused");
+        assert_eq!(
+            state.notice(),
+            Some(&Notice::ReadOnly),
+            "while the notice stays"
+        );
+        state.update(Message::ToggleFlag(Flag::Bookmark));
+        assert!(state.refused());
+        state.update(Message::GoTo(crate::app::Location::View(
+            crate::app::SpecialView::Today,
+        )));
+        state.update(Message::Pasted {
+            text: "- x".to_owned(),
+            at: crate::app::Paste::Below,
+        });
+        assert!(
+            !state.refused(),
+            "a message the view does not take resets it too"
+        );
+    }
+
+    // FR-UI-11
+    #[test]
+    fn a_command_that_changes_nothing_is_not_refused() {
+        let mut state = open("- a", 0);
+        state.update(Message::Undo);
+        assert!(!state.refused());
+        state.update(Message::ClearDate(DateTag::Due));
+        assert!(!state.refused());
+        assert_eq!(state.changed(), []);
+        state.update(Message::Count);
+        assert!(state.notice().is_some());
+        assert!(!state.refused(), "a notice that informs refuses nothing");
+    }
+
     #[test]
     fn a_temporary_file_takes_edits() {
         let mut state = State::new(

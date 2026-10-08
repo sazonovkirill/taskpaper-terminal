@@ -48,7 +48,7 @@ mod view_state;
 
 pub use clipboard::Paste;
 pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
-pub use commands::{Command, Inputs};
+pub use commands::{Animations, Command, Inputs};
 pub use date_prompt::{DateInput, DatePromptView};
 pub use edit_mode::{Editor, Mode};
 pub use external::{DiffLine, Version};

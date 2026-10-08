@@ -84,6 +84,8 @@ pub enum Icon {
     Glyphs,
     /// The settings window's word wrap setting.
     Wrap,
+    /// The settings window's animations setting and Go to Command's commands that switch it.
+    Animations,
     /// The settings window's autosave delay setting.
     Autosave,
     /// The settings window's settings of whether and how many backups are kept.
@@ -234,6 +236,8 @@ impl Icon {
             Self::Glyphs => ("\u{f0832}", "◇", "o"),
             // nf-md-wrap
             Self::Wrap => ("\u{f05b6}", "↩", "/"),
+            // nf-md-animation
+            Self::Animations => ("\u{f05d8}", "≈", "a"),
             // nf-md-timer_outline
             Self::Autosave => ("\u{f051b}", "◷", "t"),
             // nf-md-backup_restore
@@ -255,7 +259,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 37] = [
+    const ICONS: [Icon; 38] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -290,6 +294,7 @@ mod tests {
         Icon::Settings,
         Icon::Glyphs,
         Icon::Wrap,
+        Icon::Animations,
         Icon::Autosave,
         Icon::Backup,
         Icon::Folder,

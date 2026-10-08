@@ -823,6 +823,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
             plain(Icon::Inbox)
         }
         Command::QuickAdd(QuickAddTo::Chosen) => plain(Icon::QuickAdd),
+        Command::SetAnimations(_) => plain(Icon::Animations),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -1646,7 +1647,7 @@ mod tests {
     use super::*;
     use crate::ui::keymap::Keymap;
     use crate::{
-        app::{Menu, Message, SelectionChange, State},
+        app::{Animations, Menu, Message, SelectionChange, State},
         document::format,
         ui::theme::{BuiltIn, ColorSupport},
     };
@@ -2074,6 +2075,11 @@ mod tests {
             ),
             (Command::GoToProject, Icon::Project, Style::new()),
             (Command::OpenSettings, Icon::Settings, Style::new()),
+            (
+                Command::SetAnimations(Animations::Reduced),
+                Icon::Animations,
+                Style::new(),
+            ),
             (Command::OpenDetails, Icon::Details, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),
             (Command::Duplicate, Icon::Duplicate, Style::new()),

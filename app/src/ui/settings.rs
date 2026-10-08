@@ -5,11 +5,13 @@
 use std::time::Duration;
 
 use super::{
-    Tui, config, effects,
+    Tui, animation, config, effects,
     theme::{BuiltIn, Icon, IconSetting},
     widgets,
 };
-use crate::app::{Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving};
+use crate::app::{
+    Animations, Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving,
+};
 
 /// A setting the window lists, in the window's order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,15 +26,15 @@ enum Listed {
     TodayStarred,
     /// Whether `qt` adds to the `TODAY` project (D-98).
     SpecialToday,
+    Animations,
     AutosaveDelay,
     Backups,
     BackupFolder,
     BackupsKept,
 }
 
-/// The settings the window lists, in order. Animations join when they reach the settings file
-/// (ui.md §9.3).
-const LISTED: [Listed; 17] = [
+/// The settings the window lists, in order.
+const LISTED: [Listed; 18] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
@@ -46,6 +48,7 @@ const LISTED: [Listed; 17] = [
     Listed::NavigatorView(SpecialView::Logbook),
     Listed::NavigatorView(SpecialView::Starred),
     Listed::NavigatorView(SpecialView::Flagged),
+    Listed::Animations,
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -66,6 +69,7 @@ impl Listed {
             Self::NavigatorView(view) => config::navigator_key(view),
             Self::TodayStarred => "today_starred",
             Self::SpecialToday => "special_today",
+            Self::Animations => "animations",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -83,6 +87,7 @@ impl Listed {
             Self::NavigatorView(view) => widgets::view_icon(view),
             Self::TodayStarred => Icon::Star,
             Self::SpecialToday => widgets::view_icon(SpecialView::Today),
+            Self::Animations => Icon::Animations,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -231,6 +236,7 @@ impl Tui {
                 "List starred blocks too, not only dated ones",
                 self.state.today_starred(),
             ),
+            Listed::Animations => self.animations_listing(),
             Listed::AutosaveDelay => (
                 "Files",
                 "Autosave delay",
@@ -297,6 +303,19 @@ impl Tui {
         )
     }
 
+    /// The animations setting, whose default is the one the session runs with when the settings
+    /// file does not set it (ui.md §9.3).
+    fn animations_listing(&self) -> Listing {
+        (
+            "Appearance",
+            "Animations",
+            "Flashes where focus lands and what changed; reduced or off for less motion",
+            choices(&animation::NAMES),
+            chosen(&animation::NAMES, self.animator.setting()),
+            chosen(&animation::NAMES, self.default_animations),
+        )
+    }
+
     /// Applies `value` to the setting at `at` in the settings the window lists and keeps it in
     /// the settings file at time `now` (FR-SET-02, FR-SET-04).
     pub(super) fn change_setting(&mut self, at: usize, value: SettingValue, now: Duration) {
@@ -342,6 +361,13 @@ impl Tui {
                 self.send(Message::Configure(Configuration::TodayStarred(on)), now);
                 Some(on.into())
             }
+            (Listed::Animations, SettingValue::Choice(choice)) => {
+                let Some(&(setting, name)) = animation::NAMES.get(choice) else {
+                    return;
+                };
+                self.animator.set(setting);
+                Some(name.into())
+            }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
                 let delay = Duration::from_millis(ms.into());
                 self.send(Message::Configure(Configuration::AutosaveDelay(delay)), now);
@@ -367,6 +393,19 @@ impl Tui {
             _ => return,
         };
         self.keep_setting(listed.key(), kept, now);
+    }
+
+    /// Animates as `setting` allows from now on, as Go to Command's commands ask, and keeps it in
+    /// the settings file at time `now` (ui.md §9.3).
+    pub(super) fn set_animations(&mut self, setting: Animations, now: Duration) {
+        self.change_setting(
+            LISTED
+                .iter()
+                .position(|&listed| listed == Listed::Animations)
+                .unwrap_or_default(),
+            chosen(&animation::NAMES, setting),
+            now,
+        );
     }
 
     /// The theme the settings window's value picker highlights, which the frontend previews
@@ -421,6 +460,7 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
+            (13, SettingValue::Choice(3)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
@@ -448,6 +488,7 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
+            SettingValue::Choice(2),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -458,9 +499,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(15, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(16, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[15].value,
+            tui.listed_settings()[16].value,
             SettingValue::Text(String::new())
         );
         assert!(

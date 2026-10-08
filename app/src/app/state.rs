@@ -113,6 +113,11 @@ pub struct State {
     pub(super) today_starred: bool,
     /// The rows of the panes, kept while what they show stays the same.
     rows: Memo<RowsKey, Rows>,
+    /// The lines the latest update changed, put in place or moved, which a frontend may
+    /// highlight (FR-UI-11).
+    pub(super) changed: Vec<ItemId>,
+    /// Whether the latest update refused its intent (FR-UI-11).
+    pub(super) refused: bool,
 }
 
 /// Everything the rows of a pane are computed from.
@@ -265,6 +270,34 @@ pub enum Notice {
     },
 }
 
+impl Notice {
+    /// Whether the notice says that the intent it reports was refused: an edit of a read-only
+    /// file, typing a tag, an edit that did not fit or taking a file that cannot be read.
+    fn refuses(&self) -> bool {
+        match self {
+            Self::ReadOnly
+            | Self::TypedTag
+            | Self::EditFailed { .. }
+            | Self::CannotTakeTheirs { .. } => true,
+            Self::BackupFailed { .. }
+            | Self::ConfigProblems(_)
+            | Self::Reloaded
+            | Self::KeptMine { .. }
+            | Self::TookTheirs { .. }
+            | Self::ConflictCopyFailed { .. }
+            | Self::BlanksLifted
+            | Self::PlaceholderFilled
+            | Self::NotSections { .. }
+            | Self::NoInbox
+            | Self::NoTodayProject
+            | Self::QuickAdded { .. }
+            | Self::Bookmark { .. }
+            | Self::Count { .. }
+            | Self::OpenUrlFailed { .. } => false,
+        }
+    }
+}
+
 /// One visible block of the outline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[expect(
@@ -369,6 +402,8 @@ impl State {
             today_order: TodayOrder::default(),
             today_starred: true,
             rows: Memo::default(),
+            changed: Vec::new(),
+            refused: false,
         };
         state.pane.focus = state.rows().first().map(|row| row.id);
         state
@@ -434,9 +469,26 @@ impl State {
         self.notice.as_ref().map(|(notice, _)| notice)
     }
 
-    /// Shows `notice` for [`NOTICE_TIME`] from the latest tick.
+    /// Shows `notice` for [`NOTICE_TIME`] from the latest tick; a notice that refuses the intent
+    /// marks it refused.
     pub(super) fn notify(&mut self, notice: Notice) {
+        self.refused |= notice.refuses();
         self.notice = Some((notice, self.now.saturating_add(NOTICE_TIME)));
+    }
+
+    /// The blocks the latest update changed in the document, put in place or moved, a moved
+    /// block with the blocks inside it, or, on a reload, found changed on disk; empty when it
+    /// changed none that are still there (FR-UI-11).
+    #[must_use]
+    pub fn changed(&self) -> &[ItemId] {
+        &self.changed
+    }
+
+    /// Whether the latest update refused the intent it was given, such as an edit of a read-only
+    /// file or typing a tag; a command that changes nothing is not refused (FR-UI-11).
+    #[must_use]
+    pub fn refused(&self) -> bool {
+        self.refused
     }
 
     /// Drops the notice once its time is up.

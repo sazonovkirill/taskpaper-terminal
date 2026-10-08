@@ -16,7 +16,7 @@ use crate::document::{Block, ItemId, blocks};
 
 /// What tells a pane apart from the others for as long as it is open, so that a frontend can keep
 /// what it shows of each pane, such as how far it is scrolled, while panes open and close.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PaneId(u64);
 
 /// What one pane shows and where its keys act.

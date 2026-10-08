@@ -17,7 +17,8 @@ use crossterm::{
         EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
         PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
-    execute,
+    execute, queue,
+    terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate},
 };
 use signal_hook::{
     consts::{SIGHUP, SIGTERM},
@@ -103,10 +104,15 @@ fn main() -> anyhow::Result<()> {
         std::env::var_os("NO_COLOR").as_deref(),
         std::env::var_os("COLORTERM").as_deref(),
     );
+    let animations = ui::animation::default_for(
+        std::env::var_os("SSH_CONNECTION").as_deref(),
+        std::env::var_os("SSH_TTY").as_deref(),
+    );
     let mut tui = tui
         .with_kitty_keyboard(kitty)
         .with_locale(utf8)
         .with_colors(colors)
+        .with_animations(animations)
         .with_config(config);
     // Terminals that cannot report focus or the mouse, bracket pasted text or speak the kitty
     // keyboard protocol ignore the requests, so keys arrive as legacy reporting sends them
@@ -202,7 +208,11 @@ fn run(
 ) -> anyhow::Result<()> {
     let start = Instant::now();
     while !tui.should_quit() {
+        // The terminal shows each frame whole (ui.md §9.1). A terminal that is gone is noticed by
+        // drawing, which ends the session saving first.
+        let _ = queue!(terminal.backend_mut(), BeginSynchronizedUpdate);
         tui.render(terminal, start.elapsed());
+        let _ = execute!(terminal.backend_mut(), EndSynchronizedUpdate);
         let input = match tui.deadline() {
             None => Some(received.recv()?),
             Some(deadline) => {
