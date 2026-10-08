@@ -228,16 +228,16 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 // FR-KEY-05, FR-UI-01, navigation.md §6
 #[test]
 fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
-    let mut app = Harness::with_text(OUTLINE, 80, 16);
+    let mut app = Harness::with_text(OUTLINE, 80, 17);
     ctrl_g(&mut app);
-    // The window's inside starts at column 17, row 3: Today, Upcoming, Overdue, Colors, Starred,
-    // Flagged, a blank line, Projects, Work, Home, Garden.
+    // The window's inside starts at column 17, row 3: Today, Upcoming, Overdue, Colors, Logbook,
+    // Starred, Flagged, a blank line, Projects, Work, Home, Garden.
     let rows = screen(&mut app);
-    assert!(rows[13].contains("│    Garden "), "{rows:?}");
-    app.click(25, 13);
+    assert!(rows[14].contains("│    Garden "), "{rows:?}");
+    app.click(25, 14);
     assert_eq!(screen(&mut app)[0], "  ⌂ › Home › Garden", "and closed");
     ctrl_g(&mut app);
-    app.click(18, 12);
+    app.click(18, 13);
     let rows = screen(&mut app);
     assert!(
         rows.iter().any(|row| row.contains("│▌▸Home ")),

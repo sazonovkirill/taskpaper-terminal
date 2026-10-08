@@ -3,6 +3,7 @@ config <<END
 sidebar_upcoming = false
 sidebar_overdue = false
 sidebar_colors = false
+sidebar_logbook = false
 sidebar_flagged = false
 END
 file <<END

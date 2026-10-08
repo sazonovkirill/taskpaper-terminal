@@ -21,6 +21,8 @@ pub enum SpecialView {
     Overdue,
     /// The blocks with a color tag, grouped by color (FR-TAG-10, D-83).
     Colors,
+    /// The blocks completed in the last 7 days, grouped by day of completion (FR-TAG-11, D-84).
+    Logbook,
     /// The starred blocks (FR-TAG-13, D-92).
     Starred,
     /// The flagged blocks (FR-TAG-14, D-93).
@@ -29,11 +31,12 @@ pub enum SpecialView {
 
 impl SpecialView {
     /// Every special view, in the sidebar's order (D-80).
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Today,
         Self::Upcoming,
         Self::Overdue,
         Self::Colors,
+        Self::Logbook,
         Self::Starred,
         Self::Flagged,
     ];
@@ -46,6 +49,7 @@ impl SpecialView {
             Self::Upcoming => "Upcoming",
             Self::Overdue => "Overdue",
             Self::Colors => "Colors",
+            Self::Logbook => "Logbook",
             Self::Starred => "Starred",
             Self::Flagged => "Flagged",
         }
@@ -97,6 +101,7 @@ impl State {
             SpecialView::Upcoming => self.upcoming_rows(pane),
             SpecialView::Overdue => self.overdue_rows(pane),
             SpecialView::Colors => self.colors_rows(pane),
+            SpecialView::Logbook => self.logbook_rows(pane),
             SpecialView::Starred => self.matching_rows(pane, Block::starred),
             SpecialView::Flagged => self.matching_rows(pane, Block::flag),
         }
@@ -108,22 +113,36 @@ impl State {
     /// (FR-SPC-01).
     pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
         let mut rows = Vec::new();
-        self.push_matching(pane, &lists, self.document.root(), false, &mut rows);
+        self.push_matching(pane, &lists, true, self.document.root(), false, &mut rows);
+        rows
+    }
+
+    /// The rows [`State::matching_rows`] gives, completed blocks and what is inside them
+    /// included whatever the pane's show-completed setting (D-82, D-84).
+    pub(super) fn matching_rows_with_done(
+        &self,
+        pane: &Pane,
+        lists: impl Fn(&Block) -> bool,
+    ) -> Vec<Row> {
+        let mut rows = Vec::new();
+        self.push_matching(pane, &lists, false, self.document.root(), false, &mut rows);
         rows
     }
 
     /// Appends the entries below the line `line`, which is done or inside a done block when
-    /// `inside_done` says so.
+    /// `inside_done` says so, leaving out completed blocks the pane hides when `as_shown` says
+    /// to.
     fn push_matching(
         &self,
         pane: &Pane,
         lists: &impl Fn(&Block) -> bool,
+        as_shown: bool,
         line: ItemId,
         inside_done: bool,
         out: &mut Vec<Row>,
     ) {
         for block in blocks::each_child(&self.document, line) {
-            if !pane.shows(&block) {
+            if as_shown && !pane.shows(&block) {
                 continue;
             }
             if lists(&block) {
@@ -134,7 +153,14 @@ impl State {
                     ..self.row(pane, &block, 0, false, inside_done)
                 });
             }
-            self.push_matching(pane, lists, block.id(), inside_done || block.done(), out);
+            self.push_matching(
+                pane,
+                lists,
+                as_shown,
+                block.id(),
+                inside_done || block.done(),
+                out,
+            );
         }
     }
 
@@ -171,6 +197,7 @@ impl State {
             SpecialView::Upcoming
             | SpecialView::Overdue
             | SpecialView::Colors
+            | SpecialView::Logbook
             | SpecialView::Starred
             | SpecialView::Flagged => {}
         }
@@ -336,6 +363,7 @@ Work: @done @star
                 SpecialView::Upcoming,
                 SpecialView::Overdue,
                 SpecialView::Colors,
+                SpecialView::Logbook,
                 SpecialView::Starred,
                 SpecialView::Flagged
             ]

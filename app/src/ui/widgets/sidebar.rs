@@ -481,7 +481,11 @@ mod tests {
         // listed; Flagged's flag is red.
         let buf = {
             let mut state = State::new(format::parse("A:"), None);
-            for view in [SpecialView::Today, SpecialView::Overdue] {
+            for view in [
+                SpecialView::Today,
+                SpecialView::Overdue,
+                SpecialView::Colors,
+            ] {
                 state.update(Message::Configure(crate::app::Configuration::SidebarView(
                     view, false,
                 )));
@@ -493,7 +497,7 @@ mod tests {
             rows(&buf),
             [
                 format!("▌ {} Upcoming", Icon::Upcoming.glyph(IconSet::Unicode)),
-                format!("  {} Colors", Icon::Colors.glyph(IconSet::Unicode)),
+                format!("  {} Logbook", Icon::Logbook.glyph(IconSet::Unicode)),
                 format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
                 format!("  {} Flagged", Icon::Flag.glyph(IconSet::Unicode)),
                 String::new(),

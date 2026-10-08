@@ -27,6 +27,7 @@ pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
         SpecialView::Upcoming => "sidebar_upcoming",
         SpecialView::Overdue => "sidebar_overdue",
         SpecialView::Colors => "sidebar_colors",
+        SpecialView::Logbook => "sidebar_logbook",
         SpecialView::Starred => "sidebar_starred",
         SpecialView::Flagged => "sidebar_flagged",
     }

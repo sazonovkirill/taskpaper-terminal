@@ -31,6 +31,9 @@ pub enum Icon {
     /// The Colors view's sidebar entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Colors,
+    /// The Logbook view's sidebar entry, header and Go to command, and the settings window's
+    /// setting that lists it (D-80).
+    Logbook,
     /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
     /// bookmarks.
     Bookmark,
@@ -182,6 +185,8 @@ impl Icon {
             Self::Upcoming => ("\u{f1135}", "»", "u"),
             // nf-md-palette_outline; the command menu's color entries have the filled palette.
             Self::Colors => ("\u{f0e0c}", "◐", "c"),
+            // nf-md-book_check
+            Self::Logbook => ("\u{f14f3}", "▤", "L"),
             // nf-md-bookmark
             Self::Bookmark => ("\u{f00c0}", "⚑", "#"),
             // nf-md-folder_outline
@@ -246,7 +251,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 35] = [
+    const ICONS: [Icon; 36] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -256,6 +261,7 @@ mod tests {
         Icon::Inbox,
         Icon::Upcoming,
         Icon::Colors,
+        Icon::Logbook,
         Icon::Bookmark,
         Icon::Project,
         Icon::Task,
@@ -368,6 +374,7 @@ mod tests {
         assert_eq!(unicode(Icon::Inbox), "⊔");
         assert_eq!(unicode(Icon::Colors), "◐");
         assert_eq!(unicode(Icon::Upcoming), "»");
+        assert_eq!(unicode(Icon::Logbook), "▤");
     }
 
     // FR-UI-10

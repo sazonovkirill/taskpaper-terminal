@@ -119,6 +119,7 @@ pub struct Block {
 pub(super) struct Facts {
     kind: BlockKind,
     done: bool,
+    done_date: Option<Date>,
     start: Option<Date>,
     due: Option<Date>,
     starred: bool,
@@ -140,6 +141,7 @@ impl Facts {
         Self {
             kind,
             done: has("done"),
+            done_date: date_tag(tags, "done"),
             start: date_tag(tags, "start"),
             due: date_tag(tags, "due"),
             starred: has("star"),
@@ -178,6 +180,12 @@ impl Block {
     #[must_use]
     pub fn done(&self) -> bool {
         self.facts.done
+    }
+
+    /// The date of its `@done`, or `None` when it is not done or its value is not a date (D-84).
+    #[must_use]
+    pub fn done_date(&self) -> Option<Date> {
+        self.facts.done_date
     }
 
     /// The date of its `@start`, or `None` without one or when its value is not a date.
@@ -600,6 +608,20 @@ mod tests {
             ),
             [(None, None); 6]
         );
+    }
+
+    // D-84
+    #[test]
+    fn the_done_date_comes_from_a_done_tag_holding_a_date() {
+        let document = parse(
+            "- a @done(2026-10-05)\n- b @done\n- c @done(soon)\n- d\n- e @done(2026-10-04) @done(2026-10-09)",
+        );
+        let dates: Vec<_> = children(&document, document.root())
+            .iter()
+            .map(Block::done_date)
+            .collect();
+        let day = |d| Some(jiff::civil::date(2026, 10, d));
+        assert_eq!(dates, [day(5), None, None, None, day(4)]);
     }
 
     #[test]

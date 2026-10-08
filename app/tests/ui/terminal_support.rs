@@ -214,21 +214,22 @@ fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {
         "{}日本語のとても長いプロジェクト名前ですね本当に長い:\n\t- 仕事\n",
         "日本語日本語日本語日本語日本語日本語日本語日本語\n".repeat(8)
     );
-    let mut app = Harness::with_text(&text, 61, 16);
+    let mut app = Harness::with_text(&text, 61, 17);
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
-        screen(&mut app)[3..14],
+        screen(&mut app)[3..15],
         [
             "  日本 ┌Navigator─────────────────────────────────────┐",
             "  日本 │▌ ☼ Today                                     │",
             "  日本 │  » Upcoming                                  │",
             "  日本 │  ! Overdue                                   │",
             "  日本 │  ◐ Colors                                    │",
+            "  日本 │  ▤ Logbook                                   │",
             "  日本 │  ★ Starred                                   │",
             "  日本 │  ⚐ Flagged                                   │",
-            "  日本 │                                              │",
-            "    -  │  Projects                                    │",
+            "    -  │                                              │",
+            "       │  Projects                                    │",
             "       │  日本語のとても長いプロジェクト名前ですね  1 │",
             "       └──────────────────────────────────────────────┘",
         ]

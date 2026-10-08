@@ -1147,7 +1147,7 @@ INBOX:",
     #[test]
     fn an_outline_without_bookmarks_or_projects_lists_only_the_special_views() {
         let views = [
-            "today", "upcoming", "overdue", "colors", "starred", "flagged",
+            "today", "upcoming", "overdue", "colors", "logbook", "starred", "flagged",
         ];
         assert_eq!(listed(&State::new(format::parse("- a\nb"), None)), views);
         assert_eq!(listed(&State::new(Document::default(), None)), views);
@@ -1167,6 +1167,7 @@ INBOX:",
                 "upcoming",
                 "overdue",
                 "colors",
+                "logbook",
                 "starred",
                 "flagged",
                 "bookmark A",
@@ -1182,11 +1183,12 @@ INBOX:",
                 SidebarInput::Next,
                 SidebarInput::Next,
                 SidebarInput::Next,
+                SidebarInput::Next,
                 SidebarInput::Choose,
             ],
         );
         assert_eq!(state.location(), Location::View(SpecialView::Starred));
-        assert_eq!(current(&state), Some(5), "its entry is current");
+        assert_eq!(current(&state), Some(6), "its entry is current");
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Starred,
             false,
@@ -1201,6 +1203,7 @@ INBOX:",
                 "upcoming",
                 "overdue",
                 "colors",
+                "logbook",
                 "flagged",
                 "bookmark A",
                 "Leaf A"
@@ -1221,6 +1224,7 @@ INBOX:",
                 "upcoming",
                 "overdue",
                 "colors",
+                "logbook",
                 "starred",
                 "flagged",
                 "bookmark A",
@@ -1244,12 +1248,17 @@ INBOX:",
                 "upcoming",
                 "overdue",
                 "colors",
+                "logbook",
                 "starred",
                 "flagged",
                 "bookmark A",
                 "Leaf A"
             ]
         );
+        state.update(Message::ToggleSidebar);
+        input(&mut state, &[SidebarInput::Next; 3]);
+        input(&mut state, &[SidebarInput::Choose]);
+        assert_eq!(state.location(), Location::View(SpecialView::Logbook));
     }
 
     // FR-TAG-14, D-93: Flagged comes last of the special views unless its setting is off, and
@@ -1259,10 +1268,10 @@ INBOX:",
         let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
         assert!(state.sidebar_lists(SpecialView::Flagged), "on by default");
         state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next; 6]);
+        input(&mut state, &[SidebarInput::Next; 7]);
         input(&mut state, &[SidebarInput::Choose]);
         assert_eq!(state.location(), Location::View(SpecialView::Flagged));
-        assert_eq!(current(&state), Some(6), "its entry is current");
+        assert_eq!(current(&state), Some(7), "its entry is current");
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Flagged,
             false,
@@ -1276,6 +1285,7 @@ INBOX:",
                 "upcoming",
                 "overdue",
                 "colors",
+                "logbook",
                 "starred",
                 "bookmark A",
                 "Leaf A"

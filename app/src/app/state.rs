@@ -117,7 +117,7 @@ struct RowsKey {
     /// The day, order and starred setting of the Today view; `None` elsewhere, which does not
     /// depend on them.
     today: Option<(Date, TodayOrder, bool)>,
-    /// The day of a view whose entries depend on it, Upcoming or Overdue; `None` elsewhere.
+    /// The day of a view whose entries depend on it, Upcoming, Overdue or Logbook; `None` elsewhere.
     day: Option<Date>,
 }
 
@@ -517,7 +517,7 @@ impl State {
                 .then(|| (self.today, self.today_order.clone(), self.today_starred)),
             day: matches!(
                 pane.location,
-                Location::View(SpecialView::Upcoming | SpecialView::Overdue)
+                Location::View(SpecialView::Upcoming | SpecialView::Overdue | SpecialView::Logbook)
             )
             .then_some(self.today),
         };

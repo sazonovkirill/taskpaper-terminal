@@ -19,6 +19,7 @@ mod go_to_command;
 mod go_to_symbol;
 pub mod history;
 mod links;
+mod logbook;
 mod memo;
 mod move_to;
 mod overdue;
