@@ -308,6 +308,21 @@ fn the_panel_reopens_at_the_top_and_names_no_keys_while_editing() {
     assert!(screen(&mut app)[2].contains("Home):"), "typed");
 }
 
+// ui.md §4, D-55: the list of another mode starts at its top, since nothing scrolls it while
+// editing.
+#[test]
+fn starting_to_edit_shows_the_edit_list_from_its_top() {
+    let mut app = Harness::with_text(OUTLINE, 60, 12);
+    app.type_keys("?");
+    drawn(&mut app, "))");
+    assert_eq!(right_of(&mut app, 28)[1], "│ ↑ more                      (");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(
+        right_of(&mut app, 28)[1..3],
+        ["│ Editing", "│  Stop Editing             Esc"]
+    );
+}
+
 // D-55: while the sidebar or a popup has the keys, `)` and `(` do not scroll, and the more line
 // names no keys.
 #[test]

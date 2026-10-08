@@ -118,6 +118,9 @@ pub struct Tui {
     settings: Option<PathBuf>,
     /// The first line of the shortcuts panel's list on screen (D-55).
     shortcuts_scroll: usize,
+    /// The mode whose list the panel showed at the last draw; another mode's list starts at its
+    /// top (ui.md §4).
+    shortcuts_mode: Mode,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
     shortcuts_page: usize,
     /// Where the last draw put what the mouse acts on.
@@ -175,6 +178,7 @@ impl Tui {
             colors: ColorSupport::default(),
             settings: None,
             shortcuts_scroll: 0,
+            shortcuts_mode: Mode::Navigate,
             shortcuts_page: 0,
             drawn: mouse::Drawn::default(),
             wheel: HashMap::new(),
@@ -827,6 +831,10 @@ impl Tui {
         };
         self.drawn.shortcuts = Some(area);
         let context = self.context();
+        if context.mode != self.shortcuts_mode {
+            self.shortcuts_mode = context.mode;
+            self.shortcuts_scroll = 0;
+        }
         let scrolls =
             context.mode == Mode::Navigate && context.overlay.is_none() && !context.sidebar;
         let [up, down] =
