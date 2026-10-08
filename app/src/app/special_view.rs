@@ -3,6 +3,8 @@
 //! ([navigation.md §7, §7.1](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7),
 //! FR-TAG-04, FR-TAG-07, D-7, D-80).
 
+use std::collections::HashSet;
+
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
@@ -131,10 +133,7 @@ impl State {
     /// left out while hidden, as in the outline (FR-DONE-02); special nodes never show
     /// (FR-SPC-01).
     pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
-        let mut rows = Vec::new();
-        let top = Above::top(self.document.root());
-        self.push_matching(pane, &lists, true, &top, false, &mut rows);
-        rows
+        self.matching(pane, pane.show_done, lists)
     }
 
     /// The rows [`State::matching_rows`] gives, completed blocks and what is inside them
@@ -144,43 +143,30 @@ impl State {
         pane: &Pane,
         lists: impl Fn(&Block) -> bool,
     ) -> Vec<Row> {
-        let mut rows = Vec::new();
-        let top = Above::top(self.document.root());
-        self.push_matching(pane, &lists, false, &top, false, &mut rows);
-        rows
+        self.matching(pane, true, lists)
     }
 
-    /// Appends the entries below the line `above`, which is done or inside a done block when
-    /// `inside_done` says so, leaving out completed blocks the pane hides when `as_shown` says
-    /// to.
-    fn push_matching(
-        &self,
-        pane: &Pane,
-        lists: &impl Fn(&Block) -> bool,
-        as_shown: bool,
-        above: &Above<'_>,
-        inside_done: bool,
-        out: &mut Vec<Row>,
-    ) {
-        for block in blocks::each_child(&self.document, above.line()) {
-            if as_shown && !pane.shows(&block) {
-                continue;
-            }
-            if lists(&block) {
-                out.push(Row {
+    /// The entries in `pane` of the blocks for which `lists` holds among the outline's rows with
+    /// nothing collapsed, completed blocks shown when `show_done` says so: the rows a change
+    /// builds again only where it changed, gone through rather than the document's tree.
+    fn matching(&self, pane: &Pane, show_done: bool, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
+        let mut every = Pane::first();
+        every.show_done = show_done;
+        let mut above = Above::default();
+        let mut entries = Vec::new();
+        for row in &self.rows_folded(&every, &HashSet::new()) {
+            above.reach(row.depth);
+            if blocks::block(&self.document, row.id).is_some_and(|block| lists(&block)) {
+                entries.push(Row {
+                    depth: 0,
+                    selected: pane.selection.contains(row.id),
                     path: above.path(self),
-                    ..self.row(pane, &block, 0, false, inside_done)
+                    ..row.clone()
                 });
             }
-            self.push_matching(
-                pane,
-                lists,
-                as_shown,
-                &above.below(block.id()),
-                inside_done || block.done(),
-                out,
-            );
+            above.enter(row.id);
         }
+        entries
     }
 
     /// `message` as the pane takes it where it is: in a special view an intent that needs the
@@ -418,6 +404,15 @@ Work: @done @star
         let mut state = starred(OUTLINE);
         state.update(Message::ToggleShowDone);
         assert_eq!(listed(&state), ["Home › Water plants", "Plan the week"]);
+    }
+
+    // FR-KEY-05, D-92
+    #[test]
+    fn a_selected_entry_shows_selected() {
+        let mut state = starred("- a @star\n- b @star\n");
+        state.update(Message::Select(crate::app::SelectionChange::Toggle));
+        let selected: Vec<bool> = state.rows().iter().map(|row| row.selected).collect();
+        assert_eq!(selected, [true, false]);
     }
 
     // D-92

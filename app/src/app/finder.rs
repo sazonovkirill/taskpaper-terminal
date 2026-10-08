@@ -3,7 +3,13 @@
 //! ([navigation.md §8](../../../docs/specs/navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06),
 //! [keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
 
-use std::{cmp::Reverse, sync::Arc};
+use std::{
+    cmp::Reverse,
+    collections::BTreeSet,
+    fmt,
+    ops::Deref,
+    sync::{Arc, OnceLock},
+};
 
 use nucleo_matcher::{
     Config, Matcher, Utf32Str,
@@ -20,11 +26,67 @@ pub struct Candidate<T> {
     /// The text the query matches.
     pub text: Arc<str>,
     /// What a finder shows beside the text to tell candidates apart, such as a block's path.
-    pub detail: Arc<str>,
+    pub detail: Detail,
     /// Which group it ranks in: every candidate of a lower tier ranks above every candidate of a
     /// higher one.
     pub tier: u8,
 }
+
+/// What a finder shows beside a candidate's text: a text, or the path of the blocks above a
+/// block, joined by ` › ` only once it is read, since a finder over a large outline shows few of
+/// its candidates (N-PERF-02).
+#[derive(Clone, Default)]
+pub struct Detail {
+    path: Arc<[Arc<str>]>,
+    text: OnceLock<Arc<str>>,
+}
+
+impl Detail {
+    /// The path of the blocks `path` names, from the top level down.
+    pub(super) fn path(path: Arc<[Arc<str>]>) -> Self {
+        Self {
+            path,
+            text: OnceLock::new(),
+        }
+    }
+}
+
+impl From<&str> for Detail {
+    fn from(text: &str) -> Self {
+        Self {
+            path: Arc::default(),
+            text: OnceLock::from(Arc::from(text)),
+        }
+    }
+}
+
+impl Deref for Detail {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.text.get_or_init(|| self.path.join(" › ").into())
+    }
+}
+
+impl fmt::Display for Detail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self)
+    }
+}
+
+impl fmt::Debug for Detail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+impl PartialEq for Detail {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
+impl Eq for Detail {}
 
 /// An open finder as a frontend shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,9 +94,63 @@ pub struct FinderView<'a, T> {
     /// What was typed.
     pub query: &'a str,
     /// The candidates the query matches, best first.
-    pub entries: Vec<&'a Candidate<T>>,
+    pub entries: Entries<'a, T>,
     /// The position of the highlighted entry in `entries`.
     pub selected: usize,
+}
+
+/// The candidates a query matches, best first, read one at a time, since a finder over a large
+/// outline matches many more than show (N-PERF-02).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Entries<'a, T> {
+    candidates: &'a [Candidate<T>],
+    /// The positions in `candidates` of those matched, best first.
+    ranked: &'a [usize],
+}
+
+impl<'a, T> Entries<'a, T> {
+    /// How many there are.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.ranked.len()
+    }
+
+    /// Whether there are none.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.ranked.is_empty()
+    }
+
+    /// The entry at `index`, if there is one.
+    #[must_use]
+    pub fn get(&self, index: usize) -> Option<&'a Candidate<T>> {
+        self.candidates.get(*self.ranked.get(index)?)
+    }
+
+    /// Every entry in order.
+    pub fn iter(&self) -> impl Iterator<Item = &'a Candidate<T>> + use<'a, T> {
+        let candidates = self.candidates;
+        self.ranked
+            .iter()
+            .filter_map(move |&index| candidates.get(index))
+    }
+}
+
+#[cfg(test)]
+impl<'a, T> Entries<'a, T> {
+    /// The candidates at the positions `ranked` in `candidates`, in that order.
+    pub(crate) fn new(candidates: &'a [Candidate<T>], ranked: &'a [usize]) -> Self {
+        Self { candidates, ranked }
+    }
+}
+
+#[cfg(test)]
+impl<T> std::ops::Index<usize> for Entries<'_, T> {
+    type Output = Candidate<T>;
+
+    fn index(&self, index: usize) -> &Candidate<T> {
+        self.get(index).expect("an entry at the index")
+    }
 }
 
 /// An open finder: its candidates, the query, the matching candidates ranked and the highlighted
@@ -66,11 +182,10 @@ impl<T: Clone> Finder<T> {
     pub(super) fn view(&self) -> FinderView<'_, T> {
         FinderView {
             query: &self.query,
-            entries: self
-                .ranked
-                .iter()
-                .filter_map(|&index| self.candidates.get(index))
-                .collect(),
+            entries: Entries {
+                candidates: &self.candidates,
+                ranked: &self.ranked,
+            },
             selected: self.selected,
         }
     }
@@ -110,14 +225,24 @@ impl<T: Clone> Finder<T> {
         self.selected = 0;
         // An empty pattern scores every candidate alike, so only the tiers order them.
         if pattern.atoms.is_empty() {
-            let mut tiers: Vec<(u8, usize)> = self
+            // A pass over the candidates for each tier, rather than a sort, since a finder over
+            // every block of a large outline opens with it (N-PERF-02).
+            let tiers: BTreeSet<u8> = self
                 .candidates
                 .iter()
-                .enumerate()
-                .map(|(index, candidate)| (candidate.tier, index))
+                .map(|candidate| candidate.tier)
                 .collect();
-            tiers.sort_unstable();
-            self.ranked = tiers.into_iter().map(|(_, index)| index).collect();
+            let candidates = &self.candidates;
+            self.ranked = tiers
+                .into_iter()
+                .flat_map(|tier| {
+                    candidates
+                        .iter()
+                        .enumerate()
+                        .filter(move |(_, candidate)| candidate.tier == tier)
+                        .map(|(index, _)| index)
+                })
+                .collect();
             return;
         }
         let mut matcher = Matcher::new(Config::DEFAULT);
@@ -168,7 +293,7 @@ mod tests {
         Candidate {
             value,
             text: text.into(),
-            detail: format!("path {value}").into(),
+            detail: format!("path {value}").as_str().into(),
             tier,
         }
     }
@@ -207,6 +332,18 @@ mod tests {
         assert_eq!(listed(&finder), (vec![4, 2, 1, 3], 0));
         assert_eq!(finder.view().query, "");
         assert_eq!(&*finder.view().entries[0].detail, "path 4");
+    }
+
+    // FR-NAV-05, N-PERF-02
+    #[test]
+    fn a_path_detail_reads_and_compares_as_its_blocks_joined() {
+        let detail = Detail::path(["A", "b"].map(Arc::from).into());
+        assert_eq!(&*detail, "A › b");
+        assert_eq!(detail.to_string(), "A › b");
+        assert_eq!(format!("{detail:?}"), r#""A › b""#);
+        assert_eq!(detail, Detail::from("A › b"));
+        assert_ne!(detail, Detail::from("A"));
+        assert_eq!(&*Detail::default(), "");
     }
 
     // FR-NAV-05

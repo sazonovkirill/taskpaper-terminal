@@ -4,10 +4,13 @@
 //! ([navigation.md §8](../../../docs/specs/navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06),
 //! FR-NAV-05, D-65).
 
+use std::collections::HashSet;
+
 use super::{
-    Location, MenuInput, State,
+    Location, MenuInput, Row, State,
     above::Above,
-    finder::{Candidate, Finder, FinderView},
+    finder::{Candidate, Detail, Finder, FinderView},
+    pane::Pane,
     picker::Picked,
 };
 use crate::document::{Block, BlockKind, ItemId, blocks};
@@ -21,11 +24,12 @@ pub enum Symbols {
     Projects,
 }
 
-/// How a block ranks in Go to Symbol: bookmarks, then projects and sections, then the rest.
-fn tier(block: &Block) -> u8 {
-    if block.bookmark() {
+/// How a block ranks in Go to Symbol, by its row: bookmarks, then projects and sections, then the
+/// rest.
+fn tier(row: &Row) -> u8 {
+    if row.bookmark {
         0
-    } else if block.kind() == BlockKind::Project || block.section() {
+    } else if row.kind == BlockKind::Project || row.section {
         1
     } else {
         2
@@ -66,7 +70,7 @@ impl State {
     /// The candidates of [`State::block_candidates`] that are projects, as Go to Project and
     /// Quick Add's project picker list them (D-65, D-96).
     pub(super) fn project_candidates(&self) -> Vec<Candidate<ItemId>> {
-        self.candidates(&[], |block| block.kind() == BlockKind::Project)
+        self.candidates(&[], |row| row.kind == BlockKind::Project)
     }
 
     /// A candidate for each block in document order, with the path of the blocks above it and
@@ -74,44 +78,46 @@ impl State {
     /// name, nor for `excluded` blocks and completed blocks while those are hidden (FR-DONE-02),
     /// nor what they hold (navigation.md §8, FR-OPS-05).
     pub(super) fn block_candidates(&self, excluded: &[Block]) -> Vec<Candidate<ItemId>> {
-        self.candidates(excluded, |block| !block.divider())
+        self.candidates(excluded, |row| !row.divider)
     }
 
-    /// The candidates of [`State::block_candidates`] for the blocks `lists` holds for.
+    /// The candidates of [`State::block_candidates`] for the blocks whose rows `lists` holds
+    /// for, from the outline's rows with nothing collapsed, which a change builds again only
+    /// where it changed.
     fn candidates(
         &self,
         excluded: &[Block],
-        lists: impl Fn(&Block) -> bool,
+        lists: impl Fn(&Row) -> bool,
     ) -> Vec<Candidate<ItemId>> {
+        let mut every = Pane::first();
+        every.show_done = self.pane.show_done;
+        let mut above = Above::default();
         let mut candidates = Vec::new();
-        let top = Above::top(self.document.root());
-        self.push_candidates(&top, excluded, &lists, &mut candidates);
-        candidates
-    }
-
-    /// Appends a candidate for each block below `above` that `lists` holds for, depth first, as
-    /// [`State::candidates`] lists them.
-    fn push_candidates(
-        &self,
-        above: &Above<'_>,
-        excluded: &[Block],
-        lists: &impl Fn(&Block) -> bool,
-        out: &mut Vec<Candidate<ItemId>>,
-    ) {
-        for block in blocks::each_child(&self.document, above.line()) {
-            if !self.shows(&block) || excluded.iter().any(|gone| gone.id() == block.id()) {
+        // The depth of the excluded block whose rows are being passed.
+        let mut passing = None;
+        for row in &self.rows_folded(&every, &HashSet::new()) {
+            if passing.is_some_and(|depth| row.depth > depth) {
                 continue;
             }
-            if lists(&block) {
-                out.push(Candidate {
-                    value: block.id(),
-                    text: self.shared_shown_text(block.id()),
-                    detail: above.detail(self),
-                    tier: tier(&block),
+            passing = excluded
+                .iter()
+                .any(|gone| gone.id() == row.id)
+                .then_some(row.depth);
+            if passing.is_some() {
+                continue;
+            }
+            above.reach(row.depth);
+            if lists(row) {
+                candidates.push(Candidate {
+                    value: row.id,
+                    text: self.shared_shown_text(row.id),
+                    detail: Detail::path(above.path(self)),
+                    tier: tier(row),
                 });
             }
-            self.push_candidates(&above.below(block.id()), excluded, lists, out);
+            above.enter(row.id);
         }
+        candidates
     }
 
     /// Applies `input` to Go to Symbol or Go to Project, and once a block is chosen, zooms to its

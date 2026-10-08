@@ -158,7 +158,7 @@ mod tests {
     use ratatui::style::{Color, Modifier};
 
     use super::*;
-    use crate::app::Candidate;
+    use crate::app::{Candidate, Entries};
 
     /// Every entry's icon in the tests: the generic one, in the style the value numbers.
     const ICON: fn(&u8) -> (Icon, Style) =
@@ -175,10 +175,10 @@ mod tests {
 
     #[test]
     fn fits_its_entries_in_at_most_80_by_20_centered() {
-        let one = candidate("One");
+        let one = [candidate("One")];
         let view = FinderView {
             query: "o",
-            entries: vec![&one],
+            entries: Entries::new(&one, &[0]),
             selected: 0,
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
@@ -188,9 +188,10 @@ mod tests {
         );
         assert_eq!(finder.area(Rect::new(0, 0, 40, 3)), Rect::new(0, 0, 40, 3));
         let many: Vec<Candidate<u8>> = (0..40).map(|n| candidate(&n.to_string())).collect();
+        let ranked: Vec<usize> = (0..many.len()).collect();
         let view = FinderView {
             query: "",
-            entries: many.iter().collect(),
+            entries: Entries::new(&many, &ranked),
             selected: 0,
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
@@ -201,7 +202,7 @@ mod tests {
     fn the_caret_follows_the_query_and_stays_inside_the_box() {
         let view = FinderView::<u8> {
             query: "abc",
-            entries: Vec::new(),
+            entries: Entries::new(&[], &[]),
             selected: 0,
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
@@ -209,7 +210,7 @@ mod tests {
         let long = "x".repeat(200);
         let view = FinderView::<u8> {
             query: &long,
-            entries: Vec::new(),
+            entries: Entries::new(&[], &[]),
             selected: 0,
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
@@ -224,9 +225,10 @@ mod tests {
             detail: "Path".into(),
             ..two
         };
+        let candidates = [one, two];
         let view = FinderView {
             query: "",
-            entries: vec![&one, &two],
+            entries: Entries::new(&candidates, &[0, 1]),
             selected: 1,
         };
         let mut buf = Buffer::empty(Rect::new(0, 0, 16, 5));
@@ -251,9 +253,10 @@ mod tests {
     fn draws_each_entrys_icon_and_text_in_the_style_its_value_gives() {
         let (one, two) = (candidate("One"), candidate("Two"));
         let two = Candidate { value: 2, ..two };
+        let candidates = [one, two];
         let view = FinderView {
             query: "",
-            entries: vec![&one, &two],
+            entries: Entries::new(&candidates, &[0, 1]),
             selected: 1,
         };
         let text = |value: &u8| Style::new().fg(Color::Indexed(value + 100));
@@ -273,7 +276,7 @@ mod tests {
     fn debug_shows_the_title_and_icons() {
         let view = FinderView::<u8> {
             query: "",
-            entries: Vec::new(),
+            entries: Entries::new(&[], &[]),
             selected: 0,
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Ascii, &ICON, &THEME);
