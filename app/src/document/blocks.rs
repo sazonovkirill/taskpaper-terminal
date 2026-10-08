@@ -345,6 +345,14 @@ pub fn is_special(item: &Item) -> bool {
     has_tag(item, "hidden")
 }
 
+/// Whether `item` starts an attachment, a block's note or comments: a special node whose text,
+/// tags aside and trimmed, is exactly `NOTE` or `COMMENTS` (attachments.md §1).
+pub(super) fn is_attachment(item: &Item) -> bool {
+    is_special(item)
+        && item.kind() == ItemKind::Note
+        && matches!(item.display_text().trim(), "NOTE" | "COMMENTS")
+}
+
 /// The type of the line `item` (data-model §3).
 impl From<ItemKind> for BlockKind {
     /// The block type of a line of TaskPaper type `kind`.
@@ -741,6 +749,29 @@ P: @blue @red
             .map(|(id, _)| is_special(document.get(id).unwrap()))
             .collect();
         assert_eq!(special, [true, true, false, false, true]);
+    }
+
+    // FR-ATT-01, attachments.md §1
+    #[test]
+    fn a_special_node_reading_note_or_comments_is_an_attachment() {
+        let document = parse(concat!(
+            "NOTE @hidden\n",
+            "COMMENTS @hidden @comments\n",
+            " NOTE @x @hidden\n",
+            "NOTE\n",
+            "Note @hidden\n",
+            "NOTE: @hidden\n",
+            "- COMMENTS @hidden\n",
+            "NOTES @hidden",
+        ));
+        let attachments: Vec<bool> = document
+            .descendants(document.root())
+            .map(|(id, _)| is_attachment(document.get(id).unwrap()))
+            .collect();
+        assert_eq!(
+            attachments,
+            [true, true, true, false, false, false, false, false]
+        );
     }
 
     // FR-TAG-02, D-52

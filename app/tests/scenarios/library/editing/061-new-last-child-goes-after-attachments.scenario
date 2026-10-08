@@ -1,0 +1,21 @@
+# A new last child goes after the block's NOTE and COMMENTS attachments, even with no other children after them.
+file <<END
+Weekend:
+	NOTE @hidden
+		Plan it on Friday
+	COMMENTS @hidden
+		[2026-10-08 00:40] Ask Ana
+END
+keys i
+type Clean the bikes
+keys <Esc>
+see - Clean the bikes
+quit
+saved <<END
+Weekend:
+	NOTE @hidden
+		Plan it on Friday
+	COMMENTS @hidden
+		[2026-10-08 00:40] Ask Ana
+	- Clean the bikes
+END

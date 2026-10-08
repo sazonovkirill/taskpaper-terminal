@@ -1,5 +1,4 @@
 # A quick add goes after the destination's NOTE and COMMENTS attachments, as the last child.
-# BUG: with no other children after them, the task is written before the attachments.
 file <<END
 INBOX:
 	NOTE @hidden

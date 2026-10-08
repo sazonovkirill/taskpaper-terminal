@@ -17,7 +17,8 @@ pub enum Place<'a> {
     Above(&'a Block),
     /// As the block's first child.
     FirstChild(&'a Block),
-    /// As the block's last child, before the special nodes that end its children.
+    /// As the block's last child, after its attachments and before the other special nodes
+    /// that end its children.
     LastChild(&'a Block),
     /// As the first top-level block.
     Start,
@@ -279,7 +280,7 @@ pub fn shift(
 #[derive(Debug, Clone, Copy)]
 enum Spot {
     Start,
-    /// After the last child that is not a special node.
+    /// After the last child that is not a special node or is an attachment.
     End,
     Before(ItemId),
     After(ItemId),
@@ -444,15 +445,16 @@ fn relocate(document: &Document, line: ItemId, to: ItemId, spot: Spot) -> Option
     })
 }
 
-/// The index after the last of `children` that is not a special node, so that the special nodes
-/// ending them stay last (special-nodes.md §1).
+/// The index after the last of `children` that is not a special node or is an attachment, so
+/// that a child added at the end goes after the attachments and the other special nodes ending
+/// the children stay last (special-nodes.md §1, attachments.md §1).
 fn end(document: &Document, children: &[ItemId]) -> usize {
     children
         .iter()
         .rposition(|&id| {
             document
                 .get(id)
-                .is_some_and(|item| !blocks::is_special(item))
+                .is_some_and(|item| !blocks::is_special(item) || blocks::is_attachment(item))
         })
         .map_or(0, |last| last + 1)
 }
@@ -567,6 +569,31 @@ mod tests {
             ["- t", "\t- a", "\t>- ", "\tC @hidden @comments"]
         );
         assert_eq!(added("n\n\tm", At::LastChild, "n"), ["n", "\tm", "\t>"]);
+    }
+
+    // FR-MODE-04, FR-OPS-02, FR-OPS-05, attachments.md §1
+    #[test]
+    fn a_child_added_at_the_end_goes_after_the_attachments() {
+        let text = "P:\n\tNOTE @hidden\n\t\tn\n\tCOMMENTS @hidden\n\t\tc\n\tL @hidden @log\n- a";
+        let attached = [
+            "P:",
+            "\tNOTE @hidden",
+            "\t\tn",
+            "\tCOMMENTS @hidden",
+            "\t\tc",
+        ];
+        assert_eq!(
+            added(text, At::LastChild, "P:"),
+            [&attached[..], &["\t>- ", "\tL @hidden @log", "- a"]].concat()
+        );
+        assert_eq!(
+            shifted(text, "- a", Shift::Indent).unwrap(),
+            [&attached[..], &["\t- a", "\tL @hidden @log"]].concat()
+        );
+        assert_eq!(
+            moved_to(text, &["- a"], "P:").unwrap(),
+            [&attached[..], &["\t- a", "\tL @hidden @log"]].concat()
+        );
     }
 
     // D-96
