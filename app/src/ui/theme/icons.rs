@@ -17,24 +17,24 @@ pub enum Icon {
     /// A block with `@star`, after its text, the command menu's Toggle Star and the settings
     /// window's setting that lists starred blocks in Today (D-88).
     Star,
-    /// The Today view, in its header, the sidebar's entry, Go to Today and the settings window's
-    /// setting that lists it in the sidebar (D-88).
+    /// The Today view, in its header, the Navigator's entry, Go to Today and the settings window's
+    /// setting that lists it in the Navigator (D-88).
     Today,
     /// A block with `@flag`, in red after its text, and the command menu's Toggle Flag (D-91);
     /// the Flagged view, as the Today view's sun marks it (D-93).
     Flag,
-    /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
+    /// The Navigator's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,
-    /// The Upcoming view's sidebar entry, header and Go to command, and the settings window's
+    /// The Upcoming view's Navigator entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Upcoming,
-    /// The Colors view's sidebar entry, header and Go to command, and the settings window's
+    /// The Colors view's Navigator entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Colors,
-    /// The Logbook view's sidebar entry, header and Go to command, and the settings window's
+    /// The Logbook view's Navigator entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Logbook,
-    /// A bookmarked block, after its text, the command menu's bookmark entries and the sidebar's
+    /// A bookmarked block, after its text, the command menu's bookmark entries and the Navigator's
     /// bookmarks.
     Bookmark,
     /// The command menu's entry that makes a block a project, and projects in the finders.
@@ -61,9 +61,9 @@ pub enum Icon {
     Command,
     /// The document root: the first crumb and Move to's Home (D-32).
     Home,
-    /// A sidebar project whose child projects are shown.
+    /// A Navigator project whose child projects are shown.
     Expanded,
-    /// A sidebar project whose child projects are hidden, and the count of a collapsed block's
+    /// A Navigator project whose child projects are hidden, and the count of a collapsed block's
     /// hidden children.
     Collapsed,
     /// The marker of a task that is not done, in the outline and the finders (D-70).

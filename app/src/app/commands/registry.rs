@@ -1,11 +1,11 @@
 //! The registry's tables: every command with the mode it belongs to and its default bindings
 //! ([keybindings.md §2–3](../../../../docs/specs/keybindings.md#2-navigate-mode)), the keys of
-//! the open sidebar (§4), and the commands of each mode the shortcuts panel lists, grouped
+//! the open Navigator (§4), and the commands of each mode the shortcuts panel lists, grouped
 //! (FR-KEY-04).
 
 use super::Command;
 use crate::{
-    app::{Mode, NewBlock, PaneChange, Paste, SelectionChange, SidebarInput, SpecialView},
+    app::{Mode, NavigatorInput, NewBlock, PaneChange, Paste, SelectionChange, SpecialView},
     document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -115,7 +115,7 @@ pub const REGISTRY: &[Entry] = &[
         &["g f"]
     ),
     entry!(
-        Command::Sidebar(SidebarInput::GoToInbox),
+        Command::Navigator(NavigatorInput::GoToInbox),
         Mode::Navigate,
         &["g i"]
     ),
@@ -418,7 +418,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
-    entry!(Command::ToggleSidebar, Mode::Navigate, &["ctrl+g"]),
+    entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+g"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+p", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::SaveAs, Mode::Navigate, &[]),
@@ -533,24 +533,30 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::Paste(Paste::Below), Mode::Edit, &["ctrl+v"]),
 ];
 
-/// The keys of the open sidebar, each command's written as in [`Entry::keys`]; other keys do
+/// The keys of the open Navigator, each command's written as in [`Entry::keys`]; other keys do
 /// nothing there ([keybindings.md §4]).
 ///
 /// [keybindings.md §4]: ../../../../docs/specs/keybindings.md#4-other-contexts
-pub const SIDEBAR: &[(Command, &[&str])] = &[
-    (Command::Sidebar(SidebarInput::Next), &["down", "ctrl+n"]),
-    (Command::Sidebar(SidebarInput::Previous), &["up", "ctrl+p"]),
-    (Command::Sidebar(SidebarInput::Collapse), &["left"]),
-    (Command::Sidebar(SidebarInput::Expand), &["right"]),
-    (Command::Sidebar(SidebarInput::Choose), &["enter"]),
+pub const NAVIGATOR: &[(Command, &[&str])] = &[
+    (
+        Command::Navigator(NavigatorInput::Next),
+        &["down", "ctrl+n"],
+    ),
+    (
+        Command::Navigator(NavigatorInput::Previous),
+        &["up", "ctrl+p"],
+    ),
+    (Command::Navigator(NavigatorInput::Collapse), &["left"]),
+    (Command::Navigator(NavigatorInput::Expand), &["right"]),
+    (Command::Navigator(NavigatorInput::Choose), &["enter"]),
     (
         Command::Pane(PaneChange::Open),
         &["alt+enter", "ctrl+v", "ctrl+t"],
     ),
-    (Command::Sidebar(SidebarInput::Erase), &["backspace"]),
-    (Command::Sidebar(SidebarInput::Leave), &["esc"]),
+    (Command::Navigator(NavigatorInput::Erase), &["backspace"]),
+    (Command::Navigator(NavigatorInput::Leave), &["esc"]),
     (Command::ContextMenu, &["shift+f10", "menu"]),
-    (Command::ToggleSidebar, &["ctrl+g"]),
+    (Command::ToggleNavigator, &["ctrl+g"]),
     (Command::Quit, &["ctrl+q"]),
 ];
 
@@ -640,7 +646,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::GoToView(SpecialView::Logbook),
             Command::GoToView(SpecialView::Starred),
             Command::GoToView(SpecialView::Flagged),
-            Command::Sidebar(SidebarInput::GoToInbox),
+            Command::Navigator(NavigatorInput::GoToInbox),
         ],
     ),
     (
@@ -844,9 +850,9 @@ mod tests {
 
     // FR-UI-01, FR-KEY-06, keybindings.md §4
     #[test]
-    fn the_sidebar_binds_each_key_once_to_a_command_with_a_message() {
+    fn the_navigator_binds_each_key_once_to_a_command_with_a_message() {
         let mut seen = HashSet::new();
-        for (command, keys) in SIDEBAR {
+        for (command, keys) in NAVIGATOR {
             assert!(!keys.is_empty(), "{command:?}");
             for keys in *keys {
                 assert!(seen.insert(*keys), "{keys}");
@@ -858,7 +864,7 @@ mod tests {
             .find(|entry| entry.command == Command::ContextMenu)
             .map(|entry| entry.keys);
         assert_eq!(
-            SIDEBAR
+            NAVIGATOR
                 .iter()
                 .find(|(command, _)| *command == Command::ContextMenu)
                 .map(|&(_, keys)| keys),

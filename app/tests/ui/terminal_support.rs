@@ -206,7 +206,7 @@ fn every_overlay_opens_on_every_size() {
     }
 }
 
-// N-PORT-04, D-79: the Navigator's window over wide text hides the graphemes its edges cut, and
+// N-PORT-04, D-79: the Navigator over wide text hides the graphemes its edges cut, and
 // its entries end before a wide grapheme that would not fit beside their counts.
 #[test]
 fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {

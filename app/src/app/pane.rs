@@ -8,7 +8,7 @@
 use std::cmp::Ordering;
 
 use super::{
-    Location, Rows, SidebarInput, State,
+    Location, NavigatorInput, Rows, State,
     commands::{Command, NodeCommand},
     selection::Selection,
 };
@@ -94,8 +94,8 @@ impl Pane {
 /// A change to which panes are open and which of them has the keys (navigation.md §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaneChange {
-    /// Open the highlighted entry of Go to Symbol while it is open, else the focused sidebar entry
-    /// while the sidebar is open, else the focused block, in a new pane right of the focused
+    /// Open the highlighted entry of Go to Symbol while it is open, else the focused Navigator entry
+    /// while the Navigator is open, else the focused block, in a new pane right of the focused
     /// one, zoomed into it, and give that pane the keys.
     Open,
     /// Open the focused pane's location in a new pane right of it, and give that pane the keys.
@@ -223,18 +223,18 @@ impl State {
         self.pane.width = Some(width);
     }
 
-    /// Opens the highlighted entry of Go to Symbol or Go to Project, the focused sidebar entry or
+    /// Opens the highlighted entry of Go to Symbol or Go to Project, the focused Navigator entry or
     /// the focused block in a new pane, as [`PaneChange::Open`] says, closing the finder or the
-    /// sidebar.
+    /// Navigator.
     fn open_chosen(&mut self) {
         let chosen = if let Some((_, finder)) = self.symbols.take() {
             finder
                 .highlighted()
                 .copied()
                 .map(|id| Location::Outline(Some(id)))
-        } else if self.sidebar_focused() {
-            let location = self.sidebar_location();
-            self.sidebar_input(SidebarInput::Leave);
+        } else if self.navigator_focused() {
+            let location = self.navigator_location();
+            self.navigator_input(NavigatorInput::Leave);
             location
         } else {
             self.pane
@@ -270,7 +270,7 @@ impl State {
         if at > self.others.len() {
             return;
         }
-        self.sidebar_input(SidebarInput::Leave);
+        self.navigator_input(NavigatorInput::Leave);
         // The other panes leave out the focused one, so those right of it sit one place left of
         // their position, and the focused one goes back between those left and right of it.
         let (index, back) = match at.cmp(&self.pane_at) {
@@ -493,9 +493,9 @@ mod tests {
         pane(&mut state, PaneChange::FocusLeft);
         state.update(Message::GoTo(Location::Outline(None)));
         state.update(Message::Pane(PaneChange::FocusRight));
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(crate::app::SidebarInput::Focus(0)));
-        state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(crate::app::NavigatorInput::Focus(0)));
+        state.update(Message::Navigator(crate::app::NavigatorInput::Choose));
         pane(&mut state, PaneChange::OpenLocation);
         assert_eq!(panes(&state)[3], "*Today: ", "the Today view opens too");
     }
@@ -760,20 +760,20 @@ mod tests {
 
     // FR-UI-01, FR-UI-03, navigation.md §6
     #[test]
-    fn the_sidebar_opens_its_focused_entry_in_a_new_pane_which_gets_the_keys() {
+    fn the_navigator_opens_its_focused_entry_in_a_new_pane_which_gets_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         // From Today, past the other special views and Work, to Home.
         let to_home = crate::app::SpecialView::ALL.len() + 1;
         for _ in 0..to_home {
-            state.update(Message::Sidebar(crate::app::SidebarInput::Next));
+            state.update(Message::Navigator(crate::app::NavigatorInput::Next));
         }
         pane(&mut state, PaneChange::Open);
-        assert!(!state.sidebar_focused());
+        assert!(!state.navigator_focused());
         assert_eq!(panes(&state), ["⌂: Work", "*Home: Plants"]);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         for _ in 0..to_home {
-            state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
+            state.update(Message::Navigator(crate::app::NavigatorInput::Previous));
         }
         pane(&mut state, PaneChange::Open);
         assert_eq!(panes(&state)[2], "*Today: ");

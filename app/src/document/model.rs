@@ -336,7 +336,7 @@ impl Item {
     }
 
     /// The display text without the delimiters of its formatting, as lists of blocks such as the
-    /// sidebar show it; worked out the first time it is read.
+    /// Navigator show it; worked out the first time it is read.
     #[must_use]
     pub fn plain_text(&self) -> &str {
         self.text.plain.get_or_init(|| {

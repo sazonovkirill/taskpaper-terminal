@@ -309,7 +309,7 @@ pub fn room(area: Rect, line: u16) -> u16 {
 /// of `body` to the panes ([ui.md §1](../../../docs/specs/ui.md#1-layout), D-28): a quarter of the
 /// screen's width but 32 to 40 columns at the right of `body`, taken from the panes, or drawn over
 /// their right part on a screen narrower than 80 columns. A screen smaller than 40×10 has room
-/// only for the focused pane, so no sidebar.
+/// only for the focused pane, so no secondary sidebar.
 #[must_use]
 pub fn secondary_sidebar(screen: Rect, body: Rect) -> (Rect, Option<Rect>) {
     if screen.width < 40 || screen.height < 10 {

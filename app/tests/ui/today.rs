@@ -1,4 +1,4 @@
-//! Step 4.7: the Today view, chosen in the sidebar, edited in place and left for the outline.
+//! Step 4.7: the Today view, chosen in the Navigator, edited in place and left for the outline.
 
 use std::time::Duration;
 
@@ -20,7 +20,7 @@ Home:
 - Plan the week @start(2026-10-06)
 ";
 
-/// Opens `text` on an 80×10 screen and chooses Today, the sidebar's first entry without an
+/// Opens `text` on an 80×10 screen and chooses Today, the Navigator's first entry without an
 /// inbox.
 fn today(text: &str) -> Harness {
     let mut app = Harness::with_text(text, 80, 10);
@@ -46,7 +46,7 @@ fn row(text: &str, chips: &str) -> String {
 
 // FR-TAG-04, D-7, navigation §6, §7
 #[test]
-fn choosing_today_in_the_sidebar_lists_the_blocks_for_today_with_their_paths() {
+fn choosing_today_in_the_navigator_lists_the_blocks_for_today_with_their_paths() {
     let mut app = today(OUTLINE);
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
@@ -72,7 +72,7 @@ fn choosing_today_in_the_sidebar_lists_the_blocks_for_today_with_their_paths() {
 }
 
 // D-64, navigation §7: `gt` shows the Today view in the focused pane as choosing it in the
-// sidebar does, and Back returns to the outline.
+// Navigator does, and Back returns to the outline.
 #[test]
 fn g_t_shows_the_today_view_and_back_returns() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);

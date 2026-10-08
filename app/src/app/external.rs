@@ -327,7 +327,7 @@ impl State {
             .iter()
             .filter_map(|&id| exact(id))
             .collect::<HashSet<_>>();
-        self.sidebar.rematch_folds(exact);
+        self.navigator.rematch_folds(exact);
         self.today_order.rematch(exact);
         self.edits = History::default();
         self.autosave.reloaded(self.document.revision());
@@ -610,16 +610,18 @@ mod tests {
         assert_eq!(texts(&state), ["b", "a", "new"]);
     }
 
-    /// Each project entry of the sidebar with its fold.
+    /// Each project entry of the Navigator with its fold.
     fn project_folds(state: &State) -> Vec<(String, crate::app::Fold)> {
-        let view = state.sidebar().expect("open");
+        let view = state.navigator().expect("open");
         view.entries
             .iter()
             .filter_map(|entry| match entry {
-                crate::app::SidebarEntry::Project { text, fold, .. } => Some((text.clone(), *fold)),
-                crate::app::SidebarEntry::Inbox { .. }
-                | crate::app::SidebarEntry::Bookmark { .. }
-                | crate::app::SidebarEntry::View { .. } => None,
+                crate::app::NavigatorEntry::Project { text, fold, .. } => {
+                    Some((text.clone(), *fold))
+                }
+                crate::app::NavigatorEntry::Inbox { .. }
+                | crate::app::NavigatorEntry::Bookmark { .. }
+                | crate::app::NavigatorEntry::View { .. } => None,
             })
             .collect()
     }
@@ -627,14 +629,14 @@ mod tests {
     // F-FILE-06, FR-UI-01
     #[test]
     fn a_reload_keeps_folded_project_entries_on_their_projects() {
-        use crate::app::{Fold, SidebarInput};
+        use crate::app::{Fold, NavigatorInput};
         let mut state = opened("A:\n\tA1:\nB:\n\tB1:\nC:\n\tC1:\n");
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         // From Today, past the other special views, A and A1, to B.
         for _ in 0..SpecialView::ALL.len() + 2 {
-            state.update(Message::Sidebar(SidebarInput::Next));
+            state.update(Message::Navigator(NavigatorInput::Next));
         }
-        state.update(Message::Sidebar(SidebarInput::Collapse));
+        state.update(Message::Navigator(NavigatorInput::Collapse));
         state.update(found("B:\n\tB1:\nA:\n\tA1:\nC2:\n\tC1:\n"));
         let folds = project_folds(&state);
         let fold = |name: &str| {

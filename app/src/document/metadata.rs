@@ -133,7 +133,7 @@ pub fn writable(date: Date) -> bool {
 pub enum Flag {
     /// `@star`, which stars a block (FR-TAG-04, D-88).
     Star,
-    /// `@bookmark`, which lists a block in the sidebar (D-11).
+    /// `@bookmark`, which lists a block in the Navigator (D-11).
     Bookmark,
     /// `@flag`, which marks a block with a red flag (D-91).
     Flagged,

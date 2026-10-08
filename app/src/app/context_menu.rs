@@ -1,4 +1,4 @@
-//! The context menu: the commands that apply where the keys are, on the focused sidebar entry,
+//! The context menu: the commands that apply where the keys are, on the focused Navigator entry,
 //! the selection or the focused block, or on the focused pane's header or one of its breadcrumbs,
 //! grouped, to filter and choose from
 //! ([ui.md §5](../../../docs/specs/ui.md#5-context-menu-fr-key-06),
@@ -17,12 +17,12 @@ impl State {
         self.context_menu.as_ref().map(CommandMenu::view)
     }
 
-    /// `\`: opens the context menu on the focused sidebar entry while the sidebar is open,
+    /// `\`: opens the context menu on the focused Navigator entry while the Navigator is open,
     /// else on the selected blocks, else on the focused block. In the Today view it leaves out
     /// what the view does not take (navigation.md §7). Nothing opens without anything to offer.
     pub(super) fn open_context_menu(&mut self) {
-        let groups = if self.sidebar_focused() {
-            self.sidebar_commands().unwrap_or_default()
+        let groups = if self.navigator_focused() {
+            self.navigator_commands().unwrap_or_default()
         } else {
             self.block_commands()
         };
@@ -127,7 +127,7 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Command, Location, Menu, MenuRow, Message, PaneChange, SelectionChange, SidebarInput,
+            Command, Location, Menu, MenuRow, Message, NavigatorInput, PaneChange, SelectionChange,
             SpecialView,
         },
         document::format,
@@ -210,8 +210,8 @@ mod tests {
     #[test]
     fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
         let mut state = open(TEXT);
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(NavigatorInput::Choose));
         assert_eq!(state.location(), Location::View(SpecialView::Today));
         state.update(Message::OpenContextMenu);
         let shown = shown(&state);
@@ -228,9 +228,9 @@ mod tests {
 
     // FR-KEY-06
     #[test]
-    fn opens_on_the_focused_sidebar_entry_while_the_sidebar_is_open() {
+    fn opens_on_the_focused_navigator_entry_while_the_navigator_is_open() {
         let mut state = open(TEXT);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         state.update(Message::OpenContextMenu);
         assert_eq!(
             shown(&state),
@@ -238,7 +238,7 @@ mod tests {
         );
         assert_eq!(
             menu(&mut state, MenuInput::Choose),
-            [Effect::Run(Command::Sidebar(SidebarInput::Choose))]
+            [Effect::Run(Command::Navigator(NavigatorInput::Choose))]
         );
     }
 
@@ -310,9 +310,9 @@ mod tests {
                 "Close Pane"
             ]
         );
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(SidebarInput::Focus(0)));
-        state.update(Message::Sidebar(SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(NavigatorInput::Focus(0)));
+        state.update(Message::Navigator(NavigatorInput::Choose));
         assert_eq!(state.pane.location, Location::View(SpecialView::Today));
         assert_eq!(
             pane_menu(&mut state, None).expect("a menu"),

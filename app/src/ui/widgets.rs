@@ -26,7 +26,8 @@ use super::{
 use crate::{
     app::{
         Access, Command, CommandMenuView, Conversion, DatePromptView, DiffLine, Editor, MenuRow,
-        Notice, PickerView, Row, SaveState, SidebarInput, SpecialView, ViewGroup, commands::Group,
+        NavigatorInput, Notice, PickerView, Row, SaveState, SpecialView, ViewGroup,
+        commands::Group,
     },
     document::{
         BlockKind, DateTag, Details, Document, Flag, ItemId, TagColor, blocks,
@@ -36,13 +37,13 @@ use crate::{
     },
 };
 
+mod navigator;
 mod save_as;
 mod settings;
-mod sidebar;
 
+pub use navigator::NavigatorPanel;
 pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
-pub use sidebar::SidebarPanel;
 
 /// The outline: a gutter that marks the focused block, whose lines get a brighter background, and
 /// the selected blocks, then each block, 2 columns of indent per level, a marker and the text,
@@ -337,14 +338,14 @@ fn shown_crumbs(crumbs: &[String], width: usize, icons: IconSet) -> (bool, Vec<(
     (start > 0, path.get(start..).unwrap_or_default().to_vec())
 }
 
-/// The header of the special view `view` in place of breadcrumbs: its icon, as in the sidebar,
+/// The header of the special view `view` in place of breadcrumbs: its icon, as in the Navigator,
 /// and its name, bold as the focused pane's header (navigation.md §7, ui.md §1).
 #[must_use]
 pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static> {
     view_title(view, icons, theme).bold()
 }
 
-/// The icon of the special view `view`, as its sidebar entry, header, Go to command and sidebar
+/// The icon of the special view `view`, as its Navigator entry, header, Go to command and Navigator
 /// setting show it (ui.md §7, D-80).
 #[must_use]
 pub fn view_icon(view: SpecialView) -> Icon {
@@ -369,7 +370,7 @@ fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     }
 }
 
-/// The special view `view` as its sidebar entry and header name it: its icon from `icons` in its
+/// The special view `view` as its Navigator entry and header name it: its icon from `icons` in its
 /// style, then its name.
 fn view_title(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static> {
     Line::from(vec![
@@ -796,7 +797,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
         Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
         Command::OpenSettings => plain(Icon::Settings),
-        Command::Sidebar(SidebarInput::GoToInbox) => plain(Icon::Inbox),
+        Command::Navigator(NavigatorInput::GoToInbox) => plain(Icon::Inbox),
         Command::OpenDetails => plain(Icon::Details),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
@@ -821,7 +822,7 @@ pub fn block_icon(document: &Document, id: ItemId) -> (Icon, Style) {
 }
 
 /// The style of block `id`'s icon and text in the finders in `theme`: a bookmarked block's in the primary
-/// color, as the sidebar marks bookmarks (D-70), any other's plain.
+/// color, as the Navigator marks bookmarks (D-70), any other's plain.
 #[must_use]
 pub fn block_text_style(document: &Document, id: ItemId, theme: &Theme) -> Style {
     if blocks::block(document, id).is_some_and(|block| block.bookmark()) {
@@ -2027,7 +2028,7 @@ mod tests {
                 flag_style(&THEME),
             ),
             (
-                Command::Sidebar(SidebarInput::GoToInbox),
+                Command::Navigator(NavigatorInput::GoToInbox),
                 Icon::Inbox,
                 Style::new(),
             ),
@@ -2568,8 +2569,8 @@ mod tests {
             now: std::time::Duration::ZERO,
             today: TODAY,
         });
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(crate::app::SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(crate::app::NavigatorInput::Choose));
         let star = Icon::Star.glyph(ICONS);
         let mut expected = Buffer::with_lines([at_right(
             &format!("- c {star}  A › B"),

@@ -20,8 +20,10 @@ use super::{
 };
 use crate::app::{Mode, SpecialView};
 
-/// The key of the setting that says whether the sidebar lists `view` (D-77, D-80).
-pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
+/// The key of the setting that says whether the Navigator lists `view` (D-77, D-80).
+/// The keys keep the names they had before the Navigator replaced the sidebar (D-79), so files
+/// that set them keep working.
+pub(super) fn navigator_key(view: SpecialView) -> &'static str {
     match view {
         SpecialView::Today => "sidebar_today",
         SpecialView::Upcoming => "sidebar_upcoming",
@@ -97,12 +99,12 @@ pub struct Config {
     pub(super) theme: Option<BuiltIn>,
     /// Whether text wraps, when the file says (`word_wrap`, FR-UI-05).
     pub(super) wrap: Option<bool>,
-    /// Whether the sidebar lists the `INBOX` project apart, when the file says
+    /// Whether the Navigator lists the `INBOX` project apart, when the file says
     /// (`special_inbox`, D-75).
     pub(super) special_inbox: Option<bool>,
-    /// Whether the sidebar lists each special view the file says about (`sidebar_today` and so
+    /// Whether the Navigator lists each special view the file says about (`sidebar_today` and so
     /// on, D-77, D-80).
-    pub(super) sidebar_views: Vec<(SpecialView, bool)>,
+    pub(super) navigator_views: Vec<(SpecialView, bool)>,
     /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
     pub(super) today_starred: Option<bool>,
     backups: BackupSettings,
@@ -188,12 +190,12 @@ impl Config {
         }
     }
 
-    /// Takes whether the sidebar lists `view` from `item`: `true` or `false`.
-    fn read_sidebar_view(&mut self, view: SpecialView, item: &Item) {
+    /// Takes whether the Navigator lists `view` from `item`: `true` or `false`.
+    fn read_navigator_view(&mut self, view: SpecialView, item: &Item) {
         match item.as_bool() {
-            Some(on) => self.sidebar_views.push((view, on)),
+            Some(on) => self.navigator_views.push((view, on)),
             None => self.problems.push(Problem::InvalidValue {
-                key: sidebar_key(view).to_owned(),
+                key: navigator_key(view).to_owned(),
                 expected: "true or false",
             }),
         }
@@ -351,9 +353,9 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "today_starred" => config.read_today_starred(item),
             key => match SpecialView::ALL
                 .into_iter()
-                .find(|&view| sidebar_key(view) == key)
+                .find(|&view| navigator_key(view) == key)
             {
-                Some(view) => config.read_sidebar_view(view, item),
+                Some(view) => config.read_navigator_view(view, item),
                 None => config.problems.push(Problem::UnknownSetting {
                     key: key.to_owned(),
                 }),
@@ -752,26 +754,26 @@ mod tests {
     // D-77, FR-SET-04
     #[test]
     fn sidebar_today_is_true_or_false_and_anything_else_is_reported() {
-        assert_eq!(read("", None).sidebar_views, []);
+        assert_eq!(read("", None).navigator_views, []);
         assert_eq!(
-            read("sidebar_today = false\n", None).sidebar_views,
+            read("sidebar_today = false\n", None).navigator_views,
             [(SpecialView::Today, false)]
         );
         assert_eq!(
-            read("sidebar_colors = false\nsidebar_today = true\n", None).sidebar_views,
+            read("sidebar_colors = false\nsidebar_today = true\n", None).navigator_views,
             [(SpecialView::Colors, false), (SpecialView::Today, true)],
             "each special view has its key (D-80)"
         );
         assert_eq!(
-            read("sidebar_overdue = false\n", None).sidebar_views,
+            read("sidebar_overdue = false\n", None).navigator_views,
             [(SpecialView::Overdue, false)]
         );
         assert_eq!(
-            read("sidebar_upcoming = false\n", None).sidebar_views,
+            read("sidebar_upcoming = false\n", None).navigator_views,
             [(SpecialView::Upcoming, false)]
         );
         let config = read("sidebar_today = \"no\"\n", None);
-        assert_eq!(config.sidebar_views, []);
+        assert_eq!(config.navigator_views, []);
         assert_eq!(
             config.problems(),
             [Problem::InvalidValue {
@@ -783,9 +785,9 @@ mod tests {
 
     // D-93
     #[test]
-    fn sidebar_flagged_says_whether_the_sidebar_lists_flagged() {
+    fn sidebar_flagged_says_whether_the_navigator_lists_flagged() {
         assert_eq!(
-            read("sidebar_flagged = false\nsidebar_today = true\n", None).sidebar_views,
+            read("sidebar_flagged = false\nsidebar_today = true\n", None).navigator_views,
             [(SpecialView::Flagged, false), (SpecialView::Today, true)]
         );
     }
@@ -794,7 +796,7 @@ mod tests {
     #[test]
     fn sidebar_starred_is_true_or_false() {
         assert_eq!(
-            read("sidebar_starred = false\n", None).sidebar_views,
+            read("sidebar_starred = false\n", None).navigator_views,
             [(SpecialView::Starred, false)]
         );
         assert_eq!(

@@ -22,6 +22,7 @@ mod links;
 mod logbook;
 mod memo;
 mod move_to;
+mod navigator;
 mod overdue;
 mod pane;
 mod picker;
@@ -31,7 +32,6 @@ pub mod saving;
 mod selection;
 mod settings;
 mod shortcuts;
-mod sidebar;
 mod special_view;
 pub mod state;
 mod structure;
@@ -54,6 +54,7 @@ pub use external::{DiffLine, Version};
 pub use finder::{Candidate, FinderView};
 pub use go_to_symbol::Symbols;
 pub use history::{History, Restore};
+pub use navigator::{Fold, NavigatorEntry, NavigatorInput, NavigatorView};
 pub use pane::{PaneChange, PaneId, PaneView};
 pub use picker::PickerView;
 pub use rows::Rows;
@@ -64,7 +65,6 @@ pub use settings::{
     Setting, SettingKind, SettingRow, SettingValue, SettingsColumn, SettingsInput, SettingsView,
     Typed,
 };
-pub use sidebar::{Fold, SidebarEntry, SidebarInput, SidebarView};
 pub use special_view::{Heading, SpecialView, ViewGroup};
 pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;

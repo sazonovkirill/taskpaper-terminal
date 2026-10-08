@@ -1,5 +1,4 @@
-//! The navigation sidebar, which the screen shows as the Navigator, a window that `Ctrl+G` opens
-//! over the panes (D-79): its entries, which one has the keys while it is open and which project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79),
+//! The Navigator, a window that `Ctrl+G` opens over the panes (D-79): its entries, which one has the keys while it is open and which project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79),
 //! FR-UI-01).
 
 use std::{collections::HashSet, rc::Rc};
@@ -14,27 +13,27 @@ use super::{
 };
 use crate::document::{BlockKind, ItemId, Stamp, blocks};
 
-/// The text of the project the sidebar lists apart, above Today (D-75).
+/// The text of the project the Navigator lists apart, above Today (D-75).
 const INBOX: &str = "INBOX";
 
-/// The sidebar's focused entry while it is open, its folded project entries, which are its own
+/// The Navigator's focused entry while it is open, its folded project entries, which are its own
 /// and not the outline's, whether it lists the `INBOX` project apart and which special views it
 /// leaves out.
 #[derive(Debug, Clone)]
-pub(super) struct Sidebar {
+pub(super) struct Navigator {
     special_inbox: bool,
     unlisted: HashSet<SpecialView>,
-    /// The index of the focused entry, while the sidebar is open, which it is only while it has
+    /// The index of the focused entry, while the Navigator is open, which it is only while it has
     /// the keys (D-79).
     focus: Option<usize>,
     /// What was typed to filter the entries while it is open (D-86).
     filter: String,
     folds: HashSet<ItemId>,
-    entries: Memo<EntriesKey, Rc<[SidebarEntry]>>,
+    entries: Memo<EntriesKey, Rc<[NavigatorEntry]>>,
     current: Memo<CurrentKey, Option<usize>>,
 }
 
-/// Everything the sidebar's entries are computed from.
+/// Everything the Navigator's entries are computed from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct EntriesKey {
     document: Stamp,
@@ -55,11 +54,11 @@ struct EntriesKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CurrentKey {
     document: Stamp,
-    entries: Rc<[SidebarEntry]>,
+    entries: Rc<[NavigatorEntry]>,
     location: Location,
 }
 
-impl Sidebar {
+impl Navigator {
     /// Lists the `INBOX` project above Today rather than among the projects, or not when `on` is
     /// false (navigation.md §6).
     pub(super) fn set_special_inbox(&mut self, on: bool) {
@@ -82,7 +81,7 @@ impl Sidebar {
     }
 }
 
-impl Default for Sidebar {
+impl Default for Navigator {
     /// Closed, every project entry expanded, the `INBOX` project apart, every special view listed.
     fn default() -> Self {
         Self {
@@ -97,9 +96,9 @@ impl Default for Sidebar {
     }
 }
 
-/// A key of the open sidebar ([keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
+/// A key of the open Navigator ([keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SidebarInput {
+pub enum NavigatorInput {
     /// Focus the entry below.
     Next,
     /// Focus the entry above.
@@ -108,11 +107,11 @@ pub enum SidebarInput {
     Collapse,
     /// Unfold the focused project entry.
     Expand,
-    /// Zoom the pane to the focused entry and close the sidebar.
+    /// Zoom the pane to the focused entry and close the Navigator.
     Choose,
-    /// Close the sidebar, giving the pane the keys.
+    /// Close the Navigator, giving the pane the keys.
     Leave,
-    /// Focus the entry at this index while the sidebar is open, as a click on it does
+    /// Focus the entry at this index while the Navigator is open, as a click on it does
     /// (FR-KEY-05).
     Focus(usize),
     /// Add a character to the filter (D-86).
@@ -124,10 +123,10 @@ pub enum SidebarInput {
     GoToInbox,
 }
 
-/// One entry of the sidebar, in its sections' order: the inbox, the special views, bookmarks,
+/// One entry of the Navigator, in its sections' order: the inbox, the special views, bookmarks,
 /// projects (D-68, D-75, D-80).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SidebarEntry {
+pub enum NavigatorEntry {
     /// The top-level project `INBOX`, apart from the other projects (D-75).
     Inbox {
         /// The block.
@@ -169,7 +168,7 @@ pub enum SidebarEntry {
     },
 }
 
-impl SidebarEntry {
+impl NavigatorEntry {
     /// Where choosing the entry goes: into its block, or its special view.
     fn location(&self) -> Location {
         match self {
@@ -214,11 +213,11 @@ pub enum Fold {
     Collapsed,
 }
 
-/// The open sidebar as a frontend draws it.
+/// The open Navigator as a frontend draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SidebarView {
+pub struct NavigatorView {
     /// Its entries in order.
-    pub entries: Rc<[SidebarEntry]>,
+    pub entries: Rc<[NavigatorEntry]>,
     /// The index of the focused entry, or `None` when it lists none.
     pub focused: Option<usize>,
     /// The index of the entry of where the focused pane is, if one goes there (D-68).
@@ -228,187 +227,193 @@ pub struct SidebarView {
 }
 
 impl State {
-    /// The sidebar, or `None` while it is closed (FR-UI-01, D-79).
+    /// The Navigator, or `None` while it is closed (FR-UI-01, D-79).
     #[must_use]
-    pub fn sidebar(&self) -> Option<SidebarView> {
-        self.sidebar.focus?;
-        let entries = self.sidebar_entries();
-        let focused = self.sidebar_focus(&entries)?;
+    pub fn navigator(&self) -> Option<NavigatorView> {
+        self.navigator.focus?;
+        let entries = self.navigator_entries();
+        let focused = self.navigator_focus(&entries)?;
         let focused = (focused < entries.len()).then_some(focused);
-        let current = self.sidebar_current(&entries);
-        Some(SidebarView {
+        let current = self.navigator_current(&entries);
+        Some(NavigatorView {
             entries,
             focused,
             current,
-            filter: self.sidebar.filter.clone(),
+            filter: self.navigator.filter.clone(),
         })
     }
 
-    /// Whether the sidebar lists the `INBOX` project above Today rather than among the projects
+    /// Whether the Navigator lists the `INBOX` project above Today rather than among the projects
     /// (`special_inbox`, D-75).
     #[must_use]
     pub fn special_inbox(&self) -> bool {
-        self.sidebar.special_inbox
+        self.navigator.special_inbox
     }
 
-    /// Whether the sidebar lists `view` (`sidebar_today` and so on, D-77, D-80).
+    /// Whether the Navigator lists `view` (`sidebar_today` and so on, D-77, D-80).
     #[must_use]
-    pub fn sidebar_lists(&self, view: SpecialView) -> bool {
-        !self.sidebar.unlisted.contains(&view)
+    pub fn navigator_lists(&self, view: SpecialView) -> bool {
+        !self.navigator.unlisted.contains(&view)
     }
 
-    /// Whether the sidebar is open, and so has the keys rather than the pane.
+    /// Whether the Navigator is open, and so has the keys rather than the pane.
     #[must_use]
-    pub fn sidebar_focused(&self) -> bool {
-        self.sidebar.focus.is_some()
+    pub fn navigator_focused(&self) -> bool {
+        self.navigator.focus.is_some()
     }
 
-    /// `Ctrl+G`: closes the sidebar while it is open, and otherwise opens it on the entry of where
+    /// `Ctrl+G`: closes the Navigator while it is open, and otherwise opens it on the entry of where
     /// the focused pane is, else on its first entry (D-68, D-79).
-    pub(super) fn toggle_sidebar(&mut self) {
-        if self.sidebar_focused() {
-            self.close_sidebar();
+    pub(super) fn toggle_navigator(&mut self) {
+        if self.navigator_focused() {
+            self.close_navigator();
         } else {
-            let entries = self.sidebar_entries();
-            self.sidebar.focus = Some(self.sidebar_current(&entries).unwrap_or(0));
+            let entries = self.navigator_entries();
+            self.navigator.focus = Some(self.navigator_current(&entries).unwrap_or(0));
         }
     }
 
-    /// Applies a key of the focused sidebar.
-    pub(super) fn sidebar_input(&mut self, input: SidebarInput) {
-        let entries = self.sidebar_entries();
+    /// Applies a key of the focused Navigator.
+    pub(super) fn navigator_input(&mut self, input: NavigatorInput) {
+        let entries = self.navigator_entries();
         // Focusing picks the entry the others act on.
         let at = match input {
-            // The inbox entry comes first while the sidebar lists it (D-75).
-            SidebarInput::GoToInbox => {
-                let inbox = matches!(entries.first(), Some(SidebarEntry::Inbox { .. }));
+            // The inbox entry comes first while the Navigator lists it (D-75).
+            NavigatorInput::GoToInbox => {
+                let inbox = matches!(entries.first(), Some(NavigatorEntry::Inbox { .. }));
                 if !inbox {
                     self.notify(Notice::NoInbox);
                 }
                 inbox.then_some(0)
             }
-            SidebarInput::Focus(at) => (self.sidebar_focused() && at < entries.len()).then_some(at),
-            SidebarInput::Next
-            | SidebarInput::Previous
-            | SidebarInput::Collapse
-            | SidebarInput::Expand
-            | SidebarInput::Choose
-            | SidebarInput::Leave
-            | SidebarInput::Type(_)
-            | SidebarInput::Erase => self.sidebar_focus(&entries),
+            NavigatorInput::Focus(at) => {
+                (self.navigator_focused() && at < entries.len()).then_some(at)
+            }
+            NavigatorInput::Next
+            | NavigatorInput::Previous
+            | NavigatorInput::Collapse
+            | NavigatorInput::Expand
+            | NavigatorInput::Choose
+            | NavigatorInput::Leave
+            | NavigatorInput::Type(_)
+            | NavigatorInput::Erase => self.navigator_focus(&entries),
         };
         let Some(at) = at else {
             return;
         };
         let focused = entries.get(at);
         match input {
-            SidebarInput::Next => {
-                self.sidebar.focus =
+            NavigatorInput::Next => {
+                self.navigator.focus =
                     Some(at.saturating_add(1).min(entries.len().saturating_sub(1)));
             }
-            SidebarInput::Previous => self.sidebar.focus = Some(at.saturating_sub(1)),
-            SidebarInput::Collapse => {
-                if let Some(&SidebarEntry::Project {
+            NavigatorInput::Previous => self.navigator.focus = Some(at.saturating_sub(1)),
+            NavigatorInput::Collapse => {
+                if let Some(&NavigatorEntry::Project {
                     id,
                     fold: Fold::Expanded,
                     ..
                 }) = focused
-                    && self.sidebar.filter.is_empty()
+                    && self.navigator.filter.is_empty()
                 {
-                    self.sidebar.folds.insert(id);
+                    self.navigator.folds.insert(id);
                 }
             }
-            SidebarInput::Expand => {
-                if let Some(SidebarEntry::Project { id, .. }) = focused
-                    && self.sidebar.filter.is_empty()
+            NavigatorInput::Expand => {
+                if let Some(NavigatorEntry::Project { id, .. }) = focused
+                    && self.navigator.filter.is_empty()
                 {
-                    self.sidebar.folds.remove(id);
+                    self.navigator.folds.remove(id);
                 }
             }
-            SidebarInput::Choose | SidebarInput::GoToInbox => {
-                if let Some(location) = focused.map(SidebarEntry::location) {
-                    self.close_sidebar();
+            NavigatorInput::Choose | NavigatorInput::GoToInbox => {
+                if let Some(location) = focused.map(NavigatorEntry::location) {
+                    self.close_navigator();
                     self.go_to(location);
                 }
             }
-            SidebarInput::Leave => self.close_sidebar(),
-            SidebarInput::Focus(_) => self.sidebar.focus = Some(at),
-            SidebarInput::Type(_) | SidebarInput::Erase => self.filter_sidebar(input),
+            NavigatorInput::Leave => self.close_navigator(),
+            NavigatorInput::Focus(_) => self.navigator.focus = Some(at),
+            NavigatorInput::Type(_) | NavigatorInput::Erase => self.filter_navigator(input),
         }
     }
 
-    /// Changes the filter while the sidebar is open, focusing the first entry it matches, or,
+    /// Changes the filter while the Navigator is open, focusing the first entry it matches, or,
     /// with no filter left, the entry of where the focused pane is, else the first (D-86).
-    fn filter_sidebar(&mut self, input: SidebarInput) {
+    fn filter_navigator(&mut self, input: NavigatorInput) {
         match input {
-            SidebarInput::Type(c) => self.sidebar.filter.push(c),
+            NavigatorInput::Type(c) => self.navigator.filter.push(c),
             // `Backspace` on an empty filter leaves the focus where it is.
             _ => {
-                if self.sidebar.filter.pop().is_none() {
+                if self.navigator.filter.pop().is_none() {
                     return;
                 }
             }
         }
-        let entries = self.sidebar_entries();
-        let filter = self.sidebar.filter.to_lowercase();
+        let entries = self.navigator_entries();
+        let filter = self.navigator.filter.to_lowercase();
         let at = if filter.is_empty() {
-            self.sidebar_current(&entries)
+            self.navigator_current(&entries)
         } else {
             entries.iter().position(|entry| entry.matches(&filter))
         };
-        self.sidebar.focus = Some(at.unwrap_or(0));
+        self.navigator.focus = Some(at.unwrap_or(0));
     }
 
-    /// Closes the sidebar, dropping its filter.
-    fn close_sidebar(&mut self) {
-        self.sidebar.focus = None;
-        self.sidebar.filter.clear();
+    /// Closes the Navigator, dropping its filter.
+    fn close_navigator(&mut self) {
+        self.navigator.focus = None;
+        self.navigator.filter.clear();
     }
 
-    /// Where the focused entry goes, while the sidebar is open.
-    pub(super) fn sidebar_location(&self) -> Option<Location> {
-        let entries = self.sidebar_entries();
+    /// Where the focused entry goes, while the Navigator is open.
+    pub(super) fn navigator_location(&self) -> Option<Location> {
+        let entries = self.navigator_entries();
         entries
-            .get(self.sidebar_focus(&entries)?)
-            .map(SidebarEntry::location)
+            .get(self.navigator_focus(&entries)?)
+            .map(NavigatorEntry::location)
     }
 
-    /// The commands the context menu offers on the focused entry while the sidebar is open: going
+    /// The commands the context menu offers on the focused entry while the Navigator is open: going
     /// to it, opening it in a new pane and folding a project entry with child projects, then
-    /// closing the sidebar (FR-KEY-06).
-    pub(super) fn sidebar_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
-        let entries = self.sidebar_entries();
-        let entry = entries.get(self.sidebar_focus(&entries)?)?;
+    /// closing the Navigator (FR-KEY-06).
+    pub(super) fn navigator_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
+        let entries = self.navigator_entries();
+        let entry = entries.get(self.navigator_focus(&entries)?)?;
         let fold = match entry {
-            SidebarEntry::Project {
+            NavigatorEntry::Project {
                 fold: Fold::Expanded,
                 ..
-            } => Some(SidebarInput::Collapse),
-            SidebarEntry::Project {
+            } => Some(NavigatorInput::Collapse),
+            NavigatorEntry::Project {
                 fold: Fold::Collapsed,
                 ..
-            } => Some(SidebarInput::Expand),
-            SidebarEntry::Project {
+            } => Some(NavigatorInput::Expand),
+            NavigatorEntry::Project {
                 fold: Fold::Leaf, ..
             }
-            | SidebarEntry::Inbox { .. }
-            | SidebarEntry::Bookmark { .. }
-            | SidebarEntry::View { .. } => None,
+            | NavigatorEntry::Inbox { .. }
+            | NavigatorEntry::Bookmark { .. }
+            | NavigatorEntry::View { .. } => None,
         };
-        let entry = [NodeCommand::named(Command::Sidebar(SidebarInput::Choose))]
-            .into_iter()
-            .chain([NodeCommand::named(Command::Pane(PaneChange::Open))])
-            .chain(fold.map(|input| NodeCommand::named(Command::Sidebar(input))))
-            .collect();
+        let entry = [NodeCommand::named(Command::Navigator(
+            NavigatorInput::Choose,
+        ))]
+        .into_iter()
+        .chain([NodeCommand::named(Command::Pane(PaneChange::Open))])
+        .chain(fold.map(|input| NodeCommand::named(Command::Navigator(input))))
+        .collect();
         Some(vec![
             entry,
-            vec![NodeCommand::named(Command::Sidebar(SidebarInput::Leave))],
+            vec![NodeCommand::named(Command::Navigator(
+                NavigatorInput::Leave,
+            ))],
         ])
     }
 
     /// The focused entry's index among `entries`, kept on the last one when entries went away.
-    fn sidebar_focus(&self, entries: &[SidebarEntry]) -> Option<usize> {
-        self.sidebar
+    fn navigator_focus(&self, entries: &[NavigatorEntry]) -> Option<usize> {
+        self.navigator
             .focus
             .map(|at| at.min(entries.len().saturating_sub(1)))
     }
@@ -417,19 +422,21 @@ impl State {
     /// location, else to the closest block above its zoom block that has one, preferring an entry
     /// that is not a bookmark, so a project both bookmarked and listed is its project or inbox
     /// entry, and a block hidden in a folded entry is that entry (D-68).
-    fn sidebar_current(&self, entries: &Rc<[SidebarEntry]>) -> Option<usize> {
+    fn navigator_current(&self, entries: &Rc<[NavigatorEntry]>) -> Option<usize> {
         let location = self.pane.location;
         let key = CurrentKey {
             document: self.document().stamp(),
             entries: Rc::clone(entries),
             location,
         };
-        self.sidebar.current.get(key, || {
+        self.navigator.current.get(key, || {
             let going_to = |location| {
-                let to = |entry: &SidebarEntry| entry.location() == location;
+                let to = |entry: &NavigatorEntry| entry.location() == location;
                 entries
                     .iter()
-                    .position(|entry| to(entry) && !matches!(entry, SidebarEntry::Bookmark { .. }))
+                    .position(|entry| {
+                        to(entry) && !matches!(entry, NavigatorEntry::Bookmark { .. })
+                    })
                     .or_else(|| entries.iter().position(to))
             };
             let above = |&id: &ItemId| blocks::parent(self.document(), id).map(|block| block.id());
@@ -443,11 +450,11 @@ impl State {
 
     /// The inbox while it is apart, each special view it lists, then every bookmarked block in
     /// document order, then the project tree without the inbox (D-68, D-75, D-77, D-80).
-    fn sidebar_entries(&self) -> Rc<[SidebarEntry]> {
-        let filter = self.sidebar.filter.to_lowercase();
+    fn navigator_entries(&self) -> Rc<[NavigatorEntry]> {
+        let filter = self.navigator.filter.to_lowercase();
         // A filter looks through folded entries.
         let folds = if filter.is_empty() {
-            self.sidebar.folds.clone()
+            self.navigator.folds.clone()
         } else {
             HashSet::new()
         };
@@ -456,13 +463,13 @@ impl State {
             folds: folds.clone(),
             filter: filter.clone(),
             show_done: self.pane.show_done,
-            special_inbox: self.sidebar.special_inbox,
-            unlisted: self.sidebar.unlisted.clone(),
+            special_inbox: self.navigator.special_inbox,
+            unlisted: self.navigator.unlisted.clone(),
             today: self.today,
             today_starred: self.today_starred,
         };
-        self.sidebar.entries.get(key, || {
-            let inbox = self.sidebar.special_inbox.then(|| self.inbox()).flatten();
+        self.navigator.entries.get(key, || {
+            let inbox = self.navigator.special_inbox.then(|| self.inbox()).flatten();
             let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
             // Every block that shows, from the outline's rows with nothing collapsed, which a
             // change builds again only where it changed.
@@ -474,8 +481,8 @@ impl State {
                 .chain(
                     SpecialView::ALL
                         .into_iter()
-                        .filter(|&view| self.sidebar_lists(view))
-                        .map(|view| SidebarEntry::View {
+                        .filter(|&view| self.navigator_lists(view))
+                        .map(|view| NavigatorEntry::View {
                             view,
                             open_tasks: self
                                 .view_rows(&every, view)
@@ -496,12 +503,12 @@ impl State {
     }
 
     /// The entry of the first shown top-level project whose text is `INBOX`, if any (D-75).
-    fn inbox(&self) -> Option<SidebarEntry> {
+    fn inbox(&self) -> Option<NavigatorEntry> {
         blocks::each_child(self.document(), self.document().root())
             .filter(|block| block.kind() == BlockKind::Project && self.shows(block))
             .map(|block| (self.shown_text(block.id()), block))
             .find(|(text, _)| text == INBOX)
-            .map(|(text, block)| SidebarEntry::Inbox {
+            .map(|(text, block)| NavigatorEntry::Inbox {
                 id: block.id(),
                 text,
                 open_tasks: self.open_tasks(&block, false),
@@ -509,14 +516,14 @@ impl State {
     }
 
     /// The bookmark entries of `rows` in document order, each with the open tasks it holds.
-    fn bookmarks(&self, rows: &Rows) -> Vec<SidebarEntry> {
+    fn bookmarks(&self, rows: &Rows) -> Vec<NavigatorEntry> {
         let mut out = Vec::new();
         // The bookmarks above the current row: their depth, entry and the open tasks before them.
         let mut above: Vec<(usize, usize, usize)> = Vec::new();
         let mut open_so_far = 0;
-        let end = |above: &mut Vec<(usize, usize, usize)>, out: &mut Vec<SidebarEntry>, open| {
+        let end = |above: &mut Vec<(usize, usize, usize)>, out: &mut Vec<NavigatorEntry>, open| {
             if let Some((_, entry, before)) = above.pop()
-                && let Some(SidebarEntry::Bookmark { open_tasks, .. }) = out.get_mut(entry)
+                && let Some(NavigatorEntry::Bookmark { open_tasks, .. }) = out.get_mut(entry)
             {
                 *open_tasks = open - before;
             }
@@ -529,7 +536,7 @@ impl State {
             open_so_far += usize::from(open_task(row));
             if row.bookmark {
                 above.push((row.depth, out.len(), open_so_far));
-                out.push(SidebarEntry::Bookmark {
+                out.push(NavigatorEntry::Bookmark {
                     id: row.id,
                     text: self.shown_text(row.id),
                     open_tasks: 0,
@@ -549,7 +556,7 @@ impl State {
         rows: &Rows,
         apart: Option<ItemId>,
         folds: &HashSet<ItemId>,
-    ) -> Vec<SidebarEntry> {
+    ) -> Vec<NavigatorEntry> {
         let mut out = Vec::new();
         // The projects above the current row.
         let mut above: Vec<Above> = Vec::new();
@@ -582,7 +589,7 @@ impl State {
                 folded,
                 ..
             }) = parent
-                && let Some(SidebarEntry::Project { fold, .. }) = out.get_mut(entry)
+                && let Some(NavigatorEntry::Project { fold, .. }) = out.get_mut(entry)
             {
                 *fold = if folded {
                     Fold::Collapsed
@@ -592,7 +599,7 @@ impl State {
             }
             let listed = parent.is_none_or(|above| above.entry.is_some() && !above.folded);
             let entry = listed.then(|| {
-                out.push(SidebarEntry::Project {
+                out.push(NavigatorEntry::Project {
                     id: row.id,
                     text: self.shown_text(row.id),
                     depth: above.len(),
@@ -618,13 +625,13 @@ impl State {
 /// The entries of `entries` that match `filter`, which is in lower case, and the project entries
 /// above a matching one, so the tree around it stays; none has a fold, as folding does nothing
 /// while a filter is typed (D-86).
-fn filtered(entries: Vec<SidebarEntry>, filter: &str) -> Vec<SidebarEntry> {
+fn filtered(entries: Vec<NavigatorEntry>, filter: &str) -> Vec<NavigatorEntry> {
     let mut kept: Vec<bool> = Vec::with_capacity(entries.len());
     // The project entries above the current one: their index and depth.
     let mut above: Vec<(usize, usize)> = Vec::new();
     for (at, entry) in entries.iter().enumerate() {
         let matches = entry.matches(filter);
-        if let &SidebarEntry::Project { depth, .. } = entry {
+        if let &NavigatorEntry::Project { depth, .. } = entry {
             while above.last().is_some_and(|&(_, above)| above >= depth) {
                 above.pop();
             }
@@ -643,7 +650,7 @@ fn filtered(entries: Vec<SidebarEntry>, filter: &str) -> Vec<SidebarEntry> {
         .into_iter()
         .zip(kept)
         .filter_map(|(mut entry, kept)| {
-            if let SidebarEntry::Project { fold, .. } = &mut entry {
+            if let NavigatorEntry::Project { fold, .. } = &mut entry {
                 *fold = Fold::Leaf;
             }
             kept.then_some(entry)
@@ -672,13 +679,13 @@ struct Above {
 
 /// Ends the last project of `above`, giving its entry in `out` the open tasks since it began,
 /// `open` counting those so far.
-fn end_project(above: &mut Vec<Above>, out: &mut [SidebarEntry], open: usize) {
+fn end_project(above: &mut Vec<Above>, out: &mut [NavigatorEntry], open: usize) {
     if let Some(Above {
         entry: Some(entry),
         open_before,
         ..
     }) = above.pop()
-        && let Some(SidebarEntry::Project { open_tasks, .. }) = out.get_mut(entry)
+        && let Some(NavigatorEntry::Project { open_tasks, .. }) = out.get_mut(entry)
     {
         *open_tasks = open - open_before;
     }
@@ -708,24 +715,26 @@ Home: @bookmark
 - Errand
 ";
 
-    /// `text` opened with Today the only special view the sidebar lists, as these tests were
+    /// `text` opened with Today the only special view the Navigator lists, as these tests were
     /// written for before the other views (D-80).
     fn open(text: &str) -> State {
         let mut state = State::new(format::parse(text), None);
         for view in SpecialView::ALL {
             if view != SpecialView::Today {
-                state.update(Message::Configure(Configuration::SidebarView(view, false)));
+                state.update(Message::Configure(Configuration::NavigatorView(
+                    view, false,
+                )));
             }
         }
         state
     }
 
-    /// The sidebar as it would open, or as it is while it is open.
-    fn view(state: &State) -> SidebarView {
-        state.sidebar().unwrap_or_else(|| {
+    /// The Navigator as it would open, or as it is while it is open.
+    fn view(state: &State) -> NavigatorView {
+        state.navigator().unwrap_or_else(|| {
             let mut opened = state.clone();
-            opened.update(Message::ToggleSidebar);
-            opened.sidebar().expect("open")
+            opened.update(Message::ToggleNavigator);
+            opened.navigator().expect("open")
         })
     }
 
@@ -735,10 +744,10 @@ Home: @bookmark
             .entries
             .iter()
             .map(|entry| match entry {
-                SidebarEntry::Inbox { text, .. } => format!("inbox {text}"),
-                SidebarEntry::Bookmark { text, .. } => format!("bookmark {text}"),
-                SidebarEntry::View { view, .. } => view.name().to_lowercase(),
-                SidebarEntry::Project {
+                NavigatorEntry::Inbox { text, .. } => format!("inbox {text}"),
+                NavigatorEntry::Bookmark { text, .. } => format!("bookmark {text}"),
+                NavigatorEntry::View { view, .. } => view.name().to_lowercase(),
+                NavigatorEntry::Project {
                     text, depth, fold, ..
                 } => format!("{}{fold:?} {text}", "  ".repeat(*depth)),
             })
@@ -746,12 +755,12 @@ Home: @bookmark
     }
 
     fn focused(state: &State) -> Option<usize> {
-        state.sidebar().and_then(|view| view.focused)
+        state.navigator().and_then(|view| view.focused)
     }
 
-    fn input(state: &mut State, inputs: &[SidebarInput]) {
+    fn input(state: &mut State, inputs: &[NavigatorInput]) {
         for &input in inputs {
-            state.update(Message::Sidebar(input));
+            state.update(Message::Navigator(input));
         }
     }
 
@@ -850,25 +859,25 @@ INBOX:",
 
     // D-77
     #[test]
-    fn with_the_today_setting_off_the_sidebar_lists_no_today_but_the_view_still_opens() {
+    fn with_the_today_setting_off_the_navigator_lists_no_today_but_the_view_still_opens() {
         let mut state = open(INBOXED);
-        assert!(state.sidebar_lists(SpecialView::Today), "on by default");
-        state.update(Message::Configure(Configuration::SidebarView(
+        assert!(state.navigator_lists(SpecialView::Today), "on by default");
+        state.update(Message::Configure(Configuration::NavigatorView(
             SpecialView::Today,
             false,
         )));
-        assert!(!state.sidebar_lists(SpecialView::Today));
+        assert!(!state.navigator_lists(SpecialView::Today));
         let mut without = listed(&open(INBOXED));
         without.retain(|entry| entry != "today");
         assert_eq!(listed(&state), without);
         state.update(Message::GoTo(Location::View(SpecialView::Today)));
         assert_eq!(state.location(), Location::View(SpecialView::Today));
         assert_eq!(current(&state), None, "no entry goes there");
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         assert_eq!(focused(&state), Some(0), "the first entry");
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(state.breadcrumbs(), ["INBOX"]);
-        state.update(Message::Configure(Configuration::SidebarView(
+        state.update(Message::Configure(Configuration::NavigatorView(
             SpecialView::Today,
             true,
         )));
@@ -879,7 +888,7 @@ INBOX:",
     #[test]
     fn the_inbox_entry_goes_to_the_inbox_has_no_fold_and_beats_its_bookmark_as_current() {
         let mut state = open(INBOXED);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         assert_eq!(focused(&state), Some(0), "the first entry");
         assert_eq!(
             entry_commands(&state),
@@ -888,7 +897,10 @@ INBOX:",
                 "Return to Outline".to_owned()
             ])
         );
-        input(&mut state, &[SidebarInput::Collapse, SidebarInput::Choose]);
+        input(
+            &mut state,
+            &[NavigatorInput::Collapse, NavigatorInput::Choose],
+        );
         assert_eq!(state.breadcrumbs(), ["INBOX"]);
         assert_eq!(current(&state), Some(0));
         let call = entry_block(&state, 3);
@@ -906,7 +918,7 @@ INBOX:",
     #[test]
     fn go_to_inbox_zooms_to_the_inbox_entrys_project_or_says_there_is_none() {
         let mut state = open(INBOXED);
-        input(&mut state, &[SidebarInput::GoToInbox]);
+        input(&mut state, &[NavigatorInput::GoToInbox]);
         assert_eq!(state.breadcrumbs(), ["INBOX"]);
         assert_eq!(state.notice(), None);
         state.update(Message::Back);
@@ -916,7 +928,7 @@ INBOX:",
             "a step of the history"
         );
         state.update(Message::Configure(Configuration::SpecialInbox(false)));
-        input(&mut state, &[SidebarInput::GoToInbox]);
+        input(&mut state, &[NavigatorInput::GoToInbox]);
         assert_eq!(
             state.breadcrumbs(),
             Vec::<String>::new(),
@@ -924,7 +936,7 @@ INBOX:",
         );
         assert_eq!(state.notice(), Some(&Notice::NoInbox));
         let mut state = open("Work:\n\tINBOX:");
-        input(&mut state, &[SidebarInput::GoToInbox]);
+        input(&mut state, &[NavigatorInput::GoToInbox]);
         assert_eq!(state.notice(), Some(&Notice::NoInbox), "not top-level");
     }
 
@@ -948,13 +960,13 @@ INBOX:",
             .entries
             .iter()
             .filter_map(|entry| match entry {
-                SidebarEntry::Inbox {
+                NavigatorEntry::Inbox {
                     text, open_tasks, ..
                 }
-                | SidebarEntry::Project {
+                | NavigatorEntry::Project {
                     text, open_tasks, ..
                 } => Some((text.clone(), *open_tasks)),
-                SidebarEntry::Bookmark { .. } | SidebarEntry::View { .. } => None,
+                NavigatorEntry::Bookmark { .. } | NavigatorEntry::View { .. } => None,
             })
             .collect()
     }
@@ -977,13 +989,13 @@ INBOX:",
             all,
             "sub-projects count, done blocks do not"
         );
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         input(
             &mut state,
-            &[SidebarInput::Focus(1), SidebarInput::Collapse],
+            &[NavigatorInput::Focus(1), NavigatorInput::Collapse],
         );
         assert_eq!(counts(&state), [all[0].clone(), all[4].clone()], "folded");
-        input(&mut state, &[SidebarInput::Expand]);
+        input(&mut state, &[NavigatorInput::Expand]);
         state.update(Message::ToggleShowDone);
         assert_eq!(
             counts(&state),
@@ -1006,7 +1018,7 @@ INBOX:",
             view(state)
                 .entries
                 .iter()
-                .map(SidebarEntry::open_tasks)
+                .map(NavigatorEntry::open_tasks)
                 .collect()
         };
         assert_eq!(
@@ -1030,7 +1042,7 @@ INBOX:",
 
     fn typed(state: &mut State, text: &str) {
         for c in text.chars() {
-            state.update(Message::Sidebar(SidebarInput::Type(c)));
+            state.update(Message::Navigator(NavigatorInput::Type(c)));
         }
     }
 
@@ -1038,7 +1050,7 @@ INBOX:",
     #[test]
     fn typing_lists_the_entries_holding_it_with_the_projects_above_them() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         typed(&mut state, "DR");
         assert_eq!(
             listed(&state),
@@ -1054,7 +1066,7 @@ INBOX:",
         typed(&mut state, "x");
         assert_eq!(listed(&state), Vec::<String>::new());
         assert_eq!(focused(&state), None);
-        input(&mut state, &[SidebarInput::Erase; 3]);
+        input(&mut state, &[NavigatorInput::Erase; 3]);
         typed(&mut state, "o");
         assert_eq!(
             listed(&state),
@@ -1069,10 +1081,10 @@ INBOX:",
             "Today, a bookmark and projects"
         );
         assert_eq!(focused(&state), Some(0));
-        input(&mut state, &[SidebarInput::Erase]);
+        input(&mut state, &[NavigatorInput::Erase]);
         assert_eq!(listed(&state), listed(&open(OUTLINE)), "no filter left");
         assert_eq!(view(&state).filter, "");
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Erase]);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Erase]);
         assert_eq!(
             focused(&state),
             Some(1),
@@ -1084,10 +1096,10 @@ INBOX:",
     #[test]
     fn a_filter_looks_through_folds_which_it_leaves_alone_and_closing_drops_it() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         input(
             &mut state,
-            &[SidebarInput::Focus(3), SidebarInput::Collapse],
+            &[NavigatorInput::Focus(3), NavigatorInput::Collapse],
         );
         typed(&mut state, "old");
         assert_eq!(
@@ -1097,27 +1109,27 @@ INBOX:",
         input(
             &mut state,
             &[
-                SidebarInput::Focus(0),
-                SidebarInput::Collapse,
-                SidebarInput::Expand,
+                NavigatorInput::Focus(0),
+                NavigatorInput::Collapse,
+                NavigatorInput::Expand,
             ],
         );
-        input(&mut state, &[SidebarInput::Erase; 3]);
+        input(&mut state, &[NavigatorInput::Erase; 3]);
         assert_eq!(
             listed(&state)[3],
             "Collapsed Work",
             "folding while filtering does nothing"
         );
         typed(&mut state, "home");
-        input(&mut state, &[SidebarInput::Leave]);
-        state.update(Message::ToggleSidebar);
+        input(&mut state, &[NavigatorInput::Leave]);
+        state.update(Message::ToggleNavigator);
         assert_eq!(view(&state).filter, "");
         assert_eq!(
             listed(&state).len(),
             5,
             "everything but what Work's fold hides"
         );
-        input(&mut state, &[SidebarInput::Leave]);
+        input(&mut state, &[NavigatorInput::Leave]);
         typed(&mut state, "a");
         assert_eq!(
             view(&state).filter,
@@ -1128,19 +1140,22 @@ INBOX:",
 
     // FR-KEY-05
     #[test]
-    fn focusing_an_entry_moves_the_focus_there_while_the_sidebar_is_open() {
+    fn focusing_an_entry_moves_the_focus_there_while_the_navigator_is_open() {
         let mut state = open(OUTLINE);
-        input(&mut state, &[SidebarInput::Focus(3)]);
-        assert!(!state.sidebar_focused(), "a closed sidebar takes no keys");
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Focus(3)]);
+        input(&mut state, &[NavigatorInput::Focus(3)]);
+        assert!(
+            !state.navigator_focused(),
+            "a closed Navigator takes no keys"
+        );
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Focus(3)]);
         assert_eq!(focused(&state), Some(3));
         let past = listed(&state).len();
-        input(&mut state, &[SidebarInput::Focus(past)]);
+        input(&mut state, &[NavigatorInput::Focus(past)]);
         assert_eq!(focused(&state), Some(3), "no entry there");
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(state.breadcrumbs(), ["Work"]);
-        assert_eq!(state.sidebar(), None, "closed");
+        assert_eq!(state.navigator(), None, "closed");
     }
 
     // FR-UI-01
@@ -1158,7 +1173,7 @@ INBOX:",
     #[test]
     fn starred_follows_the_other_views_unless_its_setting_is_off() {
         let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
-        assert!(state.sidebar_lists(SpecialView::Starred), "on by default");
+        assert!(state.navigator_lists(SpecialView::Starred), "on by default");
         assert_eq!(
             listed(&state),
             [
@@ -1174,27 +1189,27 @@ INBOX:",
                 "Leaf A"
             ]
         );
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         input(
             &mut state,
             &[
-                SidebarInput::Next,
-                SidebarInput::Next,
-                SidebarInput::Next,
-                SidebarInput::Next,
-                SidebarInput::Next,
-                SidebarInput::Next,
-                SidebarInput::Choose,
+                NavigatorInput::Next,
+                NavigatorInput::Next,
+                NavigatorInput::Next,
+                NavigatorInput::Next,
+                NavigatorInput::Next,
+                NavigatorInput::Next,
+                NavigatorInput::Choose,
             ],
         );
         assert_eq!(state.location(), Location::View(SpecialView::Starred));
         assert_eq!(current(&state), Some(6), "its entry is current");
-        state.update(Message::Configure(Configuration::SidebarView(
+        state.update(Message::Configure(Configuration::NavigatorView(
             SpecialView::Starred,
             false,
         )));
-        assert!(!state.sidebar_lists(SpecialView::Starred));
-        assert!(state.sidebar_lists(SpecialView::Today));
+        assert!(!state.navigator_lists(SpecialView::Starred));
+        assert!(state.navigator_lists(SpecialView::Today));
         assert_eq!(
             listed(&state),
             [
@@ -1211,7 +1226,7 @@ INBOX:",
         );
     }
 
-    // FR-TAG-07, D-80: the special views stand in the sidebar's order after the inbox, each
+    // FR-TAG-07, D-80: the special views stand in the Navigator's order after the inbox, each
     // unless its setting leaves it out, and choosing one shows it.
     #[test]
     fn the_special_views_follow_the_inbox_each_unless_its_setting_is_off() {
@@ -1231,16 +1246,16 @@ INBOX:",
                 "Leaf A"
             ]
         );
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
-        input(&mut state, &[SidebarInput::Choose]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Next]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(state.location(), Location::View(SpecialView::Upcoming));
-        state.update(Message::Configure(Configuration::SidebarView(
+        state.update(Message::Configure(Configuration::NavigatorView(
             SpecialView::Today,
             false,
         )));
-        assert!(!state.sidebar_lists(SpecialView::Today));
-        assert!(state.sidebar_lists(SpecialView::Upcoming));
+        assert!(!state.navigator_lists(SpecialView::Today));
+        assert!(state.navigator_lists(SpecialView::Upcoming));
         assert_eq!(
             listed(&state),
             [
@@ -1255,9 +1270,9 @@ INBOX:",
                 "Leaf A"
             ]
         );
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next; 3]);
-        input(&mut state, &[SidebarInput::Choose]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next; 3]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(state.location(), Location::View(SpecialView::Logbook));
     }
 
@@ -1266,17 +1281,17 @@ INBOX:",
     #[test]
     fn flagged_comes_after_the_other_views_unless_its_setting_is_off() {
         let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
-        assert!(state.sidebar_lists(SpecialView::Flagged), "on by default");
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next; 7]);
-        input(&mut state, &[SidebarInput::Choose]);
+        assert!(state.navigator_lists(SpecialView::Flagged), "on by default");
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next; 7]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(state.location(), Location::View(SpecialView::Flagged));
         assert_eq!(current(&state), Some(7), "its entry is current");
-        state.update(Message::Configure(Configuration::SidebarView(
+        state.update(Message::Configure(Configuration::NavigatorView(
             SpecialView::Flagged,
             false,
         )));
-        assert!(!state.sidebar_lists(SpecialView::Flagged));
+        assert!(!state.navigator_lists(SpecialView::Flagged));
         assert_eq!(
             listed(&state),
             [
@@ -1296,24 +1311,24 @@ INBOX:",
 
     // FR-UI-01, D-68, D-79
     #[test]
-    fn toggling_opens_the_sidebar_with_the_keys_and_closes_it() {
+    fn toggling_opens_the_navigator_with_the_keys_and_closes_it() {
         let mut state = open(OUTLINE);
-        assert_eq!(state.sidebar(), None, "closed at the start");
-        assert!(!state.sidebar_focused());
-        state.update(Message::ToggleSidebar);
-        assert!(state.sidebar_focused());
+        assert_eq!(state.navigator(), None, "closed at the start");
+        assert!(!state.navigator_focused());
+        state.update(Message::ToggleNavigator);
+        assert!(state.navigator_focused());
         assert_eq!(focused(&state), Some(0), "the pane is at home");
-        state.update(Message::ToggleSidebar);
-        assert_eq!(state.sidebar(), None);
-        assert!(!state.sidebar_focused());
+        state.update(Message::ToggleNavigator);
+        assert_eq!(state.navigator(), None);
+        assert!(!state.navigator_focused());
     }
 
     // FR-MODE-01
     #[test]
-    fn focusing_the_sidebar_ends_editing() {
+    fn focusing_the_navigator_ends_editing() {
         let mut state = open(OUTLINE);
         state.update(Message::EditAtEnd);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         assert_eq!(state.mode(), Mode::Navigate);
     }
 
@@ -1321,22 +1336,25 @@ INBOX:",
     #[test]
     fn next_and_previous_move_the_focus_and_stop_at_the_ends() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Previous]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Previous]);
         assert_eq!(focused(&state), Some(0));
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Next]);
         assert_eq!(focused(&state), Some(2));
-        input(&mut state, &[SidebarInput::Previous]);
+        input(&mut state, &[NavigatorInput::Previous]);
         assert_eq!(focused(&state), Some(1));
-        input(&mut state, &[SidebarInput::Next; 10]);
+        input(&mut state, &[NavigatorInput::Next; 10]);
         assert_eq!(focused(&state), Some(7), "the last entry");
     }
 
     // keybindings.md §4
     #[test]
-    fn keys_of_the_sidebar_do_nothing_until_it_is_open() {
+    fn keys_of_the_navigator_do_nothing_until_it_is_open() {
         let mut state = open(OUTLINE);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Collapse]);
+        input(
+            &mut state,
+            &[NavigatorInput::Next, NavigatorInput::Collapse],
+        );
         assert_eq!(focused(&state), None);
         assert_eq!(listed(&state)[3], "Expanded Work");
     }
@@ -1345,22 +1363,22 @@ INBOX:",
     #[test]
     fn collapse_and_expand_fold_project_entries_only() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next; 3]);
-        input(&mut state, &[SidebarInput::Collapse]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next; 3]);
+        input(&mut state, &[NavigatorInput::Collapse]);
         assert_eq!(
             listed(&state)[2..],
             ["bookmark Home", "Collapsed Work", "Leaf Home"],
             "child projects hide"
         );
-        input(&mut state, &[SidebarInput::Collapse]);
+        input(&mut state, &[NavigatorInput::Collapse]);
         assert_eq!(listed(&state)[3], "Collapsed Work", "still collapsed");
-        input(&mut state, &[SidebarInput::Expand]);
+        input(&mut state, &[NavigatorInput::Expand]);
         assert_eq!(listed(&state)[4], "  Expanded Drafts");
-        input(&mut state, &[SidebarInput::Expand]);
+        input(&mut state, &[NavigatorInput::Expand]);
         assert_eq!(listed(&state)[3], "Expanded Work", "still expanded");
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
-        input(&mut state, &[SidebarInput::Collapse]);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Next]);
+        input(&mut state, &[NavigatorInput::Collapse]);
         assert_eq!(
             listed(&state)[5],
             "    Leaf Old",
@@ -1368,9 +1386,12 @@ INBOX:",
         );
         for at in [0, 2] {
             let mut state = open(OUTLINE);
-            state.update(Message::ToggleSidebar);
-            input(&mut state, &vec![SidebarInput::Next; at]);
-            input(&mut state, &[SidebarInput::Collapse, SidebarInput::Expand]);
+            state.update(Message::ToggleNavigator);
+            input(&mut state, &vec![NavigatorInput::Next; at]);
+            input(
+                &mut state,
+                &[NavigatorInput::Collapse, NavigatorInput::Expand],
+            );
             assert_eq!(listed(&state), listed(&open(OUTLINE)), "entry {at}");
         }
     }
@@ -1384,14 +1405,14 @@ INBOX:",
     #[test]
     fn choosing_a_bookmark_or_project_zooms_the_pane_to_it_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Choose]);
         assert_eq!(zoomed(&state).as_deref(), Some("Launch plan"));
-        assert!(!state.sidebar_focused());
-        state.update(Message::ToggleSidebar);
+        assert!(!state.navigator_focused());
+        state.update(Message::ToggleNavigator);
         assert_eq!(focused(&state), Some(1), "on the entry of the zoom");
-        input(&mut state, &[SidebarInput::Next; 3]);
-        input(&mut state, &[SidebarInput::Choose]);
+        input(&mut state, &[NavigatorInput::Next; 3]);
+        input(&mut state, &[NavigatorInput::Choose]);
         assert_eq!(zoomed(&state).as_deref(), Some("Drafts"));
         state.update(Message::Back);
         assert_eq!(
@@ -1405,12 +1426,15 @@ INBOX:",
     #[test]
     fn choosing_today_shows_the_today_view_and_gives_the_pane_the_keys() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Choose]);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Previous, SidebarInput::Choose]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Choose]);
+        state.update(Message::ToggleNavigator);
+        input(
+            &mut state,
+            &[NavigatorInput::Previous, NavigatorInput::Choose],
+        );
         assert_eq!(state.location(), Location::View(SpecialView::Today));
-        assert!(!state.sidebar_focused());
+        assert!(!state.navigator_focused());
         state.update(Message::Back);
         assert_eq!(
             zoomed(&state).as_deref(),
@@ -1465,39 +1489,39 @@ INBOX:",
         assert_eq!(current(&state), Some(3), "Work, above the task");
         state.update(Message::ZoomIn);
         assert_eq!(current(&state), Some(4), "Drafts");
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         input(
             &mut state,
-            &[SidebarInput::Focus(3), SidebarInput::Collapse],
+            &[NavigatorInput::Focus(3), NavigatorInput::Collapse],
         );
-        input(&mut state, &[SidebarInput::Leave]);
+        input(&mut state, &[NavigatorInput::Leave]);
         assert_eq!(current(&state), Some(3), "Work, folded over Drafts");
     }
 
     // D-68
     #[test]
-    fn the_sidebar_opens_on_the_current_entry_which_stays_marked() {
+    fn the_navigator_opens_on_the_current_entry_which_stays_marked() {
         let mut state = open(OUTLINE);
         state.update(Message::ZoomIn);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         assert_eq!(focused(&state), Some(3), "on Work");
         assert_eq!(current(&state), Some(3));
-        input(&mut state, &[SidebarInput::Next]);
+        input(&mut state, &[NavigatorInput::Next]);
         assert_eq!(focused(&state), Some(4));
         assert_eq!(current(&state), Some(3), "still Work");
-        state.update(Message::ToggleSidebar);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
+        state.update(Message::ToggleNavigator);
         assert_eq!(focused(&state), Some(3), "on Work again");
     }
 
     // keybindings.md §4
     #[test]
-    fn leaving_closes_the_sidebar_on_the_same_view() {
+    fn leaving_closes_the_navigator_on_the_same_view() {
         let mut state = open(OUTLINE);
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Leave]);
-        assert!(!state.sidebar_focused());
-        assert_eq!(state.sidebar(), None);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Leave]);
+        assert!(!state.navigator_focused());
+        assert_eq!(state.navigator(), None);
         assert_eq!(zoomed(&state), None);
     }
 
@@ -1505,19 +1529,19 @@ INBOX:",
     #[test]
     fn the_focus_stays_on_the_last_entry_when_entries_go_away() {
         let mut state = open("- a @bookmark\nP:");
-        state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
+        state.update(Message::ToggleNavigator);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Next]);
         assert_eq!(focused(&state), Some(2));
         state.update(Message::ToggleFlag(Flag::Bookmark));
         assert_eq!(listed(&state), ["today", "Leaf P"]);
         assert_eq!(focused(&state), Some(1));
-        input(&mut state, &[SidebarInput::Previous]);
+        input(&mut state, &[NavigatorInput::Previous]);
         assert_eq!(focused(&state), Some(0));
     }
 
     /// The labels of the focused entry's context-menu commands, each group's joined by `, `.
     fn entry_commands(state: &State) -> Option<Vec<String>> {
-        let groups = state.sidebar_commands()?;
+        let groups = state.navigator_commands()?;
         Some(
             groups
                 .iter()
@@ -1534,10 +1558,10 @@ INBOX:",
 
     // FR-KEY-06
     #[test]
-    fn the_focused_entrys_commands_go_to_it_open_it_fold_it_and_close_the_sidebar() {
+    fn the_focused_entrys_commands_go_to_it_open_it_fold_it_and_close_the_navigator() {
         let mut state = open(OUTLINE);
         assert_eq!(entry_commands(&state), None, "the pane has the keys");
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         let leave = "Return to Outline".to_owned();
         assert_eq!(
             entry_commands(&state),
@@ -1547,7 +1571,7 @@ INBOX:",
             ]),
             "Today"
         );
-        input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
+        input(&mut state, &[NavigatorInput::Next, NavigatorInput::Next]);
         assert_eq!(
             entry_commands(&state),
             Some(vec![
@@ -1556,7 +1580,7 @@ INBOX:",
             ]),
             "a bookmark"
         );
-        input(&mut state, &[SidebarInput::Next]);
+        input(&mut state, &[NavigatorInput::Next]);
         assert_eq!(
             entry_commands(&state),
             Some(vec![
@@ -1564,7 +1588,7 @@ INBOX:",
                 leave.clone()
             ])
         );
-        input(&mut state, &[SidebarInput::Collapse]);
+        input(&mut state, &[NavigatorInput::Collapse]);
         assert_eq!(
             entry_commands(&state),
             Some(vec![
@@ -1572,7 +1596,7 @@ INBOX:",
                 leave.clone()
             ])
         );
-        input(&mut state, &[SidebarInput::Next]);
+        input(&mut state, &[NavigatorInput::Next]);
         assert_eq!(
             entry_commands(&state),
             Some(vec![
@@ -1590,8 +1614,14 @@ INBOX:",
             ]),
             "no folding while a filter is typed (D-86)"
         );
-        let groups = state.sidebar_commands().unwrap();
-        assert_eq!(groups[1][0].command, Command::Sidebar(SidebarInput::Leave));
-        assert_eq!(groups[0][0].command, Command::Sidebar(SidebarInput::Choose));
+        let groups = state.navigator_commands().unwrap();
+        assert_eq!(
+            groups[1][0].command,
+            Command::Navigator(NavigatorInput::Leave)
+        );
+        assert_eq!(
+            groups[0][0].command,
+            Command::Navigator(NavigatorInput::Choose)
+        );
     }
 }

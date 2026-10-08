@@ -1,5 +1,5 @@
 //! Step 5.1: panes side by side, each with its own zoom, focus and history, opened from the
-//! focused block, Go to Symbol or the sidebar, focused, closed and resized with keys, the strip
+//! focused block, Go to Symbol or the Navigator, focused, closed and resized with keys, the strip
 //! scrolling to keep the focused pane in view.
 
 use crossterm::event::{KeyCode, KeyModifiers};
@@ -379,7 +379,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_symbol_in_a_new_pane() {
 
 // FR-UI-02, FR-UI-05, keybindings.md §4
 #[test]
-fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_sidebar_entry_in_a_new_pane() {
+fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_navigator_entry_in_a_new_pane() {
     for key in [
         (KeyCode::Enter, KeyModifiers::ALT),
         (KeyCode::Char('v'), KeyModifiers::CONTROL),

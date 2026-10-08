@@ -1,5 +1,5 @@
 //! Step 6.5: the mouse. A click focuses a block, places the caret in the text being edited,
-//! toggles a fold marker, zooms to a crumb, goes to a sidebar entry or focuses a pane; Alt+click
+//! toggles a fold marker, zooms to a crumb, goes to a Navigator entry or focuses a pane; Alt+click
 //! opens in a new pane; a right-click opens the context menu at the pointer; the wheel scrolls
 //! the pane or panel under the pointer.
 
@@ -227,7 +227,7 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 
 // FR-KEY-05, FR-UI-01, navigation.md §6
 #[test]
-fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
+fn a_click_on_a_navigator_entry_goes_there_and_on_its_fold_marker_folds_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 17);
     ctrl_g(&mut app);
     // The window's inside starts at column 17, row 3: Today, Upcoming, Overdue, Colors, Logbook,
@@ -259,7 +259,7 @@ fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
 
 // FR-KEY-05, ui.md §6
 #[test]
-fn the_wheel_does_nothing_while_the_sidebars_window_is_open() {
+fn the_wheel_does_nothing_while_the_navigator_is_open() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 80, 14);
     ctrl_g(&mut app);
@@ -283,7 +283,7 @@ fn the_wheel_does_nothing_while_the_sidebars_window_is_open() {
 
 // FR-KEY-05, D-55, ui.md §6
 #[test]
-fn the_wheel_leaves_the_shortcuts_panel_still_while_the_sidebars_window_is_open() {
+fn the_wheel_leaves_the_shortcuts_panel_still_while_the_navigator_is_open() {
     let mut app = Harness::with_text(OUTLINE, 100, 12);
     press(&mut app, KeyCode::Char('?'));
     ctrl_g(&mut app);
@@ -305,7 +305,7 @@ fn the_wheel_leaves_the_shortcuts_panel_still_while_the_sidebars_window_is_open(
 
 // FR-KEY-05, D-79
 #[test]
-fn a_click_outside_the_sidebars_window_closes_it_and_acts_there() {
+fn a_click_outside_the_navigator_closes_it_and_acts_there() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
     ctrl_g(&mut app);
     app.click(6, 3);
@@ -359,7 +359,7 @@ fn a_right_click_on_the_selection_opens_its_menu_and_elsewhere_drops_it() {
 
 // FR-KEY-05, FR-KEY-06, ui.md §5
 #[test]
-fn a_right_click_on_a_crumb_a_pane_header_or_a_sidebar_entry_opens_its_menu() {
+fn a_right_click_on_a_crumb_a_pane_header_or_a_navigator_entry_opens_its_menu() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
     app.click(8, 3);
     press(&mut app, KeyCode::Char('.'));

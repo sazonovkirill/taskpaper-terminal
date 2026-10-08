@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::{Location, Message, Row, State, pane::Pane};
 use crate::document::{Block, ItemId, TagColor, blocks};
 
-/// A special view, in the order the sidebar lists them (D-80).
+/// A special view, in the order the Navigator lists them (D-80).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SpecialView {
@@ -30,7 +30,7 @@ pub enum SpecialView {
 }
 
 impl SpecialView {
-    /// Every special view, in the sidebar's order (D-80).
+    /// Every special view, in the Navigator's order (D-80).
     pub const ALL: [Self; 7] = [
         Self::Today,
         Self::Upcoming,
@@ -41,7 +41,7 @@ impl SpecialView {
         Self::Flagged,
     ];
 
-    /// The view's name, as its header, sidebar entry and Go to command show it.
+    /// The view's name, as its header, Navigator entry and Go to command show it.
     #[must_use]
     pub fn name(self) -> &'static str {
         match self {
@@ -263,8 +263,8 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::GoTo(_)
         | Message::Back
         | Message::Forward
-        | Message::ToggleSidebar
-        | Message::Sidebar(_)
+        | Message::ToggleNavigator
+        | Message::Navigator(_)
         | Message::ToggleDone { .. }
         | Message::ChangeDate { .. }
         | Message::ToggleFlag(_)

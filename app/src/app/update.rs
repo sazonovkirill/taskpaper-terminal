@@ -6,8 +6,8 @@ use std::{path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, PaneChange, Paste, SaveAs, SelectionChange,
-    SettingValue, SettingsInput, SidebarInput, SpecialView, State, Symbols, TextEdit, Version,
+    Command, DateInput, Location, MenuInput, NavigatorInput, PaneChange, Paste, SaveAs,
+    SelectionChange, SettingValue, SettingsInput, SpecialView, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
     saving::Ending,
     structure::NewBlock,
@@ -23,12 +23,12 @@ use crate::document::{
 pub enum Configuration {
     /// Save this long after the last change from now on (`autosave_delay_ms`, file-io.md §2).
     AutosaveDelay(Duration),
-    /// List the `INBOX` project above Today in the sidebar, or among the projects when `false`
+    /// List the `INBOX` project above Today in the Navigator, or among the projects when `false`
     /// (`special_inbox`, navigation.md §6).
     SpecialInbox(bool),
-    /// List this special view in the sidebar, or not when `false` (`sidebar_today` and so on,
+    /// List this special view in the Navigator, or not when `false` (`sidebar_today` and so on,
     /// navigation.md §6, D-77, D-80).
-    SidebarView(SpecialView, bool),
+    NavigatorView(SpecialView, bool),
     /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
     /// (`today_starred`, navigation.md §7, D-88).
     TodayStarred(bool),
@@ -157,7 +157,7 @@ pub enum Message {
     /// Show the zoom block's parent as the root, focusing the block zoomed out of.
     ZoomOut,
     /// Show `location` in the focused pane as a step of its history: the whole document with
-    /// `Location::Outline(None)`, or a special view, as choosing it in the sidebar does (D-64,
+    /// `Location::Outline(None)`, or a special view, as choosing it in the Navigator does (D-64,
     /// D-80).
     GoTo(Location),
     /// Show the focused pane's breadcrumb at `depth` as its root: 0 is the whole document, 1 the
@@ -167,11 +167,11 @@ pub enum Message {
     Back,
     /// Go to the next zoom in the history.
     Forward,
-    /// Close the sidebar while it is open, else open it, giving it the keys (FR-UI-01, D-68,
+    /// Close the Navigator while it is open, else open it, giving it the keys (FR-UI-01, D-68,
     /// D-79).
-    ToggleSidebar,
-    /// A key of the open sidebar (FR-UI-01).
-    Sidebar(SidebarInput),
+    ToggleNavigator,
+    /// A key of the open Navigator (FR-UI-01).
+    Navigator(NavigatorInput),
     /// Complete the selected blocks, else the focused block, dating them `today`, or uncomplete
     /// them when all are done (FR-DONE-01, FR-OPS-07).
     ToggleDone {
@@ -242,7 +242,7 @@ pub enum Message {
     Settings(SettingsInput),
     /// Show how many blocks and words are under the focused block (FR-OPS-09).
     Count,
-    /// Open the context menu on the focused sidebar entry while the sidebar is open, else
+    /// Open the context menu on the focused Navigator entry while the Navigator is open, else
     /// on the selection or the focused block (FR-KEY-06).
     OpenContextMenu,
     /// Open the context menu on the focused pane's header, or with a depth on its breadcrumb at
@@ -429,8 +429,8 @@ impl Message {
             | Self::GoToCrumb(_)
             | Self::Back
             | Self::Forward
-            | Self::ToggleSidebar
-            | Self::Sidebar(_)
+            | Self::ToggleNavigator
+            | Self::Navigator(_)
             | Self::ToggleDone { .. }
             | Self::ChangeDate { .. }
             | Self::ToggleFlag(_)
@@ -590,8 +590,8 @@ impl State {
     fn configure(&mut self, setting: Configuration) {
         match setting {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
-            Configuration::SpecialInbox(on) => self.sidebar.set_special_inbox(on),
-            Configuration::SidebarView(view, on) => self.sidebar.set_listed(view, on),
+            Configuration::SpecialInbox(on) => self.navigator.set_special_inbox(on),
+            Configuration::NavigatorView(view, on) => self.navigator.set_listed(view, on),
             Configuration::TodayStarred(on) => self.today_starred = on,
         }
     }
@@ -644,8 +644,8 @@ impl State {
             Message::GoTo(location) => self.go_to(location),
             Message::GoToCrumb(depth) => self.go_to_crumb(depth),
             Message::Back | Message::Forward => self.walk_history(message == Message::Forward),
-            Message::ToggleSidebar => self.toggle_sidebar(),
-            Message::Sidebar(input) => self.sidebar_input(input),
+            Message::ToggleNavigator => self.toggle_navigator(),
+            Message::Navigator(input) => self.navigator_input(input),
             Message::ToggleDone { today } => self.toggle_done(today),
             Message::ChangeDate { tag, change, today } => self.change_date(tag, change, today),
             Message::ToggleFlag(flag) => self.toggle_flag(flag),

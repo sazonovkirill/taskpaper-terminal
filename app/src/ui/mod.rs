@@ -40,8 +40,8 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, OutlineView, Popup, SaveAsPrompt,
-    SettingsWindow, ShortcutsPanel, SidebarPanel,
+    ConflictPrompt, DatePromptPanel, FinderPopup, Keyboard, NavigatorPanel, OutlineView, Popup,
+    SaveAsPrompt, SettingsWindow, ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -102,8 +102,8 @@ pub struct Tui {
     /// Where the next draw puts the focused block's first line, counted from the top of the
     /// screen: where it was before a page motion.
     page_anchor: Option<usize>,
-    /// The first sidebar line on screen.
-    sidebar_scroll: usize,
+    /// The first Navigator line on screen.
+    navigator_scroll: usize,
     /// Whether the process was told to end, so only saving is left.
     ending: bool,
     /// The first line of the conflict prompt's diff on screen.
@@ -172,7 +172,7 @@ impl Tui {
             page_up_rows: 0,
             focus_line: None,
             page_anchor: None,
-            sidebar_scroll: 0,
+            navigator_scroll: 0,
             ending: false,
             diff_scroll: 0,
             diff_rows: 0,
@@ -227,7 +227,7 @@ impl Tui {
     }
 
     /// The frontend running with the key bindings, autosave delay, icons, word wrap,
-    /// theme, inbox handling, special views in the sidebar and backups `config` holds, keeping settings changed in the app in its
+    /// theme, inbox handling, special views in the Navigator and backups `config` holds, keeping settings changed in the app in its
     /// file and reporting once what it ignored of the file (FR-SET-04). The disk worker makes its
     /// backups as `config` says until the settings window changes them.
     #[must_use]
@@ -263,9 +263,9 @@ impl Tui {
                 Duration::ZERO,
             );
         }
-        for &(view, on) in &config.sidebar_views {
+        for &(view, on) in &config.navigator_views {
             self.send(
-                Message::Configure(Configuration::SidebarView(view, on)),
+                Message::Configure(Configuration::NavigatorView(view, on)),
                 Duration::ZERO,
             );
         }
@@ -333,7 +333,7 @@ impl Tui {
             command_menu: self.state.command_menu().is_some(),
             overlay: self.overlay(),
             shortcuts: self.state.shortcuts().is_some(),
-            sidebar: self.state.sidebar_focused(),
+            navigator: self.state.navigator_focused(),
         }
     }
 
@@ -578,7 +578,7 @@ impl Tui {
     /// Draws the whole screen: the panes side by side, each a breadcrumb header over
     /// a rule and its outline scrolled to keep its focus visible, the shortcuts panel at the right
     /// while open, the date prompt's panel below them while open, and the status line, all dimmed
-    /// behind a dialog that takes the keys, such as the sidebar's window.
+    /// behind a dialog that takes the keys, such as the Navigator.
     pub fn draw(&mut self, frame: &mut Frame) {
         let theme = self.palette();
         let screen = frame.area();
@@ -615,11 +615,11 @@ impl Tui {
         self.draw_shortcuts(frame, sidebar);
         self.draw_status(frame, status);
         // A dialog that takes the keys sets itself apart from the screen behind it (D-54, D-69).
-        if self.overlay().is_some() || self.state.sidebar_focused() || self.state.in_conflict() {
+        if self.overlay().is_some() || self.state.navigator_focused() || self.state.in_conflict() {
             frame.buffer_mut().set_style(screen, Style::new().dim());
         }
         // A dialog over the Navigator dims it too; its own `Clear` would undo the dim above.
-        let entry = self.draw_sidebar(
+        let entry = self.draw_navigator(
             frame,
             outline,
             self.overlay().is_some() || self.state.in_conflict(),
@@ -656,16 +656,16 @@ impl Tui {
             if self.state.context_menu().is_none() {
                 self.menu_anchor = None;
             }
-            let anchor = self.menu_anchor.or(if self.state.sidebar_focused() {
+            let anchor = self.menu_anchor.or(if self.state.navigator_focused() {
                 entry
             } else {
                 focused.block
             });
             if let (Some(menu), Some(anchor)) = (self.state.context_menu(), anchor) {
-                let sidebar = self.state.sidebar_focused();
+                let navigator = self.state.navigator_focused();
                 let popup = Popup::context_menu(
                     &menu,
-                    |command| self.keymap.bindings(command, sidebar),
+                    |command| self.keymap.bindings(command, navigator),
                     icons,
                     &theme,
                 );
@@ -840,7 +840,7 @@ impl Tui {
             self.shortcuts_scroll = 0;
         }
         let scrolls =
-            context.mode == Mode::Navigate && context.overlay.is_none() && !context.sidebar;
+            context.mode == Mode::Navigate && context.overlay.is_none() && !context.navigator;
         let [up, down] =
             [Command::ScrollShortcutsUp, Command::ScrollShortcutsDown].map(|command| {
                 if scrolls {
@@ -1032,26 +1032,27 @@ impl Tui {
         }
     }
 
-    /// The sidebar's window centered over `area`, scrolled to keep its focused entry visible,
+    /// The Navigator centered over `area`, scrolled to keep its focused entry visible,
     /// while it is open (ui.md §1, D-79); returns where the focused entry starts on screen, if
     /// one is focused. It is dimmed when `dim`, behind a dialog (D-69).
-    fn draw_sidebar(&mut self, frame: &mut Frame, area: Rect, dim: bool) -> Option<(u16, u16)> {
-        self.drawn.sidebar = None;
-        let view = self.state.sidebar()?;
+    fn draw_navigator(&mut self, frame: &mut Frame, area: Rect, dim: bool) -> Option<(u16, u16)> {
+        self.drawn.navigator = None;
+        let view = self.state.navigator()?;
         let theme = self.palette();
-        let panel = SidebarPanel::new(&view, self.icons, &theme);
+        let panel = NavigatorPanel::new(&view, self.icons, &theme);
         let window = panel.area(area);
         let inner = window.inner(ratatui::layout::Margin::new(1, 1));
-        self.sidebar_scroll = panel.scroll(self.sidebar_scroll, usize::from(inner.height));
+        self.navigator_scroll = panel.scroll(self.navigator_scroll, usize::from(inner.height));
         let entry = panel.focused_line().map(|line| {
-            let line = u16::try_from(line.saturating_sub(self.sidebar_scroll)).unwrap_or(u16::MAX);
+            let line =
+                u16::try_from(line.saturating_sub(self.navigator_scroll)).unwrap_or(u16::MAX);
             (
                 inner.x.saturating_add(widgets::GUTTER_WIDTH),
                 inner.y.saturating_add(line),
             )
         });
-        self.drawn.sidebar = Some((inner, self.sidebar_scroll));
-        frame.render_widget(panel.offset(self.sidebar_scroll), window);
+        self.drawn.navigator = Some((inner, self.navigator_scroll));
+        frame.render_widget(panel.offset(self.navigator_scroll), window);
         if dim {
             frame.buffer_mut().set_style(window, Style::new().dim());
         }

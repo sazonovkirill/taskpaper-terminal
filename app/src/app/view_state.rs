@@ -182,7 +182,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, PaneChange, SidebarInput},
+        app::{Message, NavigatorInput, PaneChange},
         document::{Item, format},
     };
 
@@ -262,9 +262,9 @@ mod tests {
         state.update(Message::Pane(PaneChange::Open));
         state.update(Message::ResizePane(44));
         state.update(Message::Pane(PaneChange::OpenLocation));
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(SidebarInput::Focus(0)));
-        state.update(Message::Sidebar(SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(NavigatorInput::Focus(0)));
+        state.update(Message::Navigator(NavigatorInput::Choose));
         state.update(Message::Pane(PaneChange::Focus(0)));
         state.update(Message::ToggleShowDone);
         focus(&mut state, "Home");
@@ -353,8 +353,8 @@ mod tests {
     fn a_today_entry_stays_focused_until_the_date_shows_it() {
         let text = "Errands:\n\t- Post office @star\n\t- Dentist @due(2026-10-05)\n";
         let mut state = open(text);
-        state.update(Message::ToggleSidebar);
-        state.update(Message::Sidebar(SidebarInput::Choose));
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(NavigatorInput::Choose));
         state.update(Message::FocusNext);
         assert_eq!(panes(&state), ["*Today: Dentist"]);
         let view = state.view_state().expect("a layout to keep");

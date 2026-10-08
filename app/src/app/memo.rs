@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 
-/// How many keys a memo keeps values for: enough for every pane on a screen and the sidebar.
+/// How many keys a memo keeps values for: enough for every pane on a screen and the Navigator.
 const KEPT: usize = 8;
 
 /// The values computed for the latest few keys, where a key holds everything its value is

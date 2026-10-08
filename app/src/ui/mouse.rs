@@ -9,7 +9,7 @@ use ratatui::layout::{Position, Rect};
 
 use super::{Tui, widgets};
 use crate::{
-    app::{Fold, Message, Motion, PaneChange, PaneId, SelectionChange, SidebarInput, TextEdit},
+    app::{Fold, Message, Motion, NavigatorInput, PaneChange, PaneId, SelectionChange, TextEdit},
     document::ItemId,
 };
 
@@ -19,8 +19,8 @@ const WHEEL_LINES: isize = 3;
 /// Where the last frame drew what the pointer can act on.
 #[derive(Debug, Default)]
 pub(super) struct Drawn {
-    /// The inside of the sidebar's window and its first line on screen.
-    pub(super) sidebar: Option<(Rect, usize)>,
+    /// The inside of the Navigator and its first line on screen.
+    pub(super) navigator: Option<(Rect, usize)>,
     /// The panes on screen.
     pub(super) panes: Vec<DrawnPane>,
     /// The shortcuts panel's area.
@@ -44,8 +44,8 @@ pub(super) struct DrawnPane {
 /// What is under the pointer, by where it was drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Spot {
-    /// A line of the sidebar, counted from its first, and a column counted from its gutter's start.
-    Sidebar { line: usize, column: u16 },
+    /// A line of the Navigator, counted from its first, and a column counted from its gutter's start.
+    Navigator { line: usize, column: u16 },
     /// The header of the pane at `at` among `Drawn::panes`, at a column of its breadcrumbs, or
     /// on its gutter or rule.
     Header { pane: usize, column: Option<u16> },
@@ -63,10 +63,10 @@ enum Spot {
 impl Drawn {
     /// What the last frame drew at `position`.
     fn spot(&self, position: Position) -> Option<Spot> {
-        if let Some((area, scroll)) = self.sidebar
+        if let Some((area, scroll)) = self.navigator
             && area.contains(position)
         {
-            return Some(Spot::Sidebar {
+            return Some(Spot::Navigator {
                 line: usize::from(position.y - area.y) + scroll,
                 column: position.x - area.x,
             });
@@ -104,7 +104,7 @@ impl Drawn {
 /// What a gesture acts on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Target {
-    /// The sidebar entry at this index, on its fold marker when it has a fold.
+    /// The Navigator entry at this index, on its fold marker when it has a fold.
     Entry { at: usize, fold: Option<Fold> },
     /// The header of the pane at `pane`, on its breadcrumb at this depth if any.
     Header { pane: usize, crumb: Option<usize> },
@@ -178,20 +178,20 @@ pub fn acts_on(event: &Event) -> bool {
 fn messages(target: Target, gesture: Gesture) -> Vec<Message> {
     let pane = |at: usize| {
         vec![
-            Message::Sidebar(SidebarInput::Leave),
+            Message::Navigator(NavigatorInput::Leave),
             Message::Pane(PaneChange::Focus(at)),
         ]
     };
     let mut messages = match target {
-        Target::Entry { at, .. } => vec![Message::Sidebar(SidebarInput::Focus(at))],
+        Target::Entry { at, .. } => vec![Message::Navigator(NavigatorInput::Focus(at))],
         Target::Header { pane: at, .. } | Target::Block { pane: at, .. } => pane(at),
         Target::Text(_) => Vec::new(),
     };
     messages.extend(match (target, gesture) {
-        (Target::Entry { fold, .. }, Gesture::Click) => vec![Message::Sidebar(match fold {
-            Some(Fold::Expanded) => SidebarInput::Collapse,
-            Some(Fold::Collapsed) => SidebarInput::Expand,
-            Some(Fold::Leaf) | None => SidebarInput::Choose,
+        (Target::Entry { fold, .. }, Gesture::Click) => vec![Message::Navigator(match fold {
+            Some(Fold::Expanded) => NavigatorInput::Collapse,
+            Some(Fold::Collapsed) => NavigatorInput::Expand,
+            Some(Fold::Leaf) | None => NavigatorInput::Choose,
         })],
         (Target::Entry { .. }, Gesture::AltClick) => vec![Message::Pane(PaneChange::Open)],
         (Target::Entry { .. }, Gesture::RightClick) => vec![Message::OpenContextMenu],
@@ -262,8 +262,8 @@ impl Tui {
     fn wheel(&mut self, spot: Spot, lines: isize) {
         match spot {
             // The open Navigator is a dialog (ui.md §6): it and what is behind it stay put.
-            Spot::Sidebar { .. } => {}
-            _ if self.state.sidebar_focused() => {}
+            Spot::Navigator { .. } => {}
+            _ if self.state.navigator_focused() => {}
             Spot::Header { pane, .. } | Spot::Outline { pane, .. } => {
                 if let Some(pane) = self.drawn.panes.get(pane) {
                     *self.wheel.entry(pane.id).or_default() += lines;
@@ -278,11 +278,11 @@ impl Tui {
     /// What `gesture` at `spot` acts on, if anything is drawn there.
     fn target(&self, spot: Spot, gesture: Gesture) -> Option<Target> {
         match spot {
-            Spot::Sidebar { line, column } => {
-                let view = self.state.sidebar()?;
+            Spot::Navigator { line, column } => {
+                let view = self.state.navigator()?;
                 let theme = self.palette();
-                let (at, fold) =
-                    widgets::SidebarPanel::new(&view, self.icons, &theme).entry_at(line, column)?;
+                let (at, fold) = widgets::NavigatorPanel::new(&view, self.icons, &theme)
+                    .entry_at(line, column)?;
                 Some(Target::Entry { at, fold })
             }
             Spot::Header { pane, column } => {
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn a_position_names_what_the_last_frame_drew_there() {
         let drawn = Drawn {
-            sidebar: Some((Rect::new(0, 0, 10, 8), 3)),
+            navigator: Some((Rect::new(0, 0, 10, 8), 3)),
             panes: vec![
                 pane(1, Rect::new(10, 0, 5, 8), 7, 11),
                 pane(2, Rect::new(15, 0, 12, 8), 0, 12),
@@ -376,9 +376,9 @@ mod tests {
             shortcuts: Some(Rect::new(24, 0, 3, 8)),
         };
         let spot = |x, y| drawn.spot(Position::new(x, y));
-        assert_eq!(spot(3, 2), Some(Spot::Sidebar { line: 5, column: 3 }));
-        assert_eq!(spot(1, 0), Some(Spot::Sidebar { line: 3, column: 1 }));
-        assert_eq!(spot(9, 0), Some(Spot::Sidebar { line: 3, column: 9 }));
+        assert_eq!(spot(3, 2), Some(Spot::Navigator { line: 5, column: 3 }));
+        assert_eq!(spot(1, 0), Some(Spot::Navigator { line: 3, column: 1 }));
+        assert_eq!(spot(9, 0), Some(Spot::Navigator { line: 3, column: 9 }));
         assert_eq!(
             spot(10, 0),
             Some(Spot::Header {
@@ -421,12 +421,12 @@ mod tests {
         assert_eq!(spot(27, 3), None, "nothing drawn");
         assert_eq!(Drawn::default().spot(Position::new(0, 0)), None);
         let below = Drawn {
-            sidebar: Some((Rect::new(2, 1, 10, 8), 0)),
+            navigator: Some((Rect::new(2, 1, 10, 8), 0)),
             panes: vec![pane(0, Rect::new(12, 1, 10, 8), 0, 10)],
             shortcuts: None,
         };
         let spot = |x, y| below.spot(Position::new(x, y));
-        assert_eq!(spot(5, 4), Some(Spot::Sidebar { line: 3, column: 3 }));
+        assert_eq!(spot(5, 4), Some(Spot::Navigator { line: 3, column: 3 }));
         assert_eq!(
             spot(15, 4),
             Some(Spot::Outline {
@@ -437,16 +437,16 @@ mod tests {
             "areas that start below and right of the screen's corner"
         );
         let over = Drawn {
-            sidebar: Some((Rect::new(4, 2, 10, 4), 0)),
+            navigator: Some((Rect::new(4, 2, 10, 4), 0)),
             panes: vec![pane(0, Rect::new(0, 0, 12, 8), 0, 12)],
             shortcuts: Some(Rect::new(12, 0, 4, 8)),
         };
         let spot = |x, y| over.spot(Position::new(x, y));
-        assert_eq!(spot(5, 3), Some(Spot::Sidebar { line: 1, column: 1 }));
+        assert_eq!(spot(5, 3), Some(Spot::Navigator { line: 1, column: 1 }));
         assert_eq!(
             spot(13, 3),
-            Some(Spot::Sidebar { line: 1, column: 9 }),
-            "the sidebar's window is over the panes and the shortcuts panel"
+            Some(Spot::Navigator { line: 1, column: 9 }),
+            "the Navigator is over the panes and the shortcuts panel"
         );
         assert_eq!(spot(13, 7), Some(Spot::Shortcuts), "below the window");
     }
@@ -505,25 +505,25 @@ mod tests {
 
     // FR-KEY-05, FR-KEY-06, ui.md §6
     #[test]
-    fn a_sidebar_entry_is_focused_then_gone_to_folded_opened_or_given_a_menu() {
-        let focus = Message::Sidebar(SidebarInput::Focus(4));
+    fn a_navigator_entry_is_focused_then_gone_to_folded_opened_or_given_a_menu() {
+        let focus = Message::Navigator(NavigatorInput::Focus(4));
         let entry = |fold| Target::Entry { at: 4, fold };
-        let then = |input| [focus.clone(), Message::Sidebar(input)];
-        check(entry(None), Gesture::Click, &then(SidebarInput::Choose));
+        let then = |input| [focus.clone(), Message::Navigator(input)];
+        check(entry(None), Gesture::Click, &then(NavigatorInput::Choose));
         check(
             entry(Some(Fold::Leaf)),
             Gesture::Click,
-            &then(SidebarInput::Choose),
+            &then(NavigatorInput::Choose),
         );
         check(
             entry(Some(Fold::Expanded)),
             Gesture::Click,
-            &then(SidebarInput::Collapse),
+            &then(NavigatorInput::Collapse),
         );
         check(
             entry(Some(Fold::Collapsed)),
             Gesture::Click,
-            &then(SidebarInput::Expand),
+            &then(NavigatorInput::Expand),
         );
         check(
             entry(None),
@@ -540,7 +540,7 @@ mod tests {
     /// The messages that give the pane at 2 the keys, then `rest`.
     fn in_pane(rest: &[Message]) -> Vec<Message> {
         [
-            Message::Sidebar(SidebarInput::Leave),
+            Message::Navigator(NavigatorInput::Leave),
             Message::Pane(PaneChange::Focus(2)),
         ]
         .into_iter()

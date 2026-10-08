@@ -1,5 +1,5 @@
 //! Step 4.9: `\`, `Shift+F10` and the Menu key open a context menu of the commands for the focused
-//! block, the selection or the focused sidebar entry, grouped, each with its keys, under the
+//! block, the selection or the focused Navigator entry, grouped, each with its keys, under the
 //! focused row; typing filters, `Enter` runs the highlighted command and `Esc` closes it.
 
 use std::{fs, time::Duration};
@@ -137,7 +137,7 @@ fn on_the_selection_its_commands_act_on_every_selected_block() {
 
 // FR-KEY-06, FR-UI-01
 #[test]
-fn on_a_sidebar_entry_it_offers_going_there() {
+fn on_a_navigator_entry_it_offers_going_there() {
     let mut app = Harness::with_text(TEXT, 90, 17);
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);

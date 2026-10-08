@@ -115,7 +115,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         ] {
             assert!(
                 rows.iter().any(|row| row.contains(entry)),
-                "{settings}: {entry:?} in the sidebar's window: {rows:#?}"
+                "{settings}: {entry:?} in the Navigator: {rows:#?}"
             );
         }
         for _ in 0..8 {

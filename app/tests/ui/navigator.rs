@@ -1,4 +1,4 @@
-//! Step 4.6, D-79: the navigation sidebar, a window that `Ctrl+G` opens over the panes, and its
+//! Step 4.6, D-79: the Navigator, a window that `Ctrl+G` opens over the panes, and its
 //! keys.
 
 use std::fmt::Write as _;
@@ -238,7 +238,7 @@ fn the_arrows_and_ctrl_n_and_ctrl_p_move_in_the_window_skipping_headings() {
 
 // keybindings.md §4, D-79: the window keeps the keys until it closes.
 #[test]
-fn the_keys_that_focus_a_pane_and_the_sidebars_old_keys_do_nothing() {
+fn the_keys_that_focus_a_pane_and_the_navigators_old_keys_do_nothing() {
     let mut app = app(80);
     ctrl_g(&mut app);
     app.press(KeyCode::Char('1'), KeyModifiers::ALT);

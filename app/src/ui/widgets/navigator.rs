@@ -1,4 +1,4 @@
-//! The navigation sidebar's window over the panes: the inbox, the special views, bookmarks and the
+//! The Navigator, a window over the panes: the inbox, the special views, bookmarks and the
 //! project tree in a centered box ([ui.md §1](../../../../docs/specs/ui.md#1-layout), FR-UI-01,
 //! D-79).
 
@@ -12,7 +12,7 @@ use ratatui::{
 
 use super::{FOCUS_MARKER, GUTTER_WIDTH, current_line_style, selection_style, view_title};
 use crate::{
-    app::{Fold, SidebarEntry, SidebarView},
+    app::{Fold, NavigatorEntry, NavigatorView},
     ui::{
         layout,
         theme::{Icon, IconSet, Theme},
@@ -25,7 +25,7 @@ const WIDTH: u16 = 48;
 /// The window's title.
 const TITLE: &str = "Navigator";
 
-/// The sidebar's window, framed and titled in the accent color like the finders, with its filter
+/// The Navigator, framed and titled in the accent color like the finders, with its filter
 /// in the bottom border as the context menu has it (D-86), and its lines:
 /// the inbox and the special views, then for each of the bookmarks and the projects that
 /// has entries, a blank line unless it comes first, a heading and its entries (D-68, D-77, D-80). Bookmarks are their text alone;
@@ -35,18 +35,18 @@ const TITLE: &str = "Navigator";
 /// pane is gets a selected block's marker (D-68). An entry with open tasks has their count dimmed
 /// at the right, its text cut off a space before it (D-73, D-85).
 #[derive(Debug)]
-pub struct SidebarPanel<'a> {
-    view: &'a SidebarView,
+pub struct NavigatorPanel<'a> {
+    view: &'a NavigatorView,
     offset: usize,
     icons: IconSet,
     theme: &'a Theme,
 }
 
-impl<'a> SidebarPanel<'a> {
+impl<'a> NavigatorPanel<'a> {
     /// A panel of `view` in `theme` drawn from its first line, its icons and fold markers from
     /// `icons`.
     #[must_use]
-    pub fn new(view: &'a SidebarView, icons: IconSet, theme: &'a Theme) -> Self {
+    pub fn new(view: &'a NavigatorView, icons: IconSet, theme: &'a Theme) -> Self {
         Self {
             view,
             offset: 0,
@@ -93,54 +93,57 @@ impl<'a> SidebarPanel<'a> {
     pub fn entry_at(&self, line: usize, column: u16) -> Option<(usize, Option<Fold>)> {
         let mut entries = 0;
         for (shown, _) in self.lines().take(line) {
-            entries += usize::from(matches!(shown, SidebarLine::Entry(_)));
+            entries += usize::from(matches!(shown, NavigatorLine::Entry(_)));
         }
-        let (SidebarLine::Entry(entry), _) = self.lines().nth(line)? else {
+        let (NavigatorLine::Entry(entry), _) = self.lines().nth(line)? else {
             return None;
         };
         let fold = match *entry {
-            SidebarEntry::Project { depth, fold, .. }
+            NavigatorEntry::Project { depth, fold, .. }
                 if fold != Fold::Leaf
                     && usize::from(column) == usize::from(GUTTER_WIDTH) - 1 + depth * 2 =>
             {
                 Some(fold)
             }
-            SidebarEntry::Inbox { .. }
-            | SidebarEntry::Bookmark { .. }
-            | SidebarEntry::View { .. }
-            | SidebarEntry::Project { .. } => None,
+            NavigatorEntry::Inbox { .. }
+            | NavigatorEntry::Bookmark { .. }
+            | NavigatorEntry::View { .. }
+            | NavigatorEntry::Project { .. } => None,
         };
         Some((entries, fold))
     }
 
     /// Each line with how it is marked, built only when drawn since a large
     /// outline has many more than fit.
-    fn lines(&self) -> impl Iterator<Item = (SidebarLine<'a>, Mark)> {
+    fn lines(&self) -> impl Iterator<Item = (NavigatorLine<'a>, Mark)> {
         let entries = &self.view.entries[..];
-        let SidebarView {
+        let NavigatorView {
             focused, current, ..
         } = *self.view;
         entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
             let heading = match (entry, previous) {
-                (SidebarEntry::Bookmark { .. }, Some(SidebarEntry::Bookmark { .. }))
-                | (SidebarEntry::Project { .. }, Some(SidebarEntry::Project { .. }))
-                | (SidebarEntry::Inbox { .. } | SidebarEntry::View { .. }, _) => None,
-                (SidebarEntry::Bookmark { .. }, _) => Some("Bookmarks"),
-                (SidebarEntry::Project { .. }, _) => Some("Projects"),
+                (NavigatorEntry::Bookmark { .. }, Some(NavigatorEntry::Bookmark { .. }))
+                | (NavigatorEntry::Project { .. }, Some(NavigatorEntry::Project { .. }))
+                | (NavigatorEntry::Inbox { .. } | NavigatorEntry::View { .. }, _) => None,
+                (NavigatorEntry::Bookmark { .. }, _) => Some("Bookmarks"),
+                (NavigatorEntry::Project { .. }, _) => Some("Projects"),
             };
-            // The sidebar's first line is never blank (D-77).
-            let blank = previous.map(|_| SidebarLine::Blank);
+            // The Navigator's first line is never blank (D-77).
+            let blank = previous.map(|_| NavigatorLine::Blank);
             heading
                 .into_iter()
-                .flat_map(move |heading| blank.into_iter().chain([SidebarLine::Heading(heading)]))
+                .flat_map(move |heading| blank.into_iter().chain([NavigatorLine::Heading(heading)]))
                 .map(|line| (line, Mark::None))
-                .chain([(SidebarLine::Entry(entry), Mark::of(index, focused, current))])
+                .chain([(
+                    NavigatorLine::Entry(entry),
+                    Mark::of(index, focused, current),
+                )])
         })
     }
 }
 
-/// How a line of the sidebar is marked in its gutter.
+/// How a line of the Navigator is marked in its gutter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mark {
     /// Not at all.
@@ -164,18 +167,18 @@ impl Mark {
     }
 }
 
-/// A line of the sidebar before it is drawn.
+/// A line of the Navigator before it is drawn.
 #[derive(Debug, Clone, Copy)]
-enum SidebarLine<'a> {
+enum NavigatorLine<'a> {
     /// The blank line above a heading.
     Blank,
     /// A section heading.
     Heading(&'static str),
     /// An entry.
-    Entry(&'a SidebarEntry),
+    Entry(&'a NavigatorEntry),
 }
 
-impl<'a> SidebarLine<'a> {
+impl<'a> NavigatorLine<'a> {
     /// The line as drawn in `theme`, its icons from `icons`.
     fn line(self, icons: IconSet, theme: &Theme) -> Line<'a> {
         match self {
@@ -188,16 +191,16 @@ impl<'a> SidebarLine<'a> {
 
 /// An entry's line in `theme`: the inbox's or a special view's icon or a project's fold marker from
 /// `icons`, and its text.
-fn entry_line<'a>(entry: &'a SidebarEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
+fn entry_line<'a>(entry: &'a NavigatorEntry, icons: IconSet, theme: &Theme) -> Line<'a> {
     match entry {
-        SidebarEntry::Inbox { text, .. } => Line::from(vec![
+        NavigatorEntry::Inbox { text, .. } => Line::from(vec![
             Span::raw(Icon::Inbox.glyph(icons)),
             Span::raw(" "),
             Span::raw(text.as_str()),
         ]),
-        SidebarEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
-        SidebarEntry::View { view, .. } => view_title(*view, icons, theme),
-        SidebarEntry::Project {
+        NavigatorEntry::Bookmark { text, .. } => Line::raw(text.as_str()),
+        NavigatorEntry::View { view, .. } => view_title(*view, icons, theme),
+        NavigatorEntry::Project {
             text, depth, fold, ..
         } => {
             let marker = match fold {
@@ -218,7 +221,7 @@ fn heading_style() -> Style {
     Style::new().bold().dim()
 }
 
-impl Widget for SidebarPanel<'_> {
+impl Widget for NavigatorPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let accent = Style::new().fg(self.theme.accent);
@@ -263,7 +266,8 @@ impl Widget for SidebarPanel<'_> {
             }
             // A project's line starts a column early, so its fold marker stands right before its
             // text (D-61).
-            let line_area = if matches!(line, SidebarLine::Entry(SidebarEntry::Project { .. })) {
+            let line_area = if matches!(line, NavigatorLine::Entry(NavigatorEntry::Project { .. }))
+            {
                 Rect {
                     x: line_area.x - 1,
                     width: line_area.width + 1,
@@ -273,10 +277,12 @@ impl Widget for SidebarPanel<'_> {
                 line_area
             };
             let line_area = match line {
-                SidebarLine::Entry(entry) if entry.open_tasks() > 0 => {
+                NavigatorLine::Entry(entry) if entry.open_tasks() > 0 => {
                     render_count(entry.open_tasks(), line_area, buf)
                 }
-                SidebarLine::Blank | SidebarLine::Heading(_) | SidebarLine::Entry(_) => line_area,
+                NavigatorLine::Blank | NavigatorLine::Heading(_) | NavigatorLine::Entry(_) => {
+                    line_area
+                }
             };
             line.line(self.icons, self.theme).render(line_area, buf);
         }
@@ -306,43 +312,43 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Message, SidebarInput, SidebarView, SpecialView, State},
+        app::{Message, NavigatorInput, NavigatorView, SpecialView, State},
         document::format,
     };
 
-    /// The state of `text` with the sidebar closed, Today the only special view it lists, as
+    /// The state of `text` with the Navigator closed, Today the only special view it lists, as
     /// these tests were written for before the other views (D-80).
     fn only_today(text: &str) -> State {
         let mut state = State::new(format::parse(text), None);
         for view in SpecialView::ALL {
             if view != SpecialView::Today {
-                state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                    view, false,
-                )));
+                state.update(Message::Configure(
+                    crate::app::Configuration::NavigatorView(view, false),
+                ));
             }
         }
         state
     }
 
-    /// The state of `text` with the sidebar open, on its first entry, as [`only_today`] lists it.
+    /// The state of `text` with the Navigator open, on its first entry, as [`only_today`] lists it.
     fn opened(text: &str) -> State {
         let mut state = only_today(text);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         state
     }
 
-    fn view(state: &State) -> SidebarView {
-        state.sidebar().expect("open")
+    fn view(state: &State) -> NavigatorView {
+        state.navigator().expect("open")
     }
 
     /// Draws `view` in a window 22 columns wide whose inside is `height` rows tall.
-    fn render(view: &SidebarView, height: u16) -> Buffer {
+    fn render(view: &NavigatorView, height: u16) -> Buffer {
         let mut buf = Buffer::empty(Rect::new(0, 0, 22, height + 2));
-        SidebarPanel::new(view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
+        NavigatorPanel::new(view, IconSet::Unicode, &THEME).render(buf.area, &mut buf);
         buf
     }
 
-    /// Draws the open sidebar of `text` with 8 rows inside the window.
+    /// Draws the open Navigator of `text` with 8 rows inside the window.
     fn draw(text: &str) -> Buffer {
         render(&view(&opened(text)), 8)
     }
@@ -375,7 +381,7 @@ mod tests {
         assert_eq!(buf[(1, 0)].fg, THEME.accent, "the title");
         let state = opened("A:");
         let view = view(&state);
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Projects, A, with the border.
         assert_eq!(
             panel.area(Rect::new(0, 0, 100, 20)),
@@ -393,17 +399,17 @@ mod tests {
     fn a_window_with_no_entries_says_so() {
         let mut state = State::new(format::parse("- a"), None);
         for view in SpecialView::ALL {
-            state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                view, false,
-            )));
+            state.update(Message::Configure(
+                crate::app::Configuration::NavigatorView(view, false),
+            ));
         }
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         let view = view(&state);
         assert_eq!(view.focused, None);
         let buf = render(&view, 2);
         assert_eq!(rows(&buf), [" Nothing to go to", ""]);
         assert_eq!(cell(&buf, 1, 0).modifier, Modifier::DIM);
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.focused_line(), None);
         assert_eq!(panel.scroll(3, 2), 0);
         assert_eq!(panel.area(Rect::new(0, 0, 60, 20)).height, 3, "one line");
@@ -413,7 +419,7 @@ mod tests {
     #[test]
     fn a_filter_matching_nothing_says_so_and_shows_in_the_bottom_border() {
         let mut state = opened("- a");
-        state.update(Message::Sidebar(SidebarInput::Type('z')));
+        state.update(Message::Navigator(NavigatorInput::Type('z')));
         let buf = render(&view(&state), 1);
         assert_eq!(rows(&buf), [" Nothing matches"]);
         assert_eq!(
@@ -460,7 +466,7 @@ mod tests {
             ]
         );
         let view = view(&opened("INBOX:\n\tA:"));
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
     }
 
@@ -470,11 +476,11 @@ mod tests {
         let draw_without = |views: &[SpecialView], text: &str| {
             let mut state = State::new(format::parse(text), None);
             for &view in views {
-                state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                    view, false,
-                )));
+                state.update(Message::Configure(
+                    crate::app::Configuration::NavigatorView(view, false),
+                ));
             }
-            state.update(Message::ToggleSidebar);
+            state.update(Message::ToggleNavigator);
             rows(&render(&view(&state), 5))
         };
         // D-80, D-92, D-93: the special views stand together, a blank line after the last one
@@ -486,11 +492,11 @@ mod tests {
                 SpecialView::Overdue,
                 SpecialView::Colors,
             ] {
-                state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                    view, false,
-                )));
+                state.update(Message::Configure(
+                    crate::app::Configuration::NavigatorView(view, false),
+                ));
             }
-            state.update(Message::ToggleSidebar);
+            state.update(Message::ToggleNavigator);
             render(&view(&state), 6)
         };
         assert_eq!(
@@ -531,7 +537,7 @@ mod tests {
     #[test]
     fn a_line_names_its_entry_and_a_column_its_fold_marker() {
         let view = view(&opened("A: @bookmark\n\tB:\nC:"));
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Bookmarks, A, blank, Projects, ▾ A, B, C.
         assert_eq!(panel.entry_at(0, 2), Some((0, None)));
         assert_eq!(panel.entry_at(1, 0), None, "the blank line");
@@ -567,7 +573,7 @@ mod tests {
     #[test]
     fn a_nested_projects_fold_marker_is_2_columns_in_per_level() {
         let view = view(&opened("A:\n\tB:\n\t\tC:"));
-        let panel = SidebarPanel::new(&view, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         // Today, blank, Projects, ▾ A, ▾ B, C.
         assert_eq!(panel.entry_at(4, 3), Some((2, Some(Fold::Expanded))));
         assert_eq!(panel.entry_at(4, 1), Some((2, None)));
@@ -579,10 +585,10 @@ mod tests {
         let mut state = only_today("A:\nB:\nC:\nD:");
         state.update(Message::FocusLast);
         state.update(Message::ZoomIn);
-        state.update(Message::ToggleSidebar);
+        state.update(Message::ToggleNavigator);
         let opened = view(&state);
         assert_eq!((opened.focused, opened.current), (Some(4), Some(4)), "D");
-        let panel = SidebarPanel::new(&opened, IconSet::Unicode, &THEME);
+        let panel = NavigatorPanel::new(&opened, IconSet::Unicode, &THEME);
         // Today, blank, Projects, A, B, C, D.
         assert_eq!(panel.focused_line(), Some(6));
         assert_eq!(panel.scroll(0, 4), 3, "D on the last row");
@@ -590,7 +596,7 @@ mod tests {
         let buf = render(&opened, 7);
         assert_eq!(rows(&buf)[6], "▌ D");
         assert_eq!(cell(&buf, 0, 6).fg, THEME.focus, "the focus marker");
-        state.update(Message::Sidebar(SidebarInput::Previous));
+        state.update(Message::Navigator(NavigatorInput::Previous));
         let buf = render(&view(&state), 7);
         assert_eq!(rows(&buf)[5..], ["▌ C", "▌ D"]);
         assert_eq!(cell(&buf, 0, 5).fg, THEME.focus);
@@ -647,7 +653,7 @@ mod tests {
     #[test]
     fn the_focused_band_covers_the_count() {
         let mut state = opened("Work:\n\t- a");
-        state.update(Message::Sidebar(SidebarInput::Focus(1)));
+        state.update(Message::Navigator(NavigatorInput::Focus(1)));
         let buf = render(&view(&state), 4);
         assert_eq!(rows(&buf)[3], "▌ Work            1");
         let band = current_line_style(&THEME).bg;

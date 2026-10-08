@@ -18,8 +18,8 @@ enum Listed {
     Icons,
     Wrap,
     SpecialInbox,
-    /// Whether the sidebar lists this special view (D-77, D-80).
-    SidebarView(SpecialView),
+    /// Whether the Navigator lists this special view (D-77, D-80).
+    NavigatorView(SpecialView),
     /// Whether the Today view lists starred blocks (D-88).
     TodayStarred,
     AutosaveDelay,
@@ -35,14 +35,14 @@ const LISTED: [Listed; 16] = [
     Listed::Icons,
     Listed::Wrap,
     Listed::SpecialInbox,
-    Listed::SidebarView(SpecialView::Today),
+    Listed::NavigatorView(SpecialView::Today),
     Listed::TodayStarred,
-    Listed::SidebarView(SpecialView::Upcoming),
-    Listed::SidebarView(SpecialView::Overdue),
-    Listed::SidebarView(SpecialView::Colors),
-    Listed::SidebarView(SpecialView::Logbook),
-    Listed::SidebarView(SpecialView::Starred),
-    Listed::SidebarView(SpecialView::Flagged),
+    Listed::NavigatorView(SpecialView::Upcoming),
+    Listed::NavigatorView(SpecialView::Overdue),
+    Listed::NavigatorView(SpecialView::Colors),
+    Listed::NavigatorView(SpecialView::Logbook),
+    Listed::NavigatorView(SpecialView::Starred),
+    Listed::NavigatorView(SpecialView::Flagged),
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -60,7 +60,7 @@ impl Listed {
             Self::Icons => "icons",
             Self::Wrap => "word_wrap",
             Self::SpecialInbox => "special_inbox",
-            Self::SidebarView(view) => config::sidebar_key(view),
+            Self::NavigatorView(view) => config::navigator_key(view),
             Self::TodayStarred => "today_starred",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
@@ -76,7 +76,7 @@ impl Listed {
             Self::Icons => Icon::Glyphs,
             Self::Wrap => Icon::Wrap,
             Self::SpecialInbox => Icon::Inbox,
-            Self::SidebarView(view) => widgets::view_icon(view),
+            Self::NavigatorView(view) => widgets::view_icon(view),
             Self::TodayStarred => Icon::Star,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
@@ -90,9 +90,9 @@ pub(super) fn icon(at: usize) -> Icon {
     LISTED.get(at).map_or(Icon::Command, |listed| listed.icon())
 }
 
-/// The name and description of the setting that says whether the sidebar lists `view` (D-77,
+/// The name and description of the setting that says whether the Navigator lists `view` (D-77,
 /// D-80).
-fn sidebar_setting(view: SpecialView) -> (&'static str, &'static str) {
+fn navigator_setting(view: SpecialView) -> (&'static str, &'static str) {
     match view {
         SpecialView::Today => (
             "Show Today in Navigator",
@@ -205,13 +205,13 @@ impl Tui {
                 "Show INBOX: above Today, not under Projects",
                 self.state.special_inbox(),
             ),
-            Listed::SidebarView(view) => {
-                let (name, description) = sidebar_setting(view);
+            Listed::NavigatorView(view) => {
+                let (name, description) = navigator_setting(view);
                 switch_on_by_default(
                     "Appearance",
                     name,
                     description,
-                    self.state.sidebar_lists(view),
+                    self.state.navigator_lists(view),
                 )
             }
             Listed::TodayStarred => switch_on_by_default(
@@ -316,9 +316,9 @@ impl Tui {
                 self.send(Message::Configure(Configuration::SpecialInbox(on)), now);
                 Some(on.into())
             }
-            (Listed::SidebarView(view), SettingValue::Switch(on)) => {
+            (Listed::NavigatorView(view), SettingValue::Switch(on)) => {
                 self.send(
-                    Message::Configure(Configuration::SidebarView(view, on)),
+                    Message::Configure(Configuration::NavigatorView(view, on)),
                     now,
                 );
                 Some(on.into())

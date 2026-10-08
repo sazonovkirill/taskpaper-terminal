@@ -323,10 +323,10 @@ fn starting_to_edit_shows_the_edit_list_from_its_top() {
     );
 }
 
-// D-55: while the sidebar or a popup has the keys, `)` and `(` do not scroll, and the more line
+// D-55: while the Navigator or a popup has the keys, `)` and `(` do not scroll, and the more line
 // names no keys.
 #[test]
-fn the_more_line_names_no_keys_while_the_sidebar_or_a_popup_has_them() {
+fn the_more_line_names_no_keys_while_the_navigator_or_a_popup_has_them() {
     let more = |app: &mut Harness| {
         screen(app).into_iter().find_map(|row| {
             row.split_once("│ ↓ more")
@@ -340,7 +340,7 @@ fn the_more_line_names_no_keys_while_the_sidebar_or_a_popup_has_them() {
     assert_eq!(
         more(&mut app).as_deref(),
         Some(""),
-        "the sidebar has the keys"
+        "the Navigator has the keys"
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);

@@ -18,6 +18,7 @@ use super::{
     external::External,
     finder::Finder,
     memo::Memo,
+    navigator::Navigator,
     pane::Pane,
     picker::Picker,
     rows::{Builder, OldSiblings, Rows},
@@ -25,7 +26,6 @@ use super::{
     saving::Autosave,
     selection::Selection,
     settings,
-    sidebar::Sidebar,
     special_view::{Heading, SpecialView},
     today_order::TodayOrder,
     type_picker::Conversion,
@@ -37,7 +37,7 @@ pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 
 /// Everything the app knows: the open document with its undo history, where it came from and
 /// whether it is saved, the panes, each with its focus, selection and zoom, any edit session on
-/// the focused pane's focused block, the collapsed blocks, the sidebar and the status-line
+/// the focused pane's focused block, the collapsed blocks, the Navigator and the status-line
 /// notice.
 #[derive(Debug, Clone)]
 pub struct State {
@@ -96,8 +96,8 @@ pub struct State {
     pub(super) folds: HashSet<ItemId>,
     /// Whether the shortcuts panel is open (FR-KEY-04).
     pub(super) shortcuts: bool,
-    /// The navigation sidebar (FR-UI-01).
-    pub(super) sidebar: Sidebar,
+    /// The Navigator (FR-UI-01).
+    pub(super) navigator: Navigator,
     /// The order the user gave the Today view's entries (D-57).
     pub(super) today_order: TodayOrder,
     /// Whether the Today view lists starred blocks besides dated ones (`today_starred`, D-88).
@@ -346,7 +346,7 @@ impl State {
             resume: None,
             folds: HashSet::new(),
             shortcuts: false,
-            sidebar: Sidebar::default(),
+            navigator: Navigator::default(),
             today_order: TodayOrder::default(),
             today_starred: true,
             rows: Memo::default(),
@@ -521,7 +521,7 @@ impl State {
             )
             .then_some(self.today),
         };
-        // Rows of the same outline fit, best those with the same folds: the sidebar's rows,
+        // Rows of the same outline fit, best those with the same folds: the Navigator's rows,
         // with none, and a pane's are each built from their own earlier rows, so a folded
         // block's rows are not built again for the other.
         let rank = |kept: &RowsKey| {

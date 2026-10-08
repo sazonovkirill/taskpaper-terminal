@@ -1,6 +1,6 @@
 //! The command registry: every command a user can give, with its name, the modes it belongs to
-//! and its default key bindings in one table ([`REGISTRY`]), and the open sidebar's in
-//! another ([`SIDEBAR`]), which the keymap reads and the
+//! and its default key bindings in one table ([`REGISTRY`]), and the open Navigator's in
+//! another ([`NAVIGATOR`]), which the keymap reads and the
 //! menus, the command palette and the shortcuts panel list
 //! ([architecture.md §1](../../../docs/specs/architecture.md#1-layers-and-modules),
 //! [keybindings.md](../../../docs/specs/keybindings.md)).
@@ -13,10 +13,10 @@ use std::borrow::Cow;
 use jiff::civil::Date;
 
 pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
-pub use registry::{Entry, Group, REGISTRY, SIDEBAR, shortcuts};
+pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
 
 use super::{
-    Location, Message, NewBlock, PaneChange, Paste, SaveAs, SelectionChange, SidebarInput,
+    Location, Message, NavigatorInput, NewBlock, PaneChange, Paste, SaveAs, SelectionChange,
     SpecialView, Symbols, TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
@@ -95,8 +95,8 @@ pub enum Command {
     Back,
     /// Go forward in the zoom history.
     Forward,
-    /// Open or close the sidebar's window (D-79).
-    ToggleSidebar,
+    /// Open or close the Navigator (D-79).
+    ToggleNavigator,
     /// Complete or uncomplete.
     ToggleDone,
     /// Change a date without a prompt.
@@ -135,11 +135,11 @@ pub enum Command {
     Count,
     /// Write the document to a path the user types and continue with that file (FR-DOC-06).
     SaveAs,
-    /// Open the context menu on the focused block, the selection or the open sidebar's focused entry
+    /// Open the context menu on the focused block, the selection or the open Navigator's focused entry
     /// (FR-KEY-06).
     ContextMenu,
-    /// A key of the open sidebar, which its entries' context menu offers (FR-UI-01).
-    Sidebar(SidebarInput),
+    /// A key of the open Navigator, which its entries' context menu offers (FR-UI-01).
+    Navigator(NavigatorInput),
     /// Undo.
     Undo,
     /// Redo.
@@ -249,7 +249,7 @@ impl Command {
             Self::GoToCrumb(_) => "Zoom Here".into(),
             Self::Back => "Back".into(),
             Self::Forward => "Forward".into(),
-            Self::ToggleSidebar => "Open Navigator".into(),
+            Self::ToggleNavigator => "Open Navigator".into(),
             Self::ToggleDone => "Toggle Done".into(),
             Self::ToggleFlag(Flag::Star) => "Toggle Star".into(),
             Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
@@ -271,7 +271,7 @@ impl Command {
             Self::Count => "Count Blocks and Words".into(),
             Self::SaveAs => "Save As".into(),
             Self::ContextMenu => "Context Menu".into(),
-            Self::Sidebar(input) => sidebar_name(input),
+            Self::Navigator(input) => navigator_name(input),
             Self::Undo => "Undo".into(),
             Self::Redo => "Redo".into(),
             Self::Edit => "Edit".into(),
@@ -348,7 +348,7 @@ impl Command {
             Self::GoToCrumb(depth) => Message::GoToCrumb(depth),
             Self::Back => Message::Back,
             Self::Forward => Message::Forward,
-            Self::ToggleSidebar => Message::ToggleSidebar,
+            Self::ToggleNavigator => Message::ToggleNavigator,
             Self::ToggleDone => Message::ToggleDone { today },
             Self::ChangeDate(tag, change) => Message::ChangeDate { tag, change, today },
             Self::ClearDate(tag) => Message::ClearDate(tag),
@@ -375,7 +375,7 @@ impl Command {
             Self::Count => Message::Count,
             Self::SaveAs => Message::SaveAs(SaveAs::Open),
             Self::ContextMenu => Message::OpenContextMenu,
-            Self::Sidebar(input) => Message::Sidebar(input),
+            Self::Navigator(input) => Message::Navigator(input),
             Self::Undo => Message::Undo,
             Self::Redo => Message::Redo,
             Self::Edit => Message::EditAtEnd,
@@ -435,19 +435,19 @@ fn pane_name(change: PaneChange) -> Cow<'static, str> {
     }
 }
 
-/// The name of [`Command::Sidebar`] with `input`.
-fn sidebar_name(input: SidebarInput) -> Cow<'static, str> {
+/// The name of [`Command::Navigator`] with `input`.
+fn navigator_name(input: NavigatorInput) -> Cow<'static, str> {
     match input {
-        SidebarInput::Next => "Next Entry".into(),
-        SidebarInput::Previous => "Previous Entry".into(),
-        SidebarInput::Collapse => "Collapse Entry".into(),
-        SidebarInput::Expand => "Expand Entry".into(),
-        SidebarInput::Choose => "Go to Entry".into(),
-        SidebarInput::Leave => "Return to Outline".into(),
-        SidebarInput::Focus(at) => format!("Focus Entry {}", at + 1).into(),
-        SidebarInput::GoToInbox => "Go to Inbox".into(),
-        SidebarInput::Type(c) => format!("Type {c}").into(),
-        SidebarInput::Erase => "Erase Filter Character".into(),
+        NavigatorInput::Next => "Next Entry".into(),
+        NavigatorInput::Previous => "Previous Entry".into(),
+        NavigatorInput::Collapse => "Collapse Entry".into(),
+        NavigatorInput::Expand => "Expand Entry".into(),
+        NavigatorInput::Choose => "Go to Entry".into(),
+        NavigatorInput::Leave => "Return to Outline".into(),
+        NavigatorInput::Focus(at) => format!("Focus Entry {}", at + 1).into(),
+        NavigatorInput::GoToInbox => "Go to Inbox".into(),
+        NavigatorInput::Type(c) => format!("Type {c}").into(),
+        NavigatorInput::Erase => "Erase Filter Character".into(),
     }
 }
 
@@ -548,17 +548,29 @@ mod tests {
             (Command::ScrollShortcutsDown, "Scroll Shortcuts Down"),
             (Command::ScrollShortcutsUp, "Scroll Shortcuts Up"),
             (Command::ContextMenu, "Context Menu"),
-            (Command::Sidebar(SidebarInput::Next), "Next Entry"),
-            (Command::Sidebar(SidebarInput::Previous), "Previous Entry"),
-            (Command::Sidebar(SidebarInput::Collapse), "Collapse Entry"),
-            (Command::Sidebar(SidebarInput::Expand), "Expand Entry"),
-            (Command::Sidebar(SidebarInput::Choose), "Go to Entry"),
-            (Command::Sidebar(SidebarInput::Leave), "Return to Outline"),
-            (Command::Sidebar(SidebarInput::Focus(2)), "Focus Entry 3"),
-            (Command::Sidebar(SidebarInput::GoToInbox), "Go to Inbox"),
-            (Command::Sidebar(SidebarInput::Type('w')), "Type w"),
+            (Command::Navigator(NavigatorInput::Next), "Next Entry"),
             (
-                Command::Sidebar(SidebarInput::Erase),
+                Command::Navigator(NavigatorInput::Previous),
+                "Previous Entry",
+            ),
+            (
+                Command::Navigator(NavigatorInput::Collapse),
+                "Collapse Entry",
+            ),
+            (Command::Navigator(NavigatorInput::Expand), "Expand Entry"),
+            (Command::Navigator(NavigatorInput::Choose), "Go to Entry"),
+            (
+                Command::Navigator(NavigatorInput::Leave),
+                "Return to Outline",
+            ),
+            (
+                Command::Navigator(NavigatorInput::Focus(2)),
+                "Focus Entry 3",
+            ),
+            (Command::Navigator(NavigatorInput::GoToInbox), "Go to Inbox"),
+            (Command::Navigator(NavigatorInput::Type('w')), "Type w"),
+            (
+                Command::Navigator(NavigatorInput::Erase),
                 "Erase Filter Character",
             ),
             (Command::GoToCrumb(1), "Zoom Here"),
@@ -627,8 +639,8 @@ mod tests {
             (Command::SaveAs, Message::SaveAs(SaveAs::Open)),
             (Command::ContextMenu, Message::OpenContextMenu),
             (
-                Command::Sidebar(SidebarInput::Choose),
-                Message::Sidebar(SidebarInput::Choose),
+                Command::Navigator(NavigatorInput::Choose),
+                Message::Navigator(NavigatorInput::Choose),
             ),
             (
                 Command::Pane(PaneChange::Focus(2)),

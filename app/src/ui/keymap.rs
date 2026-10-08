@@ -8,9 +8,9 @@ use jiff::civil::Date;
 use thiserror::Error;
 
 use crate::app::{
-    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, PaneChange, Paste, SaveAs,
-    SettingsInput, SidebarInput, TextEdit,
-    commands::{REGISTRY, SIDEBAR},
+    Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, NavigatorInput, PaneChange,
+    Paste, SaveAs, SettingsInput, TextEdit,
+    commands::{NAVIGATOR, REGISTRY},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -39,8 +39,8 @@ pub struct Context {
     pub overlay: Option<Overlay>,
     /// Whether the shortcuts panel is open, which `Esc` closes in navigate mode (FR-KEY-04).
     pub shortcuts: bool,
-    /// Whether the sidebar is open, and so has the keys (FR-UI-01, D-79).
-    pub sidebar: bool,
+    /// Whether the Navigator is open, and so has the keys (FR-UI-01, D-79).
+    pub navigator: bool,
 }
 
 impl Context {
@@ -608,8 +608,8 @@ pub struct Keymap {
     navigate: Vec<(Vec<Key>, Command)>,
     /// Each edit-mode key with its command, as a sequence of one key.
     edit: Vec<(Vec<Key>, Command)>,
-    /// Each key of the open sidebar with its command.
-    sidebar: Vec<(Key, Command)>,
+    /// Each key of the open Navigator with its command.
+    navigator: Vec<(Key, Command)>,
     pending: Vec<Key>,
     /// When the pending sequence started, in the frontend's time.
     started: Duration,
@@ -631,7 +631,7 @@ impl Default for Keymap {
                 }
             }
         }
-        let sidebar = SIDEBAR
+        let navigator = NAVIGATOR
             .iter()
             .flat_map(|&(command, keys)| {
                 keys.iter()
@@ -642,7 +642,7 @@ impl Default for Keymap {
         Self {
             navigate,
             edit,
-            sidebar,
+            navigator,
             pending: Vec::new(),
             started: Duration::ZERO,
             replay: false,
@@ -733,29 +733,29 @@ impl Keymap {
     }
 
     /// How the keys that give `command` read on screen, as [`Keymap::labels`] writes them: its
-    /// navigate-mode keys if it is a command of navigate mode, else its keys in the open sidebar,
-    /// or the other way round where the `sidebar` is open.
+    /// navigate-mode keys if it is a command of navigate mode, else its keys in the open Navigator,
+    /// or the other way round where `navigator` is open.
     #[must_use]
-    pub fn bindings(&self, command: Command, sidebar: bool) -> String {
+    pub fn bindings(&self, command: Command, navigator: bool) -> String {
         let navigate = || {
             REGISTRY
                 .iter()
                 .any(|entry| entry.mode == Mode::Navigate && entry.command == command)
                 .then(|| self.labels(command, Mode::Navigate))
         };
-        let focused_sidebar = || {
+        let focused_navigator = || {
             let keys: Vec<String> = self
-                .sidebar
+                .navigator
                 .iter()
                 .filter(|&&(_, bound)| bound == command)
                 .map(|&(key, _)| key_label(key))
                 .collect();
             (!keys.is_empty()).then(|| keys.join(", "))
         };
-        let keys = if sidebar {
-            focused_sidebar().or_else(navigate)
+        let keys = if navigator {
+            focused_navigator().or_else(navigate)
         } else {
-            navigate().or_else(focused_sidebar)
+            navigate().or_else(focused_navigator)
         };
         keys.unwrap_or_default()
     }
@@ -766,13 +766,13 @@ impl Keymap {
         action(*command, context)
     }
 
-    /// What `pressed` asks for while the sidebar is open: its own keys alone (keybindings.md §4,
+    /// What `pressed` asks for while the Navigator is open: its own keys alone (keybindings.md §4,
     /// D-79).
-    fn sidebar_action(&self, pressed: Key, context: &Context) -> Option<KeyAction> {
-        match self.sidebar.iter().find(|(key, _)| *key == pressed) {
+    fn navigator_action(&self, pressed: Key, context: &Context) -> Option<KeyAction> {
+        match self.navigator.iter().find(|(key, _)| *key == pressed) {
             Some((_, command)) => action(*command, context),
             None => typed_char(pressed)
-                .map(|c| KeyAction::Send(Message::Sidebar(SidebarInput::Type(c)))),
+                .map(|c| KeyAction::Send(Message::Navigator(NavigatorInput::Type(c)))),
         }
     }
 
@@ -804,7 +804,7 @@ impl Keymap {
             }
             let takes_text = match context.overlay {
                 Some(overlay) => overlay == Overlay::DatePrompt,
-                None => !context.command_menu && !context.sidebar,
+                None => !context.command_menu && !context.navigator,
             };
             return takes_text.then(|| {
                 KeyAction::Send(Message::Pasted {
@@ -857,8 +857,8 @@ impl Keymap {
             };
             return message.map(KeyAction::Send);
         }
-        if context.sidebar {
-            return self.sidebar_action(pressed, context);
+        if context.navigator {
+            return self.navigator_action(pressed, context);
         }
         if context.mode == Mode::Edit {
             self.pending.clear();
@@ -928,7 +928,7 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Location, NewBlock, PaneChange, SelectionChange, SidebarInput, SpecialView, Symbols,
+            Location, NavigatorInput, NewBlock, PaneChange, SelectionChange, SpecialView, Symbols,
         },
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
@@ -975,7 +975,7 @@ mod tests {
         command_menu: false,
         overlay: None,
         shortcuts: false,
-        sidebar: false,
+        navigator: false,
     };
 
     const EDITING: &Context = &Context {
@@ -1573,7 +1573,7 @@ mod tests {
         let bindings = REGISTRY
             .iter()
             .map(|entry| (entry.command, entry.keys))
-            .chain(SIDEBAR.iter().copied());
+            .chain(NAVIGATOR.iter().copied());
         let mut kitty = Vec::new();
         for (command, keys) in bindings {
             let sequences: Vec<Vec<Key>> = keys
@@ -1671,9 +1671,9 @@ mod tests {
             .filter(|entry| !matches!(entry.command, Command::Paste(_)))
             .map(|entry| (format!("{:?} {:?}", entry.command, entry.mode), entry.keys))
             .chain(
-                SIDEBAR
+                NAVIGATOR
                     .iter()
-                    .map(|&(command, keys)| (format!("{command:?} in the sidebar"), keys)),
+                    .map(|&(command, keys)| (format!("{command:?} in the Navigator"), keys)),
             );
         for (command, keys) in bindings.filter(|(_, keys)| !keys.is_empty()) {
             assert!(
@@ -2342,30 +2342,30 @@ mod tests {
                 overlay: Some(Overlay::ColorPicker),
                 ..*CONTEXT
             },
-            *IN_SIDEBAR,
+            *IN_NAVIGATOR,
         ] {
             assert_eq!(keymap.message_for(&pasted, ms(0), &context), None);
         }
     }
 
     // FR-UI-01, D-42, D-79: `Ctrl+G` is the same key with and without the kitty protocol, and
-    // the sidebar's old keys are gone.
+    // the Navigator's old keys are gone.
     #[test]
-    fn ctrl_g_opens_the_sidebar() {
+    fn ctrl_g_opens_the_navigator() {
         check(
             KeyCode::Char('g'),
             KeyModifiers::CONTROL,
-            Some(&Message::ToggleSidebar),
+            Some(&Message::ToggleNavigator),
         );
         check(KeyCode::Char('0'), KeyModifiers::ALT, None);
         assert_eq!(messages("g0", CONTEXT), [None, None]);
     }
 
-    // keybindings.md §4, D-79: the open sidebar is a window that keeps the keys.
+    // keybindings.md §4, D-79: the open Navigator is a window that keeps the keys.
     #[test]
-    fn the_open_sidebar_takes_no_keys_that_focus_a_pane() {
-        let typed = |c| Some(Message::Sidebar(SidebarInput::Type(c)));
-        assert_eq!(messages("g1", IN_SIDEBAR), [typed('g'), typed('1')]);
+    fn the_open_navigator_takes_no_keys_that_focus_a_pane() {
+        let typed = |c| Some(Message::Navigator(NavigatorInput::Type(c)));
+        assert_eq!(messages("g1", IN_NAVIGATOR), [typed('g'), typed('1')]);
         let mut keymap = Keymap::default();
         for (code, modifiers) in [
             (KeyCode::Char('2'), KeyModifiers::ALT),
@@ -2373,53 +2373,65 @@ mod tests {
             (KeyCode::Char('w'), KeyModifiers::CONTROL),
         ] {
             assert_eq!(
-                keymap.message_for(&key(code, modifiers), ms(0), IN_SIDEBAR),
+                keymap.message_for(&key(code, modifiers), ms(0), IN_NAVIGATOR),
                 None
             );
             assert_eq!(keymap.pending(), "", "nothing waits for a sequence");
         }
         assert_eq!(
-            keymap.message_for(&key(KeyCode::Down, KeyModifiers::NONE), ms(1), IN_SIDEBAR),
-            Some(Message::Sidebar(SidebarInput::Next)),
+            keymap.message_for(&key(KeyCode::Down, KeyModifiers::NONE), ms(1), IN_NAVIGATOR),
+            Some(Message::Navigator(NavigatorInput::Next)),
         );
     }
 
-    const IN_SIDEBAR: &Context = &Context {
-        sidebar: true,
+    const IN_NAVIGATOR: &Context = &Context {
+        navigator: true,
         ..*CONTEXT
     };
 
     // FR-UI-01, keybindings.md §4, D-86
     #[test]
-    fn the_open_sidebar_takes_its_keys_and_ctrl_q_and_ctrl_g_and_other_characters_filter() {
+    fn the_open_navigator_takes_its_keys_and_ctrl_q_and_ctrl_g_and_other_characters_filter() {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
-        let sidebar = |input| Some(Message::Sidebar(input));
+        let navigator = |input| Some(Message::Navigator(input));
         for (code, modifiers, expected) in [
-            (KeyCode::Down, none, sidebar(SidebarInput::Next)),
-            (KeyCode::Char('n'), ctrl, sidebar(SidebarInput::Next)),
-            (KeyCode::Up, none, sidebar(SidebarInput::Previous)),
-            (KeyCode::Char('p'), ctrl, sidebar(SidebarInput::Previous)),
-            (KeyCode::Left, none, sidebar(SidebarInput::Collapse)),
-            (KeyCode::Right, none, sidebar(SidebarInput::Expand)),
-            (KeyCode::Enter, none, sidebar(SidebarInput::Choose)),
-            (KeyCode::Backspace, none, sidebar(SidebarInput::Erase)),
-            (KeyCode::Esc, none, sidebar(SidebarInput::Leave)),
+            (KeyCode::Down, none, navigator(NavigatorInput::Next)),
+            (KeyCode::Char('n'), ctrl, navigator(NavigatorInput::Next)),
+            (KeyCode::Up, none, navigator(NavigatorInput::Previous)),
+            (
+                KeyCode::Char('p'),
+                ctrl,
+                navigator(NavigatorInput::Previous),
+            ),
+            (KeyCode::Left, none, navigator(NavigatorInput::Collapse)),
+            (KeyCode::Right, none, navigator(NavigatorInput::Expand)),
+            (KeyCode::Enter, none, navigator(NavigatorInput::Choose)),
+            (KeyCode::Backspace, none, navigator(NavigatorInput::Erase)),
+            (KeyCode::Esc, none, navigator(NavigatorInput::Leave)),
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
-            (KeyCode::Char('g'), ctrl, Some(Message::ToggleSidebar)),
+            (KeyCode::Char('g'), ctrl, Some(Message::ToggleNavigator)),
             (KeyCode::Char('b'), ctrl, None),
-            (KeyCode::Char('j'), none, sidebar(SidebarInput::Type('j'))),
+            (
+                KeyCode::Char('j'),
+                none,
+                navigator(NavigatorInput::Type('j')),
+            ),
             (
                 KeyCode::Char('W'),
                 KeyModifiers::SHIFT,
-                sidebar(SidebarInput::Type('W')),
+                navigator(NavigatorInput::Type('W')),
             ),
-            (KeyCode::Char(' '), none, sidebar(SidebarInput::Type(' '))),
+            (
+                KeyCode::Char(' '),
+                none,
+                navigator(NavigatorInput::Type(' ')),
+            ),
             (KeyCode::Char('j'), ctrl, None),
         ] {
             let mut keymap = Keymap::default();
             assert_eq!(
-                keymap.message_for(&key(code, modifiers), ms(0), IN_SIDEBAR),
+                keymap.message_for(&key(code, modifiers), ms(0), IN_NAVIGATOR),
                 expected,
                 "{modifiers:?} {code:?}"
             );
@@ -2781,7 +2793,7 @@ mod tests {
         {
             assert_eq!(
                 keymap.message_for(&key(code, modifiers), ms(at as u64), CONTEXT),
-                Some(Message::ToggleSidebar)
+                Some(Message::ToggleNavigator)
             );
         }
         assert_eq!(
@@ -2910,7 +2922,7 @@ mod tests {
 
     // FR-KEY-06, keybindings.md §1, §2 and §4, D-42
     #[test]
-    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_sidebar_without_backslash()
+    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_navigator_without_backslash()
      {
         let open = Some(&Message::OpenContextMenu);
         check(KeyCode::Char('\\'), KeyModifiers::NONE, open);
@@ -2918,8 +2930,8 @@ mod tests {
         check(KeyCode::Menu, KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::NONE, None);
         let mut keymap = Keymap::default();
-        let sidebar = &Context {
-            sidebar: true,
+        let navigator = &Context {
+            navigator: true,
             ..*CONTEXT
         };
         for (at, (code, modifiers)) in [
@@ -2931,7 +2943,7 @@ mod tests {
         {
             assert_eq!(
                 keymap
-                    .message_for(&key(code, modifiers), ms(at as u64), sidebar)
+                    .message_for(&key(code, modifiers), ms(at as u64), navigator)
                     .as_ref(),
                 open,
                 "{code:?}"
@@ -2941,9 +2953,9 @@ mod tests {
             keymap.message_for(
                 &key(KeyCode::Char('\\'), KeyModifiers::NONE),
                 ms(9),
-                sidebar
+                navigator
             ),
-            Some(Message::Sidebar(SidebarInput::Type('\\'))),
+            Some(Message::Navigator(NavigatorInput::Type('\\'))),
             "the Navigator's filter takes \\ as typed (D-86)"
         );
         assert_eq!(
@@ -2984,9 +2996,9 @@ mod tests {
 
     // FR-KEY-06, ui.md §5
     #[test]
-    fn a_commands_bindings_are_its_navigate_keys_or_its_sidebar_keys() {
+    fn a_commands_bindings_are_its_navigate_keys_or_its_navigator_keys() {
         let keymap = Keymap::default();
-        let bindings = |command, sidebar| keymap.bindings(command, sidebar);
+        let bindings = |command, navigator| keymap.bindings(command, navigator);
         assert_eq!(bindings(Command::ContextMenu, false), "\\, Shift+F10, Menu");
         assert_eq!(bindings(Command::Count, false), "");
         assert_eq!(
@@ -2995,11 +3007,11 @@ mod tests {
             "edit mode's"
         );
         assert_eq!(
-            bindings(Command::Sidebar(SidebarInput::Choose), false),
+            bindings(Command::Navigator(NavigatorInput::Choose), false),
             "Enter"
         );
         assert_eq!(
-            bindings(Command::Sidebar(SidebarInput::Next), false),
+            bindings(Command::Navigator(NavigatorInput::Next), false),
             "↓, Ctrl+N"
         );
         let open = Command::Pane(PaneChange::Open);
@@ -3007,9 +3019,13 @@ mod tests {
         assert_eq!(
             bindings(open, true),
             "Alt+Enter, Ctrl+V, Ctrl+T",
-            "the sidebar's own"
+            "the Navigator's own"
         );
-        assert_eq!(bindings(Command::Undo, true), "z, Ctrl+Z", "no sidebar key");
+        assert_eq!(
+            bindings(Command::Undo, true),
+            "z, Ctrl+Z",
+            "no Navigator key"
+        );
     }
 
     // FR-NAV-05, keybindings.md §2 and §4
@@ -3303,10 +3319,11 @@ mod tests {
     }
 
     // FR-UI-03, navigation.md §5–6, keybindings.md §4 and §6, D-42: `Alt+Enter` has the classic
-    // variant `Ctrl+V` in Go to Symbol and the sidebar, and `Ctrl+T` stands beside both, which
+    // variant `Ctrl+V` in Go to Symbol and the Navigator, and `Ctrl+T` stands beside both, which
     // Windows Terminal takes; they mean nothing to other pickers.
     #[test]
-    fn alt_enter_ctrl_v_and_ctrl_t_open_the_choice_of_go_to_symbol_and_the_sidebar_in_a_new_pane() {
+    fn alt_enter_ctrl_v_and_ctrl_t_open_the_choice_of_go_to_symbol_and_the_navigator_in_a_new_pane()
+    {
         let open = Some(KeyAction::Send(Message::Pane(PaneChange::Open)));
         let finding = &Context {
             overlay: Some(Overlay::GoToSymbol),
@@ -3326,7 +3343,7 @@ mod tests {
                 std::slice::from_ref(&open)
             );
             assert_eq!(
-                actions(&[(code, modifiers)], IN_SIDEBAR),
+                actions(&[(code, modifiers)], IN_NAVIGATOR),
                 std::slice::from_ref(&open)
             );
             assert_eq!(actions(&[(code, modifiers)], moving), [None]);
