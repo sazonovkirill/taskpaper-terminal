@@ -48,6 +48,8 @@ Following the core rules in code-quality.md:
 3. Calls `update`, then executes the returned effects in `ui::effects` (disk I/O on a worker thread, N-UX-01).
 4. Redraws only when state changed or an animation effect is running; the UI requests frame ticks only while one runs ([ui.md §9](ui.md#9-animation-fr-ui-11), N-PERF-03).
 
+Opening a file also hands a copy of the document, which shares its lines, to a thread that works out every line's plain text, so the first finder that lists every line stays within N-PERF-02.
+
 Because the clock and I/O arrive as messages, every timing rule in these specs (autosave delay, debounces, midnight) is testable without sleeping.
 
 ## 3. Dependencies

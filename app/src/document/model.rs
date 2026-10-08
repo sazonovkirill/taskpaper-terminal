@@ -224,6 +224,14 @@ impl Document {
         })
     }
 
+    /// Works out every line's [`Item::plain_text`] now rather than on its first read. A copy
+    /// shares its lines, so a copy can do it on another thread for this document (N-PERF-02).
+    pub fn work_out_plain_texts(&self) {
+        for item in self.items.values().flatten() {
+            item.plain();
+        }
+    }
+
     /// Every item below `id` in document order, with its depth relative to `id`'s children (0).
     pub fn descendants(&self, id: ItemId) -> impl Iterator<Item = (ItemId, usize)> + '_ {
         let mut stack: Vec<(ItemId, usize)> = self
@@ -460,6 +468,18 @@ mod tests {
             document.descendants(a).collect::<Vec<_>>(),
             [(b, 0), (c, 1)]
         );
+    }
+
+    #[test]
+    fn a_copy_works_out_the_plain_text_of_the_lines_it_shares() {
+        let mut document = Document::default();
+        let a = document.push_child(document.root(), "**bold** text".into(), 0);
+        let copy = document.clone();
+        std::thread::spawn(move || copy.work_out_plain_texts())
+            .join()
+            .unwrap();
+        let worked_out = document.get(a).unwrap().text.plain.get();
+        assert_eq!(worked_out.map(|plain| &**plain), Some("bold text"));
     }
 
     #[test]
