@@ -6,6 +6,7 @@
 
 use super::{
     Location, MenuInput, State,
+    above::Above,
     finder::{Candidate, Finder, FinderView},
     picker::Picked,
 };
@@ -65,12 +66,7 @@ impl State {
     /// The candidates of [`State::block_candidates`] that are projects, as Go to Project and
     /// Quick Add's project picker list them (D-65, D-96).
     pub(super) fn project_candidates(&self) -> Vec<Candidate<ItemId>> {
-        let mut candidates = self.block_candidates(&[]);
-        candidates.retain(|candidate| {
-            blocks::block(&self.document, candidate.value)
-                .is_some_and(|block| block.kind() == BlockKind::Project)
-        });
-        candidates
+        self.candidates(&[], |block| block.kind() == BlockKind::Project)
     }
 
     /// A candidate for each block in document order, with the path of the blocks above it and
@@ -78,29 +74,43 @@ impl State {
     /// name, nor for `excluded` blocks and completed blocks while those are hidden (FR-DONE-02),
     /// nor what they hold (navigation.md §8, FR-OPS-05).
     pub(super) fn block_candidates(&self, excluded: &[Block]) -> Vec<Candidate<ItemId>> {
+        self.candidates(excluded, |block| !block.divider())
+    }
+
+    /// The candidates of [`State::block_candidates`] for the blocks `lists` holds for.
+    fn candidates(
+        &self,
+        excluded: &[Block],
+        lists: impl Fn(&Block) -> bool,
+    ) -> Vec<Candidate<ItemId>> {
         let mut candidates = Vec::new();
-        self.push_candidates(self.document.root(), excluded, &mut candidates);
+        let top = Above::top(self.document.root());
+        self.push_candidates(&top, excluded, &lists, &mut candidates);
         candidates
     }
 
-    /// Appends a candidate for each block below `line`, depth first, as
-    /// [`State::block_candidates`] lists them.
-    fn push_candidates(&self, line: ItemId, excluded: &[Block], out: &mut Vec<Candidate<ItemId>>) {
-        for block in blocks::each_child(&self.document, line) {
+    /// Appends a candidate for each block below `above` that `lists` holds for, depth first, as
+    /// [`State::candidates`] lists them.
+    fn push_candidates(
+        &self,
+        above: &Above<'_>,
+        excluded: &[Block],
+        lists: &impl Fn(&Block) -> bool,
+        out: &mut Vec<Candidate<ItemId>>,
+    ) {
+        for block in blocks::each_child(&self.document, above.line()) {
             if !self.shows(&block) || excluded.iter().any(|gone| gone.id() == block.id()) {
                 continue;
             }
-            if !block.divider() {
-                let mut path = self.path_to(&block);
-                let text = path.pop().unwrap_or_default();
+            if lists(&block) {
                 out.push(Candidate {
                     value: block.id(),
-                    text,
-                    detail: path.join(" › "),
+                    text: self.shared_shown_text(block.id()),
+                    detail: above.detail(self),
                     tier: tier(&block),
                 });
             }
-            self.push_candidates(block.id(), excluded, out);
+            self.push_candidates(&above.below(block.id()), excluded, lists, out);
         }
     }
 
@@ -145,7 +155,7 @@ mod tests {
         (
             view.entries
                 .iter()
-                .map(|entry| (entry.text.clone(), entry.detail.clone()))
+                .map(|entry| (entry.text.to_string(), entry.detail.to_string()))
                 .collect(),
             view.selected,
         )
@@ -254,7 +264,7 @@ mod tests {
             .unwrap()
             .entries
             .iter()
-            .map(|entry| (entry.text.clone(), entry.detail.clone()))
+            .map(|entry| (entry.text.to_string(), entry.detail.to_string()))
             .collect()
     }
 

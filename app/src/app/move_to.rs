@@ -35,8 +35,8 @@ impl State {
             .all(|block| block.kind() == BlockKind::Project)
             .then(|| Candidate {
                 value: self.document.root(),
-                text: "Home".to_owned(),
-                detail: String::new(),
+                text: "Home".into(),
+                detail: "".into(),
                 tier: 0,
             });
         let candidates = home.into_iter().chain(self.block_candidates(&moving));
@@ -150,7 +150,7 @@ mod tests {
                 if entry.value == state.document().root() {
                     format!("⌂ {}", entry.text)
                 } else {
-                    entry.text.clone()
+                    entry.text.to_string()
                 }
             })
             .collect()
@@ -182,7 +182,7 @@ mod tests {
             ]
         );
         let view = state.move_to().unwrap();
-        assert_eq!(view.entries[3].detail, "Work", "with its path");
+        assert_eq!(&*view.entries[3].detail, "Work", "with its path");
     }
 
     // FR-OPS-05, FR-DONE-02
@@ -201,7 +201,7 @@ mod tests {
         let mut state = open(TEXT, 4);
         state.update(Message::OpenMoveTo);
         assert_eq!(listed(&state)[..2], ["⌂ Home", "Notes"], "for a project");
-        assert_eq!(state.move_to().unwrap().entries[0].detail, "");
+        assert_eq!(&*state.move_to().unwrap().entries[0].detail, "");
         let mut state = open(TEXT, 0);
         state.update(Message::Select(SelectionChange::Toggle));
         state.update(Message::FocusLast);

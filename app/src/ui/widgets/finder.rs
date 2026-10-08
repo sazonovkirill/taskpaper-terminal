@@ -135,7 +135,7 @@ impl<T> Widget for FinderPopup<'_, T> {
                 Span::raw(" "),
                 Span::styled(icon.glyph(self.icons), style.patch(text_style)),
                 Span::raw(" "),
-                Span::styled(entry.text.as_str(), text_style),
+                Span::styled(&*entry.text, text_style),
             ]);
             if !entry.detail.is_empty() {
                 line.push_span(Span::styled(
@@ -167,8 +167,8 @@ mod tests {
     fn candidate(text: &str) -> Candidate<u8> {
         Candidate {
             value: 0,
-            text: text.to_owned(),
-            detail: String::new(),
+            text: text.into(),
+            detail: "".into(),
             tier: 0,
         }
     }
@@ -221,7 +221,7 @@ mod tests {
         let (one, two) = (candidate("One"), candidate("Two"));
         let two = Candidate {
             value: 2,
-            detail: "Path".to_owned(),
+            detail: "Path".into(),
             ..two
         };
         let view = FinderView {

@@ -413,8 +413,8 @@ impl Window {
                     .enumerate()
                     .map(|(value, name)| Candidate {
                         value,
-                        text: name.clone(),
-                        detail: String::new(),
+                        text: name.as_str().into(),
+                        detail: "".into(),
                         tier: 0,
                     })
                     .collect();

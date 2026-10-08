@@ -623,7 +623,7 @@ mod tests {
         (
             view.entries
                 .iter()
-                .map(|entry| entry.text.clone())
+                .map(|entry| entry.text.to_string())
                 .collect(),
             view.selected,
         )

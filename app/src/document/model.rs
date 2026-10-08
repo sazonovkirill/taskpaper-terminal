@@ -344,12 +344,24 @@ impl Item {
     /// Navigator show it; worked out the first time it is read.
     #[must_use]
     pub fn plain_text(&self) -> &str {
+        self.plain()
+    }
+
+    /// [`Item::plain_text`] shared rather than copied, for views that keep it.
+    #[must_use]
+    pub fn shared_plain_text(&self) -> Arc<str> {
+        Arc::clone(self.plain())
+    }
+
+    fn plain(&self) -> &Arc<str> {
         self.text.plain.get_or_init(|| {
             let syntax = Syntax::of(BlockKind::from(self.text.kind));
-            inline::runs(&self.text.display_text, syntax)
-                .iter()
-                .map(|run| run.text)
-                .collect()
+            let display = &self.text.display_text;
+            match inline::runs(display, syntax).as_slice() {
+                // Nothing to leave out, so the display text is shared rather than copied.
+                [run] if run.text.len() == display.len() => Arc::clone(display),
+                runs => runs.iter().map(|run| run.text).collect::<String>().into(),
+            }
         })
     }
 }
@@ -364,7 +376,7 @@ struct Line {
     display_text: Arc<str>,
     /// Only some views read these, so they are derived on the first read rather than for every
     /// line.
-    plain: OnceLock<String>,
+    plain: OnceLock<Arc<str>>,
     facts: OnceLock<Facts>,
 }
 
@@ -470,6 +482,23 @@ mod tests {
         assert_eq!(item.display_text(), "Inbox");
         assert_eq!(document.get(task).unwrap().kind(), ItemKind::Task);
         assert_eq!(document.get(task).unwrap().display_text(), "Milk");
+    }
+
+    #[test]
+    fn plain_text_shares_the_display_text_when_nothing_is_left_out() {
+        let mut document = Document::default();
+        let root = document.root();
+        let task = document.push_child(root, "- Milk".into(), 0);
+        let bold = document.push_child(root, "**Milk** now".into(), 0);
+        let task = document.get(task).unwrap();
+        assert!(Arc::ptr_eq(
+            &task.shared_plain_text(),
+            &task.shared_display_text()
+        ));
+        assert_eq!(
+            &*document.get(bold).unwrap().shared_plain_text(),
+            "Milk now"
+        );
     }
 
     #[test]

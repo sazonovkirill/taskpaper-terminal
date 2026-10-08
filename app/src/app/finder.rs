@@ -3,7 +3,7 @@
 //! ([navigation.md §8](../../../docs/specs/navigation.md#8-go-to-symbol-and-go-to-command-fr-nav-05-fr-nav-06),
 //! [keybindings.md §4](../../../docs/specs/keybindings.md#4-other-contexts)).
 
-use std::cmp::Reverse;
+use std::{cmp::Reverse, sync::Arc};
 
 use nucleo_matcher::{
     Config, Matcher, Utf32Str,
@@ -18,9 +18,9 @@ pub struct Candidate<T> {
     /// What choosing it gives.
     pub value: T,
     /// The text the query matches.
-    pub text: String,
+    pub text: Arc<str>,
     /// What a finder shows beside the text to tell candidates apart, such as a block's path.
-    pub detail: String,
+    pub detail: Arc<str>,
     /// Which group it ranks in: every candidate of a lower tier ranks above every candidate of a
     /// higher one.
     pub tier: u8,
@@ -107,6 +107,19 @@ impl<T: Clone> Finder<T> {
             Normalization::Smart,
             AtomKind::Fuzzy,
         );
+        self.selected = 0;
+        // An empty pattern scores every candidate alike, so only the tiers order them.
+        if pattern.atoms.is_empty() {
+            let mut tiers: Vec<(u8, usize)> = self
+                .candidates
+                .iter()
+                .enumerate()
+                .map(|(index, candidate)| (candidate.tier, index))
+                .collect();
+            tiers.sort_unstable();
+            self.ranked = tiers.into_iter().map(|(_, index)| index).collect();
+            return;
+        }
         let mut matcher = Matcher::new(Config::DEFAULT);
         let mut buffer = Vec::new();
         let mut scored: Vec<(usize, u8, u32)> = self
@@ -121,7 +134,6 @@ impl<T: Clone> Finder<T> {
             .collect();
         scored.sort_by_key(|&(_, tier, score)| (tier, Reverse(score)));
         self.ranked = scored.into_iter().map(|(index, _, _)| index).collect();
-        self.selected = 0;
     }
 
     /// Applies `input`, and returns how it closed the finder, or `None` while it stays open.
@@ -155,8 +167,8 @@ mod tests {
     fn candidate(value: u8, text: &str, tier: u8) -> Candidate<u8> {
         Candidate {
             value,
-            text: text.to_owned(),
-            detail: format!("path {value}"),
+            text: text.into(),
+            detail: format!("path {value}").into(),
             tier,
         }
     }
@@ -194,7 +206,7 @@ mod tests {
         let finder = sample();
         assert_eq!(listed(&finder), (vec![4, 2, 1, 3], 0));
         assert_eq!(finder.view().query, "");
-        assert_eq!(finder.view().entries[0].detail, "path 4");
+        assert_eq!(&*finder.view().entries[0].detail, "path 4");
     }
 
     // FR-NAV-05

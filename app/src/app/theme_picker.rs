@@ -23,8 +23,8 @@ impl State {
             .enumerate()
             .map(|(value, text)| Candidate {
                 value,
-                text,
-                detail: String::new(),
+                text: text.into(),
+                detail: "".into(),
                 tier: 0,
             })
             .collect();
@@ -73,7 +73,7 @@ mod tests {
         (
             view.entries
                 .iter()
-                .map(|entry| entry.text.clone())
+                .map(|entry| entry.text.to_string())
                 .collect(),
             view.selected,
         )

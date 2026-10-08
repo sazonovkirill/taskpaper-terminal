@@ -565,6 +565,14 @@ impl State {
             .to_owned()
     }
 
+    /// [`State::shown_text`] shared rather than copied, for views that keep it.
+    pub(super) fn shared_shown_text(&self, id: ItemId) -> Arc<str> {
+        self.document
+            .get(id)
+            .map(Item::shared_plain_text)
+            .unwrap_or_default()
+    }
+
     /// The visible rows: the outline's, or in a special view its entries (D-7, D-80).
     #[must_use]
     pub fn rows(&self) -> Rows {

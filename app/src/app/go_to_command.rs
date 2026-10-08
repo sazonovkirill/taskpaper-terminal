@@ -25,11 +25,11 @@ impl State {
             .filter(|entry| entry.mode == Mode::Navigate && entry.command != Command::GoToCommand)
             .map(|entry| Candidate {
                 value: entry.command,
-                text: entry.command.name().into_owned(),
+                text: entry.command.name().into(),
                 detail: bindings
                     .iter()
                     .find(|(command, _)| *command == entry.command)
-                    .map(|(_, keys)| keys.clone())
+                    .map(|(_, keys)| keys.as_str().into())
                     .unwrap_or_default(),
                 tier: 0,
             })
@@ -78,7 +78,7 @@ mod tests {
             .unwrap()
             .entries
             .iter()
-            .map(|entry| (entry.text.clone(), entry.detail.clone()))
+            .map(|entry| (entry.text.to_string(), entry.detail.to_string()))
             .collect()
     }
 

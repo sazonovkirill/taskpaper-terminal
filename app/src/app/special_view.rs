@@ -3,16 +3,14 @@
 //! ([navigation.md §7, §7.1](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7),
 //! FR-TAG-04, FR-TAG-07, D-7, D-80).
 
-use std::{cell::OnceCell, sync::Arc};
-
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Location, Message, Row, State, logbook::in_logbook, pane::Pane, today::for_today,
+    Location, Message, Row, State, above::Above, logbook::in_logbook, pane::Pane, today::for_today,
     upcoming::upcoming_day,
 };
-use crate::document::{Block, ItemId, TagColor, blocks};
+use crate::document::{Block, TagColor, blocks};
 
 /// A special view, in the order the Navigator lists them (D-80).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -164,7 +162,7 @@ impl State {
         inside_done: bool,
         out: &mut Vec<Row>,
     ) {
-        for block in blocks::each_child(&self.document, above.line) {
+        for block in blocks::each_child(&self.document, above.line()) {
             if as_shown && !pane.shows(&block) {
                 continue;
             }
@@ -226,51 +224,6 @@ impl State {
             | SpecialView::Starred
             | SpecialView::Flagged => {}
         }
-    }
-}
-
-/// A line the walk of [`State::push_matching`] went into, with the path its entries show: the
-/// text of each block from the top level down to it, worked out once for all of them, and only
-/// once one is listed.
-struct Above<'a> {
-    line: ItemId,
-    /// The line it is in, or `None` for the root.
-    parent: Option<&'a Above<'a>>,
-    path: OnceCell<Arc<[Arc<str>]>>,
-}
-
-impl<'a> Above<'a> {
-    /// The root, above the top level, whose entries have an empty path.
-    fn top(root: ItemId) -> Self {
-        Self {
-            line: root,
-            parent: None,
-            path: OnceCell::new(),
-        }
-    }
-
-    /// The block `line` in this one.
-    fn below(&'a self, line: ItemId) -> Self {
-        Self {
-            line,
-            parent: Some(self),
-            path: OnceCell::new(),
-        }
-    }
-
-    /// The path of the entries in it.
-    fn path(&self, state: &State) -> Arc<[Arc<str>]> {
-        Arc::clone(self.path.get_or_init(|| {
-            match self.parent {
-                Some(parent) => parent
-                    .path(state)
-                    .iter()
-                    .cloned()
-                    .chain([state.shown_text(self.line).into()])
-                    .collect(),
-                None => Arc::default(),
-            }
-        }))
     }
 }
 
