@@ -1003,11 +1003,11 @@ impl State {
         }
     }
 
-    /// Moves `pane`'s focus off a block a fold or hiding done blocks hid: to the next visible
-    /// block in document order, else the previous one, else the first row, the title
-    /// (navigation §2); off a block that is gone, to the next of the rows `before` the change
-    /// that still shows, else the previous one, else the first row. With no focus, as when every
-    /// block was hidden, focuses the first row if one is back.
+    /// Moves `pane`'s focus off a block that no longer shows: to the next of the rows `before`
+    /// the change that still shows, else the previous one, else the first row, the title
+    /// (navigation §2). A block no row showed, as one inside a fold, goes by document order
+    /// instead. With no focus, as when every block was hidden, focuses the first row if one is
+    /// back.
     pub(super) fn repair_focus(&self, pane: &mut Pane, before: &[ItemId]) {
         let visible: Vec<_> = self.rows_of(pane).iter().map(|row| row.id).collect();
         let Some(focus) = pane.focus else {
@@ -1017,13 +1017,15 @@ impl State {
         if visible.contains(&focus) {
             return;
         }
-        let order: Vec<_> = if self.document.get(focus).is_some() {
+        // The rows give the order a special view shows its entries in, which may not be the
+        // document's (D-57).
+        let order: Vec<_> = if before.contains(&focus) || self.document.get(focus).is_none() {
+            before.to_vec()
+        } else {
             self.blocks_of(pane, false)
                 .into_iter()
                 .map(|(block, _)| block.id())
                 .collect()
-        } else {
-            before.to_vec()
         };
         let at = order.iter().position(|&id| id == focus).unwrap_or_default();
         pane.focus = order

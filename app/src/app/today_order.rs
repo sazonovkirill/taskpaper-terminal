@@ -284,6 +284,27 @@ mod tests {
         assert_eq!(listed(&state), ["P", "a", "b", "c", "x"], "the outline");
     }
 
+    // D-57, navigation §2, §7
+    #[test]
+    fn an_entry_that_leaves_passes_the_focus_to_the_next_row_else_the_previous() {
+        let mut state = today("- a @star\n- b @star\n- c @star\n- d @star\n");
+        state.update(Message::FocusNext);
+        state.update(Message::MoveUp);
+        assert_eq!(listed(&state), ["b", "a", "c", "d"]);
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert_eq!(listed(&state), ["a", "c", "d"]);
+        assert_eq!(
+            focused(&state),
+            "a",
+            "the row below, not the next block in the file"
+        );
+        state.update(Message::MoveDown);
+        state.update(Message::MoveDown);
+        assert_eq!(listed(&state), ["c", "d", "a"]);
+        state.update(Message::ToggleFlag(Flag::Star));
+        assert_eq!(focused(&state), "d", "the row above, as none is below");
+    }
+
     // D-57, FR-OPS-01
     #[test]
     fn selected_entries_move_together() {
