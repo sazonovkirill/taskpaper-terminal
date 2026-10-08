@@ -168,12 +168,15 @@ impl State {
     /// `message` as the pane takes it where it is: in a special view an intent that needs the
     /// outline's tree around the focused block, such as folding, moving to a parent, child or
     /// sibling, or adding, pasting or indenting blocks, is `None`, as is a paste outside
-    /// edit mode, the date prompt and Quick Add, and ending an edit with `Enter` only stops editing (navigation.md §7).
+    /// edit mode, the date prompt and Quick Add, and moving entries up or down outside Today,
+    /// the only view with an order of the user's; ending an edit with `Enter` only stops
+    /// editing (navigation.md §7, §7.1, D-57, D-80).
     pub(super) fn as_located(&self, message: Message) -> Option<Message> {
-        if let Location::Outline(_) = self.pane.location {
+        let Location::View(view) = self.pane.location else {
             return Some(message);
-        }
+        };
         match message {
+            Message::MoveUp | Message::MoveDown if view != SpecialView::Today => None,
             Message::NewNext => Some(Message::StopEditing),
             Message::Paste(_) | Message::Pasted { .. }
                 if self.edit.is_none()
@@ -193,21 +196,6 @@ impl State {
         let parent = blocks::parent(&self.document, block.id()).map(|parent| parent.id());
         self.go_to(Location::Outline(parent));
         self.pane.focus = Some(block.id());
-    }
-
-    /// Moves the selected entries, else the focused one, a step up or down with `down` in
-    /// `view`: only Today has an order of the user's, and the other views keep their own
-    /// (D-57, D-80).
-    pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
-        match view {
-            SpecialView::Today => self.reorder_entries(down),
-            SpecialView::Upcoming
-            | SpecialView::Overdue
-            | SpecialView::Colors
-            | SpecialView::Logbook
-            | SpecialView::Starred
-            | SpecialView::Flagged => {}
-        }
     }
 }
 

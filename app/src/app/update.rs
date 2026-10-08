@@ -784,7 +784,8 @@ impl State {
     fn move_blocks(&mut self, down: bool) {
         match self.pane.location {
             Location::Outline(_) => self.shift_selected(if down { Shift::Down } else { Shift::Up }),
-            Location::View(view) => self.move_entries(view, down),
+            // Today is the only view that takes a move (`as_located`).
+            Location::View(_) => self.reorder_entries(down),
         }
     }
 

@@ -18,8 +18,8 @@ impl State {
     }
 
     /// `\`: opens the context menu on the focused Navigator entry while the Navigator is open,
-    /// else on the selected blocks, else on the focused block. In the Today view it leaves out
-    /// what the view does not take (navigation.md §7). Nothing opens without anything to offer.
+    /// else on the selected blocks, else on the focused block. In a special view it leaves out
+    /// what the view does not take (navigation.md §7, §7.1). Nothing opens without anything to offer.
     pub(super) fn open_context_menu(&mut self) {
         let groups = if self.navigator_focused() {
             self.navigator_commands().unwrap_or_default()
@@ -206,24 +206,35 @@ mod tests {
         );
     }
 
-    // FR-KEY-06, navigation.md §7
+    // FR-KEY-06, navigation.md §7, §7.1
     #[test]
-    fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
+    fn in_a_special_view_it_leaves_out_what_the_view_does_not_take() {
         let mut state = open(TEXT);
         state.update(Message::ToggleNavigator);
         state.update(Message::Navigator(NavigatorInput::Choose));
         assert_eq!(state.location(), Location::View(SpecialView::Today));
         state.update(Message::OpenContextMenu);
-        let shown = shown(&state);
+        let today = shown(&state);
         for absent in ["New Block Below", "Paste Below", "Indent", "Group"] {
-            assert!(!shown.contains(&absent.to_owned()), "{absent}");
+            assert!(!today.contains(&absent.to_owned()), "{absent}");
         }
-        assert_eq!(shown[..4], ["Edit", "Copy", "Cut", "Duplicate"]);
-        assert!(shown.contains(&"Move to…".to_owned()));
+        assert_eq!(today[..4], ["Edit", "Copy", "Cut", "Duplicate"]);
+        assert!(today.contains(&"Move to…".to_owned()));
         assert!(
-            shown.contains(&"Move Up".to_owned()),
+            today.contains(&"Move Up".to_owned()),
             "reorders entries (D-57)"
         );
+        let mut starred = open("- Pack @star\n");
+        starred.update(Message::GoTo(Location::View(SpecialView::Starred)));
+        starred.update(Message::OpenContextMenu);
+        let offered = shown(&starred);
+        assert!(offered.contains(&"Complete".to_owned()));
+        for absent in ["Move Up", "Move Down"] {
+            assert!(
+                !offered.contains(&absent.to_owned()),
+                "{absent}: only Today reorders (D-80)"
+            );
+        }
     }
 
     // FR-KEY-06
