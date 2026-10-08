@@ -560,6 +560,7 @@ mod tests {
             ),
             (Command::GoToCrumb(1), "Zoom Here"),
             (Command::GoToView(SpecialView::Today), "Go to Today"),
+            (Command::GoToView(SpecialView::Overdue), "Go to Overdue"),
             (Command::GoToView(SpecialView::Starred), "Go to Starred"),
             (Command::GoToProject, "Go to Project"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),

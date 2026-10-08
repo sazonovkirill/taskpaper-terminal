@@ -21,6 +21,7 @@ pub mod history;
 mod links;
 mod memo;
 mod move_to;
+mod overdue;
 mod pane;
 mod picker;
 mod rows;

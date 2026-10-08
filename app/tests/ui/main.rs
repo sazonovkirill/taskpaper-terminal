@@ -30,6 +30,7 @@ mod move_to;
 mod moving;
 mod open_file;
 mod open_url;
+mod overdue;
 mod panes;
 mod quick_dates;
 mod save_as;

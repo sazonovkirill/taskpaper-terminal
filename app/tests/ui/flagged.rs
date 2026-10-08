@@ -4,7 +4,7 @@
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
 
-use crate::support::{FLAG, Harness, PALETTE, STAR, SUN, outline_line, outline_rows};
+use crate::support::{FLAG, Harness, OVERDUE, PALETTE, STAR, SUN, outline_line, outline_rows};
 
 /// Flagged blocks at two depths, a done one among them, and a block that is not flagged.
 const OUTLINE: &str = "\
@@ -77,16 +77,17 @@ fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
     let mut app = Harness::with_text(OUTLINE, 60, 12);
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
-        navigator(&mut app)[..5],
+        navigator(&mut app)[..6],
         [
             format!("▌ {SUN} Today"),
+            format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             format!("{:44}2", format!("  {FLAG} Flagged")),
             String::new(),
         ]
     );
-    for _ in 0..3 {
+    for _ in 0..4 {
         app.press(KeyCode::Down, KeyModifiers::NONE);
     }
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -101,12 +102,13 @@ fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
 // view, and Show Flagged in Navigator in the settings window turns it back on.
 #[test]
 fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_gf_still_opens_it() {
-    let mut app = Harness::with_config(OUTLINE, "sidebar_flagged = false\n", 70, 24);
+    let mut app = Harness::with_config(OUTLINE, "sidebar_flagged = false\n", 70, 26);
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
-        navigator(&mut app)[..4],
+        navigator(&mut app)[..5],
         [
             format!("▌ {SUN} Today"),
+            format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             String::new()
@@ -125,7 +127,7 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_gf_still_open
         "{screen}"
     );
     assert!(screen.contains("List the Flagged view in the Navigator"));
-    app.type_keys("jjjjjjjj ");
+    app.type_keys("jjjjjjjjj ");
     app.settle();
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(
@@ -134,9 +136,10 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_gf_still_open
     );
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(
-        navigator(&mut app)[..4],
+        navigator(&mut app)[..5],
         [
             format!("  {SUN} Today"),
+            format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
             format!("  {STAR} Starred"),
             format!("{:44}2", format!("▌ {FLAG} Flagged"))

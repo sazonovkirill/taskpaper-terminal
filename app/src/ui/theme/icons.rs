@@ -11,7 +11,8 @@ pub enum Icon {
     Start,
     /// A due date chip that is not overdue, and the command menu's due date entries.
     Due,
-    /// An overdue due date chip.
+    /// An overdue due date chip, and the Overdue view's Navigator entry, header and Go to command,
+    /// and the settings window's setting that lists it (D-80).
     Overdue,
     /// A block with `@star`, after its text, the command menu's Toggle Star and the settings
     /// window's setting that lists starred blocks in Today (D-88).

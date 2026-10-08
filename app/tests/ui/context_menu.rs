@@ -141,17 +141,18 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     let mut app = Harness::with_text(TEXT, 90, 16);
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
-    for _ in 0..4 {
+    for _ in 0..5 {
         press(&mut app, KeyCode::Down);
     }
     app.press(KeyCode::F(10), KeyModifiers::SHIFT);
     let rows = screen(&mut app);
     assert_eq!(
-        rows[4..11],
+        rows[4..12],
         [
             "      Near the statio┌Navigator─────────────────────────────────────┐",
-            "    - Pack           │  ┌Commands:─────────────────────────────────────────┐",
-            "  Other              │  │  › Go to Entry                            Enter  │",
+            "    - Pack           │  ☼ Today                                     │",
+            "  Other              │  ┌Commands:─────────────────────────────────────────┐",
+            "                     │  │  › Go to Entry                            Enter  │",
             "                     │  │  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
             "                     │  │──────────────────────────────────────────────────│",
             "                     │  │  › Return to Outline                        Esc  │",
@@ -193,7 +194,7 @@ fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
 // FR-KEY-06, FR-KEY-04
 #[test]
 fn the_shortcuts_panel_lists_it() {
-    let mut app = Harness::with_text(TEXT, 120, 61);
+    let mut app = Harness::with_text(TEXT, 120, 62);
     press(&mut app, KeyCode::Char('?'));
     let rows = screen(&mut app);
     let at = rows

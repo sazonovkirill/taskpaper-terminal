@@ -74,12 +74,15 @@ Work: @done
             .iter()
             .map(|row| {
                 assert_eq!(row.depth, 0, "entries are flat");
-                let heading = row.heading.map_or_default(|heading| {
-                    let Heading {
-                        group: ViewGroup::Color(color),
-                        first,
-                    } = heading;
-                    format!("[{}{}] ", color.name(), if first { "*" } else { "" })
+                let heading = row.heading.map_or_default(|Heading { group, first }| {
+                    let color = TagColor::ALL
+                        .into_iter()
+                        .find(|&color| group == ViewGroup::Color(color));
+                    format!(
+                        "[{}{}] ",
+                        color.map_or("not a color", TagColor::name),
+                        if first { "*" } else { "" }
+                    )
                 });
                 let path = row
                     .path

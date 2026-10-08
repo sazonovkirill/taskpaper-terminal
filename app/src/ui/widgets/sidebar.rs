@@ -481,10 +481,11 @@ mod tests {
         // listed; Flagged's flag is red.
         let buf = {
             let mut state = State::new(format::parse("A:"), None);
-            state.update(Message::Configure(crate::app::Configuration::SidebarView(
-                SpecialView::Today,
-                false,
-            )));
+            for view in [SpecialView::Today, SpecialView::Overdue] {
+                state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                    view, false,
+                )));
+            }
             state.update(Message::ToggleSidebar);
             render(&view(&state), 6)
         };

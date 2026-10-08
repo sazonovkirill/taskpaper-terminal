@@ -85,6 +85,11 @@ pub const REGISTRY: &[Entry] = &[
         &["g t"]
     ),
     entry!(
+        Command::GoToView(SpecialView::Overdue),
+        Mode::Navigate,
+        &["g o"]
+    ),
+    entry!(
         Command::GoToView(SpecialView::Colors),
         Mode::Navigate,
         &["g C"]
@@ -619,6 +624,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::Back,
             Command::Forward,
             Command::GoToView(SpecialView::Today),
+            Command::GoToView(SpecialView::Overdue),
             Command::GoToView(SpecialView::Colors),
             Command::GoToView(SpecialView::Starred),
             Command::GoToView(SpecialView::Flagged),
@@ -805,7 +811,7 @@ mod tests {
             [
                 ("Moving", 6),
                 ("Folding", 3),
-                ("Zoom and History", 9),
+                ("Zoom and History", 10),
                 ("Editing and Creating", 3),
                 ("Selection", 2),
                 ("Structure", 9),

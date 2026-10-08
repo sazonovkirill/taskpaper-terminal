@@ -117,6 +117,8 @@ struct RowsKey {
     /// The day, order and starred setting of the Today view; `None` elsewhere, which does not
     /// depend on them.
     today: Option<(Date, TodayOrder, bool)>,
+    /// The day of a view whose entries depend on it, such as Overdue; `None` elsewhere.
+    day: Option<Date>,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -510,6 +512,7 @@ impl State {
             selection: pane.selection.clone(),
             today: (pane.location == Location::View(SpecialView::Today))
                 .then(|| (self.today, self.today_order.clone(), self.today_starred)),
+            day: (pane.location == Location::View(SpecialView::Overdue)).then_some(self.today),
         };
         // Rows of the same outline fit, best those with the same folds: the sidebar's rows,
         // with none, and a pane's are each built from their own earlier rows, so a folded

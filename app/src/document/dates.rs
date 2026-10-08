@@ -75,6 +75,20 @@ pub fn relative(date: Date, today: Date) -> String {
     }
 }
 
+/// The heading of a special view's group of entries for the day `date` on `today`: the day named
+/// as [`relative`] names it, capitalized, then ` · ` and the date, such as
+/// `3 days ago · Sun 4 Oct` (D-80, D-82).
+#[must_use]
+pub fn day_heading(date: Date, today: Date) -> String {
+    let name = relative(date, today);
+    let mut letters = name.chars();
+    let capitalized: String = letters
+        .next()
+        .map(|first| first.to_uppercase().chain(letters).collect())
+        .unwrap_or_default();
+    format!("{capitalized} · {}", date.strftime("%a %-d %b"))
+}
+
 /// One part of a date expression.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Kind<'a> {
@@ -628,6 +642,33 @@ mod tests {
         assert_eq!(relative(date(2025, 10, 7), TODAY), "365 days ago");
         assert_eq!(relative(Date::MAX, Date::MIN), "in 7304483 days");
         assert_eq!(relative(Date::MIN, Date::MAX), "7304483 days ago");
+    }
+
+    // D-80, D-82
+    #[test]
+    fn a_day_heading_names_the_day_capitalized_then_the_date() {
+        assert_eq!(day_heading(TODAY, TODAY), "Today · Wed 7 Oct");
+        assert_eq!(
+            day_heading(date(2026, 10, 6), TODAY),
+            "Yesterday · Tue 6 Oct"
+        );
+        assert_eq!(
+            day_heading(date(2026, 10, 4), TODAY),
+            "3 days ago · Sun 4 Oct"
+        );
+        assert_eq!(
+            day_heading(date(2026, 10, 8), TODAY),
+            "Tomorrow · Thu 8 Oct"
+        );
+        assert_eq!(day_heading(date(2026, 10, 9), TODAY), "Fri · Fri 9 Oct");
+        assert_eq!(
+            day_heading(date(2026, 10, 14), TODAY),
+            "Next Wed · Wed 14 Oct"
+        );
+        assert_eq!(
+            day_heading(date(2025, 12, 25), TODAY),
+            "286 days ago · Thu 25 Dec"
+        );
     }
 
     #[test]

@@ -98,11 +98,14 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         assert_eq!(rows[4], "    [x] Sent", "{settings}: {rows:#?}");
         assert_eq!(rows[7], "  Later: > 1", "{settings}: {rows:#?}");
         assert_eq!(rows[11], "> NAVIGATE · FILE *", "{settings}: unsaved");
+        // Tall enough for the Navigator to show every special view and a project.
+        app.terminal.backend_mut().resize(90, 13);
         app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
         let rows = screen(&mut app);
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
         for entry in [
             "│▌ O Today ",
+            "│  ! Overdue ",
             "│  c Colors ",
             "│  * Starred ",
             "│  F Flagged ",
@@ -113,7 +116,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
                 "{settings}: {entry:?} in the sidebar's window: {rows:#?}"
             );
         }
-        for _ in 0..5 {
+        for _ in 0..6 {
             app.press(KeyCode::Down, KeyModifiers::NONE);
         }
         let rows = screen(&mut app);

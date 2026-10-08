@@ -191,7 +191,7 @@ impl Widget for OutlineView<'_> {
             self.blocks(usize::from(text.width))
                 .flat_map(|(index, row, lines, chips)| {
                     let mut chips = Some(chips);
-                    let heading = heading_lines(row, self.icons, self.theme)
+                    let heading = heading_lines(row, self.today, self.icons, self.theme)
                         .into_iter()
                         .map(|line| (None, line, Line::default()));
                     heading.chain(lines.into_iter().map(move |line| {
@@ -245,9 +245,9 @@ pub fn heading_height(row: &Row) -> usize {
         .map_or_default(|heading| 1 + usize::from(!heading.first))
 }
 
-/// The lines [`heading_height`] counts for `row` in `theme`: a blank line, then the heading in bold
-/// without indent, naming its group with its icons from `icons`.
-fn heading_lines(row: &Row, icons: IconSet, theme: &Theme) -> Vec<Line<'static>> {
+/// The lines [`heading_height`] counts for `row` on `today` in `theme`: a blank line, then the
+/// heading in bold without indent, naming its group with its icons from `icons`.
+fn heading_lines(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Vec<Line<'static>> {
     let Some(heading) = row.heading else {
         return Vec::new();
     };
@@ -256,6 +256,7 @@ fn heading_lines(row: &Row, icons: IconSet, theme: &Theme) -> Vec<Line<'static>>
             Span::styled(Icon::Color.glyph(icons), Style::new().fg(theme.tag(color))),
             Span::raw(format!(" {}", color.name())),
         ]),
+        ViewGroup::Day(day) => Line::raw(dates::day_heading(day, today)),
     };
     (!heading.first)
         .then(Line::default)
@@ -349,6 +350,7 @@ pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'st
 pub fn view_icon(view: SpecialView) -> Icon {
     match view {
         SpecialView::Today => Icon::Today,
+        SpecialView::Overdue => Icon::Overdue,
         SpecialView::Colors => Icon::Colors,
         SpecialView::Starred => Icon::Star,
         SpecialView::Flagged => Icon::Flag,
@@ -359,6 +361,7 @@ pub fn view_icon(view: SpecialView) -> Icon {
 fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     match view {
         SpecialView::Today | SpecialView::Starred => today_style(theme),
+        SpecialView::Overdue => Style::new().fg(theme.overdue),
         SpecialView::Colors => Style::new(),
         SpecialView::Flagged => flag_style(theme),
     }

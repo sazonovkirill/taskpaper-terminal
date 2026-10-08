@@ -3182,6 +3182,22 @@ mod tests {
         assert_eq!(messages("t", CONTEXT), [Some(start)]);
     }
 
+    // FR-TAG-09, D-80, D-42: `go` is plain characters, which both key reportings send alike.
+    #[test]
+    fn g_o_goes_to_overdue() {
+        assert_eq!(
+            messages("go", CONTEXT),
+            [
+                None,
+                Some(Message::GoTo(Location::View(SpecialView::Overdue)))
+            ]
+        );
+        assert_eq!(
+            Keymap::default().bindings(Command::GoToView(SpecialView::Overdue), true),
+            "go"
+        );
+    }
+
     // FR-TAG-13, D-92, D-42: `g*` goes to Starred whether `*` arrives plain or, under the kitty
     // protocol, with `Shift`.
     #[test]

@@ -2,6 +2,7 @@
 config <<END
 sidebar_today = false
 sidebar_starred = false
+sidebar_overdue = false
 sidebar_colors = false
 sidebar_flagged = false
 END
