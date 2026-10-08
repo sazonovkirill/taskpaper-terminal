@@ -472,6 +472,38 @@ fn completing_a_project_eases_its_text_and_the_text_inside_it_into_the_done_styl
     assert_eq!(frame(&mut reduced), done, "reduced keeps only the flashes");
 }
 
+// UI-ANIM-04, ui.md §9.4
+#[test]
+fn the_ease_leaves_the_focus_marker_and_what_is_dimmed_either_way_as_it_is() {
+    let text = "P:\n\t- a\n- b\n";
+    let (mut full, mut off) = both(text, "h", 250);
+    frame(&mut full);
+    let folded = frame(&mut off);
+    let row: String = folded[2].iter().map(Cell::symbol).collect();
+    let fold = row.chars().position(|symbol| symbol == '▸').unwrap();
+    assert!(folded[2][fold].modifier.contains(Modifier::DIM), "{row}");
+    for keys in ["x", "x"] {
+        for app in [&mut full, &mut off] {
+            app.type_keys(keys);
+        }
+        let still = frame(&mut off);
+        for millis in [0, 100] {
+            if millis > 0 {
+                wait(&mut full, millis);
+            }
+            let eased = frame(&mut full);
+            assert_ne!(eased[2][2], still[2][2], "P eases at {millis} ms");
+            assert_eq!(eased[2][0], still[2][0], "the focus marker at {millis} ms");
+            assert_eq!(
+                eased[2][fold], still[2][fold],
+                "the fold marker at {millis} ms"
+            );
+        }
+        wait(&mut full, 100);
+        assert_eq!(frame(&mut full), still);
+    }
+}
+
 // FR-UI-11, UI-ANIM-05, ui.md §9.2
 #[test]
 fn zooming_in_fades_the_pane_in_from_the_top_and_flashes_the_new_crumb() {

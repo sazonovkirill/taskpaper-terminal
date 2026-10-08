@@ -13,7 +13,7 @@ use std::{
 
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Position, Rect},
     style::{Color, Modifier},
 };
 use tachyonfx::{ColorSpace, Effect, EffectManager, EffectTimer, Interpolation, fx};
@@ -153,11 +153,10 @@ impl Before {
     }
 
     /// The blocks of the pane with the keys at the same place in its rows here and in `after`'s,
-    /// whose text recedes in one and not the other, as a done block and those inside it do, each
-    /// with whether it recedes in `after` (UI-ANIM-04). Completing keeps every row in place, or
-    /// drops the block with those inside it when completed blocks are hidden, which has no
-    /// effect to show.
-    fn receded_in(&self, after: &Self) -> Vec<(ItemId, bool)> {
+    /// whose text recedes in one and not the other, as a done block and those inside it do
+    /// (UI-ANIM-04). Completing keeps every row in place, or drops the block with those inside
+    /// it when completed blocks are hidden, which has no effect to show.
+    fn receded_in(&self, after: &Self) -> Vec<ItemId> {
         let recedes = |row: &Row| row.done || row.inside_done;
         // A row in a chunk both share is the same in both, so only the others are compared.
         after
@@ -165,7 +164,7 @@ impl Before {
             .apart_from(&self.rows)
             .filter_map(|(at, now)| Some((self.rows.get(at)?, now)))
             .filter(|(was, now)| was.id == now.id && recedes(was) != recedes(now))
-            .map(|(_, now)| (now.id, recedes(now)))
+            .map(|(_, now)| now.id)
             .collect()
     }
 
@@ -310,8 +309,8 @@ struct Pending {
     landing: bool,
     refused: bool,
     changed: Vec<ItemId>,
-    /// The blocks whose text eases into or out of the done style, each with whether it recedes.
-    receded: Vec<(ItemId, bool)>,
+    /// The blocks whose text eases into or out of the done style.
+    receded: Vec<ItemId>,
     /// The panes whose root changed.
     rooted: Vec<PaneId>,
     /// The rows an expanded block shows.
@@ -386,6 +385,9 @@ pub(super) struct Animator {
     pending: Pending,
     /// The panes the frame being drawn put on screen.
     frame: Vec<DrawnPane>,
+    /// The panes of the latest frame as its effects drew them, which the text of a block
+    /// completed or uncompleted eases from; kept only while colors fade (UI-ANIM-04).
+    last: Buffer,
     /// The status message fading out.
     fading: Option<Fading>,
     /// The crossfade to a previewed theme.
@@ -424,6 +426,7 @@ impl Animator {
             expanded: false,
             pending: Pending::default(),
             frame: Vec::new(),
+            last: Buffer::empty(Rect::ZERO),
             fading: None,
             crossfade: None,
             previewed: None,
@@ -573,6 +576,12 @@ impl Animator {
             .process_effects(Duration::ZERO, &mut Buffer::empty(Rect::ZERO), Rect::ZERO);
         let area = buf.area;
         self.manager.process_effects(Duration::ZERO, buf, area);
+        if self.fades(theme) {
+            self.last.area = area;
+            self.last.content.clone_from(&buf.content);
+        } else {
+            self.last = Buffer::empty(Rect::ZERO);
+        }
     }
 
     /// Starts over `pane` the effects `pending` asks for there, `revealed` being the rows it
@@ -626,7 +635,7 @@ impl Animator {
             started.push((kind, flash(lines, color, theme.background, duration, fades)));
         }
         if self.fades(theme) {
-            started.extend(fades_over(pane, pending, revealed, theme));
+            started.extend(fades_over(pane, pending, revealed, theme, &self.last));
         }
         for (kind, effect) in started {
             self.manager
@@ -789,28 +798,25 @@ impl Animator {
 }
 
 /// The fades `pending` asks for over `pane` in `theme`'s colors: the text of blocks completed
-/// or uncompleted easing, the body of a pane whose root changed fading in from the top down with
-/// a flash of its last crumb, and the rows an expand showed, `revealed`, fading in (UI-ANIM-04–06).
+/// or uncompleted easing from how the frame `last` drew it, the body of a pane whose root changed
+/// fading in from the top down with a flash of its last crumb, and the rows an expand showed,
+/// `revealed`, fading in (UI-ANIM-04–06).
 fn fades_over(
     pane: &DrawnPane,
     pending: &Pending,
     revealed: &HashSet<ItemId>,
     theme: &Theme,
+    last: &Buffer,
 ) -> Vec<(Kind, Effect)> {
     let mut fades = Vec::new();
-    let eased: Vec<(Rect, bool)> = pane
+    let eased: Vec<Rect> = pane
         .rows
         .iter()
-        .filter_map(|&(id, lines)| {
-            pending
-                .receded
-                .iter()
-                .find(|&&(receded, _)| receded == id)
-                .map(|&(_, recedes)| (lines, recedes))
-        })
+        .filter(|(id, _)| pending.receded.contains(id))
+        .map(|&(_, lines)| lines)
         .collect();
     if !eased.is_empty() {
-        fades.push((Kind::Ease, ease(eased, theme.text, theme.background)));
+        fades.push((Kind::Ease, ease(&eased, last, theme.text, theme.background)));
     }
     if pending.rooted.contains(&pane.id) {
         let body = vec![pane.shown.area];
@@ -853,24 +859,42 @@ fn or_default(color: Color, default: Color) -> Color {
     }
 }
 
-/// Text over `lines`, each with whether it recedes as a done block's text does, easing for
-/// [`EASE`] from the style it had to the one it has: dimmed text stands [`DIM_SHADE`] of the
-/// way toward its background until the terminal's own dim takes over at the end; `text` and
+/// Text over `lines` easing for [`EASE`] from the color and dimming `last` drew it in to those
+/// it has, in each cell where they differ, so that what keeps its look, such as the focus
+/// marker and what is dimmed either way, is left as it is: dimmed text stands [`DIM_SHADE`] of
+/// the way toward its background until the terminal's own dim takes over at the end; `text` and
 /// `background` stand for the terminal's own colors (UI-ANIM-04).
-fn ease(lines: Vec<(Rect, bool)>, text: Color, background: Color) -> Effect {
+fn ease(lines: &[Rect], last: &Buffer, text: Color, background: Color) -> Effect {
+    let was: HashMap<Position, (Color, bool)> = lines
+        .iter()
+        .flat_map(|line| line.positions())
+        .filter_map(|position| {
+            let cell = last.cell(position)?;
+            let dim = cell.modifier.contains(Modifier::DIM);
+            Some((position, (or_default(cell.fg, text), dim)))
+        })
+        .collect();
     let timer = EffectTimer::new(EASE, Interpolation::QuadOut);
-    fx::effect_fn(lines, timer, move |lines, context, cells| {
+    fx::effect_fn(was, timer, move |was, context, cells| {
         let alpha = context.alpha();
         for (position, cell) in cells {
-            let Some(&(_, recedes)) = lines.iter().find(|(line, _)| line.contains(position)) else {
+            let Some(&(was_fg, was_dim)) = was.get(&position) else {
                 continue;
             };
-            let shade = DIM_SHADE * if recedes { alpha } else { 1.0 - alpha };
             let (fg, bg) = (or_default(cell.fg, text), or_default(cell.bg, background));
-            if rgb(fg) && rgb(bg) {
-                cell.modifier.remove(Modifier::DIM);
-                cell.fg = ColorSpace::Rgb.lerp(&fg, &bg, shade);
+            let dim = cell.modifier.contains(Modifier::DIM);
+            if (was_fg, was_dim) == (fg, dim) || !(rgb(was_fg) && rgb(fg) && rgb(bg)) {
+                continue;
             }
+            let shown = |color: Color, dim: bool| {
+                if dim {
+                    ColorSpace::Rgb.lerp(&color, &bg, DIM_SHADE)
+                } else {
+                    color
+                }
+            };
+            cell.modifier.remove(Modifier::DIM);
+            cell.fg = ColorSpace::Rgb.lerp(&shown(was_fg, was_dim), &shown(fg, dim), alpha);
         }
     })
 }
@@ -1037,27 +1061,58 @@ mod tests {
 
     // UI-ANIM-04
     #[test]
-    fn the_ease_draws_dimmed_rgb_text_up_to_half_way_to_its_background() {
-        let cells = [
+    fn the_ease_moves_what_changed_from_how_it_was_drawn_dimmed_rgb_text_up_to_half_way() {
+        let accent = Color::Rgb(0, 0, 200);
+        let was = [
+            (grey(200), BLACK, Modifier::empty()),
+            (Color::Blue, BLACK, Modifier::empty()),
+            (Color::Reset, Color::Reset, Modifier::empty()),
+            (grey(160), BLACK, Modifier::empty()),
+            (grey(200), BLACK, Modifier::DIM),
+            (accent, BLACK, Modifier::empty()),
+        ];
+        let now = [
             (grey(200), BLACK, Modifier::DIM),
             (Color::Blue, BLACK, Modifier::DIM),
             (Color::Reset, Color::Reset, Modifier::DIM),
+            (grey(200), BLACK, Modifier::DIM),
+            (grey(200), BLACK, Modifier::DIM),
+            (accent, BLACK, Modifier::empty()),
         ];
-        let line = vec![(Rect::new(0, 0, 3, 1), true)];
+        let line = [Rect::new(0, 0, 6, 1)];
+        let eased = |was: &[_], now: &[_]| {
+            after(
+                ease(&line, &line_of(was), grey(200), BLACK),
+                line_of(now),
+                100,
+            )
+        };
         assert_eq!(
-            after(ease(line, grey(200), BLACK), line_of(&cells), 100),
+            eased(&was, &now),
             [
                 (grey(125), BLACK, Modifier::empty()),
                 (Color::Blue, BLACK, Modifier::DIM),
                 (grey(125), Color::Reset, Modifier::empty()),
+                (grey(115), BLACK, Modifier::empty()),
+                (grey(200), BLACK, Modifier::DIM),
+                (accent, BLACK, Modifier::empty()),
             ],
-            "three quarters of the way to a half shade, an ANSI color left as it is"
+            "three quarters of the way to a half shade, from the color drawn before, an ANSI \
+             color, text dimmed either way and the focus marker left as they are"
         );
-        let line = vec![(Rect::new(0, 0, 3, 1), false)];
         assert_eq!(
-            after(ease(line, grey(200), BLACK), line_of(&cells), 100)[0],
+            eased(&now[..1], &was[..1])[0],
             (grey(175), BLACK, Modifier::empty()),
             "and back from it"
+        );
+        assert_eq!(
+            after(
+                ease(&line, &Buffer::empty(Rect::ZERO), grey(200), BLACK),
+                line_of(&now),
+                100
+            ),
+            now,
+            "with no frame before, nothing eases"
         );
     }
 
