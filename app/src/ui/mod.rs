@@ -35,7 +35,9 @@ use crate::{
 };
 use animation::{Animator, Before, DrawnPane, Intent, Shown};
 use config::{Config, WriteError};
-use effects::{BackupSettings, Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
+use effects::{
+    BackupSettings, Browser, Clipboard, FileWatch, Io, PlainTexts, Recovery, RecoveryError,
+};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
 use layout::Scroll;
 pub use mouse::acts_on;
@@ -138,6 +140,8 @@ pub struct Tui {
     animator: Animator,
     /// The `animations` setting a session runs with unless the settings file sets it (ui.md §9.3).
     default_animations: Animations,
+    /// Works out the plain text of each shown document's lines on another thread.
+    plain_texts: PlainTexts,
     quit: bool,
 }
 
@@ -194,6 +198,7 @@ impl Tui {
             menu_anchor: None,
             animator: Animator::new(Animations::Full),
             default_animations: Animations::Full,
+            plain_texts: PlainTexts::default(),
             quit: false,
         };
         tui.send(Message::Started, Duration::ZERO);
@@ -734,6 +739,8 @@ impl Tui {
         let previewing = self.state.theme_picker().is_some() || self.state.settings().is_some();
         self.animator.finish(frame.buffer_mut(), theme, previewing);
         hide_cut_graphemes(frame.buffer_mut());
+        // Once the frame is worked out, so the work never slows a file's first frame.
+        self.plain_texts.shown(self.state.document());
     }
 
     /// The panes side by side in `strip`, each as wide as [`layout::pane_widths`] makes it, the

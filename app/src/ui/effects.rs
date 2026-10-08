@@ -7,6 +7,7 @@ mod backup;
 mod browser;
 mod clipboard;
 mod paths;
+mod plain_texts;
 mod recovery;
 mod views;
 mod watch;
@@ -18,7 +19,6 @@ use std::{
     io::Write as _,
     os::unix::fs::OpenOptionsExt as _,
     path::{Path, PathBuf},
-    thread,
 };
 
 use jiff::civil::DateTime;
@@ -30,6 +30,7 @@ pub use backup::{
 pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
 pub use paths::{complete as complete_path, expand as expand_path};
+pub(super) use plain_texts::PlainTexts;
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};
 pub use views::{Views, ViewsError, file as views_file};
 pub use watch::FileWatch;
@@ -102,10 +103,6 @@ pub enum OpenError {
 /// [`OpenError`] when the file cannot be read, is not UTF-8, or its folder does not exist.
 pub fn open(path: &Path) -> Result<State, OpenError> {
     let (document, version) = read_document(path)?;
-    // Go to Symbol lists every line's plain text; working it out while the user looks at the
-    // first frame keeps opening it within the keystroke budget (N-PERF-02).
-    let copy = document.clone();
-    thread::spawn(move || copy.work_out_plain_texts());
     Ok(State::new(document, Some(path.to_owned()))
         .with_access(access(path))
         .with_version(version))
