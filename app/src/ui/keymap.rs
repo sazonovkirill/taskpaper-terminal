@@ -1637,7 +1637,8 @@ mod tests {
     }
 
     // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
-    // window, the prompts and the conflict prompt are all sent alike by both key reportings.
+    // window, the prompts, Quick Add and the conflict prompt are all sent alike by both key
+    // reportings.
     #[test]
     fn every_key_of_the_other_contexts_is_both_variants_at_once() {
         let keys = TEXT
@@ -1647,6 +1648,7 @@ mod tests {
             .chain(SETTINGS.iter().map(|(key, _)| *key))
             .chain(SETTINGS_TEXT.iter().map(|(key, _)| *key))
             .chain(DATE_PROMPT.iter().map(|&(key, _)| key))
+            .chain(QUICK_ADD.iter().map(|&(key, _)| key))
             .chain(SAVE_AS.iter().map(|(key, _)| *key))
             .chain(PROMPT.iter().map(|&(key, _)| key))
             .chain(OPEN_IN_NEW_PANE);
@@ -1689,10 +1691,11 @@ mod tests {
         }
     }
 
-    // keybindings.md §6: every bound command, and opening a choice in a new pane from Go to
-    // Symbol, has a sequence of keys that no common terminal takes for itself. Pasting is the
-    // exception: a terminal that takes `Ctrl+V` pastes the clipboard itself, which the app takes
-    // as pasted text.
+    // keybindings.md §6, D-42: every bound command, and opening a choice in a new pane from Go to
+    // Symbol, has a sequence of keys that both key reportings send and no common terminal takes
+    // for itself, since a terminal that takes a key may not speak the kitty protocol. Pasting is
+    // the exception: a terminal that takes `Ctrl+V` pastes the clipboard itself, which the app
+    // takes as pasted text.
     #[test]
     fn every_command_has_keys_no_common_terminal_takes() {
         let bindings = REGISTRY
@@ -1710,13 +1713,15 @@ mod tests {
                     parse_sequence(keys)
                         .expect("registry keys parse")
                         .into_iter()
-                        .all(|key| taken_by(key).is_none())
+                        .all(|key| taken_by(key).is_none() && !kitty_only(key))
                 }),
                 "{command}: {keys:?}"
             );
         }
         assert!(
-            OPEN_IN_NEW_PANE.iter().any(|&key| taken_by(key).is_none()),
+            OPEN_IN_NEW_PANE
+                .iter()
+                .any(|&key| taken_by(key).is_none() && !kitty_only(key)),
             "Go to Symbol's new pane"
         );
         for (keys, taken) in [
@@ -2995,21 +3000,23 @@ mod tests {
         assert_eq!(label("fx"), None, "only a number makes a function key");
     }
 
-    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42
+    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-101
     #[test]
-    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_pane_and_navigator_without_backslash()
+    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_and_ctrl_r_in_place_of_backslash_in_the_navigator()
      {
         let open = Some(&Message::OpenContextMenu);
         check(KeyCode::Char('\\'), KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::SHIFT, open);
         check(KeyCode::Menu, KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::NONE, None);
+        check(KeyCode::Char('r'), KeyModifiers::CONTROL, None);
         let mut keymap = Keymap::default();
         let navigator = &Context {
             navigator: true,
             ..*CONTEXT
         };
         for (at, (code, modifiers)) in [
+            (KeyCode::Char('r'), KeyModifiers::CONTROL),
             (KeyCode::F(10), KeyModifiers::SHIFT),
             (KeyCode::Menu, KeyModifiers::NONE),
         ]
@@ -3075,6 +3082,10 @@ mod tests {
         let keymap = Keymap::default();
         let bindings = |command, navigator| keymap.bindings(command, navigator);
         assert_eq!(bindings(Command::ContextMenu, false), "\\, Shift+F10, Menu");
+        assert_eq!(
+            bindings(Command::ContextMenu, true),
+            "Ctrl+R, Shift+F10, Menu"
+        );
         assert_eq!(bindings(Command::Count, false), "");
         assert_eq!(
             bindings(Command::Retype(Typed::Task), false),

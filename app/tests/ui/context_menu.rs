@@ -178,6 +178,26 @@ fn on_a_navigator_entry_it_offers_going_there() {
     );
 }
 
+// FR-KEY-06, keybindings.md §4 and §6, D-86, D-101: `Ctrl+R` opens it in the Navigator, whose
+// filter takes `\`, for terminals that take `Shift+F10` and send no Menu key.
+#[test]
+fn ctrl_r_opens_it_on_a_navigator_entry_where_backslash_is_typed() {
+    let mut app = Harness::with_text(TEXT, 90, 17);
+    app.render();
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Char('\\'));
+    assert!(!open(&mut app), "\\ is typed into the filter");
+    press(&mut app, KeyCode::Backspace);
+    app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
+    assert!(open(&mut app));
+    assert!(
+        screen(&mut app)
+            .iter()
+            .any(|row| row.contains("› Go to Entry")),
+        "on the focused entry"
+    );
+}
+
 // FR-KEY-06, navigation.md §7
 #[test]
 fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {

@@ -572,7 +572,7 @@ pub const NAVIGATOR: &[(Command, &[&str])] = &[
     ),
     (Command::Navigator(NavigatorInput::Erase), &["backspace"]),
     (Command::Navigator(NavigatorInput::Leave), &["esc"]),
-    (Command::ContextMenu, &["shift+f10", "menu"]),
+    (Command::ContextMenu, &["ctrl+r", "shift+f10", "menu"]),
     (Command::ToggleNavigator, &["ctrl+g"]),
     (Command::Quit, &["ctrl+q"]),
 ];
@@ -886,9 +886,11 @@ mod tests {
                 .iter()
                 .find(|(command, _)| *command == Command::ContextMenu)
                 .map(|&(_, keys)| keys),
-            context_menu.map(|keys| &keys[1..]),
-            "the context menu opens with the same keys everywhere, but for the \\ the Navigator's \
-             filter takes (D-86)"
+            context_menu
+                .map(|keys| [&["ctrl+r"][..], &keys[1..]].concat())
+                .as_deref(),
+            "the context menu opens with the same keys everywhere, but for Ctrl+R in place of the \\ \
+             the Navigator's filter takes (D-86, D-101)"
         );
     }
 

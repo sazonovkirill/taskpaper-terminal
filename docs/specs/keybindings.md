@@ -14,7 +14,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
   | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`; `Z` in navigate mode (legacy sends `Ctrl+Z`, which undoes) |
   | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
-  | Menu key | Context menu | `\`, `Shift+F10` |
+  | Menu key | Context menu | `\`, `Shift+F10`; `Ctrl+R` in the Navigator (D-101) |
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
@@ -176,8 +176,8 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Color picker** (`mc`, [editing.md §5](editing.md#5-block-commands)): a picker as below that lists each color with its number; typing `1` to `6` chooses that color at once (D-48), and other characters filter by name.
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
 - **Details popup** (`mi`, D-3): any key closes it; `Ctrl+Q` still quits.
-- **Context menu:** opens on the focused block or selection, or on the focused Navigator entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context, but `\` is typed into the Navigator's filter (D-86).
-- **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Shift+F10` or the Menu key opens the context menu (`\` is typed), `Esc` or `Ctrl+G` closes it, `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
+- **Context menu:** opens on the focused block or selection, or on the focused Navigator entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context, but `\` is typed into the Navigator's filter (D-86), where `Ctrl+R` opens it instead (D-101).
+- **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Ctrl+R`, `Shift+F10` or the Menu key opens the context menu (`\` is typed; D-101), `Esc` or `Ctrl+G` closes it, `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
 - **Quick Add** ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)): standard text keys, `Enter` adds, `Esc` cancels, `Backspace` at the start of the text deletes the task's dash, `/` at the start of the text or after a space opens the project picker, which takes the keys of pickers above, except that `Esc`, or a filter that matches nothing, closes it and types `/` and the filter, and `Backspace` on an empty filter closes it. Every key is a plain key (D-42).
@@ -205,7 +205,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 
 Every binding must be verified in the terminals listed in N-PORT-01, including Windows Terminal (FR-KEY-03), with and without the kitty protocol and inside tmux, before the keymap is accepted. Bindings that a common terminal or desktop environment swallows get a different key; the results are recorded in this file.
 
-Keys that common terminals, multiplexers and desktops take for themselves by default, and the route beside each that they leave alone (D-90). The terminals checked are macOS Terminal, iTerm2, Ghostty, kitty, WezTerm, Alacritty, GNOME Terminal and Windows Terminal, and tmux inside them; a key not listed here reaches the app in all of them. Every command keeps a route no listed program takes, except pasting, where a terminal that takes `Ctrl+V` pastes the clipboard itself as pasted text, which the app takes the same way.
+Keys that common terminals, multiplexers and desktops take for themselves by default, and the route beside each that they leave alone (D-90). The terminals checked are macOS Terminal, iTerm2, Ghostty, kitty, WezTerm, Alacritty, GNOME Terminal and Windows Terminal, and tmux inside them; a key not listed here reaches the app in all of them. Every command keeps a route that no listed program takes and both key reportings send (D-42), except pasting, where a terminal that takes `Ctrl+V` pastes the clipboard itself as pasted text, which the app takes the same way.
 
 | Key | Taken by | Route beside it |
 |---|---|---|
@@ -217,5 +217,5 @@ Keys that common terminals, multiplexers and desktops take for themselves by def
 | `Ctrl+Shift+Z` (redo) | kitty: previous prompt; WezTerm: zoom pane | `Z`, `Ctrl+Y` |
 | `Alt+←` / `Alt+→`, `Alt+↑` / `Alt+↓`, `Alt+Shift+←` / `Alt+Shift+→` | Windows Terminal, between its own split panes | `>` / `.`, `Alt+k` / `Alt+j`, `H` / `L` |
 | `Alt+1` … `Alt+9` (focus pane N) | GNOME Terminal and Ghostty on Linux: tabs | `g1` … `g9` |
-| `Shift+F10` (context menu) | GNOME Terminal: its own menu | `\` |
+| `Shift+F10` (context menu) | GNOME Terminal: its own menu | `\`; in the Navigator, `Ctrl+R` (D-101) |
 | `Ctrl+B` (bold, edit mode) | tmux: its prefix | `Ctrl+B` twice in tmux, which sends it on |
