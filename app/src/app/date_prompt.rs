@@ -356,6 +356,15 @@ mod tests {
         state.update(prompt(DateTag::Start));
         input(&mut state, DateInput::Apply);
         assert_eq!(state.document().revision(), 0, "no date to remove");
+        let mut timed = open("- a @due(2026-10-20 14:00)", 0);
+        timed.update(prompt(DateTag::Due));
+        assert_eq!(shown(&timed).0, "2026-10-20");
+        input(&mut timed, DateInput::Apply);
+        assert_eq!(
+            texts(&timed),
+            ["- a @due(2026-10-20 14:00)"],
+            "the time stays"
+        );
     }
 
     // search.md §4, D-6: a month and day already past fall next year only for a due date.

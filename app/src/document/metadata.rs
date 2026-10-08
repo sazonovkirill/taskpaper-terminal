@@ -87,8 +87,9 @@ pub fn change_date(
 }
 
 /// The op that sets the `tag` date of `block` to `date` as `YYYY-MM-DD` (D-6), or removes the
-/// tag with any value when `date` is `None` (editing.md §5). `None` when the line stays as it is
-/// or the block is not in `document`.
+/// tag with any value when `date` is `None` (editing.md §5). `None` when the line stays as it is,
+/// as it does when the tag holds that date already, written in any form, or the block is not in
+/// `document`.
 #[must_use]
 pub fn set_date(
     document: &Document,
@@ -97,10 +98,14 @@ pub fn set_date(
     date: Option<Date>,
 ) -> Option<Op> {
     let before = document.get(block.id())?.text();
-    let name = match tag {
-        DateTag::Start => "start",
-        DateTag::Due => "due",
+    let (name, current) = match tag {
+        DateTag::Start => ("start", block.start()),
+        DateTag::Due => ("due", block.due()),
     };
+    // Rewriting such a tag would only drop what the app does not read, such as a time.
+    if date.is_some() && date == current {
+        return None;
+    }
     let after = match date {
         Some(date) => tagged(before, name, &date.to_string()),
         None => kept(tags::remove(before, name)),
@@ -702,6 +707,38 @@ mod tests {
             Some("- a @due(2026-10-09)")
         );
         assert_eq!(set("- a @due(2026-10-09)", DateTag::Due, friday), None);
+    }
+
+    // FR-TAG-03, editing.md §5, D-6: a time the app does not model survives keeping the date.
+    #[test]
+    fn set_date_keeps_a_tag_that_holds_that_date_already_as_written() {
+        let friday = Some(date(2026, 10, 9));
+        assert_eq!(
+            set("- a @due(2026-10-09 14:00)", DateTag::Due, friday),
+            None
+        );
+        assert_eq!(
+            set(
+                "- a @start(2026-10-09T09:30) @due(2026-10-09 14:00)",
+                DateTag::Start,
+                friday
+            ),
+            None
+        );
+        assert_eq!(
+            set("- a @due(2026-10-08 14:00)", DateTag::Due, friday).as_deref(),
+            Some("- a @due(2026-10-09)"),
+            "another date is written as YYYY-MM-DD"
+        );
+        assert_eq!(
+            changed(
+                "- a @due(2026-10-05 14:00)",
+                DateTag::Due,
+                DateChange::Today,
+                TODAY
+            ),
+            None
+        );
     }
 
     // FR-TAG-03, editing.md §5
