@@ -375,3 +375,48 @@ fn quick_add_keeps_wide_text_whole_as_it_scrolls() {
         ]
     );
 }
+
+// N-PORT-02, FR-MODE-07, D-96, ui.md §1: on a screen too short for Quick Add's project picker
+// to list a project above its panel, the picker covers the panel to list them; with room for one,
+// it stays above the panel.
+#[test]
+fn quick_adds_project_picker_lists_projects_on_a_small_screen() {
+    for (width, height) in [(20, 6), (30, 8)] {
+        let mut app = Harness::with_text(VIEWS, width, height);
+        app.type_keys("qq/");
+        let rows = screen(&mut app);
+        assert!(
+            rows.iter().any(|row| row.contains("▸ INBOX")),
+            "{width}×{height}: {rows:#?}"
+        );
+    }
+    let mut app = Harness::with_text(VIEWS, 24, 8);
+    app.type_keys("qq/");
+    assert_eq!(
+        screen(&mut app)[1..7],
+        [
+            "┌Project───────────────┐",
+            "│›                     │",
+            "│ ▸ INBOX              │",
+            "│ ▸ 日本語の仕事       │",
+            "│ ▸ TODAY              │",
+            "└──────────────────────┘",
+        ]
+    );
+    app.terminal.backend_mut().assert_cursor_position((3, 2));
+    let mut app = Harness::with_text(VIEWS, 24, 9);
+    app.type_keys("qq/");
+    assert_eq!(
+        screen(&mut app)[..8],
+        [
+            "┌Project───────────────┐",
+            "│›                     │",
+            "│ ▸ INBOX              │",
+            "└──────────────────────┘",
+            "┌ Quick Add ───────────┐",
+            "│ -                    │",
+            "│ Type the text        │",
+            "└──────────────────────┘",
+        ]
+    );
+}

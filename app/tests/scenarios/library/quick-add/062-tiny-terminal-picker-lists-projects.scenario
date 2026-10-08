@@ -1,0 +1,19 @@
+# In a 24x8 terminal the Quick Add project picker covers the panel to list the projects, and picking one by arrow adds there.
+size 24 8
+file <<END
+Work:
+Home:
+END
+keys qq
+type Water plants
+keys <Space> /
+see Home
+keys <Down> <Enter>
+see Quick Add → Home
+keys <Enter>
+quit
+saved <<END
+Work:
+Home:
+	- Water plants
+END

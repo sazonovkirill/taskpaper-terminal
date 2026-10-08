@@ -1163,8 +1163,8 @@ impl Tui {
     }
 
     /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
-    /// `body`, just above the panel, while they are open (D-96). The conflict prompt covers
-    /// them.
+    /// `body`, just above the panel, or over the panel too when `body` is too short to show one of
+    /// its entries, while they are open (D-96). The conflict prompt covers them.
     fn draw_quick_add(&self, frame: &mut Frame, panel: Rect, body: Rect, theme: &Theme) {
         let Some(view) = self.state.quick_add().filter(|_| !self.state.in_conflict()) else {
             return;
@@ -1178,11 +1178,16 @@ impl Tui {
             let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
             let finder =
                 FinderPopup::new("Project", &picker, self.icons, &icon, theme).text_style(&text);
-            let height = finder.area(body).height;
+            let room = if body.height < FinderPopup::<ItemId>::LEAST_HEIGHT {
+                body.union(panel)
+            } else {
+                body
+            };
+            let height = finder.area(room).height;
             let above = Rect {
-                y: body.bottom().saturating_sub(height),
+                y: room.bottom().saturating_sub(height),
                 height,
-                ..body
+                ..room
             };
             draw_finder(frame, finder, above);
         }
