@@ -7,7 +7,7 @@ description: Use the real taskpaper-terminal app in a terminal the way a user wo
 
 The rules are in [the testing strategy](../../../docs/quality/testing-strategy.md#scenarios); this is the procedure.
 
-1. Build the binary: `cd app && cargo build --release` gives `app/target/release/tpt`.
+1. Build the binary: from the repository root, `cargo build --release --manifest-path app/Cargo.toml` gives `app/target/release/tpt`.
 2. Read the specs for the area you explore (`docs/specs/`, and the Decisions table of `docs/functional-requirements.md`, whose later decisions win).
 3. Start the app in tmux on a file of your own, with every folder it writes to in a temporary directory, and keep the pane open after it exits so a panic stays readable:
 

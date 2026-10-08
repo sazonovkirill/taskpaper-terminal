@@ -1,4 +1,8 @@
 # Choosing a project in the Navigator with the arrows and Enter zooms the pane to it and closes the window.
+config <<END
+sidebar_colors = false
+sidebar_flagged = false
+END
 file <<END
 Work:
 	- Write report

@@ -1,4 +1,8 @@
 # Left folds a project entry in the Navigator, and a filter still finds the sub-project hidden by the fold.
+config <<END
+sidebar_colors = false
+sidebar_flagged = false
+END
 file <<END
 Work:
 	Launch:

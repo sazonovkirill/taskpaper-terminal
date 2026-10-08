@@ -103,6 +103,8 @@ impl Launch<'_> {
             .env("XDG_STATE_HOME", self.home.join("state"))
             .env("LANG", "C.UTF-8")
             .env("TERM", "xterm-256color")
+            // The runner computes `{today}` in this time zone, so the app must see the same one.
+            .envs(std::env::var_os("TZ").map(|zone| ("TZ", zone)))
             .envs(self.env.iter().map(|(name, value)| (name, value)))
             .timeout(TIMEOUT)
             .arg(self.path)

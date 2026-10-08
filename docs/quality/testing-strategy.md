@@ -52,7 +52,7 @@ Unit tests never construct a `Terminal`. Integration tests never call private fu
 - Check screens with `terminal.backend().assert_buffer_lines([...])`, `assert_buffer(&expected)` and `assert_cursor_position(...)`, or with an `insta` snapshot: `insta::assert_snapshot!(terminal.backend())` for text, and `insta::assert_debug_snapshot!(terminal.backend().buffer())` when colors or modifiers matter, because the text snapshot drops styles.
 - Use a fixed terminal size in every test. Test layout at a few sizes, including a very small terminal, with `TestBackend::resize`.
 - Fixture `.taskpaper` files live under `app/tests/fixtures/` and are copied into the test's temporary directory before use; tests never modify fixtures in place.
-- Every integration test draws through `TestBackend`; none uses `CrosstermBackend` or another real backend. Only the end-to-end smoke tests below run in a real (pseudo-)terminal.
+- Every integration test draws through `TestBackend`; none uses `CrosstermBackend` or another real backend. Only the end-to-end smoke tests and the scenarios below run in a real (pseudo-)terminal.
 - End-to-end smoke tests are few, and [scenarios](#scenarios) cover what a user does in a real terminal: start, one key round trip, save, quit with the right exit code, and the terminal restored afterwards. They run the real binary (`env!("CARGO_BIN_EXE_tpt")`) in a pseudo-terminal, for example with `termlens`, and every wait has a timeout. Logic that can be checked through `TestBackend` is not tested here.
 
 ## Scenarios
@@ -67,7 +67,7 @@ Scenarios check the app the way a user meets it (owner, 2026-10-07): the real bi
 
 ## Fuzzing
 
-`app/tests/ui/fuzz.rs` feeds random sequences of key presses, pauses, pastes and resizes, drawn from every key the app binds and typical text, into the app through `TestBackend`, and checks invariants that hold whatever the keys do: the app does not panic while handling or drawing; the file it saves reopens and saves to the same text; and after `Esc` and one undo per step the saved file equals the one opened. `validate.sh all` runs a few dozen cases on a fixed seed, so it stays fast and deterministic. `bash app/scripts/validate.sh fuzz` runs a thousand cases in release mode on a fresh seed it prints (`PROPTEST_CASES` and `PROPTEST_RNG_SEED` override both); run it after changing input handling or editing, and commit the regression file proptest writes for a failure with the fix.
+`app/tests/ui/fuzz.rs` feeds random sequences of key presses, pauses, pastes and resizes, drawn from every key the app binds and typical text, into the app through `TestBackend`, and checks invariants that hold whatever the keys do: the app does not panic while handling or drawing; after quitting, the next launch shows the same outline as the app showed before (compared fully expanded on a screen large enough for the whole outline, as fold state, focus and the session's wrap setting are not saved); and after `Esc` and one undo per step the saved file equals the one opened. `validate.sh all` runs a few dozen cases on a fixed seed, so it stays fast and deterministic. `bash app/scripts/validate.sh fuzz` runs a thousand cases in release mode on a fresh seed it prints (`PROPTEST_CASES` and `PROPTEST_RNG_SEED` override both); run it after changing input handling or editing, and commit the regression file proptest writes for a failure with the fix.
 
 ## Seeing the app without a terminal
 
@@ -121,7 +121,7 @@ Agents write most of this project's code and tests, which brings specific failur
 - **No solutions shaped to the tests.** Implement behavior that is correct for all valid inputs. Hardcoded expected outputs, branches on fixture contents, custom `PartialEq` written to make an assertion pass and test-only behavior in production code are defects.
 - **Reviewers check the tests, not only the code.** Reviewers look specifically for edited or deleted assertions, special-cased outputs, weakened comparisons, tests that cannot fail, and listed edge cases without a test.
 - **Report evidence, not claims.** Record the exact commands run and their real exit status and output summary on the task. Never report a check that was not run on the final contents.
-- **Keep the suite fast.** Fast, deterministic tests run on every change; anything slow or timing-dependent stays in the small end-to-end set so the feedback loop stays short.
+- **Keep the suite fast.** Fast, deterministic tests run on every change; anything slow or timing-dependent stays in the small end-to-end set or the scenarios so the feedback loop stays short.
 
 ## Sources
 

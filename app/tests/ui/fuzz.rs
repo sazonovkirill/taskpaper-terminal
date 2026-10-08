@@ -11,6 +11,7 @@ use proptest::{
     sample::select,
     test_runner::{Config, RngSeed},
 };
+use ratatui::{Terminal, backend::TestBackend};
 use taskpaper_terminal::ui::Input;
 
 use crate::support::Harness;
@@ -170,6 +171,26 @@ fn back_to_navigate(app: &mut Harness) {
     app.settle();
 }
 
+/// Columns and rows enough for every outline a sequence makes in one pane, so that neither
+/// scrolling nor wrap, which a key toggles for the session only, changes what shows.
+const WIDE: u16 = 400;
+const TALL: u16 = 400;
+
+/// The screen above the status line on a new terminal of [`WIDE`] by [`TALL`], with every block
+/// expanded from home in the focused pane, without the focus and selection markers: fold state,
+/// focus and selection are not saved.
+fn whole_outline(app: &mut Harness) -> Vec<String> {
+    app.terminal = Terminal::new(TestBackend::new(WIDE, TALL)).expect("a test terminal");
+    app.send(Input::Terminal(Event::Resize(WIDE, TALL)));
+    back_to_navigate(app);
+    app.type_keys("gh+");
+    app.settle();
+    let buffer = app.render().buffer().clone();
+    (0..TALL - 1)
+        .map(|y| crate::support::line(&buffer, y).replace('▌', " "))
+        .collect()
+}
+
 /// The text of the file after leaving what is open and quitting, as the next launch reads it.
 fn saved_after_quitting(mut app: Harness) -> String {
     back_to_navigate(&mut app);
@@ -184,17 +205,17 @@ proptest! {
     #![proptest_config(config())]
 
     // N-REL-01, F-FILE-03: whatever the keys, the app neither panics nor saves a file that
-    // changes when it is opened and saved again.
+    // reads back as another outline: the next launch shows what the user left.
     #[test]
-    fn any_keys_save_a_file_that_reopens_unchanged(
+    fn any_keys_save_an_outline_the_next_launch_shows_the_same(
         outline in outline(),
         actions in proptest::collection::vec(action(), 1..80),
     ) {
-        let app = play(outline, &actions);
-        let saved = saved_after_quitting(app);
-        let again = Harness::with_text(&saved, 100, 30);
-        let resaved = saved_after_quitting(again);
-        prop_assert_eq!(resaved, saved);
+        let mut app = play(outline, &actions);
+        prop_assume!(!app.tui.should_quit());
+        let left = whole_outline(&mut app);
+        let mut next = app.reopen(100, 30);
+        prop_assert_eq!(whole_outline(&mut next), left);
     }
 
     // FR-OPS-08: undoing every step returns the file to what was opened.

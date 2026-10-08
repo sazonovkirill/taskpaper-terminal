@@ -7,7 +7,7 @@ Work:
 END
 keys G .
 see 󰋜 › Work › Report
-keys <C-q>
+quit
 outside <<END
 Errands:
 	- Post office
