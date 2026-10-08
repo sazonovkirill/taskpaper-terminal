@@ -323,6 +323,10 @@ mod tests {
         for (hint, what) in [
             ("the block focus lands on flashes", "the landing flash"),
             ("animations, autosave delay", "the animations setting"),
+            (
+                "its text eases into the done style",
+                "the ease of a completed task",
+            ),
         ] {
             assert!(
                 rows.iter()

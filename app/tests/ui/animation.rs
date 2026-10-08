@@ -1,11 +1,16 @@
 //! Step 7.1: the landing flash where focus jumps, the highlight of what an undo, a paste or a
 //! reload changed, the flash of a refused key, the spinner of a slow save and the `animations`
-//! setting (FR-UI-11, UI-ANIM-01–03, UI-ANIM-08, ui.md §9).
+//! setting (FR-UI-11, UI-ANIM-01–03, UI-ANIM-08, ui.md §9). Step 7.2: the ease of a completed
+//! block, the fade-in of a new root and of expanded rows, the fade-out of a status message and
+//! the crossfade between previewed themes (UI-ANIM-04–07, UI-ANIM-09).
 
 use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use ratatui::{buffer::Cell, style::Color};
+use ratatui::{
+    buffer::Cell,
+    style::{Color, Modifier},
+};
 use taskpaper_terminal::ui::ColorSupport;
 
 use crate::support::{Harness, line};
@@ -107,10 +112,12 @@ fn moving_focus_one_block_does_not_flash() {
     assert_eq!(frame(&mut app), still("j"));
     assert_eq!(app.tui.deadline(), None);
     app.type_keys("x");
+    frame(&mut app);
+    wait(&mut app, 200);
     assert_eq!(
         frame(&mut app),
         still("jx"),
-        "nor does completing the focused block"
+        "nor does completing the focused block, once its text has eased"
     );
     app.type_keys("dd");
     assert_eq!(
@@ -331,16 +338,13 @@ fn an_animations_setting_that_is_not_a_level_is_reported() {
 }
 
 /// The frames of the app on `text` in Nord on a truecolor screen 60×14, with animations full and
-/// off, after `keys` and then Enter when `enter` says so.
-fn full_and_off(text: &str, keys: &str, enter: bool) -> (Vec<Vec<Cell>>, Vec<Vec<Cell>>) {
+/// off, after `act`.
+fn full_and_off(text: &str, act: impl Fn(&mut Harness)) -> (Vec<Vec<Cell>>, Vec<Vec<Cell>>) {
     let [full, off] = ["full", "off"].map(|animations| {
         let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
         let mut app =
             Harness::with_config(text, &settings, 60, 14).with_colors(ColorSupport::TrueColor);
-        app.type_keys(keys);
-        if enter {
-            app.press(KeyCode::Enter, KeyModifiers::NONE);
-        }
+        act(&mut app);
         frame(&mut app)
     });
     (full, off)
@@ -348,18 +352,29 @@ fn full_and_off(text: &str, keys: &str, enter: bool) -> (Vec<Vec<Cell>>, Vec<Vec
 
 // UI-ANIM-01, D-80, ui.md §9.2
 #[test]
-fn opening_a_special_view_flashes_the_block_focus_lands_on_but_not_its_heading() {
+fn a_jump_in_a_special_view_flashes_the_block_focus_lands_on_but_not_its_heading() {
     let text =
         "- Post office @start(2026-10-06)\n- Bank @due(2026-10-08)\n- Taxes @due(2026-10-10)\n";
-    let (full, off) = full_and_off(text, "gU", false);
-    assert!(
-        differ_in_row(&full, &off, 3),
-        "Tomorrow's heading is in row 2, the block in row 3"
-    );
-    let (full, off) = full_and_off(text, "gUG", false);
+    let last = |app: &mut Harness| {
+        app.type_keys("gU");
+        frame(app);
+        wait(app, 250);
+        app.type_keys("G");
+    };
+    let (full, off) = full_and_off(text, last);
     assert!(
         differ_in_row(&full, &off, 9),
         "Saturday's heading is in row 8"
+    );
+    let (full, off) = full_and_off(text, |app| {
+        last(app);
+        frame(app);
+        wait(app, 250);
+        app.type_keys("gg");
+    });
+    assert!(
+        differ_in_row(&full, &off, 3),
+        "Tomorrow's heading is in row 2, the block in row 3"
     );
 }
 
@@ -367,9 +382,292 @@ fn opening_a_special_view_flashes_the_block_focus_lands_on_but_not_its_heading()
 #[test]
 fn quick_add_highlights_the_block_it_adds() {
     let text = "INBOX:\n\t- old\n- loose\n";
-    let (full, off) = full_and_off(text, "GqiIdea", true);
+    let (full, off) = full_and_off(text, |app| {
+        app.type_keys("GqiIdea");
+        app.press(KeyCode::Enter, KeyModifiers::NONE);
+    });
     assert!(
         differ_in_row(&full, &off, 4),
         "the block added below `old`, away from the focus"
     );
+}
+
+/// The rows in which the two frames differ.
+fn differing(left: &[Vec<Cell>], right: &[Vec<Cell>]) -> Vec<usize> {
+    left.iter()
+        .zip(right)
+        .enumerate()
+        .filter(|(_, (left, right))| left != right)
+        .map(|(row, _)| row)
+        .collect()
+}
+
+/// The app on `text` in Nord on a truecolor screen 60×10 with `animations`.
+fn on(text: &str, animations: &str) -> Harness {
+    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+    Harness::with_config(text, &settings, 60, 10).with_colors(ColorSupport::TrueColor)
+}
+
+/// The apps on `text` with animations full and off, each after `keys`, a frame and `millis`.
+fn both(text: &str, keys: &str, millis: u64) -> (Harness, Harness) {
+    let [mut full, mut off] = ["full", "off"].map(|animations| on(text, animations));
+    for app in [&mut full, &mut off] {
+        app.type_keys(keys);
+        frame(app);
+        wait(app, millis);
+    }
+    (full, off)
+}
+
+/// How far apart two RGB colors are, summed over their channels.
+fn distance(left: Color, right: Color) -> u32 {
+    match (left, right) {
+        (Color::Rgb(red, green, blue), Color::Rgb(other_red, other_green, other_blue)) => [
+            red.abs_diff(other_red),
+            green.abs_diff(other_green),
+            blue.abs_diff(other_blue),
+        ]
+        .into_iter()
+        .map(u32::from)
+        .sum(),
+        _ => u32::MAX,
+    }
+}
+
+// FR-UI-11, UI-ANIM-04, ui.md §9.2
+#[test]
+fn completing_a_project_eases_its_text_and_the_text_inside_it_into_the_done_style() {
+    let text = "P:\n\t- a\n- b\n";
+    let (mut full, mut off) = both(text, "", 0);
+    for app in [&mut full, &mut off] {
+        app.type_keys("x");
+    }
+    let (eased, done) = (frame(&mut full), frame(&mut off));
+    assert_eq!(differing(&eased, &done), [2, 3], "P and the task inside it");
+    let cell = &eased[2][2];
+    assert!(
+        !cell.modifier.contains(Modifier::DIM) && cell.modifier.contains(Modifier::CROSSED_OUT),
+        "struck through at once, its dimming still to come: {cell:?}"
+    );
+    wait(&mut full, 100);
+    let easing = frame(&mut full);
+    assert_eq!(differing(&easing, &done), [2, 3]);
+    assert_ne!(easing, eased, "on its way");
+    wait(&mut full, 100);
+    assert_eq!(frame(&mut full), done, "done after 200 ms");
+    for app in [&mut full, &mut off] {
+        app.type_keys("x");
+    }
+    let (eased, undone) = (frame(&mut full), frame(&mut off));
+    assert_eq!(
+        differing(&eased, &undone),
+        [2, 3],
+        "uncompleting eases back"
+    );
+    wait(&mut full, 200);
+    assert_eq!(frame(&mut full), undone);
+    let mut reduced = on(text, "reduced");
+    reduced.type_keys("x");
+    assert_eq!(frame(&mut reduced), done, "reduced keeps only the flashes");
+}
+
+// FR-UI-11, UI-ANIM-05, ui.md §9.2
+#[test]
+fn zooming_in_fades_the_pane_in_from_the_top_and_flashes_the_new_crumb() {
+    let text = "A:\n\t- b\n\t- c\n\t- d\n- e\n";
+    let (mut full, mut off) = both(text, ".", 30);
+    let (fading, zoomed) = (frame(&mut full), frame(&mut off));
+    assert_eq!(
+        differing(&fading, &zoomed),
+        [0, 2, 3, 4, 5],
+        "the crumb and every row with text"
+    );
+    let text_fg = |frame: &[Vec<Cell>], row: usize| {
+        frame[row]
+            .iter()
+            .find(|cell| cell.symbol() != " " && cell.symbol() != "▌")
+            .map(|cell| cell.fg)
+            .unwrap()
+    };
+    assert!(
+        distance(text_fg(&fading, 3), text_fg(&zoomed, 3))
+            < distance(text_fg(&fading, 5), text_fg(&zoomed, 5)),
+        "the top is further in than the rows below it"
+    );
+    wait(&mut full, 100);
+    let flashing = frame(&mut full);
+    assert_eq!(
+        differing(&flashing, &zoomed),
+        [0, 3],
+        "after 120 ms only the crumb and the landing flash on b are left"
+    );
+    let header: String = zoomed[0].iter().map(Cell::symbol).collect();
+    let crumb = header.chars().position(|symbol| symbol == 'A').unwrap();
+    let columns: Vec<usize> = (0..zoomed[0].len())
+        .filter(|&column| flashing[0][column] != zoomed[0][column])
+        .collect();
+    assert_eq!(columns, [crumb], "the flash covers the new crumb alone");
+    wait(&mut full, 120);
+    assert_eq!(frame(&mut full), zoomed);
+    let mut reduced = on(text, "reduced");
+    reduced.type_keys(".");
+    assert_eq!(
+        differing(&frame(&mut reduced), &zoomed),
+        [3],
+        "reduced keeps only the landing flash"
+    );
+}
+
+// FR-UI-11, UI-ANIM-06, ui.md §9.2
+#[test]
+fn expanding_a_block_fades_in_the_rows_it_shows() {
+    let text = "A:\n\t- b\n\t- c\n- d\n";
+    let (mut full, mut off) = both(text, "h", 250);
+    for app in [&mut full, &mut off] {
+        app.type_keys("l");
+    }
+    let expanded = frame(&mut off);
+    assert_eq!(differing(&frame(&mut full), &expanded), [3, 4], "b and c");
+    wait(&mut full, 120);
+    assert_eq!(frame(&mut full), expanded);
+}
+
+/// The status line of an app 10 rows tall.
+fn status(app: &mut Harness) -> String {
+    line(app.render().buffer(), 9)
+}
+
+/// The app on a line in `colors` with `animations`, wide enough for the status line to show a
+/// notice.
+fn wide(animations: &str, colors: ColorSupport) -> Harness {
+    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+    Harness::with_config("- a\n", &settings, 120, 10).with_colors(colors)
+}
+
+// FR-UI-11, UI-ANIM-07, ui.md §9.2
+#[test]
+fn a_status_message_fades_out_when_its_time_is_up() {
+    let mut app = wide("full", ColorSupport::TrueColor);
+    app.type_keys("gi");
+    assert!(
+        status(&mut app).ends_with("· No INBOX project in the Navigator"),
+        "{}",
+        status(&mut app)
+    );
+    let shown = app.render().buffer().clone();
+    wait(&mut app, 10_000);
+    assert!(
+        status(&mut app).ends_with("· No INBOX project in the Navigator"),
+        "kept while it fades"
+    );
+    assert_eq!(
+        app.tui.deadline(),
+        Some(Duration::from_millis(10_000) + Duration::from_micros(16_667))
+    );
+    wait(&mut app, 150);
+    let fading = app.render().buffer().clone();
+    let x = u16::try_from(status(&mut app).chars().count() - 2).unwrap();
+    assert!(
+        distance(fading[(x, 9)].fg, fading[(x, 9)].bg)
+            < distance(shown[(x, 9)].fg, shown[(x, 9)].bg),
+        "nearer the background half way"
+    );
+    wait(&mut app, 150);
+    assert!(!status(&mut app).contains("No INBOX"), "gone after 300 ms");
+    assert_eq!(app.tui.deadline(), None);
+    for (animations, colors) in [
+        ("reduced", ColorSupport::TrueColor),
+        ("full", ColorSupport::Ansi),
+    ] {
+        let mut app = wide(animations, colors);
+        app.type_keys("gi");
+        wait(&mut app, 10_000);
+        assert!(
+            !status(&mut app).contains("No INBOX"),
+            "it vanishes: {animations}, {colors:?}"
+        );
+        assert_eq!(app.tui.deadline(), None, "{animations}, {colors:?}");
+    }
+}
+
+// FR-UI-11, UI-ANIM-09, FR-UI-06, ui.md §9.2
+#[test]
+fn moving_in_the_theme_picker_crossfades_to_the_previewed_theme() {
+    let (mut full, mut off) = both("- a\n", "", 0);
+    for app in [&mut full, &mut off] {
+        app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+        frame(app);
+        app.press(KeyCode::Down, KeyModifiers::NONE);
+    }
+    let previewed = frame(&mut off);
+    let crossfading = frame(&mut full);
+    assert_ne!(crossfading, previewed, "the old theme's colors linger");
+    wait(&mut full, 150);
+    assert_eq!(frame(&mut full), previewed, "for 150 ms");
+    for app in [&mut full, &mut off] {
+        app.press(KeyCode::Esc, KeyModifiers::NONE);
+    }
+    let back = frame(&mut off);
+    assert_ne!(frame(&mut full), back, "Esc fades back");
+    wait(&mut full, 150);
+    assert_eq!(frame(&mut full), back);
+    let mut ansi = colored("full", ColorSupport::Ansi);
+    let mut plain = colored("off", ColorSupport::Ansi);
+    for app in [&mut ansi, &mut plain] {
+        app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+        frame(app);
+        app.press(KeyCode::Down, KeyModifiers::NONE);
+    }
+    assert_eq!(
+        frame(&mut ansi),
+        frame(&mut plain),
+        "16 colors switch at once"
+    );
+}
+
+// FR-UI-11, UI-ANIM-09, FR-SET-02, ui.md §9.2
+#[test]
+fn cycling_the_theme_in_the_settings_window_crossfades_to_it() {
+    let (mut full, mut off) = both("- a\n", "g,", 250);
+    for app in [&mut full, &mut off] {
+        app.type_keys("l");
+    }
+    // Each app writes its own settings file, whose path the window shows, so only the colors
+    // compare.
+    let colors = |frame: Vec<Vec<Cell>>| -> Vec<(Color, Color)> {
+        frame
+            .iter()
+            .flatten()
+            .map(|cell| (cell.fg, cell.bg))
+            .collect()
+    };
+    let cycled = colors(frame(&mut off));
+    assert_ne!(
+        colors(frame(&mut full)),
+        cycled,
+        "the old theme's colors linger"
+    );
+    wait(&mut full, 150);
+    assert_eq!(colors(frame(&mut full)), cycled, "for 150 ms");
+}
+
+// FR-UI-11, UI-ANIM-06, FR-KEY-05
+#[test]
+fn a_click_on_the_fold_marker_of_another_pane_fades_in_the_rows_it_shows_there() {
+    let (mut full, mut off) = both("A:\n\t- b\n- c\n", "h", 250);
+    for app in [&mut full, &mut off] {
+        app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        app.type_keys("v");
+        frame(app);
+        wait(app, 250);
+        app.click(5, 2);
+    }
+    let expanded = frame(&mut off);
+    assert_eq!(
+        differing(&frame(&mut full), &expanded),
+        [2, 3],
+        "the landing flash on A in the left pane and b fading in under it"
+    );
+    wait(&mut full, 120);
+    assert_eq!(differing(&frame(&mut full), &expanded), [2]);
 }

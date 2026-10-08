@@ -33,7 +33,7 @@ use crate::{
     },
     document::ItemId,
 };
-use animation::{Animator, Before, DrawnPane, Shown};
+use animation::{Animator, Before, DrawnPane, Intent, Shown};
 use config::{Config, WriteError};
 use effects::{BackupSettings, Browser, Clipboard, FileWatch, Io, Recovery, RecoveryError};
 use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
@@ -519,9 +519,9 @@ impl Tui {
     /// Sends the core `message` and returns the effects it asks for, letting the animator take in
     /// what it changed and whether it refused it.
     fn update(&mut self, message: Message) -> Vec<Effect> {
-        let brought = animation::brings_blocks(&message);
+        let intent = Intent::of(&message);
         let effects = self.state.update(message);
-        self.animator.observe(brought, &self.state);
+        self.animator.observe(intent, &self.state);
         effects
     }
 
@@ -731,6 +731,8 @@ impl Tui {
             self.draw_conflict(frame, main);
         }
         paint_defaults(frame.buffer_mut(), &theme);
+        let previewing = self.state.theme_picker().is_some() || self.state.settings().is_some();
+        self.animator.finish(frame.buffer_mut(), theme, previewing);
         hide_cut_graphemes(frame.buffer_mut());
     }
 
@@ -855,6 +857,7 @@ impl Tui {
             }
             Location::View(view) => widgets::view_header(view, self.icons, &theme),
         };
+        let crumb = on_screen.then(|| last_crumb(pane, &line, crumbs, self.icons));
         line.render(crumbs, buf);
         if !pane.focused {
             buf.set_style(crumbs, Style::new().dim());
@@ -864,7 +867,7 @@ impl Tui {
             widgets::rule_style(&theme),
         )
         .render(separator, buf);
-        self.draw_outline(buf, outline, pane, on_screen)
+        self.draw_outline(buf, outline, pane, crumb)
     }
 
     /// The conflict prompt over `area`, its diff scrolled no further than its last page.
@@ -929,14 +932,15 @@ impl Tui {
 
     /// `pane`'s outline in `area`, scrolled to keep its focused block in view, which is marked
     /// when the pane has the keys, and drawn as its editor while editing, telling the animator
-    /// where its blocks are when `on_screen` says `area` is where it shows; returns, for the pane
-    /// with the keys, where the caret and the focused block's text are on screen.
+    /// where its blocks are, and that its last crumb is at `crumb`, when it says `area` is where
+    /// it shows; returns, for the pane with the keys, where the caret and the focused block's text
+    /// are on screen.
     fn draw_outline(
         &mut self,
         buf: &mut Buffer,
         area: Rect,
         pane: &PaneView,
-        on_screen: bool,
+        crumb: Option<Rect>,
     ) -> FocusedPane {
         let rows = &pane.rows;
         let focused = pane
@@ -989,7 +993,7 @@ impl Tui {
             )
             .offset(scroll.line)
             .render(area, buf);
-        if on_screen {
+        if let Some(crumb) = crumb {
             let rows = block_lines(area, scroll.line, &shown, (scroll.row..).map(&row_height));
             self.animator.drawn(DrawnPane {
                 id: pane.id,
@@ -1001,6 +1005,7 @@ impl Tui {
                     rows: pane.rows.clone(),
                 },
                 rows,
+                crumb,
             });
         }
         if !pane.focused {
@@ -1178,8 +1183,9 @@ impl Tui {
 
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending
     /// key sequence ([ui.md §1](../../../docs/specs/ui.md#1-layout)).
-    fn draw_status(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
+    fn draw_status(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let icons = self.icons;
+        let theme = self.palette();
         let (icon, mode) = match self.state.mode() {
             Mode::Navigate => (Icon::Navigate, "NAVIGATE"),
             Mode::Edit => (Icon::Edit, "EDIT"),
@@ -1191,16 +1197,37 @@ impl Tui {
         if self.state.origin() == Origin::Temporary {
             spans.push(" · temporary".into());
         }
-        spans.extend(widgets::file_status(
-            self.state.save_state(),
-            self.state.access(),
-            self.state.gone_from_disk(),
-            self.state.confirming_quit(),
-            self.state.notice(),
-            icons,
-            &self.palette(),
-        ));
-        frame.render_widget(Line::from(spans), area);
+        let status = |notice| {
+            widgets::file_status(
+                self.state.save_state(),
+                self.state.access(),
+                self.state.gone_from_disk(),
+                self.state.confirming_quit(),
+                notice,
+                icons,
+                &theme,
+            )
+        };
+        // A status message whose time is up is drawn while it fades out (UI-ANIM-07).
+        let notice = self
+            .state
+            .notice()
+            .or_else(|| self.animator.fading_notice(&theme));
+        let quiet = Line::from_iter(spans.iter().cloned().chain(status(None))).width();
+        spans.extend(status(notice));
+        let line = Line::from(spans);
+        let quiet = u16::try_from(quiet).unwrap_or(u16::MAX);
+        let notice = Rect {
+            x: area.x.saturating_add(quiet),
+            width: u16::try_from(line.width())
+                .unwrap_or(u16::MAX)
+                .saturating_sub(quiet),
+            ..area
+        }
+        .intersection(area);
+        frame.render_widget(line, area);
+        self.animator
+            .fade_status(frame.buffer_mut(), notice, &theme);
         // The pending keys are what the user is typing right now, so they cover the end of a
         // long path rather than the other way round.
         if let Some(spinner) = self.animator.spinner(icons) {
@@ -1313,6 +1340,28 @@ fn copy(from: &Buffer, skipped: u16, to: &mut Buffer, area: Rect) {
             }
         }
     }
+}
+
+/// Where on screen `pane`'s header `line`, drawn in `crumbs` with `icons`, shows the place the
+/// pane is: its last crumb, or a special view's name (UI-ANIM-05).
+fn last_crumb(pane: &PaneView, line: &Line, crumbs: Rect, icons: IconSet) -> Rect {
+    let width = u16::try_from(line.width()).unwrap_or(u16::MAX);
+    let last = match pane.location {
+        Location::Outline(_) => {
+            let last = pane
+                .breadcrumbs
+                .last()
+                .map_or(Icon::Home.glyph(icons), String::as_str);
+            u16::try_from(Line::from(last).width()).unwrap_or(u16::MAX)
+        }
+        Location::View(_) => width,
+    };
+    Rect {
+        x: crumbs.x.saturating_add(width.saturating_sub(last)),
+        width: last,
+        ..crumbs
+    }
+    .intersection(crumbs)
 }
 
 /// The screen lines in `area` of the blocks of `shown`, drawn from `line` lines into the first,
