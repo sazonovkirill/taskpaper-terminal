@@ -197,6 +197,97 @@ const SCENARIOS: &[Scenario] = &[
         },
     },
     Scenario {
+        name: "gT then H (Today)",
+        run: |app| app.special_view("gT"),
+    },
+    Scenario {
+        name: "gU then H (Upcoming)",
+        run: |app| app.special_view("gU"),
+    },
+    Scenario {
+        name: "gO then H (Overdue)",
+        run: |app| app.special_view("gO"),
+    },
+    Scenario {
+        name: "gC then H (Colors)",
+        run: |app| app.special_view("gC"),
+    },
+    Scenario {
+        name: "gL then H (Logbook)",
+        run: |app| app.special_view("gL"),
+    },
+    Scenario {
+        name: "gS then H (Starred)",
+        run: |app| app.special_view("gS"),
+    },
+    Scenario {
+        name: "gF then H (Flagged)",
+        run: |app| app.special_view("gF"),
+    },
+    Scenario {
+        name: "x in the Today view",
+        run: |app| {
+            app.keys("gT");
+            let done = app.keys("x").max(app.keys("x"));
+            app.keys("H");
+            done
+        },
+    },
+    Scenario {
+        name: "Ctrl+G, Esc (Navigator)",
+        run: |app| {
+            // A change since the Navigator last opened, as there usually is.
+            app.keys("x");
+            let open = app.key(KeyCode::Char('g'), KeyModifiers::CONTROL);
+            let close = app.key(KeyCode::Esc, KeyModifiers::NONE);
+            open.max(close)
+        },
+    },
+    Scenario {
+        name: "type in the Navigator",
+        run: |app| {
+            app.key(KeyCode::Char('g'), KeyModifiers::CONTROL);
+            let typed = app.keys("a");
+            let erased = app.key(KeyCode::Backspace, KeyModifiers::NONE);
+            app.key(KeyCode::Esc, KeyModifiers::NONE);
+            typed.max(erased)
+        },
+    },
+    Scenario {
+        name: "qq, type, Esc (Quick Add)",
+        run: |app| {
+            let open = app.keys("qq");
+            let typed = app.keys("c");
+            let left = app.key(KeyCode::Esc, KeyModifiers::NONE);
+            open.max(typed).max(left)
+        },
+    },
+    Scenario {
+        name: "Quick Add to a project",
+        run: |app| {
+            app.keys("x");
+            let open = app.keys("qq");
+            let typed = app.keys("c ");
+            let picker = app.keys("/");
+            let chosen = app.key(KeyCode::Enter, KeyModifiers::NONE);
+            let added = app.key(KeyCode::Enter, KeyModifiers::NONE);
+            app.keys("z");
+            open.max(typed).max(picker).max(chosen).max(added)
+        },
+    },
+    Scenario {
+        name: "gs, type, Esc (Go to Symbol)",
+        run: |app| app.finder("gs"),
+    },
+    Scenario {
+        name: "gP, type, Esc (Go to Project)",
+        run: |app| app.finder("gP"),
+    },
+    Scenario {
+        name: "gm, type, Esc (Move to)",
+        run: |app| app.finder("gm"),
+    },
+    Scenario {
         name: "autosave",
         run: |app| {
             app.keys("x");
@@ -256,6 +347,24 @@ impl App {
                 tui.handle(Input::Terminal(key), now);
             }
         })
+    }
+
+    /// Opens a special view with `keys` after a change, as it usually follows one, and goes back
+    /// to the outline; returns the slower of the two.
+    fn special_view(&mut self, keys: &str) -> Duration {
+        self.keys("x");
+        self.keys(keys).max(self.keys("H"))
+    }
+
+    /// Opens a finder with `keys` after a change, types into it, erases that and closes it;
+    /// returns the slowest of these.
+    fn finder(&mut self, keys: &str) -> Duration {
+        self.keys("x");
+        let open = self.keys(keys);
+        let typed = self.keys("t");
+        let erased = self.key(KeyCode::Backspace, KeyModifiers::NONE);
+        let closed = self.key(KeyCode::Esc, KeyModifiers::NONE);
+        open.max(typed).max(erased).max(closed)
     }
 
     /// Presses `code` with `modifiers` and draws the frame; returns how long that took.
