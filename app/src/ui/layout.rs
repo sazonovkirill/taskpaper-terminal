@@ -84,7 +84,8 @@ pub fn scroll_offset(offset: usize, focus: Range<usize>, height: usize, len: usi
     // A view with no lines has nothing to keep visible; treating it as one line keeps the
     // bounds below ordered.
     let height = height.max(1);
-    let margin = SCROLL_MARGIN.min((height - 1) / 2);
+    // The margins give way to the focused block's own lines.
+    let margin = SCROLL_MARGIN.min(height.saturating_sub(focus.len()) / 2);
     let highest = focus.start.saturating_sub(margin);
     let lowest = (focus.end + margin).saturating_sub(height).min(highest);
     offset
@@ -482,11 +483,19 @@ mod tests {
         assert_eq!(scroll_offset(0, 2..5, 10, 100), 0);
         assert_eq!(scroll_offset(20, 12..15, 10, 100), 10, "two lines above it");
         assert_eq!(
+            scroll_offset(0, 3..7, 6, 100),
+            2,
+            "the margins give way to its lines"
+        );
+        assert_eq!(scroll_offset(9, 3..7, 6, 100), 2);
+        assert_eq!(scroll_offset(0, 3..8, 6, 100), 2, "it fills the view");
+        assert_eq!(scroll_offset(9, 3..8, 6, 100), 3);
+        assert_eq!(
             scroll_offset(0, 20..40, 10, 100),
-            18,
+            20,
             "taller than the view"
         );
-        assert_eq!(scroll_offset(30, 20..40, 10, 100), 18);
+        assert_eq!(scroll_offset(30, 20..40, 10, 100), 20);
     }
 
     #[test]

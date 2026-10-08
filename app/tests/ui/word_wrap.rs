@@ -94,6 +94,24 @@ fn scrolling_keeps_every_line_of_the_focused_wrapped_block_in_view() {
     assert_eq!(shown(&mut app)[..2], ["- Task 01 has", "  two lines"]);
 }
 
+// FR-UI-05, navigation §2
+#[test]
+fn the_scroll_margin_gives_way_to_the_lines_of_the_focused_wrapped_block() {
+    let text =
+        "- a\n- b\n- Pack the power adapter and the spare charging cables for all\n- c\n- d\n";
+    let mut app = wrapping(text, 25, 8);
+    app.type_keys("jj");
+    assert_eq!(
+        focused_rows(&mut app),
+        [
+            "- Pack the power",
+            "  adapter and the spare",
+            "  charging cables for",
+            "  all"
+        ]
+    );
+}
+
 // FR-UI-05, FR-NAV-01
 #[test]
 fn paging_keeps_the_focused_wrapped_block_in_its_place_on_screen() {
