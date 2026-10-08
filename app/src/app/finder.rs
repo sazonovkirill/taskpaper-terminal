@@ -174,7 +174,7 @@ impl<T: Clone> Finder<T> {
             ranked: Vec::new(),
             selected: 0,
         };
-        finder.rank();
+        finder.rank(false);
         finder
     }
 
@@ -219,7 +219,7 @@ impl<T: Clone> Finder<T> {
         T: PartialEq,
     {
         self.candidates = candidates;
-        self.rank();
+        self.rank(false);
         if let Some(value) = highlighted {
             self.highlight(value);
         }
@@ -227,8 +227,10 @@ impl<T: Clone> Finder<T> {
 
     /// Ranks the candidates the query matches: by tier, then by how well their text matches,
     /// then in the order given. Each word of the query must match, fuzzily, ignoring case unless
-    /// it has a capital (navigation.md §8); characters such as `!` or `^` match themselves.
-    fn rank(&mut self) {
+    /// it has a capital (navigation.md §8); characters such as `!` or `^` match themselves. With
+    /// `narrowed`, only those matched before are gone through, as a longer query matches none
+    /// of the others (N-PERF-02).
+    fn rank(&mut self, narrowed: bool) {
         let pattern = Pattern::new(
             &self.query,
             CaseMatching::Smart,
@@ -260,30 +262,38 @@ impl<T: Clone> Finder<T> {
         }
         let mut matcher = Matcher::new(Config::DEFAULT);
         let mut buffer = Vec::new();
-        let mut scored: Vec<(usize, u8, u32)> = self
-            .candidates
-            .iter()
-            .enumerate()
-            .filter_map(|(index, candidate)| {
-                let text = Utf32Str::new(&candidate.text, &mut buffer);
-                let score = pattern.score(text, &mut matcher)?;
-                Some((index, candidate.tier, score))
-            })
-            .collect();
-        scored.sort_by_key(|&(_, tier, score)| (tier, Reverse(score)));
-        self.ranked = scored.into_iter().map(|(index, _, _)| index).collect();
+        let candidates = &self.candidates;
+        let mut score = |index: usize| {
+            let candidate = candidates.get(index)?;
+            let text = Utf32Str::new(&candidate.text, &mut buffer);
+            let score = pattern.score(text, &mut matcher)?;
+            Some((candidate.tier, Reverse(score), index))
+        };
+        let mut scored: Vec<_> = if narrowed {
+            self.ranked
+                .iter()
+                .filter_map(|&index| score(index))
+                .collect()
+        } else {
+            (0..candidates.len()).filter_map(score).collect()
+        };
+        scored.sort_unstable();
+        self.ranked = scored.into_iter().map(|(_, _, index)| index).collect();
     }
 
     /// Applies `input`, and returns how it closed the finder, or `None` while it stays open.
     pub(super) fn input(&mut self, input: MenuInput) -> Option<Picked<T>> {
         match input {
             MenuInput::Type(c) => {
+                // A space after a backslash is one to match rather than a break between words,
+                // so the query no longer asks for the backslash.
+                let narrowed = !self.query.ends_with('\\');
                 self.query.push(c);
-                self.rank();
+                self.rank(narrowed);
             }
             MenuInput::Erase => {
                 if self.query.pop().is_some() {
-                    self.rank();
+                    self.rank(false);
                 }
             }
             MenuInput::Previous => self.selected = self.selected.saturating_sub(1),
@@ -376,6 +386,37 @@ mod tests {
         typed(&mut finder, "zz");
         assert_eq!(listed(&finder), (vec![], 0));
         assert_eq!(finder.input(MenuInput::Choose), None, "nothing to choose");
+    }
+
+    // FR-NAV-05, N-PERF-02
+    #[test]
+    fn typing_on_ranks_as_the_whole_query_typed_at_once() {
+        let candidates = || {
+            Finder::new(vec![
+                candidate(1, "ab cd", 1),
+                candidate(2, "cd ab", 1),
+                candidate(3, "a\\b", 1),
+                candidate(4, "a b", 1),
+                candidate(5, "Abc", 0),
+                candidate(6, "xaybxc", 1),
+                candidate(7, "abc", 1),
+            ])
+        };
+        for query in ["abc", "ab c", "aB", "a\\ ", "a\\ b", "a\\b", "cd ab"] {
+            let mut typed_on = candidates();
+            typed(&mut typed_on, query);
+            let mut at_once = candidates();
+            at_once.query = query.to_owned();
+            at_once.rank(false);
+            assert_eq!(listed(&typed_on), listed(&at_once), "{query:?}");
+        }
+        let mut finder = candidates();
+        typed(&mut finder, "a\\ b");
+        assert_eq!(
+            listed(&finder).0,
+            [4],
+            "a space after a backslash matches one"
+        );
     }
 
     #[test]
@@ -476,5 +517,17 @@ mod tests {
         finder.input(MenuInput::Next);
         finder.relist(relisted(), None);
         assert_eq!(listed(&finder), (vec![5, 1, 3], 0));
+    }
+
+    // FR-NAV-05, N-PERF-02
+    #[test]
+    fn a_relist_ranks_every_new_candidate_and_typing_on_narrows_those() {
+        let mut finder = Finder::new(vec![candidate(1, "Buy milk", 1)]);
+        typed(&mut finder, "a");
+        assert_eq!(listed(&finder).0, Vec::<u8>::new());
+        finder.relist(vec![candidate(2, "Bake", 1), candidate(3, "Wash", 1)], None);
+        assert_eq!(listed(&finder).0, [2, 3]);
+        typed(&mut finder, "s");
+        assert_eq!(listed(&finder).0, [3]);
     }
 }
