@@ -16,7 +16,7 @@ Each row carries: block id, display depth (relative to the zoom block) and, when
 
 - In navigate mode each pane has one **focused block**. Motions: next/previous visible block, parent, first/last child, next/previous sibling, first/last block, page up/down.
 - If the focused block disappears (collapsed ancestor, hidden as done, deleted, changed in another pane), focus moves to the next visible block, else the previous, else the parent.
-- The UI scrolls each pane to keep the focused block visible, with a margin of 2 rows when space allows. Page up/down messages carry the pane's height in rows.
+- The UI scrolls each pane to keep the focused block visible, with a margin of 2 rows when space allows. Page up/down messages carry how many rows a page passes: the rows it moves past, from the focused one down or from the one above it up, that fill no more than the pane's height in screen lines, and at least one, so a page of wrapped rows skips no line the pane did not show (FR-UI-05).
 
 ### 2.1 Selection (FR-OPS-01)
 

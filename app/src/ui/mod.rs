@@ -92,8 +92,10 @@ pub struct Tui {
     pane_width: u16,
     /// The width of the strip of panes at the last draw, the most a pane is widened to.
     strip_width: u16,
-    /// The focused pane's outline height at the last draw, which a page motion moves.
-    page_rows: usize,
+    /// The rows of the focused pane's outline a page down motion moves past, from the last draw.
+    page_down_rows: usize,
+    /// The rows of the focused pane's outline a page up motion moves past, from the last draw.
+    page_up_rows: usize,
     /// The outline line the focused block started on at the last draw, counted from the top of
     /// the screen.
     focus_line: Option<usize>,
@@ -166,7 +168,8 @@ impl Tui {
             strip_scroll: 0,
             pane_width: 0,
             strip_width: 0,
-            page_rows: 0,
+            page_down_rows: 0,
+            page_up_rows: 0,
             focus_line: None,
             page_anchor: None,
             sidebar_scroll: 0,
@@ -323,7 +326,8 @@ impl Tui {
     /// What the keymap needs to know to turn a key into a message.
     fn context(&self) -> Context {
         Context {
-            page_rows: self.page_rows,
+            page_down_rows: self.page_down_rows,
+            page_up_rows: self.page_up_rows,
             today: (self.clock)().date(),
             mode: self.state.mode(),
             command_menu: self.state.command_menu().is_some(),
@@ -882,12 +886,7 @@ impl Tui {
             .wrap(self.wrap)
             .icons(icons);
         let scroll = self.scrolls.get(&pane.id).copied().unwrap_or_default();
-        let anchor = if pane.focused {
-            self.page_rows = usize::from(area.height);
-            self.page_anchor.take()
-        } else {
-            None
-        };
+        let anchor = pane.focused.then(|| self.page_anchor.take()).flatten();
         // Only the rows near the focus or the view are measured, so drawing does not grow with
         // the outline.
         let row_height = |index| {
@@ -899,6 +898,12 @@ impl Tui {
             })
         };
         let height = usize::from(area.height);
+        if pane.focused
+            && let Some(at) = focused
+        {
+            self.page_down_rows = layout::page_rows(at..rows.len(), height, &row_height);
+            self.page_up_rows = layout::page_rows((0..at).rev(), height, &row_height);
+        }
         let (scroll, focus_line) = if let Some(lines) = self.wheel.get_mut(&pane.id) {
             let scroll =
                 layout::scroll_by(scroll, mem::take(lines), height, rows.len(), &row_height);

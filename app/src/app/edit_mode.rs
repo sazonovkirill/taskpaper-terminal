@@ -374,7 +374,8 @@ impl State {
                 // No command of the menu pages, so a page needs no height.
                 let inputs = Inputs {
                     today,
-                    page_rows: 0,
+                    page_down_rows: 0,
+                    page_up_rows: 0,
                 };
                 self.suspend_editing();
                 let effects = command

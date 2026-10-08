@@ -1,5 +1,4 @@
 # With word wrap on, Ctrl+D moves about one screenful, so the block just below the first page is still on screen.
-# BUG: Page Down moves the focus by the pane's height in blocks, not rows, so with two-line blocks it skips items 06-09 the user never saw.
 size 50 14
 config <<END
 word_wrap = true

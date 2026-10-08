@@ -93,6 +93,26 @@ pub fn scroll_offset(offset: usize, focus: Range<usize>, height: usize, len: usi
         .min(len.saturating_sub(height))
 }
 
+/// How many rows a page motion from the focused row moves past, the rows `passed` in the order
+/// it meets them: as many as fill no more than a view `height` lines tall, so a view that keeps
+/// the focus on its line skips no line it did not show (navigation.md §2), and at least one.
+/// `row_height` gives a row's screen lines; it is asked only for the rows a page passes.
+pub fn page_rows(
+    passed: impl IntoIterator<Item = usize>,
+    height: usize,
+    mut row_height: impl FnMut(usize) -> usize,
+) -> usize {
+    let mut lines = 0;
+    passed
+        .into_iter()
+        .take_while(|&row| {
+            lines += row_height(row);
+            lines <= height
+        })
+        .count()
+        .max(1)
+}
+
 /// Where an outline view starts drawing: a row and how many of its screen lines are scrolled
 /// past.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -590,6 +610,19 @@ mod tests {
             (Scroll { row: 1, line: 4 }, 2),
             "a start far above the focus scrolls down to it"
         );
+    }
+
+    // FR-NAV-01, FR-UI-05
+    #[test]
+    fn a_page_passes_the_rows_that_fill_the_view_and_at_least_one() {
+        let heights = [1, 3, 1, 2, 2, 1];
+        let height = |row: usize| heights[row];
+        assert_eq!(page_rows(2..6, 4, height), 2, "down");
+        assert_eq!(page_rows((0..4).rev(), 4, height), 2, "up");
+        assert_eq!(page_rows(2..6, 5, height), 3, "a view it fills exactly");
+        assert_eq!(page_rows(1..6, 2, height), 1, "a row taller than the view");
+        assert_eq!(page_rows(0..0, 4, height), 1, "nothing to pass");
+        assert_eq!(page_rows(4..6, 9, height), 2, "the last rows");
     }
 
     // ui.md §6

@@ -25,8 +25,10 @@ type Key = (KeyModifiers, KeyCode);
 /// What the frontend knows that a message may carry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Context {
-    /// The height a page motion moves, in rows.
-    pub page_rows: usize,
+    /// The rows a page down motion moves past.
+    pub page_down_rows: usize,
+    /// The rows a page up motion moves past.
+    pub page_up_rows: usize,
     /// The local date, which completing a block and the date keys write.
     pub today: Date,
     /// Whether keys navigate or edit text, which decides their bindings.
@@ -46,7 +48,8 @@ impl Context {
     fn inputs(&self) -> Inputs {
         Inputs {
             today: self.today,
-            page_rows: self.page_rows,
+            page_down_rows: self.page_down_rows,
+            page_up_rows: self.page_up_rows,
         }
     }
 }
@@ -954,10 +957,13 @@ mod tests {
 
     const PAGE: usize = 7;
 
+    const PAGE_UP: usize = 5;
+
     const TODAY: Date = jiff::civil::date(2026, 10, 5);
 
     const CONTEXT: &Context = &Context {
-        page_rows: PAGE,
+        page_down_rows: PAGE,
+        page_up_rows: PAGE_UP,
         today: TODAY,
         mode: Mode::Navigate,
         command_menu: false,
@@ -1045,7 +1051,7 @@ mod tests {
     #[test]
     fn page_keys_carry_the_page_height() {
         let down = Some(&Message::PageDown { rows: PAGE });
-        let up = Some(&Message::PageUp { rows: PAGE });
+        let up = Some(&Message::PageUp { rows: PAGE_UP });
         check(KeyCode::PageDown, KeyModifiers::NONE, down);
         check(KeyCode::Char('d'), KeyModifiers::CONTROL, down);
         check(KeyCode::PageUp, KeyModifiers::NONE, up);

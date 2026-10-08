@@ -119,8 +119,15 @@ fn paging_keeps_the_focused_wrapped_block_in_its_place_on_screen() {
     app.type_keys("jj");
     assert_eq!(shown(&mut app)[2], "- Task 03 has");
     app.press(KeyCode::PageDown, NONE);
-    assert_eq!(focused_rows(&mut app), ["- Task 09 has", "  two lines"]);
-    assert_eq!(shown(&mut app)[2], "- Task 09 has", "where Task 03 was");
+    assert_eq!(focused_rows(&mut app), ["- Task 06 has", "  two lines"]);
+    assert_eq!(
+        shown(&mut app)[..3],
+        ["- Task 05 has", "  two lines", "- Task 06 has"],
+        "where Task 03 was, under Task 05, the first block below the last page"
+    );
+    app.press(KeyCode::PageUp, NONE);
+    assert_eq!(focused_rows(&mut app), ["- Task 03 has", "  two lines"]);
+    assert_eq!(shown(&mut app)[2], "- Task 03 has");
 }
 
 // FR-UI-05, FR-MODE-02

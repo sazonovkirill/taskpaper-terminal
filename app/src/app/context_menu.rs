@@ -80,7 +80,8 @@ impl State {
         // carries.
         let inputs = Inputs {
             today: self.today,
-            page_rows: 0,
+            page_down_rows: 0,
+            page_up_rows: 0,
         };
         let alone = focused.is_some();
         let mut groups = context_commands(&blocks, focused);

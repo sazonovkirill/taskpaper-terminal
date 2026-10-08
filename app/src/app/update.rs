@@ -106,12 +106,14 @@ pub enum Message {
     FocusFirst,
     /// Focus the last visible row.
     FocusLast,
-    /// Move focus down by a page of `rows` rows, the height of the frontend's view.
+    /// Move focus down by a page of `rows` rows, as many as the frontend's view holds below the
+    /// focus.
     PageDown {
         /// Rows in a page.
         rows: usize,
     },
-    /// Move focus up by a page of `rows` rows, the height of the frontend's view.
+    /// Move focus up by a page of `rows` rows, as many as the frontend's view holds above the
+    /// focus.
     PageUp {
         /// Rows in a page.
         rows: usize,

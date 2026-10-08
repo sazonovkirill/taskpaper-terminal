@@ -200,8 +200,10 @@ pub enum Command {
 pub struct Inputs {
     /// The local date, which date commands write.
     pub today: Date,
-    /// The rows a page motion moves.
-    pub page_rows: usize,
+    /// The rows a page down motion moves past.
+    pub page_down_rows: usize,
+    /// The rows a page up motion moves past.
+    pub page_up_rows: usize,
 }
 
 impl Command {
@@ -320,10 +322,10 @@ impl Command {
             Self::FocusFirst => Message::FocusFirst,
             Self::FocusLast => Message::FocusLast,
             Self::PageDown => Message::PageDown {
-                rows: inputs.page_rows,
+                rows: inputs.page_down_rows,
             },
             Self::PageUp => Message::PageUp {
-                rows: inputs.page_rows,
+                rows: inputs.page_up_rows,
             },
             Self::FocusParent => Message::FocusParent,
             Self::FocusNextSibling => Message::FocusNextSibling,
@@ -479,7 +481,8 @@ mod tests {
 
     const INPUTS: Inputs = Inputs {
         today: jiff::civil::date(2026, 10, 6),
-        page_rows: 7,
+        page_down_rows: 7,
+        page_up_rows: 5,
     };
 
     #[test]
@@ -587,7 +590,7 @@ mod tests {
         let today = INPUTS.today;
         for (command, message) in [
             (Command::PageDown, Message::PageDown { rows: 7 }),
-            (Command::PageUp, Message::PageUp { rows: 7 }),
+            (Command::PageUp, Message::PageUp { rows: 5 }),
             (Command::ToggleDone, Message::ToggleDone { today }),
             (
                 Command::ChangeDate(DateTag::Due, DateChange::Later),
