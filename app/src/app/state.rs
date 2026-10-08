@@ -4,6 +4,7 @@ use std::{
     collections::HashSet,
     ops::Range,
     path::{Path, PathBuf},
+    slice,
     sync::Arc,
     time::Duration,
 };
@@ -24,7 +25,7 @@ use super::{
     pane::Pane,
     picker::Picker,
     quick_add::QuickAdd,
-    rows::{Builder, OldSiblings, Rows, Unfolded},
+    rows::{Builder, OldSiblings, Opened, Rows, Unfolded},
     save_as,
     saving::Autosave,
     selection::Selection,
@@ -680,7 +681,7 @@ impl State {
         // collapsed block (N-PERF-02). Those of a zoom block they leave out, one inside a
         // special node, are the pane's own.
         let (home, here);
-        let mut unfolded = if folds.is_empty() {
+        let unfolded = if folds.is_empty() {
             None
         } else {
             home = self.unfolded_rows(Location::Outline(None), pane.show_done);
@@ -696,7 +697,7 @@ impl State {
             top,
             (below, top_done),
             kept,
-            unfolded.as_mut(),
+            unfolded,
             &mut rows,
         );
         if let Some(opened) = opened {
@@ -765,21 +766,36 @@ impl State {
     /// `inside_done` says so. With `kept`, the old rows of `parent`'s children and the blocks
     /// whose rows may have changed since, it keeps the rows of each unchanged block. `unfolded`,
     /// the rows of `parent`'s children with nothing collapsed, counts what a collapsed block
-    /// hides; there is one whenever `folds` holds a block.
+    /// hides; there is one whenever `folds` holds a block. It goes down level by level without
+    /// taking stack for each, as an outline can be thousands of levels deep (N-REL-01).
     fn push_rows(
         &self,
         (pane, folds): (&Pane, &Folds),
         parent: ItemId,
         (depth, inside_done): (usize, bool),
         kept: Option<(Range<usize>, &HashSet<ItemId>)>,
-        mut unfolded: Option<&mut Unfolded>,
+        unfolded: Option<Unfolded>,
         rows: &mut Builder,
     ) {
-        let children = self.document.get(parent).map_or(&[][..], Item::children);
-        let mut old =
-            kept.and_then(|(range, changed)| Some((OldSiblings::new(rows.old()?, range), changed)));
-        for &id in children {
-            if let Some((siblings, changed)) = &mut old
+        let children = |id| self.document.get(id).map_or(&[][..], Item::children).iter();
+        let changed = kept.as_ref().map(|&(_, changed)| changed);
+        let mut levels = vec![Level {
+            children: children(parent),
+            depth,
+            inside_done,
+            old: kept.and_then(|(range, _)| Some(OldSiblings::new(rows.old()?, range))),
+            unfolded,
+            opened: None,
+        }];
+        while let Some(level) = levels.last_mut() {
+            let Some(&id) = level.children.next() else {
+                if let Some(opened) = levels.pop().and_then(|level| level.opened) {
+                    rows.close(opened);
+                }
+                continue;
+            };
+            let (depth, inside_done) = (level.depth, level.inside_done);
+            if let (Some(siblings), Some(changed)) = (&mut level.old, changed)
                 && !changed.contains(&id)
             {
                 siblings.skip(changed);
@@ -792,7 +808,10 @@ impl State {
                 continue;
             };
             let folded = folds.contains(&id);
-            let mut every = unfolded.as_mut().and_then(|siblings| siblings.below(id));
+            let every = level
+                .unfolded
+                .as_mut()
+                .and_then(|siblings| siblings.below(id));
             let hidden_tasks = (folded && blocks::each_child(&self.document, id).next().is_some())
                 .then(|| {
                     every
@@ -805,20 +824,23 @@ impl State {
                 hidden_tasks,
                 ..self.row(pane, &block, depth, false, inside_done)
             });
-            if !folded {
-                let below = old
-                    .as_mut()
-                    .and_then(|(siblings, changed)| Some((siblings.children_of(id)?, &**changed)));
-                self.push_rows(
-                    (pane, folds),
-                    id,
-                    (depth + 1, inside_done || block.done()),
-                    below,
-                    every.as_mut(),
-                    rows,
-                );
+            if folded {
+                rows.close(opened);
+                continue;
             }
-            rows.close(opened);
+            let old = level
+                .old
+                .as_mut()
+                .and_then(|siblings| siblings.children_of(id))
+                .and_then(|range| Some(OldSiblings::new(rows.old()?, range)));
+            levels.push(Level {
+                children: children(id),
+                depth: depth + 1,
+                inside_done: inside_done || block.done(),
+                old,
+                unfolded: every,
+                opened: Some(opened),
+            });
         }
     }
 
@@ -957,6 +979,20 @@ impl State {
             .next()
             .is_some()
     }
+}
+
+/// A line whose children's rows [`State::push_rows`] is adding, with what it adds them from.
+struct Level<'a, 'r> {
+    /// The children not yet gone through.
+    children: slice::Iter<'a, ItemId>,
+    depth: usize,
+    inside_done: bool,
+    /// The children's old rows, to keep those of unchanged blocks.
+    old: Option<OldSiblings<'r>>,
+    /// The children's rows with nothing collapsed.
+    unfolded: Option<Unfolded<'r>>,
+    /// The line's own row, closed once its children's rows are added; `None` for the top line.
+    opened: Option<Opened>,
 }
 
 #[cfg(test)]
@@ -1461,6 +1497,27 @@ mod tests {
                 .apply(&mut crate::document::Transaction::new(vec![op], (), ()))
                 .unwrap();
         }
+    }
+
+    // N-REL-01
+    #[test]
+    fn rows_of_an_outline_deeper_than_a_stack_could_take_a_level_at_a_time() {
+        let levels = 100_000;
+        let mut state = State::new(Document::chain(levels), None);
+        assert_eq!(state.rows().len(), levels);
+        make(&mut state, &Change::Text(levels, "- last @done"));
+        let rows = state.rows();
+        assert_eq!(rows.len(), levels);
+        let last = rows.last().unwrap();
+        assert_eq!((last.depth, last.done), (levels - 1, true));
+        make(&mut state, &Change::Fold(levels / 2));
+        let rows = state.rows();
+        assert_eq!(rows.len(), levels / 2);
+        assert_eq!(
+            rows.last().unwrap().hidden_tasks,
+            Some(levels / 2 - 1),
+            "every task below but the done one"
+        );
     }
 
     // N-PERF-02

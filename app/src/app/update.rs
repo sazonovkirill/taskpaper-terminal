@@ -967,11 +967,13 @@ impl State {
         }
     }
 
-    /// Appends every descendant block of `block`, collapsed or not, to `out`.
+    /// Appends every descendant block of `block`, collapsed or not, to `out`, without taking
+    /// stack for each level, as an outline can be thousands of levels deep (N-REL-01).
     fn push_descendants(&self, block: &Block, out: &mut Vec<Block>) {
-        for child in self.children(block) {
-            self.push_descendants(&child, out);
-            out.push(child);
+        let mut below = self.children(block);
+        while let Some(block) = below.pop() {
+            below.extend(self.children(&block));
+            out.push(block);
         }
     }
 
@@ -1277,6 +1279,17 @@ mod tests {
         let mut leaf = open(TREE, 4);
         leaf.update(Message::ToggleFold);
         assert_eq!(*leaf.folds, HashSet::new());
+    }
+
+    // FR-NAV-02, N-REL-01
+    #[test]
+    fn toggle_subtree_reaches_every_level_of_an_outline_deeper_than_a_stack_could_take() {
+        let levels = 100_000;
+        let mut state = State::new(Document::chain(levels), None);
+        state.update(Message::ToggleSubtree);
+        assert_eq!(state.folds.len(), levels - 1, "every block but the leaf");
+        state.update(Message::ToggleSubtree);
+        assert_eq!(state.rows().len(), levels);
     }
 
     // FR-NAV-02

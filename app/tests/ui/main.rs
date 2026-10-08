@@ -11,6 +11,7 @@ mod context_menu;
 mod converting;
 mod creating;
 mod date_prompt;
+mod deep_outline;
 mod dialogs;
 mod editing;
 mod external_changes;

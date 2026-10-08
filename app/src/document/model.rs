@@ -289,6 +289,20 @@ impl Document {
     }
 }
 
+#[cfg(test)]
+impl Document {
+    /// A chain of `levels` tasks, each the only child of the one before it, as deep as an
+    /// outline no walk may take stack for each level of.
+    pub(crate) fn chain(levels: usize) -> Self {
+        let mut document = Self::default();
+        let mut parent = document.root();
+        for level in 0..levels {
+            parent = document.push_child(parent, format!("- {level}"), 0);
+        }
+        document
+    }
+}
+
 impl Item {
     /// The parent item; the root's children have the root as parent, the root has none.
     #[must_use]
