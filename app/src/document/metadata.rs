@@ -6,8 +6,8 @@ use jiff::civil::Date;
 
 use super::{
     blocks::{Block, BlockKind, TagColor},
-    format::{LineParts, Typed, canonical::PLACEHOLDER, tags},
-    model::{Document, Op},
+    format::{self, LineParts, Typed, canonical::PLACEHOLDER, tags},
+    model::{Document, ItemKind, Op},
 };
 
 /// The op that completes `block` with `@done(today)`, or, when it is done already, removes
@@ -18,7 +18,7 @@ pub fn toggle_done(document: &Document, block: &Block, today: Date) -> Option<Op
     let after = if block.done() {
         kept(tags::remove(before, DONE))
     } else {
-        tags::set(before, DONE, &today.to_string())
+        tagged(before, DONE, &today.to_string())
     };
     Some(Op::SetText {
         id: block.id(),
@@ -102,7 +102,7 @@ pub fn set_date(
         DateTag::Due => "due",
     };
     let after = match date {
-        Some(date) => tags::set(before, name, &date.to_string()),
+        Some(date) => tagged(before, name, &date.to_string()),
         None => kept(tags::remove(before, name)),
     };
     (after != before).then(|| Op::SetText {
@@ -136,7 +136,7 @@ pub fn toggle_flag(document: &Document, block: &Block, flag: Flag) -> Option<Op>
     let after = if flagged(block, flag) {
         kept(tags::remove(before, name))
     } else {
-        tags::set(before, name, "")
+        tagged(before, name, "")
     };
     Some(Op::SetText {
         id: block.id(),
@@ -179,7 +179,7 @@ pub fn set_color(document: &Document, block: &Block, color: Option<TagColor>) ->
             tags::remove(&text, other.tag())
         });
     if let Some(color) = color {
-        after = tags::set(&after, color.tag(), "");
+        after = tagged(&after, color.tag(), "");
     }
     let after = kept(after);
     (after != before).then(|| Op::SetText {
@@ -234,6 +234,17 @@ const DONE: &str = "done";
 
 /// The tag that makes a text block a section (D-52).
 const SECTION: &str = "section";
+
+/// `before` with the tag `name` set to `value`. A task with no text gets the placeholder, since
+/// `- @tag` would read back as a text block (file-format.md §3.1).
+fn tagged(before: &str, name: &str, value: &str) -> String {
+    let after = tags::set(before, name, value);
+    if format::kind(before) == ItemKind::Task && format::kind(&after) != ItemKind::Task {
+        let (parts, _) = LineParts::split(before);
+        return tags::set(&parts.line(PLACEHOLDER), name, value);
+    }
+    after
+}
 
 /// `after`, or the placeholder when the edit emptied the line, because an empty line would be
 /// read back elsewhere when it has children or ends the file below the top level.
@@ -305,6 +316,36 @@ mod tests {
     fn a_line_left_empty_gets_the_placeholder_so_the_outline_stays_canonical() {
         assert_eq!(toggled("@done\n\t- x"), ["…", "- x"]);
         assert_eq!(toggled("@done"), ["…"]);
+    }
+
+    // file-format §3.1: `- @done` would read back as a text block, so an empty task keeps its
+    // type with the placeholder.
+    #[test]
+    fn a_tag_on_an_empty_task_keeps_it_a_task() {
+        assert_eq!(toggled("- "), ["- … @done(2026-10-05)"]);
+        assert_eq!(
+            edited("- ", |document, block| toggle_flag(
+                document,
+                block,
+                Flag::Star
+            ))
+            .as_deref(),
+            Some("- … @star")
+        );
+        assert_eq!(
+            edited("- ", |document, block| {
+                set_date(document, block, DateTag::Due, Some(TODAY))
+            })
+            .as_deref(),
+            Some("- … @due(2026-10-05)")
+        );
+        assert_eq!(
+            edited("- ", |document, block| {
+                set_color(document, block, Some(TagColor::Red))
+            })
+            .as_deref(),
+            Some("- … @red")
+        );
     }
 
     #[test]

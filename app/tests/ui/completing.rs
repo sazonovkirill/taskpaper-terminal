@@ -41,6 +41,17 @@ fn receded(buffer: &Buffer, y: u16) -> (bool, bool) {
     )
 }
 
+// FR-DONE-01, file-format.md §3.1: a new task completed before it has text stays a task.
+#[test]
+fn x_on_a_new_empty_task_keeps_it_a_task() {
+    let mut app = Harness::with_text("- Milk\n", 50, 10);
+    app.type_keys("o");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.type_keys("x");
+    assert_eq!(outline_rows(&mut app)[1], "✔ …");
+    assert_eq!(saved(&mut app), "- Milk\n- … @done(2026-10-05)\n");
+}
+
 // FR-DONE-01, D-4, FR-DOC-02
 #[test]
 fn x_completes_the_focused_task_and_saves_it_dated_today() {
