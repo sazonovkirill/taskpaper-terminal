@@ -3,10 +3,15 @@
 //! ([navigation.md §7, §7.1](../../../docs/specs/navigation.md#7-today-view-fr-tag-04-d-7),
 //! FR-TAG-04, FR-TAG-07, D-7, D-80).
 
+use std::{cell::OnceCell, sync::Arc};
+
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
-use super::{Location, Message, Row, State, pane::Pane};
+use super::{
+    Location, Message, Row, State, logbook::in_logbook, pane::Pane, today::for_today,
+    upcoming::upcoming_day,
+};
 use crate::document::{Block, ItemId, TagColor, blocks};
 
 /// A special view, in the order the Navigator lists them (D-80).
@@ -102,8 +107,24 @@ impl State {
             SpecialView::Overdue => self.overdue_rows(pane),
             SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Logbook => self.logbook_rows(pane),
-            SpecialView::Starred => self.matching_rows(pane, Block::starred),
-            SpecialView::Flagged => self.matching_rows(pane, Block::flag),
+            SpecialView::Starred | SpecialView::Flagged => {
+                self.matching_rows(pane, |block| self.lists(view, block))
+            }
+        }
+    }
+
+    /// Whether `view` lists `block`, by what its line says; the Overdue view also leaves out done
+    /// blocks and what is inside them (D-82). The Navigator counts the open tasks it lists by
+    /// this.
+    pub(super) fn lists(&self, view: SpecialView, block: &Block) -> bool {
+        match view {
+            SpecialView::Today => for_today(block, self.today, self.today_starred),
+            SpecialView::Upcoming => upcoming_day(block.start(), block.due(), self.today).is_some(),
+            SpecialView::Overdue => block.due().is_some_and(|due| due < self.today),
+            SpecialView::Colors => block.color().is_some(),
+            SpecialView::Logbook => in_logbook(block, self.today),
+            SpecialView::Starred => block.starred(),
+            SpecialView::Flagged => block.flag(),
         }
     }
 
@@ -113,7 +134,8 @@ impl State {
     /// (FR-SPC-01).
     pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
         let mut rows = Vec::new();
-        self.push_matching(pane, &lists, true, self.document.root(), false, &mut rows);
+        let top = Above::top(self.document.root());
+        self.push_matching(pane, &lists, true, &top, false, &mut rows);
         rows
     }
 
@@ -125,11 +147,12 @@ impl State {
         lists: impl Fn(&Block) -> bool,
     ) -> Vec<Row> {
         let mut rows = Vec::new();
-        self.push_matching(pane, &lists, false, self.document.root(), false, &mut rows);
+        let top = Above::top(self.document.root());
+        self.push_matching(pane, &lists, false, &top, false, &mut rows);
         rows
     }
 
-    /// Appends the entries below the line `line`, which is done or inside a done block when
+    /// Appends the entries below the line `above`, which is done or inside a done block when
     /// `inside_done` says so, leaving out completed blocks the pane hides when `as_shown` says
     /// to.
     fn push_matching(
@@ -137,19 +160,17 @@ impl State {
         pane: &Pane,
         lists: &impl Fn(&Block) -> bool,
         as_shown: bool,
-        line: ItemId,
+        above: &Above<'_>,
         inside_done: bool,
         out: &mut Vec<Row>,
     ) {
-        for block in blocks::each_child(&self.document, line) {
+        for block in blocks::each_child(&self.document, above.line) {
             if as_shown && !pane.shows(&block) {
                 continue;
             }
             if lists(&block) {
-                let mut path = self.path_to(&block);
-                path.pop();
                 out.push(Row {
-                    path,
+                    path: above.path(self),
                     ..self.row(pane, &block, 0, false, inside_done)
                 });
             }
@@ -157,7 +178,7 @@ impl State {
                 pane,
                 lists,
                 as_shown,
-                block.id(),
+                &above.below(block.id()),
                 inside_done || block.done(),
                 out,
             );
@@ -205,6 +226,51 @@ impl State {
             | SpecialView::Starred
             | SpecialView::Flagged => {}
         }
+    }
+}
+
+/// A line the walk of [`State::push_matching`] went into, with the path its entries show: the
+/// text of each block from the top level down to it, worked out once for all of them, and only
+/// once one is listed.
+struct Above<'a> {
+    line: ItemId,
+    /// The line it is in, or `None` for the root.
+    parent: Option<&'a Above<'a>>,
+    path: OnceCell<Arc<[Arc<str>]>>,
+}
+
+impl<'a> Above<'a> {
+    /// The root, above the top level, whose entries have an empty path.
+    fn top(root: ItemId) -> Self {
+        Self {
+            line: root,
+            parent: None,
+            path: OnceCell::new(),
+        }
+    }
+
+    /// The block `line` in this one.
+    fn below(&'a self, line: ItemId) -> Self {
+        Self {
+            line,
+            parent: Some(self),
+            path: OnceCell::new(),
+        }
+    }
+
+    /// The path of the entries in it.
+    fn path(&self, state: &State) -> Arc<[Arc<str>]> {
+        Arc::clone(self.path.get_or_init(|| {
+            match self.parent {
+                Some(parent) => parent
+                    .path(state)
+                    .iter()
+                    .cloned()
+                    .chain([state.shown_text(self.line).into()])
+                    .collect(),
+                None => Arc::default(),
+            }
+        }))
     }
 }
 
@@ -350,7 +416,7 @@ Work: @done @star
                 assert_eq!(row.depth, 0, "entries are flat");
                 row.path
                     .iter()
-                    .map(String::as_str)
+                    .map(|segment| &**segment)
                     .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ")

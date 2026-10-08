@@ -476,20 +476,15 @@ impl State {
             let mut every = Pane::first();
             every.show_done = self.pane.show_done;
             let rows = self.rows_folded(&every, &HashSet::new());
+            let views = self.views_open_tasks(&rows);
             let entries: Vec<_> = inbox
                 .into_iter()
                 .chain(
                     SpecialView::ALL
                         .into_iter()
-                        .filter(|&view| self.navigator_lists(view))
-                        .map(|view| NavigatorEntry::View {
-                            view,
-                            open_tasks: self
-                                .view_rows(&every, view)
-                                .iter()
-                                .filter(|row| open_task(row))
-                                .count(),
-                        }),
+                        .zip(views)
+                        .filter(|&(view, _)| self.navigator_lists(view))
+                        .map(|(view, open_tasks)| NavigatorEntry::View { view, open_tasks }),
                 )
                 .chain(self.bookmarks(&rows))
                 .chain(self.projects(&rows, apart, &folds))
@@ -500,6 +495,20 @@ impl State {
                 filtered(entries, &filter).into()
             }
         })
+    }
+
+    /// How many open tasks (D-67) each special view lists, in the order of [`SpecialView::ALL`],
+    /// from `rows`, the outline's rows with nothing collapsed: every block that shows, so every
+    /// block a view could list as an open task.
+    fn views_open_tasks(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
+        let mut counts = [0; SpecialView::ALL.len()];
+        let open = rows.iter().filter(|row| open_task(row));
+        for block in open.filter_map(|row| blocks::block(&self.document, row.id)) {
+            for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
+                *count += usize::from(self.lists(view, &block));
+            }
+        }
+        counts
     }
 
     /// The entry of the first shown top-level project whose text is `INBOX`, if any (D-75).
@@ -1050,6 +1059,49 @@ INBOX:",
         assert_eq!(counts(&state)[0], 1, "the count follows the date");
         state.update(Message::Configure(Configuration::TodayStarred(false)));
         assert_eq!(counts(&state)[0], 0, "and Today's starred setting");
+    }
+
+    // D-67, D-80
+    #[test]
+    fn each_view_counts_the_open_tasks_it_lists() {
+        let mut state = State::new(
+            format::parse(
+                "Home:\n\t- a @due(2026-10-04) @red\n\t- b @due(2026-10-05) @star\n\
+                 \t- c @start(2026-10-07) @flag\n\tnote @due(2026-10-01) @blue\n\
+                 \t- d @done(2026-10-03) @due(2026-10-01)\n\t\t- e @due(2026-10-01) @green\n\
+                 Done: @done(2026-10-05)\n\t- f @start(2026-10-06) @star @flag @orange\n\
+                 - g @due(2026-10-12) @done(2026-09-01)\n- h @due(2026-10-12)\n- i @flag",
+            ),
+            None,
+        );
+        state.update(Message::Tick {
+            now: std::time::Duration::ZERO,
+            today: Date::constant(2026, 10, 5),
+        });
+        for show_done in [false, true] {
+            if show_done {
+                state.update(Message::ToggleShowDone);
+            }
+            let mut every = Pane::first();
+            every.show_done = show_done;
+            let counts: Vec<usize> = view(&state)
+                .entries
+                .iter()
+                .filter_map(|entry| match entry {
+                    NavigatorEntry::View { open_tasks, .. } => Some(*open_tasks),
+                    _ => None,
+                })
+                .collect();
+            let listed: Vec<usize> = SpecialView::ALL
+                .into_iter()
+                .map(|view| {
+                    let rows = state.view_rows(&every, view);
+                    rows.iter().filter(|row| open_task(row)).count()
+                })
+                .collect();
+            assert_eq!(counts, listed, "show_done {show_done}");
+            assert_eq!(counts, [2, 2, 1, 1, 0, 1, 2], "show_done {show_done}");
+        }
     }
 
     fn typed(state: &mut State, text: &str) {

@@ -5,7 +5,7 @@
 use super::{
     Row, State,
     pane::Pane,
-    special_view::{ViewGroup, under_headings},
+    special_view::{SpecialView, ViewGroup, under_headings},
 };
 
 impl State {
@@ -14,7 +14,7 @@ impl State {
     /// color (D-83).
     pub(super) fn colors_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows(pane, |block| block.color().is_some())
+            .matching_rows(pane, |block| self.lists(SpecialView::Colors, block))
             .into_iter()
             .filter_map(|row| Some((row.color?, row)))
             .collect();
@@ -87,7 +87,7 @@ Work: @done
                 let path = row
                     .path
                     .iter()
-                    .map(String::as_str)
+                    .map(|segment| &**segment)
                     .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ");

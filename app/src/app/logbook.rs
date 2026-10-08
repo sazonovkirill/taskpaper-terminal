@@ -4,15 +4,25 @@
 
 use std::cmp::Reverse;
 
+use jiff::civil::Date;
+
 use super::{
     Row, State,
     pane::Pane,
-    special_view::{ViewGroup, under_headings},
+    special_view::{SpecialView, ViewGroup, under_headings},
 };
-use crate::document::blocks;
+use crate::document::{Block, blocks};
 
 /// How many days before today the Logbook reaches back: with today, the last 7 days (D-84).
 const DAYS_BACK: i32 = 6;
+
+/// Whether the Logbook lists `block` on `today`: its `@done` date is today or one of the six days
+/// before (D-84).
+pub(super) fn in_logbook(block: &Block, today: Date) -> bool {
+    block
+        .done_date()
+        .is_some_and(|date| (0..=DAYS_BACK).contains(&(today - date).get_days()))
+}
 
 impl State {
     /// The Logbook's entries in `pane`: every block whose `@done` date is today or one of the
@@ -20,11 +30,7 @@ impl State {
     /// grouped by that day, newest first, in document order within a day (D-84).
     pub(super) fn logbook_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows_with_done(pane, |block| {
-                block
-                    .done_date()
-                    .is_some_and(|date| (0..=DAYS_BACK).contains(&(self.today - date).get_days()))
-            })
+            .matching_rows_with_done(pane, |block| self.lists(SpecialView::Logbook, block))
             .into_iter()
             .filter_map(|row| Some((blocks::block(&self.document, row.id)?.done_date()?, row)))
             .collect();
@@ -103,7 +109,7 @@ Home: @done(2026-10-03)
                 let path = row
                     .path
                     .iter()
-                    .map(String::as_str)
+                    .map(|segment| &**segment)
                     .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ");

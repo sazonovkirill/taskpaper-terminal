@@ -345,8 +345,8 @@ pub struct Row {
     /// Whether it is selected (FR-OPS-01).
     pub selected: bool,
     /// The text of each block above it, from the top level down, as an entry of a special view
-    /// shows it; empty in an outline (D-7, D-80).
-    pub path: Vec<String>,
+    /// shows it; empty in an outline (D-7, D-80). Entries under the same block share it.
+    pub path: Arc<[Arc<str>]>,
     /// The heading drawn above it when it is the first entry of a group of a special view; `None`
     /// elsewhere (D-80).
     pub heading: Option<Heading>,
@@ -757,7 +757,7 @@ impl State {
             color: block.color(),
             url: block.url(),
             selected: pane.selection.contains(block.id()),
-            path: Vec::new(),
+            path: Arc::default(),
             heading: None,
         }
     }

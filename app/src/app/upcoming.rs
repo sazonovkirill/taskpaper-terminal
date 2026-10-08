@@ -7,13 +7,12 @@ use jiff::civil::Date;
 use super::{
     Row, State,
     pane::Pane,
-    special_view::{ViewGroup, under_headings},
+    special_view::{SpecialView, ViewGroup, under_headings},
 };
-use crate::document::Block;
 
 /// The day the Upcoming view lists a block with the start date `start` and due date `due` under on
 /// `today`: the earliest of them that falls from tomorrow to a week from today, if one does (D-81).
-fn upcoming_day(start: Option<Date>, due: Option<Date>, today: Date) -> Option<Date> {
+pub(super) fn upcoming_day(start: Option<Date>, due: Option<Date>, today: Date) -> Option<Date> {
     [start, due]
         .into_iter()
         .flatten()
@@ -25,9 +24,8 @@ impl State {
     /// The Upcoming view's entries in `pane`, as [`State::matching_rows`] gives them, grouped by
     /// the day each is listed under, earliest first, in document order within a day (D-81).
     pub(super) fn upcoming_rows(&self, pane: &Pane) -> Vec<Row> {
-        let listed = |block: &Block| upcoming_day(block.start(), block.due(), self.today).is_some();
         let mut entries: Vec<_> = self
-            .matching_rows(pane, listed)
+            .matching_rows(pane, |block| self.lists(SpecialView::Upcoming, block))
             .into_iter()
             .filter_map(|row| Some((upcoming_day(row.start, row.due, self.today)?, row)))
             .collect();
@@ -105,7 +103,7 @@ Work: @done
                 let path = row
                     .path
                     .iter()
-                    .map(String::as_str)
+                    .map(|segment| &**segment)
                     .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ");

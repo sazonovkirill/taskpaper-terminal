@@ -5,7 +5,7 @@
 use super::{
     Row, State,
     pane::Pane,
-    special_view::{ViewGroup, under_headings},
+    special_view::{SpecialView, ViewGroup, under_headings},
 };
 
 impl State {
@@ -15,7 +15,7 @@ impl State {
     /// a date (D-82).
     pub(super) fn overdue_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows(pane, |block| block.due().is_some())
+            .matching_rows(pane, |block| self.lists(SpecialView::Overdue, block))
             .into_iter()
             .filter(|row| row.overdue(self.today))
             .filter_map(|row| Some((row.due?, row)))
@@ -94,7 +94,7 @@ Plan: @due(2026-10-01)
                 let path = row
                     .path
                     .iter()
-                    .map(String::as_str)
+                    .map(|segment| &**segment)
                     .chain([&*row.text])
                     .collect::<Vec<_>>()
                     .join(" › ");
