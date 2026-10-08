@@ -1146,7 +1146,9 @@ INBOX:",
     // FR-UI-01
     #[test]
     fn an_outline_without_bookmarks_or_projects_lists_only_the_special_views() {
-        let views = ["today", "overdue", "colors", "starred", "flagged"];
+        let views = [
+            "today", "upcoming", "overdue", "colors", "starred", "flagged",
+        ];
         assert_eq!(listed(&State::new(format::parse("- a\nb"), None)), views);
         assert_eq!(listed(&State::new(Document::default(), None)), views);
     }
@@ -1162,6 +1164,7 @@ INBOX:",
             [
                 "inbox INBOX",
                 "today",
+                "upcoming",
                 "overdue",
                 "colors",
                 "starred",
@@ -1178,11 +1181,12 @@ INBOX:",
                 SidebarInput::Next,
                 SidebarInput::Next,
                 SidebarInput::Next,
+                SidebarInput::Next,
                 SidebarInput::Choose,
             ],
         );
         assert_eq!(state.location(), Location::View(SpecialView::Starred));
-        assert_eq!(current(&state), Some(4), "its entry is current");
+        assert_eq!(current(&state), Some(5), "its entry is current");
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Starred,
             false,
@@ -1194,6 +1198,7 @@ INBOX:",
             [
                 "inbox INBOX",
                 "today",
+                "upcoming",
                 "overdue",
                 "colors",
                 "flagged",
@@ -1213,6 +1218,7 @@ INBOX:",
             [
                 "inbox INBOX",
                 "today",
+                "upcoming",
                 "overdue",
                 "colors",
                 "starred",
@@ -1224,17 +1230,18 @@ INBOX:",
         state.update(Message::ToggleSidebar);
         input(&mut state, &[SidebarInput::Next, SidebarInput::Next]);
         input(&mut state, &[SidebarInput::Choose]);
-        assert_eq!(state.location(), Location::View(SpecialView::Overdue));
+        assert_eq!(state.location(), Location::View(SpecialView::Upcoming));
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Today,
             false,
         )));
         assert!(!state.sidebar_lists(SpecialView::Today));
-        assert!(state.sidebar_lists(SpecialView::Overdue));
+        assert!(state.sidebar_lists(SpecialView::Upcoming));
         assert_eq!(
             listed(&state),
             [
                 "inbox INBOX",
+                "upcoming",
                 "overdue",
                 "colors",
                 "starred",
@@ -1252,10 +1259,10 @@ INBOX:",
         let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
         assert!(state.sidebar_lists(SpecialView::Flagged), "on by default");
         state.update(Message::ToggleSidebar);
-        input(&mut state, &[SidebarInput::Next; 5]);
+        input(&mut state, &[SidebarInput::Next; 6]);
         input(&mut state, &[SidebarInput::Choose]);
         assert_eq!(state.location(), Location::View(SpecialView::Flagged));
-        assert_eq!(current(&state), Some(5), "its entry is current");
+        assert_eq!(current(&state), Some(6), "its entry is current");
         state.update(Message::Configure(Configuration::SidebarView(
             SpecialView::Flagged,
             false,
@@ -1266,6 +1273,7 @@ INBOX:",
             [
                 "inbox INBOX",
                 "today",
+                "upcoming",
                 "overdue",
                 "colors",
                 "starred",

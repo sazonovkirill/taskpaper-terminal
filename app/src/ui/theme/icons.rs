@@ -25,6 +25,9 @@ pub enum Icon {
     Flag,
     /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,
+    /// The Upcoming view's sidebar entry, header and Go to command, and the settings window's
+    /// setting that lists it (D-80).
+    Upcoming,
     /// The Colors view's sidebar entry, header and Go to command, and the settings window's
     /// setting that lists it (D-80).
     Colors,
@@ -175,6 +178,8 @@ impl Icon {
             Self::Flag => ("\u{f023b}", "⚐", "F"),
             // nf-md-inbox
             Self::Inbox => ("\u{f0687}", "⊔", "I"),
+            // nf-md-calendar_arrow_right
+            Self::Upcoming => ("\u{f1135}", "»", "u"),
             // nf-md-palette_outline; the command menu's color entries have the filled palette.
             Self::Colors => ("\u{f0e0c}", "◐", "c"),
             // nf-md-bookmark
@@ -241,7 +246,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 34] = [
+    const ICONS: [Icon; 35] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -249,6 +254,7 @@ mod tests {
         Icon::Today,
         Icon::Flag,
         Icon::Inbox,
+        Icon::Upcoming,
         Icon::Colors,
         Icon::Bookmark,
         Icon::Project,
@@ -361,6 +367,7 @@ mod tests {
         assert_eq!(unicode(Icon::Bookmark), "⚑");
         assert_eq!(unicode(Icon::Inbox), "⊔");
         assert_eq!(unicode(Icon::Colors), "◐");
+        assert_eq!(unicode(Icon::Upcoming), "»");
     }
 
     // FR-UI-10

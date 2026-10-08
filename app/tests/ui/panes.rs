@@ -388,7 +388,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_sidebar_entry_in_a_new_pane() {
         let mut app = Harness::with_text(OUTLINE, 100, 10);
         app.render();
         ctrl(&mut app, 'g');
-        for _ in 0..6 {
+        for _ in 0..7 {
             app.press(KeyCode::Down, KeyModifiers::NONE);
         }
         app.press(key.0, key.1);

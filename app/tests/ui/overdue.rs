@@ -6,7 +6,7 @@ use std::time::Duration;
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::Modifier;
 
-use crate::support::{Harness, OVERDUE, focused_rows, line, outline_line, outline_rows};
+use crate::support::{ARROW, Harness, OVERDUE, focused_rows, line, outline_line, outline_rows};
 
 /// Overdue blocks out of date order among one due today and a done one, on a Monday.
 const OUTLINE: &str = "\
@@ -150,19 +150,24 @@ fn navigator(text: &str, settings: &str) -> (Harness, Vec<String>) {
     (app, rows)
 }
 
-// D-85, D-80, navigation §6: the Navigator lists Overdue after Today with the open tasks it
+// D-85, D-80, navigation §6: the Navigator lists Overdue after Upcoming with the open tasks it
 // lists counted, and choosing it shows it.
 #[test]
 fn the_navigator_entry_counts_the_open_tasks_it_lists_and_opens_the_view() {
     let (mut app, rows) = navigator(OUTLINE, "");
     let at = |name: &str| rows.iter().position(|row| row.contains(name));
     let entry = at(&format!("{OVERDUE} Overdue")).expect("listed");
-    assert_eq!(at(" Today"), Some(entry - 1), "after Today");
+    assert_eq!(
+        at(&format!("{ARROW} Upcoming")),
+        Some(entry - 1),
+        "after Upcoming"
+    );
     assert!(
         rows[entry].contains(&format!("{OVERDUE} Overdue{:33}3 │", "")),
         "{}",
         rows[entry]
     );
+    app.press(KeyCode::Down, KeyModifiers::NONE);
     app.press(KeyCode::Down, KeyModifiers::NONE);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     let buffer = app.render().buffer().clone();

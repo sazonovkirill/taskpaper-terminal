@@ -3246,6 +3246,23 @@ mod tests {
         assert_eq!(kitty, [None, None, flagged, None]);
     }
 
+    // FR-TAG-08, D-80, D-42: `gn` goes to Upcoming, plain keys either keyboard protocol reports
+    // alike.
+    #[test]
+    fn gn_goes_to_upcoming() {
+        assert_eq!(
+            messages("gn", CONTEXT),
+            [
+                None,
+                Some(Message::GoTo(Location::View(SpecialView::Upcoming)))
+            ]
+        );
+        assert_eq!(
+            Keymap::default().bindings(Command::GoToView(SpecialView::Upcoming), true),
+            "gn"
+        );
+    }
+
     // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with
     // `Shift`.
     #[test]

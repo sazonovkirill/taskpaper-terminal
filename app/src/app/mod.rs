@@ -40,6 +40,7 @@ mod theme_picker;
 mod today;
 mod today_order;
 mod type_picker;
+mod upcoming;
 pub mod update;
 mod view_state;
 

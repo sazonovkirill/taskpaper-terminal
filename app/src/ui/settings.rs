@@ -30,13 +30,14 @@ enum Listed {
 
 /// The settings the window lists, in order. Animations join when they reach the settings file
 /// (ui.md §9.3).
-const LISTED: [Listed; 14] = [
+const LISTED: [Listed; 15] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
     Listed::SpecialInbox,
     Listed::SidebarView(SpecialView::Today),
     Listed::TodayStarred,
+    Listed::SidebarView(SpecialView::Upcoming),
     Listed::SidebarView(SpecialView::Overdue),
     Listed::SidebarView(SpecialView::Colors),
     Listed::SidebarView(SpecialView::Starred),
@@ -95,6 +96,10 @@ fn sidebar_setting(view: SpecialView) -> (&'static str, &'static str) {
         SpecialView::Today => (
             "Show Today in Navigator",
             "List the Today view in the Navigator",
+        ),
+        SpecialView::Upcoming => (
+            "Show Upcoming in Navigator",
+            "List the Upcoming view in the Navigator",
         ),
         SpecialView::Overdue => (
             "Show Overdue in Navigator",
@@ -420,6 +425,7 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
+            SettingValue::Switch(false),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -430,9 +436,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(12, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(13, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[12].value,
+            tui.listed_settings()[13].value,
             SettingValue::Text(String::new())
         );
         assert!(

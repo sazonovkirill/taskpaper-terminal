@@ -126,6 +126,9 @@ pub const SUN: &str = "☼";
 /// The flag after the text of a block with `@flag` (D-91), as drawn with icons off.
 pub const FLAG: &str = "⚐";
 
+/// The Upcoming view's icon (ui.md §7), as drawn with icons off.
+pub const ARROW: &str = "»";
+
 /// The Colors view's icon (ui.md §7), as drawn with icons off.
 pub const PALETTE: &str = "◐";
 

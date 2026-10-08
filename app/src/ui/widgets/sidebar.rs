@@ -492,16 +492,16 @@ mod tests {
         assert_eq!(
             rows(&buf),
             [
-                format!("▌ {} Colors", Icon::Colors.glyph(IconSet::Unicode)),
+                format!("▌ {} Upcoming", Icon::Upcoming.glyph(IconSet::Unicode)),
+                format!("  {} Colors", Icon::Colors.glyph(IconSet::Unicode)),
                 format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
                 format!("  {} Flagged", Icon::Flag.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
-                "  A".to_owned(),
             ]
         );
         assert_eq!(
-            cell(&buf, 2, 2).fg,
+            cell(&buf, 2, 3).fg,
             THEME.tag(crate::document::TagColor::Red),
             "the flag's red"
         );

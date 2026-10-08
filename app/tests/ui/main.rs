@@ -47,5 +47,6 @@ mod terminal_support;
 mod themes;
 mod today;
 mod typed_creation;
+mod upcoming;
 mod word_wrap;
 mod zoom;

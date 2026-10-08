@@ -350,6 +350,7 @@ pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'st
 pub fn view_icon(view: SpecialView) -> Icon {
     match view {
         SpecialView::Today => Icon::Today,
+        SpecialView::Upcoming => Icon::Upcoming,
         SpecialView::Overdue => Icon::Overdue,
         SpecialView::Colors => Icon::Colors,
         SpecialView::Starred => Icon::Star,
@@ -362,7 +363,7 @@ fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     match view {
         SpecialView::Today | SpecialView::Starred => today_style(theme),
         SpecialView::Overdue => Style::new().fg(theme.overdue),
-        SpecialView::Colors => Style::new(),
+        SpecialView::Upcoming | SpecialView::Colors => Style::new(),
         SpecialView::Flagged => flag_style(theme),
     }
 }

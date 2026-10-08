@@ -24,6 +24,7 @@ use crate::app::{Mode, SpecialView};
 pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
     match view {
         SpecialView::Today => "sidebar_today",
+        SpecialView::Upcoming => "sidebar_upcoming",
         SpecialView::Overdue => "sidebar_overdue",
         SpecialView::Colors => "sidebar_colors",
         SpecialView::Starred => "sidebar_starred",
@@ -763,6 +764,10 @@ mod tests {
         assert_eq!(
             read("sidebar_overdue = false\n", None).sidebar_views,
             [(SpecialView::Overdue, false)]
+        );
+        assert_eq!(
+            read("sidebar_upcoming = false\n", None).sidebar_views,
+            [(SpecialView::Upcoming, false)]
         );
         let config = read("sidebar_today = \"no\"\n", None);
         assert_eq!(config.sidebar_views, []);

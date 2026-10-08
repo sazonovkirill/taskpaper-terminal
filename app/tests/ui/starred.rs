@@ -43,12 +43,12 @@ fn g_star_lists_every_starred_block_with_its_path_under_the_starred_header() {
     }
 }
 
-/// The pane's header after choosing the Navigator's fourth entry in `app`, past Today, Overdue and
-/// Colors.
-fn fourth_entry(app: &mut Harness) -> String {
+/// The pane's header after choosing the Navigator's fifth entry in `app`, past Today, Upcoming,
+/// Overdue and Colors.
+fn fifth_entry(app: &mut Harness) -> String {
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
-    for _ in 0..3 {
+    for _ in 0..4 {
         app.press(KeyCode::Down, KeyModifiers::NONE);
     }
     app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -59,10 +59,10 @@ fn fourth_entry(app: &mut Harness) -> String {
 #[test]
 fn the_navigator_lists_starred_after_the_other_views_unless_its_setting_is_off() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
-    assert_eq!(fourth_entry(&mut app), format!("{STAR} Starred"));
+    assert_eq!(fifth_entry(&mut app), format!("{STAR} Starred"));
     let mut app = Harness::with_config(OUTLINE, "sidebar_starred = false\n", 80, 16);
     assert_eq!(
-        fourth_entry(&mut app),
+        fifth_entry(&mut app),
         format!("{FLAG} Flagged"),
         "the view after it"
     );

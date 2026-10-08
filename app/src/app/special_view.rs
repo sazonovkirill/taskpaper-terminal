@@ -15,6 +15,8 @@ use crate::document::{Block, ItemId, TagColor, blocks};
 pub enum SpecialView {
     /// The blocks for today (FR-TAG-04, D-7).
     Today,
+    /// The blocks started or due in the 7 days after today, grouped by day (FR-TAG-08, D-81).
+    Upcoming,
     /// The open blocks whose due date has passed, grouped by due date (FR-TAG-09, D-82).
     Overdue,
     /// The blocks with a color tag, grouped by color (FR-TAG-10, D-83).
@@ -27,8 +29,9 @@ pub enum SpecialView {
 
 impl SpecialView {
     /// Every special view, in the sidebar's order (D-80).
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Today,
+        Self::Upcoming,
         Self::Overdue,
         Self::Colors,
         Self::Starred,
@@ -40,6 +43,7 @@ impl SpecialView {
     pub fn name(self) -> &'static str {
         match self {
             Self::Today => "Today",
+            Self::Upcoming => "Upcoming",
             Self::Overdue => "Overdue",
             Self::Colors => "Colors",
             Self::Starred => "Starred",
@@ -54,7 +58,7 @@ impl SpecialView {
 pub enum ViewGroup {
     /// The blocks with this color tag (D-83).
     Color(TagColor),
-    /// The blocks listed for this day, such as their due date in the Overdue view (D-82).
+    /// The blocks listed for this day, such as their due date in the Overdue view (D-81, D-82).
     Day(Date),
 }
 
@@ -90,6 +94,7 @@ impl State {
     pub(super) fn view_rows(&self, pane: &Pane, view: SpecialView) -> Vec<Row> {
         match view {
             SpecialView::Today => self.today_rows(pane),
+            SpecialView::Upcoming => self.upcoming_rows(pane),
             SpecialView::Overdue => self.overdue_rows(pane),
             SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Starred => self.matching_rows(pane, Block::starred),
@@ -163,7 +168,8 @@ impl State {
     pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
         match view {
             SpecialView::Today => self.reorder_entries(down),
-            SpecialView::Overdue
+            SpecialView::Upcoming
+            | SpecialView::Overdue
             | SpecialView::Colors
             | SpecialView::Starred
             | SpecialView::Flagged => {}
@@ -327,6 +333,7 @@ Work: @done @star
             SpecialView::ALL,
             [
                 SpecialView::Today,
+                SpecialView::Upcoming,
                 SpecialView::Overdue,
                 SpecialView::Colors,
                 SpecialView::Starred,

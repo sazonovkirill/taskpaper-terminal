@@ -141,7 +141,7 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     let mut app = Harness::with_text(TEXT, 90, 16);
     app.render();
     app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
-    for _ in 0..5 {
+    for _ in 0..6 {
         press(&mut app, KeyCode::Down);
     }
     app.press(KeyCode::F(10), KeyModifiers::SHIFT);
@@ -149,8 +149,8 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     assert_eq!(
         rows[4..12],
         [
-            "      Near the statio┌Navigator─────────────────────────────────────┐",
-            "    - Pack           │  ☼ Today                                     │",
+            "      Near the statio│  ☼ Today                                     │",
+            "    - Pack           │  » Upcoming                                  │",
             "  Other              │  ┌Commands:─────────────────────────────────────────┐",
             "                     │  │  › Go to Entry                            Enter  │",
             "                     │  │  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
@@ -162,10 +162,10 @@ fn on_a_sidebar_entry_it_offers_going_there() {
     );
     let buffer = app.render().buffer().clone();
     assert!(
-        buffer[(21, 7)].modifier.contains(Modifier::DIM),
+        buffer[(21, 8)].modifier.contains(Modifier::DIM),
         "the window is dimmed behind the menu"
     );
-    assert!(!buffer[(25, 6)].modifier.contains(Modifier::DIM));
+    assert!(!buffer[(25, 7)].modifier.contains(Modifier::DIM));
     press(&mut app, KeyCode::Enter);
     assert!(!open(&mut app));
     assert_eq!(screen(&mut app)[0], "  ⌂ › Trip", "the window closed");
@@ -194,7 +194,7 @@ fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
 // FR-KEY-06, FR-KEY-04
 #[test]
 fn the_shortcuts_panel_lists_it() {
-    let mut app = Harness::with_text(TEXT, 120, 62);
+    let mut app = Harness::with_text(TEXT, 120, 63);
     press(&mut app, KeyCode::Char('?'));
     let rows = screen(&mut app);
     let at = rows

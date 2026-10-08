@@ -82,13 +82,13 @@ fn files(app: &mut Harness) {
 #[test]
 fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
     // Tall enough for the whole Appearance group.
-    let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 28);
+    let mut app = Harness::with_config(OUTLINE, SETTINGS, 70, 30);
     app.type_keys("g,");
     let file = app.config_file();
     let footer = format!("│ Settings file: {}", file.display());
     let rows = window(&mut app);
     assert_eq!(
-        rows[..21],
+        rows[..23],
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
@@ -103,6 +103,8 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     List the Today view in the Navigator           │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
+            "│               │   » Show Upcoming in Navigator                 on  │",
+            "│               │     List the Upcoming view in the Navigator        │",
             "│               │   ! Show Overdue in Navigator                  on  │",
             "│               │     List the Overdue view in the Navigator         │",
             "│               │   ◐ Show Colors in Navigator                   on  │",
@@ -114,16 +116,16 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         ]
     );
     assert!(
-        rows[22].starts_with("│ Tab: groups/settings · Enter: change"),
+        rows[24].starts_with("│ Tab: groups/settings · Enter: change"),
         "{}",
-        rows[22]
+        rows[24]
     );
     assert!(
-        rows[23].starts_with(&footer[..footer.len().min(68)]),
+        rows[25].starts_with(&footer[..footer.len().min(68)]),
         "{}",
-        rows[23]
+        rows[25]
     );
-    assert_eq!(rows.len(), 25, "as tall as the Appearance group needs");
+    assert_eq!(rows.len(), 27, "as tall as the Appearance group needs");
     press(&mut app, KeyCode::Esc);
     assert_eq!(window(&mut app), Vec::<String>::new());
 }
