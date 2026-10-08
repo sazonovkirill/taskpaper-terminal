@@ -1,5 +1,4 @@
 # A tab inside a line's text (as in a pasted table row) shows as space, so the words it separates do not run together.
-# BUG: the tab is drawn with no width ("NamePhone"), and in edit mode the caret is drawn one column right of where typing goes.
 file <<END
 - Name	Phone	Email
 END

@@ -1,5 +1,4 @@
 # A note whose text contains a tab character shows the words apart, not glued together.
-# BUG: the tab inside the text is drawn as nothing, so "Some note<TAB>with tab" reads "Some notewith tab".
 file <<END
 Notes:
 	Some note	with tab

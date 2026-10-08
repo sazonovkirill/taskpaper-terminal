@@ -406,3 +406,18 @@ fn ctrl_t_on_a_project_being_edited_leaves_no_colon_behind() {
     assert_eq!(outline_rows(&mut app)[0], "Inbox");
     assert_eq!(saved(&mut app), "Inbox @home @section\n");
 }
+
+// FR-MODE-02, F-FILE-03
+#[test]
+fn a_tab_inside_the_text_shows_as_a_space_and_is_saved_as_a_tab() {
+    let mut app = Harness::with_text("- Name\tPhone\n", 40, 5);
+    assert_eq!(outline_rows(&mut app)[0], "- Name Phone");
+    press(&mut app, KeyCode::Enter, 1);
+    assert_eq!(outline_rows(&mut app)[0], "- Name Phone");
+    assert_caret(&mut app, 14, 2);
+    press(&mut app, KeyCode::Left, 5);
+    app.type_keys("s");
+    assert_eq!(outline_rows(&mut app)[0], "- Name sPhone");
+    assert_caret(&mut app, 10, 2);
+    assert_eq!(saved(&mut app), "- Name\tsPhone\n");
+}

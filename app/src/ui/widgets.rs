@@ -2,7 +2,7 @@
 
 mod wrap;
 
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 use jiff::civil::Date;
 use ratatui::{
@@ -1222,8 +1222,18 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
             if link || row.url {
                 style = style.underlined().fg(link_color);
             }
-            Span::styled(run.text, style)
+            Span::styled(drawable(run.text), style)
         })
+}
+
+/// `text` as the buffer can draw it: a tab shows as a space, the one column its width counts,
+/// where the buffer would skip it as a control character and run the words it separates together.
+fn drawable(text: &str) -> Cow<'_, str> {
+    if text.contains('\t') {
+        Cow::Owned(text.replace('\t', " "))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
@@ -1507,7 +1517,7 @@ impl<'a> Field<'a> {
         let (from, scrolled) = self.scrolled(start, width);
         let local = |at: usize| at.min(text.len()).max(from);
         let selected = local(selection.start)..local(selection.end);
-        let piece = |range: Range<usize>| text.get(range).unwrap_or_default();
+        let piece = |range: Range<usize>| drawable(text.get(range).unwrap_or_default());
         let spans = vec![
             Span::styled(piece(from..selected.start), style),
             Span::styled(piece(selected.clone()), style.reversed()),
@@ -2666,6 +2676,17 @@ mod tests {
         expected.set_style(Rect::new(3, 0, 2, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         assert_eq!(caret, 5, "after the marker and the text before the caret");
+    }
+
+    // FR-MODE-02
+    #[test]
+    fn a_tab_in_the_text_is_drawn_as_a_space_in_the_outline_and_the_editor() {
+        assert_eq!(render("- a\tb", 6, 1), Buffer::with_lines(["- a b "]));
+        let (buf, caret) = edited("- a", &editor("a\tb\tc", 4, Some(1..2)), 8);
+        let mut expected = Buffer::with_lines(["- a b c "]);
+        expected.set_style(Rect::new(3, 0, 1, 1), Style::new().reversed());
+        assert_eq!(buf, expected);
+        assert_eq!(caret, 6, "the tab takes the column it is drawn in");
     }
 
     // FR-BLK-07, D-52
