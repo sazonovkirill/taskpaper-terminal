@@ -317,6 +317,7 @@ fn animations_off_from_go_to_command_is_written_to_the_config_file() {
     assert_eq!(frame(&mut app), still("G"), "the flash running ends");
     app.type_keys("ggG");
     assert_eq!(frame(&mut app), still("G"), "and no other starts");
+    app.settle();
     assert_eq!(
         fs::read_to_string(app.config_file()).unwrap(),
         "theme = \"nord\"\nanimations = \"off\"\n"
