@@ -173,7 +173,10 @@ impl Session<'_> {
                 "the app has ended; only `saved`, `outside` and `restart` can follow".to_owned(),
             );
         }
-        if matches!(step, Step::See(_) | Step::Hide(_) | Step::Status(_)) {
+        if matches!(
+            step,
+            Step::See(_) | Step::Hide(_) | Step::Status(_) | Step::Resize(..)
+        ) {
             self.react();
         } else if !self.exited && !matches!(step, Step::Saved(_)) && self.before.is_none() {
             self.before = Some(self.terminal.screen().text());
@@ -213,12 +216,7 @@ impl Session<'_> {
                     .wait_until(|screen| screen.row_text(rows - 1).contains(text.as_str()))
                     .map_err(|_| format!("the status line never showed {text:?}"))
             }
-            Step::Resize(width, height) => {
-                self.size = (*width, *height);
-                self.terminal
-                    .resize(*width, *height)
-                    .map_err(|error| error.to_string())
-            }
+            Step::Resize(width, height) => self.resize(*width, *height),
             Step::Outside(text) => std::fs::write(self.launch.path, expand(text, self.today))
                 .map_err(|error| format!("cannot write the file: {error}")),
             Step::Restart => self.restart(),
@@ -236,6 +234,29 @@ impl Session<'_> {
                 .terminal
                 .wait_until_for(|screen| screen.text() != before, REACTION);
         }
+    }
+
+    /// Resizes the terminal once the app has drawn what the input before asked for, then waits
+    /// for it to redraw at the new size. Input that reaches the app in the same instant as the
+    /// resize can be lost: crossterm 0.29 returns the `Resize` event and drops the input
+    /// readiness its edge-triggered poll reported with it, so the key waits unread until more
+    /// input arrives (termlens's `Terminal::resize` docs).
+    fn resize(&mut self, width: u16, height: u16) -> Result<(), String> {
+        self.terminal
+            .wait_stable(QUIET)
+            .map_err(|error| error.to_string())?;
+        self.size = (width, height);
+        self.terminal
+            .resize(width, height)
+            .map_err(|error| error.to_string())?;
+        let clipped = self.terminal.screen().text();
+        let _ = self
+            .terminal
+            .wait_until_for(|screen| screen.text() != clipped, REACTION);
+        self.terminal
+            .wait_stable(QUIET)
+            .map(drop)
+            .map_err(|error| error.to_string())
     }
 
     fn press(&mut self, press: Press) -> Result<(), String> {
