@@ -333,6 +333,8 @@ pub struct Row {
     pub start: Option<Date>,
     /// The date of its `@due`, if it holds one (FR-TAG-03).
     pub due: Option<Date>,
+    /// The date its `@done` holds, if it holds one (D-84).
+    pub done_date: Option<Date>,
     /// Whether it carries `@star` (FR-TAG-04, D-88).
     pub starred: bool,
     /// Whether it carries `@bookmark` (D-11).
@@ -761,6 +763,7 @@ impl State {
             title,
             start: block.start(),
             due: block.due(),
+            done_date: block.done_date(),
             starred: block.starred(),
             bookmark: block.bookmark(),
             flag: block.flag(),

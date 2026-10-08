@@ -5,13 +5,12 @@
 use jiff::civil::Date;
 
 use super::{Row, SpecialView, State, pane::Pane};
-use crate::document::Block;
 
-/// Whether the Today view lists `block` on `today`: it has a start or due date on or before
-/// `today`, or, when `starred` says to list starred blocks, `@star` (FR-TAG-04, D-88).
-pub(super) fn for_today(block: &Block, today: Date, starred: bool) -> bool {
-    starred && block.starred()
-        || [block.start(), block.due()]
+/// Whether the Today view lists the block of `row` on `today`: it has a start or due date on or
+/// before `today`, or, when `starred` says to list starred blocks, `@star` (FR-TAG-04, D-88).
+pub(super) fn for_today(row: &Row, today: Date, starred: bool) -> bool {
+    starred && row.starred
+        || [row.start, row.due]
             .into_iter()
             .flatten()
             .any(|date| date <= today)
@@ -21,7 +20,7 @@ impl State {
     /// The Today view's entries in `pane`, as [`State::matching_rows`] gives them, in the order
     /// the user gave them, else in document order (D-57).
     pub(super) fn today_rows(&self, pane: &Pane) -> Vec<Row> {
-        let mut rows = self.matching_rows(pane, |block| self.lists(SpecialView::Today, block));
+        let mut rows = self.matching_rows(pane, |row| self.lists(SpecialView::Today, row));
         self.today_order.arrange(&mut rows, |row| row.id);
         rows
     }

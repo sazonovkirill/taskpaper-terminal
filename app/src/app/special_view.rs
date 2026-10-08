@@ -106,23 +106,23 @@ impl State {
             SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Logbook => self.logbook_rows(pane),
             SpecialView::Starred | SpecialView::Flagged => {
-                self.matching_rows(pane, |block| self.lists(view, block))
+                self.matching_rows(pane, |row| self.lists(view, row))
             }
         }
     }
 
-    /// Whether `view` lists `block`, by what its line says; the Overdue view also leaves out done
-    /// blocks and what is inside them (D-82). The Navigator counts the open tasks it lists by
-    /// this.
-    pub(super) fn lists(&self, view: SpecialView, block: &Block) -> bool {
+    /// Whether `view` lists the block of `row`, by what its line says; the Overdue view also
+    /// leaves out done blocks and what is inside them (D-82). The Navigator counts the open tasks
+    /// it lists by this.
+    pub(super) fn lists(&self, view: SpecialView, row: &Row) -> bool {
         match view {
-            SpecialView::Today => for_today(block, self.today, self.today_starred),
-            SpecialView::Upcoming => upcoming_day(block.start(), block.due(), self.today).is_some(),
-            SpecialView::Overdue => block.due().is_some_and(|due| due < self.today),
-            SpecialView::Colors => block.color().is_some(),
-            SpecialView::Logbook => in_logbook(block, self.today),
-            SpecialView::Starred => block.starred(),
-            SpecialView::Flagged => block.flag(),
+            SpecialView::Today => for_today(row, self.today, self.today_starred),
+            SpecialView::Upcoming => upcoming_day(row.start, row.due, self.today).is_some(),
+            SpecialView::Overdue => row.due.is_some_and(|due| due < self.today),
+            SpecialView::Colors => row.color.is_some(),
+            SpecialView::Logbook => in_logbook(row, self.today),
+            SpecialView::Starred => row.starred,
+            SpecialView::Flagged => row.flag,
         }
     }
 
@@ -130,7 +130,7 @@ impl State {
     /// the path of the blocks above it. Completed blocks, each with everything inside it, are
     /// left out while hidden, as in the outline (FR-DONE-02); special nodes never show
     /// (FR-SPC-01).
-    pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
+    pub(super) fn matching_rows(&self, pane: &Pane, lists: impl Fn(&Row) -> bool) -> Vec<Row> {
         self.matching(pane, pane.show_done, lists)
     }
 
@@ -139,7 +139,7 @@ impl State {
     pub(super) fn matching_rows_with_done(
         &self,
         pane: &Pane,
-        lists: impl Fn(&Block) -> bool,
+        lists: impl Fn(&Row) -> bool,
     ) -> Vec<Row> {
         self.matching(pane, true, lists)
     }
@@ -147,12 +147,12 @@ impl State {
     /// The entries in `pane` of the blocks for which `lists` holds among the outline's rows with
     /// nothing collapsed, completed blocks shown when `show_done` says so: the rows a change
     /// builds again only where it changed, gone through rather than the document's tree.
-    fn matching(&self, pane: &Pane, show_done: bool, lists: impl Fn(&Block) -> bool) -> Vec<Row> {
+    fn matching(&self, pane: &Pane, show_done: bool, lists: impl Fn(&Row) -> bool) -> Vec<Row> {
         let mut above = Above::default();
         let mut entries = Vec::new();
         for row in &self.unfolded_rows(Location::Outline(None), show_done) {
             above.reach(row.depth);
-            if blocks::block(&self.document, row.id).is_some_and(|block| lists(&block)) {
+            if lists(row) {
                 entries.push(Row {
                     depth: 0,
                     selected: pane.selection.contains(row.id),

@@ -514,10 +514,9 @@ impl State {
     /// block a view could list as an open task.
     fn views_open_tasks(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
         let mut counts = [0; SpecialView::ALL.len()];
-        let open = rows.iter().filter(|row| open_task(row));
-        for block in open.filter_map(|row| blocks::block(&self.document, row.id)) {
+        for row in rows.iter().filter(|row| open_task(row)) {
             for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
-                *count += usize::from(self.lists(view, &block));
+                *count += usize::from(self.lists(view, row));
             }
         }
         counts

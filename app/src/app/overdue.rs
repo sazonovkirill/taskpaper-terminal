@@ -15,7 +15,7 @@ impl State {
     /// a date (D-82).
     pub(super) fn overdue_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows(pane, |block| self.lists(SpecialView::Overdue, block))
+            .matching_rows(pane, |row| self.lists(SpecialView::Overdue, row))
             .into_iter()
             .filter(|row| row.overdue(self.today))
             .filter_map(|row| Some((row.due?, row)))

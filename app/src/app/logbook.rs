@@ -11,16 +11,14 @@ use super::{
     pane::Pane,
     special_view::{SpecialView, ViewGroup, under_headings},
 };
-use crate::document::{Block, blocks};
 
 /// How many days before today the Logbook reaches back: with today, the last 7 days (D-84).
 const DAYS_BACK: i32 = 6;
 
-/// Whether the Logbook lists `block` on `today`: its `@done` date is today or one of the six days
-/// before (D-84).
-pub(super) fn in_logbook(block: &Block, today: Date) -> bool {
-    block
-        .done_date()
+/// Whether the Logbook lists the block of `row` on `today`: its `@done` date is today or one of
+/// the six days before (D-84).
+pub(super) fn in_logbook(row: &Row, today: Date) -> bool {
+    row.done_date
         .is_some_and(|date| (0..=DAYS_BACK).contains(&(today - date).get_days()))
 }
 
@@ -30,9 +28,9 @@ impl State {
     /// grouped by that day, newest first, in document order within a day (D-84).
     pub(super) fn logbook_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows_with_done(pane, |block| self.lists(SpecialView::Logbook, block))
+            .matching_rows_with_done(pane, |row| self.lists(SpecialView::Logbook, row))
             .into_iter()
-            .filter_map(|row| Some((blocks::block(&self.document, row.id)?.done_date()?, row)))
+            .filter_map(|row| Some((row.done_date?, row)))
             .collect();
         entries.sort_by_key(|&(date, _)| Reverse(date));
         under_headings(
@@ -52,7 +50,7 @@ mod tests {
     use super::*;
     use crate::{
         app::{Heading, Location, Message, SelectionChange, SpecialView},
-        document::format,
+        document::{blocks, format},
     };
 
     /// The local date of these tests, a Monday.

@@ -14,7 +14,7 @@ impl State {
     /// color (D-83).
     pub(super) fn colors_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
-            .matching_rows(pane, |block| self.lists(SpecialView::Colors, block))
+            .matching_rows(pane, |row| self.lists(SpecialView::Colors, row))
             .into_iter()
             .filter_map(|row| Some((row.color?, row)))
             .collect();
