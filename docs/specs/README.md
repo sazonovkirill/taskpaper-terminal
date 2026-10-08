@@ -14,6 +14,7 @@
 | [navigation.md](navigation.md) | Visible rows, focus, folding, zoom, panes, the Navigator, Today view, Go to Symbol and Go to Command. |
 | [editing.md](editing.md) | Navigate and edit modes, creating blocks, structural operations, clipboard, block type, done, dates, colors, bookmarks. |
 | [special-nodes.md](special-nodes.md) | Hidden `@hidden` lines that store feature data. |
+| [attachments.md](attachments.md) | Notes and comments attached to blocks: storage, icons, the attachments panel, settings. |
 | [links.md](links.md) | Internal links and backlinks (Later): `@uid` targets, `[[ID\|Title]]` links, display, commands. |
 | [search.md](search.md) | Date parsing (v1); search syntax and bookmarked searches (Later). |
 | [keybindings.md](keybindings.md) | Terminal key constraints, navigate and edit mode bindings, configuration. |
