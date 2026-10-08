@@ -1,0 +1,17 @@
+# Move Down (Alt+j) on a Flagged entry changes nothing, since the Flagged view cannot be reordered, and its context menu leaves the command out.
+size 100 50
+file <<END
+Shop:
+	- Milk @flag
+	- Eggs @flag
+END
+keys gF <A-j> \
+see Commands:
+hide Move Down
+keys <Esc>
+quit
+saved <<END
+Shop:
+	- Milk @flag
+	- Eggs @flag
+END

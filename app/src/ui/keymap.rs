@@ -819,10 +819,11 @@ impl Keymap {
 
     /// What `event` completes at time `now`, if anything, a message carrying what it needs of
     /// `context`. Only key presses and text pasted into the terminal count, the latter in
-    /// navigate and edit mode, the date prompt and the Quick Add panel alone; repeats, releases and other events are ignored. A key that
-    /// continues no binding ends the pending sequence and does nothing, unless the sequence, or
-    /// one that timed out, is a binding of its own: then what it asks for comes back and
-    /// [`Keymap::replay`] says to handle `event` again once that is done.
+    /// navigate and edit mode, the date prompt and the Quick Add panel alone; repeats, releases
+    /// and other events are ignored. A key that continues no binding ends the pending sequence
+    /// and does nothing, unless the sequence, or one that timed out, is a binding of its own:
+    /// then what it asks for comes back and [`Keymap::replay`] says to handle `event` again once
+    /// that is done.
     pub fn action_for(
         &mut self,
         event: &Event,

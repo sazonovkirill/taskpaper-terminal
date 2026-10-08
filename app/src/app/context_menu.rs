@@ -19,7 +19,8 @@ impl State {
 
     /// `\`: opens the context menu on the focused Navigator entry while the Navigator is open,
     /// else on the selected blocks, else on the focused block. In a special view it leaves out
-    /// what the view does not take (navigation.md §7, §7.1). Nothing opens without anything to offer.
+    /// what the view does not take (navigation.md §7, §7.1). Nothing opens without anything to
+    /// offer.
     pub(super) fn open_context_menu(&mut self) {
         let groups = if self.navigator_focused() {
             self.navigator_commands().unwrap_or_default()
