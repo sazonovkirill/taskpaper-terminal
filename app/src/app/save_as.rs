@@ -6,11 +6,10 @@
 use std::{ops::Range, path::PathBuf};
 
 use super::{
-    Effect, State, Version,
+    DocumentText, Effect, State, Version,
     text_field::{TextEdit, TextField},
     update::Disk,
 };
-use crate::document::format;
 
 /// What happens to Save As: the user's keys and the frontend's reports.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,7 +29,10 @@ pub enum SaveAs {
     /// The path typed as the frontend resolves it, `~` expanded.
     Resolved(PathBuf),
     /// The [`Disk::SaveAs`] under way wrote the file.
-    Saved,
+    Saved {
+        /// The version of the file it wrote.
+        version: Version,
+    },
     /// The [`Disk::SaveAs`] under way failed.
     Failed {
         /// Why, for the prompt.
@@ -88,11 +90,7 @@ enum Stage {
         expected: Option<Version>,
     },
     /// Writing the document at `revision` to `path`, as `version`.
-    Writing {
-        path: PathBuf,
-        version: Version,
-        revision: u64,
-    },
+    Writing { path: PathBuf, revision: u64 },
 }
 
 impl State {
@@ -165,15 +163,8 @@ impl State {
                     expected: contents.as_deref().map(Version::of),
                 };
             }
-            (
-                SaveAs::Saved,
-                Stage::Writing {
-                    path,
-                    version,
-                    revision,
-                },
-            ) => {
-                let (path, version, revision) = (path.clone(), *version, *revision);
+            (SaveAs::Saved { version }, Stage::Writing { path, revision }) => {
+                let (path, revision) = (path.clone(), *revision);
                 return self.saved_as(path, version, revision);
             }
             _ => {}
@@ -185,17 +176,15 @@ impl State {
     /// after keeping a backup of a file it replaces.
     fn write_as(&mut self, path: PathBuf, expected: Option<Version>) -> Vec<Effect> {
         self.lift_trailing_blanks();
-        let text = format::serialize(self.document());
         let backup = expected.map(|_| Effect::Disk(Disk::Backup { path: path.clone() }));
         let save = Effect::Disk(Disk::SaveAs {
             path: path.clone(),
-            text: text.clone(),
+            text: DocumentText::of(self.document()),
             expected,
         });
         if let Some(prompt) = self.save_as.as_mut() {
             prompt.stage = Stage::Writing {
                 path,
-                version: Version::of(text.as_bytes()),
                 revision: self.document.revision(),
             };
         }
@@ -257,9 +246,16 @@ mod tests {
     fn save_as(text: &str, expected: Option<&[u8]>) -> Effect {
         Effect::Disk(Disk::SaveAs {
             path: PathBuf::from(NEW),
-            text: text.to_owned(),
+            text: DocumentText::of(&format::parse(text)),
             expected: expected.map(Version::of),
         })
+    }
+
+    /// The report of Save As having written `text`.
+    fn saved(text: &str) -> SaveAs {
+        SaveAs::Saved {
+            version: Version::of(text.as_bytes()),
+        }
     }
 
     /// `state` with Save As accepted for [`NEW`], waiting for the file to be written.
@@ -311,7 +307,7 @@ mod tests {
             "not until it is written"
         );
         assert_eq!(
-            event(&mut state, SaveAs::Saved),
+            event(&mut state, saved("- a\n")),
             [Effect::Watch(PathBuf::from(NEW))]
         );
         assert_eq!(state.save_as(), None);
@@ -334,7 +330,7 @@ mod tests {
                 }),
                 Effect::Disk(Disk::Save {
                     path: PathBuf::from(NEW),
-                    text: "- a @done(2026-10-05)\n".to_owned(),
+                    text: DocumentText::of(&format::parse("- a @done(2026-10-05)\n")),
                     expected: Some(Version::of(b"- a\n")),
                 })
             ],
@@ -360,7 +356,7 @@ mod tests {
             event(&mut state, SaveAs::Resolved(PathBuf::from(NEW))),
             [save_as("- a @done(2026-10-05)\n", None)]
         );
-        event(&mut state, SaveAs::Saved);
+        event(&mut state, saved("- a @done(2026-10-05)\n"));
         assert_eq!(state.save_state(), SaveState::Saved);
         assert_eq!(
             state.update(Message::Tick {
@@ -407,7 +403,7 @@ mod tests {
                 save_as("- a\n", Some(&theirs)),
             ]
         );
-        event(&mut state, SaveAs::Saved);
+        event(&mut state, saved("- a\n"));
         assert_eq!(state.path(), Some(Path::new(NEW)));
     }
 
@@ -469,7 +465,7 @@ mod tests {
         );
         accepted(&mut state);
         assert_eq!(state.update(Message::CheckFile), []);
-        event(&mut state, SaveAs::Saved);
+        event(&mut state, saved("- a\n"));
         assert_eq!(
             state.update(Message::CheckFile),
             [Effect::Disk(Disk::Check {
@@ -507,7 +503,7 @@ mod tests {
     fn reports_without_a_save_under_way_change_nothing() {
         let mut state = opened();
         for report in [
-            SaveAs::Saved,
+            saved("- a\n"),
             SaveAs::Failed {
                 reason: "x".to_owned(),
             },
@@ -519,7 +515,7 @@ mod tests {
         }
         event(&mut state, SaveAs::Open);
         for report in [
-            SaveAs::Saved,
+            saved("- a\n"),
             SaveAs::Refused { contents: None },
             SaveAs::Resolved(PathBuf::from(NEW)),
         ] {
@@ -547,12 +543,12 @@ mod tests {
             "nothing is saved meanwhile"
         );
         assert_eq!(state.deadline(), None);
-        let effects = event(&mut state, SaveAs::Saved);
+        let effects = event(&mut state, saved("- a\n"));
         assert_eq!(state.save_state(), SaveState::Unsaved);
         assert!(
             effects.contains(&Effect::Disk(Disk::Save {
                 path: PathBuf::from(NEW),
-                text: "- a @done(2026-10-05)\n".to_owned(),
+                text: DocumentText::of(&format::parse("- a @done(2026-10-05)\n")),
                 expected: Some(Version::of(b"- a\n")),
             })),
             "{effects:?}"

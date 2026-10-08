@@ -231,7 +231,7 @@ fn needs_the_tree(message: &Message) -> bool {
         Message::NewNext
         | Message::Started
         | Message::Tick { .. }
-        | Message::Saved
+        | Message::Saved { .. }
         | Message::SaveFailed { .. }
         | Message::SaveRefused { .. }
         | Message::CheckFile

@@ -239,7 +239,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message, Mode, Paste, SelectionChange, TextEdit, Version},
+        app::{
+            Disk, DocumentText, Effect, Message, Mode, Paste, SelectionChange, TextEdit, Version,
+        },
         document::{Document, Op, format},
     };
 
@@ -742,13 +744,20 @@ mod tests {
         })
     }
 
+    /// The report of a save that wrote `text`.
+    fn saved(text: &str) -> Message {
+        Message::Saved {
+            version: Version::of(text.as_bytes()),
+        }
+    }
+
     /// A save of `text` over the file holding `on_disk`.
     fn save(path: &Path, text: &str, on_disk: &str) -> Vec<Effect> {
         vec![
             Effect::Disk(Disk::Backup { path: path.into() }),
             Effect::Disk(Disk::Save {
                 path: path.into(),
-                text: text.to_owned(),
+                text: DocumentText::of(&format::parse(text)),
                 expected: Some(Version::of(on_disk.as_bytes())),
             }),
         ]
@@ -779,7 +788,7 @@ mod tests {
             later(&mut state, 6),
             save(&path, "A:\n\tB:\n\tx\n", "A:\n\tB:\n")
         );
-        state.update(Message::Saved);
+        state.update(saved("A:\n\tB:\n\tx\n"));
         backspace(&mut state);
         assert_eq!(later(&mut state, 10), [], "empty again");
         assert_eq!(
@@ -789,7 +798,7 @@ mod tests {
         );
         assert_eq!(state.notice(), Some(&Notice::BlanksLifted));
         assert_eq!(lines(&state), ["A:", "\tB:", ""]);
-        state.update(Message::Saved);
+        state.update(saved("A:\n\tB:\n\n"));
         state.update(Message::Undo);
         assert_eq!(
             lines(&state),
@@ -807,7 +816,7 @@ mod tests {
         state.update(Message::StopEditing);
         later(&mut state, 1);
         assert_eq!(lines(&state), ["A:", "\tB:", ""]);
-        state.update(Message::Saved);
+        state.update(saved("A:\n\tB:\n\n"));
         state.update(Message::Undo);
         assert_eq!(lines(&state), ["A:", "\tB:", "\t"]);
         assert_eq!(state.save_deadline(), None);
@@ -835,7 +844,7 @@ mod tests {
         state.update(Message::New(NewBlock::Below, None));
         state.update(Message::StopEditing);
         later(&mut state, 1);
-        state.update(Message::Saved);
+        state.update(saved("A:\n\tB:\n\n"));
         state.update(Message::Undo);
         assert_eq!(
             state.update(Message::Quit),

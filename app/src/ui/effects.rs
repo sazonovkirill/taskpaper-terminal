@@ -260,7 +260,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Disk, Effect, Message},
+        app::{Disk, DocumentText, Effect, Message},
         document::Item,
     };
 
@@ -514,7 +514,7 @@ mod tests {
             effects.last(),
             Some(&Effect::Disk(Disk::Save {
                 path: path.clone(),
-                text: "- a\n- b\n".to_owned(),
+                text: DocumentText::of(&format::parse("- a\n- b\n")),
                 expected: Some(Version::of(b"- a\n")),
             }))
         );

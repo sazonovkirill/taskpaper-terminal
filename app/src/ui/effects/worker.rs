@@ -115,8 +115,8 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
                 path,
                 text,
                 expected,
-            }) => Some(match write(&path, &text, expected) {
-                Written::Done => Message::Saved,
+            }) => Some(match write(&path, &text.serialize(), expected) {
+                Written::Done(version) => Message::Saved { version },
                 Written::Failed(reason) => Message::SaveFailed { reason },
                 Written::Refused(contents) => Message::SaveRefused { contents },
             }),
@@ -124,11 +124,13 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
                 path,
                 text,
                 expected,
-            }) => Some(Message::SaveAs(match write(&path, &text, expected) {
-                Written::Done => SaveAs::Saved,
-                Written::Failed(reason) => SaveAs::Failed { reason },
-                Written::Refused(contents) => SaveAs::Refused { contents },
-            })),
+            }) => Some(Message::SaveAs(
+                match write(&path, &text.serialize(), expected) {
+                    Written::Done(version) => SaveAs::Saved { version },
+                    Written::Failed(reason) => SaveAs::Failed { reason },
+                    Written::Refused(contents) => SaveAs::Refused { contents },
+                },
+            )),
             Job::Disk(Disk::Check { path }) => check(&path),
             Job::Disk(Disk::ConflictCopy { path, contents }) => {
                 Some(match backups.conflict(&path, &contents) {
@@ -178,7 +180,8 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
 
 /// How writing a file went.
 enum Written {
-    Done,
+    /// Done, leaving the file at this version.
+    Done(Version),
     /// Not done, because the file was no longer the version expected; these are its bytes now,
     /// or `None` when there is no file.
     Refused(Option<Vec<u8>>),
@@ -191,7 +194,9 @@ fn write(path: &Path, text: &str, expected: Option<Version>) -> Written {
     let written = atomic::prepare(path, text.as_bytes()).and_then(|prepared| {
         let found = read(prepared.target())?;
         if found.as_deref().map(Version::of) == expected {
-            prepared.commit().map(|()| Written::Done)
+            prepared
+                .commit()
+                .map(|()| Written::Done(Version::of(text.as_bytes())))
         } else {
             Ok(Written::Refused(found))
         }
@@ -223,6 +228,7 @@ mod tests {
     use jiff::civil::date;
 
     use super::*;
+    use crate::{app::DocumentText, document::format};
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -249,9 +255,16 @@ mod tests {
     fn save_over(path: &Path, text: &str, expected: Option<&str>) -> Disk {
         Disk::Save {
             path: path.to_owned(),
-            text: text.to_owned(),
+            text: DocumentText::of(&format::parse(text)),
             expected: expected.map(|text| Version::of(text.as_bytes())),
         }
+    }
+
+    /// The report of a save that wrote `text`.
+    fn saved(text: &str) -> Input {
+        Input::Core(Message::Saved {
+            version: Version::of(text.as_bytes()),
+        })
     }
 
     // F-FILE-04, N-UX-01
@@ -266,12 +279,12 @@ mod tests {
         io.flush();
         let results = results(&inputs);
         assert_eq!(results.len(), 3);
-        assert_eq!(results[0], Input::Core(Message::Saved));
+        assert_eq!(results[0], saved("one"));
         assert!(
             matches!(&results[1], Input::Core(Message::SaveFailed { reason }) if reason.contains("No such file")),
             "{results:?}"
         );
-        assert_eq!(results[2], Input::Core(Message::Saved));
+        assert_eq!(results[2], saved("two"));
         assert_eq!(fs::read_to_string(&path)?, "two");
         Ok(())
     }
@@ -284,8 +297,13 @@ mod tests {
         let path = dir.path().join("new.taskpaper");
         let save_as = |path: &Path, text: &str, expected: Option<&str>| Disk::SaveAs {
             path: path.to_owned(),
-            text: text.to_owned(),
+            text: DocumentText::of(&format::parse(text)),
             expected: expected.map(|text| Version::of(text.as_bytes())),
+        };
+        let saved = |text: &str| {
+            Input::Core(Message::SaveAs(SaveAs::Saved {
+                version: Version::of(text.as_bytes()),
+            }))
         };
         io.submit(save_as(&path, "one", None));
         io.submit(save_as(&path, "two", None));
@@ -294,7 +312,7 @@ mod tests {
         io.flush();
         let results = results(&inputs);
         assert_eq!(results.len(), 4);
-        assert_eq!(results[0], Input::Core(Message::SaveAs(SaveAs::Saved)));
+        assert_eq!(results[0], saved("one"));
         assert_eq!(
             results[1],
             Input::Core(Message::SaveAs(SaveAs::Refused {
@@ -302,7 +320,7 @@ mod tests {
             })),
             "a file that must not be there is not replaced"
         );
-        assert_eq!(results[2], Input::Core(Message::SaveAs(SaveAs::Saved)));
+        assert_eq!(results[2], saved("two"));
         assert!(
             matches!(&results[3], Input::Core(Message::SaveAs(SaveAs::Failed { reason })) if reason.contains("No such file")),
             "{results:?}"
@@ -321,7 +339,7 @@ mod tests {
         io.submit(Disk::Backup { path: path.clone() });
         io.submit(save_over(&path, "saved", Some("on disk")));
         drop(io);
-        assert_eq!(results(&inputs), [Input::Core(Message::Saved)]);
+        assert_eq!(results(&inputs), [saved("saved")]);
         let backups = dir.path().join("backups");
         let folder: PathBuf = fs::read_dir(&backups)?.next().unwrap()?.path();
         assert_eq!(
@@ -406,7 +424,7 @@ mod tests {
         io.submit(save_job(&path, "Work:\n"));
         io.store_view(path.clone(), state.view_state().expect("a layout"));
         io.flush();
-        assert_eq!(results(&inputs), [Input::Core(Message::Saved)]);
+        assert_eq!(results(&inputs), [saved("Work:\n")]);
         let views = Views::new(Some(dir.path().join("state/views.json")));
         let restored = views.restore(super::super::open(&path)?);
         assert_eq!(restored.panes().len(), 2, "kept for the saved file");

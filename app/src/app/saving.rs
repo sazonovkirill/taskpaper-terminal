@@ -5,12 +5,42 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use super::{Access, Effect, Notice, Origin, State, update::Disk};
-use crate::document::format::{self, canonical};
+use super::{Access, Effect, Notice, Origin, State, Version, update::Disk};
+use crate::document::{
+    Document,
+    format::{self, canonical},
+};
 
 /// How long after the last change a save starts unless the frontend sets another delay
 /// (file-io.md §2, `autosave_delay_ms`).
 pub const DELAY: Duration = Duration::from_secs(1);
+
+/// A copy of the document to write to a file, serialized by whoever writes it, so that a large
+/// outline is not serialized on the event loop (N-PERF-02). Copying the document shares its lines.
+#[derive(Debug, Clone)]
+pub struct DocumentText(Document);
+
+impl DocumentText {
+    /// The text of `document` as it is now.
+    pub(crate) fn of(document: &Document) -> Self {
+        Self(document.clone())
+    }
+
+    /// The text to write.
+    #[must_use]
+    pub fn serialize(&self) -> String {
+        format::serialize(&self.0)
+    }
+}
+
+/// Two are equal when they write the same text.
+impl PartialEq for DocumentText {
+    fn eq(&self, other: &Self) -> bool {
+        self.serialize() == other.serialize()
+    }
+}
+
+impl Eq for DocumentText {}
 
 /// What the status line says about saving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -269,12 +299,10 @@ impl State {
             self.lift_trailing_blanks();
             let revision = self.document().revision();
             self.autosave.start(revision);
-            let text = format::serialize(self.document());
-            let expected = self.external.start_save(&text);
             let save = Effect::Disk(Disk::Save {
                 path: path.clone(),
-                text,
-                expected,
+                text: DocumentText::of(self.document()),
+                expected: self.external.start_save(),
             });
             return self.backup().into_iter().chain([save]).collect();
         }
@@ -294,22 +322,22 @@ impl State {
         }
     }
 
-    /// The save under way succeeded.
-    pub(super) fn saved(&mut self) {
+    /// The save under way succeeded, leaving the file at `version`.
+    pub(super) fn saved(&mut self, version: Version) {
         self.autosave.saved();
-        self.external.save_ended(true);
+        self.external.save_ended(Some(version));
     }
 
     /// The save under way failed for `reason`.
     pub(super) fn save_failed(&mut self, reason: String) {
         self.autosave.failed(reason);
-        self.external.save_ended(false);
+        self.external.save_ended(None);
     }
 
     /// The save under way was not done because the file on disk changed to `contents`.
     pub(super) fn save_refused(&mut self, contents: Option<Vec<u8>>) {
         self.autosave.refused();
-        self.external.save_ended(false);
+        self.external.save_ended(None);
         self.found(contents);
     }
 
@@ -449,16 +477,31 @@ mod tests {
             Effect::Disk(Disk::Backup { path: path.clone() }),
             Effect::Disk(Disk::Save {
                 path,
-                text: text.to_owned(),
+                text: DocumentText::of(&format::parse(text)),
                 expected: expected.map(|text| Version::of(text.as_bytes())),
             }),
         ]
+    }
+
+    /// The report of a save that wrote `text`.
+    fn saved(text: &str) -> Message {
+        Message::Saved {
+            version: Version::of(text.as_bytes()),
+        }
     }
 
     fn failed(reason: &str) -> Message {
         Message::SaveFailed {
             reason: reason.to_owned(),
         }
+    }
+
+    #[test]
+    fn document_texts_are_equal_when_they_write_the_same_text() {
+        let text = |text: &str| DocumentText::of(&format::parse(text));
+        assert_eq!(text("- a\n").serialize(), "- a\n");
+        assert_eq!(text("- a\n"), text("- a\n"));
+        assert_ne!(text("- a\n"), text("- b\n"));
     }
 
     // FR-DOC-02, F-FILE-05
@@ -480,7 +523,7 @@ mod tests {
         assert_eq!(tick(&mut state, ms(1600)), save("c\n"));
         assert_eq!(state.save_state(), SaveState::Unsaved);
         assert_eq!(state.deadline(), None, "nothing is due while the save runs");
-        assert_eq!(state.update(Message::Saved), []);
+        assert_eq!(state.update(saved("c\n")), []);
         assert_eq!(state.save_state(), SaveState::Saved);
         assert_eq!(tick(&mut state, ms(5000)), []);
     }
@@ -497,8 +540,8 @@ mod tests {
             [],
             "the first save is still running"
         );
-        assert_eq!(state.update(Message::Saved), save_over("c\n", Some("b\n")));
-        assert_eq!(state.update(Message::Saved), []);
+        assert_eq!(state.update(saved("b\n")), save_over("c\n", Some("b\n")));
+        assert_eq!(state.update(saved("c\n")), []);
         assert_eq!(state.save_state(), SaveState::Saved);
     }
 
@@ -529,7 +572,7 @@ mod tests {
         edit(&mut state, "c", ms(10_000));
         assert_eq!(tick(&mut state, ms(11_000)), save("c\n"));
         assert!(matches!(state.save_state(), SaveState::Failed { .. }));
-        state.update(Message::Saved);
+        state.update(saved("c\n"));
         assert_eq!(state.save_state(), SaveState::Saved);
     }
 
@@ -537,7 +580,7 @@ mod tests {
     fn results_without_a_save_under_way_change_nothing() {
         let mut state = opened();
         edit(&mut state, "b", ms(0));
-        assert_eq!(state.update(Message::Saved), []);
+        assert_eq!(state.update(saved("b\n")), []);
         assert_eq!(state.update(failed("stray")), []);
         assert_eq!(state.save_state(), SaveState::Unsaved);
         assert_eq!(tick(&mut state, ms(1000)), save("b\n"));
@@ -556,7 +599,7 @@ mod tests {
             "without the delay"
         );
         assert_eq!(state.update(Message::Quit), [], "the save is running");
-        assert_eq!(state.update(Message::Saved), [Effect::Quit]);
+        assert_eq!(state.update(saved("b\n")), [Effect::Quit]);
     }
 
     #[test]
@@ -565,7 +608,7 @@ mod tests {
         edit(&mut state, "b", ms(0));
         tick(&mut state, ms(1000));
         assert_eq!(state.update(Message::Quit), []);
-        assert_eq!(state.update(Message::Saved), [Effect::Quit]);
+        assert_eq!(state.update(saved("b\n")), [Effect::Quit]);
     }
 
     // FR-DOC-02
@@ -599,7 +642,7 @@ mod tests {
         assert!(state.confirming_quit());
         edit(&mut state, "d", ms(200));
         assert_eq!(tick(&mut state, ms(1200)), save("d\n"));
-        state.update(Message::Saved);
+        state.update(saved("d\n"));
         assert!(!state.confirming_quit());
         assert_eq!(state.update(Message::Quit), [Effect::Quit]);
     }
@@ -612,7 +655,7 @@ mod tests {
         let mut state = opened();
         edit(&mut state, "b", ms(0));
         assert_eq!(state.update(Message::Terminate), save("b\n"));
-        assert_eq!(state.update(Message::Saved), [Effect::Quit]);
+        assert_eq!(state.update(saved("b\n")), [Effect::Quit]);
         let mut state = opened();
         edit(&mut state, "b", ms(0));
         state.update(Message::Terminate);
@@ -666,7 +709,7 @@ mod tests {
         assert_eq!(state.unsaved_text().as_deref(), Some("b\n"));
         edit(&mut state, "c", ms(2000));
         tick(&mut state, ms(3000));
-        state.update(Message::Saved);
+        state.update(saved("c\n"));
         assert_eq!(state.unsaved_text(), None);
         let mut unnamed = State::new(format::parse("a\n"), None);
         edit(&mut unnamed, "d", ms(0));
@@ -699,12 +742,12 @@ mod tests {
         assert_eq!(state.deadline(), Some(DELAY));
         assert_eq!(tick(&mut state, ms(999)), []);
         assert_eq!(tick(&mut state, ms(1000)), save("b\n"));
-        state.update(Message::Saved);
+        state.update(saved("b\n"));
         assert_eq!(state.save_state(), SaveState::Saved);
         assert_eq!(state.unsaved_text(), None);
         let mut state = recovered();
         assert_eq!(state.update(Message::Quit), save("b\n"));
-        assert_eq!(state.update(Message::Saved), [Effect::Quit]);
+        assert_eq!(state.update(saved("b\n")), [Effect::Quit]);
     }
 
     // FR-DOC-07, F-FILE-06
@@ -736,7 +779,7 @@ mod tests {
             tick(&mut state, ms(1000)),
             [Effect::Disk(Disk::Save {
                 path: PathBuf::from(FILE),
-                text: "b\n".to_owned(),
+                text: DocumentText::of(&format::parse("b\n")),
                 expected: None,
             })]
         );

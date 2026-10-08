@@ -61,7 +61,7 @@ pub use picker::PickerView;
 pub use quick_add::{Missing, QuickAddInput, QuickAddTo, QuickAddView};
 pub use rows::Rows;
 pub use save_as::{SaveAs, SaveAsStatus, SaveAsView};
-pub use saving::SaveState;
+pub use saving::{DocumentText, SaveState};
 pub use selection::SelectionChange;
 pub use settings::{
     Setting, SettingKind, SettingRow, SettingValue, SettingsColumn, SettingsInput, SettingsView,

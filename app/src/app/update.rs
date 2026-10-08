@@ -10,7 +10,7 @@ use super::{
     SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State, Symbols, TextEdit,
     Version,
     pane::{Pane, landing},
-    saving::Ending,
+    saving::{DocumentText, Ending},
     structure::NewBlock,
 };
 use crate::document::{
@@ -51,7 +51,10 @@ pub enum Message {
         today: Date,
     },
     /// The [`Disk::Save`] under way succeeded.
-    Saved,
+    Saved {
+        /// The version of the file it wrote.
+        version: Version,
+    },
     /// The [`Disk::Save`] under way failed.
     SaveFailed {
         /// Why, for the status line.
@@ -374,7 +377,7 @@ impl Message {
         match self {
             Self::Started
             | Self::Tick { .. }
-            | Self::Saved
+            | Self::Saved { .. }
             | Self::SaveFailed { .. }
             | Self::SaveRefused { .. }
             | Self::CheckFile
@@ -547,8 +550,8 @@ pub enum Disk {
     Save {
         /// The open file.
         path: PathBuf,
-        /// The serialized document.
-        text: String,
+        /// The document to write.
+        text: DocumentText,
         /// The version the file must still be, or `None` when there must be no file.
         expected: Option<Version>,
     },
@@ -562,8 +565,8 @@ pub enum Disk {
     SaveAs {
         /// The file to write.
         path: PathBuf,
-        /// The serialized document.
-        text: String,
+        /// The document to write.
+        text: DocumentText,
         /// The version the file must still be, or `None` when there must be no file.
         expected: Option<Version>,
     },
@@ -612,7 +615,7 @@ impl State {
         match message {
             Message::Started => effects = [self.backup_on_open(), self.watch()].concat(),
             Message::Tick { now, today } => self.set_time(now, today),
-            Message::Saved => self.saved(),
+            Message::Saved { version } => self.saved(version),
             Message::SaveFailed { reason } => self.save_failed(reason),
             Message::SaveRefused { contents } => self.save_refused(contents),
             Message::CheckFile => effects = self.check_file(),

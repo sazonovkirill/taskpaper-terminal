@@ -58,8 +58,8 @@ pub enum DiffLine {
 pub(super) struct External {
     /// The version the core last read or wrote, `None` when there is no file.
     known: Option<Version>,
-    /// The version the save under way writes.
-    writing: Option<Version>,
+    /// Whether a save is under way.
+    saving: bool,
     /// Whether a check found the file deleted or moved away; the next save creates it again.
     gone: bool,
     conflict: Option<Conflict>,
@@ -88,17 +88,18 @@ enum Choice {
 }
 
 impl External {
-    /// Starts a save of `text`, returning the version the file must still be for it to go ahead.
-    pub(super) fn start_save(&mut self, text: &str) -> Option<Version> {
-        self.writing = Some(Version::of(text.as_bytes()));
+    /// Starts a save, returning the version the file must still be for it to go ahead.
+    pub(super) fn start_save(&mut self) -> Option<Version> {
+        self.saving = true;
         self.known
     }
 
-    /// The save under way is done, or was not done.
-    pub(super) fn save_ended(&mut self, saved: bool) {
-        let writing = self.writing.take();
-        if saved && writing.is_some() {
-            self.known = writing;
+    /// The save under way left the file at `written`, or was not done when `None`.
+    pub(super) fn save_ended(&mut self, written: Option<Version>) {
+        if std::mem::take(&mut self.saving)
+            && let Some(written) = written
+        {
+            self.known = Some(written);
             self.gone = false;
         }
     }
@@ -394,8 +395,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Menu, MenuInput, Message, QuickAddInput, QuickAddTo, SelectionChange, SpecialView,
-            Symbols, TextEdit, state::NOTICE_TIME,
+            DocumentText, Menu, MenuInput, Message, QuickAddInput, QuickAddTo, SelectionChange,
+            SpecialView, Symbols, TextEdit, state::NOTICE_TIME,
         },
         document::{Op, Transaction},
     };
@@ -480,13 +481,20 @@ mod tests {
         }
     }
 
+    /// The report of a save that wrote `text`.
+    fn saved(text: &str) -> Message {
+        Message::Saved {
+            version: Version::of(text.as_bytes()),
+        }
+    }
+
     fn save_over(text: &str, expected: Option<Version>) -> Vec<Effect> {
         let path = PathBuf::from(FILE);
         vec![
             Effect::Disk(Disk::Backup { path: path.clone() }),
             Effect::Disk(Disk::Save {
                 path,
-                text: text.to_owned(),
+                text: DocumentText::of(&format::parse(text)),
                 expected,
             }),
         ]
@@ -539,7 +547,7 @@ mod tests {
             }),
             save_over("b\n", Some(version("a\n")))
         );
-        state.update(Message::Saved);
+        state.update(saved("b\n"));
         state.update(found("b\n"));
         assert_eq!(state.notice(), None, "the echo of its own save");
         assert!(!state.in_conflict());
@@ -727,7 +735,7 @@ mod tests {
             }),
             save_over("b\n", None)
         );
-        state.update(Message::Saved);
+        state.update(saved("b\n"));
         assert!(!state.gone_from_disk());
         state.update(Message::FileChecked { contents: None });
         state.update(found("c\n"));
@@ -771,7 +779,7 @@ mod tests {
                 copy: PathBuf::from("/backups/copy.taskpaper")
             })
         );
-        state.update(Message::Saved);
+        state.update(saved("mine\n"));
         assert_eq!(state.save_state(), SaveState::Saved);
     }
 
@@ -883,7 +891,7 @@ mod tests {
             now: ms(1000),
             today: jiff::civil::Date::default(),
         });
-        state.update(Message::Saved);
+        state.update(saved("- a @done(2026-10-05)\n"));
         state.update(found("- b\n"));
         state.update(Message::Undo);
         assert_eq!(format::serialize(state.document()), "- b\n");
@@ -1012,7 +1020,7 @@ mod tests {
             save_over("mine\n", None)
         );
         assert!(state.gone_from_disk());
-        state.update(Message::Saved);
+        state.update(saved("mine\n"));
         assert!(!state.gone_from_disk());
         assert_eq!(state.save_state(), SaveState::Saved);
     }

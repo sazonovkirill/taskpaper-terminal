@@ -629,7 +629,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{DateInput, Disk, Effect, Menu, MenuRow, Message, Motion, Version},
+        app::{DateInput, Disk, DocumentText, Effect, Menu, MenuRow, Message, Motion, Version},
         document::format,
     };
 
@@ -1190,13 +1190,20 @@ mod tests {
         })
     }
 
+    /// The report of a save that wrote `text`.
+    fn saved(text: &str) -> Message {
+        Message::Saved {
+            version: Version::of(text.as_bytes()),
+        }
+    }
+
     /// A save of `text` over the file holding `on_disk`.
     fn save(path: &Path, text: &str, on_disk: &str) -> Vec<Effect> {
         vec![
             Effect::Disk(Disk::Backup { path: path.into() }),
             Effect::Disk(Disk::Save {
                 path: path.into(),
-                text: text.to_owned(),
+                text: DocumentText::of(&format::parse(text)),
                 expected: Some(Version::of(on_disk.as_bytes())),
             }),
         ]
@@ -1221,7 +1228,7 @@ mod tests {
         typed(&mut state, "c");
         assert_eq!(state.deadline(), Some(Duration::from_secs(6)));
         assert_eq!(later(&mut state, 6), save(&path, "c\n\tb\n", "a\n\tb\n"));
-        state.update(Message::Saved);
+        state.update(saved("c\n\tb\n"));
         state.update(Message::Text(TextEdit::Move {
             motion: Motion::Start,
             select: false,
