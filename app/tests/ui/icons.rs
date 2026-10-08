@@ -101,13 +101,19 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
         let rows = screen(&mut app);
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
-        for entry in ["│▌ O Today ", "│  c Colors ", "│  * Starred ", "│  Work "] {
+        for entry in [
+            "│▌ O Today ",
+            "│  c Colors ",
+            "│  * Starred ",
+            "│  F Flagged ",
+            "│  Work ",
+        ] {
             assert!(
                 rows.iter().any(|row| row.contains(entry)),
                 "{settings}: {entry:?} in the sidebar's window: {rows:#?}"
             );
         }
-        for _ in 0..4 {
+        for _ in 0..5 {
             app.press(KeyCode::Down, KeyModifiers::NONE);
         }
         let rows = screen(&mut app);

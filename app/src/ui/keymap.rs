@@ -3207,6 +3207,33 @@ mod tests {
         );
     }
 
+    // FR-TAG-14, D-93, D-42: `gf` is plain characters, which both key reportings send alike;
+    // the kitty protocol also reports each key's release, which changes nothing.
+    #[test]
+    fn g_f_goes_to_flagged_with_and_without_the_kitty_protocol() {
+        let flagged = Some(Message::GoTo(Location::View(SpecialView::Flagged)));
+        assert_eq!(messages("gf", CONTEXT), [None, flagged.clone()]);
+        let event = |c, kind| {
+            Event::Key(KeyEvent::new_with_kind_and_state(
+                KeyCode::Char(c),
+                KeyModifiers::NONE,
+                kind,
+                KeyEventState::NONE,
+            ))
+        };
+        let mut keymap = Keymap::default();
+        let kitty: Vec<_> = [
+            event('g', KeyEventKind::Press),
+            event('g', KeyEventKind::Release),
+            event('f', KeyEventKind::Press),
+            event('f', KeyEventKind::Release),
+        ]
+        .iter()
+        .map(|event| keymap.message_for(event, ms(0), CONTEXT))
+        .collect();
+        assert_eq!(kitty, [None, None, flagged, None]);
+    }
+
     // FR-UI-03, keybindings.md §2: under the kitty protocol `Alt+Shift+h` arrives as `h` with
     // `Shift`.
     #[test]

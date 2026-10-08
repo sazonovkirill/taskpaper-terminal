@@ -230,7 +230,7 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 fn a_click_on_a_sidebar_entry_goes_there_and_on_its_fold_marker_folds_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
     ctrl_g(&mut app);
-    // The window's inside starts at column 17, row 4: Today, Colors, Starred, a blank line,
+    // The window's inside starts at column 17, row 4: Today, Colors, Starred, Flagged, a blank line,
     // Projects, Work, Home, Garden.
     let rows = screen(&mut app);
     assert!(rows[11].contains("│    Garden "), "{rows:?}");

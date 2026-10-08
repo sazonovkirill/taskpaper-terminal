@@ -60,7 +60,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 ## 6. Navigator (FR-UI-01, D-7, D-11, D-28, D-79)
 
 The Navigator is the list of places to go, the inbox, the special views, bookmarks and projects, in a window that Open Navigator (`Ctrl+G`, `open_navigator` in `config.toml`) opens over the panes; there is no sidebar on the left (D-79). It was the sidebar until D-79, so the code and the settings' keys in `config.toml` still call it that. It lists three sections, top to bottom:
-1. **Today**, then **Upcoming**, **Overdue**, **Colors**, **Logbook** and **Starred** (§7.1, D-80, D-92), each with how many open tasks it lists (D-85) and each unless its setting leaves it out: Today is the built-in view (§7), unless `sidebar_today = false` in `config.toml`, or **Show Today in Navigator** turned off in the settings window (ui.md §8), leaves it out; it is on by default, and the Today view still opens by `gt` and Go to Today (D-77).
+1. **Today**, then **Upcoming**, **Overdue**, **Colors**, **Logbook**, **Starred** and **Flagged** (§7.1, D-80, D-92, D-93), each with how many open tasks it lists (D-85) and each unless its setting leaves it out: Today is the built-in view (§7), unless `sidebar_today = false` in `config.toml`, or **Show Today in Navigator** turned off in the settings window (ui.md §8), leaves it out; it is on by default, and the Today view still opens by `gt` and Go to Today (D-77).
 2. **Bookmarks**: every block tagged `@bookmark`, in document order, each with how many open tasks it holds at any depth, counted as for a project (D-85); later also bookmarked searches (FR-SRCH-03).
 3. **Projects**: all project blocks as a tree, nested by project ancestry (non-project blocks in between are skipped), like TaskPaper, each with how many open tasks it holds at any depth, counted as for a collapsed block (D-67, D-73).
 
@@ -76,7 +76,7 @@ A built-in list of every block with `@due` or `@start` on or before today's loca
 
 ### 7.1 Other special views (FR-TAG-07, D-80)
 
-Upcoming, Overdue, Colors, Logbook and Starred are special views like Today: everything above holds for them except reordering, which only Today has, so `move_up`/`move_down` do nothing in them. Their entries may be grouped. A heading line above the first entry of each group names it; it is drawn, not a block, so focus, selection, motion and paging skip it, and an empty group has no heading. Each view has its own icon, shown before its name in its Navigator entry and its header, as Today's sun is ([ui.md §1, §7](ui.md#7-icons-fr-ui-09-fr-ui-10)).
+Upcoming, Overdue, Colors, Logbook, Starred and Flagged are special views like Today: everything above holds for them except reordering, which only Today has, so `move_up`/`move_down` do nothing in them. Their entries may be grouped. A heading line above the first entry of each group names it; it is drawn, not a block, so focus, selection, motion and paging skip it, and an empty group has no heading. Each view has its own icon, shown before its name in its Navigator entry and its header, as Today's sun is ([ui.md §1, §7](ui.md#7-icons-fr-ui-09-fr-ui-10)).
 
 | View | Lists | Groups, in order | Go to | Setting (on by default) |
 |---|---|---|---|---|
@@ -85,6 +85,7 @@ Upcoming, Overdue, Colors, Logbook and Starred are special views like Today: eve
 | Colors (D-83) | blocks with a color tag; done blocks per show-completed | red, orange, yellow, green, blue, violet; heading the color's swatch and name | `gC` | `sidebar_colors` |
 | Logbook (D-84) | blocks with `@done(DATE)` from six days ago to today, inside done blocks too, whatever show-completed says | days, newest first; heading `Yesterday · Tue 6 Oct` | `gD` | `sidebar_logbook` |
 | Starred (D-92) | starred blocks (`@star`, D-88), ungrouped; done blocks per show-completed | none | `g*` | `sidebar_starred` |
+| Flagged (D-93) | flagged blocks (`@flag`, D-91), ungrouped; done blocks per show-completed | none | `gf` | `sidebar_flagged` |
 
 Within a group, entries are in document order. The Navigator lists the views after Today in the table's order (§6), each unless its setting is off; its Go to command still opens it.
 

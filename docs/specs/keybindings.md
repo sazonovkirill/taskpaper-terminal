@@ -59,6 +59,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Go to Today: show the Today view, as choosing it in the Navigator does (D-64) | `gt` |
 | Go to Upcoming / Overdue / Colors / Logbook: show that special view, as choosing it in the Navigator does (D-80) | `gn` / `go` / `gC` / `gD` |
 | Go to Starred: show the Starred view, as choosing it in the Navigator does (D-92) | `g*` |
+| Go to Flagged: show the Flagged view, as choosing it in the Navigator does (D-93) | `gf` |
 | Go to Inbox: zoom to the INBOX project the Navigator lists apart, as choosing its entry does; with none, or the setting off, a status notice says so (D-78) | `gi` |
 | Back / forward | `H` / `L`, `Alt+Shift+←` / `Alt+Shift+→` |
 

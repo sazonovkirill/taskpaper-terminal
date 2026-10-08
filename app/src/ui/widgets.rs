@@ -351,6 +351,7 @@ pub fn view_icon(view: SpecialView) -> Icon {
         SpecialView::Today => Icon::Today,
         SpecialView::Colors => Icon::Colors,
         SpecialView::Starred => Icon::Star,
+        SpecialView::Flagged => Icon::Flag,
     }
 }
 
@@ -359,6 +360,7 @@ fn view_icon_style(view: SpecialView, theme: &Theme) -> Style {
     match view {
         SpecialView::Today | SpecialView::Starred => today_style(theme),
         SpecialView::Colors => Style::new(),
+        SpecialView::Flagged => flag_style(theme),
     }
 }
 
@@ -2004,6 +2006,11 @@ mod tests {
                 today_style(&THEME),
             ),
             (
+                Command::GoToView(SpecialView::Flagged),
+                Icon::Flag,
+                flag_style(&THEME),
+            ),
+            (
                 Command::Sidebar(SidebarInput::GoToInbox),
                 Icon::Inbox,
                 Style::new(),
@@ -2521,6 +2528,17 @@ mod tests {
             format!("{} Starred", Icon::Star.glyph(ICONS))
         );
         assert_eq!(header.spans[0].style, today_style(&THEME));
+    }
+
+    // FR-TAG-14, D-93
+    #[test]
+    fn the_flagged_header_names_the_view_after_a_red_flag() {
+        let header = view_header(SpecialView::Flagged, ICONS, &THEME);
+        assert_eq!(
+            header.to_string(),
+            format!("{} Flagged", Icon::Flag.glyph(ICONS))
+        );
+        assert_eq!(header.spans[0].style, flag_style(&THEME));
     }
 
     // D-7, ui.md §2

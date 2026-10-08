@@ -1146,7 +1146,7 @@ INBOX:",
     // FR-UI-01
     #[test]
     fn an_outline_without_bookmarks_or_projects_lists_only_the_special_views() {
-        let views = ["today", "colors", "starred"];
+        let views = ["today", "colors", "starred", "flagged"];
         assert_eq!(listed(&State::new(format::parse("- a\nb"), None)), views);
         assert_eq!(listed(&State::new(Document::default(), None)), views);
     }
@@ -1164,6 +1164,7 @@ INBOX:",
                 "today",
                 "colors",
                 "starred",
+                "flagged",
                 "bookmark A",
                 "Leaf A"
             ]
@@ -1188,7 +1189,14 @@ INBOX:",
         assert!(state.sidebar_lists(SpecialView::Today));
         assert_eq!(
             listed(&state),
-            ["inbox INBOX", "today", "colors", "bookmark A", "Leaf A"]
+            [
+                "inbox INBOX",
+                "today",
+                "colors",
+                "flagged",
+                "bookmark A",
+                "Leaf A"
+            ]
         );
     }
 
@@ -1204,6 +1212,7 @@ INBOX:",
                 "today",
                 "colors",
                 "starred",
+                "flagged",
                 "bookmark A",
                 "Leaf A"
             ]
@@ -1220,8 +1229,45 @@ INBOX:",
         assert!(state.sidebar_lists(SpecialView::Colors));
         assert_eq!(
             listed(&state),
-            ["inbox INBOX", "colors", "starred", "bookmark A", "Leaf A"]
+            [
+                "inbox INBOX",
+                "colors",
+                "starred",
+                "flagged",
+                "bookmark A",
+                "Leaf A"
+            ]
         );
+    }
+
+    // FR-TAG-14, D-93: Flagged comes last of the special views unless its setting is off, and
+    // choosing it shows it.
+    #[test]
+    fn flagged_comes_after_the_other_views_unless_its_setting_is_off() {
+        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        assert!(state.sidebar_lists(SpecialView::Flagged), "on by default");
+        state.update(Message::ToggleSidebar);
+        input(&mut state, &[SidebarInput::Next; 4]);
+        input(&mut state, &[SidebarInput::Choose]);
+        assert_eq!(state.location(), Location::View(SpecialView::Flagged));
+        assert_eq!(current(&state), Some(4), "its entry is current");
+        state.update(Message::Configure(Configuration::SidebarView(
+            SpecialView::Flagged,
+            false,
+        )));
+        assert!(!state.sidebar_lists(SpecialView::Flagged));
+        assert_eq!(
+            listed(&state),
+            [
+                "inbox INBOX",
+                "today",
+                "colors",
+                "starred",
+                "bookmark A",
+                "Leaf A"
+            ]
+        );
+        assert_eq!(current(&state), None, "no entry goes there");
     }
 
     // FR-UI-01, D-68, D-79

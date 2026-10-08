@@ -477,16 +477,32 @@ mod tests {
             state.update(Message::ToggleSidebar);
             rows(&render(&view(&state), 5))
         };
-        // D-80, D-92: the special views stand together, a blank line after the last one listed.
+        // D-80, D-92, D-93: the special views stand together, a blank line after the last one
+        // listed; Flagged's flag is red.
+        let buf = {
+            let mut state = State::new(format::parse("A:"), None);
+            state.update(Message::Configure(crate::app::Configuration::SidebarView(
+                SpecialView::Today,
+                false,
+            )));
+            state.update(Message::ToggleSidebar);
+            render(&view(&state), 6)
+        };
         assert_eq!(
-            draw_without(&[SpecialView::Today], "A:"),
+            rows(&buf),
             [
                 format!("▌ {} Colors", Icon::Colors.glyph(IconSet::Unicode)),
                 format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
+                format!("  {} Flagged", Icon::Flag.glyph(IconSet::Unicode)),
                 String::new(),
                 "  Projects".to_owned(),
                 "  A".to_owned(),
             ]
+        );
+        assert_eq!(
+            cell(&buf, 2, 2).fg,
+            THEME.tag(crate::document::TagColor::Red),
+            "the flag's red"
         );
         let draw_without_today = |text: &str| draw_without(&SpecialView::ALL, text);
         assert_eq!(

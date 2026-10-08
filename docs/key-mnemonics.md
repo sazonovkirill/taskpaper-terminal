@@ -52,6 +52,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `gj` / `gk` | next / previous sibling: a bigger `j`/`k` that skips the children (= `Ctrl+↓`/`Ctrl+↑`, which macOS takes) |
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
+| `gf` | **f**lagged view |
 | `gi` | **i**nbox, the INBOX project (`i` alone adds a last child; after `g` it goes there) |
 | `gs` | **s**ymbol (= `Ctrl+K`) |
 | `gP` | **P**roject: Go to Symbol over projects only (capital goes to the bigger thing: `gp` is the parent, `gP` the project) |

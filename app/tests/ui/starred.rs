@@ -2,7 +2,7 @@
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, STAR, outline_line, outline_rows};
+use crate::support::{FLAG, Harness, STAR, outline_line, outline_rows};
 
 /// Starred blocks at several depths among blocks that are not.
 const OUTLINE: &str = "\
@@ -59,7 +59,11 @@ fn the_navigator_lists_starred_after_the_other_views_unless_its_setting_is_off()
     let mut app = Harness::with_text(OUTLINE, 80, 16);
     assert_eq!(third_entry(&mut app), format!("{STAR} Starred"));
     let mut app = Harness::with_config(OUTLINE, "sidebar_starred = false\n", 80, 16);
-    assert_eq!(third_entry(&mut app), "⌂ › Home", "the Home project");
+    assert_eq!(
+        third_entry(&mut app),
+        format!("{FLAG} Flagged"),
+        "the view after it"
+    );
     app.type_keys("g*");
     let buffer = app.render().buffer().clone();
     assert_eq!(

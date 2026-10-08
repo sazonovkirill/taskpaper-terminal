@@ -18,11 +18,13 @@ pub enum SpecialView {
     Colors,
     /// The starred blocks (FR-TAG-13, D-92).
     Starred,
+    /// The flagged blocks (FR-TAG-14, D-93).
+    Flagged,
 }
 
 impl SpecialView {
     /// Every special view, in the sidebar's order (D-80).
-    pub const ALL: [Self; 3] = [Self::Today, Self::Colors, Self::Starred];
+    pub const ALL: [Self; 4] = [Self::Today, Self::Colors, Self::Starred, Self::Flagged];
 
     /// The view's name, as its header, sidebar entry and Go to command show it.
     #[must_use]
@@ -31,6 +33,7 @@ impl SpecialView {
             Self::Today => "Today",
             Self::Colors => "Colors",
             Self::Starred => "Starred",
+            Self::Flagged => "Flagged",
         }
     }
 }
@@ -77,6 +80,7 @@ impl State {
             SpecialView::Today => self.today_rows(pane),
             SpecialView::Colors => self.colors_rows(pane),
             SpecialView::Starred => self.matching_rows(pane, Block::starred),
+            SpecialView::Flagged => self.matching_rows(pane, Block::flag),
         }
     }
 
@@ -146,7 +150,7 @@ impl State {
     pub(super) fn move_entries(&mut self, view: SpecialView, down: bool) {
         match view {
             SpecialView::Today => self.reorder_entries(down),
-            SpecialView::Colors | SpecialView::Starred => {}
+            SpecialView::Colors | SpecialView::Starred | SpecialView::Flagged => {}
         }
     }
 }
@@ -308,7 +312,8 @@ Work: @done @star
             [
                 SpecialView::Today,
                 SpecialView::Colors,
-                SpecialView::Starred
+                SpecialView::Starred,
+                SpecialView::Flagged
             ]
         );
         assert_eq!(SpecialView::Starred.name(), "Starred");
@@ -361,5 +366,88 @@ Work: @done @star
             format::serialize(state.document()),
             "- a @star\n- b @star\n- c @star\n"
         );
+    }
+    /// `text` in the Flagged view.
+    fn flagged(text: &str) -> State {
+        let mut state = State::new(format::parse(text), None);
+        state.go_to(Location::View(SpecialView::Flagged));
+        state
+    }
+
+    /// Flagged blocks at several depths, with and without a value, among blocks that are not: a
+    /// special node, a done project and a block with other tags.
+    const FLAGGED: &str = "\
+Home: @flag
+\t- Water plants @star
+\t- Paint the **hall** @flag(soon)
+\tErrands:
+\t\t- Post office @flag
+\t\t\tC @hidden @flag
+Work: @done
+\t- Report @flag
+- Plan the week @flagged @red
+";
+
+    // D-93
+    #[test]
+    fn flagged_comes_after_the_other_views() {
+        assert_eq!(SpecialView::ALL.last(), Some(&SpecialView::Flagged));
+        assert_eq!(SpecialView::Flagged.name(), "Flagged");
+    }
+
+    // FR-TAG-14, D-93, FR-SPC-01
+    #[test]
+    fn flagged_lists_every_flagged_block_flat_in_document_order_with_its_path() {
+        let state = flagged(FLAGGED);
+        assert_eq!(
+            listed(&state),
+            [
+                "Home",
+                "Home › Paint the **hall**",
+                "Home › Errands › Post office",
+                "Work › Report",
+            ]
+        );
+        assert_eq!(state.breadcrumbs(), Vec::<String>::new());
+    }
+
+    // FR-TAG-14, D-93, FR-DONE-02
+    #[test]
+    fn flagged_follows_the_panes_show_completed_setting() {
+        let mut state = flagged(FLAGGED);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(
+            listed(&state),
+            [
+                "Home",
+                "Home › Paint the **hall**",
+                "Home › Errands › Post office"
+            ],
+            "a done block leaves with every block inside it"
+        );
+    }
+
+    // FR-TAG-14, D-93: an entry whose flag is toggled off leaves the list.
+    #[test]
+    fn an_entry_that_loses_its_flag_leaves_flagged() {
+        let mut state = flagged("- a @flag\n- b @flag\n");
+        state.update(Message::ToggleFlag(Flag::Flagged));
+        assert_eq!(listed(&state), ["b"]);
+        state.update(Message::Undo);
+        assert_eq!(listed(&state), ["a", "b"]);
+    }
+
+    // D-80, D-93: only Today has an order of the user's.
+    #[test]
+    fn moving_entries_in_flagged_changes_nothing() {
+        let mut state = flagged("- a @flag\n- b @flag\n");
+        state.update(Message::FocusLast);
+        let view_state = state.view_state();
+        for message in [Message::MoveUp, Message::MoveDown] {
+            assert_eq!(state.update(message), []);
+            assert_eq!(listed(&state), ["a", "b"]);
+        }
+        assert_eq!(state.document().revision(), 0);
+        assert_eq!(state.view_state(), view_state, "no order is kept");
     }
 }

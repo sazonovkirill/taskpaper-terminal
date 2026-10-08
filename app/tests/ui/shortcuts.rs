@@ -52,10 +52,10 @@ const NAVIGATE: [&str; 29] = [
     "│  Go to Today               gt",
     "│  Go to Colors              gC",
     "│  Go to Starred             g*",
+    "│  Go to Flagged             gf",
     "│  Go to Inbox               gi",
     "│ Editing and Creating",
     "│  Edit                   Enter",
-    "│  New Block Below            o",
     "│ ↓ more                      )",
     "│",
     "│ No Alt key seen yet: on macOS",
@@ -191,7 +191,7 @@ fn the_panel_notes_once_alt_arrives_and_whether_the_kitty_protocol_is_on() {
         ],
         "the Alt note is gone, so the list is longer"
     );
-    assert_eq!(panel[25], "│ Selection");
+    assert_eq!(panel[25], "│  New Block as Last Child    i");
 }
 
 // D-54: the date prompt's panel spans the screen under the shortcuts panel.

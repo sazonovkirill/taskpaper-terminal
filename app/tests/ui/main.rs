@@ -14,6 +14,7 @@ mod details;
 mod dialogs;
 mod editing;
 mod external_changes;
+mod flagged;
 mod focus_and_scrolling;
 mod folding;
 mod formatting;

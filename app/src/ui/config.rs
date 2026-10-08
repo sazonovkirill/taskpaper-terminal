@@ -26,6 +26,7 @@ pub(super) fn sidebar_key(view: SpecialView) -> &'static str {
         SpecialView::Today => "sidebar_today",
         SpecialView::Colors => "sidebar_colors",
         SpecialView::Starred => "sidebar_starred",
+        SpecialView::Flagged => "sidebar_flagged",
     }
 }
 
@@ -766,6 +767,15 @@ mod tests {
                 key: "sidebar_today".to_owned(),
                 expected: "true or false",
             }]
+        );
+    }
+
+    // D-93
+    #[test]
+    fn sidebar_flagged_says_whether_the_sidebar_lists_flagged() {
+        assert_eq!(
+            read("sidebar_flagged = false\nsidebar_today = true\n", None).sidebar_views,
+            [(SpecialView::Flagged, false), (SpecialView::Today, true)]
         );
     }
 

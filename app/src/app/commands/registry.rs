@@ -95,6 +95,11 @@ pub const REGISTRY: &[Entry] = &[
         &["g *"]
     ),
     entry!(
+        Command::GoToView(SpecialView::Flagged),
+        Mode::Navigate,
+        &["g f"]
+    ),
+    entry!(
         Command::Sidebar(SidebarInput::GoToInbox),
         Mode::Navigate,
         &["g i"]
@@ -616,6 +621,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::GoToView(SpecialView::Today),
             Command::GoToView(SpecialView::Colors),
             Command::GoToView(SpecialView::Starred),
+            Command::GoToView(SpecialView::Flagged),
             Command::Sidebar(SidebarInput::GoToInbox),
         ],
     ),
@@ -799,7 +805,7 @@ mod tests {
             [
                 ("Moving", 6),
                 ("Folding", 3),
-                ("Zoom and History", 8),
+                ("Zoom and History", 9),
                 ("Editing and Creating", 3),
                 ("Selection", 2),
                 ("Structure", 9),

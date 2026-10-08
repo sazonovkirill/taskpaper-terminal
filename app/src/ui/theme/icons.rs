@@ -19,7 +19,8 @@ pub enum Icon {
     /// The Today view, in its header, the sidebar's entry, Go to Today and the settings window's
     /// setting that lists it in the sidebar (D-88).
     Today,
-    /// A block with `@flag`, in red after its text, and the command menu's Toggle Flag (D-91).
+    /// A block with `@flag`, in red after its text, and the command menu's Toggle Flag (D-91);
+    /// the Flagged view, as the Today view's sun marks it (D-93).
     Flag,
     /// The sidebar's inbox entry (D-75), and the settings window's setting that lists it apart.
     Inbox,

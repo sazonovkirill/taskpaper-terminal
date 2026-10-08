@@ -763,15 +763,16 @@ mod tests {
     fn the_sidebar_opens_its_focused_entry_in_a_new_pane_which_gets_the_keys() {
         let mut state = open(OUTLINE);
         state.update(Message::ToggleSidebar);
-        // Past Today, Colors (D-80) and Starred (D-92).
-        for _ in 0..4 {
+        // From Today, past the other special views and Work, to Home.
+        let to_home = crate::app::SpecialView::ALL.len() + 1;
+        for _ in 0..to_home {
             state.update(Message::Sidebar(crate::app::SidebarInput::Next));
         }
         pane(&mut state, PaneChange::Open);
         assert!(!state.sidebar_focused());
         assert_eq!(panes(&state), ["⌂: Work", "*Home: Plants"]);
         state.update(Message::ToggleSidebar);
-        for _ in 0..4 {
+        for _ in 0..to_home {
             state.update(Message::Sidebar(crate::app::SidebarInput::Previous));
         }
         pane(&mut state, PaneChange::Open);

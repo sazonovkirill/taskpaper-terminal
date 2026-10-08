@@ -630,9 +630,9 @@ mod tests {
         use crate::app::{Fold, SidebarInput};
         let mut state = opened("A:\n\tA1:\nB:\n\tB1:\nC:\n\tC1:\n");
         state.update(Message::ToggleSidebar);
-        // Past Today, Colors (D-80), Starred (D-92) and A.
-        for input in [SidebarInput::Next; 5] {
-            state.update(Message::Sidebar(input));
+        // From Today, past the other special views, A and A1, to B.
+        for _ in 0..SpecialView::ALL.len() + 2 {
+            state.update(Message::Sidebar(SidebarInput::Next));
         }
         state.update(Message::Sidebar(SidebarInput::Collapse));
         state.update(found("B:\n\tB1:\nA:\n\tA1:\nC2:\n\tC1:\n"));
