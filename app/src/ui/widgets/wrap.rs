@@ -66,20 +66,80 @@ pub(super) fn wrap(line: &Line, start: usize, first: usize, rest: usize) -> Vec<
 }
 
 /// `line` cut to `columns` columns, its last column a `…` in the style of the first grapheme cut,
-/// when it is wider; as it is otherwise.
+/// when it is wider; as it is otherwise. Only the span it is cut in is gone through grapheme by
+/// grapheme, since every row on screen is cut each frame (N-PERF-02).
 pub(super) fn truncate(line: &Line, columns: usize) -> Line<'static> {
-    let cells = cells(line);
-    if width(&cells) <= columns {
-        return styled(&cells, line.style);
+    let fits = line
+        .spans
+        .iter()
+        .map(|span| text_width(&span.content))
+        .sum::<usize>()
+        <= columns;
+    let mut room = if fits {
+        usize::MAX
+    } else {
+        columns.saturating_sub(1)
+    };
+    let mut spans = Vec::new();
+    for span in &line.spans {
+        let kept = fitting(&span.content, &mut room);
+        push(&mut spans, kept, span.style);
+        if kept.len() < span.content.len() {
+            if columns > 0 {
+                push(&mut spans, "…", span.style);
+            }
+            break;
+        }
     }
-    let (kept, cut) = cells.split_at(split(&cells, columns.saturating_sub(1)));
-    let mut cells = kept.to_vec();
-    if columns > 0
-        && let Some(&(_, style)) = cut.first()
-    {
-        cells.push(("…", style));
+    Line::from(spans).style(line.style)
+}
+
+/// The display width of `text`, as the widths of its graphemes add up.
+fn text_width(text: &str) -> usize {
+    if one_column_each(text) {
+        text.len()
+    } else {
+        text.graphemes(true).map(grapheme_width).sum()
     }
-    styled(&cells, line.style)
+}
+
+/// The longest start of `text` made of whole graphemes that fits in `room` columns, which it
+/// takes from `room`.
+fn fitting<'a>(text: &'a str, room: &mut usize) -> &'a str {
+    let (end, used) = if one_column_each(text) {
+        let end = text.len().min(*room);
+        (end, end)
+    } else {
+        let (mut end, mut used) = (0, 0);
+        for grapheme in text.graphemes(true) {
+            let width = grapheme_width(grapheme);
+            if used + width > *room {
+                break;
+            }
+            (end, used) = (end + grapheme.len(), used + width);
+        }
+        (end, used)
+    };
+    *room -= used;
+    text.get(..end).unwrap_or_default()
+}
+
+/// Whether every character of `text` is printable ASCII, so each byte is a grapheme one column
+/// wide.
+fn one_column_each(text: &str) -> bool {
+    text.bytes().all(|byte| (b' '..=b'~').contains(&byte))
+}
+
+/// Adds `text` in `style` to the end of `spans`, as part of the last span when that has the same
+/// style.
+fn push(spans: &mut Vec<Span<'static>>, text: &str, style: Style) {
+    if text.is_empty() {
+        return;
+    }
+    match spans.last_mut() {
+        Some(span) if span.style == style => span.content.to_mut().push_str(text),
+        _ => spans.push(Span::styled(text.to_owned(), style)),
+    }
 }
 
 /// The graphemes of `line`, each with the style of its span.
@@ -110,8 +170,13 @@ fn split(cells: &[Cell], columns: usize) -> usize {
 fn width(cells: &[Cell]) -> usize {
     cells
         .iter()
-        .map(|(grapheme, _)| Span::raw(*grapheme).width())
+        .map(|(grapheme, _)| grapheme_width(grapheme))
         .sum()
+}
+
+/// The display width of `grapheme`.
+fn grapheme_width(grapheme: &str) -> usize {
+    Span::raw(grapheme).width()
 }
 
 /// Whether `grapheme` is white space, where a line may break.
@@ -252,5 +317,46 @@ mod tests {
     fn an_ellipsis_never_splits_a_wide_character() {
         assert_eq!(truncate(&Line::from("日本語"), 4), Line::from("日…"));
         assert_eq!(truncate(&Line::from("日本語"), 6), Line::from("日本語"));
+    }
+
+    /// `line` cut as by going through it grapheme by grapheme, as `truncate` must cut it.
+    fn truncated_grapheme_by_grapheme(line: &Line, columns: usize) -> Line<'static> {
+        let cells = cells(line);
+        if width(&cells) <= columns {
+            return styled(&cells, line.style);
+        }
+        let (kept, cut) = cells.split_at(split(&cells, columns.saturating_sub(1)));
+        let mut cells = kept.to_vec();
+        if columns > 0
+            && let Some(&(_, style)) = cut.first()
+        {
+            cells.push(("…", style));
+        }
+        styled(&cells, line.style)
+    }
+
+    proptest::proptest! {
+        // FR-UI-05, N-PERF-02: cutting span by span cuts where cutting grapheme by grapheme does.
+        #[test]
+        fn a_line_is_cut_as_grapheme_by_grapheme(
+            spans in proptest::collection::vec(
+                ("[a-c ~\\t\u{301}\u{200d}é日👍🏽]{0,6}", 0..3_u8),
+                0..5,
+            ),
+            columns in 0_usize..20,
+        ) {
+            let styles = [Style::new(), Style::new().bold(), Style::new().italic()];
+            let line = Line::from(
+                spans
+                    .into_iter()
+                    .map(|(text, style)| Span::styled(text, styles[usize::from(style)]))
+                    .collect::<Vec<_>>(),
+            )
+            .dim();
+            proptest::prop_assert_eq!(
+                truncate(&line, columns),
+                truncated_grapheme_by_grapheme(&line, columns)
+            );
+        }
     }
 }

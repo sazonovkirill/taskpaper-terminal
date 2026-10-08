@@ -125,6 +125,14 @@ impl<'a> OutlineView<'a> {
     /// included.
     #[must_use]
     pub fn heights(&self, width: u16) -> Vec<usize> {
+        // Without wrapping, every row is one line, so none is laid out to measure it (N-PERF-02).
+        if !self.wrap {
+            return self
+                .rows
+                .iter()
+                .map(|row| heading_height(row) + 1)
+                .collect();
+        }
         let width = usize::from(width.saturating_sub(GUTTER_WIDTH));
         self.blocks(width)
             .map(|(_, row, lines, _)| heading_height(row) + lines.len())
@@ -3147,6 +3155,27 @@ mod tests {
         let view = outline(&rows).wrap(true).editor(editor.as_ref());
         assert_eq!(view.heights(9), [1, 1, 2]);
         assert_eq!(view.heights(0), [1, 1, 1], "no room for text");
+        assert_eq!(view.wrap(false).heights(9), [1, 1, 1], "wrap off");
+    }
+
+    // FR-UI-05, D-80
+    #[test]
+    fn heights_count_the_lines_of_a_groups_heading_wrapped_or_not() {
+        let mut state = State::new(
+            format::parse("- a @due(2026-10-06)\n- b @due(2026-10-07)\n- c @due(2026-10-07)"),
+            None,
+        );
+        state.update(Message::Tick {
+            now: std::time::Duration::ZERO,
+            today: TODAY,
+        });
+        state.update(Message::GoTo(crate::app::Location::View(
+            crate::app::SpecialView::Upcoming,
+        )));
+        let rows = state.rows().to_vec();
+        for wrap in [false, true] {
+            assert_eq!(outline(&rows).wrap(wrap).heights(20), [2, 3, 1]);
+        }
     }
 
     // FR-UI-05, FR-TAG-03
