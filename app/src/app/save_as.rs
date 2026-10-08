@@ -89,7 +89,7 @@ enum Stage {
         path: PathBuf,
         expected: Option<Version>,
     },
-    /// Writing the document at `revision` to `path`, as `version`.
+    /// Writing the document at `revision` to `path`.
     Writing { path: PathBuf, revision: u64 },
 }
 
