@@ -44,11 +44,12 @@ pub struct Editor<'a> {
     pub selection: Option<Range<usize>>,
 }
 
-/// Where editing resumes after a command of the command menu: the block, the caret's column and
-/// where the block is held on screen meanwhile.
+/// Where editing resumes after a command of the command menu: the block, the text as it was
+/// typed, the caret's column and where the block is held on screen meanwhile.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Resume {
     id: ItemId,
+    text: String,
     column: usize,
     held: Option<Held>,
 }
@@ -238,6 +239,18 @@ impl Session {
         ));
         self.redo.clear();
         self.typing = false;
+    }
+
+    /// Puts the caret at `column` of `typed`, the text as it was typed before a command ran,
+    /// while it still gives the line, else of the line's own text: a tag the command added takes
+    /// the whitespace typed before it (file-format.md §5), which the text keeps (editing.md §2.3).
+    fn resume(&mut self, typed: String, column: usize) {
+        let text = if self.parts.line(&typed) == self.original {
+            typed
+        } else {
+            self.field.text().to_owned()
+        };
+        self.field = TextField::at_column(text, column);
     }
 
     /// The line the text and parts make: the line as it was while they are as they were.
@@ -477,6 +490,7 @@ impl State {
         if let Some(session) = &self.edit {
             self.resume = Some(Resume {
                 id: session.id,
+                text: session.field.text().to_owned(),
                 column: session.field.column(),
                 held: session.held.clone(),
             });
@@ -503,7 +517,7 @@ impl State {
         self.start_editing();
         self.resume = None;
         if let Some(session) = &mut self.edit {
-            session.field = TextField::at_column(session.field.text().to_owned(), resume.column);
+            session.resume(resume.text, resume.column);
         }
     }
 
@@ -514,6 +528,7 @@ impl State {
         let session = self.edit.take()?;
         self.resume = Some(Resume {
             id: session.id,
+            text: session.field.text().to_owned(),
             column: session.field.column(),
             held: session.held,
         });
@@ -1615,6 +1630,39 @@ Site @url(https://x.y)",
         );
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["- Call Ana", "- t"], "the typing before it");
+    }
+
+    // D-50, editing.md §2.3, file-format.md §5
+    #[test]
+    fn a_tag_a_command_adds_keeps_the_space_typed_before_the_slash() {
+        for (keys, line) in [
+            ("star", "- Call mom about dinner @star"),
+            ("due t", "- Call mom about dinner @due(2026-10-06)"),
+        ] {
+            let mut state = open("- Call mom", 0);
+            state.update(Message::EditAtEnd);
+            typed(&mut state, " ");
+            slash(&mut state, keys);
+            menu(&mut state, MenuInput::Choose);
+            assert_eq!(shown(&state), "Call mom |", "{keys}");
+            typed(&mut state, "about dinner");
+            assert_eq!(texts(&state), [line], "{keys}");
+        }
+    }
+
+    // D-50, editing.md §2.3, §7
+    #[test]
+    fn editing_resumes_on_the_text_the_edit_node_dialog_gave_the_block() {
+        use crate::app::NodeInput;
+        let mut state = open("- Call mom", 0);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, " ");
+        slash(&mut state, "edit");
+        menu(&mut state, MenuInput::Choose);
+        state.update(Message::NodeEditor(NodeInput::Key(TextEdit::Insert('x'))));
+        state.update(Message::NodeEditor(NodeInput::Accept));
+        assert_eq!(texts(&state), ["- Call mom x"]);
+        assert_eq!(shown(&state), "Call mom |x");
     }
 
     // D-50, editing.md §2.3

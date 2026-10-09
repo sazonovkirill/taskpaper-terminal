@@ -141,6 +141,19 @@ fn a_command_keeps_editing_with_the_caret_where_it_was() {
     assert_eq!(saved(&mut app), "- Call Ana\n", "four steps to undo");
 }
 
+// D-50, editing.md §2.3
+#[test]
+fn a_command_at_the_end_of_the_text_keeps_the_space_typed_before_it() {
+    let mut app = Harness::with_text("- Call mom\n", 40, 8);
+    app.settle();
+    press(&mut app, KeyCode::Enter);
+    app.type_keys(" /star");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("about dinner");
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(saved(&mut app), "- Call mom about dinner @star\n");
+}
+
 // D-50, FR-TAG-03
 #[test]
 fn a_date_prompt_from_the_menu_returns_to_editing() {
