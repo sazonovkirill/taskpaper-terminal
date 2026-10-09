@@ -681,6 +681,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
         &[
             Command::ZoomIn,
             Command::ZoomOut,
+            Command::GoHome,
             Command::Back,
             Command::Forward,
             Command::GoToView(SpecialView::Today),
@@ -747,6 +748,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
         &[
             Command::ToggleShowDone,
             Command::ToggleWrap,
+            Command::ToggleNavigator,
             Command::GoToSymbol,
             Command::GoToProject,
             Command::GoToCommand,
@@ -876,12 +878,12 @@ mod tests {
             [
                 ("Moving", 6),
                 ("Folding", 3),
-                ("Zoom and History", 12),
+                ("Zoom and History", 13),
                 ("Editing and Creating", 4),
                 ("Selection", 2),
                 ("Structure", 9),
                 ("Block Metadata", 9),
-                ("View and Panels", 10),
+                ("View and Panels", 11),
             ]
         );
         assert_eq!(
@@ -891,8 +893,11 @@ mod tests {
         let edit = shortcuts(Mode::Edit);
         let (_, editing) = &edit[0];
         assert_eq!(editing[0].keys, ["esc"], "edit mode's own keys");
+        let (_, zoom) = &shortcuts(Mode::Navigate)[2];
+        assert_eq!(zoom[2].keys, ["ctrl+'", "g h"], "Go Home");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[9].keys, ["ctrl+q"]);
+        assert_eq!(view[2].keys, ["ctrl+g"], "Open Navigator");
+        assert_eq!(view[10].keys, ["ctrl+q"]);
     }
 
     // FR-UI-01, FR-KEY-06, keybindings.md §4

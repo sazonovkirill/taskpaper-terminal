@@ -47,6 +47,7 @@ const NAVIGATE: [&str; 29] = [
     "│ Zoom and History",
     "│  Zoom In  ., Alt+l, Alt+→, gz",
     "│  Zoom Out >, Alt+h, Alt+←, gu",
+    "│  Go Home           Ctrl+', gh",
     "│  Back          H, Alt+Shift+←",
     "│  Forward       L, Alt+Shift+→",
     "│  Go to Today           gt, gT",
@@ -55,7 +56,6 @@ const NAVIGATE: [&str; 29] = [
     "│  Go to Colors              gC",
     "│  Go to Logbook             gL",
     "│  Go to Starred             gS",
-    "│  Go to Flagged             gF",
     "│ ↓ more                      )",
     "│",
     "│ No Alt key seen yet: on macOS",
@@ -191,7 +191,7 @@ fn the_panel_notes_once_alt_arrives_and_whether_the_kitty_protocol_is_on() {
         ],
         "the Alt note is gone, so the list is longer"
     );
-    assert_eq!(panel[25], "│ Editing and Creating");
+    assert_eq!(panel[25], "│  Go to Inbox               gi");
 }
 
 // D-54: the date prompt's panel spans the screen under the shortcuts panel.
