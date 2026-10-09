@@ -42,7 +42,7 @@ fn g_shift_u_shows_the_blocks_of_the_coming_week_under_a_heading_per_day() {
             "Tomorrow · Tue 6 Oct".to_owned(),
             row("- Post office  Home", &format!("{START} tomorrow")),
             String::new(),
-            "Thu · Thu 8 Oct".to_owned(),
+            "Thu 8 Oct".to_owned(),
             row("- Water plants  Home", &format!("{DUE} Thu")),
             row("- Bank", &format!("{DUE} Thu")),
         ]
@@ -65,7 +65,7 @@ fn the_list_changes_at_local_midnight() {
     let deadline = app.tui.deadline().expect("a redraw at midnight");
     app.wait(deadline);
     let rows = outline_rows(&mut app);
-    assert_eq!(rows[0], "Thu · Thu 8 Oct");
+    assert_eq!(rows[0], "Thu 8 Oct");
     assert_eq!(rows[4], "Next Tue · Tue 13 Oct");
 }
 

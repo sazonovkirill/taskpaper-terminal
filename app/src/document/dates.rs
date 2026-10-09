@@ -77,16 +77,21 @@ pub fn relative(date: Date, today: Date) -> String {
 
 /// The heading of a special view's group of entries for the day `date` on `today`: the day named
 /// as [`relative`] names it, capitalized, then ` · ` and the date, such as
-/// `3 days ago · Sun 4 Oct` (D-80, D-82).
+/// `3 days ago · Sun 4 Oct` (D-80, D-82); only the date, `Wed 14 Oct`, when that name is just
+/// its weekday, which the date repeats (D-111).
 #[must_use]
 pub fn day_heading(date: Date, today: Date) -> String {
+    let day = date.strftime("%a %-d %b").to_string();
     let name = relative(date, today);
+    if day.starts_with(&format!("{name} ")) {
+        return day;
+    }
     let mut letters = name.chars();
     let capitalized: String = letters
         .next()
         .map(|first| first.to_uppercase().chain(letters).collect())
         .unwrap_or_default();
-    format!("{capitalized} · {}", date.strftime("%a %-d %b"))
+    format!("{capitalized} · {day}")
 }
 
 /// A date named in words within a longer text, as Quick Add reads it (D-97).
@@ -898,7 +903,7 @@ mod tests {
             day_heading(date(2026, 10, 8), TODAY),
             "Tomorrow · Thu 8 Oct"
         );
-        assert_eq!(day_heading(date(2026, 10, 9), TODAY), "Fri · Fri 9 Oct");
+        assert_eq!(day_heading(date(2026, 10, 9), TODAY), "Fri 9 Oct");
         assert_eq!(
             day_heading(date(2026, 10, 14), TODAY),
             "Next Wed · Wed 14 Oct"
