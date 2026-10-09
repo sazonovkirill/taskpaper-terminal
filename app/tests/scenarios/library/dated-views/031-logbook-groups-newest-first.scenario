@@ -5,7 +5,7 @@ file <<END
 - Mid @done({today-1})
 - New B @done({today})
 END
-keys gL
+keys gL gg
 see Yesterday ·
 see 5 days ago ·
 see ▌ ✔ New A

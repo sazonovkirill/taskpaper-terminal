@@ -873,18 +873,22 @@ impl State {
         }
     }
 
-    /// Shows `location` and focuses the block left when it is visible: the block zoomed out of,
-    /// or the focused entry when leaving a special view; else the first block under the title,
-    /// else the title.
+    /// Shows `location` and focuses the first visible block left: the block zoomed out of, or
+    /// when entering a special view from the outline the focused block before it (D-114), or the
+    /// focused entry when leaving a special view; else the first block under the title, else the
+    /// title.
     fn show(&mut self, location: Location) {
-        let left = match self.pane.location {
-            Location::Outline(zoom) => zoom,
-            Location::View(_) => self.pane.focus,
+        let left = match (self.pane.location, location) {
+            (Location::Outline(zoom), Location::View(_)) => [self.pane.focus, zoom],
+            (Location::Outline(zoom), Location::Outline(_)) => [zoom, None],
+            (Location::View(_), _) => [self.pane.focus, None],
         };
         self.pane.location = location;
         let rows = self.rows();
         self.pane.focus = left
-            .filter(|&id| rows.iter().any(|row| row.id == id))
+            .into_iter()
+            .flatten()
+            .find(|&id| rows.iter().any(|row| row.id == id))
             .or_else(|| landing(&rows));
     }
 

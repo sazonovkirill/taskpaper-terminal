@@ -140,7 +140,11 @@ Home: @done(2026-10-03)
             ]
         );
         assert_eq!(state.breadcrumbs(), Vec::<String>::new());
-        assert_eq!(focused(&state), "Water plants");
+        assert_eq!(
+            focused(&state),
+            "Home",
+            "the block focused at home is listed (D-114)"
+        );
         assert!(state.rows()[0].inside_done, "inside the done Home");
     }
 

@@ -5,7 +5,7 @@ file <<END
 - Middle A @due({today-4})
 - Middle B @due({today-4})
 END
-keys gO
+keys gO gg
 see 9 days ago ·
 see 4 days ago ·
 see ▌ - Oldest

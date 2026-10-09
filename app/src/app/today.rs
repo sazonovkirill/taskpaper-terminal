@@ -496,4 +496,33 @@ Home:
         state.update(Message::Back);
         assert_eq!(state.location(), Location::View(SpecialView::Today));
     }
+
+    // navigation.md §7, D-114
+    #[test]
+    fn a_view_is_entered_focusing_the_block_you_were_on_when_it_lists_it() {
+        let mut state = State::new(format::parse(OUTLINE), None);
+        state.update(Message::Tick {
+            now: Duration::ZERO,
+            today: TODAY,
+        });
+        down(&mut state, 2);
+        assert_eq!(focused(&state), "Paint the **hall**");
+        state.update(Message::GoTo(Location::View(SpecialView::Today)));
+        assert_eq!(
+            focused(&state),
+            "Water plants",
+            "not an entry: the first one"
+        );
+        state.update(Message::Back);
+        assert_eq!(focused(&state), "Water plants", "the focused entry");
+        down(&mut state, 4);
+        assert_eq!(focused(&state), "Bank");
+        state.update(Message::GoTo(Location::View(SpecialView::Today)));
+        assert_eq!(focused(&state), "Bank");
+        state.update(Message::ZoomIn);
+        assert_eq!(state.breadcrumbs(), ["Home", "Errands"]);
+        state.update(Message::Back);
+        assert_eq!(state.location(), Location::View(SpecialView::Today));
+        assert_eq!(focused(&state), "Bank", "the entry zoomed in from");
+    }
 }

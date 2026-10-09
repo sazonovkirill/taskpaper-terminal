@@ -122,7 +122,11 @@ Work: @done
             ]
         );
         assert_eq!(state.breadcrumbs(), Vec::<String>::new());
-        assert_eq!(focused(&state), "Water plants");
+        assert_eq!(
+            focused(&state),
+            "Home",
+            "the block focused at home is listed (D-114)"
+        );
         assert_eq!(state.rows()[0].color, Some(TagColor::Red));
     }
 
@@ -130,6 +134,7 @@ Work: @done
     #[test]
     fn motion_goes_from_entry_to_entry_past_the_headings() {
         let mut state = colors(OUTLINE);
+        state.update(Message::FocusFirst);
         state.update(Message::FocusNext);
         state.update(Message::FocusNext);
         assert_eq!(focused(&state), "Report");
@@ -185,6 +190,7 @@ Work: @done
     #[test]
     fn zooming_in_on_an_entry_goes_to_it_in_the_outline() {
         let mut state = colors(OUTLINE);
+        state.update(Message::FocusFirst);
         state.update(Message::FocusNext);
         state.update(Message::ZoomIn);
         assert_eq!(state.breadcrumbs(), ["Home", "Errands"]);
