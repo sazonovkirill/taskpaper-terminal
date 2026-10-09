@@ -13,7 +13,7 @@ outside <<END
 - Bread
 END
 see The file changed on disk
-keys t
+keys <C-r>
 status Took the version on disk
 keys x
 see ✔ Bread

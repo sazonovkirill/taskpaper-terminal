@@ -636,11 +636,11 @@ impl Widget for ConflictPrompt<'_> {
             }
         };
         Line::from(vec![
-            "m".bold(),
+            "Ctrl+K".bold(),
             " keep mine · ".into(),
-            "t".bold(),
+            "Ctrl+R".bold(),
             " take theirs · ".into(),
-            "d".bold(),
+            "Ctrl+L".bold(),
             format!(" {toggle}").into(),
         ])
         .render(keys, buf);
@@ -3552,12 +3552,12 @@ mod tests {
             "                                                                                  ",
             " ┌ The file changed on disk ────────────────────────────────────────────────────┐ ",
             " │Your changes are not saved yet.                                               │ ",
-            " │m keep mine · t take theirs · d show diff                                     │ ",
+            " │Ctrl+K keep mine · Ctrl+R take theirs · Ctrl+L show diff                      │ ",
             " └──────────────────────────────────────────────────────────────────────────────┘ ",
             "                                                                                  ",
         ]);
-        for x in [2, 16, 32] {
-            expected.set_style(Rect::new(x, 3, 1, 1), Style::new().bold());
+        for x in [2, 21, 42] {
+            expected.set_style(Rect::new(x, 3, 6, 1), Style::new().bold());
         }
         assert_eq!(prompt(None, 0, 82, 6), expected);
         let mut covered = Buffer::with_lines(vec!["x".repeat(82); 6]);
@@ -3602,7 +3602,7 @@ mod tests {
         assert_eq!(row(2), "│- two                       │");
         assert_eq!(row(3), "│+ TWO                       │");
         assert_eq!(row(4), "│⋯                           │");
-        assert_eq!(row(5), "│m keep mine · t take theirs │");
+        assert_eq!(row(5), "│Ctrl+K keep mine · Ctrl+R ta│");
         assert_eq!(buf[(1, 2)].fg, Color::Red);
         assert_eq!(buf[(1, 3)].fg, Color::Green);
         assert_eq!(buf[(1, 4)].fg, Color::DarkGray);

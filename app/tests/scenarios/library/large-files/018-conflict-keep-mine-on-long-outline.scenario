@@ -569,7 +569,7 @@ Area 39:
 		- task 39.2 changed elsewhere
 END
 see Your changes are not saved yet.
-keys m
+keys <C-k>
 quit
 saved <<END
 Area 0:

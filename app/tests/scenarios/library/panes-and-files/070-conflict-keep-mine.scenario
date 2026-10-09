@@ -1,4 +1,4 @@
-# With an unsaved edit, m in the conflict prompt keeps the app's version and writes it over the file.
+# With an unsaved edit, Ctrl+K in the conflict prompt keeps the app's version and writes it over the file.
 config <<END
 autosave_delay_ms = 60000
 END
@@ -12,7 +12,7 @@ Errands:
 	- Bank
 END
 see The file changed on disk
-keys m
+keys <C-k>
 status Kept your version
 saved <<END
 Errands:

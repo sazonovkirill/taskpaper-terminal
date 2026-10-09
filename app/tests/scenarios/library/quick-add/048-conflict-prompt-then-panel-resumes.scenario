@@ -16,7 +16,7 @@ INBOX:
 	- From outside
 END
 see Your changes are not saved yet.
-keys m
+keys <C-k>
 see - Second
 keys <Enter>
 quit

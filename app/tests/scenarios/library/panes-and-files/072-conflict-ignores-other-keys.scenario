@@ -1,4 +1,4 @@
-# The conflict prompt has no Esc: other keys do nothing until a choice is made.
+# The conflict prompt has no Esc: other keys, plain letters too, do nothing until a choice is made.
 config <<END
 autosave_delay_ms = 60000
 END
@@ -12,9 +12,9 @@ Errands:
 	- Bank
 END
 see The file changed on disk
-keys <Esc> j x
+keys <Esc> j x m t d
 see The file changed on disk
-keys t
+keys <C-r>
 quit
 saved <<END
 Errands:

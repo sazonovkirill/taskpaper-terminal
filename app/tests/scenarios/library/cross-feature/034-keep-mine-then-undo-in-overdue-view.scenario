@@ -15,7 +15,7 @@ Work:
 	- Review PRs today
 END
 see Your changes are not saved yet.
-keys m
+keys <C-k>
 saved <<END
 Work:
 	- Write report @due({today-2}) @done({today})

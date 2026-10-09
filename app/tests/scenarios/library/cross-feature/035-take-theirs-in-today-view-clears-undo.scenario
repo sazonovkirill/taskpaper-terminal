@@ -15,7 +15,7 @@ Work:
 	- Review PRs @due({today})
 END
 see Your changes are not saved yet.
-keys t
+keys <C-r>
 see - Review PRs  Work
 keys z
 quit

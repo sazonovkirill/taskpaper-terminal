@@ -237,12 +237,13 @@ pub enum PromptKey {
 /// A prompt binding's key and what it does, given the rows in a page.
 type PromptBinding = (Key, fn(isize) -> PromptKey);
 
-/// Conflict prompt bindings: the choices, scrolling the diff and quitting.
+/// Conflict prompt bindings: the choices, scrolling the diff and quitting. The prompt opens on
+/// its own, maybe while the user types, so its choices take `Ctrl` keys no typing sends (D-115).
 const PROMPT: &[PromptBinding] = &[
     (key!(ctrl 'q'), |_| PromptKey::Send(Message::Quit)),
-    (key!('m'), |_| PromptKey::Send(Message::KeepMine)),
-    (key!('t'), |_| PromptKey::Send(Message::TakeTheirs)),
-    (key!('d'), |_| PromptKey::Send(Message::ToggleDiff)),
+    (key!(ctrl 'k'), |_| PromptKey::Send(Message::KeepMine)),
+    (key!(ctrl 'r'), |_| PromptKey::Send(Message::TakeTheirs)),
+    (key!(ctrl 'l'), |_| PromptKey::Send(Message::ToggleDiff)),
     (key!('j'), |_| PromptKey::Scroll(1)),
     (key!(Down), |_| PromptKey::Scroll(1)),
     (key!('k'), |_| PromptKey::Scroll(-1)),
@@ -2767,9 +2768,16 @@ mod tests {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
         let send = |message| Some(PromptKey::Send(message));
-        assert_eq!(prompt(KeyCode::Char('m'), none), send(Message::KeepMine));
-        assert_eq!(prompt(KeyCode::Char('t'), none), send(Message::TakeTheirs));
-        assert_eq!(prompt(KeyCode::Char('d'), none), send(Message::ToggleDiff));
+        assert_eq!(prompt(KeyCode::Char('k'), ctrl), send(Message::KeepMine));
+        assert_eq!(prompt(KeyCode::Char('r'), ctrl), send(Message::TakeTheirs));
+        assert_eq!(prompt(KeyCode::Char('l'), ctrl), send(Message::ToggleDiff));
+        for letter in ['m', 't', 'd', 'r', 'l'] {
+            assert_eq!(
+                prompt(KeyCode::Char(letter), none),
+                None,
+                "a plain {letter} typed for the editor answers nothing (D-115)"
+            );
+        }
         assert_eq!(prompt(KeyCode::Char('q'), ctrl), send(Message::Quit));
         for (code, modifiers, by) in [
             (KeyCode::Char('j'), none, 1),
@@ -2792,7 +2800,7 @@ mod tests {
         assert_eq!(prompt_key(&Event::FocusGained, PAGE), None);
         let release = Event::Key(KeyEvent {
             kind: KeyEventKind::Release,
-            ..KeyEvent::new(KeyCode::Char('m'), none)
+            ..KeyEvent::new(KeyCode::Char('k'), ctrl)
         });
         assert_eq!(prompt_key(&release, PAGE), None);
         assert_eq!(

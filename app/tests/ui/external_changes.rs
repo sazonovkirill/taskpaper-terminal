@@ -121,20 +121,20 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
             "─".repeat(80),
             top.clone(),
             row("The file on disk is not UTF-8, so it cannot be reloaded."),
-            row("m keep mine · t take theirs · d show diff"),
+            row("Ctrl+K keep mine · Ctrl+R take theirs · Ctrl+L show diff"),
             bottom.clone(),
         ]
     );
     // The prompt dims the outline's focus marker (D-69), so the focus is checked once it closes.
-    app.type_keys("jx");
-    app.type_keys("d");
+    app.type_keys("jxmtd");
+    app.press(KeyCode::Char('l'), KeyModifiers::CONTROL);
     let diff = [
         top,
         row("- on disk  + yours"),
         row("  Groceries:"),
         row("-   - Caf\u{fffd}"),
         row("    - Milk"),
-        row("m keep mine · t take theirs · d hide diff"),
+        row("Ctrl+K keep mine · Ctrl+R take theirs · Ctrl+L hide diff"),
         bottom,
     ];
     assert_eq!(middle(&mut app)[..7], diff);
@@ -151,20 +151,22 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
     );
     app.type_keys("k");
     assert_eq!(middle(&mut app)[..7], diff);
-    app.type_keys("jdd");
+    app.type_keys("j");
+    app.press(KeyCode::Char('l'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('l'), KeyModifiers::CONTROL);
     assert_eq!(
         middle(&mut app)[..7],
         diff,
         "showing the diff again starts at its top"
     );
-    app.type_keys("t");
+    app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
     assert!(
         status_line(&mut app)
             .contains("cannot take the version on disk: the file is not valid UTF-8"),
         "{}",
         status_line(&mut app)
     );
-    app.type_keys("m");
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.settle();
     assert_eq!(
         conflict_copies(&app),
@@ -259,4 +261,27 @@ fn move_to_stays_open_through_a_reload() {
     app.type_keys("home");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(saved(&mut app), "Inbox:\nHome:\n\t- Shelf\n\t- Milk\n");
+}
+
+// F-FILE-06, OQ-16, D-115
+#[test]
+fn typing_on_when_the_prompt_opens_chooses_nothing() {
+    let mut app = Harness::with_text("A:\n\t- x\n", 140, 8);
+    app.settle();
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(" notes for");
+    fs::write(path(&app), "A:\n\t- x\n\t- from phone\n").unwrap();
+    check(&mut app);
+    app.type_keys(" the meeting");
+    assert_eq!(
+        middle(&mut app)[3],
+        format!("│{:78}│", "Your changes are not saved yet."),
+        "the prompt stays open"
+    );
+    assert!(conflict_copies(&app).is_empty(), "no choice was made");
+    assert_eq!(
+        fs::read_to_string(path(&app)).unwrap(),
+        "A:\n\t- x\n\t- from phone\n"
+    );
 }

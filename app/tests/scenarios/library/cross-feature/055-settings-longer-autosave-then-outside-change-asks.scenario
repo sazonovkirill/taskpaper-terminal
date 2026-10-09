@@ -20,7 +20,7 @@ Work:
 	- Review PRs
 END
 see Your changes are not saved yet.
-keys t
+keys <C-r>
 see Review PRs
 quit
 saved <<END

@@ -1,4 +1,4 @@
-# d in the conflict prompt shows a diff from the file on disk to the app's version, and d hides it again.
+# Ctrl+L in the conflict prompt shows a diff from the file on disk to the app's version, and Ctrl+L hides it again.
 config <<END
 autosave_delay_ms = 60000
 END
@@ -15,10 +15,10 @@ Errands:
 	- Bakery
 END
 see The file changed on disk
-keys d
+keys <C-l>
 see - on disk  + yours
 see -   - Bakery
 see +   - Bank
-see d hide diff
-keys d
+see Ctrl+L hide diff
+keys <C-l>
 hide - on disk  + yours

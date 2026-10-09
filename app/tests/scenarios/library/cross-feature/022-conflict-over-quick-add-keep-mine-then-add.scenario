@@ -18,7 +18,7 @@ Home:
 	- Fix the big shelf
 END
 see Your changes are not saved yet.
-keys m
+keys <C-k>
 see Quick Add → INBOX
 type  now
 keys <Enter>
