@@ -45,7 +45,7 @@ Fold state is kept in memory only and is shared by all panes (D-13); it is not s
 - `zoom_in`: the focused block becomes the pane's root; its children are shown one level in (depth 1) under a title row at depth 0 showing the block itself (D-31) (editable like any block). Zooming into a leaf shows an empty page with focus on the title.
 - `zoom_out`: zoom to the parent block and focus the block you were zoomed into.
 - `go_home`: zoom to the document root.
-- Every zoom change pushes onto the pane's history; `back` / `forward` walk it, skipping blocks that no longer exist.
+- Every zoom change pushes onto the pane's history; `back` / `forward` walk it, skipping blocks that no longer exist and, so that every step goes somewhere, a visit of the place already shown, which that skipping brings next to it (as in a stored layout, [file-io.md §5](file-io.md#5-view-state-persistence)).
 - The breadcrumb bar shows the zoom block's ancestors, truncated from the left with `…` when too wide. Each crumb is clickable (FR-KEY-05).
 
 ## 5. Panes (FR-UI-02 – FR-UI-04, D-13)

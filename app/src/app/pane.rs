@@ -624,7 +624,8 @@ mod tests {
         assert_eq!(panes(&state)[0], "*Work: Slides");
     }
 
-    // FR-NAV-04, navigation.md §4
+    // FR-NAV-04, navigation.md §4: two visits of one place that skipping brings together count
+    // as one, as in a stored layout (file-io.md §5).
     #[test]
     fn back_and_forward_skip_blocks_another_pane_deleted() {
         let mut state = open(OUTLINE);
@@ -637,7 +638,7 @@ mod tests {
         focus(&mut state, "Home");
         state.update(Message::Delete);
         pane(&mut state, PaneChange::FocusLeft);
-        for expected in ["Later", "⌂", "⌂", "Work", "⌂"] {
+        for expected in ["Later", "⌂", "Work", "⌂"] {
             state.update(Message::Back);
             assert_eq!(
                 state.breadcrumbs().last().map_or("⌂", String::as_str),
@@ -650,7 +651,7 @@ mod tests {
             Vec::<String>::new(),
             "stays at the start"
         );
-        for expected in ["Work", "⌂", "⌂", "Later"] {
+        for expected in ["Work", "⌂", "Later", "⌂"] {
             state.update(Message::Forward);
             assert_eq!(
                 state.breadcrumbs().last().map_or("⌂", String::as_str),

@@ -850,7 +850,8 @@ impl State {
     }
 
     /// Shows the next history entry, or with `forward` false the previous one, skipping those
-    /// whose zoom block no longer exists (FR-NAV-04).
+    /// whose zoom block no longer exists (FR-NAV-04) and those showing where the pane already is,
+    /// which skipping can bring next to each other, so every step goes somewhere.
     fn walk_history(&mut self, forward: bool) {
         let mut at = self.pane.history_at;
         while let Some(next) = if forward {
@@ -860,9 +861,10 @@ impl State {
         } && let Some(&location) = self.pane.history.get(next)
         {
             at = next;
-            if location
-                .zoom()
-                .is_none_or(|id| blocks::block(self.document(), id).is_some())
+            if location != self.pane.location
+                && location
+                    .zoom()
+                    .is_none_or(|id| blocks::block(self.document(), id).is_some())
             {
                 self.pane.history_at = at;
                 self.show(location);
