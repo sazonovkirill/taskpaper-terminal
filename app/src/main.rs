@@ -1,5 +1,5 @@
 //! `tpt [path]`: opens a `.taskpaper` file, or a new temporary file holding the demo outline
-//! without a path, in the terminal.
+//! without a path, in the terminal. `tpt --version` and `tpt --help` print and exit.
 
 use std::{
     io,
@@ -32,12 +32,47 @@ use taskpaper_terminal::{
     },
 };
 
-fn main() -> anyhow::Result<()> {
+/// What `tpt --help` prints.
+const HELP: &str = "\
+usage: tpt [path]
+       tpt --help | --version
+
+Opens the TaskPaper file at path, creating it on the first save, or without a path a new
+temporary file holding a demo outline. Open a file whose name starts with - as ./-name.";
+
+/// What the command line asks for.
+enum Arguments {
+    /// Open the file at this path, or the demo without one.
+    Open(Option<PathBuf>),
+    /// Nothing more: the version or the usage was printed.
+    Printed,
+}
+
+/// Reads the command line: `tpt [path]`, `tpt --help` or `tpt --version`.
+fn arguments() -> anyhow::Result<Arguments> {
     let mut args = std::env::args_os().skip(1);
     let path = args.next().map(PathBuf::from);
     if args.next().is_some() {
         bail!("usage: tpt [path]");
     }
+    // A flag is never taken for a file name, so a mistyped one cannot create a file (D-113).
+    if let Some(flag) = path.as_deref().and_then(Path::to_str)
+        && flag.starts_with('-')
+    {
+        match flag {
+            "--version" => println!("tpt {}", env!("CARGO_PKG_VERSION")),
+            "--help" => println!("{HELP}"),
+            _ => bail!("unknown option {flag}; open a file named like it as ./{flag}\n{HELP}"),
+        }
+        return Ok(Arguments::Printed);
+    }
+    Ok(Arguments::Open(path))
+}
+
+fn main() -> anyhow::Result<()> {
+    let Arguments::Open(path) = arguments()? else {
+        return Ok(());
+    };
     let home = std::env::home_dir();
     let config = ui::config::file(std::env::var_os("XDG_CONFIG_HOME"), home.clone())
         .map(|file| ui::config::load(&file, home.as_deref()))

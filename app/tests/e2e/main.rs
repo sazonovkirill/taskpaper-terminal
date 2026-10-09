@@ -84,6 +84,44 @@ fn refuses_a_file_in_a_missing_folder_when_recovery_files_exist() -> TestResult 
     Ok(())
 }
 
+// file-io.md §1, D-113
+#[test]
+fn prints_the_version_or_the_usage_and_opens_no_file() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    for (flag, printed) in [
+        ("--version", format!("tpt {}\n", env!("CARGO_PKG_VERSION"))),
+        ("--help", "usage: tpt [path]".to_owned()),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_tpt"))
+            .arg(flag)
+            .current_dir(dir.path())
+            .output()?;
+        assert_eq!(output.status.code(), Some(0), "{flag}");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains(&printed), "{flag}: {stdout}");
+    }
+    assert_eq!(std::fs::read_dir(dir.path())?.count(), 0, "no file created");
+    Ok(())
+}
+
+// file-io.md §1, D-113
+#[test]
+fn refuses_any_other_option_rather_than_open_a_file_named_like_it() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let output = Command::new(env!("CARGO_BIN_EXE_tpt"))
+        .arg("-x")
+        .current_dir(dir.path())
+        .output()?;
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("unknown option -x") && stderr(&output).contains("./-x"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(std::fs::read_dir(dir.path())?.count(), 0, "no file created");
+    Ok(())
+}
+
 #[test]
 fn refuses_more_than_one_path() -> TestResult {
     let output = tpt(&["a".as_ref(), "b".as_ref()])?;
