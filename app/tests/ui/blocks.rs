@@ -40,7 +40,7 @@ fn draws_every_block_type_and_hides_special_nodes() {
             format!("  {}", rule(2)),
             r#"  print("knead")"#.to_owned(),
             r#"  print("bake")"#.to_owned(),
-            "  - Clean up".to_owned(),
+            "  - Clean up ❞ 1".to_owned(),
         ]
     );
     let section = &buffer[(4, 6)];

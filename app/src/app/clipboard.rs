@@ -67,7 +67,7 @@ impl State {
             || self.save_as_paste(text)
             || self.settings_paste(text)
             || self.node_editor_paste(text)
-            || self.note_editor_paste(text)
+            || self.attachments_paste(text)
         {
             return;
         }

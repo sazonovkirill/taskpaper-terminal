@@ -27,8 +27,8 @@ use ratatui::{
 
 use crate::{
     app::{
-        Animations, Configuration, Disk, Effect, Location, Message, Mode, Origin, PaneId, PaneView,
-        Row, SaveAs, SaveState, SettingsInput, State,
+        Animations, AttachmentsInput, Configuration, Disk, Effect, Location, Message, Mode, Origin,
+        PaneId, PaneView, Row, SaveAs, SaveState, SettingsInput, State,
         commands::{Command, REGISTRY},
     },
     document::{Attachment, ItemId},
@@ -386,7 +386,7 @@ impl Tui {
         Context {
             page_down_rows: self.page_down_rows,
             page_up_rows: self.page_up_rows,
-            today: (self.clock)().date(),
+            now: (self.clock)().datetime(),
             mode: self.state.mode(),
             command_menu: self.state.command_menu().is_some(),
             overlay: self.overlay(),
@@ -503,6 +503,19 @@ impl Tui {
             }
             KeyAction::ScrollAttachments(by) => {
                 let tab = self.state.attachments_panel().map(|view| view.tab);
+                if tab == Some(Attachment::Comments) {
+                    let page = isize::try_from(self.attachments_page).unwrap_or(isize::MAX);
+                    let by = match by {
+                        ScrollBy::Up => -1,
+                        ScrollBy::Down => 1,
+                        ScrollBy::PageUp => -page,
+                        ScrollBy::PageDown => page,
+                        ScrollBy::Top => isize::MIN,
+                        ScrollBy::Bottom => isize::MAX,
+                    };
+                    self.send(Message::Attachments(AttachmentsInput::Select(by)), now);
+                    return;
+                }
                 if self.attachments_tab != tab {
                     (self.attachments_tab, self.attachments_scroll) = (tab, 0);
                 }
@@ -1406,6 +1419,10 @@ impl Tui {
             self.state.attachments_panel().map(|view| {
                 if view.editing.is_some() {
                     Overlay::AttachmentsEditor
+                } else if view.draft.is_some() {
+                    Overlay::AttachmentsComment
+                } else if view.tab == Attachment::Comments {
+                    Overlay::AttachmentsComments
                 } else {
                     Overlay::Attachments
                 }

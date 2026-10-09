@@ -4,7 +4,7 @@
 use std::{mem, time::Duration};
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
-use jiff::civil::Date;
+use jiff::civil::DateTime;
 use thiserror::Error;
 
 use super::widgets::ShortcutGroup;
@@ -31,8 +31,9 @@ pub struct Context {
     pub page_down_rows: usize,
     /// The rows a page up motion moves past.
     pub page_up_rows: usize,
-    /// The local date, which completing a block and the date keys write.
-    pub today: Date,
+    /// The local date and time: its date is what completing a block and the date keys write,
+    /// and a new comment is stamped with it.
+    pub now: DateTime,
     /// Whether keys navigate or edit text, which decides their bindings.
     pub mode: Mode,
     /// Whether the command menu is open, which takes the keys of edit mode (D-50).
@@ -49,7 +50,7 @@ impl Context {
     /// What a command's message carries of this context.
     fn inputs(&self) -> Inputs {
         Inputs {
-            today: self.today,
+            today: self.now.date(),
             page_down_rows: self.page_down_rows,
             page_up_rows: self.page_up_rows,
         }
@@ -139,6 +140,10 @@ pub enum Overlay {
     Attachments,
     /// The attachments panel while it edits a note (FR-ATT-04).
     AttachmentsEditor,
+    /// The attachments panel's Comments tab (FR-ATT-05).
+    AttachmentsComments,
+    /// The attachments panel while a comment is typed (FR-ATT-05).
+    AttachmentsComment,
 }
 
 impl Overlay {
@@ -162,6 +167,8 @@ impl Overlay {
             | Self::NodeEditor
             | Self::Attachments
             | Self::AttachmentsEditor
+            | Self::AttachmentsComments
+            | Self::AttachmentsComment
             | Self::Settings
             | Self::SettingsText
             | Self::SettingsPicker
@@ -179,6 +186,7 @@ impl Overlay {
                 | Self::SettingsText
                 | Self::NodeEditor
                 | Self::AttachmentsEditor
+                | Self::AttachmentsComment
         )
     }
 }
@@ -519,13 +527,26 @@ const SCROLL: &[(Key, ScrollBy)] = &[
     (key!('G'), ScrollBy::Bottom),
 ];
 
-/// The attachments panel's action for `key`: `Ctrl+Q` quits, else its binding or scroll, if any.
-fn attachments_action(key: Key) -> Option<KeyAction> {
+/// Bindings of the attachments panel's Comments tab ([keybindings.md §4]) besides those of
+/// [`ATTACHMENTS`], and [`SCROLL`], which moves the selection there.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const COMMENTS: &[(Key, AttachmentsInput)] = &[
+    (key!('a'), AttachmentsInput::AddComment),
+    (key!('d'), AttachmentsInput::DeleteComment),
+    (key!(Delete), AttachmentsInput::DeleteComment),
+];
+
+/// The attachments panel's action for `key`, `comments` its bindings on the Comments tab:
+/// `Ctrl+Q` quits, else its binding or scroll, if any.
+fn attachments_action(key: Key, comments: bool) -> Option<KeyAction> {
     if key == key!(ctrl 'q') {
         return Some(KeyAction::Send(Message::Quit));
     }
+    let tab: &[_] = if comments { COMMENTS } else { &[] };
     ATTACHMENTS
         .iter()
+        .chain(tab)
         .find(|(bound, _)| *bound == key)
         .map(|&(_, input)| KeyAction::Send(Message::Attachments(input)))
         .or_else(|| {
@@ -561,6 +582,19 @@ fn note_editor_message(key: Key) -> Option<Message> {
         .find(|(bound, _)| *bound == key)
         .map(|&(_, input)| input)
         .or_else(|| text_edit(key).map(AttachmentsInput::Text))?;
+    Some(Message::Attachments(input))
+}
+
+/// The message of the comment being typed for `key` at local time `now`: `Ctrl+Q` quits, `Ctrl+V`
+/// pastes into it, `Enter` adds or saves it stamped `now`, `Esc` cancels, else the text key it is.
+fn comment_message(key: Key, now: DateTime) -> Option<Message> {
+    let input = match key {
+        key!(ctrl 'q') => return Some(Message::Quit),
+        key!(ctrl 'v') => return Some(Message::Paste(Paste::Below)),
+        key!(Enter) => AttachmentsInput::Accept(now),
+        key!(Esc) => AttachmentsInput::Cancel,
+        _ => AttachmentsInput::Text(text_edit(key)?),
+    };
     Some(Message::Attachments(input))
 }
 
@@ -1126,8 +1160,10 @@ impl Keymap {
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
-                Overlay::Attachments => return attachments_action(pressed),
+                Overlay::Attachments => return attachments_action(pressed, false),
+                Overlay::AttachmentsComments => return attachments_action(pressed, true),
                 Overlay::AttachmentsEditor => note_editor_message(pressed),
+                Overlay::AttachmentsComment => comment_message(pressed, context.now),
             };
             return message.map(KeyAction::Send);
         }
@@ -1198,6 +1234,7 @@ impl Keymap {
 #[cfg(test)]
 mod tests {
     use crossterm::event::{KeyEvent, KeyEventKind, KeyEventState};
+    use jiff::civil::Date;
 
     use super::*;
     use crate::{
@@ -1243,10 +1280,12 @@ mod tests {
 
     const TODAY: Date = jiff::civil::date(2026, 10, 5);
 
+    const NOW: DateTime = TODAY.at(9, 5, 0, 0);
+
     const CONTEXT: &Context = &Context {
         page_down_rows: PAGE,
         page_up_rows: PAGE_UP,
-        today: TODAY,
+        now: NOW,
         mode: Mode::Navigate,
         command_menu: false,
         overlay: None,
@@ -2466,6 +2505,85 @@ mod tests {
                 "{code:?} {modifiers:?}"
             );
         }
+    }
+
+    // attachments.md §5, keybindings.md §4, D-42
+    #[test]
+    fn the_comments_tab_adds_deletes_and_moves_the_selection_with_the_scroll_keys() {
+        let none = KeyModifiers::NONE;
+        let action = |code, overlay| {
+            let context = &Context {
+                overlay: Some(overlay),
+                ..*CONTEXT
+            };
+            Keymap::default().action_for(&key(code, none), ms(0), context)
+        };
+        let send = |input| Some(KeyAction::Send(Message::Attachments(input)));
+        for (code, expected) in [
+            (KeyCode::Char('a'), send(AttachmentsInput::AddComment)),
+            (KeyCode::Char('d'), send(AttachmentsInput::DeleteComment)),
+            (KeyCode::Delete, send(AttachmentsInput::DeleteComment)),
+            (KeyCode::Char('e'), send(AttachmentsInput::Edit)),
+            (KeyCode::Esc, send(AttachmentsInput::Close)),
+            (
+                KeyCode::Char('j'),
+                Some(KeyAction::ScrollAttachments(ScrollBy::Down)),
+            ),
+        ] {
+            assert_eq!(
+                action(code, Overlay::AttachmentsComments),
+                expected,
+                "{code:?}"
+            );
+        }
+        assert_eq!(
+            action(KeyCode::Char('a'), Overlay::Attachments),
+            None,
+            "the Note tab"
+        );
+    }
+
+    // attachments.md §5, keybindings.md §4, D-42
+    #[test]
+    fn a_comment_being_typed_takes_text_keys_and_enter_stamps_it_now() {
+        let none = KeyModifiers::NONE;
+        let comment =
+            |code, modifiers| overlay_message(Overlay::AttachmentsComment, code, modifiers);
+        for (code, input) in [
+            (KeyCode::Enter, AttachmentsInput::Accept(NOW)),
+            (KeyCode::Esc, AttachmentsInput::Cancel),
+            (
+                KeyCode::Char('d'),
+                AttachmentsInput::Text(TextEdit::Insert('d')),
+            ),
+            (
+                KeyCode::Backspace,
+                AttachmentsInput::Text(TextEdit::DeleteBackward),
+            ),
+        ] {
+            assert_eq!(
+                comment(code, none),
+                Some(Message::Attachments(input)),
+                "{code:?}"
+            );
+        }
+        assert_eq!(
+            comment(KeyCode::Char('q'), KeyModifiers::CONTROL),
+            Some(Message::Quit)
+        );
+        assert_eq!(
+            comment(KeyCode::Char('v'), KeyModifiers::CONTROL),
+            Some(Message::Paste(Paste::Below))
+        );
+        assert_eq!(comment(KeyCode::F(5), none), None);
+        let context = &Context {
+            overlay: Some(Overlay::AttachmentsComment),
+            ..*CONTEXT
+        };
+        assert!(matches!(
+            Keymap::default().action_for(&Event::Paste("a".to_owned()), ms(0), context),
+            Some(KeyAction::Send(Message::Pasted { .. }))
+        ));
     }
 
     // attachments.md §4, keybindings.md §4, D-42, D-107
@@ -3928,6 +4046,8 @@ mod tests {
             Overlay::NodeEditorFinder,
             Overlay::Attachments,
             Overlay::AttachmentsEditor,
+            Overlay::AttachmentsComments,
+            Overlay::AttachmentsComment,
             Overlay::GoToSymbol,
             Overlay::MoveTo,
             Overlay::GoToCommand,

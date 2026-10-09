@@ -3,6 +3,8 @@
 //! tabs, one per kind of attachment turned on, the shown tab's content and a hint naming the
 //! panel's keys.
 
+use std::ops::Range;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -13,9 +15,9 @@ use ratatui::{
 
 use super::{Field, attachment_icon, drawable, run_style, wrap};
 use crate::{
-    app::{AttachmentsView, NoteCaret},
+    app::{AttachmentsView, CommentDraft, NoteCaret},
     document::{
-        Attachment,
+        Attachment, comments,
         inline::{self, Format, Syntax},
         markdown::{self, NoteLine},
     },
@@ -24,6 +26,15 @@ use crate::{
 
 /// The narrowest and widest the panel is drawn, screen width allowing.
 const WIDTH: (u16, u16) = (40, 72);
+
+/// The tab's content laid out in lines: the lines, those of the caret's line or the selected
+/// comment, which scrolling keeps in view, and the caret's line and column, while text is typed.
+#[derive(Debug, Default)]
+struct Layout<'a> {
+    lines: Vec<Line<'a>>,
+    current: Option<Range<usize>>,
+    caret: Option<(usize, usize)>,
+}
 
 /// The attachments panel.
 #[derive(Debug)]
@@ -66,29 +77,29 @@ impl<'a> AttachmentsPanel<'a> {
     }
 
     /// How far the tab scrolls when the panel is drawn over `area` after scrolling `scroll`
-    /// lines down: no further than its last line at the bottom, and while a note is edited, far
-    /// enough to show the caret's line; and how many lines a page scrolls.
+    /// lines down: no further than its last line at the bottom, and far enough to show the
+    /// caret's line or the start of the selected comment; and how many lines a page scrolls.
     #[must_use]
     pub fn scroll(&self, scroll: usize, area: Rect) -> (usize, usize) {
         let body = Self::body(area);
-        let height = usize::from(body.height);
-        let mut scroll = scroll.min(self.lines(body.width).len().saturating_sub(height));
-        if let Some(caret) = &self.view.editing {
-            scroll = scroll.clamp((caret.row + 1).saturating_sub(height.max(1)), caret.row);
+        let height = usize::from(body.height).max(1);
+        let layout = self.layout(body.width);
+        let mut scroll = scroll.min(layout.lines.len().saturating_sub(height));
+        if let Some(current) = layout.current {
+            scroll = scroll
+                .max(current.end.saturating_sub(height))
+                .min(current.start);
         }
-        (scroll, height.max(1))
+        (scroll, height)
     }
 
-    /// The caret's cell when the panel is drawn over `area`, while a note is edited and its line
-    /// is in view.
+    /// The caret's cell when the panel is drawn over `area`, while text is typed and its line is
+    /// in view.
     #[must_use]
     pub fn caret(&self, area: Rect) -> Option<(u16, u16)> {
-        let caret = self.view.editing.as_ref()?;
         let body = Self::body(area);
-        let y = caret.row.checked_sub(self.scroll)?;
-        let (_, column) = self
-            .field(caret)
-            .spans(Style::new(), 0, usize::from(body.width));
+        let (row, column) = self.layout(body.width).caret?;
+        let y = row.checked_sub(self.scroll)?;
         (y < usize::from(body.height)).then(|| {
             (
                 body.x
@@ -120,38 +131,116 @@ impl<'a> AttachmentsPanel<'a> {
         }
     }
 
-    /// The tab's content in lines `width` columns wide: the note rendered and wrapped, the
-    /// comments as written, or the note being edited as written, its lines cut at the edge
-    /// but the caret's, which scrolls to keep the caret in view.
-    fn lines(&self, width: u16) -> Vec<Line<'a>> {
+    /// The tab's content laid out `width` columns wide: the note rendered and wrapped, the
+    /// comments, or the note being edited as written, its lines cut at the edge but the
+    /// caret's, which scrolls to keep the caret in view.
+    fn layout(&self, width: u16) -> Layout<'a> {
         let width = usize::from(width);
         if let Some(caret) = &self.view.editing {
-            return self
-                .view
-                .lines
-                .iter()
-                .enumerate()
-                .map(|(row, line)| {
-                    if row == caret.row {
-                        Line::from(self.field(caret).spans(Style::new(), 0, width).0)
-                    } else {
-                        wrap::truncate(&Line::from(drawable(line)), width)
-                    }
-                })
-                .collect();
-        }
-        match self.view.tab {
-            Attachment::Note => markdown::note_lines(&self.view.lines)
-                .into_iter()
-                .flat_map(|line| self.note_line(line, width))
-                .collect(),
-            Attachment::Comments => self
+            let (field, column) = self.field(caret).spans(Style::new(), 0, width);
+            let mut lines: Vec<Line<'a>> = self
                 .view
                 .lines
                 .iter()
                 .map(|line| wrap::truncate(&Line::from(drawable(line)), width))
-                .collect(),
+                .collect();
+            if let Some(line) = lines.get_mut(caret.row) {
+                *line = Line::from(field);
+            }
+            return Layout {
+                lines,
+                current: Some(caret.row..caret.row + 1),
+                caret: Some((caret.row, column)),
+            };
         }
+        match self.view.tab {
+            Attachment::Note => Layout {
+                lines: markdown::note_lines(&self.view.lines)
+                    .into_iter()
+                    .flat_map(|line| self.note_line(line, width))
+                    .collect(),
+                ..Layout::default()
+            },
+            Attachment::Comments => self.comments(width),
+        }
+    }
+
+    /// The comments laid out `width` columns wide, newest first as the file has them: the
+    /// selected one, or the one being typed, on the focused block's band, a new one above the
+    /// others (attachments.md §5).
+    fn comments(&self, width: usize) -> Layout<'a> {
+        let draft = self.view.draft.as_ref();
+        let mut layout = Layout::default();
+        let typed = |layout: &mut Layout<'a>, draft: &'a CommentDraft| {
+            let start = layout.lines.len();
+            let (line, column) = self.draft_line(draft, width);
+            layout.lines.push(line);
+            (layout.current, layout.caret) = (Some(start..start + 1), Some((start, column)));
+        };
+        if let Some(draft) = draft.filter(|draft| draft.comment.is_none()) {
+            typed(&mut layout, draft);
+        }
+        for (at, line) in self.view.lines.iter().enumerate() {
+            match draft {
+                Some(draft) if draft.comment == Some(at) => typed(&mut layout, draft),
+                _ => {
+                    let start = layout.lines.len();
+                    layout.lines.extend(self.comment_line(line, width));
+                    if draft.is_none() && self.view.selected == Some(at) {
+                        layout.current = Some(start..layout.lines.len());
+                    }
+                }
+            }
+        }
+        let band = Style::new().bg(self.theme.current_line);
+        for line in layout
+            .current
+            .clone()
+            .and_then(|current| layout.lines.get_mut(current))
+            .into_iter()
+            .flatten()
+        {
+            line.style = line.style.patch(band);
+        }
+        layout
+    }
+
+    /// A comment wrapped to `width` columns: its timestamp dimmed, without its brackets, and its
+    /// text with its inline formatting, the lines after the first under the text.
+    fn comment_line(&self, line: &str, width: usize) -> Vec<Line<'static>> {
+        let comment = comments::comment(line);
+        let mut shown = Line::default();
+        if let Some(stamp) = comment.stamp {
+            shown.push_span(Span::styled(format!("{stamp} "), Style::new().dim()));
+        }
+        let start = shown.width();
+        for run in inline::runs(comment.text, Syntax::Inline) {
+            shown.push_span(Span::styled(
+                drawable(run.text).into_owned(),
+                run_style(run.format, Style::new(), self.theme.link),
+            ));
+        }
+        wrap::wrap(&shown, start, width, width)
+    }
+
+    /// The comment being typed on a line `width` columns wide after a dimmed marker, and the
+    /// caret's column.
+    fn draft_line(&self, draft: &'a CommentDraft, width: usize) -> (Line<'a>, usize) {
+        let marker = if self.icons == IconSet::Ascii {
+            "> "
+        } else {
+            "› "
+        };
+        let field = Field {
+            text: &draft.text,
+            caret: draft.caret,
+            selection: draft.selection.clone(),
+        };
+        let start = Span::raw(marker).width();
+        let (spans, column) = field.spans(Style::new(), start, width);
+        let mut line = Line::from(Span::styled(marker, Style::new().dim()));
+        line.spans.extend(spans);
+        (line, column)
     }
 
     /// A line of a note as Markdown shows it, wrapped to `width` columns: a heading bold, the
@@ -239,12 +328,23 @@ impl<'a> AttachmentsPanel<'a> {
         if self.view.editing.is_some() {
             return Line::from("Enter new line · Esc save").dim();
         }
+        if let Some(draft) = &self.view.draft {
+            let accept = if draft.comment.is_some() {
+                "Enter save"
+            } else {
+                "Enter add"
+            };
+            return Line::from(format!("{accept} · Esc cancel")).dim();
+        }
         let mut keys = Vec::new();
-        if self.view.tabs.len() > 1 {
+        let selected = self.view.selected.is_some();
+        if self.view.tabs.len() > 1 && !selected {
             keys.push("Tab other tab");
         }
-        if self.view.tab == Attachment::Note {
-            keys.push("e edit");
+        match self.view.tab {
+            Attachment::Note => keys.push("e edit"),
+            Attachment::Comments if selected => keys.extend(["a add", "e edit", "d del"]),
+            Attachment::Comments => keys.push("a add"),
         }
         keys.push("Esc close");
         Line::from(keys.join(" · ")).dim()
@@ -275,7 +375,7 @@ impl Widget for AttachmentsPanel<'_> {
         self.tabs()
             .render(Rect::new(inner.x, inner.y, inner.width, 1), buf);
         let body = Self::body(area);
-        let lines = self.lines(body.width);
+        let lines = self.layout(body.width).lines;
         if lines.is_empty() {
             let empty = match self.view.tab {
                 Attachment::Note => "No note",
@@ -347,6 +447,8 @@ mod tests {
             tab,
             lines: lines.iter().map(|&line| line.to_owned()).collect(),
             editing: None,
+            selected: None,
+            draft: None,
         }
     }
 
@@ -375,7 +477,7 @@ mod tests {
                 "│ [1] a                      │",
                 "│ b                          │",
                 "│                            │",
-                "│ Tab other tab · Esc close  │",
+                "│ Tab other tab · a add · Es │",
                 "└────────────────────────────┘",
             ]
         );
@@ -528,7 +630,7 @@ mod tests {
                 "│ ❞ Comments           │",
                 "│                      │",
                 "│ No comments          │",
-                "│ Esc close            │",
+                "│ a add · Esc close    │",
                 "└──────────────────────┘",
             ]
         );
@@ -578,5 +680,137 @@ mod tests {
             AttachmentsPanel::area(Rect::new(0, 0, 30, 30)),
             Rect::new(0, 1, 30, 29)
         );
+    }
+
+    /// The comments `lines` with comment `selected` selected and `draft` being typed.
+    fn comments(
+        lines: &[&str],
+        selected: Option<usize>,
+        draft: Option<CommentDraft>,
+    ) -> AttachmentsView<'static> {
+        AttachmentsView {
+            selected,
+            draft,
+            ..view(&Attachment::ALL, Attachment::Comments, lines)
+        }
+    }
+
+    fn draft(comment: Option<usize>, text: &str) -> CommentDraft {
+        CommentDraft {
+            comment,
+            text: text.to_owned(),
+            caret: text.len(),
+            selection: None,
+        }
+    }
+
+    const COMMENTS: [&str; 3] = [
+        "[2026-10-08 09:05] Bought **it** at the corner shop",
+        "by hand",
+        "[2026-10-07 18:02] a",
+    ];
+
+    // FR-ATT-05, attachments.md §5
+    #[test]
+    fn comments_show_their_dimmed_timestamps_and_the_selected_one_on_a_band() {
+        let (buf, caret) = draw(
+            &comments(&COMMENTS, Some(1), None),
+            (32, 9),
+            IconSet::Unicode,
+            0,
+        );
+        assert_eq!(
+            rows(&buf)[3..8],
+            [
+                "│ 2026-10-08 09:05 Bought it   │",
+                "│                  at the      │",
+                "│                  corner shop │",
+                "│ by hand                      │",
+                "│ a add · e edit · d del · Esc │",
+            ]
+        );
+        assert_eq!(caret, None);
+        assert!(buf[(2, 3)].modifier.contains(Modifier::DIM), "the stamp");
+        assert!(!buf[(19, 3)].modifier.contains(Modifier::DIM));
+        assert!(
+            buf[(26, 3)].modifier.contains(Modifier::BOLD),
+            "inline Markdown"
+        );
+        assert_eq!(buf[(2, 6)].bg, THEME.current_line, "the selected comment");
+        assert_eq!(buf[(29, 6)].bg, THEME.current_line, "the whole width");
+        assert_ne!(buf[(2, 3)].bg, THEME.current_line);
+        let (buf, _) = draw(
+            &comments(&COMMENTS, Some(2), None),
+            (32, 9),
+            IconSet::Unicode,
+            0,
+        );
+        assert_eq!(
+            rows(&buf)[3..7],
+            [
+                "│                  at the      │",
+                "│                  corner shop │",
+                "│ by hand                      │",
+                "│ 2026-10-07 18:02 a           │",
+            ],
+            "the selected comment is kept in view"
+        );
+        let (buf, _) = draw(
+            &comments(&COMMENTS, Some(0), None),
+            (32, 9),
+            IconSet::Unicode,
+            usize::MAX,
+        );
+        assert_eq!(
+            rows(&buf)[3],
+            "│ 2026-10-08 09:05 Bought it   │",
+            "from its start"
+        );
+    }
+
+    // FR-ATT-05, attachments.md §5
+    #[test]
+    fn a_comment_being_typed_shows_with_its_caret_where_it_goes() {
+        let (buf, caret) = draw(
+            &comments(&COMMENTS[1..], Some(0), Some(draft(None, "new"))),
+            (32, 8),
+            IconSet::Unicode,
+            0,
+        );
+        assert_eq!(
+            rows(&buf)[3..7],
+            [
+                "│ › new                        │",
+                "│ by hand                      │",
+                "│ 2026-10-07 18:02 a           │",
+                "│ Enter add · Esc cancel       │",
+            ]
+        );
+        assert_eq!(caret, Some((7, 3)));
+        assert_eq!(buf[(2, 3)].bg, THEME.current_line);
+        assert_ne!(buf[(2, 4)].bg, THEME.current_line, "not the selected one");
+        let (buf, caret) = draw(
+            &comments(&COMMENTS[1..], Some(0), Some(draft(Some(1), "b"))),
+            (32, 8),
+            IconSet::Ascii,
+            0,
+        );
+        assert_eq!(
+            rows(&buf)[3..7],
+            [
+                "│ by hand                      │",
+                "│ > b                          │",
+                "│                              │",
+                "│ Enter save · Esc cancel      │",
+            ]
+        );
+        assert_eq!(caret, Some((5, 4)));
+        let (_, caret) = draw(
+            &comments(&COMMENTS[1..], Some(0), Some(draft(Some(1), "b"))),
+            (32, 4),
+            IconSet::Ascii,
+            0,
+        );
+        assert_eq!(caret, None, "no room for the comments");
     }
 }

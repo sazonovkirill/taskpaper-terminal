@@ -41,6 +41,12 @@ pub fn content(document: &Document, block: ItemId, kind: Attachment) -> Vec<Stri
     })
 }
 
+/// How many lines the block `block`'s attachment of kind `kind` has, as [`content`] reads them.
+#[must_use]
+pub fn count(document: &Document, block: ItemId, kind: Attachment) -> usize {
+    node(document, block, kind).map_or(0, |node| document.descendants(node).count())
+}
+
 /// The ops that make `lines` the content of the block `block`'s attachment of kind `kind`, each
 /// split where it holds a line break and without the trailing blank lines, which the file would
 /// read back elsewhere. They create the node where §1 places it, delete it when no line is left,
@@ -316,6 +322,20 @@ mod tests {
     }
 
     // attachments.md §1.1
+    // FR-ATT-02, attachments.md §2
+    #[test]
+    fn count_is_the_number_of_lines_content_reads() {
+        let document = format::parse("- a\n\tCOMMENTS @hidden\n\t\tx\n\t\t\tdeeper\n\t\ty\n- b\n");
+        let [a, b] = [0, 1].map(|at| children(&document, document.root())[at].id());
+        assert_eq!(count(&document, a, Attachment::Comments), 3);
+        assert_eq!(
+            count(&document, a, Attachment::Comments),
+            content(&document, a, Attachment::Comments).len()
+        );
+        assert_eq!(count(&document, a, Attachment::Note), 0);
+        assert_eq!(count(&document, b, Attachment::Comments), 0);
+    }
+
     #[test]
     fn a_line_is_guarded_where_it_would_read_otherwise() {
         let cases = [

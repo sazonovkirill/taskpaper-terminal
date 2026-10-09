@@ -1,7 +1,8 @@
 //! The attachments panel: `n` and `N` open the focused block's note and comments on a panel
 //! over the right side of the screen, `Tab` switches between them and `Esc` closes it; each kind
 //! has a setting that turns it off; the note shows rendered, scrolls, and `e` edits it
-//! (FR-ATT-03, FR-ATT-04, FR-ATT-06).
+//! (FR-ATT-03, FR-ATT-04, FR-ATT-06); the comments tab adds, edits and deletes comments
+//! (FR-ATT-05).
 
 use std::{fs, time::Duration};
 
@@ -99,7 +100,7 @@ fn a_kind_turned_off_has_no_tab_or_key() {
     app.type_keys("N");
     let rows = screen(&mut app);
     assert!(rows[2].contains("│ ❞ Comments    "), "{rows:?}");
-    assert!(rows[9].contains("│ Esc close"), "{rows:?}");
+    assert!(rows[9].contains("│ a add · Esc close"), "{rows:?}");
     let mut off = Harness::with_config(
         TEXT,
         "attachments_notes = false\nattachments_comments = false\n",
@@ -170,5 +171,84 @@ fn j_k_and_g_scroll_a_long_note() {
         screen(&mut app)[4],
         format!("{:40}│ line 1{:31}│", "", ""),
         "another tab starts at the top"
+    );
+}
+
+// FR-ATT-02, FR-ATT-05, attachments.md §2, §5
+#[test]
+fn a_adds_a_stamped_comment_e_rewords_it_and_d_deletes_it_each_one_step_to_undo() {
+    let mut app = Harness::with_text("- Milk\n\tCOMMENTS @hidden\n\t\tTyped by hand\n", 80, 12);
+    app.type_keys("Na");
+    app.type_keys("Bought **it**");
+    let rows = screen(&mut app);
+    assert_eq!(rows[4], format!("{:40}│ › Bought **it**{:22}│", "", ""));
+    assert!(rows[9].contains("│ Enter add · Esc cancel"), "{rows:?}");
+    app.terminal.backend_mut().assert_cursor_position((57, 4));
+    press(&mut app, KeyCode::Enter);
+    let rows = screen(&mut app);
+    assert_eq!(
+        rows[2..6],
+        [
+            format!("▌ - Milk ❞ 2{:28}│ ≡ Note   ❞ Comments{:18}│", "", ""),
+            format!("{:40}│{:38}│", "", ""),
+            format!("{:40}│ 2026-10-05 09:30 Bought it{:11}│", "", ""),
+            format!("{:40}│ Typed by hand{:24}│", "", ""),
+        ]
+    );
+    assert!(
+        rows[9].contains("│ a add · e edit · d del · Esc close"),
+        "{rows:?}"
+    );
+    press(&mut app, KeyCode::PageDown);
+    press(&mut app, KeyCode::PageUp);
+    app.type_keys("je");
+    press(&mut app, KeyCode::End);
+    app.type_keys("!");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("gaignored");
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-05 09:30] Bought **it**\n\t\tTyped by hand!\n"
+    );
+    app.type_keys("Ndd");
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "- Milk\n",
+        "the last comment takes its node"
+    );
+    app.type_keys("z");
+    assert_eq!(
+        saved(&mut app),
+        "- Milk\n\tCOMMENTS @hidden\n\t\tTyped by hand!\n"
+    );
+    app.type_keys("zzz");
+    assert_eq!(
+        saved(&mut app),
+        "- Milk\n\tCOMMENTS @hidden\n\t\tTyped by hand\n"
+    );
+}
+
+// FR-ATT-05, attachments.md §5, D-108
+#[test]
+fn the_scroll_keys_move_the_selected_comment() {
+    let comments = (1..=8)
+        .map(|n| format!("\t\tc{n}\n"))
+        .collect::<Vec<_>>()
+        .concat();
+    let mut app = Harness::with_text(&format!("- Milk\n\tCOMMENTS @hidden\n{comments}"), 80, 12);
+    app.type_keys("N");
+    screen(&mut app);
+    press(&mut app, KeyCode::PageDown);
+    press(&mut app, KeyCode::Up);
+    app.type_keys("d");
+    press(&mut app, KeyCode::PageUp);
+    app.type_keys("jd");
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "- Milk\n\tCOMMENTS @hidden\n\t\tc1\n\t\tc3\n\t\tc4\n\t\tc6\n\t\tc7\n\t\tc8\n"
     );
 }

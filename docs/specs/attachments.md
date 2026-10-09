@@ -66,8 +66,9 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 ## 5. Comments (FR-ATT-05)
 
 - Every comment is one line starting with its local 24-hour timestamp, `[YYYY-MM-DD HH:MM] text`. The Comments tab lists them newest first, as the file stores them, each with its timestamp dimmed and its text rendering inline Markdown (bold, inline code, links) as a text block does.
-- Add Comment opens a one-line input; `Enter` adds the comment at the top of the list stamped with the current local time, and `Esc` cancels. A comment cannot hold a line break.
-- A comment can be edited, keeping its timestamp, and deleted; each is one undo step. Deleting the last one deletes the `COMMENTS` node.
+- One comment is selected, on the focused block's band: `j`/`k` or the arrows move the selection, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` by as many comments as the panel has lines, `g`/`Home` and `G`/`End` to the first and last, and the tab scrolls to keep it in view (D-108).
+- Add Comment (`a`) opens a one-line input at the top of the list; `Enter` adds the comment there stamped with the current local time and selects it, and `Esc` cancels. A comment cannot hold a line break: a paste's line breaks become spaces. Text of only spaces adds nothing (D-108).
+- A comment can be edited (`e` or `Enter`), in the same input in its place, keeping its timestamp, and deleted (`d` or `Delete`); each is one undo step. Deleting the last one deletes the `COMMENTS` node.
 - A line under `COMMENTS` without a valid timestamp, typed by hand or by another app, is shown as a comment without a date and kept as is; the app never reorders existing comments.
 
 ## 6. Settings (FR-ATT-06)

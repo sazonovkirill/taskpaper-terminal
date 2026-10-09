@@ -1358,16 +1358,23 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
             style
         }
     };
-    let note = row.note.then(|| (Icon::NoteAttachment, Style::new()));
-    let flag = row.flag.then(|| (Icon::Flag, flag_style(theme)));
-    let star = row.starred.then(|| (Icon::Star, today_style(theme)));
+    let glyph = |icon: Icon| icon.glyph(icons).to_owned();
+    let note = row
+        .note
+        .then(|| (glyph(Icon::NoteAttachment), Style::new()));
+    let comments = (row.comments > 0).then(|| {
+        let count = format!("{} {}", glyph(Icon::Comments), row.comments);
+        (count, Style::new())
+    });
+    let flag = row.flag.then(|| (glyph(Icon::Flag), flag_style(theme)));
+    let star = row.starred.then(|| (glyph(Icon::Star), today_style(theme)));
     let bookmark = row
         .bookmark
-        .then(|| (Icon::Bookmark, bookmark_style(theme)));
-    let marks = [note, flag, star, bookmark];
-    for (icon, style) in marks.into_iter().flatten() {
+        .then(|| (glyph(Icon::Bookmark), bookmark_style(theme)));
+    let marks = [note, comments, flag, star, bookmark];
+    for (mark, style) in marks.iter().flatten() {
         line.push_span(" ");
-        line.push_span(Span::styled(icon.glyph(icons), recede(style)));
+        line.push_span(Span::styled(mark.clone(), recede(*style)));
     }
     if let Some(fold) = fold(row, icons) {
         line.push_span(Span::styled(format!(" {fold}"), Style::new().dim()));
@@ -2460,6 +2467,25 @@ mod tests {
             false,
         )));
         assert!(state.rows().iter().all(|row| !row.note), "notes are off");
+    }
+
+    // FR-ATT-02, attachments.md §2
+    #[test]
+    fn a_block_with_comments_shows_their_count_after_the_note_dimmed_when_done() {
+        let [note, comments, flag] =
+            [Icon::NoteAttachment, Icon::Comments, Icon::Flag].map(|icon| icon.glyph(ICONS));
+        let text = "- a @flag\n\tNOTE @hidden\n\t\tn\n\tCOMMENTS @hidden\n\t\tx\n\t\ty\n- b @done\n\tCOMMENTS @hidden\n\t\tz";
+        let state = State::new(format::parse(text), None);
+        let rows = state.rows().to_vec();
+        let mut expected = Buffer::with_lines([
+            format!("{:<12}", format!("- a {note} {comments} 2 {flag}")),
+            format!("{:<12}", format!("✔ b {comments} 1")),
+        ]);
+        expected.set_style(Rect::new(10, 0, 1, 1), flag_style(&THEME));
+        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 1, 1, 1), Style::new().dim().crossed_out());
+        expected.set_style(Rect::new(4, 1, 3, 1), Style::new().dim());
+        assert_eq!(draw(&rows, 12, 2), expected);
     }
 
     // D-47, ui.md §2

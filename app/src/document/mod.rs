@@ -2,6 +2,7 @@
 
 pub mod attachments;
 pub mod blocks;
+pub mod comments;
 pub mod dates;
 pub mod format;
 pub mod inline;

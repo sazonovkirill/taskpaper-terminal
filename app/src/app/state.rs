@@ -366,6 +366,9 @@ pub struct Row {
     pub flag: bool,
     /// Whether it has a note shown by its icon, while notes are on (attachments.md §2).
     pub note: bool,
+    /// How many comments it has, shown with their icon, while comments are on; none while
+    /// they are off (attachments.md §2).
+    pub comments: usize,
     /// The color that tints its row's background (FR-TAG-05, D-48).
     pub color: Option<TagColor>,
     /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
@@ -901,6 +904,11 @@ impl State {
             flag: block.flag(),
             note: self.attached.contains(&Attachment::Note)
                 && attachments::node(&self.document, block.id(), Attachment::Note).is_some(),
+            comments: if self.attached.contains(&Attachment::Comments) {
+                attachments::count(&self.document, block.id(), Attachment::Comments)
+            } else {
+                0
+            },
             color: block.color(),
             url: block.url(),
             selected: pane.selection.contains(block.id()),

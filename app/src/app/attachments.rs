@@ -5,11 +5,13 @@
 
 use std::{ops::Range, sync::Arc};
 
+use jiff::civil::DateTime;
+
 use super::{
     Command, State,
     text_field::{TextEdit, TextField},
 };
-use crate::document::{Attachment, ItemId, attachments, format::breaks_line};
+use crate::document::{Attachment, ItemId, attachments, comments, format::breaks_line};
 
 /// A key of the open panel, or opening it, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,9 +22,9 @@ pub enum AttachmentsInput {
     SwitchTab,
     /// Close the panel.
     Close,
-    /// Edit the note shown, as raw Markdown (attachments.md §4).
+    /// Edit the note shown, as raw Markdown, or the selected comment (attachments.md §4, §5).
     Edit,
-    /// Change the note's line with the caret.
+    /// Change the line with the caret: the note's, or the comment being typed.
     Text(TextEdit),
     /// Break the note's line at the caret.
     Break,
@@ -32,14 +34,36 @@ pub enum AttachmentsInput {
     LineDown,
     /// Save the edited note and show it rendered again.
     Save,
+    /// Move the comments' selection this many comments down, or up when negative, no further
+    /// than the first or the last.
+    Select(isize),
+    /// Start typing a new comment.
+    AddComment,
+    /// Delete the selected comment.
+    DeleteComment,
+    /// Add the comment being typed, stamped with this local time, or reword the one it edits.
+    Accept(DateTime),
+    /// Drop the comment being typed.
+    Cancel,
 }
 
-/// The open panel: the block it is on, the tab it shows and the note being edited, if any.
+/// The open panel: the block it is on, the tab it shows, the note being edited, if any, the
+/// selected comment, which may be past the last after the comments change, and the comment being
+/// typed, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Panel {
     block: ItemId,
     tab: Attachment,
     editor: Option<NoteEditor>,
+    selected: usize,
+    draft: Option<Draft>,
+}
+
+/// A comment being typed: the comment it rewords, or `None` for a new one, and its text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Draft {
+    comment: Option<usize>,
+    field: TextField,
 }
 
 /// A note being edited: its lines, the line the caret is on and that line as a text field, which
@@ -181,6 +205,23 @@ pub struct AttachmentsView<'a> {
     pub lines: Vec<String>,
     /// Where the caret is while the note is edited; `None` while it is shown rendered.
     pub editing: Option<NoteCaret>,
+    /// The selected comment, while the Comments tab shows any.
+    pub selected: Option<usize>,
+    /// The comment being typed, if any.
+    pub draft: Option<CommentDraft>,
+}
+
+/// A comment being typed as a frontend shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommentDraft {
+    /// The comment it rewords, or `None` for a new one.
+    pub comment: Option<usize>,
+    /// Its text, without a timestamp.
+    pub text: String,
+    /// The caret's byte offset into the text.
+    pub caret: usize,
+    /// The selected bytes of the text, if any.
+    pub selection: Option<Range<usize>>,
 }
 
 impl State {
@@ -209,6 +250,12 @@ impl State {
             caret: editor.field.caret(),
             selection: editor.field.selection(),
         });
+        let draft = panel.draft.as_ref().map(|draft| CommentDraft {
+            comment: draft.comment,
+            text: draft.field.text().to_owned(),
+            caret: draft.field.caret(),
+            selection: draft.field.selection(),
+        });
         Some(AttachmentsView {
             title: self.document.get(panel.block)?.shared_plain_text(),
             tabs: &self.attached,
@@ -218,7 +265,20 @@ impl State {
                 NoteEditor::text,
             ),
             editing,
+            selected: self.selected_comment(),
+            draft,
         })
+    }
+
+    /// The selected comment, while the panel shows comments.
+    fn selected_comment(&self) -> Option<usize> {
+        let panel = self.panel.as_ref()?;
+        if panel.tab != Attachment::Comments {
+            return None;
+        }
+        let last =
+            attachments::count(&self.document, panel.block, Attachment::Comments).checked_sub(1)?;
+        Some(panel.selected.min(last))
     }
 
     /// Applies `input`: opens the panel on the focused block, or switches or closes the open one.
@@ -229,6 +289,7 @@ impl State {
                 let tabs = self.attached.clone();
                 if let Some(panel) = &mut self.panel
                     && panel.editor.is_none()
+                    && panel.draft.is_none()
                     && let Some(&next) = tabs.iter().find(|&&tab| tab != panel.tab)
                 {
                     panel.tab = next;
@@ -239,9 +300,17 @@ impl State {
                 self.panel = None;
                 self.resume_editing();
             }
-            AttachmentsInput::Edit => self.edit_note(),
+            AttachmentsInput::Edit => {
+                self.edit_note();
+                self.edit_comment();
+            }
             AttachmentsInput::Save => self.save_note(),
-            AttachmentsInput::Text(edit) => self.note_editor(|editor| editor.edit(edit)),
+            AttachmentsInput::Text(edit) => {
+                self.note_editor(|editor| editor.edit(edit));
+                if let Some(draft) = self.draft() {
+                    draft.field = draft.field.edited(edit);
+                }
+            }
             AttachmentsInput::Break => self.note_editor(NoteEditor::break_line),
             AttachmentsInput::LineUp => self.note_editor(|editor| {
                 if let Some(row) = editor.row.checked_sub(1) {
@@ -249,6 +318,114 @@ impl State {
                 }
             }),
             AttachmentsInput::LineDown => self.note_editor(|editor| editor.go_to(editor.row + 1)),
+            AttachmentsInput::Select(by) => {
+                if let Some(selected) = self.selected_comment()
+                    && let Some(panel) = &mut self.panel
+                    && panel.draft.is_none()
+                {
+                    panel.selected = selected.saturating_add_signed(by);
+                }
+            }
+            AttachmentsInput::AddComment => self.start_comment(None),
+            AttachmentsInput::DeleteComment => self.delete_comment(),
+            AttachmentsInput::Accept(at) => self.accept_comment(at),
+            AttachmentsInput::Cancel => {
+                if let Some(panel) = &mut self.panel {
+                    panel.draft = None;
+                }
+            }
+        }
+    }
+
+    /// The comment being typed, if one is.
+    fn draft(&mut self) -> Option<&mut Draft> {
+        self.panel.as_mut()?.draft.as_mut()
+    }
+
+    /// Starts typing a comment on the Comments tab: a new one, or rewording comment `comment`,
+    /// its text without its timestamp.
+    fn start_comment(&mut self, comment: Option<usize>) {
+        let Some(panel) = &self.panel else {
+            return;
+        };
+        if panel.tab != Attachment::Comments || panel.draft.is_some() {
+            return;
+        }
+        let text = comment
+            .and_then(|at| {
+                attachments::content(&self.document, panel.block, Attachment::Comments)
+                    .get(at)
+                    .map(|line| comments::comment(line).text.to_owned())
+            })
+            .unwrap_or_default();
+        if let Some(panel) = &mut self.panel {
+            panel.draft = Some(Draft {
+                comment,
+                field: TextField::new(text),
+            });
+        }
+    }
+
+    /// Starts rewording the selected comment, if the Comments tab shows any.
+    fn edit_comment(&mut self) {
+        if let Some(selected) = self.selected_comment() {
+            self.start_comment(Some(selected));
+        }
+    }
+
+    /// Adds the comment being typed at the top, stamped `at`, and selects it, or rewords the one
+    /// it edits keeping its timestamp, as one step to undo; text of only spaces changes nothing
+    /// (attachments.md §5).
+    fn accept_comment(&mut self, at: DateTime) {
+        let Some(panel) = &mut self.panel else {
+            return;
+        };
+        let Some(draft) = panel.draft.take() else {
+            return;
+        };
+        let text = draft.field.text();
+        if text.trim().is_empty() {
+            return;
+        }
+        let block = panel.block;
+        let mut lines = attachments::content(&self.document, block, Attachment::Comments);
+        match draft.comment {
+            None => {
+                lines.insert(0, comments::stamped(at, text));
+                panel.selected = 0;
+            }
+            Some(comment) => {
+                if let Some(line) = lines.get_mut(comment) {
+                    *line = comments::reworded(line, text);
+                }
+            }
+        }
+        self.write_attachment(block, Attachment::Comments, &lines);
+    }
+
+    /// Deletes the selected comment as one step to undo, and with the last one its node
+    /// (attachments.md §5).
+    fn delete_comment(&mut self) {
+        let Some(panel) = &self.panel else {
+            return;
+        };
+        if panel.draft.is_some() {
+            return;
+        }
+        let block = panel.block;
+        let Some(selected) = self.selected_comment() else {
+            return;
+        };
+        let mut lines = attachments::content(&self.document, block, Attachment::Comments);
+        lines.remove(selected);
+        self.write_attachment(block, Attachment::Comments, &lines);
+    }
+
+    /// Makes `lines` the content of the block `block`'s attachment of kind `kind` as one step to
+    /// undo.
+    fn write_attachment(&mut self, block: ItemId, kind: Attachment, lines: &[String]) {
+        if let Some(ops) = attachments::write(&mut self.document, block, kind, lines) {
+            self.commit_any(ops);
         }
     }
 
@@ -273,8 +450,14 @@ impl State {
         }
     }
 
-    /// Pastes `text` into the note being edited, if one is; returns whether it took it.
-    pub(super) fn note_editor_paste(&mut self, text: &str) -> bool {
+    /// Pastes `text` into the note being edited or the comment being typed, which takes its line
+    /// breaks as spaces, if one is; returns whether it took it.
+    pub(super) fn attachments_paste(&mut self, text: &str) -> bool {
+        if let Some(draft) = self.draft() {
+            let line = text.replace("\r\n", " ").replace(breaks_line, " ");
+            draft.field = draft.field.pasted(&line);
+            return true;
+        }
         let editing = self
             .panel
             .as_ref()
@@ -293,11 +476,7 @@ impl State {
             return;
         };
         let block = panel.block;
-        if let Some(ops) =
-            attachments::write(&mut self.document, block, Attachment::Note, &editor.text())
-        {
-            self.commit_any(ops);
-        }
+        self.write_attachment(block, Attachment::Note, &editor.text());
     }
 
     /// Opens the panel on `tab` for the focused block, a divider aside, which has none, while
@@ -311,12 +490,15 @@ impl State {
                 block: block.id(),
                 tab,
                 editor: None,
+                selected: 0,
+                draft: None,
             });
         }
     }
 
     /// Turns the attachments of kind `kind` on or off; the open panel leaves a tab turned off,
-    /// saving the note it edits, for the other, or closes without one (attachments.md §6).
+    /// saving the note it edits and dropping the comment being typed, for the other, or closes
+    /// without one (attachments.md §6).
     pub(super) fn show_attachments(&mut self, kind: Attachment, on: bool) {
         self.attached = Attachment::ALL
             .into_iter()
@@ -334,7 +516,7 @@ impl State {
         if !self.attached.contains(&panel.tab) {
             self.save_note();
             match (self.attached.first(), &mut self.panel) {
-                (Some(&other), Some(panel)) => panel.tab = other,
+                (Some(&other), Some(panel)) => (panel.tab, panel.draft) = (other, None),
                 _ => self.attachments_input(AttachmentsInput::Close),
             }
         }
@@ -823,5 +1005,241 @@ mod tests {
         assert_eq!(hidden(&mut state), 0);
         configure(&mut state, Attachment::Comments, false);
         assert_eq!(hidden(&mut state), 1);
+    }
+
+    const AT: DateTime = jiff::civil::date(2026, 10, 9).at(7, 45, 30, 0);
+
+    /// The comments shown, the selected one and the one being typed: the comment it rewords and
+    /// its text.
+    type Listed = (Vec<String>, Option<usize>, Option<(Option<usize>, String)>);
+
+    fn listed(state: &State) -> Listed {
+        let view = state.attachments_panel().unwrap();
+        let draft = view.draft.map(|draft| (draft.comment, draft.text));
+        (view.lines, view.selected, draft)
+    }
+
+    const COMMENTS: &str = "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] b\n\t\tby hand\n\t\t[2026-10-07 09:00] a\n";
+
+    // FR-ATT-05, attachments.md §5
+    #[test]
+    fn the_selection_moves_within_the_comments() {
+        let mut state = State::new(format::parse(COMMENTS), None);
+        input(&mut state, AttachmentsInput::Open(Attachment::Comments));
+        assert_eq!(listed(&state).1, Some(0));
+        for (by, selected) in [(1, 1), (isize::MAX, 2), (-1, 1), (isize::MIN, 0), (-1, 0)] {
+            input(&mut state, AttachmentsInput::Select(by));
+            assert_eq!(listed(&state).1, Some(selected), "{by}");
+        }
+        input(&mut state, AttachmentsInput::SwitchTab);
+        assert_eq!(listed(&state).1, None, "the Note tab has none");
+        input(&mut state, AttachmentsInput::Select(1));
+        input(&mut state, AttachmentsInput::SwitchTab);
+        assert_eq!(listed(&state).1, Some(0));
+        let mut none = State::new(format::parse("- Milk"), None);
+        keys(
+            &mut none,
+            &[
+                AttachmentsInput::AddComment,
+                AttachmentsInput::DeleteComment,
+                AttachmentsInput::Accept(AT),
+            ],
+        );
+        assert_eq!(none.attachments_panel(), None, "no panel");
+        input(&mut none, AttachmentsInput::Open(Attachment::Comments));
+        input(&mut none, AttachmentsInput::Select(1));
+        assert_eq!(listed(&none).1, None, "no comments");
+    }
+
+    // FR-ATT-05, FR-OPS-08, attachments.md §5
+    #[test]
+    fn a_new_comment_goes_on_top_stamped_and_selected() {
+        let mut state = State::new(format::parse(COMMENTS), None);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Select(1),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        typed(&mut state, "c");
+        assert_eq!(listed(&state).2, Some((None, "c".to_owned())));
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::SwitchTab,
+                AttachmentsInput::Select(1),
+                AttachmentsInput::DeleteComment,
+                AttachmentsInput::AddComment,
+                AttachmentsInput::Edit,
+            ],
+        );
+        assert_eq!(
+            (tabs(&state).unwrap().1, listed(&state).1),
+            (Attachment::Comments, Some(1)),
+            "typing holds the tab and the selection"
+        );
+        input(&mut state, AttachmentsInput::Accept(AT));
+        assert_eq!(
+            listed(&state),
+            (
+                vec![
+                    "[2026-10-09 07:45] c".to_owned(),
+                    "[2026-10-08 09:00] b".to_owned(),
+                    "by hand".to_owned(),
+                    "[2026-10-07 09:00] a".to_owned(),
+                ],
+                Some(0),
+                None
+            )
+        );
+        input(&mut state, AttachmentsInput::Close);
+        state.update(Message::Undo);
+        assert_eq!(file(&state), COMMENTS, "one step");
+        let mut empty = State::new(format::parse("- Milk"), None);
+        keys(
+            &mut empty,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        typed(&mut empty, "- first:");
+        input(&mut empty, AttachmentsInput::Accept(AT));
+        assert_eq!(
+            file(&empty),
+            "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-09 07:45] - first:\u{200B}"
+        );
+    }
+
+    // FR-ATT-05, attachments.md §5
+    #[test]
+    fn an_edit_keeps_the_timestamp_and_blank_or_cancelled_text_changes_nothing() {
+        let mut state = State::new(format::parse(COMMENTS), None);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Edit,
+            ],
+        );
+        assert_eq!(listed(&state).2, Some((Some(0), "b".to_owned())));
+        typed(&mut state, "2");
+        input(&mut state, AttachmentsInput::Accept(AT));
+        keys(
+            &mut state,
+            &[AttachmentsInput::Select(1), AttachmentsInput::Edit],
+        );
+        typed(&mut state, "!");
+        input(&mut state, AttachmentsInput::Accept(AT));
+        assert_eq!(
+            listed(&state).0[..2],
+            ["[2026-10-08 09:00] b2", "by hand!"],
+            "a comment without a date stays without one"
+        );
+        let revision = state.document().revision();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Edit,
+                AttachmentsInput::Text(TextEdit::SelectAll),
+                AttachmentsInput::Text(TextEdit::Insert(' ')),
+                AttachmentsInput::Accept(AT),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        typed(&mut state, "x");
+        keys(
+            &mut state,
+            &[AttachmentsInput::Cancel, AttachmentsInput::Accept(AT)],
+        );
+        assert_eq!(state.document().revision(), revision);
+        assert_eq!(listed(&state).2, None);
+    }
+
+    // FR-ATT-05, attachments.md §5
+    #[test]
+    fn deleting_takes_the_selected_comment_and_the_last_takes_the_node() {
+        let mut state = State::new(format::parse(COMMENTS), None);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Select(isize::MAX),
+                AttachmentsInput::DeleteComment,
+            ],
+        );
+        assert_eq!(listed(&state).0, ["[2026-10-08 09:00] b", "by hand"]);
+        assert_eq!(listed(&state).1, Some(1), "the selection stays on the last");
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::DeleteComment,
+                AttachmentsInput::DeleteComment,
+            ],
+        );
+        assert_eq!(file(&state), "- Milk\n");
+        assert_eq!(listed(&state).1, None);
+        input(&mut state, AttachmentsInput::DeleteComment);
+        input(&mut state, AttachmentsInput::Edit);
+        assert_eq!(listed(&state).2, None, "nothing to delete or edit");
+        state.update(Message::Undo);
+        assert_eq!(listed(&state).0, ["[2026-10-08 09:00] b"], "one step each");
+        let mut note = super::tests::state();
+        keys(
+            &mut note,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::DeleteComment,
+                AttachmentsInput::AddComment,
+            ],
+        );
+        assert_eq!((file(&note), listed(&note).2), (TEXT.to_owned(), None));
+    }
+
+    // FR-ATT-05, FR-OPS-06, attachments.md §5
+    #[test]
+    fn a_paste_into_a_comment_takes_its_line_breaks_as_spaces() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        state.update(Message::Pasted {
+            text: "a\r\nb\nc".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(listed(&state).2, Some((None, "a b c".to_owned())));
+    }
+
+    // FR-ATT-05, FR-ATT-06, attachments.md §5, §6
+    #[test]
+    fn turning_comments_off_drops_the_comment_being_typed() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        typed(&mut state, "x");
+        configure(&mut state, Attachment::Comments, false);
+        assert_eq!(edited(&state), (vec!["Full fat".to_owned()], None));
+        assert_eq!(state.attachments_panel().unwrap().draft, None);
+        assert_eq!(file(&state), TEXT);
+    }
+
+    // FR-ATT-02, FR-ATT-06, attachments.md §2, §6
+    #[test]
+    fn a_row_counts_its_comments_while_they_are_on() {
+        let mut state = State::new(format::parse(COMMENTS), None);
+        assert_eq!(state.rows()[0].comments, 3);
+        configure(&mut state, Attachment::Comments, false);
+        assert_eq!(state.rows()[0].comments, 0);
     }
 }
