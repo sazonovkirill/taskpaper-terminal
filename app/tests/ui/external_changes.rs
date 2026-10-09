@@ -322,3 +322,21 @@ fn keeping_mine_carries_on_typing_where_it_was() {
         "Groceries:\n\t- Milk and honey\n\t- Eggs\n"
     );
 }
+
+// F-FILE-06, OQ-16
+#[test]
+fn a_narrow_conflict_prompt_shows_every_key() {
+    let mut app = Harness::with_text(GROCERIES, 28, 8);
+    app.settle();
+    app.type_keys("jx");
+    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+    check(&mut app);
+    let buffer = app.render().buffer().clone();
+    let screen: Vec<String> = (0..8).map(|y| line(&buffer, y)).collect();
+    for key in ["Ctrl+K keep mine", "Ctrl+R take theirs", "Ctrl+L show diff"] {
+        assert!(
+            screen.iter().any(|row| row.contains(key)),
+            "{key} in {screen:#?}"
+        );
+    }
+}

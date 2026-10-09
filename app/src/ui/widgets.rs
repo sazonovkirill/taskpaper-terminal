@@ -588,16 +588,63 @@ impl<'a> ConflictPrompt<'a> {
     /// How many diff lines fit at once when the prompt is drawn over `area`.
     #[must_use]
     pub fn diff_rows(area: Rect) -> usize {
-        usize::from(area.height.min(PROMPT_SIZE.1).saturating_sub(4))
+        let inner = usize::from(area.height.min(PROMPT_SIZE.1).saturating_sub(3));
+        inner.saturating_sub(prompt_keys("hide diff", inner_width(area)).len())
     }
+}
+
+/// The columns inside the conflict prompt's border when it is drawn over `area`.
+fn inner_width(area: Rect) -> usize {
+    usize::from(area.width.min(PROMPT_SIZE.0).saturating_sub(2))
+}
+
+/// The conflict prompt's keys, each with what it does, `toggle` saying what the diff's key does:
+/// as many to a line `width` columns wide as fit between ` · `, and a key with more to say than
+/// a line wrapped under itself, so that every key shows however narrow the prompt.
+fn prompt_keys(toggle: &str, width: usize) -> Vec<Line<'static>> {
+    const SEPARATOR: &str = " · ";
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    for (key, does) in [
+        ("Ctrl+K", "keep mine"),
+        ("Ctrl+R", "take theirs"),
+        ("Ctrl+L", toggle),
+    ] {
+        let choice = Line::from(vec![key.bold(), format!(" {does}").into()]);
+        match lines.last_mut() {
+            Some(line) if line.width() + Span::raw(SEPARATOR).width() + choice.width() <= width => {
+                line.spans.push(SEPARATOR.into());
+                line.spans.extend(choice.spans);
+            }
+            _ => lines.extend(wrap::wrap(&choice, 0, width, width)),
+        }
+    }
+    lines
 }
 
 impl Widget for ConflictPrompt<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let width = inner_width(area);
+        let (top, toggle) = if self.diff.is_none() {
+            let reason = if self.unsaved {
+                "Your changes are not saved yet."
+            } else {
+                "The file on disk is not UTF-8, so it cannot be reloaded."
+            };
+            let reason = wrap::wrap(&Line::from(reason), 0, width, width);
+            (reason, "show diff")
+        } else {
+            let legend = Line::from(vec![
+                Span::styled("- on disk", disk_style(self.theme)),
+                Span::raw("  "),
+                Span::styled("+ yours", mine_style(self.theme)),
+            ]);
+            (vec![legend], "hide diff")
+        };
+        let keys = prompt_keys(toggle, width);
         let height = if self.diff.is_some() {
             PROMPT_SIZE.1
         } else {
-            4
+            u16::try_from(top.len() + keys.len() + 2).unwrap_or(u16::MAX)
         };
         let area = area.centered(
             Constraint::Length(PROMPT_SIZE.0),
@@ -607,43 +654,26 @@ impl Widget for ConflictPrompt<'_> {
         let frame = Block::bordered().title(" The file changed on disk ");
         let inner = frame.inner(area);
         frame.render(area, buf);
-        let [top, body, keys] = inner.layout(&Layout::vertical([
-            Constraint::Length(1),
+        // The keys are the only way to learn how to answer, so they keep their rows first.
+        let key_rows = u16::try_from(keys.len())
+            .unwrap_or(u16::MAX)
+            .min(inner.height);
+        let [above, below] = inner.layout(&Layout::vertical([
             Constraint::Fill(1),
-            Constraint::Length(1),
+            Constraint::Length(key_rows),
         ]));
-        let toggle = match self.diff {
-            None => {
-                let reason = if self.unsaved {
-                    "Your changes are not saved yet."
-                } else {
-                    "The file on disk is not UTF-8, so it cannot be reloaded."
-                };
-                Line::from(reason).render(top, buf);
-                "show diff"
-            }
-            Some(diff) => {
-                Line::from(vec![
-                    Span::styled("- on disk", disk_style(self.theme)),
-                    Span::raw("  "),
-                    Span::styled("+ yours", mine_style(self.theme)),
-                ])
-                .render(top, buf);
-                for (line, row) in diff.iter().skip(self.scroll).zip(body.rows()) {
-                    diff_line(line, self.theme).render(row, buf);
-                }
-                "hide diff"
-            }
-        };
-        Line::from(vec![
-            "Ctrl+K".bold(),
-            " keep mine · ".into(),
-            "Ctrl+R".bold(),
-            " take theirs · ".into(),
-            "Ctrl+L".bold(),
-            format!(" {toggle}").into(),
-        ])
-        .render(keys, buf);
+        let diff = self
+            .diff
+            .unwrap_or_default()
+            .iter()
+            .skip(self.scroll)
+            .map(|line| diff_line(line, self.theme));
+        for (line, row) in top.into_iter().chain(diff).zip(above.rows()) {
+            line.render(row, buf);
+        }
+        for (line, row) in keys.into_iter().zip(below.rows()) {
+            line.render(row, buf);
+        }
     }
 }
 
@@ -3675,23 +3705,92 @@ mod tests {
             DiffLine::Gap,
             DiffLine::Same("nine".to_owned()),
         ];
-        let buf = prompt(Some(&diff), 1, 30, 7);
-        let row = |y: u16| -> String { (0..30).map(|x| buf[(x, y)].symbol()).collect::<String>() };
-        assert_eq!(row(0), "┌ The file changed on disk ──┐");
-        assert_eq!(row(1), "│- on disk  + yours          │");
-        assert_eq!(row(2), "│- two                       │");
-        assert_eq!(row(3), "│+ TWO                       │");
-        assert_eq!(row(4), "│⋯                           │");
-        assert_eq!(row(5), "│Ctrl+K keep mine · Ctrl+R ta│");
+        let buf = prompt(Some(&diff), 1, 60, 7);
+        let row = |y: u16| -> String { (0..60).map(|x| buf[(x, y)].symbol()).collect::<String>() };
+        let inside = |text: &str| format!("│{text:58}│");
+        assert_eq!(
+            row(0),
+            format!("┌ The file changed on disk {}┐", "─".repeat(32))
+        );
+        assert_eq!(row(1), inside("- on disk  + yours"));
+        assert_eq!(row(2), inside("- two"));
+        assert_eq!(row(3), inside("+ TWO"));
+        assert_eq!(row(4), inside("⋯"));
+        assert_eq!(
+            row(5),
+            inside("Ctrl+K keep mine · Ctrl+R take theirs · Ctrl+L hide diff")
+        );
         assert_eq!(buf[(1, 2)].fg, Color::Red);
         assert_eq!(buf[(1, 3)].fg, Color::Green);
         assert_eq!(buf[(1, 4)].fg, Color::DarkGray);
-        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 30, 7)), 3);
+        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 60, 7)), 3);
         assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 100, 50)), 16);
-        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 30, 3)), 0);
-        let same = prompt(Some(&diff), 0, 30, 7);
+        assert_eq!(ConflictPrompt::diff_rows(Rect::new(0, 0, 60, 3)), 0);
+        assert_eq!(
+            ConflictPrompt::diff_rows(Rect::new(0, 0, 30, 7)),
+            1,
+            "the keys take three lines 30 columns wide"
+        );
+        let same = prompt(Some(&diff), 0, 60, 7);
         assert_eq!(same[(1, 2)].symbol(), " ");
         assert_eq!(same[(3, 2)].symbol(), "o");
+    }
+
+    // file-io.md §3, ui.md §1
+    #[test]
+    fn a_narrow_conflict_prompt_wraps_its_lines_to_show_every_key() {
+        let rows = |buf: &Buffer| -> Vec<String> {
+            (0..buf.area.height)
+                .map(|y| (0..buf.area.width).map(|x| buf[(x, y)].symbol()).collect())
+                .collect()
+        };
+        assert_eq!(
+            rows(&prompt(None, 0, 28, 8)),
+            [
+                "                            ",
+                "┌ The file changed on disk ┐",
+                "│Your changes are not saved│",
+                "│yet.                      │",
+                "│Ctrl+K keep mine          │",
+                "│Ctrl+R take theirs        │",
+                "│Ctrl+L show diff          │",
+                "└──────────────────────────┘",
+            ]
+        );
+        assert_eq!(
+            rows(&prompt(None, 0, 40, 6))[3..5],
+            [
+                "│Ctrl+K keep mine · Ctrl+R take theirs │",
+                "│Ctrl+L show diff                      │",
+            ],
+            "as many keys to a line as fit"
+        );
+        assert_eq!(
+            rows(&prompt(None, 0, 36, 7))[3],
+            format!("│{:34}│", "Ctrl+K keep mine"),
+            "with the separator between them two keys would not fit"
+        );
+        assert_eq!(
+            rows(&prompt(None, 0, 14, 13))[5..11],
+            [
+                "│Ctrl+K keep │",
+                "│mine        │",
+                "│Ctrl+R take │",
+                "│theirs      │",
+                "│Ctrl+L show │",
+                "│diff        │",
+            ],
+            "a key with more to say than a line wraps under itself"
+        );
+        let short = rows(&prompt(None, 0, 28, 4));
+        assert_eq!(
+            short[1..3],
+            [
+                "│Ctrl+K keep mine          │",
+                "│Ctrl+R take theirs        │"
+            ],
+            "the keys go before the message when there is no room for both"
+        );
     }
 
     /// The lines of `text` drawn 30 columns wide with `icons`, every block with children
