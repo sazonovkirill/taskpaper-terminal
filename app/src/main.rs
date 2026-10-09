@@ -175,6 +175,9 @@ fn main() -> anyhow::Result<()> {
         DisableFocusChange
     );
     ratatui::restore();
+    if let Some(farewell) = tui.farewell() {
+        eprintln!("{farewell}");
+    }
     result.unwrap_or_else(|panic| {
         report_recovery(&tui, &recovery);
         panic::resume_unwind(panic)

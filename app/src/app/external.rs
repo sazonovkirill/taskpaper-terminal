@@ -6,7 +6,7 @@
 use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hasher as _},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use similar::{ChangeTag, TextDiff};
@@ -64,6 +64,8 @@ pub(super) struct External {
     /// Whether a check found the file deleted or moved away; the next save creates it again.
     gone: bool,
     conflict: Option<Conflict>,
+    /// The conflict copy holding the local version once a quit left the conflict unresolved.
+    left_in: Option<PathBuf>,
 }
 
 /// The file changed on disk while the local version had unsaved changes.
@@ -268,7 +270,10 @@ impl State {
                 self.reload(theirs);
                 self.notify(Notice::TookTheirs { copy });
             }
-            Choice::Leave => self.autosave.end(Ending::Discard),
+            Choice::Leave => {
+                self.external.left_in = Some(copy);
+                self.autosave.end(Ending::Discard);
+            }
         }
     }
 
@@ -392,6 +397,13 @@ impl State {
     #[must_use]
     pub fn gone_from_disk(&self) -> bool {
         self.external.gone
+    }
+
+    /// The conflict copy holding the local version when a quit left the file on disk as it was
+    /// with the conflict prompt open, the only place the user's changes are then (file-io.md §3).
+    #[must_use]
+    pub fn left_in(&self) -> Option<&Path> {
+        self.external.left_in.as_deref()
     }
 }
 
@@ -1476,8 +1488,14 @@ mod tests {
         assert_eq!(state.update(Message::KeepMine), [], "the quit goes ahead");
         assert_eq!(state.update(found("newer\n")), [], "whatever is on disk");
         assert!(state.in_conflict());
+        assert_eq!(state.left_in(), None, "until the copy is written");
         assert_eq!(state.update(copied()), [Effect::Quit]);
         assert!(!state.in_conflict());
+        assert_eq!(
+            state.left_in(),
+            Some(Path::new("/backups/copy.taskpaper")),
+            "the quit says where the local version went"
+        );
     }
 
     // file-io.md §2–3

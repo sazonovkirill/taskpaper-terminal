@@ -222,6 +222,23 @@ fn quitting_while_asked_keeps_both_versions() {
         )]
     );
     assert_eq!(fs::read(path(&app)).unwrap(), b"caf\xe9\n");
+    let copy = app
+        .backups
+        .read_dir()
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path()
+        .join("2026-10-05-093000-conflict.taskpaper");
+    assert_eq!(
+        app.tui.farewell(),
+        Some(format!(
+            "tpt: the file changed on disk, so it was left as it is; your version is in {}",
+            copy.display()
+        )),
+        "the quit says where the changes went"
+    );
 }
 
 /// Lets the autosave write the file, then reads it.

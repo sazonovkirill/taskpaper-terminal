@@ -480,6 +480,18 @@ impl Tui {
             .transpose()
     }
 
+    /// What to tell the user once the terminal is restored after a quit: where their changes
+    /// went when they quit with the conflict prompt open (file-io.md §3).
+    #[must_use]
+    pub fn farewell(&self) -> Option<String> {
+        self.state.left_in().map(|copy| {
+            format!(
+                "tpt: the file changed on disk, so it was left as it is; your version is in {}",
+                copy.display()
+            )
+        })
+    }
+
     /// Waits until the disk work asked for so far is done; its results are inputs to handle.
     pub fn flush(&self) {
         self.io.flush();

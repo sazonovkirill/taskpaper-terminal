@@ -240,6 +240,7 @@ fn ctrl_q_in_edit_mode_quits_and_saves_the_edit() {
     app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
     app.settle();
     assert!(app.tui.should_quit());
+    assert_eq!(app.tui.farewell(), None, "a saved quit has nothing to say");
     assert_eq!(
         fs::read_to_string(app.path.as_ref().unwrap()).unwrap(),
         "- ab\n"
