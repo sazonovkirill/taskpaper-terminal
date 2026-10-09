@@ -46,6 +46,10 @@ pub enum Command {
     FocusNextSibling,
     /// Focus the previous sibling.
     FocusPreviousSibling,
+    /// Focus the first sibling.
+    FocusFirstSibling,
+    /// Focus the last sibling.
+    FocusLastSibling,
     /// Focus the last child.
     FocusLastChild,
     /// Collapse, or go to the parent.
@@ -248,6 +252,8 @@ impl Command {
             Self::FocusParent => "Parent".into(),
             Self::FocusNextSibling => "Next Sibling".into(),
             Self::FocusPreviousSibling => "Previous Sibling".into(),
+            Self::FocusFirstSibling => "First Sibling".into(),
+            Self::FocusLastSibling => "Last Sibling".into(),
             Self::FocusLastChild => "Last Child".into(),
             Self::Collapse => "Collapse".into(),
             Self::Expand => "Expand".into(),
@@ -357,6 +363,8 @@ impl Command {
             Self::FocusParent => Message::FocusParent,
             Self::FocusNextSibling => Message::FocusSibling(Sibling::Next),
             Self::FocusPreviousSibling => Message::FocusSibling(Sibling::Previous),
+            Self::FocusFirstSibling => Message::FocusSibling(Sibling::First),
+            Self::FocusLastSibling => Message::FocusSibling(Sibling::Last),
             Self::FocusLastChild => Message::FocusLastChild,
             Self::Collapse => Message::Collapse,
             Self::Expand => Message::Expand,

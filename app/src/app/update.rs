@@ -50,6 +50,10 @@ pub enum Sibling {
     Next,
     /// The previous one.
     Previous,
+    /// The first one.
+    First,
+    /// The last one.
+    Last,
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -926,6 +930,8 @@ impl State {
             && let Some(sibling) = match to {
                 Sibling::Next => at.checked_add(1),
                 Sibling::Previous => at.checked_sub(1),
+                Sibling::First => Some(0),
+                Sibling::Last => siblings.len().checked_sub(1),
             }
             .and_then(|index| siblings.get(index))
         {
@@ -1525,6 +1531,10 @@ mod tests {
         assert_eq!(focus_text(&state), "c");
         state.update(Message::FocusSibling(Sibling::Previous));
         assert_eq!(focus_text(&state), "c");
+        state.update(Message::FocusSibling(Sibling::First));
+        assert_eq!(focus_text(&state), "c");
+        state.update(Message::FocusSibling(Sibling::Last));
+        assert_eq!(focus_text(&state), "c");
         state.update(Message::FocusParent);
         state.update(Message::FocusLastChild);
         assert_eq!(focus_text(&state), "c", "the last child shown");
@@ -1555,6 +1565,27 @@ mod tests {
         assert_eq!(focus_text(&state), "A");
         state.update(Message::FocusSibling(Sibling::Next));
         assert_eq!(focus_text(&state), "e");
+    }
+
+    // FR-NAV-01, D-118
+    #[test]
+    fn first_and_last_sibling() {
+        let mut state = open("- a\n- b\n\t- c\n- d\n- e", 1);
+        state.update(Message::FocusSibling(Sibling::Last));
+        assert_eq!(focus_text(&state), "e");
+        state.update(Message::FocusSibling(Sibling::Last));
+        assert_eq!(focus_text(&state), "e", "already the last");
+        state.update(Message::FocusSibling(Sibling::First));
+        assert_eq!(focus_text(&state), "a");
+        state.update(Message::FocusSibling(Sibling::First));
+        assert_eq!(focus_text(&state), "a", "already the first");
+        let mut only = open("- a\n\t- c", 1);
+        only.update(Message::FocusSibling(Sibling::Last));
+        assert_eq!(
+            focus_text(&only),
+            "c",
+            "an only child is its own last sibling"
+        );
     }
 
     // FR-NAV-01
@@ -1709,6 +1740,8 @@ mod tests {
             Message::FocusParent,
             Message::FocusSibling(Sibling::Next),
             Message::FocusSibling(Sibling::Previous),
+            Message::FocusSibling(Sibling::First),
+            Message::FocusSibling(Sibling::Last),
         ] {
             state.update(message.clone());
             assert_eq!(focus_text(&state), "b", "{message:?}");

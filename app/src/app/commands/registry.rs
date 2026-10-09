@@ -58,8 +58,10 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["ctrl+up", "g k"]
     ),
-    entry!(Command::FocusParent, Mode::Navigate, &["g p"]),
-    entry!(Command::FocusLastChild, Mode::Navigate, &["g l"]),
+    entry!(Command::FocusFirstSibling, Mode::Navigate, &["^"]),
+    entry!(Command::FocusLastSibling, Mode::Navigate, &["$"]),
+    entry!(Command::FocusParent, Mode::Navigate, &["#"]),
+    entry!(Command::FocusLastChild, Mode::Navigate, &[]),
     entry!(Command::FocusFirst, Mode::Navigate, &["g g", "home"]),
     entry!(Command::FocusLast, Mode::Navigate, &["G", "end"]),
     entry!(Command::PageDown, Mode::Navigate, &["ctrl+d", "pagedown"]),
@@ -523,12 +525,12 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Pane(PaneChange::FocusLeft),
         Mode::Navigate,
-        &["ctrl+shift+left", "ctrl+w left", "ctrl+w h"],
+        &["ctrl+shift+left", "ctrl+w left", "ctrl+w h", "g l", "g n"],
     ),
     entry!(
         Command::Pane(PaneChange::FocusRight),
         Mode::Navigate,
-        &["ctrl+shift+right", "ctrl+w right", "ctrl+w l"],
+        &["ctrl+shift+right", "ctrl+w right", "ctrl+w l", "g r", "g p"],
     ),
     entry!(
         Command::Pane(PaneChange::Close),

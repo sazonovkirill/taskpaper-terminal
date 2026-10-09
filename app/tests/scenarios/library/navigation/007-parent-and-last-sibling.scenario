@@ -1,4 +1,4 @@
-# gl goes to the last child of a block and gp goes back up to the parent.
+# $ goes to the last sibling of a block and # goes back up to the parent (D-118).
 file <<END
 Home:
 	- Fix sink
@@ -6,7 +6,7 @@ Home:
 	- Water plants
 Garden
 END
-keys gl x gp *
+keys j $ x # *
 quit
 saved <<END
 Home: @star

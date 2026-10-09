@@ -33,8 +33,9 @@ The owner's bindings of 2026-10-04 (D-26) are the base of this section. Where th
 | Collapse, or go to parent if already collapsed or a leaf | `h`, `←` |
 | Expand, or go to first child if already expanded | `l`, `→` |
 | Next / previous sibling | `Ctrl+↓` / `Ctrl+↑`, `gj` / `gk` (D-90, §6; `}` / `{` now shift the due date) |
-| Parent | `gp` |
-| Last child | `gl` |
+| First / last sibling (D-118) | `^` / `$` |
+| Parent | `#` (was `gp`, D-118) |
+| Last child | command palette (was `gl`, D-118) |
 | First / last block | `gg` / `G`, `Home` / `End` |
 | Page down / up | `Ctrl+D` / `Ctrl+U`, `PgDn` / `PgUp` |
 
@@ -142,7 +143,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+\`, `Ctrl+W v` |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9`, `g1` … `g9` (the non-`Alt` route of §1) |
-| Focus the pane left / right (D-71) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l` |
+| Focus the pane left / right (D-71, D-118) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`, `gl` or `gn` / `gr` or `gp` |
 | Close pane | `Ctrl+W c` |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
 | Search (Later, FR-SRCH-01); until search exists, Go to Symbol | `/` |

@@ -4,7 +4,7 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 
 ## 1. Five rules carry most of it
 
-1. **Vim first.** If you know vim, guess the vim key. `hjkl` move, `gg`/`G` top/bottom, `o`/`O` open a line below/above, `dd` delete, `y`/`p` yank and paste, `v` select, `Ctrl+D`/`Ctrl+U` page down/up, `Ctrl+W` window (pane) commands, `:` command line, `/` search, `gx` open link.
+1. **Vim first.** If you know vim, guess the vim key. `hjkl` move, `gg`/`G` top/bottom, `^`/`$` start/end, here of the block's level (first/last sibling), with `#` up to the parent, `o`/`O` open a line below/above, `dd` delete, `y`/`p` yank and paste, `v` select, `Ctrl+D`/`Ctrl+U` page down/up, `Ctrl+W` window (pane) commands, `:` command line, `/` search, `gx` open link.
 2. **Bare letter = do it to this block, now.** No prompt, no picker.
 3. **A prefix letter = a family.** The status line shows the pending prefix for 1 second.
    - `g` **go / view**: where you look, not what the file says.
@@ -48,14 +48,15 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 | key | mnemonic |
 |---|---|
-| `gg` / `gp` / `gl` | **g**o top / **p**arent / **l**ast child |
+| `gg` | **g**o top |
+| `gl` / `gr` | pane on the **l**eft / **r**ight; `gn` / `gp` do the same |
 | `gj` / `gk` | next / previous sibling: a bigger `j`/`k` that skips the children (= `Ctrl+↓`/`Ctrl+↑`, which macOS takes) |
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
 | `gT` `gU` `gO` `gC` `gL` `gS` `gF` | capital = a special view: **T**oday, **U**pcoming, **O**verdue, **C**olors, **L**ogbook, **S**tarred, **F**lagged |
 | `gi` | **i**nbox, the INBOX project (`i` alone adds a last child; after `g` it goes there) |
 | `gs` | **s**ymbol (= `Ctrl+K`) |
-| `gP` | **P**roject: Go to Symbol over projects only (capital goes to the bigger thing: `gp` is the parent, `gP` the project) |
+| `gP` | **P**roject: Go to Symbol over projects only |
 | `gm` | **m**ove block to… |
 | `gG` | **G**roup the selection |
 | `gx` | open link (vim's `gx`) |
@@ -87,7 +88,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→` too) · `c` **c**lose · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→`, `gl`/`gr` and `gn`/`gp` too) · `c` **c**lose · `<`/`>` narrower/wider.
 
 In the Navigator, Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane: **v**ertical split and **t**ab, as in fzf and Telescope. `Ctrl+T` is there for Windows Terminal, which takes the other two.
 

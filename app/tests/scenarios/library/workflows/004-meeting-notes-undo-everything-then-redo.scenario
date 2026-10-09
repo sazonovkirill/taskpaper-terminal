@@ -4,7 +4,7 @@ Meetings:
 	Standup 1 Oct
 		All good
 END
-keys G gp o
+keys G # o
 type Planning 8 Oct
 keys <Enter> <Tab>
 type Attendees: Ann, Bob

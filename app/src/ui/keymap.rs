@@ -1421,6 +1421,42 @@ mod tests {
         assert_eq!(messages("j", CONTEXT), [Some(Message::FocusNext)]);
     }
 
+    // FR-NAV-01, D-118, D-42: plain characters both key reportings send; the kitty protocol may
+    // add `Shift` to them.
+    #[test]
+    fn caret_dollar_and_hash_go_to_the_first_and_last_sibling_and_the_parent() {
+        for (c, message) in [
+            ('^', Message::FocusSibling(Sibling::First)),
+            ('$', Message::FocusSibling(Sibling::Last)),
+            ('#', Message::FocusParent),
+        ] {
+            check(KeyCode::Char(c), KeyModifiers::NONE, Some(&message));
+            check(KeyCode::Char(c), KeyModifiers::SHIFT, Some(&message));
+        }
+        assert_eq!(
+            Keymap::default().bindings(Command::FocusLastChild, true),
+            "",
+            "Last Child is left to the command palette"
+        );
+    }
+
+    // D-118, D-42: plain characters, so both key reportings send them alike.
+    #[test]
+    fn g_l_and_g_n_focus_the_pane_left_and_g_r_and_g_p_the_pane_right() {
+        for (keys, change) in [
+            ("gl", PaneChange::FocusLeft),
+            ("gn", PaneChange::FocusLeft),
+            ("gr", PaneChange::FocusRight),
+            ("gp", PaneChange::FocusRight),
+        ] {
+            assert_eq!(
+                messages(keys, CONTEXT),
+                [None, Some(Message::Pane(change))],
+                "{keys}"
+            );
+        }
+    }
+
     // FR-NAV-01
     #[test]
     fn page_keys_carry_the_page_height() {
@@ -3799,7 +3835,6 @@ mod tests {
                 "{c} {modifiers:?}"
             );
         }
-        assert_eq!(messages("gp", CONTEXT), [None, Some(Message::FocusParent)]);
     }
 
     /// What the keys `presses` ask for in turn from a fresh keymap in `context`.
@@ -3889,8 +3924,14 @@ mod tests {
         );
         let keymap = Keymap::default();
         for (change, keys) in [
-            (PaneChange::FocusLeft, "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h"),
-            (PaneChange::FocusRight, "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l"),
+            (
+                PaneChange::FocusLeft,
+                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, gl, gn",
+            ),
+            (
+                PaneChange::FocusRight,
+                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, gr, gp",
+            ),
         ] {
             assert_eq!(keymap.bindings(Command::Pane(change), true), keys);
         }
@@ -3965,10 +4006,10 @@ mod tests {
         }
     }
 
-    // D-95: the special views' former keys go to no view.
+    // D-95: the special views' former keys go to no view; `gn` now focuses the pane left (D-118).
     #[test]
     fn the_former_special_view_keys_go_to_no_view() {
-        for keys in ["gn", "go", "gD", "g*", "gf"] {
+        for keys in ["go", "gD", "g*", "gf"] {
             assert_eq!(messages(keys, CONTEXT), [None, None], "{keys}");
         }
     }

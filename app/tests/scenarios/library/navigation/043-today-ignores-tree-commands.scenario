@@ -5,7 +5,7 @@ Work:
 		- Transfer money
 	- Other
 END
-keys gt h gp > <Space> _ gk
+keys gt h # > <Space> _ gk
 see Today
 see - Pay rent  Work
 keys x

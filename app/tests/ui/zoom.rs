@@ -187,7 +187,7 @@ fn folding_works_under_the_zoom_and_leaves_the_title_alone() {
     app.type_keys("jjjj.");
     app.type_keys("_");
     assert_eq!(shown(&mut app), ["Work:", "  - Report ▸ 1", "  Ideas:"]);
-    app.type_keys("gp");
+    app.type_keys("#");
     assert_focus(&mut app, "Work:");
     app.type_keys("h'");
     assert_eq!(shown(&mut app), ["Work:", "  - Report ▸ 1", "  Ideas:"]);

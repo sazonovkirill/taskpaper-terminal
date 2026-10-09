@@ -206,29 +206,31 @@ fn without_a_next_visible_block_focus_moves_to_the_previous_one() {
     assert_focus(&mut app, "A: ▸ 2");
 }
 
-// FR-NAV-01
+// FR-NAV-01, D-118
 #[test]
-fn g_p_goes_to_the_parent() {
+fn hash_goes_to_the_parent() {
     let mut app = app();
     app.type_keys("jjjjjjj");
-    app.type_keys("gp");
+    app.type_keys("#");
     assert_focus(&mut app, "    - Draft");
-    app.type_keys("gpgp");
+    app.type_keys("##");
     assert_focus(&mut app, "Work:");
-    app.type_keys("gp");
+    app.type_keys("#");
     assert_focus(&mut app, "Work:");
 }
 
-// FR-NAV-01
+// FR-NAV-01, D-118
 #[test]
-fn g_l_goes_to_the_last_child() {
+fn caret_and_dollar_go_to_the_first_and_last_sibling() {
     let mut app = app();
-    app.type_keys("jjjjh");
-    app.type_keys("gl");
-    assert_focus(&mut app, "  Ideas:");
-    assert_eq!(shown(&mut app).len(), 10, "Work expanded again");
-    app.type_keys("gl");
-    assert_focus(&mut app, "  Ideas:");
+    app.type_keys("j$");
+    assert_focus(&mut app, "  - Eggs");
+    app.type_keys("^");
+    assert_focus(&mut app, "  - Milk");
+    app.type_keys("jjj$");
+    assert_focus(&mut app, "✔ Loose");
+    app.type_keys("^");
+    assert_focus(&mut app, "Home:");
 }
 
 // FR-NAV-01

@@ -319,6 +319,8 @@ Home:
             Message::FocusParent,
             Message::FocusSibling(Sibling::Next),
             Message::FocusSibling(Sibling::Previous),
+            Message::FocusSibling(Sibling::First),
+            Message::FocusSibling(Sibling::Last),
             Message::FocusLastChild,
             Message::Collapse,
             Message::Expand,
