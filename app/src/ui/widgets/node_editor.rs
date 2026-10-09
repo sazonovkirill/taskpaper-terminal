@@ -12,7 +12,10 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{FOCUS_MARKER, Field, due_style, flag_style, start_style, today_style, warning_style};
+use super::{
+    FOCUS_MARKER, Field, due_style, flag_style, overdue_style, start_style, today_style,
+    warning_style,
+};
 use crate::{
     app::{DateValue, FieldOutcome, NodeEditorView, NodeRow},
     document::{dates, format::Typed},
@@ -195,15 +198,12 @@ impl<'a> NodeEditorWindow<'a> {
                     (view.due, Icon::Due, due_style(self.theme))
                 };
                 match value {
-                    Some(DateValue::Date(date)) => Line::styled(
-                        format!(
-                            "{} {} · {}",
-                            icon(glyph),
-                            date.strftime("%a %-d %b %Y"),
-                            dates::relative(date, self.today)
-                        ),
-                        style,
-                    ),
+                    Some(DateValue::Date(date))
+                        if row == NodeRow::Due && view.done.is_none() && date < self.today =>
+                    {
+                        self.date(date, Icon::Overdue, overdue_style(self.theme))
+                    }
+                    Some(DateValue::Date(date)) => self.date(date, glyph, style),
                     Some(DateValue::Written(written)) => Line::from(vec![
                         Span::raw(written.unwrap_or_default().to_owned()),
                         Span::styled(" not a date", Style::new().dim()),
@@ -233,6 +233,20 @@ impl<'a> NodeEditorWindow<'a> {
             }),
             NodeRow::AddTag => unset("+ Add tag"),
         }
+    }
+
+    /// `date` after `glyph`, as `Thu 8 Oct 2026` and named relative to today, in `style`: as
+    /// the outline's date chip shows it.
+    fn date(&self, date: Date, glyph: Icon, style: Style) -> Line<'a> {
+        Line::styled(
+            format!(
+                "{} {} · {}",
+                glyph.glyph(self.icons),
+                date.strftime("%a %-d %b %Y"),
+                dates::relative(date, self.today)
+            ),
+            style,
+        )
     }
 
     /// The last line: what the open field's `Enter` would do, or the focused row's keys.
@@ -339,7 +353,12 @@ impl Widget for NodeEditorWindow<'_> {
             } else {
                 line.value.clone()
             };
-            shown.spans.extend(value.spans);
+            // A value's style can be on the line rather than its spans, which moving the spans
+            // onto this line would lose.
+            shown.spans.extend(value.spans.into_iter().map(|span| Span {
+                style: value.style.patch(span.style),
+                ..span
+            }));
             shown.render(row, buf);
         }
         let hint = Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1);
@@ -354,6 +373,8 @@ impl Widget for NodeEditorWindow<'_> {
 #[cfg(test)]
 mod tests {
     use jiff::civil::date;
+
+    use ratatui::style::Color;
 
     use super::super::tests::THEME;
     use super::*;
@@ -371,21 +392,61 @@ mod tests {
         width: u16,
         height: u16,
     ) -> (Vec<String>, Option<(u16, u16)>) {
+        let (buf, caret) = draw(view, width, height);
+        (rows(&buf), caret)
+    }
+
+    /// The dialog showing `view` drawn over `width` × `height` cells, and the caret's cell.
+    fn draw(view: &NodeEditorView<'_>, width: u16, height: u16) -> (Buffer, Option<(u16, u16)>) {
         let area = Rect::new(0, 0, width, height);
         let mut buf = Buffer::empty(area);
         let window = NodeEditorWindow::new(view, TODAY, IconSet::Unicode, &THEME);
         let caret = window.caret(area);
         window.render(area, &mut buf);
-        let rows = (0..height)
+        (buf, caret)
+    }
+
+    /// Every row of `buf` as text.
+    fn rows(buf: &Buffer) -> Vec<String> {
+        (0..buf.area.height)
             .map(|y| {
-                (0..width)
+                (0..buf.area.width)
                     .map(|x| buf[(x, y)].symbol())
                     .collect::<String>()
                     .trim_end()
                     .to_owned()
             })
+            .collect()
+    }
+
+    /// The value on `view`'s row labelled `label` as text, and the style of its cells, which
+    /// must all be the same, as a style that sets nothing but their color and modifiers.
+    fn value_style(view: &NodeEditorView<'_>, label: &str) -> (String, Style) {
+        let (buf, _) = draw(view, 64, 20);
+        let rows = rows(&buf);
+        let y = rows
+            .iter()
+            .position(|row| row.contains(&format!(" {label:<9}")))
+            .unwrap();
+        let value = rows[y].chars().skip(12).collect::<String>();
+        let value = value.trim_end_matches(['│', ' ']).to_owned();
+        let width = u16::try_from(value.chars().count()).unwrap();
+        let styles: Vec<Style> = (12..12 + width)
+            .map(|x| {
+                let cell = &buf[(x, u16::try_from(y).unwrap())];
+                let style = Style::new().add_modifier(cell.modifier);
+                if cell.fg == Color::Reset {
+                    style
+                } else {
+                    style.fg(cell.fg)
+                }
+            })
             .collect();
-        (rows, caret)
+        assert!(
+            styles.iter().all(|style| *style == styles[0]),
+            "{label}: {styles:?}"
+        );
+        (value, styles[0])
     }
 
     /// The rows of a block with no tags, focused on `focus`.
@@ -528,6 +589,72 @@ mod tests {
             ]
         );
         assert_eq!(caret, Some((14, 2)), "in the text, after Mi");
+    }
+
+    // editing.md §7, FR-TAG-03, D-46
+    #[test]
+    fn draws_set_values_in_their_chip_colors_and_unset_ones_dimmed() {
+        let set = NodeEditorView {
+            start: Some(DateValue::Date(date(2026, 10, 8))),
+            due: Some(DateValue::Date(date(2026, 10, 4))),
+            starred: true,
+            flagged: true,
+            ..view(0)
+        };
+        let icon = |icon: Icon| icon.glyph(IconSet::Unicode);
+        assert_eq!(
+            value_style(&set, "Start"),
+            (
+                format!("{} Thu 8 Oct 2026 · Thu", icon(Icon::Start)),
+                start_style(&THEME)
+            )
+        );
+        assert_eq!(
+            value_style(&set, "Due"),
+            (
+                format!("{} Sun 4 Oct 2026 · yesterday", icon(Icon::Overdue)),
+                overdue_style(&THEME)
+            ),
+            "overdue"
+        );
+        assert_eq!(value_style(&set, "Starred").1, today_style(&THEME));
+        assert_eq!(value_style(&set, "Flagged").1, flag_style(&THEME));
+        let done = NodeEditorView {
+            done: Some(None),
+            ..set
+        };
+        assert_eq!(
+            value_style(&done, "Due"),
+            (
+                format!("{} Sun 4 Oct 2026 · yesterday", icon(Icon::Due)),
+                due_style(&THEME)
+            ),
+            "a done block is overdue no longer"
+        );
+        let due_today = NodeEditorView {
+            due: Some(DateValue::Date(TODAY)),
+            ..view(0)
+        };
+        assert_eq!(
+            value_style(&due_today, "Due").1,
+            due_style(&THEME),
+            "due today is not overdue"
+        );
+        let unset = view(0);
+        for (label, value) in [
+            ("Done", "Not done"),
+            ("Start", "None"),
+            ("Due", "None"),
+            ("Starred", "Not starred"),
+            ("Flagged", "Not flagged"),
+            ("Tags", "+ Add tag"),
+        ] {
+            assert_eq!(
+                value_style(&unset, label),
+                (value.to_owned(), Style::new().dim()),
+                "{label}"
+            );
+        }
     }
 
     // editing.md §7
