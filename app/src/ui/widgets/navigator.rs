@@ -11,7 +11,8 @@ use ratatui::{
 };
 
 use super::{
-    FOCUS_MARKER, GUTTER_WIDTH, current_line_style, drawable, selection_style, view_title,
+    FOCUS_MARKER, GUTTER_WIDTH, current_line_style, drawable, render_count, selection_style,
+    view_title,
 };
 use crate::{
     app::{Fold, NavigatorEntry, NavigatorView},
@@ -276,7 +277,7 @@ impl Widget for NavigatorPanel<'_> {
             };
             let line_area = match line {
                 NavigatorLine::Entry(entry) if entry.open_tasks() > 0 => {
-                    render_count(entry.open_tasks(), line_area, buf)
+                    render_count(entry.open_tasks(), Style::new().dim(), line_area, buf)
                 }
                 NavigatorLine::Blank | NavigatorLine::Heading(_) | NavigatorLine::Entry(_) => {
                     line_area
@@ -285,19 +286,6 @@ impl Widget for NavigatorPanel<'_> {
             line.line(self.icons, self.theme).render(line_area, buf);
         }
     }
-}
-
-/// Draws `count` dimmed at the right of `area` and returns what is left of `area` for the text, a
-/// space short of the count (D-73).
-fn render_count(count: usize, area: Rect, buf: &mut Buffer) -> Rect {
-    let count = count.to_string();
-    let [text, _, count_area] = area.layout(&Layout::horizontal([
-        Constraint::Fill(1),
-        Constraint::Length(1),
-        Constraint::Length(u16::try_from(count.len()).expect("a usize has at most 20 digits")),
-    ]));
-    Span::styled(count, Style::new().dim()).render(count_area, buf);
-    text
 }
 
 #[cfg(test)]

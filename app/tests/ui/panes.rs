@@ -5,7 +5,7 @@
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::Modifier;
 
-use crate::support::{Harness, line};
+use crate::support::{Harness, TEXT, line};
 
 const OUTLINE: &str = "\
 Work:
@@ -50,7 +50,7 @@ fn dividers(app: &mut Harness) -> Vec<usize> {
 
 /// The two-pane screen after opening the focused `Work` in a new pane on an 80-column screen.
 const WORK_BESIDE: [&str; 9] = [
-    "  ⌂                                    │  ⌂ › Work",
+    "  ⌂                                  1 │  ⌂ › Work                            2",
     "───────────────────────────────────────│────────────────────────────────────────",
     "  Work:                                │  Work:",
     "    - Report                           │▌   - Report",
@@ -97,7 +97,10 @@ fn ctrl_w_s_opens_the_current_location_in_a_new_pane_with_the_same_focus() {
     app.type_keys("jjj");
     window(&mut app, "s");
     let screen = screen(&mut app);
-    assert_eq!(screen[0], "  ⌂                                    │  ⌂");
+    assert_eq!(
+        screen[0],
+        "  ⌂                                  1 │  ⌂                                   2"
+    );
     assert_eq!(
         screen[5], "  Home:                                │▌ Home:",
         "the new pane focuses the same block"
@@ -113,7 +116,7 @@ fn a_leaf_opens_in_a_new_pane_zoomed_into_it() {
     let screen = screen(&mut app);
     assert_eq!(
         screen[0],
-        "  ⌂                                    │  ⌂ › Work › Report"
+        "  ⌂                                  1 │  ⌂ › Work › Report                   2"
     );
     assert_eq!(
         screen[2],
@@ -160,7 +163,7 @@ fn each_pane_keeps_its_own_zoom_focus_and_history() {
     let screen = screen(&mut app);
     assert_eq!(
         screen[0],
-        "  ⌂                                    │  ⌂ › Home"
+        "  ⌂                                  1 │  ⌂ › Home                            2"
     );
     assert_eq!(
         screen[3],
@@ -169,14 +172,14 @@ fn each_pane_keeps_its_own_zoom_focus_and_history() {
     app.press(KeyCode::Left, KeyModifiers::ALT);
     assert_eq!(
         self::screen(&mut app)[0],
-        "  ⌂                                    │  ⌂ › Home",
+        "  ⌂                                  1 │  ⌂ › Home                            2",
         "the first pane has no history to go back to"
     );
     alt(&mut app, '2');
     app.press(KeyCode::Left, KeyModifiers::ALT);
     assert_eq!(
         self::screen(&mut app)[0],
-        "  ⌂                                    │  ⌂",
+        "  ⌂                                  1 │  ⌂                                   2",
         "the second goes back along its own"
     );
 }
@@ -235,7 +238,7 @@ fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() 
     let screen = screen(&mut app);
     assert_eq!(
         screen[0],
-        "  ⌂                                    │  ⌂ › Work"
+        "  ⌂                                  1 │  ⌂ › Work                            2"
     );
     assert_eq!(
         screen[3],
@@ -244,7 +247,7 @@ fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() 
     app.press(KeyCode::Char('u'), KeyModifiers::NONE);
     assert_eq!(
         self::screen(&mut app)[0],
-        "  ⌂                                    │  ⌂ › Work",
+        "  ⌂                                  1 │  ⌂ › Work                            2",
         "undo brings the block back without moving the pane again"
     );
 }
@@ -368,7 +371,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_symbol_in_a_new_pane() {
         let screen = screen(&mut app);
         assert_eq!(
             screen[0],
-            "  ⌂                                    │  ⌂ › Home › Water plants"
+            "  ⌂                                  1 │  ⌂ › Home › Water plants             2"
         );
         assert_eq!(
             screen[2],
@@ -396,7 +399,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_navigator_entry_in_a_new_pane() 
         assert_eq!(
             screen[..4],
             [
-                "  ⌂                                              │  ⌂ › Home",
+                "  ⌂                                            1 │  ⌂ › Home                                      2",
                 "─────────────────────────────────────────────────│──────────────────────────────────────────────────",
                 "  Work:                                          │  Home:",
                 "    - Report                                     │▌   - Water plants",
@@ -413,7 +416,7 @@ fn a_screen_smaller_than_40_by_10_shows_only_the_focused_pane() {
     assert_eq!(
         screen(&mut app)[..5],
         [
-            "  ⌂ › Work",
+            "  ⌂ › Work                           2",
             "───────────────────────────────────────",
             "  Work:",
             "▌   - Report",
@@ -431,7 +434,7 @@ fn a_pane_scrolled_wholly_out_of_view_is_not_drawn() {
     }
     assert_eq!(
         screen(&mut app)[0],
-        "                   │  ⌂                          │  ⌂",
+        "                 2 │  ⌂                        3 │  ⌂                         4",
         "four 30-column panes need 120 columns: the first is gone, the second shows its last 20"
     );
 }
@@ -509,4 +512,47 @@ fn reopening_focuses_the_today_entry_that_was_focused() {
     assert!(expected[0].contains("Dentist"), "{expected:?}");
     let mut app = app.reopen(80, 10);
     assert_eq!(focused(&mut app), expected);
+}
+
+// FR-UI-02, ui.md §1, D-116
+#[test]
+fn each_pane_shows_its_number_dimmed_at_the_top_right_while_there_is_more_than_one() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    assert_eq!(screen(&mut app)[0], "  ⌂", "one pane shows no number");
+    ctrl(&mut app, '\\');
+    assert_eq!(
+        screen(&mut app)[0],
+        "  ⌂                                  1 │  ⌂ › Work                            2"
+    );
+    let buffer = app.render().buffer().clone();
+    for x in [37, 78] {
+        assert_eq!(
+            buffer[(x, 0)].fg,
+            TEXT,
+            "the number at column {x} is dim text"
+        );
+    }
+    window(&mut app, "c");
+    assert_eq!(
+        screen(&mut app)[0],
+        "  ⌂",
+        "closing back to one pane hides it"
+    );
+}
+
+// FR-UI-02, ui.md §1, D-116
+#[test]
+fn the_breadcrumbs_end_a_space_short_of_the_number() {
+    let mut app = Harness::with_text(
+        "Plans:\n\t- Write the yearly report:\n\t\t- Draft\n",
+        80,
+        10,
+    );
+    app.type_keys("jj");
+    ctrl(&mut app, '\\');
+    assert_eq!(
+        screen(&mut app)[0],
+        "  ⌂                                  1 │  … › Draft                           2",
+        "Write the yearly report: would fit in the 37 columns the number takes 2 of"
+    );
 }

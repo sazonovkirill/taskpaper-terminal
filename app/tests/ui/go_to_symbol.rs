@@ -256,7 +256,10 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_project_in_a_new_pane() {
         app.type_keys("gPgarden");
         app.press(code, modifiers);
         let rows = screen(&mut app);
-        assert!(rows[0].ends_with("│  ⌂ › Home › Garden"), "{rows:#?}");
+        assert!(
+            rows[0].ends_with("│  ⌂ › Home › Garden                   2"),
+            "{rows:#?}"
+        );
     }
 }
 

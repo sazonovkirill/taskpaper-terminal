@@ -1684,6 +1684,19 @@ fn divider_style(theme: &Theme) -> Style {
     rule_style(theme).dim()
 }
 
+/// Draws `count` in `style` at the right of `area` and returns what is left of `area` for the
+/// text, a space short of the count (D-73).
+pub(super) fn render_count(count: usize, style: Style, area: Rect, buf: &mut Buffer) -> Rect {
+    let count = count.to_string();
+    let [text, _, count_area] = area.layout(&Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(1),
+        Constraint::Length(u16::try_from(count.len()).expect("a usize has at most 20 digits")),
+    ]));
+    Span::styled(count, style).render(count_area, buf);
+    text
+}
+
 /// Rule lines: dividers, the line under the header and between panes.
 #[must_use]
 pub fn rule_style(theme: &Theme) -> Style {

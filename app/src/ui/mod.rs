@@ -772,6 +772,7 @@ impl Tui {
     fn draw_panes(&mut self, frame: &mut Frame, strip: Rect, small: bool) -> FocusedPane {
         let mut panes: Vec<(usize, PaneView)> =
             self.state.panes().into_iter().enumerate().collect();
+        let numbered = panes.len() > 1;
         self.scrolls
             .retain(|id, _| panes.iter().any(|(_, pane)| pane.id == *id));
         self.wheel
@@ -813,6 +814,7 @@ impl Tui {
             panes.iter().zip(starts.iter().zip(&widths)).enumerate()
         {
             let divider = index + 1 < count;
+            let number = numbered.then_some(at + 1);
             let left = start.saturating_sub(self.strip_scroll);
             let skipped = self.strip_scroll.saturating_sub(start);
             let shown = width
@@ -831,7 +833,7 @@ impl Tui {
             });
             if shown == width {
                 let area = Rect::new(x, strip.y, width, strip.height);
-                let drawn = self.draw_pane(frame.buffer_mut(), area, pane, divider, true);
+                let drawn = self.draw_pane(frame.buffer_mut(), area, pane, (divider, number), true);
                 if pane.focused {
                     focused = drawn;
                 }
@@ -841,7 +843,7 @@ impl Tui {
                 // need nothing of it.
                 let area = Rect::new(0, strip.y, width, strip.height);
                 let mut whole = Buffer::empty(area);
-                self.draw_pane(&mut whole, area, pane, divider, false);
+                self.draw_pane(&mut whole, area, pane, (divider, number), false);
                 let shown = Rect::new(x, strip.y, shown, strip.height);
                 copy(&whole, skipped, frame.buffer_mut(), shown);
             }
@@ -850,15 +852,15 @@ impl Tui {
     }
 
     /// `pane` in `area` with a rule on its right edge when `divider` says another pane follows:
-    /// its breadcrumb header, dimmed unless it has the keys (ui.md §1), over a rule and its
-    /// outline, which effects go over when `on_screen` says `area` is where it shows; returns what
-    /// overlays need of it.
+    /// its breadcrumb header, dimmed unless it has the keys, ending in its `number` while there
+    /// are several panes (ui.md §1, D-116), over a rule and its outline, which effects go over
+    /// when `on_screen` says `area` is where it shows; returns what overlays need of it.
     fn draw_pane(
         &mut self,
         buf: &mut Buffer,
         area: Rect,
         pane: &PaneView,
-        divider: bool,
+        (divider, number): (bool, Option<usize>),
         on_screen: bool,
     ) -> FocusedPane {
         let theme = self.palette();
@@ -877,10 +879,14 @@ impl Tui {
             Constraint::Length(1),
             Constraint::Fill(1),
         ]));
-        let [_, crumbs] = header.layout(&Layout::horizontal([
+        let [_, crumbs, _] = header.layout(&Layout::horizontal([
             Constraint::Length(widgets::GUTTER_WIDTH),
             Constraint::Fill(1),
+            Constraint::Length(u16::from(number.is_some())),
         ]));
+        let crumbs = number.map_or(crumbs, |number| {
+            widgets::render_count(number, Style::new().fg(theme.dim_text), crumbs, buf)
+        });
         let line = match pane.location {
             Location::Outline(_) => {
                 widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width), self.icons)

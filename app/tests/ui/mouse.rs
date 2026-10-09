@@ -199,10 +199,16 @@ fn alt_click_opens_a_block_or_a_crumb_in_a_new_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
     alt_click(&mut app, 8, 3);
     let rows = screen(&mut app);
-    assert!(rows[0].ends_with("│  ⌂ › Work › Report"), "{rows:?}");
+    assert!(
+        rows[0].ends_with("│  ⌂ › Work › Report                   2"),
+        "{rows:?}"
+    );
     alt_click(&mut app, 47, 0);
     let rows = screen(&mut app);
-    assert!(rows[0].ends_with("│  ⌂ › Work"), "{rows:?}");
+    assert!(
+        rows[0].ends_with("│  ⌂ › Work                  3"),
+        "{rows:?}"
+    );
     assert_eq!(rows[1].matches('│').count(), 2, "three panes");
 }
 
@@ -253,7 +259,10 @@ fn a_click_on_a_navigator_entry_goes_there_and_on_its_fold_marker_folds_it() {
         .expect("Work listed");
     alt_click(&mut app, 25, u16::try_from(work).expect("on screen"));
     let rows = screen(&mut app);
-    assert!(rows[0].ends_with("│  ⌂ › Work"), "a new pane: {rows:?}");
+    assert!(
+        rows[0].ends_with("│  ⌂ › Work                            2"),
+        "a new pane: {rows:?}"
+    );
     assert!(!rows.iter().any(|row| row.contains("Navigator")), "closed");
 }
 
