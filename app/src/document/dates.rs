@@ -78,10 +78,16 @@ pub fn relative(date: Date, today: Date) -> String {
 /// The heading of a special view's group of entries for the day `date` on `today`: the day named
 /// as [`relative`] names it, capitalized, then ` · ` and the date, such as
 /// `3 days ago · Sun 4 Oct` (D-80, D-82); only the date, `Wed 14 Oct`, when that name is just
-/// its weekday, which the date repeats (D-111).
+/// its weekday, which the date repeats (D-111). The date names its year when it is not
+/// `today`'s, `Thu 25 Dec 2025`.
 #[must_use]
 pub fn day_heading(date: Date, today: Date) -> String {
-    let day = date.strftime("%a %-d %b").to_string();
+    let format = if date.year() == today.year() {
+        "%a %-d %b"
+    } else {
+        "%a %-d %b %Y"
+    };
+    let day = date.strftime(format).to_string();
     let name = relative(date, today);
     if day.starts_with(&format!("{name} ")) {
         return day;
@@ -953,9 +959,27 @@ mod tests {
             day_heading(date(2026, 10, 14), TODAY),
             "Next Wed · Wed 14 Oct"
         );
+    }
+
+    // navigation.md §7.1: a day of another year names its year, so it does not read as this
+    // year's.
+    #[test]
+    fn a_day_heading_of_another_year_names_the_year() {
         assert_eq!(
             day_heading(date(2025, 12, 25), TODAY),
-            "286 days ago · Thu 25 Dec"
+            "286 days ago · Thu 25 Dec 2025"
+        );
+        assert_eq!(
+            day_heading(date(2025, 10, 7), TODAY),
+            "365 days ago · Tue 7 Oct 2025"
+        );
+        assert_eq!(
+            day_heading(date(2027, 1, 1), date(2026, 12, 29)),
+            "Fri 1 Jan 2027"
+        );
+        assert_eq!(
+            day_heading(date(2026, 1, 1), TODAY),
+            "279 days ago · Thu 1 Jan"
         );
     }
 
