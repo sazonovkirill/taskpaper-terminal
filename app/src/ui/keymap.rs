@@ -1,7 +1,7 @@
 //! Key events to app messages, and to the frontend's own commands
 //! ([keybindings.md](../../../docs/specs/keybindings.md)).
 
-use std::{mem, time::Duration};
+use std::{borrow::Cow, mem, time::Duration};
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::DateTime;
@@ -422,6 +422,69 @@ const DATE_PROMPT: &[(Key, DateInput)] = &[
     (key!(Enter), DateInput::Apply),
     (key!(Esc), DateInput::Cancel),
 ];
+
+/// What the shortcuts panel lists where `overlay` has the keys, if it is the date prompt, Quick
+/// Add or the Edit Node dialog: its bindings with what each does, then pasting and quitting,
+/// since the outline's keys type text there ([ui.md §4]).
+///
+/// [ui.md §4]: ../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04
+fn dialog_shortcuts(overlay: Overlay) -> Option<ShortcutGroup> {
+    /// Each of `names` with the keys `table` binds to its input.
+    fn listed<I: Copy + PartialEq>(
+        table: &[(Key, I)],
+        names: &[(I, &'static str)],
+    ) -> Vec<(Cow<'static, str>, String)> {
+        names
+            .iter()
+            .map(|&(input, name)| {
+                let keys = table
+                    .iter()
+                    .filter(|&&(_, bound)| bound == input)
+                    .map(|&(key, _)| key);
+                (name.into(), keys_label(keys))
+            })
+            .collect()
+    }
+    let (group, mut entries) = match overlay {
+        Overlay::DatePrompt => (
+            Group::DatePrompt,
+            listed(
+                DATE_PROMPT,
+                &[
+                    (DateInput::Apply, "Set Date"),
+                    (DateInput::Cancel, "Cancel"),
+                ],
+            ),
+        ),
+        Overlay::QuickAdd => (
+            Group::QuickAdd,
+            listed(
+                QUICK_ADD,
+                &[
+                    (QuickAddInput::Add, "Add"),
+                    (QuickAddInput::Cancel, "Cancel"),
+                ],
+            ),
+        ),
+        Overlay::NodeEditor => (
+            Group::NodeEditor,
+            listed(
+                NODE_EDITOR,
+                &[
+                    (NodeInput::Next, "Next Row"),
+                    (NodeInput::Previous, "Previous Row"),
+                    (NodeInput::CycleType, "Cycle Type"),
+                    (NodeInput::Accept, "Save"),
+                    (NodeInput::Cancel, "Cancel"),
+                ],
+            ),
+        ),
+        _ => return None,
+    };
+    entries.push(("Paste".into(), key_label(key!(ctrl 'v'))));
+    entries.push((Command::Quit.name(), key_label(key!(ctrl 'q'))));
+    Some((group, entries))
+}
 
 /// The date-prompt message for `key`: `Ctrl+Q` quits, `Ctrl+V` pastes into the text, a prompt
 /// binding, else the change to the text it asks for.
@@ -1003,15 +1066,18 @@ impl Keymap {
         keys.unwrap_or_default()
     }
 
-    /// What the shortcuts panel lists where `context` gives the keys to the Navigator or a
-    /// picker: their group with each intent's name and how its keys read; `None` where navigate
-    /// or edit mode has the keys, or a prompt or dialog of its own ([ui.md §4]).
+    /// What the shortcuts panel lists where `context` gives the keys to the Navigator, a picker,
+    /// the date prompt, Quick Add or the Edit Node dialog: their group with each intent's name
+    /// and how its keys read; `None` where navigate or edit mode has the keys, or another prompt
+    /// or dialog of its own ([ui.md §4]).
     ///
     /// [ui.md §4]: ../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04
     #[must_use]
     pub fn popup_shortcuts(&self, context: &Context) -> Option<ShortcutGroup> {
         if let Some(overlay) = context.overlay {
-            let menu = overlay.menu()?;
+            let Some(menu) = overlay.menu() else {
+                return dialog_shortcuts(overlay);
+            };
             let mut entries: Vec<_> = [
                 MenuInput::Next,
                 MenuInput::Previous,
@@ -4026,7 +4092,12 @@ mod tests {
             };
             let listed = keymap.popup_shortcuts(context);
             let Some(menu) = overlay.menu() else {
-                assert_eq!(listed, None, "{overlay:?} has keys of its own");
+                if !matches!(
+                    overlay,
+                    Overlay::DatePrompt | Overlay::QuickAdd | Overlay::NodeEditor
+                ) {
+                    assert_eq!(listed, None, "{overlay:?} has keys of its own");
+                }
                 continue;
             };
             let (group, entries) = listed.expect("a picker lists its keys");
@@ -4066,6 +4137,65 @@ mod tests {
             assert_eq!(keys("Erase Filter Character"), Some("Backspace"));
             assert_eq!(keys("Quit"), Some("Ctrl+Q"));
         }
+    }
+
+    // FR-KEY-04, ui.md §4: a dialog with keys of its own that takes text lists those keys, not
+    // the outline's, which do not work there.
+    #[test]
+    fn the_shortcuts_of_a_dialog_that_takes_text_are_its_keys() {
+        let keymap = Keymap::default();
+        let listed = |overlay| {
+            let (group, entries) = keymap
+                .popup_shortcuts(&Context {
+                    overlay: Some(overlay),
+                    ..*CONTEXT
+                })
+                .expect("the dialog lists its keys");
+            let entries: Vec<_> = entries
+                .into_iter()
+                .map(|(name, keys)| format!("{name}: {keys}"))
+                .collect();
+            (group.name(), entries)
+        };
+        assert_eq!(
+            listed(Overlay::NodeEditor),
+            (
+                "Edit Node",
+                vec![
+                    "Next Row: Tab, ↓".to_owned(),
+                    "Previous Row: Shift+Tab, ↑".to_owned(),
+                    "Cycle Type: Ctrl+T".to_owned(),
+                    "Save: Enter".to_owned(),
+                    "Cancel: Esc".to_owned(),
+                    "Paste: Ctrl+V".to_owned(),
+                    "Quit: Ctrl+Q".to_owned(),
+                ]
+            )
+        );
+        assert_eq!(
+            listed(Overlay::QuickAdd),
+            (
+                "Quick Add",
+                vec![
+                    "Add: Enter".to_owned(),
+                    "Cancel: Esc".to_owned(),
+                    "Paste: Ctrl+V".to_owned(),
+                    "Quit: Ctrl+Q".to_owned(),
+                ]
+            )
+        );
+        assert_eq!(
+            listed(Overlay::DatePrompt),
+            (
+                "Date Prompt",
+                vec![
+                    "Set Date: Enter".to_owned(),
+                    "Cancel: Esc".to_owned(),
+                    "Paste: Ctrl+V".to_owned(),
+                    "Quit: Ctrl+Q".to_owned(),
+                ]
+            )
+        );
     }
 
     // FR-KEY-04, ui.md §4: the open Navigator lists each of its keys, and a picker over it lists

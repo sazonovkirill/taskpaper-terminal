@@ -409,3 +409,60 @@ fn the_panel_lists_the_keys_of_the_open_navigator_or_picker() {
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(right_of(&mut app, 68)[1], "│ Moving", "the outline's again");
 }
+
+// FR-KEY-04, ui.md §4, keybindings.md §4: the Edit Node dialog, Quick Add and the date prompt type
+// the outline's keys as text, so the panel lists their own keys while they are open.
+#[test]
+fn the_panel_lists_the_keys_of_the_open_edit_node_dialog_quick_add_or_date_prompt() {
+    let dialog = |name: &'static str, keys: &[&'static str]| {
+        ["│Shortcuts", name]
+            .into_iter()
+            .chain(keys.iter().copied())
+            .chain([
+                "│  Paste                 Ctrl+V",
+                "│  Quit                  Ctrl+Q",
+                "│",
+            ])
+            .collect::<Vec<_>>()
+    };
+    let mut app = Harness::with_text(OUTLINE, 100, 30);
+    app.type_keys("?e");
+    assert_eq!(
+        right_of(&mut app, 68)[..10],
+        dialog(
+            "│ Edit Node",
+            &[
+                "│  Next Row              Tab, ↓",
+                "│  Previous Row    Shift+Tab, ↑",
+                "│  Cycle Type            Ctrl+T",
+                "│  Save                   Enter",
+                "│  Cancel                   Esc",
+            ]
+        )
+    );
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(right_of(&mut app, 68)[1], "│ Moving", "the outline's again");
+    app.type_keys("qq");
+    assert_eq!(
+        right_of(&mut app, 68)[..7],
+        dialog(
+            "│ Quick Add",
+            &[
+                "│  Add                    Enter",
+                "│  Cancel                   Esc",
+            ]
+        )
+    );
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.type_keys("md");
+    assert_eq!(
+        right_of(&mut app, 68)[..7],
+        dialog(
+            "│ Date Prompt",
+            &[
+                "│  Set Date               Enter",
+                "│  Cancel                   Esc",
+            ]
+        )
+    );
+}

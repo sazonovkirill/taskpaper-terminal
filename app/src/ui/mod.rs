@@ -959,7 +959,8 @@ impl Tui {
             });
         // The keys are the keymap's, so the panel shows the config file's bindings (ui.md §4); a
         // command the config file left without keys is not listed.
-        // While the Navigator or a picker has the keys, the panel lists theirs (ui.md §4).
+        // While the Navigator, a picker or a dialog that takes text has the keys, the panel lists
+        // theirs (ui.md §4).
         let groups: Vec<_> = match self.keymap.popup_shortcuts(&context) {
             Some(group) => vec![group],
             None => groups

@@ -626,6 +626,12 @@ pub enum Group {
     Navigator,
     /// The keys of an open picker or palette.
     Picker,
+    /// The keys of the open date prompt.
+    DatePrompt,
+    /// The keys of the open Quick Add panel.
+    QuickAdd,
+    /// The keys of the open Edit Node dialog.
+    NodeEditor,
 }
 
 impl Group {
@@ -644,6 +650,9 @@ impl Group {
             Self::Editing => "Editing",
             Self::Navigator => "Navigator",
             Self::Picker => "Pickers and Palettes",
+            Self::DatePrompt => "Date Prompt",
+            Self::QuickAdd => "Quick Add",
+            Self::NodeEditor => "Edit Node",
         }
     }
 }
