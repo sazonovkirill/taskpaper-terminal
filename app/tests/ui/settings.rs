@@ -94,7 +94,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
             "│ Files         │     The colors of the whole app                    │",
             "│               │ * ◇ Icons                                    none  │",
-            "│               │     Nerd Font icons; choose none if they show as bo│",
+            "│               │     Nerd Font icons; choose none if they show as b…│",
             "│               │   ↩ Word wrap                                 off  │",
             "│               │     Wrap long text, or end it in … on one line     │",
             "│               │   ⊔ Special handling of INBOX project          on  │",
@@ -179,11 +179,11 @@ fn tab_switches_to_the_groups_where_j_shows_the_files_settings() {
         rows[1..9],
         [
             "│ Appearance    │   ◷ Autosave delay                        1000 ms  │",
-            "│ Files         │     How long after the last change the file is save│",
+            "│ Files         │     How long after the last change the file is sav…│",
             "│               │   ↺ Backups                                    on  │",
             "│               │     Keep a copy of each file as it was each day    │",
             "│               │   ▭ Backup folder                         default  │",
-            "│               │     Where the copies go; empty for the default fold│",
+            "│               │     Where the copies go; empty for the default fol…│",
             "│               │   ↺ Backups kept                               30  │",
             "│               │     How many daily copies of each file are kept    │",
         ]
@@ -204,7 +204,7 @@ fn a_short_window_scrolls_to_the_highlighted_setting_which_is_reversed() {
             "│ Appearance    │   ↺ Backups                                    on  │",
             "│ Files         │     Keep a copy of each file as it was each day    │",
             "│               │   ▭ Backup folder                         default  │",
-            "│               │     Where the copies go; empty for the default fold│",
+            "│               │     Where the copies go; empty for the default fol…│",
             "│               │   ↺ Backups kept                               30  │",
             "│               │     How many daily copies of each file are kept    │",
         ]
@@ -553,4 +553,44 @@ fn the_demo_says_where_the_settings_are() {
     let app = Harness::demo(60, 20);
     let text = fs::read_to_string(app.path.as_ref().unwrap()).unwrap();
     assert!(text.contains("Press g, for the settings"), "{text}");
+}
+
+// ui.md §1, §8
+#[test]
+fn a_narrow_window_cuts_names_short_of_their_values_and_keeps_the_end_of_the_path() {
+    let mut app = Harness::with_config(OUTLINE, SETTINGS, 60, 16);
+    app.type_keys("g,");
+    let rows = window(&mut app);
+    assert_eq!(
+        rows[4..13],
+        [
+            "│               │     Nerd Font icons; choose none if they…│",
+            "│               │   ↩ Word wrap                       off  │",
+            "│               │     Wrap long text, or end it in … on on…│",
+            "│               │   ⊔ Special handling of INBOX proje… on  │",
+            "│               │     Show INBOX: above Today, not under P…│",
+            "│               │   ☼ Special handling of TODAY proje… on  │",
+            "│               │     Today lists its tasks, and qt adds t…│",
+            "│──────────────────────────────────────────────────────────│",
+            "│ Tab: groups/settings · Enter: change · h/l: cycle · r: r…│",
+        ]
+    );
+    let mut app = Harness::with_config(OUTLINE, SETTINGS, 40, 12);
+    app.type_keys("g,");
+    let rows = window(&mut app);
+    assert_eq!(
+        rows[1..6],
+        [
+            "│ Appearance    │   ● … Terminal Dark  │",
+            "│ Files         │     The colors of th…│",
+            "│               │ * ◇ Icons      none  │",
+            "│               │     Nerd Font icons;…│",
+            "│               │   ↩ Word wrap   off  │",
+        ]
+    );
+    let footer = &rows[9];
+    assert!(
+        footer.starts_with("│ Settings file: …") && footer.ends_with("/config.toml│"),
+        "{footer}"
+    );
 }

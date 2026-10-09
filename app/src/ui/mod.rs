@@ -1133,13 +1133,11 @@ impl Tui {
         let Some(view) = self.state.settings() else {
             return;
         };
-        let window = SettingsWindow::new(
-            &view,
-            self.settings.as_deref(),
-            self.icons,
-            settings::icon,
-            theme,
-        );
+        let file = self
+            .settings
+            .as_deref()
+            .map(|file| effects::abbreviate_path(file, self.home.as_deref()));
+        let window = SettingsWindow::new(&view, file.as_deref(), self.icons, settings::icon, theme);
         if let Some(caret) = window.caret(area) {
             frame.set_cursor_position(caret);
         }

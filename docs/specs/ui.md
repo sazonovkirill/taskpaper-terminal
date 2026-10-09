@@ -125,7 +125,7 @@ The command menu of edit mode ([editing.md §2.3](editing.md#23-command-menu), D
 - **Prompt:** numbers and the backup folder are typed on the window's status line, after the setting's name, with the standard text keys; `Enter` takes the value and `Esc` cancels. A number below its least (100 ms for the autosave delay, 1 copy kept) is refused with the reason, and the prompt stays open. An empty folder is the default one.
 - **Filter:** `/` starts typing a filter on the status line; only groups and settings whose names hold it, ignoring case, are listed. `Enter` keeps it and gives the keys back to the settings, `Esc` clears it, `↑`/`↓` move while typing.
 - Every change applies at once (theme, icons, word wrap and the INBOX setting repaint the whole UI behind the overlay; the autosave delay applies to the next save, and backups to the next copy) and is written to `config.toml` immediately (FR-SET-04). Resetting writes the default value, except for the backup folder, whose setting is removed. A failed write shows an error in the window, in place of the rule above its status line, and in the status line, and keeps the value for the session.
-- A footer shows the config file's path, so people know where to edit by hand.
+- A footer shows the config file's path, so people know where to edit by hand, as the status line shows a path: the home folder as `~`, and when it is too long, as much of its end as fits behind `…` (§1). In a narrow window a setting's name, a description and the keys on the status line end in `…` where they are cut, and a name is cut short of its value, a space before it.
 
 ## 9. Animation (FR-UI-11)
 

@@ -1,10 +1,9 @@
 //! The settings window ([ui.md §8](../../../../docs/specs/ui.md#8-settings-window-fr-set-02-fr-set-03)):
 //! a centered box at most 100×30 with the groups on the left and the highlighted group's
 //! settings on the right, a rule that shows an error when a change failed, a line for the
-//! prompt, the filter or the keys, and the settings file's path at the bottom. Its own labels are plain text, so it stays usable when
+//! prompt, the filter or the keys, and the settings file's path at the bottom. What does not fit
+//! ends in `…`, and the path keeps its end, as on the status line (ui.md §1). Its own labels are plain text, so it stays usable when
 //! icons show as boxes (ui.md §7).
-
-use std::path::Path;
 
 use ratatui::{
     buffer::Buffer,
@@ -14,7 +13,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Widget},
 };
 
-use super::{Field, error_style, rule_style};
+use super::{Field, error_style, fitted_path, rule_style, wrap::truncate};
 use crate::{
     app::{SettingsColumn, SettingsView, Typed},
     ui::{
@@ -37,19 +36,20 @@ const KEYS: &str =
 #[derive(Debug)]
 pub struct SettingsWindow<'a> {
     view: &'a SettingsView<'a>,
-    file: Option<&'a Path>,
+    file: Option<&'a str>,
     icons: IconSet,
     icon: fn(usize) -> Icon,
     theme: &'a Theme,
 }
 
 impl<'a> SettingsWindow<'a> {
-    /// The window showing `view` in `theme`, with the settings file `file` in its footer, each
-    /// setting after the icon `icon` gives its position, drawn from `icons`.
+    /// The window showing `view` in `theme`, with the settings file's path `file`, as the user
+    /// reads it, in its footer, each setting after the icon `icon` gives its position, drawn from
+    /// `icons`.
     #[must_use]
     pub fn new(
         view: &'a SettingsView<'a>,
-        file: Option<&'a Path>,
+        file: Option<&'a str>,
         icons: IconSet,
         icon: fn(usize) -> Icon,
         theme: &'a Theme,
@@ -125,7 +125,10 @@ impl<'a> SettingsWindow<'a> {
                 let (line, column) = typed(" /".to_owned(), filter);
                 (line, typing.then_some(column))
             }
-            None => (Line::styled(KEYS, Style::new().dim()), None),
+            None => (
+                truncate(&Line::styled(KEYS, Style::new().dim()), usize::from(width)),
+                None,
+            ),
         }
     }
 
@@ -153,15 +156,15 @@ impl<'a> SettingsWindow<'a> {
 
     /// The highlighted group's settings in `area`, two lines each and scrolled to keep the
     /// highlighted one in view: a `*` when its value is not the default, its icon, its name and,
-    /// at the right, its value, bold when changed; then its description, dimmed. The highlighted
-    /// setting is reversed while the settings have the keys.
+    /// at the right, its value, bold when changed, the name cut short of it; then its description,
+    /// dimmed. The highlighted setting is reversed while the settings have the keys.
     fn render_settings(&self, area: Rect, buf: &mut Buffer) {
         let rows = &self.view.rows;
         if rows.is_empty() {
             Line::from(" No settings match").dim().render(area, buf);
             return;
         }
-        let height = usize::from(area.height);
+        let (width, height) = (usize::from(area.width), usize::from(area.height));
         let selected = self.view.selected * 2;
         let offset = layout::scroll_offset(0, selected..selected + 2, height, rows.len() * 2);
         let lines = rows.iter().enumerate().flat_map(|(index, row)| {
@@ -173,7 +176,9 @@ impl<'a> SettingsWindow<'a> {
                 Span::raw((self.icon)(row.at).glyph(self.icons)),
                 Span::raw(format!(" {}", row.name)),
             ]);
+            let name = truncate(&name, width.saturating_sub(value.width() + 1));
             let description = Line::from(format!("     {}", row.description)).dim();
+            let description = truncate(&description, width);
             [(index, name, Some(value)), (index, description, None)]
         });
         for ((index, line, value), area) in lines.skip(offset).zip(area.rows()) {
@@ -187,13 +192,20 @@ impl<'a> SettingsWindow<'a> {
         }
     }
 
-    /// The footer: where the settings file is, so people know where to edit it by hand.
-    fn footer(&self) -> Line<'static> {
+    /// The footer, `width` columns wide: where the settings file is, so people know where to edit
+    /// it by hand.
+    fn footer(&self, width: u16) -> Line<'static> {
+        let width = usize::from(width);
         match self.file {
-            Some(file) => Line::from(format!(" Settings file: {}", file.display())),
-            None => {
-                Line::from(" No settings file: neither $XDG_CONFIG_HOME nor a home folder is set")
+            Some(file) => {
+                let label = " Settings file: ";
+                let room = width.saturating_sub(Span::raw(label).width());
+                Line::from(format!("{label}{}", fitted_path(file, room)))
             }
+            None => truncate(
+                &Line::from(" No settings file: neither $XDG_CONFIG_HOME nor a home folder is set"),
+                width,
+            ),
         }
         .dim()
     }
@@ -227,7 +239,7 @@ impl Widget for SettingsWindow<'_> {
         }
         .render(rule, buf);
         self.status(status.width).0.render(status, buf);
-        self.footer().render(footer, buf);
+        self.footer(footer.width).render(footer, buf);
     }
 }
 
