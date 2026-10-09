@@ -4,7 +4,7 @@
 //! are the frontend's: the core knows their names, kinds and values, never what they do, and asks
 //! the frontend to apply and keep each change.
 
-use std::ops::Range;
+use std::{num::IntErrorKind, ops::Range};
 
 use super::{
     Effect, MenuInput, Notice, State,
@@ -437,7 +437,10 @@ impl Window {
                 self.editor = Some(Editor::Picking(finder));
             }
             (_, SettingValue::Number(number)) => {
-                self.editor = Some(Editor::Typing(TextField::new(number.to_string())));
+                // Selected, so a number typed replaces it rather than lengthening it.
+                self.editor = Some(Editor::Typing(
+                    TextField::new(number.to_string()).edited(TextEdit::SelectAll),
+                ));
             }
             (_, SettingValue::Text(text)) => {
                 self.editor = Some(Editor::Typing(TextField::new(text.clone())));
@@ -487,6 +490,10 @@ impl Window {
         let value = match &setting.kind {
             SettingKind::Number { least, .. } => match typed.parse::<u32>() {
                 Ok(number) if number >= *least => SettingValue::Number(number),
+                Err(error) if *error.kind() == IntErrorKind::PosOverflow => {
+                    self.error = Some(format!("{} must be at most {}", setting.name, u32::MAX));
+                    return None;
+                }
                 _ => {
                     self.error = Some(format!(
                         "{} must be a whole number, at least {least}",
@@ -612,10 +619,7 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        app::{Message, Motion},
-        document::format,
-    };
+    use crate::{app::Message, document::format};
 
     /// Three settings in two groups, as a frontend might list them: a choice and a switch, then
     /// a number and a text.
@@ -934,16 +938,17 @@ mod tests {
         assert_eq!(key(&mut state, SettingsInput::Change), []);
         let prompt = state.settings().unwrap().prompt.unwrap();
         assert_eq!(
-            (prompt.0, prompt.1.text, prompt.1.caret),
-            ("Delay", "1000", 4)
+            (prompt.0, prompt.1.text, prompt.1.caret, prompt.1.selection),
+            ("Delay", "1000", 4, Some(0..4)),
+            "the value is selected, so typing replaces it"
         );
-        key(
-            &mut state,
-            SettingsInput::Edit(TextEdit::Move {
-                motion: Motion::Start,
-                select: true,
-            }),
+        typed(&mut state, "4294967296");
+        assert_eq!(key(&mut state, SettingsInput::Accept), []);
+        assert_eq!(
+            state.settings().unwrap().error,
+            Some("Delay must be at most 4294967295")
         );
+        key(&mut state, SettingsInput::Edit(TextEdit::SelectAll));
         typed(&mut state, "99");
         assert_eq!(key(&mut state, SettingsInput::Accept), []);
         assert_eq!(
@@ -956,6 +961,10 @@ mod tests {
         );
         typed(&mut state, "x");
         assert_eq!(key(&mut state, SettingsInput::Accept), []);
+        assert_eq!(
+            state.settings().unwrap().error,
+            Some("Delay must be a whole number, at least 100")
+        );
         key(&mut state, SettingsInput::Edit(TextEdit::DeleteBackward));
         typed(&mut state, "0 ");
         assert_eq!(

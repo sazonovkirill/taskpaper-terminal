@@ -331,9 +331,12 @@ fn the_autosave_delay_takes_a_number_of_milliseconds_and_saves_that_long_after_a
         window(&mut app)[16],
         "│ Autosave delay: 1000                                               │"
     );
-    press(&mut app, KeyCode::Backspace);
-    press(&mut app, KeyCode::Backspace);
-    press(&mut app, KeyCode::Backspace);
+    app.type_keys("1");
+    assert_eq!(
+        window(&mut app)[16],
+        "│ Autosave delay: 1                                                  │",
+        "the value is selected, so typing replaces it"
+    );
     press(&mut app, KeyCode::Enter);
     let rows = window(&mut app);
     assert_eq!(
