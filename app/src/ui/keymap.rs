@@ -1291,7 +1291,8 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            Location, NavigatorInput, NewBlock, PaneChange, SelectionChange, SpecialView, Symbols,
+            Location, NavigatorInput, NewBlock, PaneChange, SelectionChange, Sibling, SpecialView,
+            Symbols,
         },
         document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
     };
@@ -1411,8 +1412,8 @@ mod tests {
     // FR-NAV-01, keybindings.md §6: `gj`/`gk` beside `Ctrl+↓`/`Ctrl+↑`, which macOS takes.
     #[test]
     fn ctrl_arrows_and_g_j_g_k_move_to_the_next_and_previous_sibling() {
-        let next = Some(&Message::FocusNextSibling);
-        let previous = Some(&Message::FocusPreviousSibling);
+        let next = Some(&Message::FocusSibling(Sibling::Next));
+        let previous = Some(&Message::FocusSibling(Sibling::Previous));
         check(KeyCode::Down, KeyModifiers::CONTROL, next);
         check(KeyCode::Up, KeyModifiers::CONTROL, previous);
         assert_eq!(messages("gj", CONTEXT), [None, next.cloned()]);

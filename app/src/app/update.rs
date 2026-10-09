@@ -42,6 +42,16 @@ pub enum Configuration {
     Attachments(Attachment, bool),
 }
 
+/// Which sibling of the focused block a sibling motion focuses, among the blocks shown
+/// (FR-NAV-01).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sibling {
+    /// The next one.
+    Next,
+    /// The previous one.
+    Previous,
+}
+
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
@@ -134,10 +144,8 @@ pub enum Message {
     Focus(ItemId),
     /// Focus the parent block.
     FocusParent,
-    /// Focus the next sibling block.
-    FocusNextSibling,
-    /// Focus the previous sibling block.
-    FocusPreviousSibling,
+    /// Focus a sibling of the focused block.
+    FocusSibling(Sibling),
     /// Focus the focused block's last child, expanding the block if it is collapsed.
     FocusLastChild,
     /// Collapse the focused block; if it is a leaf or already collapsed, focus its parent.
@@ -430,8 +438,7 @@ impl Message {
             | Self::PageUp { .. }
             | Self::Focus(_)
             | Self::FocusParent
-            | Self::FocusNextSibling
-            | Self::FocusPreviousSibling
+            | Self::FocusSibling(_)
             | Self::FocusLastChild
             | Self::Collapse
             | Self::Expand
@@ -663,8 +670,7 @@ impl State {
             Message::PageUp { rows } => self.focus_up(rows),
             Message::Focus(id) => self.focus_block(id),
             Message::FocusParent => self.focus_parent(),
-            Message::FocusNextSibling => self.move_to_sibling(|at| at.checked_add(1)),
-            Message::FocusPreviousSibling => self.move_to_sibling(|at| at.checked_sub(1)),
+            Message::FocusSibling(to) => self.move_to_sibling(to),
             Message::FocusLastChild => self.focus_last_child(),
             Message::Collapse => self.collapse(),
             Message::Expand => self.expand(),
@@ -909,16 +915,19 @@ impl State {
         }
     }
 
-    /// Focuses the sibling at the index `to` picks from the focused block's index among its
-    /// siblings, if there is one.
-    fn move_to_sibling(&mut self, to: impl FnOnce(usize) -> Option<usize>) {
+    /// Focuses the focused block's sibling `to` among those shown, if there is one.
+    fn move_to_sibling(&mut self, to: Sibling) {
         let Some(id) = self.focused_block().map(|block| block.id()) else {
             return;
         };
         let mut siblings = self.siblings(id);
         siblings.retain(|sibling| self.shows(sibling));
         if let Some(at) = siblings.iter().position(|block| block.id() == id)
-            && let Some(sibling) = to(at).and_then(|index| siblings.get(index))
+            && let Some(sibling) = match to {
+                Sibling::Next => at.checked_add(1),
+                Sibling::Previous => at.checked_sub(1),
+            }
+            .and_then(|index| siblings.get(index))
         {
             self.pane.focus = Some(sibling.id());
         }
@@ -1512,9 +1521,9 @@ mod tests {
         state.update(Message::ToggleShowDone);
         state.update(Message::Expand);
         assert_eq!(focus_text(&state), "c", "the first child shown");
-        state.update(Message::FocusNextSibling);
+        state.update(Message::FocusSibling(Sibling::Next));
         assert_eq!(focus_text(&state), "c");
-        state.update(Message::FocusPreviousSibling);
+        state.update(Message::FocusSibling(Sibling::Previous));
         assert_eq!(focus_text(&state), "c");
         state.update(Message::FocusParent);
         state.update(Message::FocusLastChild);
@@ -1533,18 +1542,18 @@ mod tests {
         let mut state = open(TREE, 2);
         state.update(Message::FocusParent);
         assert_eq!(focus_text(&state), "b");
-        state.update(Message::FocusNextSibling);
+        state.update(Message::FocusSibling(Sibling::Next));
         assert_eq!(focus_text(&state), "d");
-        state.update(Message::FocusNextSibling);
+        state.update(Message::FocusSibling(Sibling::Next));
         assert_eq!(focus_text(&state), "d");
-        state.update(Message::FocusPreviousSibling);
+        state.update(Message::FocusSibling(Sibling::Previous));
         assert_eq!(focus_text(&state), "b");
-        state.update(Message::FocusPreviousSibling);
+        state.update(Message::FocusSibling(Sibling::Previous));
         assert_eq!(focus_text(&state), "b");
         state.update(Message::FocusParent);
         state.update(Message::FocusParent);
         assert_eq!(focus_text(&state), "A");
-        state.update(Message::FocusNextSibling);
+        state.update(Message::FocusSibling(Sibling::Next));
         assert_eq!(focus_text(&state), "e");
     }
 
@@ -1698,8 +1707,8 @@ mod tests {
             Message::Collapse,
             Message::ToggleFold,
             Message::FocusParent,
-            Message::FocusNextSibling,
-            Message::FocusPreviousSibling,
+            Message::FocusSibling(Sibling::Next),
+            Message::FocusSibling(Sibling::Previous),
         ] {
             state.update(message.clone());
             assert_eq!(focus_text(&state), "b", "{message:?}");
@@ -1758,8 +1767,8 @@ mod tests {
             Message::PageDown { rows: 5 },
             Message::PageUp { rows: 5 },
             Message::FocusParent,
-            Message::FocusNextSibling,
-            Message::FocusPreviousSibling,
+            Message::FocusSibling(Sibling::Next),
+            Message::FocusSibling(Sibling::Previous),
             Message::FocusLastChild,
             Message::Collapse,
             Message::Expand,

@@ -224,8 +224,7 @@ impl State {
 fn needs_the_tree(message: &Message) -> bool {
     match message {
         Message::FocusParent
-        | Message::FocusNextSibling
-        | Message::FocusPreviousSibling
+        | Message::FocusSibling(_)
         | Message::FocusLastChild
         | Message::Collapse
         | Message::Expand

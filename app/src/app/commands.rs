@@ -17,7 +17,7 @@ pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
 
 use super::{
     AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
-    QuickAddInput, QuickAddTo, SaveAs, SelectionChange, SpecialView, Symbols, TextEdit,
+    QuickAddInput, QuickAddTo, SaveAs, SelectionChange, Sibling, SpecialView, Symbols, TextEdit,
 };
 use crate::document::{
     Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker,
@@ -355,8 +355,8 @@ impl Command {
                 rows: inputs.page_up_rows,
             },
             Self::FocusParent => Message::FocusParent,
-            Self::FocusNextSibling => Message::FocusNextSibling,
-            Self::FocusPreviousSibling => Message::FocusPreviousSibling,
+            Self::FocusNextSibling => Message::FocusSibling(Sibling::Next),
+            Self::FocusPreviousSibling => Message::FocusSibling(Sibling::Previous),
             Self::FocusLastChild => Message::FocusLastChild,
             Self::Collapse => Message::Collapse,
             Self::Expand => Message::Expand,

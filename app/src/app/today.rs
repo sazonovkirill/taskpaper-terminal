@@ -45,7 +45,7 @@ mod tests {
     use crate::{
         app::{
             Configuration, Effect, Location, Menu, Message, Mode, NewBlock, PaneChange, Paste,
-            SelectionChange, SpecialView, TextEdit,
+            SelectionChange, Sibling, SpecialView, TextEdit,
         },
         document::{DateChange, DateTag, Flag, format},
     };
@@ -317,8 +317,8 @@ Home:
         let before = format::serialize(state.document());
         for message in [
             Message::FocusParent,
-            Message::FocusNextSibling,
-            Message::FocusPreviousSibling,
+            Message::FocusSibling(Sibling::Next),
+            Message::FocusSibling(Sibling::Previous),
             Message::FocusLastChild,
             Message::Collapse,
             Message::Expand,

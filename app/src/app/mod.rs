@@ -80,5 +80,5 @@ pub use state::{Access, Location, Notice, Origin, Row, State};
 pub use structure::NewBlock;
 pub use text_field::{Motion, TextEdit};
 pub use type_picker::Conversion;
-pub use update::{Configuration, Disk, Effect, Menu, Message};
+pub use update::{Configuration, Disk, Effect, Menu, Message, Sibling};
 pub use view_state::ViewState;
