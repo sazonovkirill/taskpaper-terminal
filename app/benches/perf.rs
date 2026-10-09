@@ -313,6 +313,27 @@ const SCENARIOS: &[Scenario] = &[
         run: |app| app.finder("gm"),
     },
     Scenario {
+        name: "x, z beside three view panes",
+        run: |app| {
+            app.view_panes(true);
+            let done = app.keys("x").max(app.keys("z"));
+            app.view_panes(false);
+            done
+        },
+    },
+    Scenario {
+        name: "edit beside three view panes",
+        run: |app| {
+            app.view_panes(true);
+            let enter = app.key(KeyCode::Enter, KeyModifiers::NONE);
+            let typed = app.keys("a");
+            let erased = app.key(KeyCode::Backspace, KeyModifiers::NONE);
+            let left = app.key(KeyCode::Esc, KeyModifiers::NONE);
+            app.view_panes(false);
+            enter.max(typed).max(erased).max(left)
+        },
+    },
+    Scenario {
         name: "autosave",
         run: |app| {
             app.keys("x");
@@ -412,6 +433,23 @@ impl App {
         let erased = self.key(KeyCode::Backspace, KeyModifiers::NONE);
         let closed = self.key(KeyCode::Esc, KeyModifiers::NONE);
         open.max(typed).max(erased).max(closed)
+    }
+
+    /// Opens Today, Upcoming and Colors in three more panes and goes back to the first, or with
+    /// `false` closes them, untimed.
+    fn view_panes(&mut self, open: bool) {
+        for (pane, view) in [("g4", "gC"), ("g3", "gU"), ("g2", "gT")] {
+            if open {
+                self.key(KeyCode::Char('w'), KeyModifiers::CONTROL);
+                self.keys("s");
+                self.keys(view);
+            } else {
+                self.keys(pane);
+                self.key(KeyCode::Char('w'), KeyModifiers::CONTROL);
+                self.keys("c");
+            }
+        }
+        self.keys("g1");
     }
 
     /// Presses `code` with `modifiers` and draws the frame; returns how long that took.

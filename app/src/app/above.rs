@@ -9,14 +9,18 @@ use crate::document::ItemId;
 
 /// The blocks above the row a walk over the outline's rows, in order and from the top level, is
 /// at: from the top level down to its parent.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(super) struct Above {
     lines: Vec<Line>,
 }
 
+/// The blocks above a row, each with its text: two walks at the same signature name the blocks
+/// above the rows that follow alike.
+pub(super) type Signature = Vec<(ItemId, Arc<str>)>;
+
 /// A block above the row a walk is at, with the text of each block from the top level down to
 /// it, which the rows it holds show above themselves.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Line {
     id: ItemId,
     path: OnceCell<Arc<[Arc<str>]>>,
@@ -39,6 +43,15 @@ impl Above {
     /// The top-level block above the row reached, if it is not at the top level.
     pub(super) fn top(&self) -> Option<ItemId> {
         self.lines.first().map(|line| line.id)
+    }
+
+    /// The blocks above the row reached with the text of each, which names in a path of
+    /// them would show.
+    pub(super) fn signature(&self, state: &State) -> Signature {
+        self.lines
+            .iter()
+            .map(|line| (line.id, state.shared_shown_text(line.id)))
+            .collect()
     }
 
     /// The text of each block above the row reached, as [`State::shown_text`] gives it. It

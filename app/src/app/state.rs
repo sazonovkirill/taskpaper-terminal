@@ -18,7 +18,7 @@ use super::{
     date_prompt::DatePrompt,
     edit_mode::{Resume, Session},
     external::External,
-    finder::Finder,
+    finder::{Candidate, Finder},
     folds::Folds,
     memo::Memo,
     navigator::Navigator,
@@ -31,9 +31,10 @@ use super::{
     saving::Autosave,
     selection::Selection,
     settings,
-    special_view::{Heading, SpecialView},
+    special_view::{EntriesKey, Heading, SpecialView},
     today_order::TodayOrder,
     type_picker::Conversion,
+    walks::Walks,
 };
 use crate::document::{Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks};
 
@@ -118,6 +119,11 @@ pub struct State {
     pub(super) today_starred: bool,
     /// The rows of the panes, kept while what they show stays the same.
     rows: Memo<RowsKey, Rows>,
+    /// The latest walks for the entries of special views, kept chunk by chunk of the rows.
+    pub(super) entries_walks: Walks<EntriesKey, Row>,
+    /// The latest walks for the candidates of finders over blocks: what they list and whether
+    /// completed blocks show.
+    pub(super) candidates_walks: Walks<(Symbols, bool), Candidate<ItemId>>,
     /// The lines the latest update changed, put in place or moved, which a frontend may
     /// highlight (FR-UI-11).
     pub(super) changed: Vec<ItemId>,
@@ -419,6 +425,8 @@ impl State {
             today_order: TodayOrder::default(),
             today_starred: true,
             rows: Memo::default(),
+            entries_walks: Walks::default(),
+            candidates_walks: Walks::default(),
             changed: Vec::new(),
             refused: false,
         };
@@ -977,7 +985,7 @@ struct Level<'a, 'r> {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Write as _;
+    use std::{fmt::Write as _, mem};
 
     use super::*;
     use crate::document::{Op, Snapshot, format};
@@ -1563,6 +1571,88 @@ mod tests {
         );
         let built = rows.chunks_apart_from(&before);
         assert!(built <= 4, "built {built} chunks again");
+    }
+
+    // N-PERF-02, FR-NAV-05, D-80
+    #[test]
+    fn lists_walked_again_where_the_rows_changed_are_those_walked_anew() {
+        let mut text = "Top:\n".to_owned();
+        let tags = [
+            "",
+            " @star",
+            " @due(2026-10-08)",
+            " @done(2026-10-01)",
+            " @flag",
+            " @red",
+        ];
+        for project in 0..40 {
+            writeln!(text, "\tP{project}:").unwrap();
+            for task in 0..50 {
+                let tag = tags[(project + task) % tags.len()];
+                writeln!(text, "\t\t- {project} {task}{tag}").unwrap();
+            }
+        }
+        let mut state = State::new(format::parse(&text), None);
+        state.today = jiff::civil::date(2026, 10, 8);
+        // Every fifth project left out, some of them running from one chunk of rows into the next.
+        let lists = |state: &State| {
+            let excluded: Vec<Block> = state
+                .blocks_of(&state.pane)
+                .into_iter()
+                .filter(|&(_, depth)| depth == 1)
+                .map(|(block, _)| block)
+                .step_by(5)
+                .collect();
+            let candidates = [
+                state.block_candidates(&[]),
+                state.block_candidates(&excluded),
+                state.project_candidates(),
+            ];
+            let outside: Vec<_> = candidates[0]
+                .iter()
+                .filter(|candidate| {
+                    !std::iter::successors(Some(candidate.value), |&up| {
+                        state.document.get(up)?.parent()
+                    })
+                    .any(|up| excluded.iter().any(|gone| gone.id() == up))
+                })
+                .cloned()
+                .collect();
+            assert_eq!(
+                candidates[1], outside,
+                "all but those left out and what they hold"
+            );
+            let entries = SpecialView::ALL.map(|view| {
+                (
+                    state.matching_rows(&state.pane, view),
+                    state.matching_rows_with_done(&state.pane, view),
+                )
+            });
+            (candidates, entries)
+        };
+        let middle = 20 * 51;
+        for change in [
+            Change::Fold(middle + 52),
+            Change::Text(middle + 3, "- t @star @due(2026-10-08)"),
+            Change::Text(1, "Renamed:"),
+            Change::Text(middle, "P: @done"),
+            Change::Remove(middle),
+            Change::Insert(0),
+            Change::Insert(middle + 7),
+            Change::Move(middle + 2, 0),
+            Change::Select(middle + 9),
+            Change::ShowDone,
+            Change::Text(middle + 60, "- t @done @star"),
+        ] {
+            make(&mut state, &change);
+            let walked = lists(&state);
+            let kept = (
+                mem::take(&mut state.candidates_walks),
+                mem::take(&mut state.entries_walks),
+            );
+            assert_eq!(walked, lists(&state), "after {change:?}");
+            (state.candidates_walks, state.entries_walks) = kept;
+        }
     }
 
     proptest::proptest! {

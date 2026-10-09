@@ -7,10 +7,21 @@ use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Location, Message, Row, State, above::Above, logbook::in_logbook, pane::Pane, today::for_today,
-    upcoming::upcoming_day,
+    Location, Message, Row, State, logbook::in_logbook, pane::Pane, selection::Selection,
+    today::for_today, upcoming::upcoming_day,
 };
-use crate::document::{Block, TagColor, blocks};
+use crate::document::{Block, ItemId, TagColor, blocks};
+
+/// Everything the entries of a special view are worked out from but the outline's rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct EntriesKey {
+    view: SpecialView,
+    show_done: bool,
+    selection: Selection,
+    today: Date,
+    today_starred: bool,
+    today_project: Option<ItemId>,
+}
 
 /// A special view, in the order the Navigator lists them (D-80).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -143,25 +154,32 @@ impl State {
     /// again only where it changed, gone through rather than the document's tree.
     fn matching(&self, pane: &Pane, show_done: bool, view: SpecialView) -> Vec<Row> {
         let today_project = self.today_project(pane);
-        let mut above = Above::default();
-        let mut entries = Vec::new();
-        for row in &self.unfolded_rows(Location::Outline(None), show_done) {
-            above.reach(row.depth);
-            if self.lists(
-                view,
-                row,
-                today_project.is_some() && above.top() == today_project,
-            ) {
-                entries.push(Row {
-                    depth: 0,
-                    selected: pane.selection.contains(row.id),
-                    path: above.path(self),
-                    ..row.clone()
-                });
-            }
-            above.enter(row.id);
-        }
-        entries
+        let key = EntriesKey {
+            view,
+            show_done,
+            selection: pane.selection.clone(),
+            today: self.today,
+            today_starred: self.today_starred,
+            today_project,
+        };
+        let rows = self.unfolded_rows(Location::Outline(None), show_done);
+        self.entries_walks
+            .list(key, &rows, self, |above, row, entries| {
+                above.reach(row.depth);
+                if self.lists(
+                    view,
+                    row,
+                    today_project.is_some() && above.top() == today_project,
+                ) {
+                    entries.push(Row {
+                        depth: 0,
+                        selected: pane.selection.contains(row.id),
+                        path: above.path(self),
+                        ..row.clone()
+                    });
+                }
+                above.enter(row.id);
+            })
     }
 
     /// `message` as the pane takes it where it is: in a special view an intent that needs the

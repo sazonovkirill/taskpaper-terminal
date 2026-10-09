@@ -439,13 +439,13 @@ fn diff(disk: &str, mine: &str) -> Vec<DiffLine> {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{fmt::Write as _, time::Duration};
 
     use super::*;
     use crate::{
         app::{
             DateInput, DocumentText, Menu, MenuInput, MenuRow, Message, QuickAddInput, QuickAddTo,
-            SelectionChange, SpecialView, Symbols, TextEdit, state::NOTICE_TIME,
+            SelectionChange, SpecialView, Symbols, TextEdit, state::NOTICE_TIME, walks::Walks,
         },
         document::{Op, Transaction},
     };
@@ -1011,6 +1011,43 @@ mod tests {
         assert_eq!(view.entries.len(), 3, "BX is listed");
         state.update(Message::Menu(Menu::GoToSymbol, MenuInput::Choose));
         assert_eq!(text_of(&state, state.focus()).as_deref(), Some("AB"));
+    }
+
+    // file-io.md §3, FR-NAV-05, D-80, D-104, N-PERF-02
+    #[test]
+    fn a_reload_lists_the_reloaded_outline_in_finders_and_views_as_walked_anew() {
+        let outline = |top: &str| {
+            let mut text = format!("{top}:\n");
+            for project in 0..40 {
+                writeln!(text, "\tP{project}:").unwrap();
+                for task in 0..50 {
+                    writeln!(text, "\t\t- {project} {task} @star").unwrap();
+                }
+            }
+            text
+        };
+        let lists = |state: &State| {
+            (
+                state.block_candidates(&[]),
+                state.matching_rows(&state.pane, SpecialView::Starred),
+            )
+        };
+        let mut state = opened(&outline("Top"));
+        let _ = lists(&state);
+        state.update(Message::OpenGoToSymbol(Symbols::All));
+        state.update(found(&outline("Renamed")));
+        assert_eq!(state.go_to_symbol().expect("open").entries.len(), 2041);
+        let (candidates, entries) = lists(&state);
+        assert_eq!(entries.len(), 2000);
+        assert!(
+            entries
+                .iter()
+                .all(|row| row.path.first().map(|top| &**top) == Some("Renamed")),
+            "every path starts from the reloaded top block"
+        );
+        state.candidates_walks = Walks::default();
+        state.entries_walks = Walks::default();
+        assert_eq!((candidates, entries), lists(&state));
     }
 
     // file-io.md §3, FR-OPS-05, D-104

@@ -47,6 +47,7 @@ mod type_picker;
 mod upcoming;
 pub mod update;
 mod view_state;
+mod walks;
 
 pub use clipboard::Paste;
 pub use command_menu::{CommandMenuView, MenuInput, MenuRow};

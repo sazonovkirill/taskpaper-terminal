@@ -4,6 +4,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
     iter::FusedIterator,
     ops::Range,
     rc::Rc,
@@ -114,6 +115,13 @@ impl Rows {
             })
     }
 
+    /// The rows chunk by chunk, in order.
+    pub(super) fn chunks(&self) -> impl Iterator<Item = RowChunk> + '_ {
+        self.chunks
+            .iter()
+            .map(|(_, chunk)| RowChunk(Rc::clone(chunk)))
+    }
+
     /// How many rows the subtree of the row at `index` takes, its own included.
     pub(super) fn span(&self, index: usize) -> Option<usize> {
         self.entry(index).map(|entry| entry.span)
@@ -179,6 +187,32 @@ impl Eq for Rows {}
 impl Rows {
     fn entries(&self) -> impl Iterator<Item = &Entry> {
         self.chunks.iter().flat_map(|(_, chunk)| chunk.iter())
+    }
+}
+
+/// A chunk of rows. Rows built again after a change share the chunks it left alone with the rows
+/// before, and two chunks are equal only when they are the same one.
+#[derive(Debug, Clone)]
+pub(super) struct RowChunk(Chunk);
+
+impl RowChunk {
+    /// Its rows in order.
+    pub(super) fn rows(&self) -> impl Iterator<Item = &Row> {
+        self.0.iter().map(|entry| &entry.row)
+    }
+}
+
+impl PartialEq for RowChunk {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for RowChunk {}
+
+impl Hash for RowChunk {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.0).cast::<Entry>().hash(state);
     }
 }
 
