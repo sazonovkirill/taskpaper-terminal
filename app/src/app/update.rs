@@ -380,7 +380,8 @@ pub enum Menu {
 
 impl Message {
     /// Whether this intent belongs to navigate mode, so that it ends an edit session first,
-    /// rather than to edit mode or the frontend's reports, which leave the session alone.
+    /// rather than to edit mode or the frontend's reports, which leave the session alone, as
+    /// does keeping mine in the conflict prompt, which changes nothing being edited (D-104).
     fn ends_editing(&self) -> bool {
         match self {
             Self::Started
@@ -390,6 +391,7 @@ impl Message {
             | Self::SaveRefused { .. }
             | Self::CheckFile
             | Self::FileChecked { .. }
+            | Self::KeepMine
             | Self::ToggleDiff
             | Self::ConflictCopied { .. }
             | Self::ConflictCopyFailed { .. }
@@ -419,7 +421,6 @@ impl Message {
             | Self::ResizePane(_) => false,
             Self::Quit
             | Self::Terminate
-            | Self::KeepMine
             | Self::TakeTheirs
             | Self::FocusNext
             | Self::FocusPrevious

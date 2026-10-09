@@ -935,6 +935,27 @@ mod tests {
 
     // file-io.md §3, D-104
     #[test]
+    fn keeping_mine_carries_on_editing_with_the_caret_where_it_was() {
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "xy");
+        state.update(Message::Text(TextEdit::Move {
+            motion: crate::app::Motion::Left,
+            select: false,
+        }));
+        state.update(found("- theirs\n"));
+        assert!(state.in_conflict());
+        state.update(Message::KeepMine);
+        state.update(copied());
+        assert!(!state.in_conflict());
+        assert_eq!(state.mode(), crate::app::Mode::Edit);
+        assert_eq!(shown(&state), "ax|y");
+        typed(&mut state, "z");
+        assert_eq!(format::serialize(state.document()), "- axzy\n- b\n");
+    }
+
+    // file-io.md §3, D-104
+    #[test]
     fn a_reload_that_changed_the_block_being_edited_ends_editing() {
         let mut state = opened("- a\n- b\n");
         state.update(Message::FocusNext);

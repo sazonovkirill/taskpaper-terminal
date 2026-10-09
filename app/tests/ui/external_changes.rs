@@ -285,3 +285,23 @@ fn typing_on_when_the_prompt_opens_chooses_nothing() {
         "A:\n\t- x\n\t- from phone\n"
     );
 }
+
+// F-FILE-06, OQ-16, D-104
+#[test]
+fn keeping_mine_carries_on_typing_where_it_was() {
+    let mut app = Harness::with_text(GROCERIES, 80, 7);
+    app.settle();
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(" and");
+    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.settle();
+    app.type_keys(" honey");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        "Groceries:\n\t- Milk and honey\n\t- Eggs\n"
+    );
+}
