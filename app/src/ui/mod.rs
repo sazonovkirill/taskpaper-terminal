@@ -1357,11 +1357,6 @@ impl Tui {
                 &theme,
             )
         };
-        // A status message whose time is up is drawn while it fades out (UI-ANIM-07).
-        let notice = self
-            .state
-            .notice()
-            .or_else(|| self.animator.fading_notice(&theme));
         let after_path = |notice| {
             temporary
                 .into_iter()
@@ -1369,20 +1364,44 @@ impl Tui {
                 .chain(status(notice))
                 .collect::<Vec<_>>()
         };
+        let separator = " · ";
+        let path = self
+            .state
+            .path()
+            .map(|path| effects::abbreviate_path(path, self.home.as_deref()));
+        let width = usize::from(area.width);
+        let quiet_status = Line::from_iter(after_path(None)).width();
+        // The message has the room the path leaves when cut to `…` alone.
+        let shortest_path = path
+            .as_ref()
+            .map_or(0, |_| Span::raw(separator).width() + Span::raw("…").width());
+        let room = width.saturating_sub(
+            mode.width() + shortest_path + quiet_status + Span::raw(separator).width(),
+        );
+        // A status message whose time is up is drawn while it fades out (UI-ANIM-07).
+        let notice = self
+            .state
+            .notice()
+            .or_else(|| self.animator.fading_notice(&theme))
+            .map(|notice| widgets::notice_span(notice, self.home.as_deref(), room, &theme));
         // The path gives up its columns first, so the save state and messages stay in view.
         let mut spans = vec![mode];
-        if let Some(path) = self.state.path() {
-            let path = effects::abbreviate_path(path, self.home.as_deref());
-            let separator = " · ";
-            let room = usize::from(area.width).saturating_sub(
-                Line::from_iter(spans.iter().cloned().chain(after_path(notice))).width()
+        if let Some(path) = path {
+            let room = width.saturating_sub(
+                Line::from_iter(spans.iter().cloned().chain(after_path(notice.clone()))).width()
                     + Span::raw(separator).width(),
             );
             spans.push(format!("{separator}{}", widgets::fitted_path(&path, room)).into());
         }
+        let before_status = Line::from_iter(spans.iter().cloned()).width();
         let quiet = Line::from_iter(spans.iter().cloned().chain(after_path(None))).width();
         spans.extend(after_path(notice));
-        let line = Line::from(spans);
+        // A message that still does not fit ends in `…`, so it shows it is cut.
+        let line = if before_status < width {
+            widgets::truncate(&Line::from(spans), width)
+        } else {
+            Line::from(spans)
+        };
         let quiet = u16::try_from(quiet).unwrap_or(u16::MAX);
         let notice = Rect {
             x: area.x.saturating_add(quiet),

@@ -3,7 +3,7 @@
 mod kept_lines;
 mod wrap;
 
-use std::{borrow::Cow, ops::Range, rc::Rc};
+use std::{borrow::Cow, ops::Range, path::Path, rc::Rc};
 
 use jiff::civil::Date;
 use ratatui::{
@@ -20,8 +20,10 @@ mod finder;
 
 pub use finder::FinderPopup;
 pub use kept_lines::KeptLines;
+pub(super) use wrap::truncate;
 
 use super::{
+    effects::abbreviate_path,
     layout,
     theme::{Icon, IconSet, Theme},
 };
@@ -448,14 +450,14 @@ pub fn fitted_path(path: &str, room: usize) -> Cow<'_, str> {
 /// What the status line says after the file's path (ui.md §1, file-io.md §1–3): the unsaved icon
 /// of `icons` while changes are unsaved, an error badge when the last save failed, `read-only`,
 /// `not on disk` when the file was deleted or moved away, the question a failed save on quit
-/// asks, and the current notice, errors and warnings in `theme`'s colors.
+/// asks, and the current notice as [`notice_span`] words it, errors in `theme`'s colors.
 #[must_use]
 pub fn file_status(
     save: SaveState,
     access: Access,
     gone: bool,
     confirming_quit: bool,
-    notice: Option<&Notice>,
+    notice: Option<Span<'static>>,
     icons: IconSet,
     theme: &Theme,
 ) -> Vec<Span<'static>> {
@@ -486,14 +488,27 @@ pub fn file_status(
     }
     if let Some(notice) = notice {
         spans.push(Span::raw(" · "));
-        spans.push(notice_span(notice, theme));
+        spans.push(notice);
     }
     spans
 }
 
-/// The status line's words for `notice`.
-fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
+/// The status line's words for `notice`, in `theme`'s colors when it is an error or warning. A
+/// conflict copy's path reads `home` as `~` and, to keep the words in `room` columns, gives up
+/// its start behind `…` as the file's path does, so its file name stays longest (ui.md §1).
+#[must_use]
+pub fn notice_span(
+    notice: &Notice,
+    home: Option<&Path>,
+    room: usize,
+    theme: &Theme,
+) -> Span<'static> {
     let (error_style, warning_style) = (error_style(theme), warning_style(theme));
+    let in_copy = |words: &str, copy: &Path| {
+        let copy = abbreviate_path(copy, home);
+        let room = room.saturating_sub(Span::raw(words).width());
+        Span::raw(format!("{words}{}", fitted_path(&copy, room)))
+    };
     match notice {
         Notice::BackupFailed { reason } => {
             Span::styled(format!("backup failed: {reason}"), warning_style)
@@ -508,14 +523,8 @@ fn notice_span(notice: &Notice, theme: &Theme) -> Span<'static> {
             Span::styled(format!("edit failed: {reason}"), error_style)
         }
         Notice::Reloaded => Span::raw("Reloaded (changed on disk)"),
-        Notice::KeptMine { copy } => Span::raw(format!(
-            "Kept your version; the one on disk is in {}",
-            copy.display()
-        )),
-        Notice::TookTheirs { copy } => Span::raw(format!(
-            "Took the version on disk; yours is in {}",
-            copy.display()
-        )),
+        Notice::KeptMine { copy } => in_copy("Kept your version; the one on disk is in ", copy),
+        Notice::TookTheirs { copy } => in_copy("Took the version on disk; yours is in ", copy),
         Notice::ConflictCopyFailed { reason } => {
             Span::styled(format!("conflict copy failed: {reason}"), error_style)
         }
@@ -3436,6 +3445,7 @@ mod tests {
         confirming_quit: bool,
         notice: Option<&Notice>,
     ) -> Vec<(String, Style)> {
+        let notice = notice.map(|notice| notice_span(notice, None, usize::MAX, &THEME));
         file_status(save, access, false, confirming_quit, notice, ICONS, &THEME)
             .into_iter()
             .map(|span| (span.content.into_owned(), span.style))
@@ -3790,6 +3800,41 @@ mod tests {
                 "│Ctrl+R take theirs        │"
             ],
             "the keys go before the message when there is no room for both"
+        );
+    }
+
+    // file-io.md §3, ui.md §1
+    #[test]
+    fn a_conflict_copys_path_reads_home_as_a_tilde_and_gives_up_its_start_first() {
+        let home = Path::new("/home/u");
+        let kept = Notice::KeptMine {
+            copy: std::path::PathBuf::from("/home/u/backups/f-1/2026-conflict.taskpaper"),
+        };
+        let shown = |notice: &Notice, room| notice_span(notice, Some(home), room, &THEME).content;
+        assert_eq!(
+            shown(&kept, usize::MAX),
+            "Kept your version; the one on disk is in ~/backups/f-1/2026-conflict.taskpaper"
+        );
+        let prefix = "Kept your version; the one on disk is in ".len();
+        assert_eq!(
+            shown(&kept, prefix + 28),
+            "Kept your version; the one on disk is in …f-1/2026-conflict.taskpaper"
+        );
+        assert_eq!(
+            shown(&kept, 10),
+            "Kept your version; the one on disk is in …",
+            "the line cuts the rest"
+        );
+        let took = Notice::TookTheirs {
+            copy: std::path::PathBuf::from("/elsewhere/c.taskpaper"),
+        };
+        assert_eq!(
+            shown(&took, usize::MAX),
+            "Took the version on disk; yours is in /elsewhere/c.taskpaper"
+        );
+        assert_eq!(
+            shown(&took, "Took the version on disk; yours is in ".len() + 14),
+            "Took the version on disk; yours is in …e/c.taskpaper"
         );
     }
 

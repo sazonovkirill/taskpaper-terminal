@@ -5,7 +5,7 @@ use std::{fs, path::PathBuf, time::Duration};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use taskpaper_terminal::{app::Message, ui::Input};
 
-use crate::support::{Harness, focused_rows, line, outline_rows};
+use crate::support::{Harness, NAVIGATE, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries:\n\t- Milk\n\t- Eggs\n";
 
@@ -339,4 +339,36 @@ fn a_narrow_conflict_prompt_shows_every_key() {
             "{key} in {screen:#?}"
         );
     }
+}
+
+// file-io.md §3, ui.md §1
+#[test]
+fn a_message_too_long_for_the_status_line_ends_in_an_ellipsis() {
+    let mut app = Harness::with_text(GROCERIES, 60, 8);
+    app.settle();
+    fs::write(path(&app), b"caf\xe9\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
+    assert_eq!(
+        status_line(&mut app),
+        format!("{NAVIGATE} · … · cannot take the version on disk: the file …")
+    );
+}
+
+// file-io.md §3, ui.md §1
+#[test]
+fn the_conflict_copys_path_keeps_its_file_name_in_view() {
+    let mut app = Harness::with_text(GROCERIES, 100, 8);
+    app.settle();
+    app.type_keys("jx");
+    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.settle();
+    let status = status_line(&mut app);
+    assert!(
+        status.contains("Kept your version; the one on disk is in …")
+            && status.ends_with("/2026-10-05-093000-conflict.taskpaper"),
+        "{status}"
+    );
 }

@@ -69,7 +69,7 @@ pub(super) fn wrap(line: &Line, start: usize, first: usize, rest: usize) -> Vec<
 /// `line` cut to `columns` columns, its last column a `…` in the style of the first grapheme cut,
 /// when it is wider; as it is otherwise. Only the span it is cut in is gone through grapheme by
 /// grapheme, since every row on screen is cut each frame (N-PERF-02).
-pub(super) fn truncate(line: &Line, columns: usize) -> Line<'static> {
+pub(in crate::ui) fn truncate(line: &Line, columns: usize) -> Line<'static> {
     let fits = line
         .spans
         .iter()
