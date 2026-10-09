@@ -2,6 +2,7 @@
 
 use std::{fs, os::unix::fs::PermissionsExt as _, path::Path, time::Duration};
 
+use crossterm::event::{KeyCode, KeyModifiers};
 use jiff::civil::date;
 use taskpaper_terminal::{
     app::Message,
@@ -170,4 +171,26 @@ fn a_crash_while_a_save_is_under_way_writes_the_recovery_file_after_it() {
         "the save under way is written first"
     );
     assert_eq!(recovery.find(&path).unwrap(), Some(written));
+}
+
+// file-io.md §2, ui.md §1
+#[test]
+fn the_quit_question_stays_in_view_beside_a_long_save_error() {
+    let mut app = Harness::with_text("- Milk\n", 80, 5);
+    app.settle();
+    let folder = app.path.as_ref().unwrap().parent().unwrap().to_owned();
+    fs::remove_dir_all(&folder).unwrap();
+    fs::write(&folder, "a file where the folder was").unwrap();
+    app.type_keys("x");
+    app.wait(Duration::from_secs(1));
+    app.settle();
+    app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
+    app.settle();
+    assert!(!app.tui.should_quit());
+    let status = status_line(&mut app);
+    assert!(
+        status.contains(" ● Ctrl+Q again quits without saving · save failed: "),
+        "{status}"
+    );
+    fs::remove_file(&folder).unwrap();
 }

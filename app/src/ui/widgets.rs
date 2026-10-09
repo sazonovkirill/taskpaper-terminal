@@ -463,24 +463,26 @@ pub fn file_status(
     let error_style = error_style(theme);
     let mut spans = match save {
         SaveState::Saved => Vec::new(),
-        SaveState::Unsaved => vec![Span::raw(format!(" {unsaved}"))],
-        SaveState::Failed { reason } => vec![
-            Span::raw(format!(" {unsaved} ")),
-            Span::styled(format!("save failed: {reason}"), error_style),
-        ],
+        SaveState::Unsaved | SaveState::Failed { .. } => vec![Span::raw(format!(" {unsaved}"))],
     };
+    // The question goes before the save error, which can be too long for the line, so a second
+    // Ctrl+Q is never pressed unwarned (file-io.md §2).
+    if confirming_quit {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            "Ctrl+Q again quits without saving",
+            Style::new().bold(),
+        ));
+    }
+    if let SaveState::Failed { reason } = save {
+        spans.push(Span::raw(if confirming_quit { " · " } else { " " }));
+        spans.push(Span::styled(format!("save failed: {reason}"), error_style));
+    }
     if access == Access::ReadOnly {
         spans.push(Span::raw(" · read-only"));
     }
     if gone {
         spans.push(Span::raw(" · not on disk"));
-    }
-    if confirming_quit {
-        spans.push(Span::raw(" · "));
-        spans.push(Span::styled(
-            "Ctrl+Q again quits without saving",
-            Style::new().bold(),
-        ));
     }
     if let Some(notice) = notice {
         spans.push(Span::raw(" · "));
@@ -3346,19 +3348,24 @@ mod tests {
         assert_eq!(
             status(failed, rw, false, None),
             [
-                plain(" ● "),
+                plain(" ●"),
+                plain(" "),
                 ("save failed: disk full".to_owned(), error_style(&THEME))
             ]
         );
         assert_eq!(
-            status(failed, rw, true, None)[2..],
+            status(failed, rw, true, None),
             [
-                plain(" · "),
+                plain(" ●"),
+                plain(" "),
                 (
                     "Ctrl+Q again quits without saving".to_owned(),
                     Style::new().bold()
-                )
-            ]
+                ),
+                plain(" · "),
+                ("save failed: disk full".to_owned(), error_style(&THEME))
+            ],
+            "the question comes before the error, which may not fit"
         );
     }
 
