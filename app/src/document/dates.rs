@@ -373,18 +373,18 @@ impl<'a> Parser<'a> {
             "tomorrow" => self.today.tomorrow().map_err(|_| out_of_range),
             "yesterday" => self.today.yesterday().map_err(|_| out_of_range),
             "this" | "next" | "last" => {
-                // The next such day is the first after today, so `next` skips one more; `this`
-                // names the weekday alone (D-112).
-                let (step, nth) = match word {
-                    "next" => (1, 2),
-                    "last" => (-1, -1),
-                    _ => (0, 1),
+                // `this` names the weekday alone (D-112), the first such day after today; `next`
+                // the first after the coming 6 days, 7 to 13 days ahead as the date chip names it
+                // (D-46, D-117).
+                let (step, from, nth) = match word {
+                    "next" => (1, self.today.checked_add(6.days()), 1),
+                    "last" => (-1, Ok(self.today), -1),
+                    _ => (0, Ok(self.today), 1),
                 };
                 let (target, target_offset) = self.word()?;
                 match weekday(&target) {
-                    Some(weekday) => self
-                        .today
-                        .nth_weekday(nth, weekday)
+                    Some(weekday) => from
+                        .and_then(|from| from.nth_weekday(nth, weekday))
                         .map_err(|_| out_of_range),
                     _ if target == "weekend" => self.weekend(step, offset),
                     _ => self.period_start(&target, target_offset, step, offset),
@@ -617,10 +617,29 @@ mod tests {
         fails_on(Date::MAX, "this fri", DateError::OutOfRange { offset: 0 });
     }
 
+    // D-117: `next` names the weekday 7 to 13 days ahead, as the date chip does (D-46).
     #[test]
-    fn next_and_last_weekday_step_a_week_further_or_back() {
-        check("next fri", date(2026, 10, 16));
-        check("Next Wednesday", date(2026, 10, 21));
+    fn next_weekday_is_the_one_7_to_13_days_ahead() {
+        for (name, expected) in [
+            ("next thu", date(2026, 10, 15)),
+            ("next fri", date(2026, 10, 16)),
+            ("next sun", date(2026, 10, 18)),
+            ("next tue", date(2026, 10, 20)),
+            ("Next Wednesday", date(2026, 10, 14)),
+        ] {
+            check(name, expected);
+            assert_eq!(
+                relative(expected, TODAY),
+                format!("next {}", expected.strftime("%a"))
+            );
+        }
+        check_on(date(2026, 10, 9), "next fri", date(2026, 10, 16));
+        check_on(date(2026, 10, 10), "next fri", date(2026, 10, 23));
+        check_on(date(2026, 12, 31), "next thu", date(2027, 1, 7));
+    }
+
+    #[test]
+    fn last_weekday_steps_a_week_back() {
         check("last fri", date(2026, 10, 2));
         check("last wed", date(2026, 9, 30));
         check("last thu", date(2026, 10, 1));

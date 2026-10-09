@@ -38,7 +38,7 @@ Dates are stored as `YYYY-MM-DD` with no time (D-6), so they run from 0000-01-01
 
 - Absolute `YYYY-MM-DD`, plus `MM-DD` and `MM/DD` (this year, or next year if already past for `due`).
 - `today`, `tomorrow`, `yesterday`.
-- Weekday names and three-letter abbreviations (`fri`, `friday`): the next such day after today, as is `this fri` (D-112); `next fri` the one after that; `last fri` the most recent past one.
+- Weekday names and three-letter abbreviations (`fri`, `friday`): the next such day after today, as is `this fri` (D-112); `next fri` the Friday 7 to 13 days ahead, the one the date chip names `next Fri`, so on a Friday a week away (D-117); `last fri` the most recent past one.
 - `this|next|last week|month|year`: the first day of that period; weeks start on Monday (ISO, as TaskPaper).
 - `weekend` and `this weekend`: the coming Saturday, today on a Saturday; `next|last weekend`: a week after or before it (D-97).
 - Offsets `[+|-]N d|w|m|y` and long forms (`+3d`, `2 weeks`, `-1 month`), applied to today or to a preceding date (`fri +1w`). Unlike TaskPaper's grammar (where `m` is minutes), `m` means months here because there are no times.
