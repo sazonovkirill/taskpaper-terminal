@@ -122,15 +122,27 @@ fn refuses_any_other_option_rather_than_open_a_file_named_like_it() -> TestResul
     Ok(())
 }
 
+// file-io.md §1, D-113
 #[test]
-fn refuses_more_than_one_path() -> TestResult {
-    let output = tpt(&["a".as_ref(), "b".as_ref()])?;
-    assert_eq!(output.status.code(), Some(1));
-    assert!(
-        stderr(&output).contains("usage: tpt [path]"),
-        "{}",
-        stderr(&output)
-    );
+fn refuses_more_than_one_argument_or_an_empty_path_with_the_usage() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    for args in [&["a", "b"][..], &["--help", "--version"], &[""]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_tpt"))
+            .args(args)
+            .current_dir(dir.path())
+            .output()?;
+        assert_eq!(output.status.code(), Some(1), "{args:?}");
+        assert!(
+            stderr(&output).contains("usage: tpt [path]\n       tpt --help | --version"),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "{args:?}: nothing printed as asked"
+        );
+    }
+    assert_eq!(std::fs::read_dir(dir.path())?.count(), 0, "no file created");
     Ok(())
 }
 

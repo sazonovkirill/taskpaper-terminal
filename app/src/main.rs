@@ -52,8 +52,12 @@ enum Arguments {
 fn arguments() -> anyhow::Result<Arguments> {
     let mut args = std::env::args_os().skip(1);
     let path = args.next().map(PathBuf::from);
+    // Every refused command line prints the same usage (D-113).
     if args.next().is_some() {
-        bail!("usage: tpt [path]");
+        bail!("one path at most\n{HELP}");
+    }
+    if path.as_deref() == Some(Path::new("")) {
+        bail!("the path is empty\n{HELP}");
     }
     // A flag is never taken for a file name, so a mistyped one cannot create a file (D-113).
     if let Some(flag) = path.as_deref().and_then(Path::to_str)
