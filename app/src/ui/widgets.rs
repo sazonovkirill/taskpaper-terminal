@@ -210,11 +210,11 @@ impl<'a> OutlineView<'a> {
     fn lay_out(&self, row: &Row, width: usize) -> (Rc<[Line<'static>]>, Line<'static>) {
         let chips = chips(row, self.today, self.icons, self.theme);
         let room = width.saturating_sub(chips.width());
-        let line = row_line(row, room, self.icons, self.theme);
+        let (line, marks) = row_line(row, room, self.icons, self.theme);
         let lines = if self.wrap {
             wrap::wrap(&line, text_column(row, self.icons), room, width).into()
         } else {
-            Rc::from([wrap::truncate(&line, room)])
+            Rc::from([truncate_before(&line, marks, room)])
         };
         (lines, chips)
     }
@@ -1331,8 +1331,14 @@ pub(super) fn drawable(text: &str) -> Cow<'_, str> {
 /// dimmed with a done block or one inside it. A collapsed block with children shows
 /// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
 /// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
-/// (D-34). Markers and icons come from `icons`, colors from `theme`.
-fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Line<'a> {
+/// (D-34). Markers and icons come from `icons`, colors from `theme`. Returns the line with the
+/// spans of the flag, star and bookmark.
+fn row_line<'a>(
+    row: &'a Row,
+    width: usize,
+    icons: IconSet,
+    theme: &Theme,
+) -> (Line<'a>, Range<usize>) {
     let (mut line, style) = lead(row, icons, theme);
     let before_title = line.spans.len();
     let title = row
@@ -1366,10 +1372,12 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
         .bookmark
         .then(|| (Icon::Bookmark, bookmark_style(theme)));
     let marks = [flag, star, bookmark];
+    let marks_start = line.spans.len();
     for (icon, style) in marks.into_iter().flatten() {
         line.push_span(" ");
         line.push_span(Span::styled(icon.glyph(icons), recede(style)));
     }
+    let mut marked = marks_start..line.spans.len();
     if let Some(fold) = fold(row, icons) {
         line.push_span(Span::styled(format!(" {fold}"), Style::new().dim()));
     }
@@ -1389,10 +1397,27 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
                 before_title,
                 Span::styled("─".repeat(half), divider_style(theme)),
             );
+            marked = marked.start + 1..marked.end + 1;
         }
         line.push_span(rule(&line, width, theme));
     }
-    line
+    (line, marked)
+}
+
+/// `line` cut to `columns` columns as [`wrap::truncate`] cuts it, but before its spans `kept`
+/// when what comes before them is too wide, so they stay in view after its `…` (ui.md §2); what
+/// follows them is cut. When `kept` alone leaves no room, `line` is cut as it is.
+fn truncate_before(line: &Line, kept: Range<usize>, columns: usize) -> Line<'static> {
+    let head: Vec<_> = line.spans.iter().take(kept.start).cloned().collect();
+    let tail = line.spans.iter().skip(kept.start).take(kept.len());
+    let room = columns.saturating_sub(tail.clone().map(Span::width).sum());
+    if head.iter().map(Span::width).sum::<usize>() <= room || room == 0 {
+        return wrap::truncate(line, columns);
+    }
+    let mut cut = wrap::truncate(&Line::from(head), room);
+    cut.spans
+        .extend(tail.map(|span| Span::styled(span.content.to_string(), span.style)));
+    cut.style(line.style)
 }
 
 /// The fold marker of a collapsed `row` with children, drawn with `icons`: `▸ n` with the count of
@@ -3310,6 +3335,48 @@ mod tests {
         assert_eq!(
             lines(&render("- buy milk and eggs @due(2026-10-05)", 20, 1)),
             [at_right("- buy milk …", &chip(Icon::Due, "today"), 20)]
+        );
+    }
+
+    // FR-TAG-04, ui.md §2: the flag, star and bookmark are the only sign of their tags, so text
+    // too long for its room is cut before them, as before the chips.
+    #[test]
+    fn with_wrap_off_text_ends_in_an_ellipsis_before_the_flag_star_and_bookmark() {
+        let [flag, star, bookmark] =
+            [Icon::Flag, Icon::Star, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
+        assert_eq!(
+            lines(&render(
+                "- buy milk and eggs @flag @star @bookmark @due(2026-10-05)",
+                20,
+                1
+            )),
+            [at_right(
+                &format!("- buy… {flag} {star} {bookmark}"),
+                &chip(Icon::Due, "today"),
+                20
+            )]
+        );
+        assert_eq!(
+            lines(&render(
+                "P:\n\t- buy milk and eggs @star\n\t- a @flag",
+                12,
+                3
+            )),
+            [
+                "P:".to_owned(),
+                format!("  - buy m… {star}"),
+                format!("  - a {flag}")
+            ],
+        );
+        assert_eq!(
+            lines(&render("--- A divider's long title --- @bookmark", 16, 1)),
+            [format!(" A divider's … {bookmark}")],
+            "a titled divider keeps its bookmark too"
+        );
+        assert_eq!(
+            lines(&render("- buy milk @flag @star", 4, 1)),
+            ["- b…"],
+            "with no room for the text the icons are cut as before"
         );
     }
 
