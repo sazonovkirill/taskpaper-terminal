@@ -14,15 +14,16 @@ type Cell<'a> = (&'a str, Style);
 /// `line` in lines `rest` columns wide, the first of them `first` columns wide, broken between
 /// words where it can and inside a word wider than a line. Its first `start` columns, the indent
 /// and the marker, stay on the first line; the lines after it start under the text, without the
-/// spaces they were broken at. When no column is left after `start`, `line` stays one line.
+/// spaces they were broken at. When no column is left after `start`, `line` takes one line cut
+/// to `first` columns, as [`truncate`] cuts it with wrap off.
 pub(super) fn wrap(line: &Line, start: usize, first: usize, rest: usize) -> Vec<Line<'static>> {
-    let cells = cells(line);
     let full = rest.saturating_sub(start);
+    if full == 0 {
+        return vec![truncate(line, first)];
+    }
+    let cells = cells(line);
     let at = split(&cells, start);
     let (prefix, body) = cells.split_at(at);
-    if full == 0 {
-        return vec![styled(&cells, line.style)];
-    }
     let mut lines: Vec<Vec<Cell>> = vec![prefix.to_vec()];
     let (mut room, mut used) = (first.saturating_sub(start), 0);
     // The spaces before the next word, which a line breaks at instead of ending in them.
@@ -274,8 +275,10 @@ mod tests {
 
     // FR-UI-05
     #[test]
-    fn without_room_after_the_indent_the_line_stays_whole() {
-        check(&task("abc def"), 4, 4, 4, &["  - abc def"]);
+    fn without_room_after_the_indent_the_line_is_cut_as_with_wrap_off() {
+        check(&task("abc def"), 4, 4, 4, &["  -…"]);
+        check(&task("abc def"), 4, 2, 3, &[" …"]);
+        check(&task(""), 4, 4, 4, &["  - "]);
     }
 
     // FR-UI-05

@@ -142,3 +142,20 @@ fn the_caret_sits_on_the_edited_block_below_a_wrapped_one_which_edits_on_one_lin
     assert_eq!(shown(&mut app), ["- aaa b", "- d"]);
     app.terminal.backend_mut().assert_cursor_position((5, 2));
 }
+
+// FR-UI-05
+#[test]
+fn blocks_indented_past_the_pane_end_in_an_ellipsis_as_with_wrap_off() {
+    let text = (0..12).fold(String::new(), |mut text, depth| {
+        writeln!(text, "{}- a", "\t".repeat(depth)).expect("writing to a String cannot fail");
+        text
+    });
+    let mut app = Harness::with_text(&text, 20, 15);
+    app.type_keys("G");
+    let unwrapped = outline_rows(&mut app);
+    assert!(unwrapped.iter().all(|row| !row.is_empty()), "{unwrapped:?}");
+    assert!(unwrapped[11].ends_with('…'), "{unwrapped:?}");
+    app.type_keys("gw");
+    assert_eq!(outline_rows(&mut app), unwrapped);
+    assert_eq!(focused_rows(&mut app), [unwrapped[11].clone()]);
+}
