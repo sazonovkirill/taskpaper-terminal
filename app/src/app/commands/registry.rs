@@ -8,7 +8,7 @@ use crate::{
     app::{
         Mode, NavigatorInput, NewBlock, PaneChange, Paste, QuickAddTo, SelectionChange, SpecialView,
     },
-    document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
+    document::{Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
 /// A command in one mode with its default bindings.
@@ -425,6 +425,16 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetSection(true), Mode::Navigate, &["S"]),
     entry!(Command::SetSection(false), Mode::Navigate, &["s"]),
     entry!(Command::EditNode, Mode::Navigate, &["e", "m i"]),
+    entry!(
+        Command::OpenAttachment(Attachment::Note),
+        Mode::Navigate,
+        &["n"]
+    ),
+    entry!(
+        Command::OpenAttachment(Attachment::Comments),
+        Mode::Navigate,
+        &["N"]
+    ),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
     entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
@@ -727,6 +737,8 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::OpenColorPicker,
             Command::ToggleFlag(Flag::Bookmark),
             Command::EditNode,
+            Command::OpenAttachment(Attachment::Note),
+            Command::OpenAttachment(Attachment::Comments),
         ],
     ),
     (
@@ -868,7 +880,7 @@ mod tests {
                 ("Editing and Creating", 4),
                 ("Selection", 2),
                 ("Structure", 9),
-                ("Block Metadata", 7),
+                ("Block Metadata", 9),
                 ("View and Panels", 10),
             ]
         );

@@ -16,10 +16,12 @@ pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
 pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
 
 use super::{
-    Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste, QuickAddInput,
-    QuickAddTo, SaveAs, SelectionChange, SpecialView, Symbols, TextEdit,
+    AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
+    QuickAddInput, QuickAddTo, SaveAs, SelectionChange, SpecialView, Symbols, TextEdit,
 };
-use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
+use crate::document::{
+    Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker,
+};
 
 /// A command: one user intent, whatever key, menu or palette gives it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,6 +127,8 @@ pub enum Command {
     Retype(Typed),
     /// Show and change every property of the focused block in the Edit Node dialog.
     EditNode,
+    /// Open the attachments panel on the focused block's attachment of this kind (FR-ATT-03).
+    OpenAttachment(Attachment),
     /// Find a block by name and go to it.
     GoToSymbol,
     /// Find a project by name and go to it (D-65).
@@ -285,6 +289,8 @@ impl Command {
             Self::Retype(Typed::Task) => "Task".into(),
             Self::Retype(Typed::Text) => "Note".into(),
             Self::EditNode => "Edit Node".into(),
+            Self::OpenAttachment(Attachment::Note) => "Open Note".into(),
+            Self::OpenAttachment(Attachment::Comments) => "Open Comments".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
@@ -311,11 +317,7 @@ impl Command {
             Self::MoveDown => "Move Down".into(),
             Self::OpenUrl => "Open Link".into(),
             Self::Group => "Group".into(),
-            Self::Select(SelectionChange::ExtendDown) => "Extend Selection Down".into(),
-            Self::Select(SelectionChange::ExtendUp) => "Extend Selection Up".into(),
-            Self::Select(SelectionChange::Toggle) => "Toggle Selected".into(),
-            Self::Select(SelectionChange::All) => "Select All".into(),
-            Self::Select(SelectionChange::Clear) => "Clear Selection".into(),
+            Self::Select(change) => selection_name(change).into(),
             Self::StopEditing => "Stop Editing".into(),
             Self::OpenCommandMenu => "Command Menu".into(),
             Self::NewNext => "Stop Editing and Add Next Block".into(),
@@ -395,6 +397,7 @@ impl Command {
             | Self::ScrollShortcutsDown
             | Self::ScrollShortcutsUp => return None,
             Self::EditNode => Message::NodeEditor(NodeInput::Open),
+            Self::OpenAttachment(kind) => Message::Attachments(AttachmentsInput::Open(kind)),
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,
@@ -459,6 +462,17 @@ fn pane_name(change: PaneChange) -> Cow<'static, str> {
         PaneChange::FocusLeft => "Focus Pane Left".into(),
         PaneChange::FocusRight => "Focus Pane Right".into(),
         PaneChange::Close => "Close Pane".into(),
+    }
+}
+
+/// The name of the command that changes the selection as `change` says.
+fn selection_name(change: SelectionChange) -> &'static str {
+    match change {
+        SelectionChange::ExtendDown => "Extend Selection Down",
+        SelectionChange::ExtendUp => "Extend Selection Up",
+        SelectionChange::Toggle => "Toggle Selected",
+        SelectionChange::All => "Select All",
+        SelectionChange::Clear => "Clear Selection",
     }
 }
 

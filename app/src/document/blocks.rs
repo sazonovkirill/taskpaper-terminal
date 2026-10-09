@@ -19,6 +19,30 @@ pub enum BlockKind {
     Text,
 }
 
+/// A kind of attachment: extra information on a block that the outline shows only as an icon,
+/// stored as a special node the app recognizes by its text (attachments.md §1, D-94).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Attachment {
+    /// A Markdown note, `NOTE @hidden`.
+    Note,
+    /// Dated one-line comments, `COMMENTS @hidden`.
+    Comments,
+}
+
+impl Attachment {
+    /// Both kinds, in the order the app writes them.
+    pub const ALL: [Self; 2] = [Self::Note, Self::Comments];
+
+    /// The text of its line, tags aside.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Note => "NOTE",
+            Self::Comments => "COMMENTS",
+        }
+    }
+}
+
 /// A color tag, which tints a block's background (FR-TAG-05, D-48).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TagColor {
@@ -316,17 +340,31 @@ pub fn supported(name: &str, kind: BlockKind) -> bool {
     SUPPORTED.contains(&name) && (kind == BlockKind::Text || name != "section")
 }
 
-/// The special nodes among the children of the block `id`, which no feature of the app shows,
-/// or `None` when it is no block of `document` (special-nodes.md §1).
+/// The special nodes among the children of the block `id` that no feature of the app shows, or
+/// `None` when it is no block of `document` (special-nodes.md §1): all of them but the
+/// attachments of the kinds in `shown`, the first of each kind, which the app shows as one
+/// (attachments.md §1, §6).
 #[must_use]
-pub fn hidden_data(document: &Document, id: ItemId) -> Option<Vec<HiddenData>> {
+pub fn hidden_data(
+    document: &Document,
+    id: ItemId,
+    shown: &[Attachment],
+) -> Option<Vec<HiddenData>> {
     block(document, id)?;
     let item = document.get(id)?;
+    let mut seen = Vec::new();
     Some(
         item.children()
             .iter()
             .filter_map(|&child| Some((child, document.get(child)?)))
             .filter(|(_, child)| is_special(child))
+            .filter(|(_, child)| match attachment(child) {
+                Some(kind) if shown.contains(&kind) && !seen.contains(&kind) => {
+                    seen.push(kind);
+                    false
+                }
+                _ => true,
+            })
             .map(|(child, line)| HiddenData {
                 tags: tags::scan(line.text())
                     .into_iter()
@@ -345,12 +383,18 @@ pub fn is_special(item: &Item) -> bool {
     has_tag(item, "hidden")
 }
 
-/// Whether `item` starts an attachment, a block's note or comments: a special node whose text,
-/// tags aside and trimmed, is exactly `NOTE` or `COMMENTS` (attachments.md §1).
-pub(super) fn is_attachment(item: &Item) -> bool {
-    is_special(item)
-        && item.kind() == ItemKind::Note
-        && matches!(item.display_text().trim(), "NOTE" | "COMMENTS")
+/// The kind of attachment `item` starts, a block's note or comments: a special node whose text,
+/// tags aside and trimmed, is exactly `NOTE` or `COMMENTS` (attachments.md §1); `None` for any
+/// other line.
+#[must_use]
+pub fn attachment(item: &Item) -> Option<Attachment> {
+    if !is_special(item) || item.kind() != ItemKind::Note {
+        return None;
+    }
+    let text = item.display_text().trim();
+    Attachment::ALL
+        .into_iter()
+        .find(|kind| kind.label() == text)
 }
 
 /// The type of the line `item` (data-model §3).
@@ -764,13 +808,14 @@ P: @blue @red
             "- COMMENTS @hidden\n",
             "NOTES @hidden",
         ));
-        let attachments: Vec<bool> = document
+        let attachments: Vec<Option<Attachment>> = document
             .descendants(document.root())
-            .map(|(id, _)| is_attachment(document.get(id).unwrap()))
+            .map(|(id, _)| attachment(document.get(id).unwrap()))
             .collect();
+        let (note, comments) = (Some(Attachment::Note), Some(Attachment::Comments));
         assert_eq!(
             attachments,
-            [true, true, true, false, false, false, false, false]
+            [note, comments, note, None, None, None, None, None]
         );
     }
 
@@ -796,7 +841,7 @@ P: @blue @red
         );
         let project = children(&document, document.root())[0].id();
         assert_eq!(
-            hidden_data(&document, project).unwrap(),
+            hidden_data(&document, project, &Attachment::ALL).unwrap(),
             [
                 HiddenData {
                     tags: vec!["@hidden".to_owned(), "@log(x)".to_owned()],
@@ -817,7 +862,42 @@ P: @blue @red
             .get(children(&document, document.root())[0].id())
             .unwrap()
             .children()[0];
-        assert_eq!(hidden_data(&document, hidden), None);
-        assert_eq!(hidden_data(&document, document.root()), None);
+        assert_eq!(hidden_data(&document, hidden, &[]), None);
+        assert_eq!(hidden_data(&document, document.root(), &[]), None);
+    }
+
+    // FR-ATT-01, FR-ATT-06, attachments.md §1, §6
+    #[test]
+    fn the_first_attachment_of_a_shown_kind_is_no_hidden_data() {
+        let document = parse(concat!(
+            "a\n",
+            "\tNOTE @hidden\n\t\tn\n",
+            "\tCOMMENTS @hidden\n\t\tc\n",
+            "\tNOTE @hidden @x\n",
+            "\tCOMMENTS @hidden @y",
+        ));
+        let block = children(&document, document.root())[0].id();
+        let listed = |shown: &[Attachment]| {
+            hidden_data(&document, block, shown)
+                .unwrap()
+                .into_iter()
+                .map(|data| (data.tags.join(" "), data.lines))
+                .collect::<Vec<_>>()
+        };
+        let hidden = |tags: &str, lines| (tags.to_owned(), lines);
+        assert_eq!(
+            listed(&Attachment::ALL),
+            [hidden("@hidden @x", 1), hidden("@hidden @y", 1)]
+        );
+        assert_eq!(
+            listed(&[Attachment::Comments]),
+            [
+                hidden("@hidden", 2),
+                hidden("@hidden @x", 1),
+                hidden("@hidden @y", 1)
+            ],
+            "with notes off, every note is hidden data"
+        );
+        assert_eq!(listed(&[]).len(), 4);
     }
 }

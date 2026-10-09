@@ -289,6 +289,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::ClearDate(_)
         | Message::OpenTypePicker
         | Message::NodeEditor(_)
+        | Message::Attachments(_)
         | Message::OpenGoToSymbol(_)
         | Message::OpenMoveTo
         | Message::OpenGoToCommand(_)

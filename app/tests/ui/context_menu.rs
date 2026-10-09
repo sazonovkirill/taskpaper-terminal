@@ -48,8 +48,8 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
             "      ┌Commands:───────────────────────────────────────────┐",
             "    - │  › Edit                                     Enter  │",
             "  Othe│  ✎ Edit Node                                e, mi  │",
-            "      │  › New Block Below                              o  │",
-            "      │  › New Block Above                              O  │",
+            "      │  ≡ Open Note                                    n  │",
+            "      │  ❞ Open Comments                                N  │",
         ],
         "anchored at the task's text, below it"
     );
@@ -215,7 +215,7 @@ fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
 // FR-KEY-06, FR-KEY-04
 #[test]
 fn the_shortcuts_panel_lists_it() {
-    let mut app = Harness::with_text(TEXT, 120, 65);
+    let mut app = Harness::with_text(TEXT, 120, 67);
     press(&mut app, KeyCode::Char('?'));
     let rows = screen(&mut app);
     let at = rows

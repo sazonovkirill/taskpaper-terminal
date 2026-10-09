@@ -22,7 +22,11 @@ impl State {
     pub(super) fn open_go_to_command(&mut self, bindings: &[(Command, String)]) {
         let mut candidates: Vec<Candidate<Command>> = REGISTRY
             .iter()
-            .filter(|entry| entry.mode == Mode::Navigate && entry.command != Command::GoToCommand)
+            .filter(|entry| {
+                entry.mode == Mode::Navigate
+                    && entry.command != Command::GoToCommand
+                    && self.offers(entry.command)
+            })
             .map(|entry| Candidate {
                 value: entry.command,
                 text: entry.command.name().into(),

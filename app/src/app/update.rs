@@ -6,16 +6,16 @@ use std::{collections::HashSet, path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput, PaneChange, Paste,
-    QuickAddInput, Row, SaveAs, SelectionChange, SettingValue, SettingsInput, SpecialView, State,
-    Symbols, TextEdit, Version,
+    AttachmentsInput, Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput,
+    PaneChange, Paste, QuickAddInput, Row, SaveAs, SelectionChange, SettingValue, SettingsInput,
+    SpecialView, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
     rows::Rows,
     saving::{DocumentText, Ending},
     structure::NewBlock,
 };
 use crate::document::{
-    Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
+    Attachment, Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
     structure::Shift,
 };
 
@@ -37,6 +37,9 @@ pub enum Configuration {
     /// Let `qt` add to the `TODAY` project and the Today view list its tasks, or neither when
     /// `false` (`special_today`, D-98, D-102).
     SpecialToday(bool),
+    /// Turn this kind of attachment on, or off when `false` (`attachments_notes`,
+    /// `attachments_comments`, attachments.md §6).
+    Attachments(Attachment, bool),
 }
 
 /// A user intent or a report from the frontend, independent of how a frontend receives it.
@@ -230,6 +233,8 @@ pub enum Message {
     /// Open the Edit Node dialog on the focused block, or a key of the open dialog
     /// (FR-MODE-09).
     NodeEditor(NodeInput),
+    /// Open the attachments panel on the focused block, or a key of the open panel (FR-ATT-03).
+    Attachments(AttachmentsInput),
     /// Open Go to Symbol over these blocks: every one (FR-NAV-05), or the projects, as Go to
     /// Project (D-65).
     OpenGoToSymbol(Symbols),
@@ -456,6 +461,7 @@ impl Message {
             | Self::ClearDate(_)
             | Self::OpenTypePicker
             | Self::NodeEditor(_)
+            | Self::Attachments(_)
             | Self::OpenGoToSymbol(_)
             | Self::OpenMoveTo
             | Self::OpenGoToCommand(_)
@@ -617,6 +623,7 @@ impl State {
             Configuration::NavigatorView(view, on) => self.navigator.set_listed(view, on),
             Configuration::TodayStarred(on) => self.today_starred = on,
             Configuration::SpecialToday(on) => self.special_today = on,
+            Configuration::Attachments(kind, on) => self.show_attachments(kind, on),
         }
     }
 
@@ -683,6 +690,7 @@ impl State {
             Message::ClearDate(tag) => self.clear_date(tag),
             Message::OpenTypePicker => self.open_type_picker(),
             Message::NodeEditor(input) => self.node_editor_input(input),
+            Message::Attachments(input) => self.attachments_input(input),
             Message::OpenGoToSymbol(listed) => self.open_go_to_symbol(listed),
             Message::OpenMoveTo => self.open_move_to(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),

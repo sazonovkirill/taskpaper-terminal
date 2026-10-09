@@ -2,6 +2,7 @@
 //! the document layer, so the same core can run behind another frontend.
 
 mod above;
+mod attachments;
 mod clipboard;
 mod color_picker;
 mod colors;
@@ -49,6 +50,7 @@ pub mod update;
 mod view_state;
 mod walks;
 
+pub use attachments::{AttachmentsInput, AttachmentsView};
 pub use clipboard::Paste;
 pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
 pub use commands::{Animations, Command, Inputs};

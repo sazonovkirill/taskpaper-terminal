@@ -55,7 +55,7 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 ## 3. Attachments panel (FR-ATT-03)
 
 - A modal panel opened over the right side of the screen, above the panes, from the outline's top rule to the status line, for the focused block. It has a Note tab and a Comments tab, each present only while its setting is on (§6); its title names the block. The keys behind it are inactive while it is open, and `Esc` from its navigate state closes it.
-- Opening commands: Open Note and Open Comments, each opening the panel on its tab, in Go to Command, the edit-mode `/` menu, the context menu and the `?` panel, available whether or not the block has an attachment yet. The implementing thread picks their keys, each with both key variants (D-42), and a key to switch tabs.
+- Opening commands: Open Note (`n`) and Open Comments (`N`), each opening the panel on its tab, in Go to Command, the edit-mode `/` menu, the context menu and the `?` panel, available whether or not the block has an attachment yet. `Tab` or `Shift+Tab` shows the other tab, and `Esc` closes the panel; opened from the `/` menu, it returns to editing when it closes (D-50, D-106).
 - Every change the panel makes is one undo step in the document, undone with the document's undo once the panel is closed, and saved like any edit.
 
 ## 4. Notes (FR-ATT-04)

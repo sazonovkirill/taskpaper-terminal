@@ -90,6 +90,12 @@ pub enum Icon {
     Backup,
     /// The settings window's backup folder setting.
     Folder,
+    /// A block's note: after its text, on the attachments panel's tab, on Open Note and the
+    /// settings window's setting that turns notes on (FR-ATT-02).
+    NoteAttachment,
+    /// A block's comments: after its text with their count, on the attachments panel's tab, on
+    /// Open Comments and the settings window's setting that turns comments on (FR-ATT-02).
+    Comments,
 }
 
 /// The `icons` setting (ui.md §7): Nerd Font glyphs, or none, which draws the Unicode markers.
@@ -240,6 +246,10 @@ impl Icon {
             Self::Backup => ("\u{f006f}", "↺", "b"),
             // nf-md-folder_cog_outline
             Self::Folder => ("\u{f1080}", "▭", "d"),
+            // nf-md-note_text_outline
+            Self::NoteAttachment => ("\u{f11d7}", "≡", "n"),
+            // nf-md-comment_text_outline
+            Self::Comments => ("\u{f0189}", "❞", "c"),
         };
         Glyphs {
             nerd,
@@ -255,7 +265,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 37] = [
+    const ICONS: [Icon; 39] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -293,6 +303,8 @@ mod tests {
         Icon::Autosave,
         Icon::Backup,
         Icon::Folder,
+        Icon::NoteAttachment,
+        Icon::Comments,
     ];
 
     // FR-UI-10, ui.md §7

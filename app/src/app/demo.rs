@@ -287,7 +287,7 @@ mod tests {
         assert!(
             blocks
                 .iter()
-                .any(|block| !blocks::hidden_data(document, block.id())
+                .any(|block| !blocks::hidden_data(document, block.id(), &[])
                     .unwrap()
                     .is_empty()),
             "demo lacks hidden data for the dialog"

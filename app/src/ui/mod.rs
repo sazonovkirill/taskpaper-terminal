@@ -44,9 +44,9 @@ pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
 use widgets::{
-    ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard, NavigatorPanel,
-    NodeEditorWindow, OutlineView, Popup, QuickAddPanel, SaveAsPrompt, SettingsWindow,
-    ShortcutsPanel,
+    AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
+    NavigatorPanel, NodeEditorWindow, OutlineView, Popup, QuickAddPanel, SaveAsPrompt,
+    SettingsWindow, ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -302,6 +302,12 @@ impl Tui {
         if let Some(on) = config.special_today {
             self.send(
                 Message::Configure(Configuration::SpecialToday(on)),
+                Duration::ZERO,
+            );
+        }
+        for &(kind, on) in &config.attachments {
+            self.send(
+                Message::Configure(Configuration::Attachments(kind, on)),
                 Duration::ZERO,
             );
         }
@@ -708,9 +714,7 @@ impl Tui {
             frame.render_widget(popup, area);
         }
         if !self.state.in_conflict() {
-            self.draw_finders(frame, outline, &theme);
-            self.draw_settings(frame, screen_body, &theme);
-            self.draw_node_editor(frame, outline, &theme);
+            self.draw_dialogs(frame, outline, screen_body, &theme);
             if let Some(view) = self.state.save_as() {
                 let prompt = SaveAsPrompt::new(&view, &theme);
                 frame.set_cursor_position(prompt.caret(outline));
@@ -1137,6 +1141,21 @@ impl Tui {
         }
     }
 
+    /// The dialogs that take the keys, whichever is open: the finders and the Edit Node dialog
+    /// over `outline`, the panes below their headers, and the settings window and the
+    /// attachments panel over `body`, the screen above the status line.
+    fn draw_dialogs(&self, frame: &mut Frame, outline: Rect, body: Rect, theme: &Theme) {
+        self.draw_finders(frame, outline, theme);
+        self.draw_settings(frame, body, theme);
+        self.draw_node_editor(frame, outline, theme);
+        if let Some(view) = self.state.attachments_panel() {
+            frame.render_widget(
+                AttachmentsPanel::new(&view, self.icons, theme),
+                AttachmentsPanel::area(body),
+            );
+        }
+    }
+
     /// The Edit Node dialog centered over `area`, with its caret, and its parent finder over it,
     /// while they are open (editing.md §7).
     fn draw_node_editor(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
@@ -1338,8 +1357,10 @@ impl Tui {
             Some(Overlay::ContextMenu)
         } else if self.state.node_editor_finder().is_some() {
             Some(Overlay::NodeEditorFinder)
+        } else if self.state.node_editor().is_some() {
+            Some(Overlay::NodeEditor)
         } else {
-            self.state.node_editor().map(|_| Overlay::NodeEditor)
+            self.state.attachments_panel().map(|_| Overlay::Attachments)
         }
     }
 

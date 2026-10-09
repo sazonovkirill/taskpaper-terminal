@@ -12,7 +12,13 @@ impl State {
     /// entries of its commands (FR-KEY-04).
     #[must_use]
     pub fn shortcuts(&self) -> Option<Vec<(Group, Vec<&'static Entry>)>> {
-        self.shortcuts.then(|| commands::shortcuts(self.mode()))
+        self.shortcuts.then(|| {
+            let mut groups = commands::shortcuts(self.mode());
+            for (_, entries) in &mut groups {
+                entries.retain(|entry| self.offers(entry.command));
+            }
+            groups
+        })
     }
 }
 

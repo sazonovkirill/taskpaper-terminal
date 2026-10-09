@@ -121,7 +121,7 @@ fn fitting_type(place: Place<'_>) -> Typed {
 /// The ops repairing what a new line under `parent` breaks: an empty parent would be read back
 /// elsewhere, and so would an only line starting with whitespace once it is no longer the only
 /// line.
-fn repairs(document: &Document, parent: ItemId) -> Vec<Op> {
+pub(super) fn repairs(document: &Document, parent: ItemId) -> Vec<Op> {
     let mut lines = document.descendants(document.root()).map(|(id, _)| id);
     let only_line = lines.next().filter(|_| lines.next().is_none());
     std::iter::once(parent)
@@ -144,11 +144,17 @@ fn repairs(document: &Document, parent: ItemId) -> Vec<Op> {
 /// not in `document`.
 #[must_use]
 pub fn delete(document: &Document, block: &Block) -> Option<Op> {
-    let (parent, index) = document.position(block.id())?;
+    delete_line(document, block.id())
+}
+
+/// The op that takes the line `id` out of `document` with its subtree, or `None` when it is not
+/// in `document`.
+pub(super) fn delete_line(document: &Document, id: ItemId) -> Option<Op> {
+    let (parent, index) = document.position(id)?;
     Some(Op::Remove {
         parent,
         index,
-        subtree: document.snapshot(block.id())?,
+        subtree: document.snapshot(id)?,
     })
 }
 
@@ -454,7 +460,7 @@ fn end(document: &Document, children: &[ItemId]) -> usize {
         .rposition(|&id| {
             document
                 .get(id)
-                .is_some_and(|item| !blocks::is_special(item) || blocks::is_attachment(item))
+                .is_some_and(|item| !blocks::is_special(item) || blocks::attachment(item).is_some())
         })
         .map_or(0, |last| last + 1)
 }

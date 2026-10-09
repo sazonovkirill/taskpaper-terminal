@@ -19,7 +19,10 @@ use super::{
     keymap::{BindingError, Keymap},
     theme::{BuiltIn, IconSetting},
 };
-use crate::app::{Animations, Mode, SpecialView};
+use crate::{
+    app::{Animations, Mode, SpecialView},
+    document::Attachment,
+};
 
 /// A special view that a setting says whether the Navigator lists: every one but Today, which it
 /// always lists (D-80, D-102).
@@ -145,6 +148,9 @@ pub struct Config {
     /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks, when the file
     /// says (`special_today`, D-98, D-102).
     pub(super) special_today: Option<bool>,
+    /// Whether each kind of attachment the file says about is turned on (`attachments_notes`,
+    /// `attachments_comments`, attachments.md §6).
+    pub(super) attachments: Vec<(Attachment, bool)>,
     /// How much the app animates, when the file says (`animations`, FR-UI-11).
     pub(super) animations: Option<Animations>,
     backups: BackupSettings,
@@ -225,6 +231,17 @@ impl Config {
             Some(on) => self.today_starred = Some(on),
             None => self.problems.push(Problem::InvalidValue {
                 key: "today_starred".to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes whether attachments of kind `kind` are turned on from `item`: `true` or `false`.
+    fn read_attachments(&mut self, kind: Attachment, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.attachments.push((kind, on)),
+            None => self.problems.push(Problem::InvalidValue {
+                key: attachments_key(kind).to_owned(),
                 expected: "true or false",
             }),
         }
@@ -421,15 +438,31 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "special_inbox" => config.read_special_inbox(item),
             "special_today" => config.read_special_today(item),
             "today_starred" => config.read_today_starred(item),
-            key => match OptionalView::ALL.into_iter().find(|view| view.key() == key) {
-                Some(view) => config.read_navigator_view(view, item),
-                None => config.problems.push(Problem::UnknownSetting {
-                    key: key.to_owned(),
-                }),
-            },
+            key => {
+                if let Some(view) = OptionalView::ALL.into_iter().find(|view| view.key() == key) {
+                    config.read_navigator_view(view, item);
+                } else if let Some(kind) = Attachment::ALL
+                    .into_iter()
+                    .find(|&kind| attachments_key(kind) == key)
+                {
+                    config.read_attachments(kind, item);
+                } else {
+                    config.problems.push(Problem::UnknownSetting {
+                        key: key.to_owned(),
+                    });
+                }
+            }
         }
     }
     config
+}
+
+/// The key of the setting that turns attachments of kind `kind` on (attachments.md §6).
+pub(super) fn attachments_key(kind: Attachment) -> &'static str {
+    match kind {
+        Attachment::Note => "attachments_notes",
+        Attachment::Comments => "attachments_comments",
+    }
 }
 
 /// Why a setting changed in the app could not be written to the settings file (FR-SET-04).
@@ -807,6 +840,29 @@ mod tests {
                 "{text}"
             );
         }
+    }
+
+    // FR-ATT-06, attachments.md §6
+    #[test]
+    fn attachments_settings_are_true_or_false_and_anything_else_is_reported() {
+        assert_eq!(read("", None).attachments, []);
+        assert_eq!(
+            read(
+                "attachments_comments = false\nattachments_notes = true\n",
+                None
+            )
+            .attachments,
+            [(Attachment::Comments, false), (Attachment::Note, true)]
+        );
+        let config = read("attachments_notes = \"no\"\n", None);
+        assert_eq!(config.attachments, []);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "attachments_notes".to_owned(),
+                expected: "true or false",
+            }]
+        );
     }
 
     // D-75, FR-SET-04

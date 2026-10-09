@@ -473,7 +473,8 @@ impl State {
             starred: draft.tag("star").is_some(),
             flagged: draft.tag("flag").is_some(),
             tags,
-            hidden: blocks::hidden_data(&self.document, editor.id).unwrap_or_default(),
+            hidden: blocks::hidden_data(&self.document, editor.id, &self.attached)
+                .unwrap_or_default(),
             field,
         })
     }

@@ -340,6 +340,7 @@ impl State {
             .take()
             .and_then(|resume| resume.rematched(exact));
         self.date_prompt = (self.date_prompt.take()).and_then(|prompt| prompt.rematched(exact));
+        self.rematch_panel(exact);
         let symbol = (self.symbols.as_ref())
             .and_then(|(_, finder)| finder.highlighted())
             .and_then(|&id| exact(id));
@@ -1179,6 +1180,21 @@ mod tests {
         );
         state.update(Message::StopEditing);
         assert_eq!(rows(&state), ["z", "b"], "it leaves once editing ends");
+    }
+
+    // file-io.md §3, FR-ATT-03, D-104
+    #[test]
+    fn a_reload_keeps_the_attachments_panel_on_its_block_or_closes_it() {
+        use crate::{app::AttachmentsInput, document::Attachment};
+        let mut state = opened("- a\n\tNOTE @hidden\n\t\told\n");
+        state.update(Message::Attachments(AttachmentsInput::Open(
+            Attachment::Note,
+        )));
+        state.update(found("- z\n- a\n\tNOTE @hidden\n\t\tnew\n"));
+        let view = state.attachments_panel().unwrap();
+        assert_eq!((&*view.title, view.lines), ("a", vec!["new".to_owned()]));
+        state.update(found("- y\n"));
+        assert_eq!(state.attachments_panel(), None, "its block is gone");
     }
 
     // file-io.md §3, D-50

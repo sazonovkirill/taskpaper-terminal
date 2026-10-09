@@ -132,7 +132,7 @@ impl State {
             page_up_rows: 0,
         };
         let alone = focused.is_some();
-        let mut groups = context_commands(&blocks, focused);
+        let mut groups = context_commands(&blocks, focused, &self.attached);
         groups.push(self.pane_commands(alone));
         for group in &mut groups {
             group.retain(|entry| {
@@ -218,7 +218,16 @@ mod tests {
         state.update(Message::FocusNext);
         state.update(Message::OpenContextMenu);
         let listed = shown(&state);
-        assert_eq!(listed[..3], ["Edit", "Edit Node", "New Block Below"]);
+        assert_eq!(
+            listed[..5],
+            [
+                "Edit",
+                "Edit Node",
+                "Open Note",
+                "Open Comments",
+                "New Block Below"
+            ]
+        );
         assert!(listed.contains(&"Clear Due Date".to_owned()));
         assert!(listed.contains(&"Zoom In".to_owned()));
         assert!(!listed.contains(&"Toggle Fold".to_owned()), "a leaf");
@@ -268,7 +277,7 @@ mod tests {
         }
         assert_eq!(
             today[..5],
-            ["Edit", "Edit Node", "Copy", "Cut", "Duplicate"]
+            ["Edit", "Edit Node", "Open Note", "Open Comments", "Copy"]
         );
         assert!(today.contains(&"Move to…".to_owned()));
         assert!(

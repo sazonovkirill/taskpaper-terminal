@@ -13,6 +13,7 @@ use jiff::civil::Date;
 
 use super::{
     Command, History, Symbols,
+    attachments::Panel,
     command_menu::CommandMenu,
     context_menu::MenuOn,
     date_prompt::DatePrompt,
@@ -36,7 +37,9 @@ use super::{
     type_picker::Conversion,
     walks::Walks,
 };
-use crate::document::{Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks};
+use crate::document::{
+    Attachment, Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks,
+};
 
 /// How long a status-line notice stays.
 pub const NOTICE_TIME: Duration = Duration::from_secs(10);
@@ -89,6 +92,10 @@ pub struct State {
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// The Edit Node dialog, while it is open (FR-MODE-09).
     pub(super) node_editor: Option<NodeEditor>,
+    /// The kinds of attachment turned on, in order (attachments.md §6).
+    pub(super) attached: Vec<Attachment>,
+    /// The attachments panel, while it is open (FR-ATT-03).
+    pub(super) panel: Option<Panel>,
     /// Go to Symbol or Go to Project, with the blocks it lists, while it is open (FR-NAV-05,
     /// D-65).
     pub(super) symbols: Option<(Symbols, Finder<ItemId>)>,
@@ -411,6 +418,8 @@ impl State {
             special_today: true,
             type_picker: None,
             node_editor: None,
+            attached: Attachment::ALL.to_vec(),
+            panel: None,
             symbols: None,
             destinations: None,
             commands: None,

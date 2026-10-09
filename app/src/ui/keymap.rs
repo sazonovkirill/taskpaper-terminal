@@ -9,8 +9,9 @@ use thiserror::Error;
 
 use super::widgets::ShortcutGroup;
 use crate::app::{
-    Animations, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode, Motion, NavigatorInput,
-    NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput, TextEdit,
+    Animations, AttachmentsInput, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode,
+    Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput,
+    TextEdit,
     commands::{Group, NAVIGATOR, REGISTRY},
 };
 
@@ -115,6 +116,8 @@ pub enum Overlay {
     SaveAs,
     /// The context menu (FR-KEY-06).
     ContextMenu,
+    /// The attachments panel (FR-ATT-03).
+    Attachments,
 }
 
 impl Overlay {
@@ -136,11 +139,24 @@ impl Overlay {
             Self::DatePrompt
             | Self::QuickAdd
             | Self::NodeEditor
+            | Self::Attachments
             | Self::Settings
             | Self::SettingsText
             | Self::SettingsPicker
             | Self::SaveAs => None,
         }
+    }
+
+    /// Whether it takes pasted text: a prompt or a dialog with a text to edit.
+    fn takes_text(self) -> bool {
+        matches!(
+            self,
+            Self::DatePrompt
+                | Self::QuickAdd
+                | Self::SaveAs
+                | Self::SettingsText
+                | Self::NodeEditor
+        )
     }
 }
 
@@ -450,6 +466,26 @@ fn node_editor_message(key: Key) -> Option<Message> {
         .map(|&(_, input)| input)
         .or_else(|| text_edit(key).map(NodeInput::Key))?;
     Some(Message::NodeEditor(input))
+}
+
+/// Bindings of the attachments panel ([keybindings.md §4]); other keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const ATTACHMENTS: &[(Key, AttachmentsInput)] = &[
+    (key!(Esc), AttachmentsInput::Close),
+    (key!(Tab), AttachmentsInput::SwitchTab),
+    (key!(shift BackTab), AttachmentsInput::SwitchTab),
+];
+
+/// The attachments panel's message for `key`: `Ctrl+Q` quits, else its binding, if any.
+fn attachments_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    ATTACHMENTS
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| Message::Attachments(input))
 }
 
 /// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
@@ -960,17 +996,10 @@ impl Keymap {
                 self.replay = true;
                 return Some(action);
             }
-            let takes_text = match context.overlay {
-                Some(overlay) => matches!(
-                    overlay,
-                    Overlay::DatePrompt
-                        | Overlay::QuickAdd
-                        | Overlay::SaveAs
-                        | Overlay::SettingsText
-                        | Overlay::NodeEditor
-                ),
-                None => !context.command_menu && !context.navigator,
-            };
+            let takes_text = context.overlay.map_or(
+                !context.command_menu && !context.navigator,
+                Overlay::takes_text,
+            );
             return takes_text.then(|| {
                 KeyAction::Send(Message::Pasted {
                     text: text.clone(),
@@ -1021,6 +1050,7 @@ impl Keymap {
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
+                Overlay::Attachments => attachments_message(pressed),
             };
             return message.map(KeyAction::Send);
         }
@@ -2303,6 +2333,36 @@ mod tests {
                 "{overlay:?}"
             );
         }
+    }
+
+    // attachments.md §3, keybindings.md §4, D-42
+    #[test]
+    fn the_attachments_panel_takes_its_keys_and_ignores_others() {
+        let panel = |code, modifiers| overlay_message(Overlay::Attachments, code, modifiers);
+        for (code, modifiers, input) in [
+            (KeyCode::Esc, KeyModifiers::NONE, AttachmentsInput::Close),
+            (
+                KeyCode::Tab,
+                KeyModifiers::NONE,
+                AttachmentsInput::SwitchTab,
+            ),
+            (
+                KeyCode::BackTab,
+                KeyModifiers::SHIFT,
+                AttachmentsInput::SwitchTab,
+            ),
+        ] {
+            assert_eq!(
+                panel(code, modifiers),
+                Some(Message::Attachments(input)),
+                "{code:?}"
+            );
+        }
+        assert_eq!(
+            panel(KeyCode::Char('q'), KeyModifiers::CONTROL),
+            Some(Message::Quit)
+        );
+        assert_eq!(panel(KeyCode::Char('j'), KeyModifiers::NONE), None);
     }
 
     #[test]
@@ -3713,6 +3773,7 @@ mod tests {
             Overlay::TypePicker,
             Overlay::NodeEditor,
             Overlay::NodeEditorFinder,
+            Overlay::Attachments,
             Overlay::GoToSymbol,
             Overlay::MoveTo,
             Overlay::GoToCommand,

@@ -32,19 +32,21 @@ use crate::{
         commands::Group,
     },
     document::{
-        BlockKind, DateTag, Document, Flag, ItemId, TagColor, blocks,
+        Attachment, BlockKind, DateTag, Document, Flag, ItemId, TagColor, blocks,
         dates::{self, DateError},
         format::Typed,
         inline::{self, Format, Syntax},
     },
 };
 
+mod attachments;
 mod navigator;
 mod node_editor;
 mod quick_add;
 mod save_as;
 mod settings;
 
+pub use attachments::AttachmentsPanel;
 pub use navigator::NavigatorPanel;
 pub use node_editor::NodeEditorWindow;
 pub use quick_add::QuickAddPanel;
@@ -854,10 +856,20 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::QuickAdd(QuickAddTo::Chosen) => plain(Icon::QuickAdd),
         Command::SetAnimations(_) => plain(Icon::Animations),
         Command::EditNode => plain(Icon::Edit),
+        Command::OpenAttachment(kind) => plain(attachment_icon(kind)),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
         Command::Delete => plain(Icon::Delete),
         _ => plain(Icon::Command),
+    }
+}
+
+/// The icon of an attachment of kind `kind` (FR-ATT-02).
+#[must_use]
+pub fn attachment_icon(kind: Attachment) -> Icon {
+    match kind {
+        Attachment::Note => Icon::NoteAttachment,
+        Attachment::Comments => Icon::Comments,
     }
 }
 
@@ -2023,6 +2035,20 @@ mod tests {
             expected,
             "groups apart, the highlight on Toggle Star"
         );
+    }
+
+    // FR-ATT-02, ui.md §7
+    #[test]
+    fn open_note_and_open_comments_have_their_attachments_icons() {
+        for (kind, icon) in [
+            (Attachment::Note, Icon::NoteAttachment),
+            (Attachment::Comments, Icon::Comments),
+        ] {
+            assert_eq!(
+                command_icon(Command::OpenAttachment(kind), &THEME),
+                (icon, Style::new())
+            );
+        }
     }
 
     // D-54: every entry has its icon, a color entry in its color.

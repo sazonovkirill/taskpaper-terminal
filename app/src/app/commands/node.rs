@@ -9,7 +9,7 @@ use std::{borrow::Cow, slice};
 use super::Command;
 use crate::{
     app::{NewBlock, Paste},
-    document::{Block, BlockKind, DateChange, DateTag, Flag, TagColor, format::Typed},
+    document::{Attachment, Block, BlockKind, DateChange, DateTag, Flag, TagColor, format::Typed},
 };
 
 /// A command on one block with the label a menu shows for it.
@@ -55,10 +55,15 @@ const COLORS: [TagColor; 6] = [
 
 /// Every command that applies to `block` in menu order, in groups a menu sets apart: types, with
 /// Make Section or Remove Section for a text block (D-52), status, dates, colors and the block
-/// itself (D-50). `link` says whether the block has a link to open. Labels follow the block's
-/// state, and a command that would change nothing, such as clearing a date it does not have, is
-/// left out, so no group is empty.
-pub(in crate::app) fn node_commands(block: &Block, link: bool) -> Vec<Vec<NodeCommand>> {
+/// itself (D-50), its attachments among them, of the kinds `attached` turns on (FR-ATT-03).
+/// `link` says whether the block has a link to open. Labels follow the block's state, and a
+/// command that would change nothing, such as clearing a date it does not have, is left out, so
+/// no group is empty.
+pub(in crate::app) fn node_commands(
+    block: &Block,
+    link: bool,
+    attached: &[Attachment],
+) -> Vec<Vec<NodeCommand>> {
     let section = match block.kind() {
         BlockKind::Text if block.section() => Some(NodeCommand::labelled(
             "Remove Section",
@@ -76,6 +81,7 @@ pub(in crate::app) fn node_commands(block: &Block, link: bool) -> Vec<Vec<NodeCo
     let itself = [Command::EditNode]
         .into_iter()
         .chain(link.then_some(Command::OpenUrl))
+        .chain(attachment_commands(blocks, attached))
         .chain([Command::Duplicate, Command::Delete])
         .map(NodeCommand::named)
         .collect();
@@ -95,7 +101,8 @@ pub(in crate::app) struct Focused {
 /// Every command a context menu offers on `blocks`, the selected blocks or the focused block
 /// alone, in groups as [ui.md §5] orders them: editing, structure, status, dates, colors, types
 /// and the view. `focused` says what the focused block has when it is alone, and the commands
-/// that act on the focused block only, such as editing it or zooming in, are offered only then.
+/// that act on the focused block only, such as editing it, opening its attachments of the kinds
+/// `attached` turns on or zooming in, are offered only then.
 /// Labels follow the blocks' state as the commands do: Uncomplete when every block is done,
 /// Remove Bookmark when every block has a bookmark. A command that would change nothing is left
 /// out, and so is a group left empty.
@@ -104,6 +111,7 @@ pub(in crate::app) struct Focused {
 pub(in crate::app) fn context_commands(
     blocks: &[Block],
     focused: Option<Focused>,
+    attached: &[Attachment],
 ) -> Vec<Vec<NodeCommand>> {
     let alone = |commands: &[Command]| {
         if focused.is_some() {
@@ -112,24 +120,28 @@ pub(in crate::app) fn context_commands(
             Vec::new()
         }
     };
-    let editing = alone(&[
-        Command::Edit,
-        Command::EditNode,
-        Command::New(NewBlock::Below, None),
-        Command::New(NewBlock::Above, None),
-        Command::New(NewBlock::LastChild, None),
-    ])
-    .into_iter()
-    .chain([
-        Command::Copy,
-        Command::Cut,
-        Command::Paste(Paste::Below),
-        Command::Paste(Paste::Above),
-        Command::Duplicate,
-        Command::Delete,
-    ])
-    .map(NodeCommand::named)
-    .collect();
+    let editing = alone(&[Command::Edit, Command::EditNode])
+        .into_iter()
+        .chain(
+            focused
+                .into_iter()
+                .flat_map(|_| attachment_commands(blocks, attached)),
+        )
+        .chain(alone(&[
+            Command::New(NewBlock::Below, None),
+            Command::New(NewBlock::Above, None),
+            Command::New(NewBlock::LastChild, None),
+        ]))
+        .chain([
+            Command::Copy,
+            Command::Cut,
+            Command::Paste(Paste::Below),
+            Command::Paste(Paste::Above),
+            Command::Duplicate,
+            Command::Delete,
+        ])
+        .map(NodeCommand::named)
+        .collect();
     let structure = [
         Command::Indent,
         Command::Outdent,
@@ -178,6 +190,18 @@ pub(in crate::app) fn context_commands(
     ];
     groups.retain(|group| !group.is_empty());
     groups
+}
+
+/// The commands opening the attachments of the kinds `attached` turns on of `blocks`, one block
+/// that is no divider, which has none (attachments.md §1, §3).
+fn attachment_commands(blocks: &[Block], attached: &[Attachment]) -> Vec<Command> {
+    if blocks.iter().any(Block::divider) {
+        return Vec::new();
+    }
+    attached
+        .iter()
+        .map(|&kind| Command::OpenAttachment(kind))
+        .collect()
 }
 
 /// Completing, Today, the flag and the bookmark, labelled for what they do to `blocks`:
@@ -258,7 +282,7 @@ mod tests {
         let document = format::parse(line);
         let (id, _) = document.descendants(document.root()).next().unwrap();
         let block = blocks::block(&document, id).unwrap();
-        node_commands(&block, linked)
+        node_commands(&block, linked, &Attachment::ALL)
     }
 
     // D-50
@@ -285,7 +309,13 @@ mod tests {
                     "Color: Blue",
                     "Color: Violet",
                 ],
-                vec!["Edit Node", "Duplicate", "Delete"],
+                vec![
+                    "Edit Node",
+                    "Open Note",
+                    "Open Comments",
+                    "Duplicate",
+                    "Delete"
+                ],
             ]
         );
     }
@@ -325,7 +355,63 @@ mod tests {
         );
         assert_eq!(groups[2][6..], ["Clear Start Date", "Clear Due Date"]);
         assert_eq!(groups[3].last().map(String::as_str), Some("Remove Color"));
-        assert_eq!(groups[4], ["Edit Node", "Open Link", "Duplicate", "Delete"]);
+        assert_eq!(
+            groups[4],
+            [
+                "Edit Node",
+                "Open Link",
+                "Open Note",
+                "Open Comments",
+                "Duplicate",
+                "Delete"
+            ]
+        );
+    }
+
+    // FR-ATT-03, FR-ATT-06, attachments.md §3, §6
+    #[test]
+    fn the_menus_offer_the_attachments_turned_on_of_a_block_that_is_no_divider() {
+        let document = format::parse(
+            "- a
+---",
+        );
+        let tops = blocks::children(&document, document.root());
+        let itself = |block: &Block, attached: &[Attachment]| {
+            node_commands(block, false, attached)
+                .pop()
+                .unwrap()
+                .into_iter()
+                .map(|command| command.command)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            itself(&tops[0], &[Attachment::Comments]),
+            [
+                Command::EditNode,
+                Command::OpenAttachment(Attachment::Comments),
+                Command::Duplicate,
+                Command::Delete
+            ]
+        );
+        assert_eq!(
+            itself(&tops[1], &Attachment::ALL),
+            [Command::EditNode, Command::Duplicate, Command::Delete]
+        );
+        let editing = |blocks: &[Block], attached: &[Attachment]| {
+            context_commands(blocks, Some(ALONE), attached)[0]
+                .iter()
+                .map(|command| command.label.clone().into_owned())
+                .take(4)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            editing(&tops[..1], &[Attachment::Note]),
+            ["Edit", "Edit Node", "Open Note", "New Block Below"]
+        );
+        assert_eq!(
+            editing(&tops[1..], &Attachment::ALL),
+            ["Edit", "Edit Node", "New Block Below", "New Block Above"]
+        );
     }
 
     // D-50
@@ -376,6 +462,11 @@ mod tests {
             ("Color: Violet", Command::SetColor(Some(TagColor::Violet))),
             ("Remove Color", Command::SetColor(None)),
             ("Edit Node", Command::EditNode),
+            ("Open Note", Command::OpenAttachment(Attachment::Note)),
+            (
+                "Open Comments",
+                Command::OpenAttachment(Attachment::Comments),
+            ),
             ("Open Link", Command::OpenUrl),
             ("Duplicate", Command::Duplicate),
             ("Delete", Command::Delete),
@@ -390,7 +481,7 @@ mod tests {
     fn context(text: &str, focused: Option<Focused>) -> Vec<String> {
         let document = format::parse(text);
         let blocks: Vec<Block> = blocks::children(&document, document.root());
-        context_commands(&blocks, focused)
+        context_commands(&blocks, focused, &Attachment::ALL)
             .into_iter()
             .map(|group| {
                 group
@@ -413,8 +504,8 @@ mod tests {
         assert_eq!(
             context("- a\n", Some(ALONE)),
             [
-                "Edit, Edit Node, New Block Below, New Block Above, New Block as Last Child, \
-                 Copy, Cut, Paste Below, Paste Above, Duplicate, Delete",
+                "Edit, Edit Node, Open Note, Open Comments, New Block Below, New Block Above, \
+                 New Block as Last Child, Copy, Cut, Paste Below, Paste Above, Duplicate, Delete",
                 "Indent, Outdent, Move Up, Move Down, Group, Move to…",
                 "Complete, Toggle Star, Toggle Flag, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \

@@ -11,8 +11,11 @@ use super::{
     theme::{BuiltIn, Icon, IconSetting},
     widgets,
 };
-use crate::app::{
-    Animations, Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving,
+use crate::{
+    app::{
+        Animations, Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving,
+    },
+    document::Attachment,
 };
 
 /// A setting the window lists, in the window's order.
@@ -28,6 +31,8 @@ enum Listed {
     TodayStarred,
     /// Whether `qt` adds to the `TODAY` project (D-98).
     SpecialToday,
+    /// Whether this kind of attachment is turned on (attachments.md §6).
+    Attachments(Attachment),
     Animations,
     AutosaveDelay,
     Backups,
@@ -36,7 +41,7 @@ enum Listed {
 }
 
 /// The settings the window lists, in order.
-const LISTED: [Listed; 17] = [
+const LISTED: [Listed; 19] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
@@ -49,6 +54,8 @@ const LISTED: [Listed; 17] = [
     Listed::NavigatorView(OptionalView::Logbook),
     Listed::NavigatorView(OptionalView::Starred),
     Listed::NavigatorView(OptionalView::Flagged),
+    Listed::Attachments(Attachment::Note),
+    Listed::Attachments(Attachment::Comments),
     Listed::Animations,
     Listed::AutosaveDelay,
     Listed::Backups,
@@ -70,6 +77,7 @@ impl Listed {
             Self::NavigatorView(view) => view.key(),
             Self::TodayStarred => "today_starred",
             Self::SpecialToday => "special_today",
+            Self::Attachments(kind) => config::attachments_key(kind),
             Self::Animations => "animations",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
@@ -88,6 +96,7 @@ impl Listed {
             Self::NavigatorView(view) => widgets::view_icon(view.view()),
             Self::TodayStarred => Icon::Star,
             Self::SpecialToday => widgets::view_icon(SpecialView::Today),
+            Self::Attachments(kind) => widgets::attachment_icon(kind),
             Self::Animations => Icon::Animations,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
@@ -232,6 +241,7 @@ impl Tui {
                 "List starred blocks too, not only dated ones",
                 self.state.today_starred(),
             ),
+            Listed::Attachments(kind) => self.attachments_listing(kind),
             Listed::Animations => self.animations_listing(),
             Listed::AutosaveDelay => (
                 "Files",
@@ -281,6 +291,26 @@ impl Tui {
             value,
             default,
         }
+    }
+
+    /// The setting that turns attachments of kind `kind` on (attachments.md §6).
+    fn attachments_listing(&self, kind: Attachment) -> Listing {
+        let (name, description) = match kind {
+            Attachment::Note => (
+                "Use Notes Attachments",
+                "Give blocks a Markdown note, shown by an icon",
+            ),
+            Attachment::Comments => (
+                "Use Comments Attachments",
+                "Give blocks dated comments, shown by an icon",
+            ),
+        };
+        switch_on_by_default(
+            "Appearance",
+            name,
+            description,
+            self.state.attachments_shown().contains(&kind),
+        )
     }
 
     /// The theme setting, its choices every built-in theme.
@@ -351,6 +381,13 @@ impl Tui {
             }
             (Listed::SpecialToday, SettingValue::Switch(on)) => {
                 self.send(Message::Configure(Configuration::SpecialToday(on)), now);
+                Some(on.into())
+            }
+            (Listed::Attachments(kind), SettingValue::Switch(on)) => {
+                self.send(
+                    Message::Configure(Configuration::Attachments(kind, on)),
+                    now,
+                );
                 Some(on.into())
             }
             (Listed::TodayStarred, SettingValue::Switch(on)) => {
@@ -456,13 +493,14 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
-            (12, SettingValue::Choice(3)),
+            (14, SettingValue::Choice(3)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
         }
         assert_eq!(tui.listed_settings(), before);
         assert_eq!(tui.state.notice(), None, "nothing was kept");
+        assert_eq!(icon(14), Icon::Animations);
         assert_eq!(icon(LISTED.len()), Icon::Command);
     }
 
@@ -473,6 +511,8 @@ mod tests {
         let values = [
             SettingValue::Choice(1),
             SettingValue::Choice(1),
+            SettingValue::Switch(false),
+            SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
@@ -494,9 +534,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(15, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(17, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[15].value,
+            tui.listed_settings()[17].value,
             SettingValue::Text(String::new())
         );
         assert!(

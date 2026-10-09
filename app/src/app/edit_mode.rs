@@ -393,7 +393,11 @@ impl State {
     /// The commands the command menu offers for the block being edited, if any.
     fn edited_block_commands(&self) -> Option<Vec<Vec<NodeCommand>>> {
         let block = blocks::block(&self.document, self.edit.as_ref()?.id)?;
-        Some(node_commands(&block, !self.open_url().is_empty()))
+        Some(node_commands(
+            &block,
+            !self.open_url().is_empty(),
+            &self.attached,
+        ))
     }
 
     /// Applies `input` to the open command menu, and once it closes, runs the chosen command or
@@ -484,7 +488,7 @@ impl State {
     /// it had, once no prompt or popup is open; a block that is gone is not edited. The block is
     /// held where it was shown until editing ends (editing.md §2.3, D-105).
     pub(super) fn resume_editing(&mut self) {
-        if self.date_prompt.is_some() || self.node_editor.is_some() {
+        if self.date_prompt.is_some() || self.node_editor.is_some() || self.panel.is_some() {
             return;
         }
         let Some(resume) = self.resume.clone() else {

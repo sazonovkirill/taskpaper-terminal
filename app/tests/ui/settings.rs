@@ -115,7 +115,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     List the Starred view in the Navigator         │",
             "│               │   ⚐ Show Flagged in Navigator                  on  │",
             "│               │     List the Flagged view in the Navigator         │",
-            "│               │   ≈ Animations                                off  │",
+            "│               │   ≡ Use Notes Attachments                      on  │",
         ]
     );
     assert!(
@@ -129,6 +129,16 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         rows[28]
     );
     assert_eq!(rows.len(), 30, "as tall as the window gets");
+    app.type_keys(&"j".repeat(14));
+    let rows = window(&mut app);
+    assert_eq!(
+        rows[22..25],
+        [
+            "│               │   ❞ Use Comments Attachments                   on  │",
+            "│               │     Give blocks dated comments, shown by an icon   │",
+            "│               │   ≈ Animations                                off  │",
+        ]
+    );
     press(&mut app, KeyCode::Esc);
     assert_eq!(window(&mut app), Vec::<String>::new());
 }
