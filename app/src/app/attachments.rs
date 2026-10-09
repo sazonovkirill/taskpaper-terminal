@@ -11,7 +11,7 @@ use super::{
     Command, State,
     text_field::{TextEdit, TextField},
 };
-use crate::document::{Attachment, ItemId, attachments, comments, format::breaks_line};
+use crate::document::{Attachment, Document, ItemId, attachments, comments, format::breaks_line};
 
 /// A key of the open panel, or opening it, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -572,15 +572,56 @@ impl State {
     }
 
     /// The panel on the block of a reloaded document that `exact` finds for its own, closed when
-    /// it finds none (D-104).
-    pub(super) fn rematch_panel(&mut self, exact: impl Fn(ItemId) -> Option<ItemId>) {
-        self.panel = self.panel.take().and_then(|panel| {
-            Some(Panel {
-                block: exact(panel.block)?,
-                ..panel
-            })
-        });
+    /// it finds none (D-104); the selected and reworded comments are found again among the
+    /// block's comments in `old`, the document before, as the same line, and a rewording of one
+    /// that is gone ends, so it never lands on another (D-110).
+    pub(super) fn rematch_panel(
+        &mut self,
+        old: &Document,
+        exact: impl Fn(ItemId) -> Option<ItemId>,
+    ) {
+        let Some(mut panel) = self.panel.take() else {
+            return;
+        };
+        let Some(block) = exact(panel.block) else {
+            return;
+        };
+        let before = attachments::content(old, panel.block, Attachment::Comments);
+        let after = attachments::content(&self.document, block, Attachment::Comments);
+        let note = usize::from(self.notes_on());
+        if let Some(comment) = panel.selected.checked_sub(note)
+            && let Some(found) = same_comment(&before, &after, comment)
+        {
+            panel.selected = note + found;
+        }
+        if let Some(comment) = panel.draft.as_ref().and_then(|draft| draft.comment) {
+            let found = same_comment(&before, &after, comment);
+            panel.draft = (panel.draft.take())
+                .filter(|_| found.is_some())
+                .map(|draft| Draft {
+                    comment: found,
+                    ..draft
+                });
+        }
+        self.panel = Some(Panel { block, ..panel });
     }
+}
+
+/// Where comment `at` of `before` is in `after`: the same line, counting the identical lines
+/// before it, if it is still there.
+fn same_comment(before: &[String], after: &[String], at: usize) -> Option<usize> {
+    let line = before.get(at)?;
+    let rank = before
+        .iter()
+        .take(at)
+        .filter(|other| *other == line)
+        .count();
+    after
+        .iter()
+        .enumerate()
+        .filter(|(_, other)| *other == line)
+        .nth(rank)
+        .map(|(found, _)| found)
 }
 
 #[cfg(test)]
@@ -1283,6 +1324,24 @@ mod tests {
         typed(&mut state, "new");
         configure(&mut state, Attachment::Comments, true);
         assert_eq!(listed(&state).2, Some((None, "new".to_owned())));
+    }
+
+    // FR-ATT-05, attachments.md §3, D-110
+    #[test]
+    fn a_comment_is_found_again_as_the_same_line_among_identical_ones() {
+        let lines = |text: &[&str]| text.iter().map(|&line| line.to_owned()).collect::<Vec<_>>();
+        let before = lines(&["a", "b", "a", "c"]);
+        assert_eq!(
+            same_comment(&before, &lines(&["n", "a", "b", "a", "c"]), 2),
+            Some(3)
+        );
+        assert_eq!(
+            same_comment(&before, &lines(&["b", "a", "c"]), 2),
+            None,
+            "one of two identical comments is gone, so the second is"
+        );
+        assert_eq!(same_comment(&before, &lines(&["b", "a", "c"]), 0), Some(1));
+        assert_eq!(same_comment(&before, &before, 4), None, "past the end");
     }
 
     // FR-ATT-05, FR-OPS-06, attachments.md §5

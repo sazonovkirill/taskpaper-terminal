@@ -340,7 +340,7 @@ impl State {
             .take()
             .and_then(|resume| resume.rematched(exact));
         self.date_prompt = (self.date_prompt.take()).and_then(|prompt| prompt.rematched(exact));
-        self.rematch_panel(exact);
+        self.rematch_panel(&old, exact);
         let symbol = (self.symbols.as_ref())
             .and_then(|(_, finder)| finder.highlighted())
             .and_then(|&id| exact(id));
@@ -1195,6 +1195,61 @@ mod tests {
         assert_eq!((&*view.title, view.note), ("a", vec!["new".to_owned()]));
         state.update(found("- y\n"));
         assert_eq!(state.attachments_panel(), None, "its block is gone");
+    }
+
+    // FR-ATT-05, attachments.md §3, D-110
+    #[test]
+    fn a_reload_keeps_the_selected_and_reworded_comment_on_the_same_comment() {
+        use crate::{
+            app::{AttachmentsInput, PanelItem},
+            document::Attachment,
+        };
+        const BEFORE: &str =
+            "- a\n\tCOMMENTS @hidden\n\t\t[2026-10-09 09:00] x\n\t\t[2026-10-08 09:00] y\n";
+        const NEWER: &str = "- a\n\tCOMMENTS @hidden\n\t\t[2026-10-09 10:00] new\n\t\t[2026-10-09 09:00] x\n\t\t[2026-10-08 09:00] y\n";
+        let mut state = opened(BEFORE);
+        for input in [
+            AttachmentsInput::Open(Attachment::Comments),
+            AttachmentsInput::Select(1),
+            AttachmentsInput::Edit,
+            AttachmentsInput::Text(TextEdit::Insert('!')),
+        ] {
+            state.update(Message::Attachments(input));
+        }
+        state.update(found(NEWER));
+        assert_eq!(
+            state.attachments_panel().unwrap().selected,
+            Some(PanelItem::Comment(2)),
+            "the selection stays on y"
+        );
+        state.update(Message::Attachments(AttachmentsInput::Accept(
+            jiff::civil::DateTime::default(),
+        )));
+        assert_eq!(
+            state.attachments_panel().unwrap().comments,
+            [
+                "[2026-10-09 10:00] new",
+                "[2026-10-09 09:00] x",
+                "[2026-10-08 09:00] y!"
+            ],
+            "the rewording lands on y"
+        );
+        let mut state = opened(BEFORE);
+        for input in [
+            AttachmentsInput::Open(Attachment::Comments),
+            AttachmentsInput::Select(1),
+            AttachmentsInput::Edit,
+        ] {
+            state.update(Message::Attachments(input));
+        }
+        let gone = "- a\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] z\n\t\t[2026-10-09 09:00] x\n";
+        state.update(found(gone));
+        let view = state.attachments_panel().unwrap();
+        assert_eq!(
+            view.draft, None,
+            "a rewording of a comment that is gone ends"
+        );
+        assert_eq!(view.selected, Some(PanelItem::Comment(1)), "where it was");
     }
 
     // file-io.md §3, D-50
