@@ -1,6 +1,6 @@
 # Spec: Attachments
 
-Covers FR-ATT (D-94). An **attachment** is extra information attached to a block and never shown in the outline itself: a **note** (Markdown text of any length) or **comments** (dated one-line entries). A block with an attachment shows its icon after its text, and the attachment is read and edited in the attachments panel. Each kind is stored as a special node ([special-nodes.md](special-nodes.md)) and has its own setting.
+Covers FR-ATT (D-94). An **attachment** is extra information attached to a block and never shown in the outline itself: a **note** (Markdown text of any length) or **comments** (dated one-line entries). A block with an attachment shows its icon at the right of its row, and the attachment is read and edited in the attachments panel. Each kind is stored as a special node ([special-nodes.md](special-nodes.md)) and has its own setting.
 
 ## 1. Storage (FR-ATT-01)
 
@@ -48,36 +48,36 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 
 ## 2. Display (FR-ATT-02)
 
-- A block with a note shows a note icon right after its text, and one with comments a comments icon followed by the number of comments, both before the flag, star and bookmark ([ui.md §7](ui.md#7-icons-fr-ui-09-fr-ui-10)). The implementing thread picks the Nerd Font v3 glyphs, each with a Unicode fallback and an ASCII form in the icon table.
+- A block with a note shows a note icon, and one with comments a comments icon followed by the number of comments, both dimmed and aligned to the right of the row, before its date chips; the flag, star and bookmark stay right after the text ([ui.md §7](ui.md#7-icons-fr-ui-09-fr-ui-10), D-109). The implementing thread picks the Nerd Font v3 glyphs, each with a Unicode fallback and an ASCII form in the icon table.
 - The icons are drawn wherever the block's row is: panes, zoomed title rows and special views. They are hidden while the block is edited, and dimmed like the rest of a done block or one inside a done block (D-40).
 - Attachment content never appears as rows, in counts, the Navigator, the finders, Move to or the special views (FR-SPC-01).
 
 ## 3. Attachments panel (FR-ATT-03)
 
-- A modal panel opened over the right side of the screen, above the panes, from the outline's top rule to the status line, for the focused block. It has a Note tab and a Comments tab, each present only while its setting is on (§6); its title names the block. The keys behind it are inactive while it is open, and `Esc` from its navigate state closes it.
-- Opening commands: Open Note (`n`) and Open Comments (`N`), each opening the panel on its tab, in Go to Command, the edit-mode `/` menu, the context menu and the `?` panel, available whether or not the block has an attachment yet. `Tab` or `Shift+Tab` shows the other tab, and `Esc` closes the panel; opened from the `/` menu, it returns to editing when it closes (D-50, D-106).
+- A modal panel opened over the right side of the screen, above the panes, from the top of the screen to the status line, for the focused block. It shows a Note section and below it a Comments section, each under a heading with its icon and present only while its setting is on (§6); its title names the block (D-109). The keys behind it are inactive while it is open, and `Esc` from its navigate state closes it.
+- Opening commands: Open Note (`n`) and Open Comments (`N`), each opening the panel with the note or the newest comment selected, in Go to Command, the edit-mode `/` menu, the context menu and the `?` panel, available whether or not the block has an attachment yet. `Esc` closes the panel; opened from the `/` menu, it returns to editing when it closes (D-50, D-106).
+- One item is selected, on the focused block's band: the note, heading and text together, or one comment. The motion keys scroll through the selected item while it goes past the panel's edge that way and otherwise select the next or previous item: `j`/`k` or the arrows a line, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` a page, and `g`/`Home` and `G`/`End` go to the top with the first item and the bottom with the last. A newly selected item scrolls into view, from its start when it is taller than the panel (D-109).
 - Every change the panel makes is one undo step in the document, undone with the document's undo once the panel is closed, and saved like any edit.
 
 ## 4. Notes (FR-ATT-04)
 
-- The Note tab shows the note rendered as Markdown: headings, emphasis, inline code, links, lists, block quotes and fenced code blocks, without syntax highlighting, in the theme's colors and wrapped to the panel's width. It scrolls with the usual motion keys: `j`/`k` or the arrows a line, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` a page, `g`/`Home` and `G`/`End` to the top and bottom (D-107).
-- An edit key, `e` or `Enter`, turns it into a multi-line plain-text editor over the raw Markdown: `Enter` breaks the line, the arrows move between lines, the standard text keys work as in edit mode, `Backspace` at the start of a line and `Delete` at its end join it to its neighbor, `Ctrl+V` pastes, and `Esc` saves and returns to the rendered view. The whole session is one undo step. An empty note deletes the `NOTE` node. Closing the panel or quitting saves the note too (D-107).
+- The Note section shows the note rendered as Markdown: headings, emphasis, inline code, links, lists, block quotes and fenced code blocks, without syntax highlighting, in the theme's colors and wrapped to the panel's width, or a dimmed "No note". The motion keys scroll through it as §3 says (D-107, D-109).
+- An edit key, `e` or `Enter`, on the selected note turns it into a multi-line plain-text editor over the raw Markdown: `Enter` breaks the line, the arrows move between lines, the standard text keys work as in edit mode, `Backspace` at the start of a line and `Delete` at its end join it to its neighbor, `Ctrl+V` pastes, and `Esc` saves and returns to the rendered view. The whole session is one undo step. An empty note deletes the `NOTE` node. Closing the panel or quitting saves the note too (D-107).
 
 ## 5. Comments (FR-ATT-05)
 
-- Every comment is one line starting with its local 24-hour timestamp, `[YYYY-MM-DD HH:MM] text`. The Comments tab lists them newest first, as the file stores them, each with its timestamp dimmed and its text rendering inline Markdown (bold, inline code, links) as a text block does.
-- One comment is selected, on the focused block's band: `j`/`k` or the arrows move the selection, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` by as many comments as the panel has lines, `g`/`Home` and `G`/`End` to the first and last, and the tab scrolls to keep it in view (D-108).
-- Add Comment (`a`) opens a one-line input at the top of the list; `Enter` adds the comment there stamped with the current local time and selects it, and `Esc` cancels. A comment cannot hold a line break: a paste's line breaks become spaces. Text of only spaces adds nothing (D-108).
-- A comment can be edited (`e` or `Enter`), in the same input in its place, keeping its timestamp, and deleted (`d` or `Delete`); each is one undo step. Deleting the last one deletes the `COMMENTS` node.
+- Every comment is one line starting with its local 24-hour timestamp, `[YYYY-MM-DD HH:MM] text`. The Comments section lists them newest first, or a dimmed "No comments", as the file stores them, each with its timestamp dimmed and its text rendering inline Markdown (bold, inline code, links) as a text block does.
+- Add Comment (`a`), whatever is selected, opens a one-line input at the top of the list; `Enter` adds the comment there stamped with the current local time and selects it, and `Esc` cancels. A comment cannot hold a line break: a paste's line breaks become spaces. Text of only spaces adds nothing (D-108).
+- The selected comment can be edited (`e` or `Enter`), in the same input in its place, keeping its timestamp, and deleted (`d` or `Delete`); each is one undo step. Deleting the last one deletes the `COMMENTS` node.
 - A line under `COMMENTS` without a valid timestamp, typed by hand or by another app, is shown as a comment without a date and kept as is; the app never reorders existing comments.
 
 ## 6. Settings (FR-ATT-06)
 
 - **Use Notes Attachments** (`attachments_notes`) and **Use Comments Attachments** (`attachments_comments`), booleans, both on by default, in the settings window's Appearance group and in `config.toml` ([ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03)).
-- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon, no panel tab and no command; the Edit Node dialog lists it like any hidden data. With both off the panel cannot open.
+- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon, no panel section and no command; the Edit Node dialog lists it like any hidden data. With both off the panel cannot open.
 
 ## 7. Tests
 
 - Parsing and writing: recognition by exact text and `@hidden`; placement after leading text children and before the first task or project; nodes elsewhere left in place; round-trip byte-for-byte; every guard of §1.1 written and removed, including indented code, `- ` list items, `def f():` and trailing tags after a colon; trailing blank lines dropped.
-- Behavior: creating, editing and emptying a note; adding, editing and deleting comments, with timestamps from an injected clock; undo of each; attachments carried by move, copy, paste and delete; settings off hide icons and tabs and keep the nodes.
-- UI: icons after the text with the comment count, hidden while editing, dimmed when done; the panel's tabs, rendered Markdown and editor, via TestBackend.
+- Behavior: creating, editing and emptying a note; adding, editing and deleting comments, with timestamps from an injected clock; undo of each; attachments carried by move, copy, paste and delete; settings off hide icons and sections and keep the nodes.
+- UI: dimmed icons at the right before the date chips, with the comment count, hidden while editing; the panel's sections, selection and scrolling, rendered Markdown and editor, via TestBackend.

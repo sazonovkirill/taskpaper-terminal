@@ -11,7 +11,7 @@ mod settings;
 pub mod theme;
 pub mod widgets;
 
-use std::{collections::HashMap, mem, path::PathBuf, time::Duration};
+use std::{collections::HashMap, mem, ops::Range, path::PathBuf, time::Duration};
 
 use crossterm::event::{Event, KeyModifiers};
 use jiff::Zoned;
@@ -28,10 +28,10 @@ use ratatui::{
 use crate::{
     app::{
         Animations, AttachmentsInput, Configuration, Disk, Effect, Location, Message, Mode, Origin,
-        PaneId, PaneView, Row, SaveAs, SaveState, SettingsInput, State,
+        PaneId, PaneView, PanelItem, Row, SaveAs, SaveState, SettingsInput, State,
         commands::{Command, REGISTRY},
     },
-    document::{Attachment, ItemId},
+    document::ItemId,
 };
 use animation::{Animator, Before, DrawnPane, Intent, Shown};
 use config::{Config, WriteError};
@@ -132,13 +132,15 @@ pub struct Tui {
     shortcuts_mode: Mode,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
     shortcuts_page: usize,
-    /// The first line of the attachments panel's tab on screen, back at the top when the panel
-    /// closes or shows another tab (D-107).
+    /// The first line of the attachments panel's content on screen, back at the top when the
+    /// panel opens (D-107).
     attachments_scroll: usize,
-    /// The tab the attachments panel showed at the last draw.
-    attachments_tab: Option<Attachment>,
-    /// How many lines a page of the attachments panel's tab was at the last draw.
+    /// What the attachments panel had selected at the last draw, while it was open.
+    attachments_selected: Option<PanelItem>,
+    /// How many lines a page of the attachments panel was at the last draw.
     attachments_page: usize,
+    /// The lines of what the attachments panel had selected or typed at the last draw.
+    attachments_current: Option<Range<usize>>,
     /// Where the last draw put what the mouse acts on.
     drawn: mouse::Drawn,
     /// The panes the wheel scrolled, which stay where it left them rather than show their focus
@@ -205,7 +207,8 @@ impl Tui {
             shortcuts_mode: Mode::Navigate,
             shortcuts_page: 0,
             attachments_scroll: 0,
-            attachments_tab: None,
+            attachments_selected: None,
+            attachments_current: None,
             attachments_page: 0,
             drawn: mouse::Drawn::default(),
             wheel: HashMap::new(),
@@ -501,34 +504,7 @@ impl Tui {
             KeyAction::ScrollShortcutsUp => {
                 self.shortcuts_scroll = self.shortcuts_scroll.saturating_sub(self.shortcuts_page);
             }
-            KeyAction::ScrollAttachments(by) => {
-                let tab = self.state.attachments_panel().map(|view| view.tab);
-                if tab == Some(Attachment::Comments) {
-                    let page = isize::try_from(self.attachments_page).unwrap_or(isize::MAX);
-                    let by = match by {
-                        ScrollBy::Up => -1,
-                        ScrollBy::Down => 1,
-                        ScrollBy::PageUp => -page,
-                        ScrollBy::PageDown => page,
-                        ScrollBy::Top => isize::MIN,
-                        ScrollBy::Bottom => isize::MAX,
-                    };
-                    self.send(Message::Attachments(AttachmentsInput::Select(by)), now);
-                    return;
-                }
-                if self.attachments_tab != tab {
-                    (self.attachments_tab, self.attachments_scroll) = (tab, 0);
-                }
-                let (scroll, page) = (self.attachments_scroll, self.attachments_page);
-                self.attachments_scroll = match by {
-                    ScrollBy::Up => scroll.saturating_sub(1),
-                    ScrollBy::Down => scroll.saturating_add(1),
-                    ScrollBy::PageUp => scroll.saturating_sub(page),
-                    ScrollBy::PageDown => scroll.saturating_add(page),
-                    ScrollBy::Top => 0,
-                    ScrollBy::Bottom => usize::MAX,
-                };
-            }
+            KeyAction::ScrollAttachments(by) => self.scroll_attachments(by, now),
             KeyAction::GoToCommand => {
                 let bindings = REGISTRY
                     .iter()
@@ -1189,27 +1165,63 @@ impl Tui {
         self.draw_attachments(frame, body, theme);
     }
 
-    /// The attachments panel over the right of `body`, while it is open, its tab scrolled no
-    /// further than its end and to the caret while a note is edited, with the caret
-    /// (attachments.md §3, §4).
+    /// The attachments panel over the right of `body`, while it is open, scrolled no further
+    /// than its end, to the selected item when the selection moved and to the caret while text
+    /// is typed, with the caret (attachments.md §3, §4).
     fn draw_attachments(&mut self, frame: &mut Frame, body: Rect, theme: &Theme) {
         let Some(view) = self.state.attachments_panel() else {
-            self.attachments_tab = None;
+            (self.attachments_scroll, self.attachments_selected) = (0, None);
             return;
         };
-        if self.attachments_tab != Some(view.tab) {
-            self.attachments_tab = Some(view.tab);
-            self.attachments_scroll = 0;
-        }
+        let follow = self.attachments_selected != view.selected;
+        self.attachments_selected = view.selected;
         let area = AttachmentsPanel::area(body);
         let panel = AttachmentsPanel::new(&view, self.icons, theme);
-        (self.attachments_scroll, self.attachments_page) =
-            panel.scroll(self.attachments_scroll, area);
+        let scrolled = panel.scroll(self.attachments_scroll, area, follow);
+        (
+            self.attachments_scroll,
+            self.attachments_page,
+            self.attachments_current,
+        ) = (scrolled.scroll, scrolled.page, scrolled.current);
         let panel = panel.scrolled(self.attachments_scroll);
         if let Some(caret) = panel.caret(area) {
             frame.set_cursor_position(caret);
         }
         frame.render_widget(panel, area);
+    }
+
+    /// Moves through the attachments panel as `by` says at time `now`: down or up through the
+    /// selected item while it goes past the panel's edge that way, else to the next or previous
+    /// item, and to the top with the first item or the bottom with the last (attachments.md §3,
+    /// D-109).
+    fn scroll_attachments(&mut self, by: ScrollBy, now: Duration) {
+        let (scroll, page) = (self.attachments_scroll, self.attachments_page);
+        let current = self.attachments_current.clone().unwrap_or(0..0);
+        let step = match by {
+            ScrollBy::PageUp | ScrollBy::PageDown => page,
+            _ => 1,
+        };
+        let select = match by {
+            ScrollBy::Down | ScrollBy::PageDown if current.end > scroll + page => {
+                self.attachments_scroll = (scroll + step).min(current.end - page);
+                return;
+            }
+            ScrollBy::Up | ScrollBy::PageUp if current.start < scroll => {
+                self.attachments_scroll = scroll.saturating_sub(step).max(current.start);
+                return;
+            }
+            ScrollBy::Down | ScrollBy::PageDown => 1,
+            ScrollBy::Up | ScrollBy::PageUp => -1,
+            ScrollBy::Top => {
+                self.attachments_scroll = 0;
+                isize::MIN
+            }
+            ScrollBy::Bottom => {
+                self.attachments_scroll = usize::MAX;
+                isize::MAX
+            }
+        };
+        self.send(Message::Attachments(AttachmentsInput::Select(select)), now);
     }
 
     /// The Edit Node dialog centered over `area`, with its caret, and its parent finder over it,
@@ -1421,8 +1433,6 @@ impl Tui {
                     Overlay::AttachmentsEditor
                 } else if view.draft.is_some() {
                     Overlay::AttachmentsComment
-                } else if view.tab == Attachment::Comments {
-                    Overlay::AttachmentsComments
                 } else {
                     Overlay::Attachments
                 }

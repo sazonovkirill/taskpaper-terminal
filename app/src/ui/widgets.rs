@@ -1324,9 +1324,9 @@ pub(super) fn drawable(text: &str) -> Cow<'_, str> {
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the note
-/// icon (attachments.md §2), the `@flag` flag in red (D-91), the `@star` star and the bookmark
-/// icon, each after a space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
+/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the
+/// `@flag` flag in red (D-91), the `@star` star and the bookmark icon, each after a space (D-47),
+/// dimmed with a done block or one inside it. A collapsed block with children shows
 /// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
 /// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
 /// (D-34). Markers and icons come from `icons`, colors from `theme`.
@@ -1358,23 +1358,15 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
             style
         }
     };
-    let glyph = |icon: Icon| icon.glyph(icons).to_owned();
-    let note = row
-        .note
-        .then(|| (glyph(Icon::NoteAttachment), Style::new()));
-    let comments = (row.comments > 0).then(|| {
-        let count = format!("{} {}", glyph(Icon::Comments), row.comments);
-        (count, Style::new())
-    });
-    let flag = row.flag.then(|| (glyph(Icon::Flag), flag_style(theme)));
-    let star = row.starred.then(|| (glyph(Icon::Star), today_style(theme)));
+    let flag = row.flag.then(|| (Icon::Flag, flag_style(theme)));
+    let star = row.starred.then(|| (Icon::Star, today_style(theme)));
     let bookmark = row
         .bookmark
-        .then(|| (glyph(Icon::Bookmark), bookmark_style(theme)));
-    let marks = [note, comments, flag, star, bookmark];
-    for (mark, style) in marks.iter().flatten() {
+        .then(|| (Icon::Bookmark, bookmark_style(theme)));
+    let marks = [flag, star, bookmark];
+    for (icon, style) in marks.into_iter().flatten() {
         line.push_span(" ");
-        line.push_span(Span::styled(mark.clone(), recede(*style)));
+        line.push_span(Span::styled(icon.glyph(icons), recede(style)));
     }
     if let Some(fold) = fold(row, icons) {
         line.push_span(Span::styled(format!(" {fold}"), Style::new().dim()));
@@ -1433,7 +1425,8 @@ fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Rang
     Some((at, start..start + Span::raw(marker.as_str()).width()))
 }
 
-/// The date chips of `row` on `today`, right-aligned, each after a space: its start date in green
+/// The chips of `row` on `today`, right-aligned, each after a space: its attachment icons,
+/// dimmed, the comments icon with their count (attachments.md §2), then its start date in green
 /// and its due date in red, each as its icon and the date named relative to `today`, such as
 /// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
 /// block or one inside it (ui.md §2, FR-TAG-03). The icons come from `icons`, colors from
@@ -1441,6 +1434,12 @@ fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Rang
 fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
+    let attachment = |mark: String| [Span::raw(" "), Span::styled(mark, Style::new().dim())];
+    let note = row
+        .note
+        .then(|| attachment(Icon::NoteAttachment.glyph(icons).to_owned()));
+    let comments = (row.comments > 0)
+        .then(|| attachment(format!("{} {}", Icon::Comments.glyph(icons), row.comments)));
     let chip = |icon: Icon, date: Date, style: Style| {
         [
             Span::raw(" "),
@@ -1458,6 +1457,8 @@ fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static>
         }
     };
     let spans: Vec<Span> = [
+        note,
+        comments,
         row.start
             .map(|date| chip(Icon::Start, date, start_style(theme))),
         row.due.map(due),
@@ -2447,45 +2448,40 @@ mod tests {
 
     // FR-ATT-02, FR-ATT-06, attachments.md §2
     #[test]
-    fn a_block_with_a_note_shows_its_icon_first_dimmed_when_done() {
-        let [note, flag] = [Icon::NoteAttachment, Icon::Flag].map(|icon| icon.glyph(ICONS));
-        let text = "- a @flag\n\tNOTE @hidden\n\t\tn\n- b @done\n\tNOTE @hidden\n- c";
+    fn attachment_icons_show_dimmed_at_the_right_before_the_date_chips() {
+        let [note, comments, flag] =
+            [Icon::NoteAttachment, Icon::Comments, Icon::Flag].map(|icon| icon.glyph(ICONS));
+        let text = "- a @flag @due(2026-10-09)\n\tNOTE @hidden\n\t\tn\n\tCOMMENTS @hidden\n\t\tx\n\t\ty\n- b @done\n\tCOMMENTS @hidden\n\t\tz";
         let mut state = State::new(format::parse(text), None);
         let rows = state.rows().to_vec();
         let mut expected = Buffer::with_lines([
-            format!("{:<10}", format!("- a {note} {flag}")),
-            format!("{:<10}", format!("✔ b {note}")),
-            format!("{:<10}", "- c"),
+            at_right(
+                &format!("- a {flag}"),
+                &format!("{note} {comments} 2 {}", chip(Icon::Due, "Fri")),
+                24,
+            ),
+            at_right("✔ b", &format!("{comments} 1"), 24),
         ]);
-        expected.set_style(Rect::new(6, 0, 1, 1), flag_style(&THEME));
+        expected.set_style(Rect::new(4, 0, 1, 1), flag_style(&THEME));
+        expected.set_style(Rect::new(13, 0, 1, 1), Style::new().dim());
+        expected.set_style(Rect::new(15, 0, 3, 1), Style::new().dim());
+        expected.set_style(Rect::new(19, 0, 5, 1), due_style(&THEME));
         expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 1, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(4, 1, 1, 1), Style::new().dim());
-        assert_eq!(draw(&rows, 10, 3), expected);
-        state.update(Message::Configure(crate::app::Configuration::Attachments(
-            Attachment::Note,
-            false,
-        )));
-        assert!(state.rows().iter().all(|row| !row.note), "notes are off");
-    }
-
-    // FR-ATT-02, attachments.md §2
-    #[test]
-    fn a_block_with_comments_shows_their_count_after_the_note_dimmed_when_done() {
-        let [note, comments, flag] =
-            [Icon::NoteAttachment, Icon::Comments, Icon::Flag].map(|icon| icon.glyph(ICONS));
-        let text = "- a @flag\n\tNOTE @hidden\n\t\tn\n\tCOMMENTS @hidden\n\t\tx\n\t\ty\n- b @done\n\tCOMMENTS @hidden\n\t\tz";
-        let state = State::new(format::parse(text), None);
-        let rows = state.rows().to_vec();
-        let mut expected = Buffer::with_lines([
-            format!("{:<12}", format!("- a {note} {comments} 2 {flag}")),
-            format!("{:<12}", format!("✔ b {comments} 1")),
-        ]);
-        expected.set_style(Rect::new(10, 0, 1, 1), flag_style(&THEME));
-        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
-        expected.set_style(Rect::new(2, 1, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(4, 1, 3, 1), Style::new().dim());
-        assert_eq!(draw(&rows, 12, 2), expected);
+        expected.set_style(Rect::new(21, 1, 3, 1), Style::new().dim());
+        assert_eq!(draw(&rows, 24, 2), expected);
+        for kind in Attachment::ALL {
+            state.update(Message::Configure(crate::app::Configuration::Attachments(
+                kind, false,
+            )));
+        }
+        assert!(
+            state
+                .rows()
+                .iter()
+                .all(|row| !row.note && row.comments == 0),
+            "attachments are off"
+        );
     }
 
     // D-47, ui.md §2

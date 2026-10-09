@@ -1192,7 +1192,7 @@ mod tests {
         )));
         state.update(found("- z\n- a\n\tNOTE @hidden\n\t\tnew\n"));
         let view = state.attachments_panel().unwrap();
-        assert_eq!((&*view.title, view.lines), ("a", vec!["new".to_owned()]));
+        assert_eq!((&*view.title, view.note), ("a", vec!["new".to_owned()]));
         state.update(found("- y\n"));
         assert_eq!(state.attachments_panel(), None, "its block is gone");
     }

@@ -1,5 +1,5 @@
-//! The attachments panel: the focused block's note and comments, each on a tab of a panel that
-//! takes the keys while open, and the settings that turn each kind on
+//! The attachments panel: the focused block's note and then its comments, one below the other on
+//! a panel that takes the keys while open, and the settings that turn each kind on
 //! ([attachments.md §3, §6](../../../docs/specs/attachments.md#3-attachments-panel-fr-att-03),
 //! FR-ATT-03, FR-ATT-06, D-94).
 
@@ -16,13 +16,12 @@ use crate::document::{Attachment, ItemId, attachments, comments, format::breaks_
 /// A key of the open panel, or opening it, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttachmentsInput {
-    /// Open the panel on the focused block, on this tab (Open Note, Open Comments).
+    /// Open the panel on the focused block with its note, or its first comment, selected (Open
+    /// Note, Open Comments).
     Open(Attachment),
-    /// Show the other tab.
-    SwitchTab,
     /// Close the panel.
     Close,
-    /// Edit the note shown, as raw Markdown, or the selected comment (attachments.md §4, §5).
+    /// Edit the selected note, as raw Markdown, or comment (attachments.md §4, §5).
     Edit,
     /// Change the line with the caret: the note's, or the comment being typed.
     Text(TextEdit),
@@ -34,8 +33,8 @@ pub enum AttachmentsInput {
     LineDown,
     /// Save the edited note and show it rendered again.
     Save,
-    /// Move the comments' selection this many comments down, or up when negative, no further
-    /// than the first or the last.
+    /// Move the selection this many items down, or up when negative, no further than the first
+    /// or the last: the note, then each comment.
     Select(isize),
     /// Start typing a new comment.
     AddComment,
@@ -47,13 +46,12 @@ pub enum AttachmentsInput {
     Cancel,
 }
 
-/// The open panel: the block it is on, the tab it shows, the note being edited, if any, the
-/// selected comment, which may be past the last after the comments change, and the comment being
-/// typed, if any.
+/// The open panel: the block it is on, the note being edited, if any, the selected item, the
+/// note while notes are on and then each comment, which may be past the last after they change,
+/// and the comment being typed, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Panel {
     block: ItemId,
-    tab: Attachment,
     editor: Option<NoteEditor>,
     selected: usize,
     draft: Option<Draft>,
@@ -196,19 +194,27 @@ pub struct NoteCaret {
 pub struct AttachmentsView<'a> {
     /// The block's text without its formatting, which the panel's title names.
     pub title: Arc<str>,
-    /// The tabs, one per kind turned on, in order.
-    pub tabs: &'a [Attachment],
-    /// The tab shown.
-    pub tab: Attachment,
-    /// The lines of the shown tab's attachment, as the user wrote them, or as the editor has
-    /// them while editing.
-    pub lines: Vec<String>,
+    /// Its sections, one per kind turned on, in order: the note, then the comments.
+    pub sections: &'a [Attachment],
+    /// The note's lines, as the user wrote them, or as the editor has them while editing.
+    pub note: Vec<String>,
+    /// The comments' lines, as the file has them.
+    pub comments: Vec<String>,
     /// Where the caret is while the note is edited; `None` while it is shown rendered.
     pub editing: Option<NoteCaret>,
-    /// The selected comment, while the Comments tab shows any.
-    pub selected: Option<usize>,
+    /// The selected item, if there is any.
+    pub selected: Option<PanelItem>,
     /// The comment being typed, if any.
     pub draft: Option<CommentDraft>,
+}
+
+/// An item of the panel that can be selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PanelItem {
+    /// The note, whether or not the block has one yet.
+    Note,
+    /// The comment at this index, newest first.
+    Comment(usize),
 }
 
 /// A comment being typed as a frontend shows it.
@@ -256,45 +262,70 @@ impl State {
             caret: draft.field.caret(),
             selection: draft.field.selection(),
         });
+        let content = |kind| {
+            if self.attached.contains(&kind) {
+                attachments::content(&self.document, panel.block, kind)
+            } else {
+                Vec::new()
+            }
+        };
         Some(AttachmentsView {
             title: self.document.get(panel.block)?.shared_plain_text(),
-            tabs: &self.attached,
-            tab: panel.tab,
-            lines: panel.editor.as_ref().map_or_else(
-                || attachments::content(&self.document, panel.block, panel.tab),
-                NoteEditor::text,
-            ),
+            sections: &self.attached,
+            note: panel
+                .editor
+                .as_ref()
+                .map_or_else(|| content(Attachment::Note), NoteEditor::text),
+            comments: content(Attachment::Comments),
             editing,
-            selected: self.selected_comment(),
+            selected: self.selected_item(),
             draft,
         })
     }
 
-    /// The selected comment, while the panel shows comments.
-    fn selected_comment(&self) -> Option<usize> {
-        let panel = self.panel.as_ref()?;
-        if panel.tab != Attachment::Comments {
-            return None;
-        }
-        let last =
-            attachments::count(&self.document, panel.block, Attachment::Comments).checked_sub(1)?;
-        Some(panel.selected.min(last))
+    /// Whether the panel shows a note item before the comments.
+    fn notes_on(&self) -> bool {
+        self.attached.contains(&Attachment::Note)
     }
 
-    /// Applies `input`: opens the panel on the focused block, or switches or closes the open one.
+    /// The selected item, if the panel has any: the note while notes are on, then each comment
+    /// while comments are.
+    fn selected_item(&self) -> Option<PanelItem> {
+        let panel = self.panel.as_ref()?;
+        let note = usize::from(self.notes_on());
+        let comments = if self.attached.contains(&Attachment::Comments) {
+            attachments::count(&self.document, panel.block, Attachment::Comments)
+        } else {
+            0
+        };
+        let selected = panel.selected.min((note + comments).checked_sub(1)?);
+        Some(match selected.checked_sub(note) {
+            Some(comment) => PanelItem::Comment(comment),
+            None => PanelItem::Note,
+        })
+    }
+
+    /// The selected comment, if a comment is selected.
+    fn selected_comment(&self) -> Option<usize> {
+        match self.selected_item()? {
+            PanelItem::Comment(comment) => Some(comment),
+            PanelItem::Note => None,
+        }
+    }
+
+    /// Selects the newest comment, the first after the note.
+    fn select_newest_comment(&mut self) {
+        let note = usize::from(self.notes_on());
+        if let Some(panel) = &mut self.panel {
+            panel.selected = note;
+        }
+    }
+
+    /// Applies `input`: opens the panel on the focused block, or moves through, edits or closes the
+    /// open one.
     pub(super) fn attachments_input(&mut self, input: AttachmentsInput) {
         match input {
-            AttachmentsInput::Open(tab) => self.open_panel(tab),
-            AttachmentsInput::SwitchTab => {
-                let tabs = self.attached.clone();
-                if let Some(panel) = &mut self.panel
-                    && panel.editor.is_none()
-                    && panel.draft.is_none()
-                    && let Some(&next) = tabs.iter().find(|&&tab| tab != panel.tab)
-                {
-                    panel.tab = next;
-                }
-            }
+            AttachmentsInput::Open(kind) => self.open_panel(kind),
             AttachmentsInput::Close => {
                 self.save_note();
                 self.panel = None;
@@ -319,11 +350,17 @@ impl State {
             }),
             AttachmentsInput::LineDown => self.note_editor(|editor| editor.go_to(editor.row + 1)),
             AttachmentsInput::Select(by) => {
-                if let Some(selected) = self.selected_comment()
+                let note = usize::from(self.notes_on());
+                if let Some(selected) = self.selected_item()
                     && let Some(panel) = &mut self.panel
                     && panel.draft.is_none()
+                    && panel.editor.is_none()
                 {
-                    panel.selected = selected.saturating_add_signed(by);
+                    let at = match selected {
+                        PanelItem::Note => 0,
+                        PanelItem::Comment(comment) => note + comment,
+                    };
+                    panel.selected = at.saturating_add_signed(by);
                 }
             }
             AttachmentsInput::AddComment => self.start_comment(None),
@@ -342,13 +379,16 @@ impl State {
         self.panel.as_mut()?.draft.as_mut()
     }
 
-    /// Starts typing a comment on the Comments tab: a new one, or rewording comment `comment`,
-    /// its text without its timestamp.
+    /// Starts typing a comment while comments are on and nothing else is typed: a new one, or
+    /// rewording comment `comment`, its text without its timestamp.
     fn start_comment(&mut self, comment: Option<usize>) {
         let Some(panel) = &self.panel else {
             return;
         };
-        if panel.tab != Attachment::Comments || panel.draft.is_some() {
+        if !self.attached.contains(&Attachment::Comments)
+            || panel.draft.is_some()
+            || panel.editor.is_some()
+        {
             return;
         }
         let text = comment
@@ -366,7 +406,7 @@ impl State {
         }
     }
 
-    /// Starts rewording the selected comment, if the Comments tab shows any.
+    /// Starts rewording the selected comment, if a comment is selected.
     fn edit_comment(&mut self) {
         if let Some(selected) = self.selected_comment() {
             self.start_comment(Some(selected));
@@ -392,7 +432,7 @@ impl State {
         match draft.comment {
             None => {
                 lines.insert(0, comments::stamped(at, text));
-                panel.selected = 0;
+                self.select_newest_comment();
             }
             Some(comment) => {
                 if let Some(line) = lines.get_mut(comment) {
@@ -429,12 +469,15 @@ impl State {
         }
     }
 
-    /// Starts editing the note shown, at the end of its last line.
+    /// Starts editing the note, when it is selected, at the end of its last line.
     fn edit_note(&mut self) {
         let Some(panel) = &self.panel else {
             return;
         };
-        if panel.tab != Attachment::Note || panel.editor.is_some() {
+        if self.selected_item() != Some(PanelItem::Note)
+            || panel.editor.is_some()
+            || panel.draft.is_some()
+        {
             return;
         }
         let lines = attachments::content(&self.document, panel.block, Attachment::Note);
@@ -479,26 +522,28 @@ impl State {
         self.write_attachment(block, Attachment::Note, &editor.text());
     }
 
-    /// Opens the panel on `tab` for the focused block, a divider aside, which has none, while
-    /// that kind is turned on (attachments.md §3, §6).
-    fn open_panel(&mut self, tab: Attachment) {
+    /// Opens the panel for the focused block, a divider aside, which has none, while the kind
+    /// `kind` is turned on, with its note or its first comment selected (attachments.md §3, §6).
+    fn open_panel(&mut self, kind: Attachment) {
         let Some((block, _)) = self.focused() else {
             return;
         };
-        if self.attached.contains(&tab) && !block.divider() {
+        if self.attached.contains(&kind) && !block.divider() {
             self.panel = Some(Panel {
                 block: block.id(),
-                tab,
                 editor: None,
                 selected: 0,
                 draft: None,
             });
+            if kind == Attachment::Comments {
+                self.select_newest_comment();
+            }
         }
     }
 
-    /// Turns the attachments of kind `kind` on or off; the open panel leaves a tab turned off,
-    /// saving the note it edits and dropping the comment being typed, for the other, or closes
-    /// without one (attachments.md §6).
+    /// Turns the attachments of kind `kind` on or off; the open panel loses that section, saving
+    /// the note it edits or dropping the comment being typed, and closes with none left
+    /// (attachments.md §6).
     pub(super) fn show_attachments(&mut self, kind: Attachment, on: bool) {
         self.attached = Attachment::ALL
             .into_iter()
@@ -510,15 +555,19 @@ impl State {
                 }
             })
             .collect();
-        let Some(panel) = &self.panel else {
+        if on || self.panel.is_none() {
             return;
-        };
-        if !self.attached.contains(&panel.tab) {
-            self.save_note();
-            match (self.attached.first(), &mut self.panel) {
-                (Some(&other), Some(panel)) => (panel.tab, panel.draft) = (other, None),
-                _ => self.attachments_input(AttachmentsInput::Close),
+        }
+        match kind {
+            Attachment::Note => self.save_note(),
+            Attachment::Comments => {
+                if let Some(panel) = &mut self.panel {
+                    panel.draft = None;
+                }
             }
+        }
+        if self.attached.is_empty() {
+            self.attachments_input(AttachmentsInput::Close);
         }
     }
 
@@ -559,36 +608,39 @@ mod tests {
         state.update(Message::Configure(Configuration::Attachments(kind, on)));
     }
 
-    /// The open panel's tabs and shown tab.
-    fn tabs(state: &State) -> Option<(Vec<Attachment>, Attachment)> {
+    /// The open panel's sections and selected item.
+    fn sections(state: &State) -> Option<(Vec<Attachment>, Option<PanelItem>)> {
         state
             .attachments_panel()
-            .map(|view| (view.tabs.to_vec(), view.tab))
+            .map(|view| (view.sections.to_vec(), view.selected))
     }
 
     // FR-ATT-03, attachments.md §3
     #[test]
-    fn the_panel_shows_the_focused_blocks_attachment_on_the_tab_it_opened_on() {
+    fn the_panel_shows_the_note_then_the_comments_with_the_item_it_opened_on_selected() {
         let mut state = state();
         assert_eq!(state.attachments_panel(), None);
         input(&mut state, AttachmentsInput::Open(Attachment::Comments));
         let view = state.attachments_panel().unwrap();
         assert_eq!(&*view.title, "Milk");
-        assert_eq!(view.tabs, Attachment::ALL);
-        assert_eq!(view.tab, Attachment::Comments);
-        assert_eq!(view.lines, ["[2026-10-08 09:00] ok"]);
-        input(&mut state, AttachmentsInput::SwitchTab);
-        let view = state.attachments_panel().unwrap();
-        assert_eq!(
-            (view.tab, view.lines),
-            (Attachment::Note, vec!["Full fat".to_owned()])
-        );
-        input(&mut state, AttachmentsInput::SwitchTab);
-        assert_eq!(tabs(&state).unwrap().1, Attachment::Comments);
+        assert_eq!(view.sections, Attachment::ALL);
+        assert_eq!(view.note, ["Full fat"]);
+        assert_eq!(view.comments, ["[2026-10-08 09:00] ok"]);
+        assert_eq!(view.selected, Some(PanelItem::Comment(0)));
         input(&mut state, AttachmentsInput::Close);
         assert_eq!(state.attachments_panel(), None);
-        input(&mut state, AttachmentsInput::SwitchTab);
-        assert_eq!(state.attachments_panel(), None, "nothing to switch");
+        input(&mut state, AttachmentsInput::Open(Attachment::Note));
+        assert_eq!(sections(&state).unwrap().1, Some(PanelItem::Note));
+        for (by, selected) in [
+            (1, PanelItem::Comment(0)),
+            (1, PanelItem::Comment(0)),
+            (-1, PanelItem::Note),
+            (-1, PanelItem::Note),
+            (isize::MAX, PanelItem::Comment(0)),
+        ] {
+            input(&mut state, AttachmentsInput::Select(by));
+            assert_eq!(sections(&state).unwrap().1, Some(selected), "{by}");
+        }
     }
 
     // FR-ATT-03, FR-ATT-06, FR-BLK-07, attachments.md §1, §3, §6
@@ -600,11 +652,9 @@ mod tests {
         assert_eq!(state.attachments_panel(), None, "notes are off");
         input(&mut state, AttachmentsInput::Open(Attachment::Comments));
         assert_eq!(
-            tabs(&state),
-            Some((vec![Attachment::Comments], Attachment::Comments))
+            sections(&state),
+            Some((vec![Attachment::Comments], Some(PanelItem::Comment(0))))
         );
-        input(&mut state, AttachmentsInput::SwitchTab);
-        assert_eq!(tabs(&state).unwrap().1, Attachment::Comments, "one tab");
         input(&mut state, AttachmentsInput::Close);
         state.update(Message::FocusLast);
         input(&mut state, AttachmentsInput::Open(Attachment::Comments));
@@ -616,24 +666,28 @@ mod tests {
 
     // FR-ATT-06, attachments.md §6
     #[test]
-    fn turning_the_shown_kind_off_moves_to_the_other_tab_or_closes() {
+    fn turning_a_kind_off_takes_its_section_away_and_both_close_the_panel() {
         let mut state = state();
         input(&mut state, AttachmentsInput::Open(Attachment::Note));
         configure(&mut state, Attachment::Comments, false);
+        let view = state.attachments_panel().unwrap();
         assert_eq!(
-            tabs(&state),
-            Some((vec![Attachment::Note], Attachment::Note))
+            (view.sections, view.comments.len()),
+            ([Attachment::Note].as_slice(), 0)
         );
         configure(&mut state, Attachment::Comments, true);
+        configure(&mut state, Attachment::Note, false);
+        let view = state.attachments_panel().unwrap();
         assert_eq!(
-            tabs(&state),
-            Some((Attachment::ALL.to_vec(), Attachment::Note))
+            (view.sections, view.note.len(), view.selected),
+            (
+                [Attachment::Comments].as_slice(),
+                0,
+                Some(PanelItem::Comment(0))
+            )
         );
         configure(&mut state, Attachment::Note, false);
-        assert_eq!(
-            tabs(&state),
-            Some((vec![Attachment::Comments], Attachment::Comments))
-        );
+        assert!(state.attachments_panel().is_some(), "already off");
         configure(&mut state, Attachment::Comments, false);
         assert_eq!(state.attachments_panel(), None);
         assert_eq!(state.attachments_shown(), []);
@@ -691,7 +745,7 @@ mod tests {
             state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type(c)));
         }
         state.update(Message::Menu(Menu::CommandMenu, MenuInput::Choose));
-        assert_eq!(tabs(&state).unwrap().1, Attachment::Note);
+        assert_eq!(sections(&state).unwrap().1, Some(PanelItem::Note));
         assert_eq!(state.mode(), Mode::Navigate, "the panel takes the keys");
         input(&mut state, AttachmentsInput::Close);
         assert_eq!(state.mode(), Mode::Edit);
@@ -718,7 +772,7 @@ mod tests {
     fn edited(state: &State) -> (Vec<String>, Option<(usize, usize)>) {
         let view = state.attachments_panel().unwrap();
         let caret = view.editing.map(|caret| (caret.row, caret.caret));
-        (view.lines, caret)
+        (view.note, caret)
     }
 
     // FR-ATT-04, attachments.md §4
@@ -733,11 +787,15 @@ mod tests {
             ],
         );
         assert_eq!(edited(&state), (vec!["Full fat".to_owned()], Some((0, 8))));
-        keys(&mut state, &[AttachmentsInput::SwitchTab]);
+        keys(
+            &mut state,
+            &[AttachmentsInput::Select(1), AttachmentsInput::AddComment],
+        );
+        let view = state.attachments_panel().unwrap();
         assert_eq!(
-            tabs(&state).unwrap().1,
-            Attachment::Note,
-            "editing keeps the tab"
+            (view.selected, view.draft),
+            (Some(PanelItem::Note), None),
+            "editing keeps the selection"
         );
         typed(&mut state, "!");
         keys(&mut state, &[AttachmentsInput::Break]);
@@ -836,7 +894,7 @@ mod tests {
             "- Milk\n\tNOTE @hidden\n\t\tFull fat milk\n\t\t\u{200B}- not a task\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] ok\n---\n"
         );
         let view = state.attachments_panel().unwrap();
-        assert_eq!((view.editing, view.lines.len()), (None, 2), "shown again");
+        assert_eq!((view.editing, view.note.len()), (None, 2), "shown again");
         input(&mut state, AttachmentsInput::Close);
         state.update(Message::Undo);
         assert_eq!(file(&state), TEXT, "one step");
@@ -904,7 +962,7 @@ mod tests {
 
     // FR-ATT-04, attachments.md §4
     #[test]
-    fn only_the_note_tab_edits_and_its_keys_need_an_editor() {
+    fn only_the_selected_note_edits_and_its_keys_need_an_editor() {
         let mut state = state();
         keys(
             &mut state,
@@ -955,9 +1013,14 @@ mod tests {
         typed(&mut state, "!");
         configure(&mut state, Attachment::Note, false);
         assert!(file(&state).contains("Full fat!"));
+        let view = state.attachments_panel().unwrap();
         assert_eq!(
-            edited(&state),
-            (vec!["[2026-10-08 09:00] ok".to_owned()], None)
+            (view.sections, view.editing.is_some(), view.comments),
+            (
+                &[Attachment::Comments][..],
+                false,
+                vec!["[2026-10-08 09:00] ok".to_owned()]
+            )
         );
     }
 
@@ -1016,7 +1079,11 @@ mod tests {
     fn listed(state: &State) -> Listed {
         let view = state.attachments_panel().unwrap();
         let draft = view.draft.map(|draft| (draft.comment, draft.text));
-        (view.lines, view.selected, draft)
+        let selected = match view.selected {
+            Some(PanelItem::Comment(comment)) => Some(comment),
+            _ => None,
+        };
+        (view.comments, selected, draft)
     }
 
     const COMMENTS: &str = "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] b\n\t\tby hand\n\t\t[2026-10-07 09:00] a\n";
@@ -1027,15 +1094,16 @@ mod tests {
         let mut state = State::new(format::parse(COMMENTS), None);
         input(&mut state, AttachmentsInput::Open(Attachment::Comments));
         assert_eq!(listed(&state).1, Some(0));
-        for (by, selected) in [(1, 1), (isize::MAX, 2), (-1, 1), (isize::MIN, 0), (-1, 0)] {
+        for (by, selected) in [
+            (1, Some(1)),
+            (isize::MAX, Some(2)),
+            (-1, Some(1)),
+            (isize::MIN, None),
+            (1, Some(0)),
+        ] {
             input(&mut state, AttachmentsInput::Select(by));
-            assert_eq!(listed(&state).1, Some(selected), "{by}");
+            assert_eq!(listed(&state).1, selected, "{by}");
         }
-        input(&mut state, AttachmentsInput::SwitchTab);
-        assert_eq!(listed(&state).1, None, "the Note tab has none");
-        input(&mut state, AttachmentsInput::Select(1));
-        input(&mut state, AttachmentsInput::SwitchTab);
-        assert_eq!(listed(&state).1, Some(0));
         let mut none = State::new(format::parse("- Milk"), None);
         keys(
             &mut none,
@@ -1048,7 +1116,11 @@ mod tests {
         assert_eq!(none.attachments_panel(), None, "no panel");
         input(&mut none, AttachmentsInput::Open(Attachment::Comments));
         input(&mut none, AttachmentsInput::Select(1));
-        assert_eq!(listed(&none).1, None, "no comments");
+        assert_eq!(
+            sections(&none).unwrap().1,
+            Some(PanelItem::Note),
+            "no comments"
+        );
     }
 
     // FR-ATT-05, FR-OPS-08, attachments.md §5
@@ -1068,18 +1140,13 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::SwitchTab,
                 AttachmentsInput::Select(1),
                 AttachmentsInput::DeleteComment,
                 AttachmentsInput::AddComment,
                 AttachmentsInput::Edit,
             ],
         );
-        assert_eq!(
-            (tabs(&state).unwrap().1, listed(&state).1),
-            (Attachment::Comments, Some(1)),
-            "typing holds the tab and the selection"
-        );
+        assert_eq!(listed(&state).1, Some(1), "typing holds the selection");
         input(&mut state, AttachmentsInput::Accept(AT));
         assert_eq!(
             listed(&state),
@@ -1195,7 +1262,27 @@ mod tests {
                 AttachmentsInput::AddComment,
             ],
         );
-        assert_eq!((file(&note), listed(&note).2), (TEXT.to_owned(), None));
+        assert_eq!(
+            (file(&note), listed(&note).2),
+            (TEXT.to_owned(), Some((None, String::new()))),
+            "nothing deleted, and a comment is added from the note"
+        );
+    }
+
+    // FR-ATT-06, attachments.md §6
+    #[test]
+    fn turning_on_a_kind_already_on_keeps_what_is_typed() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::AddComment,
+            ],
+        );
+        typed(&mut state, "new");
+        configure(&mut state, Attachment::Comments, true);
+        assert_eq!(listed(&state).2, Some((None, "new".to_owned())));
     }
 
     // FR-ATT-05, FR-OPS-06, attachments.md §5

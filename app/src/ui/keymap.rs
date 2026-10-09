@@ -80,7 +80,8 @@ pub enum KeyAction {
     ScrollShortcutsDown,
     /// Scrolls the shortcuts panel up a page.
     ScrollShortcutsUp,
-    /// Scrolls the attachments panel's tab, as scrolling is the frontend's (D-55, D-107).
+    /// Scrolls the attachments panel or moves its selection, as scrolling is the frontend's (D-55,
+    /// D-109).
     ScrollAttachments(ScrollBy),
 }
 
@@ -140,8 +141,6 @@ pub enum Overlay {
     Attachments,
     /// The attachments panel while it edits a note (FR-ATT-04).
     AttachmentsEditor,
-    /// The attachments panel's Comments tab (FR-ATT-05).
-    AttachmentsComments,
     /// The attachments panel while a comment is typed (FR-ATT-05).
     AttachmentsComment,
 }
@@ -167,7 +166,6 @@ impl Overlay {
             | Self::NodeEditor
             | Self::Attachments
             | Self::AttachmentsEditor
-            | Self::AttachmentsComments
             | Self::AttachmentsComment
             | Self::Settings
             | Self::SettingsText
@@ -505,13 +503,14 @@ fn node_editor_message(key: Key) -> Option<Message> {
 /// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
 const ATTACHMENTS: &[(Key, AttachmentsInput)] = &[
     (key!(Esc), AttachmentsInput::Close),
-    (key!(Tab), AttachmentsInput::SwitchTab),
-    (key!(shift BackTab), AttachmentsInput::SwitchTab),
     (key!('e'), AttachmentsInput::Edit),
     (key!(Enter), AttachmentsInput::Edit),
+    (key!('a'), AttachmentsInput::AddComment),
+    (key!('d'), AttachmentsInput::DeleteComment),
+    (key!(Delete), AttachmentsInput::DeleteComment),
 ];
 
-/// The keys that scroll the attachments panel's tab (D-107).
+/// The keys that scroll the attachments panel and move its selection (D-107, D-109).
 const SCROLL: &[(Key, ScrollBy)] = &[
     (key!('j'), ScrollBy::Down),
     (key!(Down), ScrollBy::Down),
@@ -527,26 +526,13 @@ const SCROLL: &[(Key, ScrollBy)] = &[
     (key!('G'), ScrollBy::Bottom),
 ];
 
-/// Bindings of the attachments panel's Comments tab ([keybindings.md §4]) besides those of
-/// [`ATTACHMENTS`], and [`SCROLL`], which moves the selection there.
-///
-/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
-const COMMENTS: &[(Key, AttachmentsInput)] = &[
-    (key!('a'), AttachmentsInput::AddComment),
-    (key!('d'), AttachmentsInput::DeleteComment),
-    (key!(Delete), AttachmentsInput::DeleteComment),
-];
-
-/// The attachments panel's action for `key`, `comments` its bindings on the Comments tab:
-/// `Ctrl+Q` quits, else its binding or scroll, if any.
-fn attachments_action(key: Key, comments: bool) -> Option<KeyAction> {
+/// The attachments panel's action for `key`: `Ctrl+Q` quits, else its binding or scroll, if any.
+fn attachments_action(key: Key) -> Option<KeyAction> {
     if key == key!(ctrl 'q') {
         return Some(KeyAction::Send(Message::Quit));
     }
-    let tab: &[_] = if comments { COMMENTS } else { &[] };
     ATTACHMENTS
         .iter()
-        .chain(tab)
         .find(|(bound, _)| *bound == key)
         .map(|&(_, input)| KeyAction::Send(Message::Attachments(input)))
         .or_else(|| {
@@ -1160,8 +1146,7 @@ impl Keymap {
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
-                Overlay::Attachments => return attachments_action(pressed, false),
-                Overlay::AttachmentsComments => return attachments_action(pressed, true),
+                Overlay::Attachments => return attachments_action(pressed),
                 Overlay::AttachmentsEditor => note_editor_message(pressed),
                 Overlay::AttachmentsComment => comment_message(pressed, context.now),
             };
@@ -2470,10 +2455,16 @@ mod tests {
         let send = |input| Some(KeyAction::Send(Message::Attachments(input)));
         for (code, modifiers, expected) in [
             (KeyCode::Esc, none, send(AttachmentsInput::Close)),
-            (KeyCode::Tab, none, send(AttachmentsInput::SwitchTab)),
-            (KeyCode::BackTab, shift, send(AttachmentsInput::SwitchTab)),
             (KeyCode::Char('e'), none, send(AttachmentsInput::Edit)),
             (KeyCode::Enter, none, send(AttachmentsInput::Edit)),
+            (KeyCode::Char('a'), none, send(AttachmentsInput::AddComment)),
+            (
+                KeyCode::Char('d'),
+                none,
+                send(AttachmentsInput::DeleteComment),
+            ),
+            (KeyCode::Delete, none, send(AttachmentsInput::DeleteComment)),
+            (KeyCode::Tab, none, None),
             (
                 KeyCode::Char('q'),
                 ctrl,
@@ -2505,42 +2496,6 @@ mod tests {
                 "{code:?} {modifiers:?}"
             );
         }
-    }
-
-    // attachments.md §5, keybindings.md §4, D-42
-    #[test]
-    fn the_comments_tab_adds_deletes_and_moves_the_selection_with_the_scroll_keys() {
-        let none = KeyModifiers::NONE;
-        let action = |code, overlay| {
-            let context = &Context {
-                overlay: Some(overlay),
-                ..*CONTEXT
-            };
-            Keymap::default().action_for(&key(code, none), ms(0), context)
-        };
-        let send = |input| Some(KeyAction::Send(Message::Attachments(input)));
-        for (code, expected) in [
-            (KeyCode::Char('a'), send(AttachmentsInput::AddComment)),
-            (KeyCode::Char('d'), send(AttachmentsInput::DeleteComment)),
-            (KeyCode::Delete, send(AttachmentsInput::DeleteComment)),
-            (KeyCode::Char('e'), send(AttachmentsInput::Edit)),
-            (KeyCode::Esc, send(AttachmentsInput::Close)),
-            (
-                KeyCode::Char('j'),
-                Some(KeyAction::ScrollAttachments(ScrollBy::Down)),
-            ),
-        ] {
-            assert_eq!(
-                action(code, Overlay::AttachmentsComments),
-                expected,
-                "{code:?}"
-            );
-        }
-        assert_eq!(
-            action(KeyCode::Char('a'), Overlay::Attachments),
-            None,
-            "the Note tab"
-        );
     }
 
     // attachments.md §5, keybindings.md §4, D-42
@@ -4046,7 +4001,6 @@ mod tests {
             Overlay::NodeEditorFinder,
             Overlay::Attachments,
             Overlay::AttachmentsEditor,
-            Overlay::AttachmentsComments,
             Overlay::AttachmentsComment,
             Overlay::GoToSymbol,
             Overlay::MoveTo,
