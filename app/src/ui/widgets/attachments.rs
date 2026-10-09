@@ -172,7 +172,7 @@ impl<'a> AttachmentsPanel<'a> {
         layout
     }
 
-    /// A section's heading: its icon and name in the headers color, bold.
+    /// A section's heading: its icon and name in the headers color, bold, at the right (D-110).
     fn heading(&self, kind: Attachment) -> Line<'a> {
         let name = match kind {
             Attachment::Note => "Note",
@@ -182,6 +182,7 @@ impl<'a> AttachmentsPanel<'a> {
             format!("{} {name}", attachment_icon(kind).glyph(self.icons)),
             Style::new().fg(self.theme.headers).bold(),
         )
+        .right_aligned()
     }
 
     /// Lays out the note below its heading: rendered and wrapped, or while it is edited as
@@ -510,10 +511,10 @@ mod tests {
             rows(&buf),
             [
                 "┌ Milk ──────────────────────┐",
-                "│ ≡ Note                     │",
+                "│                     ≡ Note │",
                 "│ Full fat                   │",
                 "│                            │",
-                "│ ❞ Comments                 │",
+                "│                 ❞ Comments │",
                 "│ 2026-10-08 09:05 ok        │",
                 "│ b                          │",
                 "│                            │",
@@ -534,7 +535,7 @@ mod tests {
         assert_eq!(
             render(&only, 24, 6)[1..5],
             [
-                "│ ≡ Note               │",
+                "│               ≡ Note │",
                 "│ No note              │",
                 "│                      │",
                 "│ e edit · Esc close   │",
@@ -547,7 +548,7 @@ mod tests {
         assert_eq!(
             render(&none, 24, 6)[1..5],
             [
-                "│ ❞ Comments           │",
+                "│           ❞ Comments │",
                 "│ No comments          │",
                 "│                      │",
                 "│ a add · Esc close    │",
@@ -581,7 +582,7 @@ mod tests {
         assert_eq!(
             rows(&buf)[1..14],
             [
-                "│ ≡ Note                     │",
+                "│                     ≡ Note │",
                 "│ Title                      │",
                 "│ Some soft and bold words   │",
                 "│ to wrap                    │",
@@ -655,7 +656,7 @@ mod tests {
         assert_eq!(
             shown[1..4],
             [
-                "│ ≡ Note               │",
+                "│               ≡ Note │",
                 "│ line 1               │",
                 "│ line 2               │"
             ]
@@ -766,7 +767,7 @@ mod tests {
             IconSet::Unicode,
             0,
         );
-        assert_eq!(rows(&buf)[1], "│ ❞ Comments                   │");
+        assert_eq!(rows(&buf)[1], "│                   ❞ Comments │");
         assert_eq!(rows(&buf)[5], "│ by hand                      │");
         assert_eq!(buf[(2, 5)].bg, THEME.current_line, "the selected comment");
         assert_eq!(buf[(29, 5)].bg, THEME.current_line, "the whole width");
@@ -801,7 +802,7 @@ mod tests {
         assert_eq!(
             rows(&buf)[1..7],
             [
-                "│ ❞ Comments                   │",
+                "│                   ❞ Comments │",
                 "│ › new                        │",
                 "│ by hand                      │",
                 "│ 2026-10-07 18:02 a           │",

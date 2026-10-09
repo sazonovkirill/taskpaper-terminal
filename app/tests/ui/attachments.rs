@@ -41,11 +41,11 @@ fn n_opens_the_note_then_the_comments_down_the_right_and_esc_closes() {
         screen(&mut app)[..11],
         [
             "  ⌂                                     ┌ Milk ────────────────────────────────┐",
-            "────────────────────────────────────────│ ≡ Note                               │",
+            "────────────────────────────────────────│                               ≡ Note │",
             "▌ - Milk                                │ Full fat                             │",
             "  - Bread                               │ • not skimmed                        │",
             "                                        │                                      │",
-            "                                        │ ❞ Comments                           │",
+            "                                        │                           ❞ Comments │",
             "                                        │ No comments                          │",
             "                                        │                                      │",
             "                                        │                                      │",
@@ -89,7 +89,7 @@ fn a_kind_turned_off_has_no_section_or_key() {
     assert!(!screen(&mut app)[0].contains('┌'), "Open Note is off");
     app.type_keys("N");
     let rows = screen(&mut app);
-    assert!(rows[1].contains("│ ❞ Comments    "), "{rows:?}");
+    assert!(rows[1].ends_with("    ❞ Comments │"), "{rows:?}");
     assert!(rows[2].contains("│ No comments    "), "{rows:?}");
     assert!(rows[9].contains("│ a add · Esc close"), "{rows:?}");
     let mut off = Harness::with_config(
@@ -124,7 +124,7 @@ fn e_edits_the_note_and_esc_saves_it_as_one_step_to_undo() {
     assert_eq!(
         rows[1..4],
         [
-            format!("{:40}│ ≡ Note{:31}│", "─".repeat(40), ""),
+            format!("{}│{:>37} │", "─".repeat(40), "≡ Note"),
             format!("▌ - Bread{:31}│ Rye{:34}│", "", ""),
             format!("{:40}│ • seeded{:29}│", "", ""),
         ]
@@ -164,7 +164,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
     app.type_keys("k");
     assert_eq!(
         screen(&mut app)[1],
-        format!("{:40}│ ≡ Note{:31}│", "─".repeat(40), ""),
+        format!("{}│{:>37} │", "─".repeat(40), "≡ Note"),
         "a taller item shows from its start"
     );
     app.press(KeyCode::Char('d'), KeyModifiers::CONTROL);
@@ -181,7 +181,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
     app.press(KeyCode::Char('u'), KeyModifiers::CONTROL);
     assert_eq!(
         screen(&mut app)[1],
-        format!("{:40}│ ≡ Note{:31}│", "─".repeat(40), ""),
+        format!("{}│{:>37} │", "─".repeat(40), "≡ Note"),
         "no further than its start"
     );
     app.press(KeyCode::Char('d'), KeyModifiers::CONTROL);
@@ -196,7 +196,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
     app.type_keys("g");
     assert_eq!(
         screen(&mut app)[1],
-        format!("{:40}│ ≡ Note{:31}│", "─".repeat(40), "")
+        format!("{}│{:>37} │", "─".repeat(40), "≡ Note")
     );
 }
 
@@ -217,7 +217,7 @@ fn a_adds_a_stamped_comment_e_rewords_it_and_d_deletes_it_each_one_step_to_undo(
         [
             format!("▌ - Milk{:32}│ No note{:30}│", "", ""),
             format!("{:40}│{:38}│", "", ""),
-            format!("{:40}│ ❞ Comments{:27}│", "", ""),
+            format!("{:40}│{:>37} │", "", "❞ Comments"),
             format!("{:40}│ 2026-10-05 09:30 Bought it{:11}│", "", ""),
             format!("{:40}│ Typed by hand{:24}│", "", ""),
         ]

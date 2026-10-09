@@ -48,15 +48,16 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 
 ## 2. Display (FR-ATT-02)
 
-- A block with a note shows a note icon, and one with comments a comments icon followed by the number of comments, both dimmed and aligned to the right of the row, before its date chips; the flag, star and bookmark stay right after the text ([ui.md §7](ui.md#7-icons-fr-ui-09-fr-ui-10), D-109). The implementing thread picks the Nerd Font v3 glyphs, each with a Unicode fallback and an ASCII form in the icon table.
+- A block with a note shows a note icon, and one with comments a comments icon followed by the number of comments, both dimmed in the headers color and aligned to the right of the row, before its date chips; the flag, star and bookmark stay right after the text ([ui.md §7](ui.md#7-icons-fr-ui-09-fr-ui-10), D-109, D-110). The implementing thread picks the Nerd Font v3 glyphs, each with a Unicode fallback and an ASCII form in the icon table.
 - The icons are drawn wherever the block's row is: panes, zoomed title rows and special views. They are hidden while the block is edited, and dimmed like the rest of a done block or one inside a done block (D-40).
 - Attachment content never appears as rows, in counts, the Navigator, the finders, Move to or the special views (FR-SPC-01).
 
 ## 3. Attachments panel (FR-ATT-03)
 
-- A modal panel opened over the right side of the screen, above the panes, from the top of the screen to the status line, for the focused block. It shows a Note section and below it a Comments section, each under a heading with its icon and present only while its setting is on (§6); its title names the block (D-109). The keys behind it are inactive while it is open, and `Esc` from its navigate state closes it.
+- A modal panel opened over the right side of the screen, above the panes, from the top of the screen to the status line, for the focused block. It shows a Note section and below it a Comments section, each under a heading with its icon, aligned to the right in the headers color and present only while its setting is on (§6); its title names the block (D-109, D-110). The keys behind it are inactive while it is open, and `Esc` from its navigate state closes it.
 - Opening commands: Open Note (`n`) and Open Comments (`N`), each opening the panel with the note or the newest comment selected, in Go to Command, the edit-mode `/` menu, the context menu and the `?` panel, available whether or not the block has an attachment yet. `Esc` closes the panel; opened from the `/` menu, it returns to editing when it closes (D-50, D-106).
 - One item is selected, on the focused block's band: the note, heading and text together, or one comment. The motion keys scroll through the selected item while it goes past the panel's edge that way and otherwise select the next or previous item: `j`/`k` or the arrows a line, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` a page, and `g`/`Home` and `G`/`End` go to the top with the first item and the bottom with the last. A newly selected item scrolls into view, from its start when it is taller than the panel (D-109).
+- A reload from disk keeps the panel open on its block, with the note or comment being typed, and closes it only when the block is gone; saving the note then writes it over any outside change to that note, and a comment being reworded is known by its place in the list, so an outside change that adds or removes comments can make the rewording land on another one, a known gap (D-104, D-110).
 - Every change the panel makes is one undo step in the document, undone with the document's undo once the panel is closed, and saved like any edit.
 
 ## 4. Notes (FR-ATT-04)

@@ -1426,15 +1426,18 @@ fn fold_marker(row: &Row, lines: &[Line], icons: IconSet) -> Option<(usize, Rang
 }
 
 /// The chips of `row` on `today`, right-aligned, each after a space: its attachment icons,
-/// dimmed, the comments icon with their count (attachments.md §2), then its start date in green
-/// and its due date in red, each as its icon and the date named relative to `today`, such as
-/// `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
+/// dimmed in the headers color, the comments icon with their count (attachments.md §2), then
+/// its start date in green and its due date in red, each as its icon and the date named relative
+/// to `today`, such as `tomorrow` (D-46); an overdue date has its own icon and is reversed. All are dimmed with a done
 /// block or one inside it (ui.md §2, FR-TAG-03). The icons come from `icons`, colors from
 /// `theme`.
 fn chips(row: &Row, today: Date, icons: IconSet, theme: &Theme) -> Line<'static> {
     let receded = row.done || row.inside_done;
     let recede = |style: Style| if receded { style.dim() } else { style };
-    let attachment = |mark: String| [Span::raw(" "), Span::styled(mark, Style::new().dim())];
+    let attachment = |mark: String| {
+        let style = Style::new().fg(theme.headers).dim();
+        [Span::raw(" "), Span::styled(mark, style)]
+    };
     let note = row
         .note
         .then(|| attachment(Icon::NoteAttachment.glyph(icons).to_owned()));
@@ -2448,7 +2451,7 @@ mod tests {
 
     // FR-ATT-02, FR-ATT-06, attachments.md §2
     #[test]
-    fn attachment_icons_show_dimmed_at_the_right_before_the_date_chips() {
+    fn attachment_icons_show_dimmed_in_the_headers_color_at_the_right_before_the_date_chips() {
         let [note, comments, flag] =
             [Icon::NoteAttachment, Icon::Comments, Icon::Flag].map(|icon| icon.glyph(ICONS));
         let text = "- a @flag @due(2026-10-09)\n\tNOTE @hidden\n\t\tn\n\tCOMMENTS @hidden\n\t\tx\n\t\ty\n- b @done\n\tCOMMENTS @hidden\n\t\tz";
@@ -2463,12 +2466,13 @@ mod tests {
             at_right("✔ b", &format!("{comments} 1"), 24),
         ]);
         expected.set_style(Rect::new(4, 0, 1, 1), flag_style(&THEME));
-        expected.set_style(Rect::new(13, 0, 1, 1), Style::new().dim());
-        expected.set_style(Rect::new(15, 0, 3, 1), Style::new().dim());
+        let icon = Style::new().fg(THEME.headers).dim();
+        expected.set_style(Rect::new(13, 0, 1, 1), icon);
+        expected.set_style(Rect::new(15, 0, 3, 1), icon);
         expected.set_style(Rect::new(19, 0, 5, 1), due_style(&THEME));
         expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
         expected.set_style(Rect::new(2, 1, 1, 1), Style::new().dim().crossed_out());
-        expected.set_style(Rect::new(21, 1, 3, 1), Style::new().dim());
+        expected.set_style(Rect::new(21, 1, 3, 1), icon);
         assert_eq!(draw(&rows, 24, 2), expected);
         for kind in Attachment::ALL {
             state.update(Message::Configure(crate::app::Configuration::Attachments(
