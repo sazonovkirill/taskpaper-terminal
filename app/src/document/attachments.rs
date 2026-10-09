@@ -151,9 +151,9 @@ fn changes(document: &mut Document, node: ItemId, old: &[ItemId], new: &[String]
     ops
 }
 
-/// Adds to `ops` those that replace the lines `removed`, each with its text, at `index` on among the children of
-/// `node`, with the lines `added`, rewriting them line for line, and empties both; returns the
-/// index after the lines added.
+/// Adds to `ops` those that replace the lines `removed`, each with its text, with the lines
+/// `added`, rewriting them line for line from child `index` of `node` on, and empties both;
+/// returns the index after the lines added.
 fn replace(
     document: &mut Document,
     node: ItemId,
@@ -510,7 +510,9 @@ mod tests {
         for old in runs.iter().filter(|run| !run.is_empty()) {
             let text = format!("- t\n\tNOTE @hidden\n\t\t{}", old.join("\n\t\t"));
             for new in runs.iter().filter(|run| !run.is_empty()) {
-                let (_, ops) = written(&text, Attachment::Note, new);
+                let (written_text, ops) = written(&text, Attachment::Note, new);
+                let expected = format!("- t\n\tNOTE @hidden\n\t\t{}", new.join("\n\t\t"));
+                assert_eq!(written_text, expected);
                 let touched = ops
                     .iter()
                     .filter(|op| matches!(op, Op::SetText { .. } | Op::Remove { .. }))

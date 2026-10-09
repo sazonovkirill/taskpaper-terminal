@@ -60,8 +60,8 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 
 ## 4. Notes (FR-ATT-04)
 
-- The Note tab shows the note rendered as Markdown: headings, emphasis, inline code, links, lists, block quotes and fenced code blocks, without syntax highlighting, in the theme's colors and wrapped to the panel's width. It scrolls with the usual motion keys.
-- An edit key turns it into a multi-line plain-text editor over the raw Markdown: `Enter` breaks the line, the arrows move between lines, the standard text keys work as in edit mode, and `Esc` saves and returns to the rendered view. The whole session is one undo step. An empty note deletes the `NOTE` node.
+- The Note tab shows the note rendered as Markdown: headings, emphasis, inline code, links, lists, block quotes and fenced code blocks, without syntax highlighting, in the theme's colors and wrapped to the panel's width. It scrolls with the usual motion keys: `j`/`k` or the arrows a line, `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` a page, `g`/`Home` and `G`/`End` to the top and bottom (D-107).
+- An edit key, `e` or `Enter`, turns it into a multi-line plain-text editor over the raw Markdown: `Enter` breaks the line, the arrows move between lines, the standard text keys work as in edit mode, `Backspace` at the start of a line and `Delete` at its end join it to its neighbor, `Ctrl+V` pastes, and `Esc` saves and returns to the rendered view. The whole session is one undo step. An empty note deletes the `NOTE` node. Closing the panel or quitting saves the note too (D-107).
 
 ## 5. Comments (FR-ATT-05)
 

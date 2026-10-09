@@ -38,7 +38,7 @@ use super::{
     walks::Walks,
 };
 use crate::document::{
-    Attachment, Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, blocks,
+    Attachment, Block, BlockKind, Document, Item, ItemId, Stamp, TagColor, attachments, blocks,
 };
 
 /// How long a status-line notice stays.
@@ -151,6 +151,8 @@ struct RowsKey {
     today: Option<(Date, TodayOrder, bool, bool)>,
     /// The day of a view whose entries depend on it, Upcoming, Overdue or Logbook; `None` elsewhere.
     day: Option<Date>,
+    /// The kinds of attachment turned on, whose icons rows show (attachments.md §2).
+    attached: Vec<Attachment>,
 }
 
 /// What a pane shows (navigation.md §4, §7).
@@ -362,6 +364,8 @@ pub struct Row {
     pub bookmark: bool,
     /// Whether it carries `@flag` (D-91).
     pub flag: bool,
+    /// Whether it has a note shown by its icon, while notes are on (attachments.md §2).
+    pub note: bool,
     /// The color that tints its row's background (FR-TAG-05, D-48).
     pub color: Option<TagColor>,
     /// Whether its line carries `@url`, so its title is a link (FR-BLK-06, D-45).
@@ -650,6 +654,7 @@ impl State {
                 Location::View(SpecialView::Upcoming | SpecialView::Overdue | SpecialView::Logbook)
             )
             .then_some(self.today),
+            attached: self.attached.clone(),
         };
         // Rows of the same outline fit, best those with the same folds: the Navigator's rows,
         // with none, and a pane's are each built from their own earlier rows, so a folded
@@ -657,7 +662,8 @@ impl State {
         let rank = |kept: &RowsKey| {
             (matches!(kept.location, Location::Outline(_))
                 && kept.location == pane.location
-                && kept.show_done == pane.show_done)
+                && kept.show_done == pane.show_done
+                && kept.attached == self.attached)
                 .then(|| kept.folds == *folds)
         };
         self.rows
@@ -893,6 +899,8 @@ impl State {
             starred: block.starred(),
             bookmark: block.bookmark(),
             flag: block.flag(),
+            note: self.attached.contains(&Attachment::Note)
+                && attachments::node(&self.document, block.id(), Attachment::Note).is_some(),
             color: block.color(),
             url: block.url(),
             selected: pane.selection.contains(block.id()),
@@ -1330,6 +1338,7 @@ mod tests {
             selection: state.pane.selection.clone(),
             today: None,
             day: None,
+            attached: state.attached.clone(),
         };
         // B inside A collapsed after, F inside E collapsed before.
         state.folds = Folds::from_iter([a, b, f]);

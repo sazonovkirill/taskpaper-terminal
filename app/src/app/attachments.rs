@@ -3,10 +3,13 @@
 //! ([attachments.md §3, §6](../../../docs/specs/attachments.md#3-attachments-panel-fr-att-03),
 //! FR-ATT-03, FR-ATT-06, D-94).
 
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
 
-use super::{Command, State};
-use crate::document::{Attachment, ItemId, attachments};
+use super::{
+    Command, State,
+    text_field::{TextEdit, TextField},
+};
+use crate::document::{Attachment, ItemId, attachments, format::breaks_line};
 
 /// A key of the open panel, or opening it, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,13 +20,151 @@ pub enum AttachmentsInput {
     SwitchTab,
     /// Close the panel.
     Close,
+    /// Edit the note shown, as raw Markdown (attachments.md §4).
+    Edit,
+    /// Change the note's line with the caret.
+    Text(TextEdit),
+    /// Break the note's line at the caret.
+    Break,
+    /// Move the caret to the line above.
+    LineUp,
+    /// Move the caret to the line below.
+    LineDown,
+    /// Save the edited note and show it rendered again.
+    Save,
 }
 
-/// The open panel: the block it is on and the tab it shows.
+/// The open panel: the block it is on, the tab it shows and the note being edited, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Panel {
     block: ItemId,
     tab: Attachment,
+    editor: Option<NoteEditor>,
+}
+
+/// A note being edited: its lines, the line the caret is on and that line as a text field, which
+/// holds it while the caret is on it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NoteEditor {
+    lines: Vec<String>,
+    row: usize,
+    field: TextField,
+}
+
+impl NoteEditor {
+    /// An editor over `lines`, the caret at the end of the last.
+    fn new(mut lines: Vec<String>) -> Self {
+        if lines.is_empty() {
+            lines.push(String::new());
+        }
+        let row = lines.len() - 1;
+        let field = TextField::new(lines.last().cloned().unwrap_or_default());
+        Self { lines, row, field }
+    }
+
+    /// Every line, the caret's as the field has it.
+    fn text(&self) -> Vec<String> {
+        let mut lines = self.lines.clone();
+        if let Some(line) = lines.get_mut(self.row) {
+            self.field.text().clone_into(line);
+        }
+        lines
+    }
+
+    /// Moves the caret to line `row`, at the same column or the end of a shorter line.
+    fn go_to(&mut self, row: usize) {
+        let Some(line) = self.lines.get(row) else {
+            return;
+        };
+        let column = self.field.column();
+        let field = TextField::at_column(line.clone(), column);
+        self.leave_row();
+        self.row = row;
+        self.field = field;
+    }
+
+    /// Puts the field's text back on its line.
+    fn leave_row(&mut self) {
+        if let Some(line) = self.lines.get_mut(self.row) {
+            self.field.text().clone_into(line);
+        }
+    }
+
+    /// Applies `edit`: deleting back from the start of a line joins it to the one above, and
+    /// forward from the end joins the one below to it.
+    fn edit(&mut self, edit: TextEdit) {
+        let field = &self.field;
+        let (start, end) = (field.caret() == 0, field.caret() == field.text().len());
+        let nothing_selected = field.selection().is_none();
+        match edit {
+            TextEdit::DeleteBackward | TextEdit::DeleteWordBackward
+                if start && nothing_selected && self.row > 0 =>
+            {
+                self.join(self.row - 1);
+            }
+            TextEdit::DeleteForward
+                if end && nothing_selected && self.row + 1 < self.lines.len() =>
+            {
+                self.join(self.row);
+            }
+            _ => self.field = self.field.edited(edit),
+        }
+    }
+
+    /// Joins line `row + 1` to line `row`, the caret between them.
+    fn join(&mut self, row: usize) {
+        self.leave_row();
+        let next = self.lines.remove(row + 1);
+        let line = self
+            .lines
+            .get_mut(row)
+            .map(std::mem::take)
+            .unwrap_or_default();
+        let caret = line.len();
+        self.row = row;
+        self.field = TextField::with_caret(line + &next, caret);
+    }
+
+    /// Breaks the line at the caret, taking out the selection, the caret at the start of the
+    /// new line.
+    fn break_line(&mut self) {
+        let field = if self.field.selection().is_some() {
+            self.field.edited(TextEdit::DeleteBackward)
+        } else {
+            self.field.clone()
+        };
+        let (before, after) = field.text().split_at(field.caret());
+        let after = after.to_owned();
+        if let Some(line) = self.lines.get_mut(self.row) {
+            before.clone_into(line);
+        }
+        self.row += 1;
+        self.lines.insert(self.row, String::new());
+        self.field = TextField::with_caret(after, 0);
+    }
+
+    /// Pastes `text`, each line break in it breaking the line.
+    fn paste(&mut self, text: &str) {
+        let text = text.replace("\r\n", "\n");
+        for (at, piece) in text.split(breaks_line).enumerate() {
+            if at > 0 {
+                self.break_line();
+            }
+            self.field = self.field.pasted(piece);
+        }
+    }
+}
+
+/// The note being edited as a frontend shows it: the line with the caret and where on it the
+/// caret and the selection are.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoteCaret {
+    /// The line the caret is on.
+    pub row: usize,
+    /// The caret's byte offset into that line.
+    pub caret: usize,
+    /// The selected bytes of that line, if any.
+    pub selection: Option<Range<usize>>,
 }
 
 /// The open panel as a frontend shows it.
@@ -35,8 +176,11 @@ pub struct AttachmentsView<'a> {
     pub tabs: &'a [Attachment],
     /// The tab shown.
     pub tab: Attachment,
-    /// The lines of the shown tab's attachment, as the user wrote them.
+    /// The lines of the shown tab's attachment, as the user wrote them, or as the editor has
+    /// them while editing.
     pub lines: Vec<String>,
+    /// Where the caret is while the note is edited; `None` while it is shown rendered.
+    pub editing: Option<NoteCaret>,
 }
 
 impl State {
@@ -60,11 +204,20 @@ impl State {
     #[must_use]
     pub fn attachments_panel(&self) -> Option<AttachmentsView<'_>> {
         let panel = self.panel.as_ref()?;
+        let editing = panel.editor.as_ref().map(|editor| NoteCaret {
+            row: editor.row,
+            caret: editor.field.caret(),
+            selection: editor.field.selection(),
+        });
         Some(AttachmentsView {
             title: self.document.get(panel.block)?.shared_plain_text(),
             tabs: &self.attached,
             tab: panel.tab,
-            lines: attachments::content(&self.document, panel.block, panel.tab),
+            lines: panel.editor.as_ref().map_or_else(
+                || attachments::content(&self.document, panel.block, panel.tab),
+                NoteEditor::text,
+            ),
+            editing,
         })
     }
 
@@ -75,15 +228,75 @@ impl State {
             AttachmentsInput::SwitchTab => {
                 let tabs = self.attached.clone();
                 if let Some(panel) = &mut self.panel
+                    && panel.editor.is_none()
                     && let Some(&next) = tabs.iter().find(|&&tab| tab != panel.tab)
                 {
                     panel.tab = next;
                 }
             }
             AttachmentsInput::Close => {
+                self.save_note();
                 self.panel = None;
                 self.resume_editing();
             }
+            AttachmentsInput::Edit => self.edit_note(),
+            AttachmentsInput::Save => self.save_note(),
+            AttachmentsInput::Text(edit) => self.note_editor(|editor| editor.edit(edit)),
+            AttachmentsInput::Break => self.note_editor(NoteEditor::break_line),
+            AttachmentsInput::LineUp => self.note_editor(|editor| {
+                if let Some(row) = editor.row.checked_sub(1) {
+                    editor.go_to(row);
+                }
+            }),
+            AttachmentsInput::LineDown => self.note_editor(|editor| editor.go_to(editor.row + 1)),
+        }
+    }
+
+    /// Starts editing the note shown, at the end of its last line.
+    fn edit_note(&mut self) {
+        let Some(panel) = &self.panel else {
+            return;
+        };
+        if panel.tab != Attachment::Note || panel.editor.is_some() {
+            return;
+        }
+        let lines = attachments::content(&self.document, panel.block, Attachment::Note);
+        if let Some(panel) = &mut self.panel {
+            panel.editor = Some(NoteEditor::new(lines));
+        }
+    }
+
+    /// Changes the note being edited with `change`, if one is.
+    fn note_editor(&mut self, change: impl FnOnce(&mut NoteEditor)) {
+        if let Some(editor) = self.panel.as_mut().and_then(|panel| panel.editor.as_mut()) {
+            change(editor);
+        }
+    }
+
+    /// Pastes `text` into the note being edited, if one is; returns whether it took it.
+    pub(super) fn note_editor_paste(&mut self, text: &str) -> bool {
+        let editing = self
+            .panel
+            .as_ref()
+            .is_some_and(|panel| panel.editor.is_some());
+        self.note_editor(|editor| editor.paste(text));
+        editing
+    }
+
+    /// Writes the note being edited, if one is, to its block as one step to undo, deleting the
+    /// node when it is empty, and shows it rendered again (attachments.md §4).
+    pub(super) fn save_note(&mut self) {
+        let Some(panel) = &mut self.panel else {
+            return;
+        };
+        let Some(editor) = panel.editor.take() else {
+            return;
+        };
+        let block = panel.block;
+        if let Some(ops) =
+            attachments::write(&mut self.document, block, Attachment::Note, &editor.text())
+        {
+            self.commit_any(ops);
         }
     }
 
@@ -97,12 +310,13 @@ impl State {
             self.panel = Some(Panel {
                 block: block.id(),
                 tab,
+                editor: None,
             });
         }
     }
 
-    /// Turns the attachments of kind `kind` on or off; the open panel leaves a tab turned off
-    /// for the other, or closes without one (attachments.md §6).
+    /// Turns the attachments of kind `kind` on or off; the open panel leaves a tab turned off,
+    /// saving the note it edits, for the other, or closes without one (attachments.md §6).
     pub(super) fn show_attachments(&mut self, kind: Attachment, on: bool) {
         self.attached = Attachment::ALL
             .into_iter()
@@ -114,12 +328,14 @@ impl State {
                 }
             })
             .collect();
-        if let Some(panel) = &mut self.panel
-            && !self.attached.contains(&panel.tab)
-        {
-            match self.attached.first() {
-                Some(&other) => panel.tab = other,
-                None => self.attachments_input(AttachmentsInput::Close),
+        let Some(panel) = &self.panel else {
+            return;
+        };
+        if !self.attached.contains(&panel.tab) {
+            self.save_note();
+            match (self.attached.first(), &mut self.panel) {
+                (Some(&other), Some(panel)) => panel.tab = other,
+                _ => self.attachments_input(AttachmentsInput::Close),
             }
         }
     }
@@ -139,8 +355,11 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    use super::super::text_field::Motion;
     use crate::{
-        app::{Configuration, Menu, MenuInput, Message, Mode, NodeInput},
+        app::{Access, Configuration, Menu, MenuInput, Message, Mode, NodeInput, Notice, Paste},
         document::format,
     };
 
@@ -294,6 +513,301 @@ mod tests {
         assert_eq!(state.mode(), Mode::Navigate, "the panel takes the keys");
         input(&mut state, AttachmentsInput::Close);
         assert_eq!(state.mode(), Mode::Edit);
+    }
+
+    /// The document as the file has it.
+    fn file(state: &State) -> String {
+        format::serialize(state.document())
+    }
+
+    fn keys(state: &mut State, inputs: &[AttachmentsInput]) {
+        for &each in inputs {
+            input(state, each);
+        }
+    }
+
+    fn typed(state: &mut State, text: &str) {
+        for c in text.chars() {
+            input(state, AttachmentsInput::Text(TextEdit::Insert(c)));
+        }
+    }
+
+    /// The note being edited and where its caret is.
+    fn edited(state: &State) -> (Vec<String>, Option<(usize, usize)>) {
+        let view = state.attachments_panel().unwrap();
+        let caret = view.editing.map(|caret| (caret.row, caret.caret));
+        (view.lines, caret)
+    }
+
+    // FR-ATT-04, attachments.md §4
+    #[test]
+    fn the_note_editor_breaks_joins_and_moves_between_lines() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        assert_eq!(edited(&state), (vec!["Full fat".to_owned()], Some((0, 8))));
+        keys(&mut state, &[AttachmentsInput::SwitchTab]);
+        assert_eq!(
+            tabs(&state).unwrap().1,
+            Attachment::Note,
+            "editing keeps the tab"
+        );
+        typed(&mut state, "!");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        typed(&mut state, "- x");
+        assert_eq!(
+            edited(&state),
+            (vec!["Full fat!".to_owned(), "- x".to_owned()], Some((1, 3)))
+        );
+        keys(
+            &mut state,
+            &[AttachmentsInput::LineUp, AttachmentsInput::LineUp],
+        );
+        assert_eq!(edited(&state).1, Some((0, 3)), "the same column");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        assert_eq!(edited(&state).0, ["Ful", "l fat!", "- x"]);
+        keys(
+            &mut state,
+            &[AttachmentsInput::Text(TextEdit::DeleteBackward)],
+        );
+        assert_eq!(
+            edited(&state),
+            (vec!["Full fat!".to_owned(), "- x".to_owned()], Some((0, 3)))
+        );
+        let end = TextEdit::Move {
+            motion: Motion::End,
+            select: false,
+        };
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(end),
+                AttachmentsInput::Text(TextEdit::DeleteForward),
+            ],
+        );
+        assert_eq!(
+            edited(&state),
+            (vec!["Full fat!- x".to_owned()], Some((0, 9)))
+        );
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::LineDown,
+                AttachmentsInput::Text(end),
+                AttachmentsInput::Text(TextEdit::DeleteForward),
+            ],
+        );
+        assert_eq!(
+            edited(&state).0,
+            ["Full fat!- x"],
+            "the last line joins nothing"
+        );
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(TextEdit::Move {
+                    motion: Motion::Start,
+                    select: false,
+                }),
+                AttachmentsInput::Text(TextEdit::DeleteBackward),
+                AttachmentsInput::Text(TextEdit::Move {
+                    motion: Motion::End,
+                    select: true,
+                }),
+                AttachmentsInput::Break,
+            ],
+        );
+        assert_eq!(
+            edited(&state),
+            (vec![String::new(), String::new()], Some((1, 0))),
+            "the selection goes"
+        );
+        input(
+            &mut state,
+            AttachmentsInput::Text(TextEdit::DeleteWordBackward),
+        );
+        assert_eq!(edited(&state), (vec![String::new()], Some((0, 0))));
+    }
+
+    // FR-ATT-04, FR-OPS-08, attachments.md §3, §4
+    #[test]
+    fn saving_the_note_is_one_step_to_undo_and_an_empty_note_deletes_its_node() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        typed(&mut state, " milk");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        typed(&mut state, "- not a task");
+        input(&mut state, AttachmentsInput::Save);
+        assert_eq!(
+            file(&state),
+            "- Milk\n\tNOTE @hidden\n\t\tFull fat milk\n\t\t\u{200B}- not a task\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] ok\n---\n"
+        );
+        let view = state.attachments_panel().unwrap();
+        assert_eq!((view.editing, view.lines.len()), (None, 2), "shown again");
+        input(&mut state, AttachmentsInput::Close);
+        state.update(Message::Undo);
+        assert_eq!(file(&state), TEXT, "one step");
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(TextEdit::SelectAll),
+                AttachmentsInput::Text(TextEdit::DeleteBackward),
+            ],
+        );
+        input(&mut state, AttachmentsInput::Close);
+        assert_eq!(state.attachments_panel(), None, "closing saves");
+        assert_eq!(
+            file(&state),
+            "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-08 09:00] ok\n---\n"
+        );
+        let revision = state.document().revision();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+                AttachmentsInput::Save,
+            ],
+        );
+        assert_eq!(state.document().revision(), revision, "nothing to save");
+    }
+
+    // FR-ATT-04, FR-OPS-06, attachments.md §4
+    #[test]
+    fn a_paste_breaks_the_note_where_the_text_does() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        state.update(Message::Pasted {
+            text: "a\r\nb\nc".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            edited(&state),
+            (
+                vec!["Full fata".to_owned(), "b".to_owned(), "c".to_owned()],
+                Some((2, 1))
+            )
+        );
+        input(&mut state, AttachmentsInput::Save);
+        state.update(Message::Pasted {
+            text: "x".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(edited(&state).1, None, "the shown note takes no paste");
+    }
+
+    // FR-ATT-04, attachments.md §4
+    #[test]
+    fn only_the_note_tab_edits_and_its_keys_need_an_editor() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Edit,
+            ],
+        );
+        assert_eq!(edited(&state).1, None);
+        typed(&mut state, "x");
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Break,
+                AttachmentsInput::LineUp,
+                AttachmentsInput::LineDown,
+                AttachmentsInput::Save,
+            ],
+        );
+        assert_eq!(file(&state), TEXT);
+        input(&mut state, AttachmentsInput::Edit);
+        input(&mut state, AttachmentsInput::Close);
+        input(&mut state, AttachmentsInput::Edit);
+        assert_eq!(state.attachments_panel(), None);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        typed(&mut state, "!");
+        input(&mut state, AttachmentsInput::Edit);
+        assert_eq!(edited(&state).0, ["Full fat!"], "already editing");
+    }
+
+    // FR-ATT-04, FR-ATT-06, attachments.md §4, §6
+    #[test]
+    fn turning_notes_off_saves_the_note_being_edited() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        typed(&mut state, "!");
+        configure(&mut state, Attachment::Note, false);
+        assert!(file(&state).contains("Full fat!"));
+        assert_eq!(
+            edited(&state),
+            (vec!["[2026-10-08 09:00] ok".to_owned()], None)
+        );
+    }
+
+    // FR-ATT-04, file-io.md §1, §2
+    #[test]
+    fn quitting_saves_the_note_and_a_read_only_file_refuses_it() {
+        for quit in [Message::Quit, Message::Terminate] {
+            let mut state = state();
+            keys(
+                &mut state,
+                &[
+                    AttachmentsInput::Open(Attachment::Note),
+                    AttachmentsInput::Edit,
+                ],
+            );
+            typed(&mut state, "!");
+            state.update(quit);
+            assert!(file(&state).contains("Full fat!"));
+        }
+        let mut state = State::new(format::parse(TEXT), Some(PathBuf::from("/a.taskpaper")))
+            .with_access(Access::ReadOnly);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        typed(&mut state, "!");
+        input(&mut state, AttachmentsInput::Save);
+        assert_eq!(file(&state), TEXT);
+        assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
 
     // FR-ATT-06, FR-SPC-01, editing.md §7

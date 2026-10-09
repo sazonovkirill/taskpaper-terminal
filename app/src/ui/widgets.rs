@@ -9,7 +9,7 @@ use jiff::civil::Date;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Padding, Widget},
 };
@@ -1271,30 +1271,45 @@ fn formatted<'a>(row: &'a Row, style: Style, theme: &Theme) -> impl Iterator<Ite
     inline::runs(&row.text, Syntax::of(row.kind))
         .into_iter()
         .map(move |run| {
-            let Format {
-                bold,
-                code,
-                link,
-                heading,
-            } = run.format;
-            let mut style = style;
-            if let Some(level) = heading {
-                style = style.bold();
-                if level == 1 {
-                    style = style.underlined();
-                }
-            }
-            if bold {
-                style = style.bold();
-            }
-            if code {
-                style = style.dim();
-            }
-            if link || row.url {
-                style = style.underlined().fg(link_color);
-            }
-            Span::styled(drawable(run.text), style)
+            let format = Format {
+                link: run.format.link || row.url,
+                ..run.format
+            };
+            Span::styled(drawable(run.text), run_style(format, style, link_color))
         })
+}
+
+/// `style` with a run's formatting `format` over it: a heading bold, level 1 also underlined;
+/// bold; italic; code dimmed; and a link underlined in `link_color` (FR-FMT-01, FR-FMT-03, D-45,
+/// D-49).
+pub(super) fn run_style(format: Format, style: Style, link_color: Color) -> Style {
+    let Format {
+        bold,
+        code,
+        italic,
+        link,
+        heading,
+    } = format;
+    let mut style = style;
+    if let Some(level) = heading {
+        style = style.bold();
+        if level == 1 {
+            style = style.underlined();
+        }
+    }
+    if bold {
+        style = style.bold();
+    }
+    if italic {
+        style = style.italic();
+    }
+    if code {
+        style = style.dim();
+    }
+    if link {
+        style = style.underlined().fg(link_color);
+    }
+    style
 }
 
 /// `text` as the buffer can draw it: a tab shows as a space, the one column its width counts,
@@ -1309,9 +1324,9 @@ pub(super) fn drawable(text: &str) -> Cow<'_, str> {
 
 /// The screen line of one block, `width` columns wide: indented 2 columns per level of depth
 /// whatever its type, then the marker of a task, then the text with its inline formatting
-/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the
-/// `@flag` flag in red (D-91), the `@star` star and the bookmark icon, each after a
-/// space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
+/// (D-31, FR-FMT-01), or a titled divider's title centered in its rule (D-76), then the note
+/// icon (attachments.md §2), the `@flag` flag in red (D-91), the `@star` star and the bookmark
+/// icon, each after a space (D-47), dimmed with a done block or one inside it. A collapsed block with children shows
 /// its fold marker after them (ui.md §2, D-67), and an entry of the Today view the path of the
 /// blocks above it, dimmed (navigation.md §7). The zoom title is drawn like its block, in bold
 /// (D-34). Markers and icons come from `icons`, colors from `theme`.
@@ -1343,12 +1358,13 @@ fn row_line<'a>(row: &'a Row, width: usize, icons: IconSet, theme: &Theme) -> Li
             style
         }
     };
+    let note = row.note.then(|| (Icon::NoteAttachment, Style::new()));
     let flag = row.flag.then(|| (Icon::Flag, flag_style(theme)));
     let star = row.starred.then(|| (Icon::Star, today_style(theme)));
     let bookmark = row
         .bookmark
         .then(|| (Icon::Bookmark, bookmark_style(theme)));
-    let marks = [flag, star, bookmark];
+    let marks = [note, flag, star, bookmark];
     for (icon, style) in marks.into_iter().flatten() {
         line.push_span(" ");
         line.push_span(Span::styled(icon.glyph(icons), recede(style)));
@@ -2420,6 +2436,30 @@ mod tests {
             "the `▸` after the flag"
         );
         assert_eq!(view.hit(14, 3, 5), Some((3, false)), "the flag");
+    }
+
+    // FR-ATT-02, FR-ATT-06, attachments.md §2
+    #[test]
+    fn a_block_with_a_note_shows_its_icon_first_dimmed_when_done() {
+        let [note, flag] = [Icon::NoteAttachment, Icon::Flag].map(|icon| icon.glyph(ICONS));
+        let text = "- a @flag\n\tNOTE @hidden\n\t\tn\n- b @done\n\tNOTE @hidden\n- c";
+        let mut state = State::new(format::parse(text), None);
+        let rows = state.rows().to_vec();
+        let mut expected = Buffer::with_lines([
+            format!("{:<10}", format!("- a {note} {flag}")),
+            format!("{:<10}", format!("✔ b {note}")),
+            format!("{:<10}", "- c"),
+        ]);
+        expected.set_style(Rect::new(6, 0, 1, 1), flag_style(&THEME));
+        expected.set_style(Rect::new(0, 1, 2, 1), Style::new().dim());
+        expected.set_style(Rect::new(2, 1, 1, 1), Style::new().dim().crossed_out());
+        expected.set_style(Rect::new(4, 1, 1, 1), Style::new().dim());
+        assert_eq!(draw(&rows, 10, 3), expected);
+        state.update(Message::Configure(crate::app::Configuration::Attachments(
+            Attachment::Note,
+            false,
+        )));
+        assert!(state.rows().iter().all(|row| !row.note), "notes are off");
     }
 
     // D-47, ui.md §2

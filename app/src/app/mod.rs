@@ -50,7 +50,7 @@ pub mod update;
 mod view_state;
 mod walks;
 
-pub use attachments::{AttachmentsInput, AttachmentsView};
+pub use attachments::{AttachmentsInput, AttachmentsView, NoteCaret};
 pub use clipboard::Paste;
 pub use command_menu::{CommandMenuView, MenuInput, MenuRow};
 pub use commands::{Animations, Command, Inputs};

@@ -79,6 +79,25 @@ pub enum KeyAction {
     ScrollShortcutsDown,
     /// Scrolls the shortcuts panel up a page.
     ScrollShortcutsUp,
+    /// Scrolls the attachments panel's tab, as scrolling is the frontend's (D-55, D-107).
+    ScrollAttachments(ScrollBy),
+}
+
+/// How far a key scrolls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrollBy {
+    /// A line up.
+    Up,
+    /// A line down.
+    Down,
+    /// A page up.
+    PageUp,
+    /// A page down.
+    PageDown,
+    /// To the top.
+    Top,
+    /// To the bottom.
+    Bottom,
 }
 
 /// A popup over the outline in navigate mode, which takes its keys.
@@ -118,6 +137,8 @@ pub enum Overlay {
     ContextMenu,
     /// The attachments panel (FR-ATT-03).
     Attachments,
+    /// The attachments panel while it edits a note (FR-ATT-04).
+    AttachmentsEditor,
 }
 
 impl Overlay {
@@ -140,6 +161,7 @@ impl Overlay {
             | Self::QuickAdd
             | Self::NodeEditor
             | Self::Attachments
+            | Self::AttachmentsEditor
             | Self::Settings
             | Self::SettingsText
             | Self::SettingsPicker
@@ -156,6 +178,7 @@ impl Overlay {
                 | Self::SaveAs
                 | Self::SettingsText
                 | Self::NodeEditor
+                | Self::AttachmentsEditor
         )
     }
 }
@@ -468,24 +491,77 @@ fn node_editor_message(key: Key) -> Option<Message> {
     Some(Message::NodeEditor(input))
 }
 
-/// Bindings of the attachments panel ([keybindings.md §4]); other keys do nothing.
+/// Bindings of the attachments panel ([keybindings.md §4]) besides [`SCROLL`]; other keys do
+/// nothing.
 ///
 /// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
 const ATTACHMENTS: &[(Key, AttachmentsInput)] = &[
     (key!(Esc), AttachmentsInput::Close),
     (key!(Tab), AttachmentsInput::SwitchTab),
     (key!(shift BackTab), AttachmentsInput::SwitchTab),
+    (key!('e'), AttachmentsInput::Edit),
+    (key!(Enter), AttachmentsInput::Edit),
 ];
 
-/// The attachments panel's message for `key`: `Ctrl+Q` quits, else its binding, if any.
-fn attachments_message(key: Key) -> Option<Message> {
+/// The keys that scroll the attachments panel's tab (D-107).
+const SCROLL: &[(Key, ScrollBy)] = &[
+    (key!('j'), ScrollBy::Down),
+    (key!(Down), ScrollBy::Down),
+    (key!('k'), ScrollBy::Up),
+    (key!(Up), ScrollBy::Up),
+    (key!(PageDown), ScrollBy::PageDown),
+    (key!(ctrl 'd'), ScrollBy::PageDown),
+    (key!(PageUp), ScrollBy::PageUp),
+    (key!(ctrl 'u'), ScrollBy::PageUp),
+    (key!(Home), ScrollBy::Top),
+    (key!('g'), ScrollBy::Top),
+    (key!(End), ScrollBy::Bottom),
+    (key!('G'), ScrollBy::Bottom),
+];
+
+/// The attachments panel's action for `key`: `Ctrl+Q` quits, else its binding or scroll, if any.
+fn attachments_action(key: Key) -> Option<KeyAction> {
     if key == key!(ctrl 'q') {
-        return Some(Message::Quit);
+        return Some(KeyAction::Send(Message::Quit));
     }
     ATTACHMENTS
         .iter()
         .find(|(bound, _)| *bound == key)
-        .map(|&(_, input)| Message::Attachments(input))
+        .map(|&(_, input)| KeyAction::Send(Message::Attachments(input)))
+        .or_else(|| {
+            SCROLL
+                .iter()
+                .find(|(bound, _)| *bound == key)
+                .map(|&(_, scroll)| KeyAction::ScrollAttachments(scroll))
+        })
+}
+
+/// Bindings of the note editor ([keybindings.md §4]) besides the [`TEXT`] keys; characters
+/// without other bindings are typed, and other keys do nothing.
+///
+/// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
+const NOTE_EDITOR: &[(Key, AttachmentsInput)] = &[
+    (key!(Esc), AttachmentsInput::Save),
+    (key!(Enter), AttachmentsInput::Break),
+    (key!(Up), AttachmentsInput::LineUp),
+    (key!(Down), AttachmentsInput::LineDown),
+];
+
+/// The note editor's message for `key`: `Ctrl+Q` quits, `Ctrl+V` pastes into the note, an
+/// editor binding, else the text key it is.
+fn note_editor_message(key: Key) -> Option<Message> {
+    if key == key!(ctrl 'q') {
+        return Some(Message::Quit);
+    }
+    if key == key!(ctrl 'v') {
+        return Some(Message::Paste(Paste::Below));
+    }
+    let input = NOTE_EDITOR
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, input)| input)
+        .or_else(|| text_edit(key).map(AttachmentsInput::Text))?;
+    Some(Message::Attachments(input))
 }
 
 /// Bindings of the Save As prompt ([keybindings.md §4]) besides the [`TEXT`] keys; characters
@@ -1050,7 +1126,8 @@ impl Keymap {
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
-                Overlay::Attachments => attachments_message(pressed),
+                Overlay::Attachments => return attachments_action(pressed),
+                Overlay::AttachmentsEditor => note_editor_message(pressed),
             };
             return message.map(KeyAction::Send);
         }
@@ -1149,7 +1226,8 @@ mod tests {
                     | KeyAction::NarrowPane
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown
-                    | KeyAction::ScrollShortcutsUp => None,
+                    | KeyAction::ScrollShortcutsUp
+                    | KeyAction::ScrollAttachments(_) => None,
                 })
         }
     }
@@ -2338,31 +2416,106 @@ mod tests {
     // attachments.md §3, keybindings.md §4, D-42
     #[test]
     fn the_attachments_panel_takes_its_keys_and_ignores_others() {
-        let panel = |code, modifiers| overlay_message(Overlay::Attachments, code, modifiers);
-        for (code, modifiers, input) in [
-            (KeyCode::Esc, KeyModifiers::NONE, AttachmentsInput::Close),
+        let (none, shift, ctrl) = (
+            KeyModifiers::NONE,
+            KeyModifiers::SHIFT,
+            KeyModifiers::CONTROL,
+        );
+        let action = |code, modifiers| {
+            let context = &Context {
+                overlay: Some(Overlay::Attachments),
+                ..*CONTEXT
+            };
+            Keymap::default().action_for(&key(code, modifiers), ms(0), context)
+        };
+        let send = |input| Some(KeyAction::Send(Message::Attachments(input)));
+        for (code, modifiers, expected) in [
+            (KeyCode::Esc, none, send(AttachmentsInput::Close)),
+            (KeyCode::Tab, none, send(AttachmentsInput::SwitchTab)),
+            (KeyCode::BackTab, shift, send(AttachmentsInput::SwitchTab)),
+            (KeyCode::Char('e'), none, send(AttachmentsInput::Edit)),
+            (KeyCode::Enter, none, send(AttachmentsInput::Edit)),
             (
-                KeyCode::Tab,
-                KeyModifiers::NONE,
-                AttachmentsInput::SwitchTab,
+                KeyCode::Char('q'),
+                ctrl,
+                Some(KeyAction::Send(Message::Quit)),
+            ),
+            (KeyCode::Char('x'), none, None),
+        ] {
+            assert_eq!(action(code, modifiers), expected, "{code:?}");
+        }
+        let scroll = |by| Some(KeyAction::ScrollAttachments(by));
+        for (code, modifiers, by) in [
+            (KeyCode::Char('j'), none, ScrollBy::Down),
+            (KeyCode::Down, none, ScrollBy::Down),
+            (KeyCode::Char('k'), none, ScrollBy::Up),
+            (KeyCode::Up, none, ScrollBy::Up),
+            (KeyCode::PageDown, none, ScrollBy::PageDown),
+            (KeyCode::Char('d'), ctrl, ScrollBy::PageDown),
+            (KeyCode::PageUp, none, ScrollBy::PageUp),
+            (KeyCode::Char('u'), ctrl, ScrollBy::PageUp),
+            (KeyCode::Home, none, ScrollBy::Top),
+            (KeyCode::Char('g'), none, ScrollBy::Top),
+            (KeyCode::End, none, ScrollBy::Bottom),
+            (KeyCode::Char('G'), shift, ScrollBy::Bottom),
+            (KeyCode::Char('g'), shift, ScrollBy::Bottom),
+        ] {
+            assert_eq!(
+                action(code, modifiers),
+                scroll(by),
+                "{code:?} {modifiers:?}"
+            );
+        }
+    }
+
+    // attachments.md §4, keybindings.md §4, D-42, D-107
+    #[test]
+    fn the_note_editor_takes_its_keys_and_text_keys() {
+        let none = KeyModifiers::NONE;
+        let editor = |code, modifiers| overlay_message(Overlay::AttachmentsEditor, code, modifiers);
+        for (code, modifiers, input) in [
+            (KeyCode::Esc, none, AttachmentsInput::Save),
+            (KeyCode::Enter, none, AttachmentsInput::Break),
+            (KeyCode::Up, none, AttachmentsInput::LineUp),
+            (KeyCode::Down, none, AttachmentsInput::LineDown),
+            (
+                KeyCode::Char('j'),
+                none,
+                AttachmentsInput::Text(TextEdit::Insert('j')),
             ),
             (
-                KeyCode::BackTab,
-                KeyModifiers::SHIFT,
-                AttachmentsInput::SwitchTab,
+                KeyCode::Backspace,
+                none,
+                AttachmentsInput::Text(TextEdit::DeleteBackward),
             ),
         ] {
             assert_eq!(
-                panel(code, modifiers),
+                editor(code, modifiers),
                 Some(Message::Attachments(input)),
                 "{code:?}"
             );
         }
         assert_eq!(
-            panel(KeyCode::Char('q'), KeyModifiers::CONTROL),
+            editor(KeyCode::Char('q'), KeyModifiers::CONTROL),
             Some(Message::Quit)
         );
-        assert_eq!(panel(KeyCode::Char('j'), KeyModifiers::NONE), None);
+        assert_eq!(
+            editor(KeyCode::Char('v'), KeyModifiers::CONTROL),
+            Some(Message::Paste(Paste::Below))
+        );
+        assert_eq!(editor(KeyCode::F(5), none), None);
+        let mut keymap = Keymap::default();
+        let context = &Context {
+            overlay: Some(Overlay::AttachmentsEditor),
+            ..*CONTEXT
+        };
+        assert_eq!(
+            keymap.action_for(&Event::Paste("a\nb".to_owned()), ms(0), context),
+            Some(KeyAction::Send(Message::Pasted {
+                text: "a\nb".to_owned(),
+                at: Paste::Below,
+            }))
+        );
     }
 
     #[test]
@@ -3774,6 +3927,7 @@ mod tests {
             Overlay::NodeEditor,
             Overlay::NodeEditorFinder,
             Overlay::Attachments,
+            Overlay::AttachmentsEditor,
             Overlay::GoToSymbol,
             Overlay::MoveTo,
             Overlay::GoToCommand,

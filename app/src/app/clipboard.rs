@@ -54,8 +54,8 @@ impl State {
         effects
     }
 
-    /// Pastes `text`. The open date prompt, Quick Add panel, Save As prompt, settings window or
-    /// Edit Node dialog takes it as typed; in edit mode, a single line goes into the text being edited, and several lines end editing and become
+    /// Pastes `text`. The open date prompt, Quick Add panel, Save As prompt, settings window,
+    /// Edit Node dialog or note editor takes it as typed; in edit mode, a single line goes into the text being edited, and several lines end editing and become
     /// blocks below the block, which they replace when it is empty and not the zoom title; in
     /// navigate mode, the text becomes blocks `at` the focused block (FR-OPS-06).
     pub(super) fn pasted(&mut self, text: &str, at: Paste) {
@@ -67,6 +67,7 @@ impl State {
             || self.save_as_paste(text)
             || self.settings_paste(text)
             || self.node_editor_paste(text)
+            || self.note_editor_paste(text)
         {
             return;
         }

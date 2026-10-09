@@ -31,14 +31,14 @@ use crate::{
         Row, SaveAs, SaveState, SettingsInput, State,
         commands::{Command, REGISTRY},
     },
-    document::ItemId,
+    document::{Attachment, ItemId},
 };
 use animation::{Animator, Before, DrawnPane, Intent, Shown};
 use config::{Config, WriteError};
 use effects::{
     BackupSettings, Browser, Clipboard, FileWatch, Io, PlainTexts, Recovery, RecoveryError,
 };
-use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey};
+use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey, ScrollBy};
 use layout::Scroll;
 pub use mouse::acts_on;
 pub use theme::ColorSupport;
@@ -132,6 +132,13 @@ pub struct Tui {
     shortcuts_mode: Mode,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
     shortcuts_page: usize,
+    /// The first line of the attachments panel's tab on screen, back at the top when the panel
+    /// closes or shows another tab (D-107).
+    attachments_scroll: usize,
+    /// The tab the attachments panel showed at the last draw.
+    attachments_tab: Option<Attachment>,
+    /// How many lines a page of the attachments panel's tab was at the last draw.
+    attachments_page: usize,
     /// Where the last draw put what the mouse acts on.
     drawn: mouse::Drawn,
     /// The panes the wheel scrolled, which stay where it left them rather than show their focus
@@ -197,6 +204,9 @@ impl Tui {
             shortcuts_scroll: 0,
             shortcuts_mode: Mode::Navigate,
             shortcuts_page: 0,
+            attachments_scroll: 0,
+            attachments_tab: None,
+            attachments_page: 0,
             drawn: mouse::Drawn::default(),
             wheel: HashMap::new(),
             menu_anchor: None,
@@ -490,6 +500,21 @@ impl Tui {
             }
             KeyAction::ScrollShortcutsUp => {
                 self.shortcuts_scroll = self.shortcuts_scroll.saturating_sub(self.shortcuts_page);
+            }
+            KeyAction::ScrollAttachments(by) => {
+                let tab = self.state.attachments_panel().map(|view| view.tab);
+                if self.attachments_tab != tab {
+                    (self.attachments_tab, self.attachments_scroll) = (tab, 0);
+                }
+                let (scroll, page) = (self.attachments_scroll, self.attachments_page);
+                self.attachments_scroll = match by {
+                    ScrollBy::Up => scroll.saturating_sub(1),
+                    ScrollBy::Down => scroll.saturating_add(1),
+                    ScrollBy::PageUp => scroll.saturating_sub(page),
+                    ScrollBy::PageDown => scroll.saturating_add(page),
+                    ScrollBy::Top => 0,
+                    ScrollBy::Bottom => usize::MAX,
+                };
             }
             KeyAction::GoToCommand => {
                 let bindings = REGISTRY
@@ -1144,16 +1169,34 @@ impl Tui {
     /// The dialogs that take the keys, whichever is open: the finders and the Edit Node dialog
     /// over `outline`, the panes below their headers, and the settings window and the
     /// attachments panel over `body`, the screen above the status line.
-    fn draw_dialogs(&self, frame: &mut Frame, outline: Rect, body: Rect, theme: &Theme) {
+    fn draw_dialogs(&mut self, frame: &mut Frame, outline: Rect, body: Rect, theme: &Theme) {
         self.draw_finders(frame, outline, theme);
         self.draw_settings(frame, body, theme);
         self.draw_node_editor(frame, outline, theme);
-        if let Some(view) = self.state.attachments_panel() {
-            frame.render_widget(
-                AttachmentsPanel::new(&view, self.icons, theme),
-                AttachmentsPanel::area(body),
-            );
+        self.draw_attachments(frame, body, theme);
+    }
+
+    /// The attachments panel over the right of `body`, while it is open, its tab scrolled no
+    /// further than its end and to the caret while a note is edited, with the caret
+    /// (attachments.md §3, §4).
+    fn draw_attachments(&mut self, frame: &mut Frame, body: Rect, theme: &Theme) {
+        let Some(view) = self.state.attachments_panel() else {
+            self.attachments_tab = None;
+            return;
+        };
+        if self.attachments_tab != Some(view.tab) {
+            self.attachments_tab = Some(view.tab);
+            self.attachments_scroll = 0;
         }
+        let area = AttachmentsPanel::area(body);
+        let panel = AttachmentsPanel::new(&view, self.icons, theme);
+        (self.attachments_scroll, self.attachments_page) =
+            panel.scroll(self.attachments_scroll, area);
+        let panel = panel.scrolled(self.attachments_scroll);
+        if let Some(caret) = panel.caret(area) {
+            frame.set_cursor_position(caret);
+        }
+        frame.render_widget(panel, area);
     }
 
     /// The Edit Node dialog centered over `area`, with its caret, and its parent finder over it,
@@ -1360,7 +1403,13 @@ impl Tui {
         } else if self.state.node_editor().is_some() {
             Some(Overlay::NodeEditor)
         } else {
-            self.state.attachments_panel().map(|_| Overlay::Attachments)
+            self.state.attachments_panel().map(|view| {
+                if view.editing.is_some() {
+                    Overlay::AttachmentsEditor
+                } else {
+                    Overlay::Attachments
+                }
+            })
         }
     }
 

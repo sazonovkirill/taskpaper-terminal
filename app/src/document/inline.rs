@@ -15,6 +15,9 @@ pub enum Syntax {
     Inline,
     /// Those and headings (FR-FMT-03).
     Markdown,
+    /// Those of [`Syntax::Inline`] and emphasis, `*text*` or `_text_`, as a note's lines have
+    /// them; a note's headings are its lines' own (attachments.md §4).
+    Note,
 }
 
 impl Syntax {
@@ -50,11 +53,17 @@ impl Marker {
 
 /// How a run of text is formatted; several apply at once, as for a URL in bold text.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "formats that apply together, as bold over a link, not states of one machine"
+)]
 pub struct Format {
     /// Inside `**…**`.
     pub bold: bool,
     /// Inside `` `…` ``.
     pub code: bool,
+    /// Inside `*…*` or `_…_`, in a note only.
+    pub italic: bool,
     /// Part of a URL or the title of a link.
     pub link: bool,
     /// The level, 1 to 6, of the heading the text belongs to (FR-FMT-03).
@@ -75,6 +84,8 @@ pub struct Run<'a> {
 enum Kind {
     /// A marker's span.
     Marker(Marker),
+    /// A `*…*` or `_…_` span.
+    Emphasis,
     /// A bare URL or a `<url>` link, which shows its address.
     Url,
     /// A `[title](url)` link, which shows its title, to the address at these bytes.
@@ -93,11 +104,12 @@ struct Element {
     inner: Range<usize>,
 }
 
-/// What a scan may find besides code spans: bold except inside bold, and links except inside a
-/// link's title.
+/// What a scan may find besides code spans: bold except inside bold, emphasis in a note except
+/// inside emphasis, and links except inside a link's title.
 #[derive(Debug, Clone, Copy)]
 struct Scope {
     bold: bool,
+    emphasis: bool,
     links: bool,
 }
 
@@ -133,6 +145,7 @@ pub fn runs(text: &str, syntax: Syntax) -> Vec<Run<'_>> {
             match element.kind {
                 Kind::Marker(Marker::Bold) => format.bold = true,
                 Kind::Marker(Marker::Code) => format.code = true,
+                Kind::Emphasis => format.italic = true,
                 Kind::Url | Kind::Link(_) => format.link = true,
             }
         }
@@ -151,7 +164,7 @@ pub fn urls(text: &str, syntax: Syntax) -> Vec<&str> {
     elements(text, syntax)
         .into_iter()
         .filter_map(|e| match e.kind {
-            Kind::Marker(_) => None,
+            Kind::Marker(_) | Kind::Emphasis => None,
             Kind::Url => text.get(e.inner),
             Kind::Link(address) => text.get(address),
         })
@@ -232,6 +245,7 @@ fn elements(text: &str, syntax: Syntax) -> Vec<Element> {
     let body = heading(text, syntax).map_or(0, |(_, body)| body);
     let scope = Scope {
         bold: true,
+        emphasis: syntax == Syntax::Note,
         links: true,
     };
     let mut found = Vec::new();
@@ -245,12 +259,13 @@ fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>)
     // Every element starts with one of these bytes, so the bytes before the next one start none.
     while let Some(skipped) = text
         .get(at..range.end)
-        .and_then(|rest| rest.bytes().position(|byte| b"`*[<h".contains(&byte)))
+        .and_then(|rest| rest.bytes().position(|byte| b"`*_[<h".contains(&byte)))
     {
         at += skipped;
         let end = range.end;
         let element = code_at(text, at, end)
             .or_else(|| scope.bold.then(|| bold_at(text, at, end)).flatten())
+            .or_else(|| scope.emphasis.then(|| emphasis_at(text, at, end)).flatten())
             .or_else(|| scope.links.then(|| link_at(text, at, end)).flatten())
             .or_else(|| scope.links.then(|| autolink_at(text, at, end)).flatten())
             .or_else(|| scope.links.then(|| url_at(text, at, end)).flatten());
@@ -263,6 +278,10 @@ fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>)
         let inner = match element.kind {
             Kind::Marker(Marker::Bold) => Some(Scope {
                 bold: false,
+                ..scope
+            }),
+            Kind::Emphasis => Some(Scope {
+                emphasis: false,
                 ..scope
             }),
             Kind::Link(_) => Some(Scope {
@@ -281,7 +300,7 @@ fn scan(text: &str, range: Range<usize>, scope: Scope, found: &mut Vec<Element>)
 
 /// The level of the Markdown heading `text` is and the byte its title starts at: one to six `#`,
 /// a space and text that is not all whitespace (FR-FMT-03).
-fn heading(text: &str, syntax: Syntax) -> Option<(u8, usize)> {
+pub(super) fn heading(text: &str, syntax: Syntax) -> Option<(u8, usize)> {
     if syntax != Syntax::Markdown {
         return None;
     }
@@ -390,6 +409,47 @@ fn bold_at(text: &str, at: usize, end: usize) -> Option<Element> {
     None
 }
 
+/// The emphasis span starting at byte `at` and ending by byte `end`: one `*` or `_` that is not
+/// part of a run of them, text that neither starts nor ends with whitespace, and the next such
+/// delimiter outside a code span after it. A `_` touches no letter or digit outside the span, so
+/// that `snake_case` stays as typed.
+fn emphasis_at(text: &str, at: usize, end: usize) -> Option<Element> {
+    let delimiter = text.get(at..end)?.chars().next()?;
+    if !matches!(delimiter, '*' | '_') {
+        return None;
+    }
+    // Whether `c`, next to a delimiter on the side away from the span, makes it no delimiter.
+    let joins = |c: Option<char>| {
+        c == Some(delimiter) || delimiter == '_' && c.is_some_and(char::is_alphanumeric)
+    };
+    let before = |byte: usize| text.get(..byte)?.chars().next_back();
+    let after = |byte: usize| text.get(byte + 1..)?.chars().next();
+    if joins(before(at)) {
+        return None;
+    }
+    let first = after(at).filter(|&first| !first.is_whitespace() && first != delimiter)?;
+    let content = at + 1;
+    let mut close = content + first.len_utf8();
+    while let Some(rest) = text.get(close..end).filter(|rest| !rest.is_empty()) {
+        if let Some(code) = code_at(text, close, end) {
+            close = code.outer.end;
+            continue;
+        }
+        if rest.starts_with(delimiter)
+            && before(close).is_some_and(|last| !last.is_whitespace() && last != delimiter)
+            && !joins(after(close))
+        {
+            return Some(Element {
+                kind: Kind::Emphasis,
+                outer: at..close + 1,
+                inner: content..close,
+            });
+        }
+        close += rest.chars().next()?.len_utf8();
+    }
+    None
+}
+
 /// The bare URL starting at byte `at` and ending by byte `end`: `http://` or `https://` not
 /// right after a letter or digit, then everything up to whitespace or `` ` ``, `<`, `>` or `"`,
 /// without trailing punctuation or a `)` that closes nothing in it.
@@ -436,6 +496,7 @@ mod tests {
     const PLAIN: Format = Format {
         bold: false,
         code: false,
+        italic: false,
         link: false,
         heading: None,
     };
@@ -483,6 +544,85 @@ mod tests {
         check("`x`", &[("x", CODE)]);
         check("`a``b`c", &[("a", CODE), ("b", CODE), ("c", PLAIN)]);
         check("**日本**語", &[("日本", BOLD), ("語", PLAIN)]);
+    }
+
+    // FR-ATT-04, attachments.md §4
+    #[test]
+    fn a_note_has_emphasis_too() {
+        let italic = Format {
+            italic: true,
+            ..PLAIN
+        };
+        let note = |text, expected: &[(&str, Format)]| check_in(Syntax::Note, text, expected);
+        note(
+            "a *b* _c d_ e",
+            &[
+                ("a ", PLAIN),
+                ("b", italic),
+                (" ", PLAIN),
+                ("c d", italic),
+                (" e", PLAIN),
+            ],
+        );
+        note(
+            "*a **b** `*c*`*",
+            &[
+                ("a ", italic),
+                (
+                    "b",
+                    Format {
+                        bold: true,
+                        ..italic
+                    },
+                ),
+                (" ", italic),
+                (
+                    "*c*",
+                    Format {
+                        code: true,
+                        ..italic
+                    },
+                ),
+            ],
+        );
+        note("**a** _b_", &[("a", BOLD), (" ", PLAIN), ("b", italic)]);
+        note(
+            "*日本* _é_",
+            &[("日本", italic), (" ", PLAIN), ("é", italic)],
+        );
+        note("_*a*_", &[("*a*", italic)]);
+        for text in [
+            "snake_case_name",
+            "a_b_",
+            "_a_b",
+            "* a*",
+            "*a *",
+            "*a",
+            "**",
+            "*a**",
+            "a * b * c",
+            "x*a*",
+        ] {
+            let expected: &[(&str, Format)] = if text == "x*a*" {
+                &[("x", PLAIN), ("a", italic)]
+            } else {
+                &[(text, PLAIN)]
+            };
+            note(text, expected);
+        }
+        check("*a* _b_", &[("*a* _b_", PLAIN)]);
+        check_in(
+            Syntax::Markdown,
+            "# *a*",
+            &[(
+                "*a*",
+                Format {
+                    heading: Some(1),
+                    ..PLAIN
+                },
+            )],
+        );
+        check_in(Syntax::Note, "# a", &[("# a", PLAIN)]);
     }
 
     #[test]

@@ -615,6 +615,12 @@ impl State {
         effects
     }
 
+    /// Asks to end the session as `ending` says, saving the note being edited first.
+    fn end_session(&mut self, ending: Ending) {
+        self.save_note();
+        self.autosave.end(ending);
+    }
+
     /// Carries out `setting` of the frontend's.
     fn configure(&mut self, setting: Configuration) {
         match setting {
@@ -646,8 +652,8 @@ impl State {
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::ConfigProblems(problems) => self.config_problems(problems),
             Message::Configure(setting) => self.configure(setting),
-            Message::Quit => self.autosave.end(Ending::Quit),
-            Message::Terminate => self.autosave.end(Ending::Terminate),
+            Message::Quit => self.end_session(Ending::Quit),
+            Message::Terminate => self.end_session(Ending::Terminate),
             Message::FocusNext => self.focus_down(1),
             Message::FocusPrevious => self.focus_up(1),
             Message::FocusFirst => self.move_focus(|_, _| 0),
