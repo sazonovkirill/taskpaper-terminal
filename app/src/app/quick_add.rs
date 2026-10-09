@@ -576,6 +576,16 @@ mod tests {
         assert_eq!(lines(&state), lines(&open(OUTLINE)));
     }
 
+    // D-112
+    #[test]
+    fn a_weekday_abbreviation_in_the_text_stays_text() {
+        let mut state = open(OUTLINE);
+        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        typed(&mut state, "Buy sun screen this fri");
+        input(&mut state, QuickAddInput::Add);
+        assert_eq!(lines(&state)[2], "\t- Buy sun screen @start(2026-10-09)");
+    }
+
     // FR-MODE-07, FR-MODE-08, D-96, D-97
     #[test]
     fn enter_adds_the_task_with_its_dates_as_the_last_child_in_one_step() {

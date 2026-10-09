@@ -110,8 +110,9 @@ const MOST_WORDS: usize = 4;
 
 /// The dates that count in `text`, resolved against `today`, in the order they stand: a run of
 /// whole words the grammar reads is a start date, or a due date right after the word `due`; the
-/// longest run at each word wins, a run starting with a bare number does not count, and of
-/// several start or due dates only the last counts (D-97).
+/// longest run at each word wins, a run starting with a bare number does not count, nor a start
+/// date that is only a weekday's abbreviation, an everyday word as often as a date (D-112), and
+/// of several start or due dates only the last counts (D-97).
 #[must_use]
 pub fn find(text: &str, today: Date) -> Vec<Found> {
     let words = words(text);
@@ -124,7 +125,9 @@ pub fn find(text: &str, today: Date) -> Vec<Found> {
         } else {
             (DateTag::Start, at)
         };
-        match longest_run(text, words.get(first..).unwrap_or_default(), today, tag) {
+        let run = longest_run(text, words.get(first..).unwrap_or_default(), today, tag)
+            .filter(|&(taken, _, _)| due || taken > 1 || !abbreviation(&text[word.clone()]));
+        match run {
             Some((taken, end, date)) => {
                 found.push(Found {
                     span: word.start..end,
@@ -364,15 +367,16 @@ impl<'a> Parser<'a> {
             "tomorrow" => self.today.tomorrow().map_err(|_| out_of_range),
             "yesterday" => self.today.yesterday().map_err(|_| out_of_range),
             "this" | "next" | "last" => {
-                // The next such day is the first after today, so `next` skips one more.
+                // The next such day is the first after today, so `next` skips one more; `this`
+                // names the weekday alone (D-112).
                 let (step, nth) = match word {
-                    "next" => (1, Some(2)),
-                    "last" => (-1, Some(-1)),
-                    _ => (0, None),
+                    "next" => (1, 2),
+                    "last" => (-1, -1),
+                    _ => (0, 1),
                 };
                 let (target, target_offset) = self.word()?;
-                match (weekday(&target), nth) {
-                    (Some(weekday), Some(nth)) => self
+                match weekday(&target) {
+                    Some(weekday) => self
                         .today
                         .nth_weekday(nth, weekday)
                         .map_err(|_| out_of_range),
@@ -462,6 +466,11 @@ const WEEKDAYS: [(&str, Weekday); 7] = [
     ("saturday", Weekday::Saturday),
     ("sunday", Weekday::Sunday),
 ];
+
+/// Whether `word` is a weekday's three-letter abbreviation, such as `Sun`.
+fn abbreviation(word: &str) -> bool {
+    word.len() == 3 && weekday(&word.to_ascii_lowercase()).is_some()
+}
 
 /// The weekday the lower-case `word` names in full or abbreviated.
 fn weekday(word: &str) -> Option<Weekday> {
@@ -594,6 +603,14 @@ mod tests {
         check_on(date(2026, 12, 30), "fri", date(2027, 1, 1));
     }
 
+    // D-112
+    #[test]
+    fn this_weekday_is_the_weekday_alone() {
+        check("this fri", date(2026, 10, 9));
+        check("This Wednesday", date(2026, 10, 14));
+        fails_on(Date::MAX, "this fri", DateError::OutOfRange { offset: 0 });
+    }
+
     #[test]
     fn next_and_last_weekday_step_a_week_further_or_back() {
         check("next fri", date(2026, 10, 16));
@@ -608,7 +625,6 @@ mod tests {
     fn rejects_other_weekday_spellings() {
         fails("fr", DateError::Unexpected { offset: 0 });
         fails("fridays", DateError::Unexpected { offset: 0 });
-        fails("this fri", DateError::Unexpected { offset: 5 });
         fails("next", DateError::Unexpected { offset: 4 });
         fails("last soon", DateError::Unexpected { offset: 5 });
         fails("next 3", DateError::Unexpected { offset: 5 });
@@ -795,8 +811,8 @@ mod tests {
             ]
         );
         assert_eq!(
-            found("Купить молоко завтра fri"),
-            [("fri", DateTag::Start, date(2026, 10, 9))]
+            found("Купить молоко завтра friday"),
+            [("friday", DateTag::Start, date(2026, 10, 9))]
         );
     }
 
@@ -819,6 +835,35 @@ mod tests {
         assert_eq!(found("Pay the bill due"), []);
         assert_eq!(found("due diligence"), []);
         assert_eq!(found("  ...  "), []);
+    }
+
+    // D-112
+    #[test]
+    fn a_bare_weekday_abbreviation_counts_only_after_next_this_or_due() {
+        assert_eq!(found("Buy sun screen"), []);
+        assert_eq!(found("Sat down, wed Ann, MON"), []);
+        assert_eq!(
+            found("Sun cream next sun"),
+            [("next sun", DateTag::Start, date(2026, 10, 18))]
+        );
+        assert_eq!(
+            found("Call this Fri"),
+            [("this Fri", DateTag::Start, date(2026, 10, 9))]
+        );
+        assert_eq!(
+            found("Pay due wed"),
+            [("due wed", DateTag::Due, date(2026, 10, 14))]
+        );
+        assert_eq!(
+            found("Call sunday"),
+            [("sunday", DateTag::Start, date(2026, 10, 11))]
+        );
+        assert_eq!(found("Call today"), [("today", DateTag::Start, TODAY)]);
+        assert_eq!(
+            found("Ship fri +1w"),
+            [("fri +1w", DateTag::Start, date(2026, 10, 16))],
+            "more than the abbreviation"
+        );
     }
 
     // D-97
