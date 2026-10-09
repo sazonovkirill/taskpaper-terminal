@@ -23,7 +23,8 @@ pub enum NoteLine<'a> {
     Quote(&'a str),
     /// A line inside a fenced code block, as typed.
     Code(&'a str),
-    /// A line of text without its leading whitespace; an empty one separates paragraphs.
+    /// A line of text as typed, its leading whitespace kept so its indentation shows; an empty
+    /// one separates paragraphs.
     Text(&'a str),
 }
 
@@ -67,7 +68,7 @@ fn block_line(line: &str) -> NoteLine<'_> {
                 text: text.trim_start(),
             })
         })
-        .unwrap_or(NoteLine::Text(text))
+        .unwrap_or(NoteLine::Text(line))
 }
 
 /// The heading `text` is, its title without trailing whitespace (FR-FMT-03).
@@ -98,7 +99,7 @@ mod tests {
                 NoteLine::Text("####### Seven"),
                 NoteLine::Text("#No"),
                 NoteLine::Text("# "),
-                NoteLine::Text("text  "),
+                NoteLine::Text("  text  "),
                 NoteLine::Text(""),
                 NoteLine::Quote("said"),
                 NoteLine::Quote("bare"),
@@ -130,6 +131,19 @@ mod tests {
                 NoteLine::Text("-no"),
                 NoteLine::Text("1.no"),
                 NoteLine::Text("x. no"),
+            ]
+        );
+    }
+
+    // FR-ATT-04, attachments.md §1.1, D-107
+    #[test]
+    fn indented_text_keeps_its_indentation() {
+        assert_eq!(
+            read("    code *x*\n\tfn f()\n  #No"),
+            [
+                NoteLine::Text("    code *x*"),
+                NoteLine::Text("\tfn f()"),
+                NoteLine::Text("  #No"),
             ]
         );
     }

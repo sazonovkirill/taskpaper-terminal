@@ -302,7 +302,8 @@ impl<'a> AttachmentsPanel<'a> {
 
     /// A line of a note as Markdown shows it, wrapped to `width` columns: a heading bold, the
     /// first level also underlined; a list item after its marker, a bullet for `-`, `*` or `+`;
-    /// a quote dimmed after a bar; code dimmed as typed; each with its inline formatting.
+    /// a quote dimmed after a bar; code dimmed as typed; text after its indentation, which its
+    /// wrapped lines keep; each with its inline formatting.
     fn note_line(&self, line: NoteLine<'_>, width: usize) -> Vec<Line<'static>> {
         let link_color = self.theme.link;
         let formatted = |text: &str, format: Format| -> Vec<Span<'static>> {
@@ -357,7 +358,13 @@ impl<'a> AttachmentsPanel<'a> {
                     Style::new().dim(),
                 )],
             ),
-            NoteLine::Text(text) => (String::new(), formatted(text, Format::default())),
+            NoteLine::Text(text) => {
+                let body = text.trim_start();
+                (
+                    drawable(&text[..text.len() - body.len()]).into_owned(),
+                    formatted(body, Format::default()),
+                )
+            }
         };
         let start = Span::raw(&prefix).width();
         let mut line = Line::from(Span::styled(prefix, Style::new().dim()));
@@ -614,6 +621,35 @@ mod tests {
         let ascii = rows(&draw(&note, (30, 15), IconSet::Ascii, 0).0);
         assert_eq!(ascii[6], "│ - one                      │");
         assert_eq!(ascii[7], "│   * two                    │");
+    }
+
+    // FR-ATT-04, attachments.md §1.1, D-107
+    #[test]
+    fn indented_text_keeps_its_indentation_when_wrapped() {
+        let note = AttachmentsView {
+            sections: &[Attachment::Note],
+            ..view(
+                &["    let x = *y*;", "\tfn f()", "  some words to wrap here"],
+                &[],
+                None,
+            )
+        };
+        let (buf, _) = draw(&note, (20, 9), IconSet::Unicode, 0);
+        assert_eq!(
+            rows(&buf)[2..7],
+            [
+                "│     let x = y;   │",
+                "│  fn f()          │",
+                "│   some words to  │",
+                "│   wrap here      │",
+                "│                  │",
+            ]
+        );
+        assert!(
+            buf[(14, 2)].modifier.contains(Modifier::ITALIC)
+                && !buf[(6, 2)].modifier.contains(Modifier::ITALIC),
+            "inline formatting after the indentation"
+        );
     }
 
     // FR-ATT-03, attachments.md §3, D-109
