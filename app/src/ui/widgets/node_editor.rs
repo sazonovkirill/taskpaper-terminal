@@ -259,6 +259,11 @@ impl<'a> NodeEditorWindow<'a> {
                     "{} · Enter sets it",
                     date.strftime("%a %-d %b %Y")
                 )),
+                FieldOutcome::Tag(Ok(false))
+                    if self.view.rows.get(self.view.focus) == Some(&NodeRow::AddTag) =>
+                {
+                    warning("no tag entered".to_owned())
+                }
                 FieldOutcome::Date(Ok(None)) | FieldOutcome::Tag(Ok(false)) => {
                     dim("Enter removes it · Esc keeps it")
                 }
@@ -731,6 +736,22 @@ mod tests {
             };
             assert!(hint(&shown).starts_with(expected), "{}", hint(&shown));
         }
+        let nothing_to_add = NodeEditorView {
+            field: Some(field(" ", FieldOutcome::Tag(Ok(false)))),
+            ..view(8)
+        };
+        let shown = hint(&nothing_to_add);
+        assert!(shown.starts_with("│ no tag entered "), "{shown}");
+        let (buf, _) = draw(&nothing_to_add, 64, 30);
+        let bottom = rows(&buf)
+            .iter()
+            .rposition(|row| row.starts_with('└'))
+            .unwrap();
+        assert_eq!(
+            buf[(2, u16::try_from(bottom - 1).unwrap())].fg,
+            THEME.warning(),
+            "in the warning color"
+        );
         let tag = NodeEditorView {
             field: Some(field("x(1)", FieldOutcome::Tag(Ok(true)))),
             ..view(8)
