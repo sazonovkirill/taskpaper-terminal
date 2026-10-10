@@ -41,6 +41,25 @@ pub enum BackupError {
     /// Reading the file or writing the copy failed.
     #[error(transparent)]
     Io(#[from] io::Error),
+    /// Writing in the backups folder failed.
+    #[error("{source}")]
+    InFolder {
+        /// The backups folder.
+        folder: PathBuf,
+        /// What failed.
+        source: io::Error,
+    },
+}
+
+impl BackupError {
+    /// The backups folder, when writing in it is what failed.
+    #[must_use]
+    pub fn folder(&self) -> Option<&Path> {
+        match self {
+            Self::InFolder { folder, .. } => Some(folder),
+            Self::NoFolder | Self::Io(_) => None,
+        }
+    }
 }
 
 /// The backups folder: `$XDG_DATA_HOME/taskpaper-terminal/backups`, or under `~/.local/share`
@@ -147,7 +166,13 @@ impl Backups {
     pub fn conflict(&self, file: &Path, contents: &[u8]) -> Result<PathBuf, BackupError> {
         let folder = self.folder()?;
         let keep = self.settings.enabled.then_some(self.settings.keep);
-        Ok(conflict(file, folder, (self.now)(), contents, keep)?)
+        let (source, permissions) = locate(file)?;
+        conflict(&source, permissions, folder, (self.now)(), contents, keep).map_err(|source| {
+            BackupError::InFolder {
+                folder: folder.to_owned(),
+                source,
+            }
+        })
     }
 }
 
@@ -181,25 +206,26 @@ fn daily(file: &Path, backups: &Path, today: Date, keep: usize) -> io::Result<()
 }
 
 /// Writes `contents` to `<YYYY-MM-DD>-<HHMMSS>-conflict.taskpaper`, named by the local time
-/// `now`, or the first later second no copy is named by, in `file`'s folder under `backups`; then
-/// drops the oldest conflict copies beyond the newest `keep`, unless that is `None`, as while
-/// backups are off. Returns the copy's path. A file gone from disk still has its folder of copies.
+/// `now`, or the first later second no copy is named by, in the folder under `backups` of the
+/// file at `source`, located with its `permissions`; then drops the oldest conflict copies beyond
+/// the newest `keep`, unless that is `None`, as while backups are off. Returns the copy's path. A
+/// file gone from disk still has its folder of copies.
 fn conflict(
-    file: &Path,
+    source: &Path,
+    permissions: Option<Permissions>,
     backups: &Path,
     now: DateTime,
     contents: &[u8],
     keep: Option<usize>,
 ) -> io::Result<PathBuf> {
-    let (source, permissions) = locate(file)?;
-    let folder = backups.join(folder_name(&source));
+    let folder = backups.join(folder_name(source));
     fs::create_dir_all(&folder)?;
     let mut time = now;
     while fs::exists(folder.join(conflict_name(time)))? {
         time = time.saturating_add(SignedDuration::from_secs(1));
     }
     let copy = folder.join(conflict_name(time));
-    write_copy(&source, &copy, contents, permissions)?;
+    write_copy(source, &copy, contents, permissions)?;
     if let Some(keep) = keep {
         let copies = copies(&folder, parse_conflict_name)?;
         prune(&folder, copies, conflict_name, keep)?;
@@ -649,7 +675,8 @@ mod tests {
         for other in others {
             fs::write(folder.join(other), "")?;
         }
-        conflict(&file, &backups, NOW, b"new", Some(KEEP))?;
+        let (source, permissions) = locate(&file)?;
+        conflict(&source, permissions, &backups, NOW, b"new", Some(KEEP))?;
         let names = names(&folder)?;
         assert!(!names.contains(&"2026-01-01-080000-conflict.taskpaper".to_owned()));
         assert!(names.contains(&"2026-01-01-080100-conflict.taskpaper".to_owned()));
@@ -673,6 +700,15 @@ mod tests {
         std::os::unix::fs::symlink(&looped, &looped)?;
         let unreadable = session.conflict(&looped, b"x");
         assert!(matches!(unreadable, Err(BackupError::Io(_))));
+        assert_eq!(unreadable.unwrap_err().folder(), None);
+        let blocked = dir.path().join("blocked");
+        fs::write(&blocked, "a file where the folder goes")?;
+        let error = Backups::new(Some(blocked.clone()), || NOW)
+            .conflict(&file, b"x")
+            .unwrap_err();
+        assert_eq!(error.folder(), Some(blocked.as_path()), "names the folder");
+        assert_eq!(error.to_string(), "Not a directory (os error 20)");
+        assert_eq!(BackupError::NoFolder.folder(), None);
         Ok(())
     }
 

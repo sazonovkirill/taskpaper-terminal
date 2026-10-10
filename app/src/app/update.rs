@@ -105,6 +105,8 @@ pub enum Message {
     },
     /// The [`Disk::ConflictCopy`] under way failed.
     ConflictCopyFailed {
+        /// The backups folder, when writing in it failed.
+        folder: Option<PathBuf>,
         /// Why, for the status line.
         reason: String,
     },
@@ -593,13 +595,17 @@ pub enum Disk {
         expected: Option<Version>,
     },
     /// Write `contents` to a new conflict copy in the backups folder of the file at `path`, even
-    /// when backups are off; the result comes back as [`Message::ConflictCopied`] or
-    /// [`Message::ConflictCopyFailed`] (file-io.md §3).
+    /// when backups are off, or, when that fails while `ending`, to a recovery file; the result
+    /// comes back as [`Message::ConflictCopied`] or [`Message::ConflictCopyFailed`]
+    /// (file-io.md §3).
     ConflictCopy {
         /// The open file.
         path: PathBuf,
         /// The version a conflict choice discards.
         contents: Vec<u8>,
+        /// Whether the session ends once the copy is written, leaving the copy, or the recovery
+        /// file when the copy fails, the only place `contents`, the local version, is kept.
+        ending: bool,
     },
 }
 
@@ -661,7 +667,7 @@ impl State {
             Message::TakeTheirs => effects = self.take_theirs(),
             Message::ToggleDiff => self.toggle_diff(),
             Message::ConflictCopied { copy } => self.conflict_copied(copy),
-            Message::ConflictCopyFailed { reason } => self.conflict_copy_failed(reason),
+            Message::ConflictCopyFailed { folder, reason } => self.copy_failed(folder, reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),
             Message::ConfigProblems(problems) => self.config_problems(problems),
             Message::Configure(setting) => self.configure(setting),

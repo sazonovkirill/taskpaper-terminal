@@ -10,7 +10,7 @@ use std::{
 
 use toml_edit::Value;
 
-use super::{BackupSettings, Backups, MissingFolder, Views, atomic};
+use super::{BackupSettings, Backups, MissingFolder, Recovery, Views, atomic};
 use crate::{
     app::{Disk, Message, SaveAs, Version, ViewState},
     ui::{Input, config},
@@ -40,11 +40,17 @@ enum Job {
 
 impl Io {
     /// Starts the worker, which sends each result to `results` as an [`Input::Core`] message,
-    /// makes backups with `backups` and keeps layouts in `views`.
+    /// makes backups with `backups`, writes the local version to a recovery file with `recovery`
+    /// when its conflict copy fails as the session ends, and keeps layouts in `views`.
     #[must_use]
-    pub fn start(results: Sender<Input>, backups: Backups, views: Views) -> Self {
+    pub fn start(
+        results: Sender<Input>,
+        backups: Backups,
+        recovery: Recovery,
+        views: Views,
+    ) -> Self {
         let (jobs, queue) = mpsc::channel();
-        let worker = thread::spawn(move || work(&queue, &results, backups, &views));
+        let worker = thread::spawn(move || work(&queue, &results, backups, &recovery, &views));
         Self {
             jobs: Some(jobs),
             worker: Some(worker),
@@ -108,7 +114,13 @@ impl Drop for Io {
 }
 
 /// Runs the jobs from `queue` until it closes.
-fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, views: &Views) {
+fn work(
+    queue: &Receiver<Job>,
+    results: &Sender<Input>,
+    mut backups: Backups,
+    recovery: &Recovery,
+    views: &Views,
+) {
     for job in queue {
         let message = match job {
             Job::Disk(Disk::Save {
@@ -132,14 +144,25 @@ fn work(queue: &Receiver<Job>, results: &Sender<Input>, mut backups: Backups, vi
                 },
             )),
             Job::Disk(Disk::Check { path }) => check(&path),
-            Job::Disk(Disk::ConflictCopy { path, contents }) => {
-                Some(match backups.conflict(&path, &contents) {
-                    Ok(copy) => Message::ConflictCopied { copy },
-                    Err(error) => Message::ConflictCopyFailed {
+            Job::Disk(Disk::ConflictCopy {
+                path,
+                contents,
+                ending,
+            }) => Some(match backups.conflict(&path, &contents) {
+                Ok(copy) => Message::ConflictCopied { copy },
+                // As the session ends the local version, all `contents` can be, goes to a
+                // recovery file instead, which lives under state, not with the backups, so that
+                // it is never lost (file-io.md §3–4).
+                Err(error) => match ending
+                    .then(|| recovery.write(Some(&path), &String::from_utf8_lossy(&contents)))
+                {
+                    Some(Ok(copy)) => Message::ConflictCopied { copy },
+                    Some(Err(_)) | None => Message::ConflictCopyFailed {
+                        folder: error.folder().map(Path::to_path_buf),
                         reason: error.to_string(),
                     },
-                })
-            }
+                },
+            }),
             Job::Disk(Disk::Backup { path }) => {
                 backups
                     .ensure(&path)
@@ -247,8 +270,11 @@ mod tests {
         let backups = Backups::new(Some(dir.join("backups")), || {
             date(2026, 10, 5).at(9, 30, 0, 0)
         });
+        let recovery = Recovery::new(Some(dir.join("state/recovery")), || {
+            date(2026, 10, 5).at(9, 30, 0, 0)
+        });
         let views = Views::new(Some(dir.join("state/views.json")));
-        (Io::start(results, backups, views), inputs)
+        (Io::start(results, backups, recovery, views), inputs)
     }
 
     fn results(inputs: &Receiver<Input>) -> Vec<Input> {
@@ -566,10 +592,12 @@ mod tests {
         io.submit(Disk::ConflictCopy {
             path: path.clone(),
             contents: b"theirs".to_vec(),
+            ending: false,
         });
         io.submit(Disk::ConflictCopy {
             path: dir.path().join("gone/todo.taskpaper"),
             contents: b"mine".to_vec(),
+            ending: false,
         });
         io.flush();
         let results = results(&inputs);
@@ -593,9 +621,52 @@ mod tests {
         assert_eq!(fs::read_to_string(copies[0])?, "theirs");
         assert!(copies[0].starts_with(dir.path().join("backups")));
         assert!(
-            matches!(&results[1], Input::Core(Message::ConflictCopyFailed { reason }) if reason.contains("No such file")),
+            matches!(&results[1], Input::Core(Message::ConflictCopyFailed { reason, folder: None }) if reason.contains("No such file")),
             "{results:?}"
         );
+        Ok(())
+    }
+
+    // file-io.md §3–4
+    #[test]
+    fn an_ending_copy_that_fails_goes_to_a_recovery_file() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let path = dir.path().join("todo.taskpaper");
+        fs::write(&path, "on disk")?;
+        fs::write(dir.path().join("backups"), "a file where the folder goes")?;
+        let copy = |ending| Disk::ConflictCopy {
+            path: path.clone(),
+            contents: b"mine".to_vec(),
+            ending,
+        };
+        io.submit(copy(false));
+        io.submit(copy(true));
+        io.flush();
+        fs::rename(dir.path().join("state"), dir.path().join("moved"))?;
+        fs::write(dir.path().join("state"), "a file where the folder goes")?;
+        io.submit(copy(true));
+        io.flush();
+        let results = results(&inputs);
+        let failed = Input::Core(Message::ConflictCopyFailed {
+            folder: Some(dir.path().join("backups")),
+            reason: "Not a directory (os error 20)".to_owned(),
+        });
+        assert_eq!(results[0], failed, "a choice is cancelled instead");
+        let recovery = dir.path().join("state/recovery");
+        assert!(
+            matches!(&results[1], Input::Core(Message::ConflictCopied { copy })
+                if copy.starts_with(&recovery)),
+            "{results:?}"
+        );
+        let mut moved = fs::read_dir(dir.path().join("moved/recovery"))?;
+        let copy = moved.next().ok_or("one recovery file")??.path();
+        assert_eq!(fs::read_to_string(copy)?, "mine");
+        assert_eq!(
+            results[2], failed,
+            "the conflict copy's failure is reported"
+        );
+        assert_eq!(results.len(), 3);
         Ok(())
     }
 }

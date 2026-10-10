@@ -22,7 +22,7 @@ use jiff::{
 use ratatui::{Terminal, backend::TestBackend};
 use taskpaper_terminal::ui::{
     Input, Tui,
-    effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
+    effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Recovery, Views},
 };
 
 /// The local date the benchmarks run on, so the outline's dates are near it.
@@ -385,6 +385,7 @@ impl App {
         let io = Io::start(
             results,
             Backups::new(Some(dir.join("backups")), || NOW),
+            Recovery::new(Some(dir.join("state/recovery")), || NOW),
             Views::new(Some(views)),
         );
         let tui = Tui::new(

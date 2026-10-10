@@ -28,7 +28,7 @@ use taskpaper_terminal::{
     ui::{
         ColorSupport, Input, Tui,
         config::{self, Config},
-        effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Views},
+        effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Recovery, Views},
         theme::IconSetting,
     },
 };
@@ -283,6 +283,7 @@ impl Harness {
         let io = Io::start(
             results,
             Backups::new(Some(backups.clone()), || NOW).with_settings(config.backups()),
+            Recovery::new(Some(dir.path().join("state/recovery")), || NOW),
             Views::new(Some(views.clone())),
         );
         let terminal_output = Output::default();

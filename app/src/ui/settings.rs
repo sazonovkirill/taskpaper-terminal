@@ -463,7 +463,7 @@ mod tests {
     use crate::{
         app::{MenuInput, SettingsInput, State},
         document::format,
-        ui::effects::{Backups, Browser, Clipboard, FileWatch, Io, Views},
+        ui::effects::{Backups, Browser, Clipboard, FileWatch, Io, Recovery, Views},
     };
 
     fn tui() -> Tui {
@@ -471,6 +471,7 @@ mod tests {
         let io = Io::start(
             results,
             Backups::new(None, DateTime::default),
+            Recovery::new(None, DateTime::default),
             Views::new(None),
         );
         Tui::new(

@@ -231,17 +231,21 @@ impl State {
         else {
             return Vec::new();
         };
+        let ending = matches!(choice, Choice::Leave);
         conflict.choosing = Some(choice);
-        self.conflict_copy(discarded)
+        self.conflict_copy(discarded, ending)
     }
 
-    /// Writes `contents` to a conflict copy beside the open file's backups.
-    fn conflict_copy(&self, contents: Vec<u8>) -> Vec<Effect> {
+    /// Writes `contents` to a conflict copy beside the open file's backups, or, when that fails
+    /// as the session is `ending`, to a recovery file, so the local version it then holds is
+    /// kept either way.
+    fn conflict_copy(&self, contents: Vec<u8>, ending: bool) -> Vec<Effect> {
         self.path()
             .map(|path| {
                 Effect::Disk(Disk::ConflictCopy {
                     path: path.into(),
                     contents,
+                    ending,
                 })
             })
             .into_iter()
@@ -283,16 +287,17 @@ impl State {
         }
     }
 
-    /// The conflict copy of the choice under way could not be written, so the choice is
-    /// cancelled and the prompt stays; a quit waiting for it asks instead, as after a failed save.
-    pub(super) fn conflict_copy_failed(&mut self, reason: String) {
+    /// The conflict copy of the choice under way could not be written, in the backups `folder`
+    /// when it names one, so the choice is cancelled and the prompt stays; a quit waiting for it,
+    /// whose recovery file failed too, asks instead, as after a failed save.
+    pub(super) fn copy_failed(&mut self, folder: Option<PathBuf>, reason: String) {
         let Some(choice) = (self.external.conflict.as_mut()).and_then(|c| c.choosing.take()) else {
             return;
         };
         if matches!(choice, Choice::Leave) {
             self.autosave.ending_failed();
         }
-        self.notify(Notice::ConflictCopyFailed { reason });
+        self.notify(Notice::ConflictCopyFailed { folder, reason });
     }
 
     /// Ending the session while the prompt is open leaves the file on disk as it is and writes
@@ -306,7 +311,7 @@ impl State {
             Some(Ending::Terminate) => {
                 self.external.conflict = None;
                 self.autosave.end(Ending::Discard);
-                let mut effects = self.conflict_copy(mine);
+                let mut effects = self.conflict_copy(mine, true);
                 effects.push(Effect::Quit);
                 effects
             }
@@ -569,6 +574,16 @@ mod tests {
         vec![Effect::Disk(Disk::ConflictCopy {
             path: PathBuf::from(FILE),
             contents: contents.as_bytes().to_vec(),
+            ending: false,
+        })]
+    }
+
+    /// The conflict copy of `contents`, the local version, as the session ends.
+    fn ending_copy(contents: &str) -> Vec<Effect> {
+        vec![Effect::Disk(Disk::ConflictCopy {
+            path: PathBuf::from(FILE),
+            contents: contents.as_bytes().to_vec(),
+            ending: true,
         })]
     }
 
@@ -1448,16 +1463,19 @@ mod tests {
     fn a_failed_conflict_copy_cancels_the_choice() {
         let mut state = conflicted("theirs\n");
         state.update(Message::ConflictCopyFailed {
+            folder: None,
             reason: "stray".to_owned(),
         });
         assert_eq!(state.notice(), None, "no choice was under way");
         state.update(Message::TakeTheirs);
         state.update(Message::ConflictCopyFailed {
+            folder: None,
             reason: "disk full".to_owned(),
         });
         assert_eq!(
             state.notice(),
             Some(&Notice::ConflictCopyFailed {
+                folder: None,
                 reason: "disk full".to_owned()
             })
         );
@@ -1503,6 +1521,7 @@ mod tests {
             [Effect::Disk(Disk::ConflictCopy {
                 path: PathBuf::from(FILE),
                 contents: b"caf\xe9\n".to_vec(),
+                ending: false,
             })]
         );
         assert_eq!(
@@ -1567,7 +1586,7 @@ mod tests {
     #[test]
     fn terminating_in_the_prompt_copies_mine_and_leaves_the_file() {
         let mut state = conflicted("theirs\n");
-        let mut effects = copy("mine\n");
+        let mut effects = ending_copy("mine\n");
         effects.push(Effect::Quit);
         assert_eq!(state.update(Message::Terminate), effects);
         assert!(!state.in_conflict());
@@ -1578,7 +1597,7 @@ mod tests {
     #[test]
     fn quitting_in_the_prompt_copies_mine_then_quits_leaving_the_file() {
         let mut state = conflicted("theirs\n");
-        assert_eq!(state.update(Message::Quit), copy("mine\n"));
+        assert_eq!(state.update(Message::Quit), ending_copy("mine\n"));
         assert_eq!(state.update(Message::Quit), [], "one copy");
         assert_eq!(state.update(Message::KeepMine), [], "the quit goes ahead");
         assert_eq!(state.update(found("newer\n")), [], "whatever is on disk");
@@ -1600,6 +1619,7 @@ mod tests {
         state.update(Message::Quit);
         assert_eq!(
             state.update(Message::ConflictCopyFailed {
+                folder: None,
                 reason: "disk full".to_owned(),
             }),
             []
@@ -1609,6 +1629,7 @@ mod tests {
         assert_eq!(
             state.notice(),
             Some(&Notice::ConflictCopyFailed {
+                folder: None,
                 reason: "disk full".to_owned()
             })
         );
@@ -1666,6 +1687,7 @@ mod tests {
             Message::ToggleDiff,
             copied(),
             Message::ConflictCopyFailed {
+                folder: None,
                 reason: "x".to_owned(),
             },
         ] {

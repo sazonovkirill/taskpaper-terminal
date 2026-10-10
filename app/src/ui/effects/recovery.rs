@@ -40,7 +40,7 @@ pub fn folder(xdg_state_home: Option<OsString>, home: Option<PathBuf>) -> Option
 }
 
 /// Where recovery files go and the clock that names them.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Recovery {
     folder: Option<PathBuf>,
     now: fn() -> DateTime,

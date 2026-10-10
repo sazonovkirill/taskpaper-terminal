@@ -267,6 +267,47 @@ fn quitting_while_asked_keeps_both_versions() {
     );
 }
 
+// F-FILE-05, file-io.md §3–4: when the conflict copy cannot be written, quitting keeps mine in a
+// recovery file instead, and choosing says which folder failed.
+#[test]
+fn quitting_while_asked_keeps_mine_in_a_recovery_file_when_the_copy_fails() {
+    let mut app = Harness::with_text(GROCERIES, 200, 12);
+    app.settle();
+    let _ = fs::remove_dir_all(&app.backups);
+    fs::write(&app.backups, "a file where the folder goes").unwrap();
+    fs::write(path(&app), b"caf\xe9\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.settle();
+    let status = status_line(&mut app);
+    assert!(
+        status.contains(&format!(
+            "conflict copy failed in {}: Not a directory",
+            app.backups.display()
+        )),
+        "{status}"
+    );
+    app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
+    app.settle();
+    assert!(app.tui.should_quit(), "quitting does not ask");
+    assert_eq!(fs::read(path(&app)).unwrap(), b"caf\xe9\n");
+    let recovery = app.backups.with_file_name("state").join("recovery");
+    let recovered: Vec<_> = recovery
+        .read_dir()
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    assert_eq!(recovered.len(), 1);
+    assert_eq!(fs::read_to_string(&recovered[0]).unwrap(), GROCERIES);
+    assert_eq!(
+        app.tui.farewell(),
+        Some(format!(
+            "tpt: left theirs on disk; mine is in {}",
+            recovered[0].display()
+        ))
+    );
+}
+
 /// Lets the autosave write the file, then reads it.
 fn saved(app: &mut Harness) -> String {
     app.wait(Duration::from_secs(2));

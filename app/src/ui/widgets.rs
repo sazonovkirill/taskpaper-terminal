@@ -528,8 +528,14 @@ pub fn notice_span(
         Notice::Reloaded => Span::raw("Reloaded (changed on disk)"),
         Notice::KeptMine { copy } => in_copy("Kept mine; theirs is in ", copy),
         Notice::TookTheirs { copy } => in_copy("Took theirs; mine is in ", copy),
-        Notice::ConflictCopyFailed { reason } => {
-            Span::styled(format!("conflict copy failed: {reason}"), error_style)
+        Notice::ConflictCopyFailed { folder, reason } => {
+            let place = folder.as_deref().map_or_else(String::new, |folder| {
+                format!(" in {}", abbreviate_path(folder, home))
+            });
+            Span::styled(
+                format!("conflict copy failed{place}: {reason}"),
+                error_style,
+            )
         }
         Notice::CannotTakeTheirs { reason } => {
             Span::styled(format!("cannot take theirs: {reason}"), error_style)
@@ -3638,15 +3644,6 @@ mod tests {
                 plain("Took theirs; mine is in /b/c.taskpaper"),
             ),
             (
-                Notice::ConflictCopyFailed {
-                    reason: "disk full".to_owned(),
-                },
-                (
-                    "conflict copy failed: disk full".to_owned(),
-                    error_style(&THEME),
-                ),
-            ),
-            (
                 Notice::OpenUrlFailed {
                     url: "https://a.b".to_owned(),
                     reason: "not found".to_owned(),
@@ -3840,6 +3837,22 @@ mod tests {
             "Kept mine; theirs is in …",
             "the line cuts the rest"
         );
+        let failed = Notice::ConflictCopyFailed {
+            folder: Some(std::path::PathBuf::from("/home/u/backups")),
+            reason: "Not a directory".to_owned(),
+        };
+        assert_eq!(
+            shown(&failed, usize::MAX),
+            "conflict copy failed in ~/backups: Not a directory",
+            "the folder that failed reads home as ~ too"
+        );
+        let failed = Notice::ConflictCopyFailed {
+            folder: None,
+            reason: "disk full".to_owned(),
+        };
+        let span = notice_span(&failed, Some(home), usize::MAX, &THEME);
+        assert_eq!(span.content, "conflict copy failed: disk full");
+        assert_eq!(span.style, error_style(&THEME));
         let took = Notice::TookTheirs {
             copy: std::path::PathBuf::from("/elsewhere/c.taskpaper"),
         };

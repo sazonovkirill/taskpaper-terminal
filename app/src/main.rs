@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
     let state = views.restore(state);
     let (inputs, received) = mpsc::channel();
     forward_signals(inputs.clone()).context("cannot listen for signals")?;
-    let io = Io::start(inputs.clone(), backups, views);
+    let io = Io::start(inputs.clone(), backups, recovery.clone(), views);
     let files = FileWatch::new(inputs.clone());
     // Without a display server, as over SSH, there is no system clipboard to reach.
     let system = arboard::Clipboard::new()

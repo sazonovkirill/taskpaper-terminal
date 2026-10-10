@@ -241,6 +241,8 @@ pub enum Notice {
     },
     /// The conflict copy for a choice could not be written, so the choice was cancelled.
     ConflictCopyFailed {
+        /// The backups folder, when writing in it failed.
+        folder: Option<PathBuf>,
         /// What the frontend reported.
         reason: String,
     },
