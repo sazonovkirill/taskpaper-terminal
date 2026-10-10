@@ -564,7 +564,7 @@ impl State {
         if row == NodeRow::Text {
             let text = editor.text.edited(edit);
             if tags::adds_tag(editor.text.text(), text.text()) {
-                self.notify(Notice::TypedTag);
+                self.notify(Notice::TypedTagInNodeEditor);
             } else {
                 editor.text = text;
                 editor.draft.text = editor.text.text().to_owned();
@@ -933,7 +933,7 @@ mod tests {
         assert_eq!(view(&state).text, "a c ", "the @ is not typed");
         typed(&mut state, "y");
         assert_eq!(view(&state).text, "a c y");
-        assert_eq!(state.notice(), Some(&Notice::TypedTag));
+        assert_eq!(state.notice(), Some(&Notice::TypedTagInNodeEditor));
         assert_eq!(applied(&mut state), ["- a c y @x"]);
     }
 

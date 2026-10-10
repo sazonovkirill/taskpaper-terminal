@@ -519,6 +519,9 @@ pub fn notice_span(
         ),
         Notice::ReadOnly => Span::styled("cannot edit a read-only file", warning_style),
         Notice::TypedTag => Span::styled("Tags are set in Edit Node (e)", warning_style),
+        Notice::TypedTagInNodeEditor => {
+            Span::styled("Tags are set in the Tags rows below", warning_style)
+        }
         Notice::EditFailed { reason } => {
             Span::styled(format!("edit failed: {reason}"), error_style)
         }
@@ -3523,6 +3526,19 @@ mod tests {
                     warning_style(&THEME)
                 )
             ]
+        );
+        assert_eq!(
+            status(
+                SaveState::Saved,
+                Access::ReadWrite,
+                false,
+                Some(&Notice::TypedTagInNodeEditor)
+            )[1],
+            (
+                "Tags are set in the Tags rows below".to_owned(),
+                warning_style(&THEME)
+            ),
+            "in the dialog that sets them"
         );
     }
 

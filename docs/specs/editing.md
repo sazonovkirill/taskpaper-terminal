@@ -205,7 +205,7 @@ The Edit Node dialog shows and changes every property of one block in a modal wi
 
   | Row | Shows | Changed by |
   |---|---|---|
-  | Text | The block's text as edit mode edits it (§2), without a project's `:`, which the type gives | Typing: the standard text keys of prompts. An `@` that would start a tag is not typed, with edit mode's notice (OQ-25), and nothing breaks the line |
+  | Text | The block's text as edit mode edits it (§2), without a project's `:`, which the type gives | Typing: the standard text keys of prompts. An `@` that would start a tag is not typed, with the notice "Tags are set in the Tags rows below" (OQ-25), and nothing breaks the line |
   | Type | Project, Task or Note, after its icon | `Space` or `→` the next of task, note and project, `←` the previous; `p`, `t` or `n` that type. A divider and a section are notes, a section being a note with `@section` among its tags |
   | Done | `Not done`, dimmed, or the done icon, `Done` and the value of `@done` | `Space` or `x`: adds `@done` with today's date (D-4) or removes it with any value |
   | Parent | The path to the block's parent, `›` between its steps, or the home icon and `Home` for a top-level block | `Space`, or a character, which starts its filter, opens a finder over the blocks it can move under, as Move to lists them, `Home` first when the type is Project (D-56); choosing one makes it the parent. A block given another type while `Home` is chosen goes back to its own parent. The block then moves with its subtree, as its last child, as `move_to` places it (§4) |

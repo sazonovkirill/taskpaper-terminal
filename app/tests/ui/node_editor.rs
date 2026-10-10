@@ -243,3 +243,15 @@ fn focusing_the_last_row_of_a_short_dialog_scrolls_its_hidden_rows_into_view() {
         "{screen:#?}"
     );
 }
+
+// editing.md §7, OQ-25
+#[test]
+fn an_at_sign_typed_in_the_text_row_points_to_the_tags_rows() {
+    let mut app = Harness::with_text("- Milk\n", 70, 22);
+    app.type_keys("e @");
+    let status = screen(&mut app).last().cloned().unwrap_or_default();
+    assert!(
+        status.contains("Tags are set in the Tags rows below"),
+        "{status}"
+    );
+}

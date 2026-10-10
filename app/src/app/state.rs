@@ -219,6 +219,9 @@ pub enum Notice {
     /// Typing would have made a tag, which TaskPaper has no way to escape; tags are set with
     /// commands (OQ-25).
     TypedTag,
+    /// As [`Notice::TypedTag`], in the Edit Node dialog's Text row, where its Tags rows set tags
+    /// (editing.md §7).
+    TypedTagInNodeEditor,
     /// An edit, undo or redo did not fit the document, for this reason, and changed nothing.
     EditFailed {
         /// What did not fit.
@@ -300,6 +303,7 @@ impl Notice {
         match self {
             Self::ReadOnly
             | Self::TypedTag
+            | Self::TypedTagInNodeEditor
             | Self::EditFailed { .. }
             | Self::CannotTakeTheirs { .. } => true,
             Self::BackupFailed { .. }
