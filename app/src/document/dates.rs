@@ -117,8 +117,9 @@ const MOST_WORDS: usize = 4;
 /// The dates that count in `text`, resolved against `today`, in the order they stand: a run of
 /// whole words the grammar reads is a start date, or a due date right after the word `due`; the
 /// longest run at each word wins, a run starting with a bare number does not count, nor a start
-/// date that is only a weekday's abbreviation, an everyday word as often as a date (D-112), and
-/// of several start or due dates only the last counts (D-97).
+/// date that is only a weekday's abbreviation, an everyday word as often as a date (D-112), or
+/// one before today, which words such as `last week` in a task's text name (D-126), and of
+/// several start or due dates only the last counts (D-97).
 #[must_use]
 pub fn find(text: &str, today: Date) -> Vec<Found> {
     let words = words(text);
@@ -134,6 +135,8 @@ pub fn find(text: &str, today: Date) -> Vec<Found> {
         let run = longest_run(text, words.get(first..).unwrap_or_default(), today, tag)
             .filter(|&(taken, _, _)| due || taken > 1 || !abbreviation(&text[word.clone()]));
         match run {
+            // Its words stay text, none of them read as a date of its own (`last weekend`).
+            Some((taken, _, date)) if !due && date < today => at = first + taken,
             Some((taken, end, date)) => {
                 found.push(Found {
                     span: word.start..end,
@@ -888,6 +891,23 @@ mod tests {
             found("Ship fri +1w"),
             [("fri +1w", DateTag::Start, date(2026, 10, 16))],
             "more than the abbreviation"
+        );
+    }
+
+    // D-126
+    #[test]
+    fn a_start_date_before_today_stays_text_and_a_due_date_before_today_counts() {
+        assert_eq!(found("Review last week sales numbers"), []);
+        assert_eq!(found("Write up yesterday meeting notes"), []);
+        assert_eq!(found("Plan last weekend trip"), []);
+        assert_eq!(found("File 2026-10-06 receipts"), []);
+        assert_eq!(
+            found("Report due yesterday"),
+            [("due yesterday", DateTag::Due, date(2026, 10, 6))]
+        );
+        assert_eq!(
+            found("yesterday due last fri"),
+            [("due last fri", DateTag::Due, date(2026, 10, 2))]
         );
     }
 

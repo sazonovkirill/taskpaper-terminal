@@ -131,6 +131,20 @@ fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
     assert_eq!(saved(&mut app), OUTLINE, "one step to undo");
 }
 
+// FR-MODE-08, editing.md §6, D-126
+#[test]
+fn words_naming_a_past_day_stay_in_the_text_unless_due_comes_before_them() {
+    let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
+    app.type_keys("qiReview last week sales due yesterday");
+    assert_eq!(screen(&mut app)[11], inside(" Due Sun 4 Oct"));
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(
+        saved(&mut app),
+        "INBOX:\n\t- old\n\t- Review last week sales @due(2026-10-04)\nWork:\n\tLaunch:\n\t\t- \
+         plan\nTODAY:\n- loose\n"
+    );
+}
+
 // FR-MODE-07, FR-MODE-08, editing.md §6, D-96, D-98
 #[test]
 fn q_i_and_q_t_start_at_the_inbox_and_today_and_backspace_makes_a_note() {
