@@ -136,6 +136,10 @@ pub struct State {
     pub(super) changed: Vec<ItemId>,
     /// Whether the latest update refused its intent (FR-UI-11).
     pub(super) refused: bool,
+    /// The TaskPaper text of the blocks copied last, while no text copied since has replaced it
+    /// on the clipboard; pasted into the text being edited, its line gives its text (editing.md
+    /// §2).
+    pub(super) copied_blocks: Option<String>,
 }
 
 /// Everything the rows of a pane are computed from.
@@ -451,6 +455,7 @@ impl State {
             candidates_walks: Walks::default(),
             changed: Vec::new(),
             refused: false,
+            copied_blocks: None,
         };
         state.pane.focus = state.rows().first().map(|row| row.id);
         state

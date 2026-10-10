@@ -173,6 +173,20 @@ fn text_pasted_in_edit_mode_goes_in_at_the_caret_without_tags() {
     assert_eq!(saved(&mut app), "- Call mum todayay\n");
 }
 
+// FR-OPS-06, editing.md §2
+#[test]
+fn a_block_copied_with_y_pastes_its_text_into_another_block_being_edited() {
+    let mut app = Harness::with_text("A:\n\t- buy milk @due(2026-10-12) @star\n\t- y\n", 100, 10);
+    app.type_keys("jyj");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    ctrl(&mut app, 'v');
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        "A:\n\t- buy milk @due(2026-10-12) @star\n\t- ybuy milk\n"
+    );
+}
+
 // FR-OPS-06, file-format §3.1
 #[test]
 fn a_line_pasted_with_spaces_at_its_start_loses_them_and_says_so() {

@@ -22,17 +22,24 @@ pub enum Paste {
 impl State {
     /// `Ctrl+C`: copies the selected text in edit mode, else the selected blocks, else the
     /// focused block, with their subtrees as TaskPaper text; nothing when nothing is selected in
-    /// edit mode or the focus is on the zoom title, which stands for the view's root.
-    pub(super) fn copy(&self) -> Vec<Effect> {
-        let text = if let Some(editor) = self.editor() {
-            editor
+    /// edit mode or the focus is on the zoom title, which stands for the view's root. Blocks it
+    /// copies are kept for [`State::pasted`].
+    pub(super) fn copy(&mut self) -> Vec<Effect> {
+        let (text, blocks) = if let Some(editor) = self.editor() {
+            let selected = editor
                 .selection
                 .and_then(|range| editor.text.get(range))
-                .map(str::to_owned)
+                .map(str::to_owned);
+            (selected, false)
         } else {
             let tops: Vec<_> = self.roots().iter().map(Block::id).collect();
-            (!tops.is_empty()).then(|| format::serialize_blocks(self.document(), &tops))
+            let lines =
+                (!tops.is_empty()).then(|| format::serialize_blocks(self.document(), &tops));
+            (lines, true)
         };
+        if let Some(text) = &text {
+            self.copied_blocks = blocks.then(|| text.clone());
+        }
         text.map(Effect::CopyToClipboard).into_iter().collect()
     }
 
@@ -55,9 +62,11 @@ impl State {
     }
 
     /// Pastes `text`. The open date prompt, Quick Add panel, Save As prompt, settings window,
-    /// Edit Node dialog or note editor takes it as typed; in edit mode, a single line goes into the text being edited, and several lines end editing and become
-    /// blocks below the block, which they replace when it is empty and not the zoom title; in
-    /// navigate mode, the text becomes blocks `at` the focused block (FR-OPS-06).
+    /// Edit Node dialog or note editor takes it as typed; in edit mode, a single line goes into the
+    /// text being edited, as the text its block shows when it is the block copied last, and
+    /// several lines end editing and become blocks below the block, which they replace when it is
+    /// empty and not the zoom title; in navigate mode, the text becomes blocks `at` the focused
+    /// block (FR-OPS-06).
     pub(super) fn pasted(&mut self, text: &str, at: Paste) {
         if let Some(prompt) = &mut self.date_prompt {
             prompt.paste(text);
@@ -77,7 +86,12 @@ impl State {
             return;
         }
         if !line.contains(breaks_line) {
-            self.paste_text(line);
+            let copied = self
+                .copied_blocks
+                .as_deref()
+                .map(|copied| copied.trim_end_matches(breaks_line));
+            let shown = (copied == Some(line)).then(|| format::display_text(line));
+            self.paste_text(shown.as_deref().unwrap_or(line));
             return;
         }
         self.stop_editing();
@@ -334,6 +348,56 @@ mod tests {
         assert_eq!(state.notice(), Some(&Notice::TypedTag));
         state.update(Message::Undo);
         assert_eq!(shown(&state), "note|", "one change");
+    }
+
+    // FR-OPS-06, editing.md §2
+    #[test]
+    fn a_block_copied_by_the_app_pastes_its_text_into_the_text_being_edited() {
+        let mut state = open("A:\n\t- buy milk @due(1) @star\n\t- y", 1);
+        let block = "- buy milk @due(1) @star\n";
+        assert_eq!(state.update(Message::Copy), copied(block));
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        paste(&mut state, &block.replace('\n', "\r\n"), Paste::Below);
+        assert_eq!(shown(&state), "ybuy milk|");
+        assert_eq!(state.notice(), None);
+        paste(&mut state, " - z @star", Paste::Below);
+        assert_eq!(
+            shown(&state),
+            "ybuy milk - z star|",
+            "a line from elsewhere"
+        );
+        let mut project = open("A:\n- y", 0);
+        project.update(Message::Copy);
+        project.update(Message::FocusNext);
+        project.update(Message::EditAtEnd);
+        paste(&mut project, "A:", Paste::Below);
+        assert_eq!(shown(&project), "yA|");
+    }
+
+    // FR-OPS-06, editing.md §2
+    #[test]
+    fn text_copied_in_edit_mode_pastes_as_it_is_though_a_block_with_it_was_copied() {
+        let editing = || {
+            let mut state = open("- x\n- a - x", 0);
+            state.update(Message::Copy);
+            state.update(Message::FocusNext);
+            state.update(Message::EditAtEnd);
+            state
+        };
+        let mut state = editing();
+        select_left(&mut state, 3);
+        assert_eq!(state.update(Message::Copy), copied("- x"));
+        paste(&mut state, "- x", Paste::Below);
+        assert_eq!(shown(&state), "a - x|");
+        let mut state = editing();
+        assert_eq!(state.update(Message::Copy), [], "nothing selected");
+        paste(&mut state, "- x", Paste::Below);
+        assert_eq!(
+            shown(&state),
+            "a - xx|",
+            "the block is still the latest copy"
+        );
     }
 
     // FR-OPS-06, editing.md §2
