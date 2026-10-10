@@ -118,9 +118,21 @@ impl State {
             .unwrap_or_else(|| text_field::one_line(text))
     }
 
-    /// The text the blocks copied last show, their subtrees aside, joined with spaces, when
-    /// `text` is their copy, whatever breaks its lines; `None` for any other text.
+    /// `text` pasted into the note editor: as the texts the blocks copied last show, one line
+    /// each, when it is their copy, else as it is (attachments.md §4).
+    pub(super) fn note_lines(&self, text: &str) -> String {
+        self.copied_texts(text)
+            .map_or_else(|| text.to_owned(), |texts| texts.join("\n"))
+    }
+
+    /// The text the blocks copied last show, joined with spaces, when `text` is their copy.
     fn shown_copy(&self, text: &str) -> Option<String> {
+        self.copied_texts(text).map(|texts| texts.join(" "))
+    }
+
+    /// The texts the blocks copied last show, their subtrees aside and empty ones left out, when
+    /// `text` is their copy, whatever breaks its lines; `None` for any other text.
+    fn copied_texts(&self, text: &str) -> Option<Vec<String>> {
         let copied = self.copied_blocks.as_deref()?;
         (lines(text) == lines(copied)).then(|| {
             let blocks = format::parse(copied);
@@ -130,8 +142,8 @@ impl State {
                 .filter_map(|(id, _)| blocks.get(id))
                 .map(Item::display_text)
                 .filter(|text| !text.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
+                .map(str::to_owned)
+                .collect()
         })
     }
 

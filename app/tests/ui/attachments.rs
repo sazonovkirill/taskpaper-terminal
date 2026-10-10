@@ -138,6 +138,25 @@ fn e_edits_the_note_and_esc_saves_it_as_one_step_to_undo() {
     assert_eq!(saved(&mut app), "- Bread\n");
 }
 
+// FR-ATT-04, FR-OPS-06, attachments.md §4
+#[test]
+fn ctrl_v_pastes_the_copied_blocks_into_the_note_as_their_text_one_line_each() {
+    let mut app = Harness::with_text(
+        "- Milk @due(2026-10-12)\n\tNOTE @hidden\n\t\tFull fat\n- Eggs\n- Bread\n",
+        80,
+        12,
+    );
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("yGne");
+    app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "- Milk @due(2026-10-12)\n\tNOTE @hidden\n\t\tFull fat\n- Eggs\n- Bread\n\tNOTE @hidden\n\t\tMilk\n\t\tEggs\n"
+    );
+}
+
 // FR-ATT-03, FR-ATT-04, attachments.md §3, §4, D-109
 #[test]
 fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {

@@ -493,8 +493,8 @@ impl State {
         }
     }
 
-    /// Pastes `text` into the note being edited or the comment being typed, which takes it as
-    /// [`State::one_line`] gives it, if one is; returns whether it took it.
+    /// Pastes `text` into the note being edited, as [`State::note_lines`] gives it, or the comment
+    /// being typed, as [`State::one_line`] gives it, if one is; returns whether it took it.
     pub(super) fn attachments_paste(&mut self, text: &str) -> bool {
         let line = self.one_line(text);
         if let Some(draft) = self.draft() {
@@ -505,7 +505,8 @@ impl State {
             .panel
             .as_ref()
             .is_some_and(|panel| panel.editor.is_some());
-        self.note_editor(|editor| editor.paste(text));
+        let lines = self.note_lines(text);
+        self.note_editor(|editor| editor.paste(&lines));
         editing
     }
 
@@ -631,7 +632,10 @@ mod tests {
 
     use super::super::text_field::Motion;
     use crate::{
-        app::{Access, Configuration, Menu, MenuInput, Message, Mode, NodeInput, Notice, Paste},
+        app::{
+            Access, Configuration, Menu, MenuInput, Message, Mode, NodeInput, Notice, Paste,
+            SelectionChange,
+        },
         document::format,
     };
 
@@ -999,6 +1003,57 @@ mod tests {
             at: Paste::Below,
         });
         assert_eq!(edited(&state).1, None, "the shown note takes no paste");
+    }
+
+    // FR-ATT-04, FR-OPS-06, attachments.md §4
+    #[test]
+    fn a_copied_block_pastes_into_the_note_as_its_text() {
+        let mut state = State::new(
+            format::parse("- Milk @due(2026-10-12)\n\tNOTE @hidden\n\t\tFull fat\n- Eggs\n"),
+            None,
+        );
+        state.update(Message::Copy);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        state.update(Message::Pasted {
+            text: "- Milk @due(2026-10-12)\r\n\tNOTE @hidden\r\n\t\tFull fat\r\n".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            edited(&state),
+            (vec!["Full fatMilk".to_owned()], Some((0, 12))),
+            "the copied block's text, without its tags and attachments"
+        );
+    }
+
+    // FR-ATT-04, FR-OPS-06, attachments.md §4
+    #[test]
+    fn several_copied_blocks_paste_into_the_note_one_line_each() {
+        let mut state = State::new(format::parse("- Milk\n\t- Skim\n- Eggs\n- Bread\n"), None);
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::Select(SelectionChange::ExtendDown));
+        state.update(Message::Copy);
+        state.update(Message::FocusLast);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Edit,
+            ],
+        );
+        state.update(Message::Pasted {
+            text: "- Milk\n\t- Skim\n- Eggs\n".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            edited(&state),
+            (vec!["Milk".to_owned(), "Eggs".to_owned()], Some((1, 4)))
+        );
     }
 
     // FR-ATT-04, attachments.md §4
