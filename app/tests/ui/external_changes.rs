@@ -375,3 +375,24 @@ fn the_conflict_copys_path_keeps_its_file_name_in_view() {
         );
     }
 }
+
+// F-FILE-06, OQ-16, D-104, D-123
+#[test]
+fn taking_theirs_carries_on_typing_where_it_was() {
+    let mut app = Harness::with_text(GROCERIES, 80, 7);
+    app.settle();
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(" and");
+    app.press(KeyCode::Down, KeyModifiers::NONE);
+    fs::write(path(&app), "Groceries:\n\t- Milk\n\t- Eggs\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
+    app.settle();
+    app.type_keys(" and ham");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        "Groceries:\n\t- Milk\n\t- Eggs and ham\n\t- Bread\n"
+    );
+}

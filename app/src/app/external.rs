@@ -966,6 +966,34 @@ mod tests {
         assert_eq!(format::serialize(state.document()), "- axzy\n- b\n");
     }
 
+    // file-io.md §3, D-104, D-123
+    #[test]
+    fn taking_theirs_carries_on_editing_in_the_block_found_again() {
+        let mut state = opened("- a\n- bc\n");
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "x");
+        state.update(Message::EditNext);
+        state.update(Message::Text(TextEdit::Move {
+            motion: crate::app::Motion::Left,
+            select: false,
+        }));
+        let caret = shown(&state);
+        state.update(found("- a\n- bc @x\n- d\n"));
+        assert!(state.in_conflict());
+        state.update(Message::TakeTheirs);
+        assert_eq!(
+            state.mode(),
+            crate::app::Mode::Edit,
+            "editing goes on while the copy is written"
+        );
+        state.update(copied());
+        assert!(!state.in_conflict());
+        assert_eq!(state.mode(), crate::app::Mode::Edit);
+        assert_eq!(shown(&state), caret);
+        typed(&mut state, "z");
+        assert_eq!(format::serialize(state.document()), "- a\n- bzc @x\n- d\n");
+    }
+
     // file-io.md §3, D-104
     #[test]
     fn a_reload_that_changed_the_block_being_edited_ends_editing() {

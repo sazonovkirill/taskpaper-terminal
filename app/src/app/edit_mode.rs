@@ -1284,7 +1284,7 @@ mod tests {
 
     // file-io.md §3
     #[test]
-    fn a_reload_ends_the_session_and_a_conflict_choice_ends_it_first() {
+    fn a_reload_ends_the_session_and_taking_theirs_ends_it_once_the_block_is_gone() {
         let path = PathBuf::from("/notes/todo.taskpaper");
         let opened = || {
             let mut state = State::new(format::parse("- a\n"), Some(path.clone()))
@@ -1310,7 +1310,11 @@ mod tests {
             "the prompt's diff leaves the session"
         );
         state.update(Message::TakeTheirs);
-        assert_eq!(state.mode(), Mode::Navigate);
+        assert_eq!(state.mode(), Mode::Edit, "until the copy is written");
+        state.update(Message::ConflictCopied {
+            copy: PathBuf::from("/backups/copy.taskpaper"),
+        });
+        assert_eq!(state.mode(), Mode::Navigate, "the reload has no `- ax`");
     }
 
     /// A file whose first line is being edited, opened at time 0.
