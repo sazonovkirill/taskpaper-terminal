@@ -281,6 +281,8 @@ pub enum Notice {
     /// `qt` found no `TODAY` project: no top-level `TODAY` project is shown, or the setting
     /// that makes it special is off (D-98).
     NoTodayProject,
+    /// The frontend was asked to start the weather in summer, which has none (FR-UI-12).
+    NoWeather,
     /// Quick Add added a block to the project with this text (D-96).
     QuickAdded {
         /// The project's text.
@@ -324,6 +326,7 @@ impl Notice {
             | Self::NotSections { .. }
             | Self::NoInbox
             | Self::NoTodayProject
+            | Self::NoWeather
             | Self::QuickAdded { .. }
             | Self::Bookmark { .. }
             | Self::Count { .. }

@@ -134,9 +134,9 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
     assert_eq!(
         rows[22..25],
         [
-            "│               │   ❞ Use Comments Attachments                   on  │",
-            "│               │     Give blocks dated comments, shown by an icon   │",
             "│               │   ≈ Animations                                off  │",
+            "│               │     Flashes where focus lands and what changed; re…│",
+            "│               │   ❄ Weather animation                          on  │",
         ]
     );
     press(&mut app, KeyCode::Esc);

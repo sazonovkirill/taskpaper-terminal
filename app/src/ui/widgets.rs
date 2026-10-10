@@ -576,6 +576,7 @@ pub fn notice_span(
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
         Notice::NoInbox => Span::raw("No INBOX project in the Navigator"),
         Notice::NoTodayProject => Span::raw("No TODAY project"),
+        Notice::NoWeather => Span::raw("No weather in summer"),
         Notice::QuickAdded { project } => Span::raw(format!("Added to {project}")),
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style)
@@ -929,6 +930,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         }
         Command::QuickAdd(QuickAddTo::Chosen) => plain(Icon::QuickAdd),
         Command::SetAnimations(_) => plain(Icon::Animations),
+        Command::StartWeather => plain(Icon::Weather),
         Command::EditNode => plain(Icon::Edit),
         Command::OpenAttachment(kind) => plain(attachment_icon(kind)),
         Command::OpenUrl => plain(Icon::Link),
@@ -2324,6 +2326,7 @@ mod tests {
                 Icon::Animations,
                 Style::new(),
             ),
+            (Command::StartWeather, Icon::Weather, Style::new()),
             (Command::EditNode, Icon::Edit, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),
             (Command::Duplicate, Icon::Duplicate, Style::new()),
@@ -3784,6 +3787,7 @@ mod tests {
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
             (Notice::NoInbox, plain("No INBOX project in the Navigator")),
             (Notice::NoTodayProject, plain("No TODAY project")),
+            (Notice::NoWeather, plain("No weather in summer")),
             (
                 Notice::QuickAdded {
                     project: "INBOX".to_owned(),

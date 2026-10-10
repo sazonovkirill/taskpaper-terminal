@@ -453,6 +453,7 @@ pub const REGISTRY: &[Entry] = &[
         &[]
     ),
     entry!(Command::SetAnimations(Animations::Off), Mode::Navigate, &[]),
+    entry!(Command::StartWeather, Mode::Navigate, &[]),
     entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+k", "g s", "/"]),
     entry!(Command::GoToProject, Mode::Navigate, &["g P"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),

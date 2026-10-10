@@ -84,6 +84,9 @@ pub enum Icon {
     Wrap,
     /// The settings window's animations setting and Go to Command's commands that switch it.
     Animations,
+    /// Start Weather Animation in Go to Command and the settings window's weather settings
+    /// (FR-UI-12).
+    Weather,
     /// The settings window's autosave delay setting.
     Autosave,
     /// The settings window's settings of whether and how many backups are kept.
@@ -241,6 +244,8 @@ impl Icon {
             Self::Wrap => ("\u{f05b6}", "↩", "/"),
             // nf-md-animation
             Self::Animations => ("\u{f05d8}", "≈", "a"),
+            // nf-md-weather_snowy
+            Self::Weather => ("\u{f0598}", "❄", "w"),
             // nf-md-timer_outline
             Self::Autosave => ("\u{f051b}", "◷", "t"),
             // nf-md-backup_restore
@@ -266,7 +271,7 @@ mod tests {
 
     use super::*;
 
-    const ICONS: [Icon; 39] = [
+    const ICONS: [Icon; 40] = [
         Icon::Start,
         Icon::Due,
         Icon::Overdue,
@@ -301,6 +306,7 @@ mod tests {
         Icon::Glyphs,
         Icon::Wrap,
         Icon::Animations,
+        Icon::Weather,
         Icon::Autosave,
         Icon::Backup,
         Icon::Folder,

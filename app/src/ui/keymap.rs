@@ -72,6 +72,8 @@ pub enum KeyAction {
     OpenSettings,
     /// Animates this much from now on, as animation is the frontend's (FR-UI-11).
     SetAnimations(Animations),
+    /// Starts the weather at once, as the weather is the frontend's (FR-UI-12).
+    StartWeather,
     /// Makes the focused pane narrower, as widths are the frontend's to choose (FR-UI-03).
     NarrowPane,
     /// Makes the focused pane wider.
@@ -851,6 +853,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
         Command::ChooseTheme => Some(KeyAction::ChooseTheme),
         Command::OpenSettings => Some(KeyAction::OpenSettings),
         Command::SetAnimations(setting) => Some(KeyAction::SetAnimations(setting)),
+        Command::StartWeather => Some(KeyAction::StartWeather),
         Command::NarrowPane => Some(KeyAction::NarrowPane),
         Command::WidenPane => Some(KeyAction::WidenPane),
         Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
@@ -1313,6 +1316,7 @@ mod tests {
                     | KeyAction::ChooseTheme
                     | KeyAction::OpenSettings
                     | KeyAction::SetAnimations(_)
+                    | KeyAction::StartWeather
                     | KeyAction::NarrowPane
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown
@@ -3430,6 +3434,10 @@ mod tests {
         assert_eq!(
             action(Command::GoToCommand, CONTEXT),
             Some(KeyAction::GoToCommand)
+        );
+        assert_eq!(
+            action(Command::StartWeather, CONTEXT),
+            Some(KeyAction::StartWeather)
         );
         assert_eq!(action(Command::Retype(Typed::Task), CONTEXT), None);
     }

@@ -6,7 +6,7 @@ use std::{collections::HashSet, path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    AttachmentsInput, Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput,
+    AttachmentsInput, Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput, Notice,
     PaneChange, Paste, QuickAddInput, Row, SaveAs, SelectionChange, SettingValue, SettingsInput,
     SpecialView, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
@@ -355,6 +355,8 @@ pub enum Message {
         /// Why, for the status line.
         reason: String,
     },
+    /// The frontend was asked to start the weather in summer, which has none (FR-UI-12).
+    NoWeather,
     /// Change which blocks are selected (FR-OPS-01).
     Select(SelectionChange),
     /// Open, focus or close panes (FR-UI-02, FR-UI-03).
@@ -415,6 +417,7 @@ impl Message {
             | Self::ConfigProblems(_)
             | Self::Configure(_)
             | Self::OpenUrlFailed { .. }
+            | Self::NoWeather
             | Self::Undo
             | Self::Redo
             | Self::EditAtEnd
@@ -749,6 +752,7 @@ impl State {
             Message::Group => self.group(),
             Message::OpenUrl => effects = self.open_url(),
             Message::OpenUrlFailed { url, reason } => self.open_url_failed(url, reason),
+            Message::NoWeather => self.notify(Notice::NoWeather),
             Message::Pane(change) => self.change_panes(change),
             Message::ResizePane(width) => self.resize_pane(width),
         }
@@ -1837,6 +1841,16 @@ mod tests {
         let problems = vec!["unknown setting `theme`".to_owned()];
         assert_eq!(state.update(Message::ConfigProblems(problems.clone())), []);
         assert_eq!(state.notice(), Some(&Notice::ConfigProblems(problems)));
+        assert!(state.editor().is_some(), "still editing");
+    }
+
+    // FR-UI-12, ui.md §10.1
+    #[test]
+    fn no_weather_says_so_in_the_status_line_and_leaves_editing_alone() {
+        let mut state = state();
+        state.update(Message::EditAtEnd);
+        assert_eq!(state.update(Message::NoWeather), []);
+        assert_eq!(state.notice(), Some(&Notice::NoWeather));
         assert!(state.editor().is_some(), "still editing");
     }
 

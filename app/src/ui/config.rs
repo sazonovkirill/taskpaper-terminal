@@ -153,6 +153,12 @@ pub struct Config {
     pub(super) attachments: Vec<(Attachment, bool)>,
     /// How much the app animates, when the file says (`animations`, FR-UI-11).
     pub(super) animations: Option<Animations>,
+    /// Whether the weather starts once the app sits idle, when the file says (`weather`,
+    /// FR-UI-12).
+    pub(super) weather: Option<bool>,
+    /// How many minutes the app sits idle before the weather starts, when the file says
+    /// (`weather_idle_minutes`, ui.md §10.1).
+    pub(super) weather_idle_minutes: Option<u32>,
     backups: BackupSettings,
     problems: Vec<Problem>,
     /// The file the settings come from, where settings changed in the app are written.
@@ -282,6 +288,31 @@ impl Config {
             None => self.problems.push(Problem::InvalidValue {
                 key: "animations".to_owned(),
                 expected: "\"full\", \"reduced\" or \"off\"",
+            }),
+        }
+    }
+
+    /// Takes `weather` from `item`: `true` or `false`.
+    fn read_weather(&mut self, item: &Item) {
+        match item.as_bool() {
+            Some(on) => self.weather = Some(on),
+            None => self.problems.push(Problem::InvalidValue {
+                key: "weather".to_owned(),
+                expected: "true or false",
+            }),
+        }
+    }
+
+    /// Takes `weather_idle_minutes` from `item`: a whole number, at least 1.
+    fn read_weather_idle_minutes(&mut self, item: &Item) {
+        match item
+            .as_integer()
+            .and_then(|minutes| u32::try_from(minutes).ok())
+        {
+            Some(minutes) if minutes >= 1 => self.weather_idle_minutes = Some(minutes),
+            _ => self.problems.push(Problem::InvalidValue {
+                key: "weather_idle_minutes".to_owned(),
+                expected: "a whole number of minutes, at least 1",
             }),
         }
     }
@@ -438,6 +469,8 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "special_inbox" => config.read_special_inbox(item),
             "special_today" => config.read_special_today(item),
             "today_starred" => config.read_today_starred(item),
+            "weather" => config.read_weather(item),
+            "weather_idle_minutes" => config.read_weather_idle_minutes(item),
             key => {
                 if let Some(view) = OptionalView::ALL.into_iter().find(|view| view.key() == key) {
                     config.read_navigator_view(view, item);
@@ -836,6 +869,46 @@ mod tests {
                 [Problem::InvalidValue {
                     key: "animations".to_owned(),
                     expected: "\"full\", \"reduced\" or \"off\"",
+                }],
+                "{text}"
+            );
+        }
+    }
+
+    // FR-UI-12, ui.md §10.1
+    #[test]
+    fn weather_is_true_or_false_and_its_idle_time_whole_minutes_at_least_one() {
+        let config = read("weather = false\nweather_idle_minutes = 1\n", None);
+        assert_eq!(
+            (
+                config.weather,
+                config.weather_idle_minutes,
+                config.problems()
+            ),
+            (Some(false), Some(1), &[][..])
+        );
+        let config = read("weather = \"no\"\n", None);
+        assert_eq!(config.weather, None);
+        assert_eq!(
+            config.problems(),
+            [Problem::InvalidValue {
+                key: "weather".to_owned(),
+                expected: "true or false",
+            }]
+        );
+        for text in [
+            "weather_idle_minutes = 0\n",
+            "weather_idle_minutes = -3\n",
+            "weather_idle_minutes = 4294967296\n",
+            "weather_idle_minutes = \"3\"\n",
+        ] {
+            let config = read(text, None);
+            assert_eq!(config.weather_idle_minutes, None, "{text}");
+            assert_eq!(
+                config.problems(),
+                [Problem::InvalidValue {
+                    key: "weather_idle_minutes".to_owned(),
+                    expected: "a whole number of minutes, at least 1",
                 }],
                 "{text}"
             );

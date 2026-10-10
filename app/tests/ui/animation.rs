@@ -27,7 +27,7 @@ fn app(animations: &str) -> Harness {
 }
 
 fn colored(animations: &str, colors: ColorSupport) -> Harness {
-    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
     Harness::with_config(OUTLINE, &settings, 60, 10).with_colors(colors)
 }
 
@@ -126,7 +126,8 @@ fn moving_focus_one_block_does_not_flash() {
         "nor focus moving to the block after one deleted"
     );
     let empty = |animations: &str| {
-        let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+        let settings =
+            format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
         let mut app =
             Harness::with_config("- a\n", &settings, 60, 10).with_colors(ColorSupport::TrueColor);
         app.type_keys("dd");
@@ -144,7 +145,8 @@ fn moving_focus_one_block_does_not_flash() {
 fn zooming_in_and_focusing_another_pane_land_with_a_flash() {
     let outline = "A:\n\t- b\n- c\n";
     let start = |animations: &str| {
-        let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+        let settings =
+            format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
         Harness::with_config(outline, &settings, 80, 10).with_colors(ColorSupport::TrueColor)
     };
     let (mut full, mut off) = (start("full"), start("off"));
@@ -266,7 +268,8 @@ fn a_refused_key_flashes_the_focused_block_in_the_error_color() {
 /// The app with the given `animations` on [`OUTLINE`], after a change whose save started
 /// `waited` ms ago and has not come back.
 fn saving(animations: &str, waited: u64) -> Harness {
-    let settings = format!("animations = \"{animations}\"\nautosave_delay_ms = 500\n");
+    let settings =
+        format!("animations = \"{animations}\"\nweather = false\nautosave_delay_ms = 500\n");
     let mut app = Harness::with_config(OUTLINE, &settings, 60, 10);
     app.type_keys("dd");
     wait(&mut app, 500);
@@ -320,7 +323,7 @@ fn animations_off_from_go_to_command_is_written_to_the_config_file() {
     app.settle();
     assert_eq!(
         fs::read_to_string(app.config_file()).unwrap(),
-        "theme = \"nord\"\nanimations = \"off\"\n"
+        "theme = \"nord\"\nanimations = \"off\"\nweather = false\n"
     );
 }
 
@@ -344,7 +347,8 @@ fn an_animations_setting_that_is_not_a_level_is_reported() {
 /// off, after `act`.
 fn full_and_off(text: &str, act: impl Fn(&mut Harness)) -> (Vec<Vec<Cell>>, Vec<Vec<Cell>>) {
     let [full, off] = ["full", "off"].map(|animations| {
-        let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+        let settings =
+            format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
         let mut app =
             Harness::with_config(text, &settings, 60, 14).with_colors(ColorSupport::TrueColor);
         act(&mut app);
@@ -407,7 +411,7 @@ fn differing(left: &[Vec<Cell>], right: &[Vec<Cell>]) -> Vec<usize> {
 
 /// The app on `text` in Nord on a truecolor screen 60×10 with `animations`.
 fn on(text: &str, animations: &str) -> Harness {
-    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
     Harness::with_config(text, &settings, 60, 10).with_colors(ColorSupport::TrueColor)
 }
 
@@ -532,7 +536,7 @@ fn a_landing_on_a_block_a_command_changed_tints_it_no_more_than_either() {
 #[test]
 fn focus_landing_on_a_block_another_pane_highlights_tints_it_no_more_than_either() {
     let start = || {
-        let settings = "theme = \"nord\"\nanimations = \"full\"\n";
+        let settings = "theme = \"nord\"\nanimations = \"full\"\nweather = false\n";
         let mut app = Harness::with_config("- a\n- b\n\t- c\n- d\n", settings, 80, 10)
             .with_colors(ColorSupport::TrueColor);
         app.type_keys("jj");
@@ -673,7 +677,7 @@ fn status(app: &mut Harness) -> String {
 /// The app on a line in `colors` with `animations`, wide enough for the status line to show a
 /// notice.
 fn wide(animations: &str, colors: ColorSupport) -> Harness {
-    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\n");
+    let settings = format!("theme = \"nord\"\nanimations = \"{animations}\"\nweather = false\n");
     Harness::with_config("- a\n", &settings, 120, 10).with_colors(colors)
 }
 
@@ -831,7 +835,7 @@ fn expanding_fades_in_only_what_the_pane_it_expands_in_did_not_show() {
 // UI-ANIM-01, UI-ANIM-02, ui.md §9.4
 #[test]
 fn focus_landing_on_the_one_block_another_pane_highlights_ends_its_highlight() {
-    let settings = "theme = \"nord\"\nanimations = \"full\"\n";
+    let settings = "theme = \"nord\"\nanimations = \"full\"\nweather = false\n";
     let start = || {
         let mut app = Harness::with_config("- a\n- b\n\t- c\n- d\n", settings, 80, 10)
             .with_colors(ColorSupport::TrueColor);

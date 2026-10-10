@@ -82,6 +82,9 @@ pub enum Command {
     /// Animate this much, which the frontend carries out and keeps itself, since animation is
     /// presentation (FR-UI-11).
     SetAnimations(Animations),
+    /// Start the weather at once, which the frontend carries out, since the weather is
+    /// presentation (FR-UI-12).
+    StartWeather,
     /// Open or close the shortcuts panel.
     ToggleShortcuts,
     /// Scroll the shortcuts panel down a page, which the frontend carries out, since scrolling
@@ -267,9 +270,8 @@ impl Command {
             Self::ToggleWrap => "Toggle Word Wrap".into(),
             Self::ChooseTheme => "Choose Theme".into(),
             Self::OpenSettings => "Open Settings".into(),
-            Self::SetAnimations(Animations::Full) => "Animations: Full".into(),
-            Self::SetAnimations(Animations::Reduced) => "Animations: Reduced".into(),
-            Self::SetAnimations(Animations::Off) => "Animations: Off".into(),
+            Self::SetAnimations(setting) => animations_name(setting).into(),
+            Self::StartWeather => "Start Weather Animation".into(),
             Self::ToggleShortcuts => "Shortcuts".into(),
             Self::ScrollShortcutsDown => "Scroll Shortcuts Down".into(),
             Self::ScrollShortcutsUp => "Scroll Shortcuts Up".into(),
@@ -340,7 +342,8 @@ impl Command {
 
     /// The message that gives the command, carrying what it needs of `inputs`, or `None` for
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
-    /// [`Command::ToggleWrap`], [`Command::SetAnimations`], [`Command::NarrowPane`],
+    /// [`Command::ToggleWrap`], [`Command::SetAnimations`], [`Command::StartWeather`],
+    /// [`Command::NarrowPane`],
     /// [`Command::WidenPane`] and the scrolling of the shortcuts panel, which the frontend carries
     /// out, and for [`Command::GoToCommand`],
     /// [`Command::ChooseTheme`] and [`Command::OpenSettings`], whose messages carry the bindings,
@@ -399,6 +402,7 @@ impl Command {
             | Self::ChooseTheme
             | Self::OpenSettings
             | Self::SetAnimations(_)
+            | Self::StartWeather
             | Self::GoToCommand
             | Self::NarrowPane
             | Self::WidenPane
@@ -459,6 +463,15 @@ fn change_date_name(tag: DateTag, change: DateChange) -> String {
         DateChange::Later => "One Day Later",
     };
     format!("{} {change}", date_name(tag))
+}
+
+/// The name of [`Command::SetAnimations`] choosing `setting`.
+fn animations_name(setting: Animations) -> &'static str {
+    match setting {
+        Animations::Full => "Animations: Full",
+        Animations::Reduced => "Animations: Reduced",
+        Animations::Off => "Animations: Off",
+    }
 }
 
 /// The name of [`Command::Pane`] making `change`.
@@ -745,6 +758,7 @@ mod tests {
             Command::SetAnimations(Animations::Off).message(&INPUTS),
             None
         );
+        assert_eq!(Command::StartWeather.message(&INPUTS), None);
         assert_eq!(Command::NarrowPane.message(&INPUTS), None);
         assert_eq!(Command::WidenPane.message(&INPUTS), None);
         assert_eq!(Command::ScrollShortcutsDown.message(&INPUTS), None);
@@ -762,6 +776,7 @@ mod tests {
                     | Command::ChooseTheme
                     | Command::OpenSettings
                     | Command::SetAnimations(_)
+                    | Command::StartWeather
                     | Command::NarrowPane
                     | Command::WidenPane
                     | Command::ScrollShortcutsDown

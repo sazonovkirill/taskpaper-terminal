@@ -9,7 +9,7 @@ use super::{
     config::{self, OptionalView},
     effects,
     theme::{BuiltIn, Icon, IconSetting},
-    widgets,
+    weather, widgets,
 };
 use crate::{
     app::{
@@ -34,6 +34,10 @@ enum Listed {
     /// Whether this kind of attachment is turned on (attachments.md §6).
     Attachments(Attachment),
     Animations,
+    /// Whether the weather starts once the app sits idle (FR-UI-12).
+    Weather,
+    /// How many minutes the app sits idle before the weather starts (ui.md §10.1).
+    WeatherIdle,
     AutosaveDelay,
     Backups,
     BackupFolder,
@@ -41,7 +45,7 @@ enum Listed {
 }
 
 /// The settings the window lists, in order.
-const LISTED: [Listed; 19] = [
+const LISTED: [Listed; 21] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
@@ -57,6 +61,8 @@ const LISTED: [Listed; 19] = [
     Listed::Attachments(Attachment::Note),
     Listed::Attachments(Attachment::Comments),
     Listed::Animations,
+    Listed::Weather,
+    Listed::WeatherIdle,
     Listed::AutosaveDelay,
     Listed::Backups,
     Listed::BackupFolder,
@@ -79,6 +85,8 @@ impl Listed {
             Self::SpecialToday => "special_today",
             Self::Attachments(kind) => config::attachments_key(kind),
             Self::Animations => "animations",
+            Self::Weather => "weather",
+            Self::WeatherIdle => "weather_idle_minutes",
             Self::AutosaveDelay => "autosave_delay_ms",
             Self::Backups => "backups.enabled",
             Self::BackupFolder => "backups.dir",
@@ -98,6 +106,7 @@ impl Listed {
             Self::SpecialToday => widgets::view_icon(SpecialView::Today),
             Self::Attachments(kind) => widgets::attachment_icon(kind),
             Self::Animations => Icon::Animations,
+            Self::Weather | Self::WeatherIdle => Icon::Weather,
             Self::AutosaveDelay => Icon::Autosave,
             Self::Backups | Self::BackupsKept => Icon::Backup,
             Self::BackupFolder => Icon::Folder,
@@ -243,6 +252,8 @@ impl Tui {
             ),
             Listed::Attachments(kind) => self.attachments_listing(kind),
             Listed::Animations => self.animations_listing(),
+            Listed::Weather => self.weather_listing(),
+            Listed::WeatherIdle => self.weather_idle_listing(),
             Listed::AutosaveDelay => (
                 "Files",
                 "Autosave delay",
@@ -345,6 +356,31 @@ impl Tui {
         )
     }
 
+    /// Whether the weather starts once the app sits idle (FR-UI-12).
+    fn weather_listing(&self) -> Listing {
+        switch_on_by_default(
+            "Appearance",
+            "Weather animation",
+            "Leaves, snow or rain by season once the app sits idle",
+            self.weather.on(),
+        )
+    }
+
+    /// How many minutes the app sits idle before the weather starts (ui.md §10.1).
+    fn weather_idle_listing(&self) -> Listing {
+        (
+            "Appearance",
+            "Weather after idle",
+            "How long the app sits idle before the weather starts",
+            SettingKind::Number {
+                least: 1,
+                unit: "min",
+            },
+            SettingValue::Number(self.weather.idle_minutes()),
+            SettingValue::Number(weather::IDLE_MINUTES),
+        )
+    }
+
     /// Applies `value` to the setting at `at` in the settings the window lists and keeps it in
     /// the settings file at time `now` (FR-SET-02, FR-SET-04).
     pub(super) fn change_setting(&mut self, at: usize, value: SettingValue, now: Duration) {
@@ -403,6 +439,14 @@ impl Tui {
                 };
                 self.animator.set(setting);
                 Some(name.into())
+            }
+            (Listed::Weather, SettingValue::Switch(on)) => {
+                self.weather.set_on(on);
+                Some(on.into())
+            }
+            (Listed::WeatherIdle, SettingValue::Number(minutes)) => {
+                self.weather.set_idle_minutes(minutes);
+                Some(i64::from(minutes).into())
             }
             (Listed::AutosaveDelay, SettingValue::Number(ms)) => {
                 let delay = Duration::from_millis(ms.into());
@@ -505,6 +549,8 @@ mod tests {
         assert_eq!(tui.listed_settings(), before);
         assert_eq!(tui.state.notice(), None, "nothing was kept");
         assert_eq!(icon(14), Icon::Animations);
+        assert_eq!(icon(15), Icon::Weather);
+        assert_eq!(icon(16), Icon::Weather);
         assert_eq!(icon(LISTED.len()), Icon::Command);
     }
 
@@ -528,6 +574,8 @@ mod tests {
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Choice(2),
+            SettingValue::Switch(false),
+            SettingValue::Number(10),
             SettingValue::Number(300),
             SettingValue::Switch(false),
             SettingValue::Text("/copies".into()),
@@ -538,9 +586,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(17, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(19, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[17].value,
+            tui.listed_settings()[19].value,
             SettingValue::Text(String::new())
         );
         assert!(

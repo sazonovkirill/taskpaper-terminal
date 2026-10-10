@@ -317,6 +317,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::MoveDown
         | Message::OpenUrl
         | Message::OpenUrlFailed { .. }
+        | Message::NoWeather
         | Message::Select(_)
         | Message::Pane(_)
         | Message::ResizePane(_) => false,

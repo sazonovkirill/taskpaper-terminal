@@ -53,5 +53,6 @@ mod themes;
 mod today;
 mod typed_creation;
 mod upcoming;
+mod weather;
 mod word_wrap;
 mod zoom;

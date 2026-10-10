@@ -9,6 +9,7 @@ pub mod layout;
 mod mouse;
 mod settings;
 pub mod theme;
+mod weather;
 pub mod widgets;
 
 use std::{collections::HashMap, mem, ops::Range, path::PathBuf, time::Duration};
@@ -43,6 +44,7 @@ use layout::Scroll;
 pub use mouse::acts_on;
 pub use theme::ColorSupport;
 use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
+use weather::{Season, Weather};
 use widgets::{
     AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
     NavigatorPanel, NodeEditorWindow, OutlineView, Popup, QuickAddPanel, SaveAsPrompt,
@@ -155,6 +157,8 @@ pub struct Tui {
     animator: Animator,
     /// The `animations` setting a session runs with unless the settings file sets it (ui.md §9.3).
     default_animations: Animations,
+    /// The weather the app shows once it sits idle (ui.md §10).
+    weather: Weather,
     /// Works out the plain text of each shown document's lines on another thread.
     plain_texts: PlainTexts,
     quit: bool,
@@ -219,6 +223,7 @@ impl Tui {
             menu_anchor: None,
             animator: Animator::new(Animations::Full),
             default_animations: Animations::Full,
+            weather: Weather::new(),
             plain_texts: PlainTexts::default(),
             quit: false,
         };
@@ -292,6 +297,12 @@ impl Tui {
         if let Some(setting) = config.animations {
             self.animator.set(setting);
         }
+        if let Some(on) = config.weather {
+            self.weather.set_on(on);
+        }
+        if let Some(minutes) = config.weather_idle_minutes {
+            self.weather.set_idle_minutes(minutes);
+        }
         if let Some(delay) = config.autosave_delay {
             self.send(
                 Message::Configure(Configuration::AutosaveDelay(delay)),
@@ -334,8 +345,15 @@ impl Tui {
         self
     }
 
-    /// Handles one input at time `now` (since the frontend started).
+    /// Handles one input at time `now` (since the frontend started). The input that ends the
+    /// weather does nothing else (ui.md §10.1).
     pub fn handle(&mut self, input: Input, now: Duration) {
+        if let Input::Terminal(event) = &input
+            && weather::is_input(event)
+            && self.weather.input(now)
+        {
+            return;
+        }
         self.animator.at(now);
         let before = Before::of(&self.state);
         match input {
@@ -434,6 +452,15 @@ impl Tui {
         self.run(effects, now);
         self.midnight = self.next_midnight(now);
         self.animator.settle(&before, &self.state);
+        self.weather.tick(now, self.weather_season());
+    }
+
+    /// The season whose weather the idle timer starts: none in summer, or unless animations are
+    /// full, which they are not by default over SSH (ui.md §10.1).
+    fn weather_season(&self) -> Option<Season> {
+        (self.animator.setting() == Animations::Full)
+            .then(|| Season::of((self.clock)().date()))
+            .flatten()
     }
 
     /// When [`Tui::tick`] next has work to do or the screen changes by itself, or `None` when
@@ -446,6 +473,7 @@ impl Tui {
             .chain(self.state.deadline())
             .chain(self.midnight)
             .chain(self.animator.deadline())
+            .chain(self.weather.deadline(self.weather_season()))
             .min()
     }
 
@@ -541,6 +569,10 @@ impl Tui {
                 self.send(Message::OpenThemePicker { names, current }, now);
             }
             KeyAction::SetAnimations(setting) => self.set_animations(setting, now),
+            KeyAction::StartWeather => match Season::of((self.clock)().date()) {
+                Some(season) => self.weather.start(now, season),
+                None => self.send(Message::NoWeather, now),
+            },
         }
     }
 
@@ -721,7 +753,10 @@ impl Tui {
             self.overlay().is_some() || self.state.in_conflict(),
         );
         if let Some(caret) = focused.caret {
-            frame.set_cursor_position(caret);
+            // The weather covers the caret too.
+            if !self.weather.playing() {
+                frame.set_cursor_position(caret);
+            }
             if let Some(menu) = self.state.command_menu() {
                 draw_anchored(frame, Popup::commands(&menu, icons, &theme), outline, caret);
             }
@@ -772,6 +807,8 @@ impl Tui {
         paint_defaults(frame.buffer_mut(), &theme);
         let previewing = self.state.theme_picker().is_some() || self.state.settings().is_some();
         self.animator.finish(frame.buffer_mut(), theme, previewing);
+        self.weather
+            .draw(frame.buffer_mut(), self.icons, self.colors);
         hide_cut_graphemes(frame.buffer_mut());
         // Once the frame is worked out, so the work never slows a file's first frame.
         self.plain_texts.shown(self.state.document());
