@@ -140,6 +140,23 @@ fn a_field_says_why_enter_would_not_take_its_text_and_esc_leaves_it() {
     assert_eq!(saved(&mut app), "- Milk\n", "nothing changed");
 }
 
+// FR-MODE-09, editing.md §7, §5
+#[test]
+fn a_date_field_quotes_where_its_text_stops_being_a_date_as_the_date_prompt_does() {
+    let mut app = Harness::with_text("- Milk\n", 70, 22);
+    app.type_keys("e");
+    for _ in 0..5 {
+        press(&mut app, KeyCode::Tab);
+    }
+    app.type_keys("foo");
+    let rows = screen(&mut app);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("│ Not a date from “foo”")),
+        "{rows:#?}"
+    );
+}
+
 // FR-MODE-09, FR-OPS-05, D-56, editing.md §7
 #[test]
 fn choosing_a_parent_moves_the_block_with_its_subtree_under_it() {

@@ -1282,24 +1282,32 @@ impl<'a> DatePromptPanel<'a> {
     /// What `Enter` does with the text: set the date, remove it, or nothing, quoting where the
     /// text stops being a date.
     fn preview(&self) -> Line<'static> {
-        let from = |offset: usize| self.prompt.text.get(offset..).unwrap_or_default();
-        let error = |why: String| Line::styled(format!(" {why}"), error_style(self.theme));
         match self.prompt.date {
             Ok(Some(date)) => Line::from(format!(" {}", date.strftime("%a %-d %b %Y"))),
             Ok(None) | Err(DateError::Empty) => {
                 Line::styled(" No date: Enter removes it", Style::new().dim())
             }
-            Err(DateError::Unexpected { offset }) if from(offset).is_empty() => {
-                error("Not a date: something is missing".to_owned())
-            }
-            Err(DateError::Unexpected { offset }) => {
-                error(format!("Not a date from “{}”", from(offset)))
-            }
-            Err(DateError::NoSuchDay { offset }) => {
-                error(format!("No such day: “{}”", from(offset)))
-            }
-            Err(DateError::OutOfRange { .. }) => error("Out of range".to_owned()),
+            Err(error) => Line::styled(
+                format!(" {}", not_a_date(self.prompt.text, error)),
+                error_style(self.theme),
+            ),
         }
+    }
+}
+
+/// Why `text` is no date, quoting where it stops being one; the date prompt and the Edit Node
+/// dialog's date fields say it alike (editing.md §5, §7).
+fn not_a_date(text: &str, error: DateError) -> String {
+    let from = |offset: usize| text.get(offset..).unwrap_or_default();
+    match error {
+        DateError::Unexpected { offset } if !from(offset).is_empty() => {
+            format!("Not a date from “{}”", from(offset))
+        }
+        DateError::Empty | DateError::Unexpected { .. } => {
+            "Not a date: something is missing".to_owned()
+        }
+        DateError::NoSuchDay { offset } => format!("No such day: “{}”", from(offset)),
+        DateError::OutOfRange { .. } => "Out of range".to_owned(),
     }
 }
 

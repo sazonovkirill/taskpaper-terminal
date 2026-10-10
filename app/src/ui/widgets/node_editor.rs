@@ -14,8 +14,8 @@ use ratatui::{
 };
 
 use super::{
-    Caret, FOCUS_MARKER, Field, due_style, fitted_path, flag_style, overdue_style, start_style,
-    today_style, truncate_before, warning_style, wrap::truncate,
+    Caret, FOCUS_MARKER, Field, due_style, fitted_path, flag_style, not_a_date, overdue_style,
+    start_style, today_style, truncate_before, warning_style, wrap::truncate,
 };
 use crate::{
     app::{DateValue, FieldOutcome, NodeEditorView, NodeRow},
@@ -289,7 +289,7 @@ impl<'a> NodeEditorWindow<'a> {
                     dim("Enter removes it · Esc keeps it")
                 }
                 FieldOutcome::Tag(Ok(true)) => dim("Enter writes it · Esc keeps it as it was"),
-                FieldOutcome::Date(Err(error)) => warning(error.to_string()),
+                FieldOutcome::Date(Err(error)) => warning(not_a_date(field.text, *error)),
                 FieldOutcome::Tag(Err(error)) => warning(error.to_string()),
             };
         }
@@ -743,8 +743,22 @@ mod tests {
                 "│ Enter removes it · Esc keeps it",
             ),
             (
+                field(
+                    "foo",
+                    FieldOutcome::Date(Err(DateError::Unexpected { offset: 0 })),
+                ),
+                "│ Not a date from “foo”",
+            ),
+            (
+                field(
+                    "2026-13-01",
+                    FieldOutcome::Date(Err(DateError::NoSuchDay { offset: 0 })),
+                ),
+                "│ No such day: “2026-13-01”",
+            ),
+            (
                 field("x?", FieldOutcome::Date(Err(DateError::Empty))),
-                "│ no date entered",
+                "│ Not a date: something is missing",
             ),
             (
                 field(" ", FieldOutcome::Tag(Ok(false))),
