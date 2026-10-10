@@ -270,7 +270,15 @@ fn indent_lines<'a>(lines: &'a [RawLine<'a>]) -> (Vec<Line<'a>>, IndentUnit) {
             }
         })
         .collect();
-    let unit = spaces_per_level.map_or(IndentUnit::Tab, IndentUnit::Spaces);
+    // Spaces only indent a line whose indentation starts with them; spaces after tabs, or on a
+    // blank line, are text TaskPaper drops, so they leave a tab-indented file's unit tabs.
+    let unit = spaces_per_level
+        .filter(|_| {
+            lines
+                .iter()
+                .any(|line| line.text.starts_with(' ') && !line.text.chars().all(is_whitespace))
+        })
+        .map_or(IndentUnit::Tab, IndentUnit::Spaces);
     (indented, unit)
 }
 
@@ -447,6 +455,17 @@ mod tests {
     #[test]
     fn tab_indented_files_use_tabs() {
         assert_eq!(parse("A\n\tB").format().indent, IndentUnit::Tab);
+    }
+
+    #[test]
+    fn spaces_after_tabs_or_on_blank_lines_keep_tabs_the_unit() {
+        let file = parse("A:\n\t- x\n\t\t  code\n  \n\t- y\n");
+        assert_eq!(file.format().indent, IndentUnit::Tab);
+        assert_eq!(
+            parse("A\n\t  B\n  C").format().indent,
+            IndentUnit::Spaces(2),
+            "a line indented with spaces makes them the unit"
+        );
     }
 
     #[test]

@@ -16,7 +16,7 @@ TaskPaper's canonical indent is one tab per level. Space-indented files are norm
 1. For multi-line input, `spaces_per_level` = the smallest run of leading spaces on any line (runs ending at a tab or at the first non-whitespace character), as TaskPaper does.
 2. Replace the run of `spaces_per_level`-space groups at the very start of the line with one tab per group. Then, if the remaining leading whitespace still contains a space, truncate it at that first space, dropping everything after it including any tabs (`"  B"` → one tab; `"\t   \tC"` with 2 spaces per level → one tab).
 3. `depth = number of leading tabs`; `body = rest of line`.
-4. Remember the detected indent unit (`Tab` or `Spaces(n)`) for writing (§6).
+4. Remember the detected indent unit (`Tab` or `Spaces(n)`) for writing (§6). It is `Spaces(spaces_per_level)` only when some non-blank line's indentation starts with a space; spaces after tabs, or on a blank line, never indent, so they leave a tab-indented file's unit `Tab`.
 
 Single-line input (a one-line file or a single-line paste) is not normalized, matching TaskPaper: its leading whitespace stays in the text, so `  - Milk` is a note.
 

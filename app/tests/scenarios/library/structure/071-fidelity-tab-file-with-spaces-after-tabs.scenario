@@ -1,0 +1,16 @@
+# In a tab-indented file, a line with spaces after its tabs keeps tabs the indent unit,
+# so an edited line is written with tabs.
+file <<END
+A:
+	- x
+		  code
+	- y
+END
+keys j <Enter> Z <Esc>
+quit
+saved <<END
+A:
+	- xZ
+		  code
+	- y
+END
