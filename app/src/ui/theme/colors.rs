@@ -96,7 +96,8 @@ impl Theme {
     /// which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a
     /// done block (D-37, D-63). Its row tints are dark shades of the tags' colors from the 256
     /// colors' color cube, as 16 colors have no dim shades and text is unreadable on the bright
-    /// ones; the focused row's is the cube's next step brighter (D-48, D-119).
+    /// ones; the focused row's is the cube's next step brighter, two steps for blue, whose first
+    /// step barely shows (D-48, D-119).
     const fn terminal() -> Self {
         let (red, orange, yellow, green, blue, violet) = (
             Color::Red,
@@ -112,7 +113,7 @@ impl Theme {
             (Color::Indexed(94), Color::Indexed(130)),
             (Color::Indexed(58), Color::Indexed(100)),
             (Color::Indexed(22), Color::Indexed(28)),
-            (Color::Indexed(17), Color::Indexed(18)),
+            (Color::Indexed(17), Color::Indexed(19)),
             (Color::Indexed(53), Color::Indexed(90)),
         ];
         let primary = Color::LightBlue;
@@ -573,7 +574,7 @@ mod tests {
         let tints = TagColor::ALL.map(|color| (dark.tint(color, false), dark.tint(color, true)));
         assert_eq!(
             tints,
-            [(52, 88), (94, 130), (58, 100), (22, 28), (17, 18), (53, 90)]
+            [(52, 88), (94, 130), (58, 100), (22, 28), (17, 19), (53, 90)]
                 .map(|(plain, focused)| (Color::Indexed(plain), Color::Indexed(focused)))
         );
     }

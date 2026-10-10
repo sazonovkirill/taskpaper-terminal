@@ -82,7 +82,7 @@ Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, 
 | Red, orange, yellow, green, blue, violet | red, light red, yellow, green, blue, magenta |
 | Start, due and overdue chips, errors | green, red, red, red |
 
-Sixteen colors have no dim shades, and text is hard to read on their bright ones, so a color tag's row tint comes from the 256 colors' color cube, like the notes' grey: the darkest shade of the tag's color, and the cube's next step brighter on the focused row, so focus shows on a tinted row too (D-119):
+Sixteen colors have no dim shades, and text is hard to read on their bright ones, so a color tag's row tint comes from the 256 colors' color cube, like the notes' grey: the darkest shade of the tag's color, and the cube's next step brighter on the focused row (two steps for blue, whose first step is hardly brighter), so focus shows on a tinted row too (D-119):
 
 | Tag | Row tint | Focused row tint |
 |---|---|---|
@@ -90,7 +90,7 @@ Sixteen colors have no dim shades, and text is hard to read on their bright ones
 | Orange | 94 (`#875f00`) | 130 (`#af5f00`) |
 | Yellow | 58 (`#5f5f00`) | 100 (`#878700`) |
 | Green | 22 (`#005f00`) | 28 (`#008700`) |
-| Blue | 17 (`#00005f`) | 18 (`#000087`) |
+| Blue | 17 (`#00005f`) | 19 (`#0000af`) |
 | Violet | 53 (`#5f005f`) | 90 (`#870087`) |
 
 ## Notes for implementation
