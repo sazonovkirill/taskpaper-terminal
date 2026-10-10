@@ -484,12 +484,9 @@ impl Tui {
     /// went when they quit with the conflict prompt open (file-io.md §3).
     #[must_use]
     pub fn farewell(&self) -> Option<String> {
-        self.state.left_in().map(|copy| {
-            format!(
-                "tpt: the file changed on disk, so it was left as it is; your version is in {}",
-                copy.display()
-            )
-        })
+        self.state
+            .left_in()
+            .map(|copy| format!("tpt: left theirs on disk; mine is in {}", copy.display()))
     }
 
     /// Waits until the disk work asked for so far is done; its results are inputs to handle.

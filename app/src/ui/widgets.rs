@@ -523,15 +523,14 @@ pub fn notice_span(
             Span::styled(format!("edit failed: {reason}"), error_style)
         }
         Notice::Reloaded => Span::raw("Reloaded (changed on disk)"),
-        Notice::KeptMine { copy } => in_copy("Kept your version; the one on disk is in ", copy),
-        Notice::TookTheirs { copy } => in_copy("Took the version on disk; yours is in ", copy),
+        Notice::KeptMine { copy } => in_copy("Kept mine; theirs is in ", copy),
+        Notice::TookTheirs { copy } => in_copy("Took theirs; mine is in ", copy),
         Notice::ConflictCopyFailed { reason } => {
             Span::styled(format!("conflict copy failed: {reason}"), error_style)
         }
-        Notice::CannotTakeTheirs { reason } => Span::styled(
-            format!("cannot take the version on disk: {reason}"),
-            error_style,
-        ),
+        Notice::CannotTakeTheirs { reason } => {
+            Span::styled(format!("cannot take theirs: {reason}"), error_style)
+        }
         Notice::BlanksLifted => Span::raw("Empty lines at the end moved to the top level"),
         Notice::PlaceholderFilled => Span::raw("An empty line with blocks under it now reads …"),
         Notice::WhitespaceTrimmed => Span::raw("Spaces at the start of a line removed"),
@@ -3616,11 +3615,11 @@ mod tests {
             ),
             (
                 Notice::KeptMine { copy: copy.clone() },
-                plain("Kept your version; the one on disk is in /b/c.taskpaper"),
+                plain("Kept mine; theirs is in /b/c.taskpaper"),
             ),
             (
                 Notice::TookTheirs { copy },
-                plain("Took the version on disk; yours is in /b/c.taskpaper"),
+                plain("Took theirs; mine is in /b/c.taskpaper"),
             ),
             (
                 Notice::ConflictCopyFailed {
@@ -3646,7 +3645,7 @@ mod tests {
                     reason: "not UTF-8".to_owned(),
                 },
                 (
-                    "cannot take the version on disk: not UTF-8".to_owned(),
+                    "cannot take theirs: not UTF-8".to_owned(),
                     error_style(&THEME),
                 ),
             ),
@@ -3813,16 +3812,16 @@ mod tests {
         let shown = |notice: &Notice, room| notice_span(notice, Some(home), room, &THEME).content;
         assert_eq!(
             shown(&kept, usize::MAX),
-            "Kept your version; the one on disk is in ~/backups/f-1/2026-conflict.taskpaper"
+            "Kept mine; theirs is in ~/backups/f-1/2026-conflict.taskpaper"
         );
-        let prefix = "Kept your version; the one on disk is in ".len();
+        let prefix = "Kept mine; theirs is in ".len();
         assert_eq!(
             shown(&kept, prefix + 28),
-            "Kept your version; the one on disk is in …f-1/2026-conflict.taskpaper"
+            "Kept mine; theirs is in …f-1/2026-conflict.taskpaper"
         );
         assert_eq!(
             shown(&kept, 10),
-            "Kept your version; the one on disk is in …",
+            "Kept mine; theirs is in …",
             "the line cuts the rest"
         );
         let took = Notice::TookTheirs {
@@ -3830,11 +3829,11 @@ mod tests {
         };
         assert_eq!(
             shown(&took, usize::MAX),
-            "Took the version on disk; yours is in /elsewhere/c.taskpaper"
+            "Took theirs; mine is in /elsewhere/c.taskpaper"
         );
         assert_eq!(
-            shown(&took, "Took the version on disk; yours is in ".len() + 14),
-            "Took the version on disk; yours is in …e/c.taskpaper"
+            shown(&took, "Took theirs; mine is in ".len() + 14),
+            "Took theirs; mine is in …e/c.taskpaper"
         );
     }
 

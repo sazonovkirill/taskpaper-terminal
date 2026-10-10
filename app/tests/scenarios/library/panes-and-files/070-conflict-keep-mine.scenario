@@ -13,7 +13,7 @@ Errands:
 END
 see The file changed on disk
 keys <C-k>
-status Kept your version
+status Kept mine; theirs is in
 saved <<END
 Errands:
 	- Post office @done({today})

@@ -14,7 +14,7 @@ outside <<END
 END
 see The file changed on disk
 keys <C-r>
-status Took the version on disk
+status Took theirs; mine is in
 keys x
 see ✔ Bread
 quit

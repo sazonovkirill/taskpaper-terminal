@@ -16,7 +16,7 @@ see The file changed on disk
 see Ctrl+K keep mine · Ctrl+R take theirs · Ctrl+L show diff
 keys <C-r>
 hide The file changed on disk
-status Took the version on disk
+status Took theirs; mine is in
 see     - Bank
 quit
 saved <<END

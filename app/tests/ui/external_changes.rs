@@ -161,8 +161,7 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
     );
     app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
     assert!(
-        status_line(&mut app)
-            .contains("cannot take the version on disk: the file is not valid UTF-8"),
+        status_line(&mut app).contains("cannot take theirs: the file is not valid UTF-8"),
         "{}",
         status_line(&mut app)
     );
@@ -174,7 +173,7 @@ fn a_file_that_cannot_be_reloaded_asks_which_version_to_keep() {
     );
     assert_eq!(fs::read_to_string(path(&app)).unwrap(), GROCERIES);
     assert!(
-        status_line(&mut app).contains("Kept your version; the one on disk is in "),
+        status_line(&mut app).contains("Kept mine; theirs is in "),
         "{}",
         status_line(&mut app)
     );
@@ -234,7 +233,7 @@ fn quitting_while_asked_keeps_both_versions() {
     assert_eq!(
         app.tui.farewell(),
         Some(format!(
-            "tpt: the file changed on disk, so it was left as it is; your version is in {}",
+            "tpt: left theirs on disk; mine is in {}",
             copy.display()
         )),
         "the quit says where the changes went"
@@ -351,24 +350,28 @@ fn a_message_too_long_for_the_status_line_ends_in_an_ellipsis() {
     app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
     assert_eq!(
         status_line(&mut app),
-        format!("{NAVIGATE} · … · cannot take the version on disk: the file …")
+        format!("{NAVIGATE} · … · cannot take theirs: the file is not valid …")
     );
 }
 
 // file-io.md §3, ui.md §1
 #[test]
 fn the_conflict_copys_path_keeps_its_file_name_in_view() {
-    let mut app = Harness::with_text(GROCERIES, 100, 8);
-    app.settle();
-    app.type_keys("jx");
-    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
-    check(&mut app);
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
-    app.settle();
-    let status = status_line(&mut app);
-    assert!(
-        status.contains("Kept your version; the one on disk is in …")
-            && status.ends_with("/2026-10-05-093000-conflict.taskpaper"),
-        "{status}"
-    );
+    for (key, words) in [
+        ('k', "Kept mine; theirs is in …"),
+        ('r', "Took theirs; mine is in …"),
+    ] {
+        let mut app = Harness::with_text(GROCERIES, 80, 8);
+        app.settle();
+        app.type_keys("jx");
+        fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+        check(&mut app);
+        app.press(KeyCode::Char(key), KeyModifiers::CONTROL);
+        app.settle();
+        let status = status_line(&mut app);
+        assert!(
+            status.contains(words) && status.ends_with("/2026-10-05-093000-conflict.taskpaper"),
+            "{status}"
+        );
+    }
 }
