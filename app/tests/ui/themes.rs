@@ -208,3 +208,45 @@ fn a_theme_that_cannot_be_saved_is_reported_and_kept_for_the_session() {
         "without a settings file: {status}"
     );
 }
+
+// ui.md §3, D-127
+#[test]
+fn without_truecolor_the_theme_pickers_say_why_themes_show_as_terminal_dark() {
+    let bottom = |note: &str| format!("└{note}{}┘", "─".repeat(58 - note.chars().count()));
+    for (colors, note) in [
+        (
+            ColorSupport::Ansi,
+            "No truecolor here: themes show as Terminal Dark",
+        ),
+        (ColorSupport::None, "NO_COLOR is set: themes show no colors"),
+        (ColorSupport::TrueColor, ""),
+    ] {
+        let mut app = Harness::with_config(OUTLINE, SETTINGS, 60, 24).with_colors(colors);
+        choose_theme(&mut app);
+        let buffer = app.render().buffer().clone();
+        assert_eq!(screen(&buffer)[20], bottom(note), "{colors:?}");
+        assert!(
+            buffer[(1, 20)].modifier.contains(Modifier::DIM) || note.is_empty(),
+            "{colors:?}: the note is dimmed"
+        );
+        press(&mut app, KeyCode::Esc);
+        app.type_keys("g,");
+        let rows = screen(app.render().buffer());
+        let description = if note.is_empty() {
+            "The colors of the whole app"
+        } else {
+            &note[..20]
+        };
+        assert!(
+            rows.iter()
+                .any(|row| row.starts_with(&format!("│ Files         │     {description}"))),
+            "{colors:?}: the Theme setting's description: {rows:#?}"
+        );
+        press(&mut app, KeyCode::Enter);
+        let rows = screen(app.render().buffer());
+        assert!(
+            rows.contains(&bottom(note)) || note.is_empty(),
+            "{colors:?}: the settings window's theme picker: {rows:#?}"
+        );
+    }
+}

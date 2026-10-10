@@ -26,9 +26,10 @@ const PROMPT: &str = "› ";
 /// other menus of commands: the query with the caret after it,
 /// then each matching entry's icon and its text, both in the style its value gives if any, and, dimmed
 /// after it, its detail, the highlighted one reversed and kept in view, or a dimmed line saying
-/// nothing matches.
+/// nothing matches; and a note in its bottom border, if it has one.
 pub struct FinderPopup<'a, T> {
     title: &'a str,
+    note: Option<&'a str>,
     view: &'a FinderView<'a, T>,
     icons: IconSet,
     icon: &'a dyn Fn(&T) -> (Icon, Style),
@@ -61,6 +62,7 @@ impl<'a, T> FinderPopup<'a, T> {
     ) -> Self {
         Self {
             title,
+            note: None,
             view,
             icons,
             icon,
@@ -74,6 +76,12 @@ impl<'a, T> FinderPopup<'a, T> {
     pub fn text_style(mut self, text_style: &'a dyn Fn(&T) -> Style) -> Self {
         self.text_style = Some(text_style);
         self
+    }
+
+    /// The finder with `note`, if any, dimmed in its bottom border.
+    #[must_use]
+    pub fn note(self, note: Option<&'a str>) -> Self {
+        Self { note, ..self }
     }
 
     /// Where the overlay goes in `area`: centered, as wide as it can be up to 80 columns and as
@@ -105,10 +113,13 @@ impl<T> Widget for FinderPopup<'_, T> {
         let area = self.area(area);
         Clear.render(area, buf);
         let accent = Style::new().fg(self.theme.accent);
-        let frame = Block::bordered()
+        let mut frame = Block::bordered()
             .border_style(accent)
             .title_style(accent)
             .title(self.title);
+        if let Some(note) = self.note {
+            frame = frame.title_bottom(Line::from(note).dim());
+        }
         let inner = frame.inner(area);
         frame.render(area, buf);
         let mut rows = inner.rows();
@@ -219,6 +230,25 @@ mod tests {
         };
         let finder = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
         assert_eq!(finder.caret(Rect::new(0, 0, 100, 30)), (88, 14));
+    }
+
+    #[test]
+    fn a_note_shows_dimmed_in_the_bottom_border() {
+        let view = FinderView::<u8> {
+            query: "",
+            entries: Entries::new(&[], &[]),
+            selected: 0,
+        };
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 4));
+        FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME)
+            .note(Some("Why"))
+            .render(buf.area, &mut buf);
+        assert_eq!(
+            (1..4).map(|x| buf[(x, 3)].symbol()).collect::<String>(),
+            "Why"
+        );
+        assert!(buf[(1, 3)].modifier.contains(Modifier::DIM));
+        assert_eq!(buf[(4, 3)].symbol(), "─");
     }
 
     #[test]

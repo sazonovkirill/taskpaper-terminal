@@ -1159,7 +1159,8 @@ impl Tui {
             let icon = |_: &usize| widgets::command_icon(Command::ChooseTheme, theme);
             draw_finder(
                 frame,
-                FinderPopup::new("Theme", &view, icons, &icon, theme),
+                FinderPopup::new("Theme", &view, icons, &icon, theme)
+                    .note(self.colors.themes_note()),
                 area,
             );
         }
@@ -1185,7 +1186,8 @@ impl Tui {
             let icon = |_: &usize| (at.map_or(Icon::Command, settings::icon), Style::new());
             draw_finder(
                 frame,
-                FinderPopup::new(name, picker, self.icons, &icon, theme),
+                FinderPopup::new(name, picker, self.icons, &icon, theme)
+                    .note(self.previewed_theme().and(self.colors.themes_note())),
                 area,
             );
         }

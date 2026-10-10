@@ -92,7 +92,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         [
             "┌ Settings ──────────────────────────────────────────────────────────┐",
             "│ Appearance    │   ● Theme                           Terminal Dark  │",
-            "│ Files         │     The colors of the whole app                    │",
+            "│ Files         │     No truecolor here: themes show as Terminal Dark│",
             "│               │ * ◇ Icons                                    none  │",
             "│               │     Nerd Font icons; choose none if they show as b…│",
             "│               │   ↩ Word wrap                                 off  │",
@@ -585,7 +585,7 @@ fn a_narrow_window_cuts_names_short_of_their_values_and_keeps_the_end_of_the_pat
         rows[1..6],
         [
             "│ Appearance    │   ● … Terminal Dark  │",
-            "│ Files         │     The colors of th…│",
+            "│ Files         │     No truecolor her…│",
             "│               │ * ◇ Icons      none  │",
             "│               │     Nerd Font icons;…│",
             "│               │   ↩ Word wrap   off  │",

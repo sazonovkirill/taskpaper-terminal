@@ -239,6 +239,18 @@ impl ColorSupport {
             Self::Ansi
         }
     }
+
+    /// Why choosing a theme shows nothing new, when these colors keep every theme from showing
+    /// its own: without truecolor each is drawn as Terminal Dark, and with `NO_COLOR` none has
+    /// colors (ui.md §3, D-63, D-127).
+    #[must_use]
+    pub fn themes_note(self) -> Option<&'static str> {
+        match self {
+            Self::None => Some("NO_COLOR is set: themes show no colors"),
+            Self::Ansi => Some("No truecolor here: themes show as Terminal Dark"),
+            Self::TrueColor => None,
+        }
+    }
 }
 
 /// How a built-in theme gets its colors.

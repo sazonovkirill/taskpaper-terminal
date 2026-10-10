@@ -313,12 +313,15 @@ impl Tui {
         )
     }
 
-    /// The theme setting, its choices every built-in theme.
+    /// The theme setting, its choices every built-in theme, described by why they do not show
+    /// when the terminal's colors keep them from it.
     fn theme_listing(&self) -> Listing {
         (
             "Appearance",
             "Theme",
-            "The colors of the whole app",
+            self.colors
+                .themes_note()
+                .unwrap_or("The colors of the whole app"),
             SettingKind::Choice(
                 BuiltIn::all()
                     .map(|theme| theme.name().to_owned())
