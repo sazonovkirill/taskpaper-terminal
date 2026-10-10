@@ -469,6 +469,8 @@ fn pane_name(change: PaneChange) -> Cow<'static, str> {
         PaneChange::Focus(at) => format!("Focus Pane {}", at + 1).into(),
         PaneChange::FocusLeft => "Focus Pane Left".into(),
         PaneChange::FocusRight => "Focus Pane Right".into(),
+        PaneChange::MoveLeft => "Move Pane Left".into(),
+        PaneChange::MoveRight => "Move Pane Right".into(),
         PaneChange::Close => "Close Pane".into(),
     }
 }
@@ -641,6 +643,8 @@ mod tests {
             (Command::Pane(PaneChange::Focus(8)), "Focus Pane 9"),
             (Command::Pane(PaneChange::FocusLeft), "Focus Pane Left"),
             (Command::Pane(PaneChange::FocusRight), "Focus Pane Right"),
+            (Command::Pane(PaneChange::MoveLeft), "Move Pane Left"),
+            (Command::Pane(PaneChange::MoveRight), "Move Pane Right"),
             (Command::Pane(PaneChange::Close), "Close Pane"),
             (Command::NarrowPane, "Narrow Pane"),
             (Command::WidenPane, "Widen Pane"),

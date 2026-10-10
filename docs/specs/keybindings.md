@@ -144,6 +144,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9`, `g1` … `g9` (the non-`Alt` route of §1) |
 | Focus the pane left / right (D-71, D-118) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`, `gl` or `gp` / `gr` or `gn` |
+| Move the focused pane left / right, keeping the keys (D-120) | `Ctrl+W H` / `Ctrl+W L` |
 | Close pane | `Ctrl+W c` |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
 | Search (Later, FR-SRCH-01); until search exists, Go to Symbol | `/` |

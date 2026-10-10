@@ -3937,6 +3937,34 @@ mod tests {
         }
     }
 
+    // D-120, D-42: `Ctrl+W H`/`L` move the focused pane, as vim moves a window; the capital
+    // arrives plain or, under the kitty protocol, as either case with `Shift`.
+    #[test]
+    fn ctrl_w_capital_h_and_l_move_the_pane_left_and_right() {
+        let ctrl_w = (KeyCode::Char('w'), KeyModifiers::CONTROL);
+        for (letter, change, keys) in [
+            ('H', PaneChange::MoveLeft, "Ctrl+W H"),
+            ('L', PaneChange::MoveRight, "Ctrl+W L"),
+        ] {
+            let moves = Some(KeyAction::Send(Message::Pane(change)));
+            for (c, modifiers) in [
+                (letter, KeyModifiers::NONE),
+                (letter, KeyModifiers::SHIFT),
+                (letter.to_ascii_lowercase(), KeyModifiers::SHIFT),
+            ] {
+                assert_eq!(
+                    actions(&[ctrl_w, (KeyCode::Char(c), modifiers)], CONTEXT),
+                    [None, moves.clone()],
+                    "Ctrl+W {c} {modifiers:?}"
+                );
+            }
+            assert_eq!(
+                Keymap::default().bindings(Command::Pane(change), true),
+                keys
+            );
+        }
+    }
+
     // D-64, D-42: `gt` is plain characters, which both key reportings send alike; `t` alone still
     // sets the start date to today.
     #[test]

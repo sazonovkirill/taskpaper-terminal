@@ -88,7 +88,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→`, `gl`/`gr` and `gp`/`gn` too) · `c` **c**lose · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→`, `gl`/`gr` and `gp`/`gn` too) · `H`/`L` (Shift) move the pane itself left/right, as vim moves a window · `c` **c**lose · `<`/`>` narrower/wider.
 
 In the Navigator, Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane: **v**ertical split and **t**ab, as in fzf and Telescope. `Ctrl+T` is there for Windows Terminal, which takes the other two.
 

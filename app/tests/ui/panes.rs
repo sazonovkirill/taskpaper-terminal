@@ -568,3 +568,26 @@ fn the_breadcrumbs_end_a_space_short_of_the_number() {
         "Write the yearly report: would fit in the 37 columns the number takes 2 of"
     );
 }
+
+// FR-UI-03, D-120
+#[test]
+fn ctrl_w_capital_l_moves_the_focused_pane_right_and_the_numbers_follow() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    ctrl(&mut app, '\\');
+    alt(&mut app, '1');
+    window(&mut app, "L");
+    assert_eq!(
+        screen(&mut app)[..4],
+        [
+            "  ⌂ › Work                           1 │  ⌂                                   2",
+            "───────────────────────────────────────│────────────────────────────────────────",
+            "  Work:                                │▌ Work:",
+            "    - Report                           │    - Report",
+        ]
+    );
+    window(&mut app, "H");
+    assert_eq!(
+        screen(&mut app)[0],
+        "  ⌂                                  1 │  ⌂ › Work                            2"
+    );
+}

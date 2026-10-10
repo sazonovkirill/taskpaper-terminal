@@ -116,6 +116,10 @@ pub enum PaneChange {
     FocusLeft,
     /// Give the keys to the pane right of the focused one (D-71).
     FocusRight,
+    /// Swap the focused pane with its left neighbor, if it has one, keeping the keys (D-120).
+    MoveLeft,
+    /// Swap the focused pane with its right neighbor, if it has one, keeping the keys (D-120).
+    MoveRight,
     /// Close the focused pane, unless it is the only one, and give the keys to its left
     /// neighbor, else its right one.
     Close,
@@ -218,6 +222,9 @@ impl State {
                 }
             }
             PaneChange::FocusRight => self.focus_pane(self.pane_at.saturating_add(1)),
+            // The others stand around the focused pane, so moving it is moving where it stands.
+            PaneChange::MoveLeft => self.pane_at = self.pane_at.saturating_sub(1),
+            PaneChange::MoveRight => self.pane_at = (self.pane_at + 1).min(self.others.len()),
             PaneChange::Close => self.close_pane(),
         }
     }
@@ -430,6 +437,46 @@ mod tests {
             state.update(Message::FocusNext);
             assert_ne!(state.focus(), before, "no row reads {wanted}");
         }
+    }
+
+    // FR-UI-03, D-120
+    #[test]
+    fn moving_the_focused_pane_swaps_it_with_its_neighbor_and_keeps_the_keys() {
+        let mut state = open(OUTLINE);
+        pane(&mut state, PaneChange::MoveRight);
+        assert_eq!(panes(&state), ["*⌂: Work"], "one pane stays put");
+        focus(&mut state, "Home");
+        pane(&mut state, PaneChange::Open);
+        pane(&mut state, PaneChange::FocusLeft);
+        focus(&mut state, "Later");
+        pane(&mut state, PaneChange::OpenLocation);
+        pane(&mut state, PaneChange::FocusLeft);
+        focus(&mut state, "Home");
+        pane(&mut state, PaneChange::FocusRight);
+        assert_eq!(panes(&state), ["⌂: Home", "*⌂: Later", "Home: Plants"]);
+        pane(&mut state, PaneChange::MoveRight);
+        assert_eq!(panes(&state), ["⌂: Home", "Home: Plants", "*⌂: Later"]);
+        pane(&mut state, PaneChange::MoveRight);
+        assert_eq!(
+            panes(&state),
+            ["⌂: Home", "Home: Plants", "*⌂: Later"],
+            "the last pane stays last"
+        );
+        pane(&mut state, PaneChange::MoveLeft);
+        pane(&mut state, PaneChange::MoveLeft);
+        assert_eq!(panes(&state), ["*⌂: Later", "⌂: Home", "Home: Plants"]);
+        pane(&mut state, PaneChange::MoveLeft);
+        assert_eq!(
+            panes(&state),
+            ["*⌂: Later", "⌂: Home", "Home: Plants"],
+            "the first pane stays first"
+        );
+        pane(&mut state, PaneChange::FocusRight);
+        assert_eq!(
+            panes(&state)[1],
+            "*⌂: Home",
+            "focus by side follows the new order"
+        );
     }
 
     // FR-UI-02, FR-UI-03, navigation.md §5
