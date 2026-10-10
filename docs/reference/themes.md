@@ -67,7 +67,7 @@ Palette names behind the less obvious cells:
 
 The roles of [the UI spec](../specs/ui.md#3-themes-fr-ui-0608) come from a palette's columns as follows: text and background as named; the palette's Accent is the primary color (projects, the focus and selection markers, keys in menus); Orange is the accent (the focus marker while editing, finder and prompt borders), as Textual's default accent is orange; Violet the headers; Blue the links; Muted the rule lines; Surface the current line; Green the start chips and Red the due and overdue chips and errors; Yellow the `@today` star and warnings. Dim text (notes) is the text color mixed with 25% of the background; a tag's row tint is the background mixed with 15% of the tag's color, 25% on the focused row.
 
-Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, so it follows its palette, except for notes: 16 colors have no grey between the default foreground, which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a done task, so notes take the 256-color grey 248 (D-37):
+Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, so it follows its palette, except for notes and row tints: 16 colors have no grey between the default foreground, which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a done task, so notes take the 256-color grey 248 (D-37):
 
 | Role | Terminal Dark |
 |---|---|
@@ -82,7 +82,16 @@ Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, 
 | Red, orange, yellow, green, blue, violet | red, light red, yellow, green, blue, magenta |
 | Start, due and overdue chips, errors | green, red, red, red |
 
-Sixteen colors have no dim shades, so a color tag's row tint is the tag's own color, the same on the focused row, where the band in the gutter and indentation and the focus marker still show focus.
+Sixteen colors have no dim shades, and text is hard to read on their bright ones, so a color tag's row tint comes from the 256 colors' color cube, like the notes' grey: the darkest shade of the tag's color, and the cube's next step brighter on the focused row, so focus shows on a tinted row too (D-119):
+
+| Tag | Row tint | Focused row tint |
+|---|---|---|
+| Red | 52 (`#5f0000`) | 88 (`#870000`) |
+| Orange | 94 (`#875f00`) | 130 (`#af5f00`) |
+| Yellow | 58 (`#5f5f00`) | 100 (`#878700`) |
+| Green | 22 (`#005f00`) | 28 (`#008700`) |
+| Blue | 17 (`#00005f`) | 18 (`#000087`) |
+| Violet | 53 (`#5f005f`) | 90 (`#870087`) |
 
 ## Notes for implementation
 

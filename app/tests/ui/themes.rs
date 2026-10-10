@@ -154,7 +154,11 @@ fn without_truecolor_a_truecolor_theme_is_drawn_as_terminal_dark() {
         let buffer = app.render().buffer().clone();
         assert_eq!(background(&mut app), Color::Reset, "{theme}");
         assert_eq!(buffer[(2, 2)].fg, Color::LightBlue, "{theme}");
-        assert_eq!(buffer[(6, 3)].bg, Color::Red, "{theme}: the red tag's row");
+        assert_eq!(
+            buffer[(6, 3)].bg,
+            Color::Indexed(52),
+            "{theme}: the red tag's row"
+        );
         assert_eq!(buffer[(4, 4)].symbol(), "N");
         assert_eq!(
             buffer[(4, 4)].fg,

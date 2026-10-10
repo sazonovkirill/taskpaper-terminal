@@ -94,8 +94,9 @@ impl Theme {
     /// Terminal Dark: the terminal's 16 ANSI colors, so it follows the user's palette, and grey
     /// 248 of the 256 for notes, as 16 colors have no grey between the default foreground,
     /// which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a
-    /// done block (D-37, D-63). Its row tints are the tags' own colors, as 16 colors have no dim
-    /// shades.
+    /// done block (D-37, D-63). Its row tints are dark shades of the tags' colors from the 256
+    /// colors' color cube, as 16 colors have no dim shades and text is unreadable on the bright
+    /// ones; the focused row's is the cube's next step brighter (D-48, D-119).
     const fn terminal() -> Self {
         let (red, orange, yellow, green, blue, violet) = (
             Color::Red,
@@ -107,12 +108,12 @@ impl Theme {
         );
         let tags = [red, orange, yellow, green, blue, violet];
         let tints = [
-            (red, red),
-            (orange, orange),
-            (yellow, yellow),
-            (green, green),
-            (blue, blue),
-            (violet, violet),
+            (Color::Indexed(52), Color::Indexed(88)),
+            (Color::Indexed(94), Color::Indexed(130)),
+            (Color::Indexed(58), Color::Indexed(100)),
+            (Color::Indexed(22), Color::Indexed(28)),
+            (Color::Indexed(17), Color::Indexed(18)),
+            (Color::Indexed(53), Color::Indexed(90)),
         ];
         let primary = Color::LightBlue;
         Self {
@@ -530,7 +531,7 @@ mod tests {
 
     // N-UX-03, D-63
     #[test]
-    fn terminal_dark_uses_only_the_16_ansi_colors_but_for_notes() {
+    fn terminal_dark_uses_only_the_16_ansi_colors_but_for_notes_and_tints() {
         let ansi = [
             Color::Reset,
             Color::Black,
@@ -552,7 +553,7 @@ mod tests {
         ];
         let dark = named("terminal-dark").colors(ColorSupport::Ansi);
         for (role, color) in roles(&dark) {
-            if role == "dim_text" {
+            if role == "dim_text" || role.ends_with("tint") {
                 continue;
             }
             assert!(ansi.contains(&color), "{role}: {color:?}");
@@ -562,6 +563,18 @@ mod tests {
         assert_eq!(
             (dark.background, dark.text, dark.primary, dark.current_line),
             (Color::Reset, Color::Reset, Color::LightBlue, Color::Black)
+        );
+    }
+
+    // FR-TAG-05, D-48, D-119
+    #[test]
+    fn terminal_dark_tints_rows_in_dark_shades_of_the_256_colors() {
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi);
+        let tints = TagColor::ALL.map(|color| (dark.tint(color, false), dark.tint(color, true)));
+        assert_eq!(
+            tints,
+            [(52, 88), (94, 130), (58, 100), (22, 28), (17, 18), (53, 90)]
+                .map(|(plain, focused)| (Color::Indexed(plain), Color::Indexed(focused)))
         );
     }
 

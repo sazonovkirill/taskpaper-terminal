@@ -23,10 +23,10 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-/// The background a `@red` block's row gets, and the one when it is focused (D-48): both the
-/// terminal's red in Terminal Dark, as 16 colors have no dimmer or brighter shades of it.
-const RED_TINT: Color = Color::Red;
-const FOCUSED_RED_TINT: Color = Color::Red;
+/// The background a `@red` block's row gets, and the one when it is focused (D-48): dark reds of
+/// the 256 colors in Terminal Dark (D-119).
+const RED_TINT: Color = Color::Indexed(52);
+const FOCUSED_RED_TINT: Color = Color::Indexed(88);
 
 /// The background of row `y`'s cells from column `from` to the right edge, if it is the same
 /// throughout.
