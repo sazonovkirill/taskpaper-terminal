@@ -49,7 +49,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | key | mnemonic |
 |---|---|
 | `gg` | **g**o top |
-| `gl` / `gr` | pane on the **l**eft / **r**ight; `gn` / `gp` do the same |
+| `gl` / `gr` | pane on the **l**eft / **r**ight; `gp` / `gn` do the same, **p**revious / **n**ext |
 | `gj` / `gk` | next / previous sibling: a bigger `j`/`k` that skips the children (= `Ctrl+↓`/`Ctrl+↑`, which macOS takes) |
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
@@ -88,7 +88,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→`, `gl`/`gr` and `gn`/`gp` too) · `c` **c**lose · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right (`Ctrl+Shift+←/→`, `gl`/`gr` and `gp`/`gn` too) · `c` **c**lose · `<`/`>` narrower/wider.
 
 In the Navigator, Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane: **v**ertical split and **t**ab, as in fzf and Telescope. `Ctrl+T` is there for Windows Terminal, which takes the other two.
 

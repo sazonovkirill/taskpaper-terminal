@@ -1442,12 +1442,12 @@ mod tests {
 
     // D-118, D-42: plain characters, so both key reportings send them alike.
     #[test]
-    fn g_l_and_g_n_focus_the_pane_left_and_g_r_and_g_p_the_pane_right() {
+    fn g_l_and_g_p_focus_the_pane_left_and_g_r_and_g_n_the_pane_right() {
         for (keys, change) in [
             ("gl", PaneChange::FocusLeft),
-            ("gn", PaneChange::FocusLeft),
+            ("gp", PaneChange::FocusLeft),
             ("gr", PaneChange::FocusRight),
-            ("gp", PaneChange::FocusRight),
+            ("gn", PaneChange::FocusRight),
         ] {
             assert_eq!(
                 messages(keys, CONTEXT),
@@ -3814,7 +3814,7 @@ mod tests {
     }
 
     // D-65, D-42: `gP` opens Go to Project whether `P` arrives as `P`, as `P` with `Shift` or,
-    // under the kitty protocol, as `p` with `Shift`; `gp` still focuses the parent.
+    // under the kitty protocol, as `p` with `Shift`; `gp` still focuses the pane left (D-118).
     #[test]
     fn g_shift_p_opens_go_to_project_in_both_key_reportings() {
         let open = Some(KeyAction::Send(Message::OpenGoToSymbol(Symbols::Projects)));
@@ -3926,11 +3926,11 @@ mod tests {
         for (change, keys) in [
             (
                 PaneChange::FocusLeft,
-                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, gl, gn",
+                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, gl, gp",
             ),
             (
                 PaneChange::FocusRight,
-                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, gr, gp",
+                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, gr, gn",
             ),
         ] {
             assert_eq!(keymap.bindings(Command::Pane(change), true), keys);
@@ -4006,7 +4006,7 @@ mod tests {
         }
     }
 
-    // D-95: the special views' former keys go to no view; `gn` now focuses the pane left (D-118).
+    // D-95: the special views' former keys go to no view; `gn` now focuses the pane right (D-118).
     #[test]
     fn the_former_special_view_keys_go_to_no_view() {
         for keys in ["go", "gD", "g*", "gf"] {

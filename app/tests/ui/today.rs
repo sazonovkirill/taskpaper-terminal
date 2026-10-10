@@ -218,7 +218,7 @@ fn alt_l_and_gz_go_from_an_entry_to_it_in_the_outline_and_back_returns() {
 fn keys_for_the_outlines_tree_do_nothing_on_an_entry() {
     let mut app = today(OUTLINE);
     let before = shown(&mut app);
-    for keys in ["h", "l", "o", "gp", "gl", "-", "_"] {
+    for keys in ["h", "l", "o", "#", "-", "_"] {
         app.type_keys(keys);
         app.wait(Duration::from_secs(1));
         assert_eq!(shown(&mut app), before, "{keys}");

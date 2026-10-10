@@ -153,11 +153,11 @@ fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
 
 // FR-UI-03, D-118, D-42
 #[test]
-fn g_l_and_g_n_focus_the_pane_left_and_g_r_and_g_p_the_pane_right() {
+fn g_l_and_g_p_focus_the_pane_left_and_g_r_and_g_n_the_pane_right() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     ctrl(&mut app, '\\');
     let left = |app: &mut Harness| screen(app)[2].starts_with('▌');
-    for (keys, on_left) in [("gl", true), ("gr", false), ("gn", true), ("gp", false)] {
+    for (keys, on_left) in [("gl", true), ("gr", false), ("gp", true), ("gn", false)] {
         app.type_keys(keys);
         assert_eq!(left(&mut app), on_left, "{keys}");
     }
