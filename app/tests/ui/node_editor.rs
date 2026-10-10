@@ -3,7 +3,8 @@
 
 use std::{fs, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
+use taskpaper_terminal::ui::Input;
 
 use crate::support::{Harness, line, outline_rows};
 
@@ -278,4 +279,14 @@ fn renaming_a_tag_renames_it_in_place_and_keeps_a_duplicate_the_dialog_does_not_
         saved(&mut app),
         "P:\n\t- a @place(home) @x @context(work) @y(1)\n"
     );
+}
+
+// FR-MODE-09, FR-OPS-06, editing.md §7
+#[test]
+fn lines_pasted_into_its_text_are_joined_with_spaces() {
+    let mut app = Harness::with_text("- Milk\n", 70, 22);
+    app.type_keys("e");
+    app.send(Input::Terminal(Event::Paste(" oat\r\nalmond\n".to_owned())));
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(saved(&mut app), "- Milk oat almond\n");
 }

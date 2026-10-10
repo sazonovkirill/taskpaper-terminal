@@ -278,6 +278,15 @@ impl TextField {
     }
 }
 
+/// `text` as one line for a field that cannot break it, which takes a pasted text's lines as
+/// words: without the line breaks that end it, and each other line break as a space.
+#[must_use]
+pub fn one_line(text: &str) -> String {
+    text.trim_end_matches(breaks_line)
+        .replace("\r\n", " ")
+        .replace(breaks_line, " ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,6 +370,14 @@ mod tests {
             "nothing typed, so nothing replaced"
         );
         assert_eq!(pasted("a[bc|d", ""), "a[bc|d");
+    }
+
+    // editing.md §6, §7, attachments.md §5
+    #[test]
+    fn one_line_joins_the_lines_with_spaces_and_drops_the_breaks_that_end_it() {
+        assert_eq!(one_line("a\r\nb\u{2029}c\rd\n\r\n"), "a b c d");
+        assert_eq!(one_line("\nab"), " ab");
+        assert_eq!(one_line("ab"), "ab");
     }
 
     // FR-MODE-03

@@ -11,7 +11,7 @@ use super::{
     Location, MenuInput, Notice, State,
     finder::{Candidate, Finder, FinderView},
     picker::Picked,
-    text_field::{Motion, TextEdit, TextField},
+    text_field::{self, Motion, TextEdit, TextField},
 };
 use crate::document::{
     BlockKind, DateTag, HiddenData, ItemId, Transaction, blocks,
@@ -594,8 +594,9 @@ impl State {
     }
 
     /// Types `text` into the open dialog's field as [`TextField::pasted`] does, or into its Text
-    /// row as its characters would be typed, so that no tag is typed; `false` when no dialog is
-    /// open. Other rows and the parent finder take no text.
+    /// row, its lines as [`text_field::one_line`] joins them, as its characters would be typed,
+    /// so that no tag is typed; `false` when no dialog is open. Other rows and the parent finder
+    /// take no text.
     pub(super) fn node_editor_paste(&mut self, text: &str) -> bool {
         let Some(mut editor) = self.node_editor.take() else {
             return false;
@@ -604,7 +605,7 @@ impl State {
             if let Some((_, field)) = &mut editor.field {
                 *field = field.pasted(text);
             } else if editor.row() == NodeRow::Text {
-                for c in text.chars() {
+                for c in text_field::one_line(text).chars() {
                     self.node_key(&mut editor, TextEdit::Insert(c));
                 }
             }
@@ -1324,8 +1325,8 @@ mod tests {
             });
         };
         let mut state = dialog("- a", 0);
-        paste(&mut state, "b\nc");
-        assert_eq!(view(&state).text, "abc");
+        paste(&mut state, " b\r\nc\n");
+        assert_eq!(view(&state).text, "a b c", "its lines joined with spaces");
         focus(&mut state, NodeRow::Done);
         paste(&mut state, "x");
         assert_eq!(view(&state).done, None, "a row without a field takes none");

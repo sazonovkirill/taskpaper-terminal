@@ -173,7 +173,9 @@ fn q_i_and_q_t_say_when_their_project_is_missing_or_turned_off() {
 fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_panel() {
     let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
     app.type_keys("jyqi");
-    app.send(Input::Terminal(Event::Paste("Renew\n passport".to_owned())));
+    app.send(Input::Terminal(Event::Paste(
+        "Renew\npassport\n".to_owned(),
+    )));
     assert_eq!(screen(&mut app)[10], inside(" - Renew passport"));
     app.type_keys(" ");
     app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
