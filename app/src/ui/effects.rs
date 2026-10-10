@@ -6,6 +6,7 @@ pub(super) mod atomic;
 mod backup;
 mod browser;
 mod clipboard;
+mod color_query;
 mod paths;
 mod plain_texts;
 mod recovery;
@@ -29,6 +30,7 @@ pub use backup::{
 };
 pub use browser::Browser;
 pub use clipboard::{Clipboard, SystemClipboard};
+pub use color_query::query_terminal_colors;
 pub use paths::{abbreviate as abbreviate_path, complete as complete_path, expand as expand_path};
 pub(super) use plain_texts::PlainTexts;
 pub use recovery::{Recovery, RecoveryError, folder as recovery_folder};

@@ -1,0 +1,14 @@
+# Terminal Dark on a truecolor terminal asks for its colors at start, and the answers never arrive as keys.
+env COLORTERM=truecolor
+file <<END
+- Milk
+END
+see - Milk
+keys x
+see ✔ Milk
+restart
+see ✔ Milk
+quit
+saved <<END
+- Milk @done({today})
+END

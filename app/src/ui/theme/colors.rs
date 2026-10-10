@@ -6,6 +6,7 @@ use std::ffi::OsStr;
 
 use ratatui::style::Color;
 
+use super::TerminalColors;
 use crate::document::TagColor;
 
 /// The colors of a theme, one per part of the screen (ui.md §3).
@@ -141,6 +142,36 @@ impl Theme {
             error: Color::Red,
             tags,
             tints,
+        }
+    }
+}
+
+impl Theme {
+    /// Terminal Dark, `self`, with every color the RGB color `terminal` draws it in, on the
+    /// terminal's own background (D-128).
+    fn resolved(self, terminal: &TerminalColors) -> Self {
+        let resolve = |color| terminal.resolve(color);
+        Self {
+            background: terminal.background(),
+            text: resolve(self.text),
+            dim_text: resolve(self.dim_text),
+            primary: resolve(self.primary),
+            accent: resolve(self.accent),
+            selection: resolve(self.selection),
+            focus: resolve(self.focus),
+            current_line: resolve(self.current_line),
+            band_text: resolve(self.band_text),
+            headers: resolve(self.headers),
+            rule: resolve(self.rule),
+            link: resolve(self.link),
+            start: resolve(self.start),
+            due: resolve(self.due),
+            overdue: resolve(self.overdue),
+            error: resolve(self.error),
+            tags: self.tags.map(resolve),
+            tints: self
+                .tints
+                .map(|(plain, focused)| (resolve(plain), resolve(focused))),
         }
     }
 }
@@ -415,12 +446,17 @@ impl BuiltIn {
 
     /// The colors the theme is drawn in with `support`: none without colors, and Terminal Dark
     /// when it is a truecolor theme and the terminal lacks truecolor, so that every theme is
-    /// usable in 16 colors (N-UX-03, D-63).
+    /// usable in 16 colors (N-UX-03, D-63). With truecolor, Terminal Dark is drawn in the RGB
+    /// colors of `terminal`, the colors the terminal reported, when it reported them (D-128).
     #[must_use]
-    pub fn colors(self, support: ColorSupport) -> Theme {
+    pub fn colors(self, support: ColorSupport, terminal: Option<&TerminalColors>) -> Theme {
         match (self.entry().2, support) {
             (_, ColorSupport::None) => Theme::PLAIN,
-            (Source::Terminal, _) | (Source::Palette(..), ColorSupport::Ansi) => Theme::terminal(),
+            (Source::Terminal, ColorSupport::TrueColor) => terminal
+                .map_or_else(Theme::terminal, |terminal| {
+                    Theme::terminal().resolved(terminal)
+                }),
+            (_, ColorSupport::Ansi) => Theme::terminal(),
             (Source::Palette(base, tags), ColorSupport::TrueColor) => {
                 Theme::from_palette(base, tags)
             }
@@ -486,7 +522,7 @@ mod tests {
             "an empty NO_COLOR does not count"
         );
         for theme in BuiltIn::all() {
-            for (role, color) in roles(&theme.colors(ColorSupport::None)) {
+            for (role, color) in roles(&theme.colors(ColorSupport::None, None)) {
                 assert_eq!(color, Color::Reset, "{} {role}", theme.id());
             }
         }
@@ -572,7 +608,7 @@ mod tests {
             Color::LightCyan,
             Color::White,
         ];
-        let dark = named("terminal-dark").colors(ColorSupport::Ansi);
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi, None);
         for (role, color) in roles(&dark) {
             if ["dim_text", "band_text"].contains(&role.as_str()) || role.ends_with("tint") {
                 continue;
@@ -585,7 +621,10 @@ mod tests {
             Color::Indexed(255),
             "grey 255, light on the band and tints whatever the palette (D-125)"
         );
-        assert_eq!(dark, named("terminal-dark").colors(ColorSupport::TrueColor));
+        assert_eq!(
+            dark,
+            named("terminal-dark").colors(ColorSupport::TrueColor, None)
+        );
         assert_eq!(
             (dark.background, dark.text, dark.primary, dark.current_line),
             (Color::Reset, Color::Reset, Color::LightBlue, Color::Black)
@@ -595,7 +634,7 @@ mod tests {
     // FR-TAG-05, D-48, D-119
     #[test]
     fn terminal_dark_tints_rows_in_dark_shades_of_the_256_colors() {
-        let dark = named("terminal-dark").colors(ColorSupport::Ansi);
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi, None);
         let tints = TagColor::ALL.map(|color| (dark.tint(color, false), dark.tint(color, true)));
         assert_eq!(
             tints,
@@ -604,12 +643,59 @@ mod tests {
         );
     }
 
+    // D-128
+    #[test]
+    fn terminal_dark_with_truecolor_is_drawn_in_the_colors_the_terminal_reported() {
+        let ansi = std::array::from_fn(|index| Some([u8::try_from(index).unwrap(), 100, 200]));
+        let terminal = TerminalColors::new([10, 20, 30], [240, 230, 220], ansi);
+        let dark = named("terminal-dark").colors(ColorSupport::TrueColor, Some(&terminal));
+        for (role, color) in roles(&dark) {
+            assert!(matches!(color, Color::Rgb(..)), "{role}: {color:?}");
+        }
+        assert_eq!(
+            (dark.background, dark.text, dark.primary, dark.current_line),
+            (
+                Color::Rgb(10, 20, 30),
+                Color::Rgb(240, 230, 220),
+                Color::Rgb(12, 100, 200),
+                Color::Rgb(0, 100, 200)
+            )
+        );
+        assert_eq!(dark.dim_text, Color::Rgb(168, 168, 168), "grey 248 (D-37)");
+        assert_eq!(dark.tint(TagColor::Yellow, false), Color::Rgb(95, 95, 0));
+        assert_eq!(dark.tint(TagColor::Yellow, true), Color::Rgb(135, 135, 0));
+    }
+
+    // D-63, D-128
+    #[test]
+    fn only_terminal_dark_with_truecolor_takes_the_terminals_colors() {
+        let terminal = TerminalColors::new([10, 20, 30], [240, 230, 220], [None; 16]);
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi, None);
+        assert_eq!(
+            named("terminal-dark").colors(ColorSupport::Ansi, Some(&terminal)),
+            dark
+        );
+        assert_eq!(
+            named("nord").colors(ColorSupport::Ansi, Some(&terminal)),
+            dark
+        );
+        assert_eq!(
+            named("nord").colors(ColorSupport::TrueColor, Some(&terminal)),
+            named("nord").colors(ColorSupport::TrueColor, None)
+        );
+        assert_eq!(
+            named("terminal-dark").colors(ColorSupport::None, Some(&terminal)),
+            Theme::PLAIN
+        );
+    }
+
     // N-UX-03, D-63
     #[test]
     fn a_truecolor_theme_without_truecolor_is_terminal_dark() {
-        let dark = named("terminal-dark").colors(ColorSupport::Ansi);
+        let dark = named("terminal-dark").colors(ColorSupport::Ansi, None);
         for theme in BuiltIn::all().skip(1) {
-            assert_eq!(theme.colors(ColorSupport::Ansi), dark, "{}", theme.id());
+            let colors = theme.colors(ColorSupport::Ansi, None);
+            assert_eq!(colors, dark, "{}", theme.id());
         }
     }
 
@@ -618,7 +704,7 @@ mod tests {
     fn notes_are_dimmed_in_every_theme_with_colors() {
         for theme in BuiltIn::all() {
             for support in [ColorSupport::Ansi, ColorSupport::TrueColor] {
-                let colors = theme.colors(support);
+                let colors = theme.colors(support, None);
                 let notes = colors.dim_text;
                 let id = theme.id();
                 assert_ne!(notes, colors.text, "{id} {support:?}");
@@ -641,7 +727,7 @@ mod tests {
         reason = "colors as the palettes write them"
     )]
     fn a_truecolor_theme_takes_its_roles_from_its_palette() {
-        let nord = named("nord").colors(ColorSupport::TrueColor);
+        let nord = named("nord").colors(ColorSupport::TrueColor, None);
         let rgb = Color::from_u32;
         assert_eq!(nord.background, rgb(0x2e3440));
         assert_eq!(nord.text, rgb(0xd8dee9));
@@ -664,7 +750,7 @@ mod tests {
         // 15% and 25% of the way from the background to the tag's color.
         assert_eq!(nord.tint(TagColor::Red, false), rgb(0x443b46));
         assert_eq!(nord.tint(TagColor::Red, true), rgb(0x523f4b));
-        let latte = named("catppuccin-latte").colors(ColorSupport::TrueColor);
+        let latte = named("catppuccin-latte").colors(ColorSupport::TrueColor, None);
         assert_eq!(latte.background, rgb(0xeff1f5));
         assert_eq!(latte.tag(TagColor::Blue), rgb(0x1e66f5));
     }
@@ -672,7 +758,7 @@ mod tests {
     #[test]
     fn every_truecolor_theme_tells_its_parts_apart() {
         for theme in BuiltIn::all().skip(1) {
-            let colors = theme.colors(ColorSupport::TrueColor);
+            let colors = theme.colors(ColorSupport::TrueColor, None);
             let id = theme.id();
             assert_ne!(colors.text, colors.background, "{id}");
             assert_ne!(colors.current_line, colors.background, "{id}");

@@ -1234,7 +1234,7 @@ mod tests {
         });
         animator.crossfade = Some(crossfade(Buffer::empty(Rect::ZERO)));
         animator.previewed = Some((
-            BuiltIn::DEFAULT.colors(ColorSupport::None),
+            BuiltIn::DEFAULT.colors(ColorSupport::None, None),
             Buffer::empty(Rect::ZERO),
         ));
         animator.set(Animations::Reduced);

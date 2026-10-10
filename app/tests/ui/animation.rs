@@ -11,7 +11,7 @@ use ratatui::{
     buffer::Cell,
     style::{Color, Modifier},
 };
-use taskpaper_terminal::ui::ColorSupport;
+use taskpaper_terminal::ui::{ColorSupport, theme::TerminalColors};
 
 use crate::support::{Harness, line};
 
@@ -630,6 +630,57 @@ fn expanding_a_block_fades_in_the_rows_it_shows() {
     assert_eq!(differing(&frame(&mut full), &expanded), [3, 4], "b and c");
     wait(&mut full, 120);
     assert_eq!(frame(&mut full), expanded);
+}
+
+/// Colors a terminal could report: a dark background, light text and a palette of its own.
+fn reported() -> TerminalColors {
+    let mut ansi = [None; 16];
+    for (color, step) in ansi.iter_mut().zip(0..) {
+        *color = Some([40 + 10 * step, 90, 160]);
+    }
+    TerminalColors::new([20, 20, 30], [220, 220, 210], ansi)
+}
+
+// FR-UI-11, UI-ANIM-04, UI-ANIM-06, D-128
+#[test]
+fn terminal_dark_eases_and_fades_in_the_colors_a_truecolor_terminal_reported() {
+    let text = "A:\n\t- b\n\t- c\n- d\n";
+    let [mut full, mut off] = ["full", "off"].map(|animations| {
+        let settings = format!("animations = \"{animations}\"\n");
+        Harness::with_config(text, &settings, 60, 10).with_terminal_colors(reported())
+    });
+    for app in [&mut full, &mut off] {
+        app.type_keys("h");
+        frame(app);
+        wait(app, 250);
+        app.type_keys("l");
+    }
+    let expanded = frame(&mut off);
+    assert_eq!(
+        expanded[3][5].bg,
+        Color::Rgb(20, 20, 30),
+        "the terminal's own background"
+    );
+    assert_eq!(
+        differing(&frame(&mut full), &expanded),
+        [3, 4],
+        "b and c fade in"
+    );
+    wait(&mut full, 120);
+    assert_eq!(frame(&mut full), expanded);
+    let mut unreported = Harness::with_config(text, "animations = \"full\"\n", 60, 10)
+        .with_colors(ColorSupport::TrueColor);
+    unreported.type_keys("h");
+    frame(&mut unreported);
+    wait(&mut unreported, 250);
+    unreported.type_keys("l");
+    let shown = frame(&mut unreported);
+    wait(&mut unreported, 120);
+    assert_eq!(
+        frame(&mut unreported),
+        shown,
+        "without the terminal's colors Terminal Dark does not fade"
+    );
 }
 
 /// 600 projects, each holding a task, which take several chunks of rows.

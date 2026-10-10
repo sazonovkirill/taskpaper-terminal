@@ -94,6 +94,8 @@ Sixteen colors have no dim shades, and text is hard to read on their bright ones
 | Blue | 17 (`#00005f`) | 19 (`#0000af`) |
 | Violet | 53 (`#5f005f`) | 90 (`#870087`) |
 
+On a truecolor terminal that reports its colors when asked, Terminal Dark keeps these roles but draws each in the RGB color the terminal reported for it, and the 256 colors as xterm defines them (`#hex` above), so it looks the same and fades like the truecolor themes ([the UI spec](../specs/ui.md#3-themes-fr-ui-0608), D-128).
+
 ## Notes for implementation
 
 - The hex values assume a 24-bit-color terminal. [The UI spec](../specs/ui.md#3-themes-fr-ui-0608) uses them only when `COLORTERM` indicates truecolor; behavior in 16-color terminals follows N-UX-03 in [requirements.md](../requirements.md).

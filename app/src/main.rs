@@ -2,6 +2,7 @@
 //! without a path, in the terminal. `tpt --version` and `tpt --help` print and exit.
 
 use std::{
+    fs::File,
     io,
     panic::{self, AssertUnwindSafe},
     path::{Path, PathBuf},
@@ -131,17 +132,15 @@ fn main() -> anyhow::Result<()> {
         home,
     );
     let mut terminal = ratatui::try_init().context("cannot set up the terminal")?;
-    // Asked before the event thread starts, which would otherwise read the terminal's answer; a
-    // terminal that does not answer is taken not to speak the protocol.
+    let colors = color_support();
+    // Asked before the event thread starts, which would otherwise read the answers as keys; a
+    // terminal that does not answer is taken not to speak the keyboard protocol.
+    let terminal_colors = terminal_colors(colors);
     let kitty = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
     let utf8 = ui::theme::utf8_locale(
         std::env::var_os("LC_ALL").as_deref(),
         std::env::var_os("LC_CTYPE").as_deref(),
         std::env::var_os("LANG").as_deref(),
-    );
-    let colors = ui::ColorSupport::detect(
-        std::env::var_os("NO_COLOR").as_deref(),
-        std::env::var_os("COLORTERM").as_deref(),
     );
     let animations = ui::animation::default_for(
         std::env::var_os("SSH_CONNECTION").as_deref(),
@@ -151,6 +150,7 @@ fn main() -> anyhow::Result<()> {
         .with_kitty_keyboard(kitty)
         .with_locale(utf8)
         .with_colors(colors)
+        .with_terminal_colors(terminal_colors)
         .with_animations(animations)
         .with_config(config);
     // Terminals that cannot report focus or the mouse, bracket pasted text or speak the kitty
@@ -182,6 +182,28 @@ fn main() -> anyhow::Result<()> {
         report_recovery(&tui, &recovery);
         panic::resume_unwind(panic)
     })
+}
+
+/// What colors `NO_COLOR` and `COLORTERM` allow.
+fn color_support() -> ui::ColorSupport {
+    ui::ColorSupport::detect(
+        std::env::var_os("NO_COLOR").as_deref(),
+        std::env::var_os("COLORTERM").as_deref(),
+    )
+}
+
+/// The colors the terminal on `/dev/tty` reports it draws with, asked only when it has
+/// truecolor to show them (D-128).
+fn terminal_colors(colors: ui::ColorSupport) -> Option<ui::theme::TerminalColors> {
+    if colors != ui::ColorSupport::TrueColor {
+        return None;
+    }
+    let mut tty = File::options()
+        .read(true)
+        .write(true)
+        .open("/dev/tty")
+        .ok()?;
+    ui::effects::query_terminal_colors(&mut tty)
 }
 
 /// The system clipboard through `arboard`.

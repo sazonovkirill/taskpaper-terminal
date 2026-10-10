@@ -91,7 +91,7 @@ mod tests {
             true,
             date(2026, 10, 5),
             IconSet::Unicode,
-            BuiltIn::DEFAULT.colors(ColorSupport::Ansi),
+            BuiltIn::DEFAULT.colors(ColorSupport::Ansi, None),
         )
     }
 
@@ -153,7 +153,9 @@ mod tests {
                 wrap,
                 today,
                 icons,
-                BuiltIn::named("nord").unwrap().colors(ColorSupport::Ansi),
+                BuiltIn::named("nord")
+                    .unwrap()
+                    .colors(ColorSupport::Ansi, None),
             ),
         ] {
             let before = laid.get();

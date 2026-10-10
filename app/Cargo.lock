@@ -1962,6 +1962,7 @@ dependencies = [
  "nucleo-matcher",
  "proptest",
  "ratatui",
+ "rustix",
  "serde",
  "serde_json",
  "signal-hook",

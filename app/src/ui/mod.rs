@@ -43,7 +43,7 @@ use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey, ScrollBy};
 use layout::Scroll;
 pub use mouse::acts_on;
 pub use theme::ColorSupport;
-use theme::{BuiltIn, Icon, IconSet, IconSetting, Theme};
+use theme::{BuiltIn, Icon, IconSet, IconSetting, TerminalColors, Theme};
 use weather::{Season, Weather};
 use widgets::{
     AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
@@ -125,6 +125,9 @@ pub struct Tui {
     theme: BuiltIn,
     /// What colors the terminal and the user allow, which decide how the theme is drawn.
     colors: ColorSupport,
+    /// The colors the terminal reported it draws with, if it did, which Terminal Dark is drawn
+    /// in with truecolor (D-128).
+    terminal_colors: Option<TerminalColors>,
     /// The settings file, where settings changed in the app are kept (FR-SET-04).
     settings: Option<PathBuf>,
     /// The first line of the shortcuts panel's list on screen (D-55).
@@ -209,6 +212,7 @@ impl Tui {
             keyboard: Keyboard::default(),
             theme: BuiltIn::DEFAULT,
             colors: ColorSupport::default(),
+            terminal_colors: None,
             settings: None,
             shortcuts_scroll: 0,
             shortcuts_mode: Mode::Navigate,
@@ -271,6 +275,14 @@ impl Tui {
     #[must_use]
     pub fn with_colors(mut self, colors: ColorSupport) -> Self {
         self.colors = colors;
+        self
+    }
+
+    /// The frontend drawing Terminal Dark in `colors`, the colors the terminal reported it draws
+    /// with if it did, when it has truecolor (ui.md §3, D-128).
+    #[must_use]
+    pub fn with_terminal_colors(mut self, colors: Option<TerminalColors>) -> Self {
+        self.terminal_colors = colors;
         self
     }
 
@@ -677,7 +689,7 @@ impl Tui {
             .and_then(BuiltIn::nth)
             .or_else(|| self.previewed_theme())
             .unwrap_or(self.theme)
-            .colors(self.colors)
+            .colors(self.colors, self.terminal_colors.as_ref())
     }
 
     /// Keeps the layout of the open file, when it has one to keep, for its next launch: on every

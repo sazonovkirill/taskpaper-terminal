@@ -29,7 +29,7 @@ use taskpaper_terminal::{
         ColorSupport, Input, Tui,
         config::{self, Config},
         effects::{self, Backups, Browser, Clipboard, FileWatch, Io, Recovery, Views},
-        theme::IconSetting,
+        theme::{IconSetting, TerminalColors},
     },
 };
 use tempfile::TempDir;
@@ -213,6 +213,17 @@ impl Harness {
     pub fn with_colors(self, colors: ColorSupport) -> Self {
         Self {
             tui: self.tui.with_colors(colors),
+            ..self
+        }
+    }
+
+    /// The same app on a truecolor terminal that reported it draws with `colors`.
+    pub fn with_terminal_colors(self, colors: TerminalColors) -> Self {
+        Self {
+            tui: self
+                .tui
+                .with_colors(ColorSupport::TrueColor)
+                .with_terminal_colors(Some(colors)),
             ..self
         }
     }

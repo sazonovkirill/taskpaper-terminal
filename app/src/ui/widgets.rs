@@ -1886,7 +1886,7 @@ mod tests {
 
     /// The theme the widgets are drawn in: Terminal Dark, the default theme.
     pub(super) static THEME: LazyLock<Theme> =
-        LazyLock::new(|| BuiltIn::DEFAULT.colors(ColorSupport::Ansi));
+        LazyLock::new(|| BuiltIn::DEFAULT.colors(ColorSupport::Ansi, None));
 
     const TODAY: Date = jiff::civil::date(2026, 10, 5);
 
@@ -2477,7 +2477,7 @@ mod tests {
         // A truecolor theme, as the 16 colors have no brighter shade of a tint.
         let theme = BuiltIn::named("nord")
             .unwrap()
-            .colors(ColorSupport::TrueColor);
+            .colors(ColorSupport::TrueColor, None);
         let rows = State::new(format::parse("A:\n\t- a @green\n\t- b @green"), None)
             .rows()
             .to_vec();

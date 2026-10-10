@@ -9,7 +9,7 @@ use ratatui::{
     buffer::Buffer,
     style::{Color, Modifier},
 };
-use taskpaper_terminal::ui::ColorSupport;
+use taskpaper_terminal::ui::{ColorSupport, theme::TerminalColors};
 
 use crate::support::{Harness, line};
 
@@ -249,4 +249,30 @@ fn without_truecolor_the_theme_pickers_say_why_themes_show_as_terminal_dark() {
             "{colors:?}: the settings window's theme picker: {rows:#?}"
         );
     }
+}
+
+// FR-UI-06, D-128
+#[test]
+fn terminal_dark_on_a_truecolor_terminal_that_reports_its_colors_is_drawn_in_them() {
+    let mut ansi = [None; 16];
+    ansi[12] = Some([90, 140, 250]);
+    let reported = TerminalColors::new([250, 250, 245], [30, 30, 40], ansi);
+    let mut app = Harness::with_config(OUTLINE, SETTINGS, 60, 8).with_terminal_colors(reported);
+    assert_eq!(background(&mut app), Color::Rgb(250, 250, 245));
+    let buffer = app.render().buffer().clone();
+    let trip = (0..buffer.area.width)
+        .find(|&x| buffer[(x, 2)].symbol() == "T")
+        .unwrap();
+    assert_eq!(
+        buffer[(trip, 2)].fg,
+        Color::Rgb(90, 140, 250),
+        "a project in the terminal's light blue, as Terminal Dark draws it"
+    );
+    choose_theme(&mut app);
+    app.type_keys("nord");
+    assert_eq!(
+        background(&mut app),
+        NORD_BACKGROUND,
+        "other themes keep their colors"
+    );
 }

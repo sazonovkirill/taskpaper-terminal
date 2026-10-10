@@ -522,3 +522,38 @@ fn asks_for_the_kitty_keyboard_protocol_and_gives_it_back_on_quit() -> TestResul
     assert!(terminal.screen().unsupported().contains(pop));
     Ok(())
 }
+
+/// The background termlens draws an empty cell of the outline in, after `tpt` on a file starts
+/// with `colorterm` as `COLORTERM`, on a terminal whose background is `#0a141e`.
+fn outline_background(colorterm: &str) -> Result<termlens::Color, Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("todo.taskpaper");
+    std::fs::write(&path, "- Milk\n")?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        arg(&path),
+        env("COLORTERM", colorterm),
+        env("XDG_DATA_HOME", dir.path().join("data")),
+        env("XDG_STATE_HOME", dir.path().join("state")),
+        background_rgb(10, 20, 30),
+        foreground_rgb(230, 230, 220)
+    )?;
+    // The status line is drawn last, so the frame is whole once it shows.
+    terminal
+        .wait_until(|screen| screen.contains("- Milk") && status(screen).contains("NAVIGATE"))?;
+    let background = terminal.screen().cell(10, 40).ok_or("no cell")?.style().bg;
+    terminal.send(termlens::Key::Ctrl('q'))?;
+    assert!(terminal.wait_exit()?.success());
+    Ok(background)
+}
+
+// FR-UI-06, D-128
+#[test]
+fn terminal_dark_on_a_truecolor_terminal_is_drawn_in_the_colors_it_reports() -> TestResult {
+    assert_eq!(
+        outline_background("truecolor")?,
+        termlens::Color::Rgb(10, 20, 30)
+    );
+    assert_eq!(outline_background("")?, termlens::Color::Default);
+    Ok(())
+}
