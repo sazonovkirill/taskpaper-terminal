@@ -322,16 +322,7 @@ impl NodeEditor {
             },
             (FieldOutcome::Tag(Ok(_)), Target::Tag(name)) => {
                 match properties::parse_tag(field.text()).ok().flatten() {
-                    Some((new, value)) => {
-                        self.draft
-                            .tags
-                            .retain(|(other, _)| *other != new || *other == name);
-                        for tag in &mut self.draft.tags {
-                            if tag.0 == name {
-                                *tag = (new.clone(), value.clone());
-                            }
-                        }
-                    }
+                    Some((new, value)) => self.draft.rename(&name, &new, value),
                     None => self.draft.remove(&name),
                 }
             }
@@ -381,9 +372,9 @@ impl NodeEditor {
             (NodeRow::Tag(at), _) => {
                 let name = self.listed().nth(at).map(|(name, _)| name.clone());
                 if key == RowKey::Remove {
-                    self.draft
-                        .tags
-                        .retain(|(tag, _)| Some(tag) != name.as_ref());
+                    if let Some(name) = name {
+                        self.draft.remove(&name);
+                    }
                 } else {
                     open_typed(self, name.map(Target::Tag), typed);
                 }

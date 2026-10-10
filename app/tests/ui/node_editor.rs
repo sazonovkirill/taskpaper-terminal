@@ -255,3 +255,27 @@ fn an_at_sign_typed_in_the_text_row_points_to_the_tags_rows() {
         "{status}"
     );
 }
+
+// editing.md §7
+#[test]
+fn renaming_a_tag_renames_it_in_place_and_keeps_a_duplicate_the_dialog_does_not_list() {
+    let mut app = Harness::with_text(
+        "P:\n\t- a @context(phone) @x @context(work) @y(1)\n",
+        70,
+        22,
+    );
+    app.type_keys("je");
+    press(&mut app, KeyCode::Up);
+    for _ in 0..8 {
+        press(&mut app, KeyCode::Tab);
+    }
+    app.type_keys(" ");
+    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.type_keys("place(home)");
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(
+        saved(&mut app),
+        "P:\n\t- a @place(home) @x @context(work) @y(1)\n"
+    );
+}

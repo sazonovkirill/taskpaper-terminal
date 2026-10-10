@@ -22,6 +22,9 @@ pub struct Properties {
     /// Each tag's name and value, `None` for a bare tag, in the line's order; a name occurs once,
     /// with its first occurrence's value, as TaskPaper reads it.
     pub tags: Vec<(String, Option<String>)>,
+    /// Each tag renamed since the line was read, as its name in the line and its name now, so
+    /// that only the occurrence listed changes and a later duplicate stays.
+    renamed: Vec<(String, String)>,
 }
 
 impl Properties {
@@ -43,7 +46,12 @@ impl Properties {
                 tags.push((name, value.filter(|value| !value.is_empty())));
             }
         }
-        Self { typed, text, tags }
+        Self {
+            typed,
+            text,
+            tags,
+            renamed: Vec::new(),
+        }
     }
 
     /// The value of the tag `name`: `None` without it, `Some(None)` when it is bare.
@@ -65,15 +73,34 @@ impl Properties {
         }
     }
 
+    /// Renames the tag `from` to `to` with the value `value`, where it stands, an empty value
+    /// making it bare; another tag `to` goes, as a name occurs once.
+    pub fn rename(&mut self, from: &str, to: &str, value: Option<String>) {
+        let value = value.filter(|value| !value.is_empty());
+        self.tags.retain(|(tag, _)| tag != to || tag == from);
+        for tag in &mut self.tags {
+            if tag.0 == from {
+                *tag = (to.to_owned(), value.clone());
+            }
+        }
+        match self.renamed.iter_mut().find(|(_, now)| now == from) {
+            Some((_, now)) => to.clone_into(now),
+            None => self.renamed.push((from.to_owned(), to.to_owned())),
+        }
+        self.renamed.retain(|(was, now)| was != now);
+    }
+
     /// Takes the tag `name` off.
     pub fn remove(&mut self, name: &str) {
         self.tags.retain(|(tag, _)| tag != name);
+        self.renamed.retain(|(_, now)| now != name);
     }
 
     /// The line `before` with these properties, changed only where they differ from its own: a
     /// changed text or type rewrites it as edit mode writes a line back, then each tag it loses
-    /// goes, every occurrence, each changed tag takes its value where it stands and each new one
-    /// goes at the end (editing.md §7). A task without text but with tags gets the placeholder,
+    /// goes, every occurrence, a renamed tag takes its name where its first occurrence stands, the
+    /// later ones kept, or goes when the line has its new name already, each changed tag takes its
+    /// value where it stands and each new one goes at the end (editing.md §7). A task without text but with tags gets the placeholder,
     /// as `- @tag` would read back as text, and so does a line left empty.
     #[must_use]
     pub fn line(&self, before: &str) -> String {
@@ -98,9 +125,16 @@ impl Properties {
             line = parts.line(&text);
         }
         for (name, _) in &old.tags {
-            if self.tag(name).is_none() {
+            if self.tag(name).is_none() && self.renamed.iter().all(|(was, _)| was != name) {
                 line = tags::remove(&line, name);
             }
+        }
+        for (was, now) in &self.renamed {
+            line = if Self::of(&line).tag(now).is_some() {
+                tags::remove_first(&line, was)
+            } else {
+                tags::rename(&line, was, now)
+            };
         }
         for (name, value) in &self.tags {
             if Self::of(&line).tag(name) != Some(value.as_deref()) {
@@ -293,6 +327,57 @@ mod tests {
             changed("- a @y(1)", |p| p.set("y", None)),
             "- a @y",
             "a value can go"
+        );
+    }
+
+    // editing.md §7
+    #[test]
+    fn a_renamed_tag_changes_where_it_stands_and_a_duplicate_stays() {
+        assert_eq!(
+            changed("- a @context(phone) @x @context(work) @y(1)", |p| {
+                p.rename("context", "place", Some("home".into()));
+            }),
+            "- a @place(home) @x @context(work) @y(1)",
+            "the duplicate the dialog never listed stays"
+        );
+        assert_eq!(
+            changed("- a @x(1) @y @x(2)", |p| {
+                p.rename("x", "z", None);
+                p.rename("z", "w", Some("3".into()));
+            }),
+            "- a @w(3) @y @x(2)",
+            "renamed twice"
+        );
+        assert_eq!(
+            changed("- a @x(1) @y @x(2)", |p| {
+                p.rename("x", "z", None);
+                p.rename("z", "x", Some("1".into()));
+            }),
+            "- a @x(1) @y @x(2)",
+            "renamed back"
+        );
+        assert_eq!(
+            changed("- a @x(1) b @y @x(2)", |p| {
+                p.rename("x", "y", Some("3".into()));
+            }),
+            "- a b @y(3) @x(2)",
+            "onto a name the line has: the listed one goes, its value on the other"
+        );
+        assert_eq!(
+            changed("- a @x @x(2)", |p| {
+                p.rename("x", "z", None);
+                p.remove("z");
+            }),
+            "- a",
+            "renamed and removed: every occurrence goes"
+        );
+        assert_eq!(
+            changed("- a", |p| {
+                p.set("n", None);
+                p.rename("n", "m", Some("1".into()));
+            }),
+            "- a @m(1)",
+            "a tag added and renamed goes at the end"
         );
     }
 

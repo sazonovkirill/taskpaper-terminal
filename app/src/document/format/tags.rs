@@ -75,16 +75,25 @@ pub fn set(text: &str, name: &str, value: &str) -> String {
         format!("@{name}({value})")
     };
     let mut out = text.to_owned();
-    if let Some(found) = scan(text).into_iter().find(|found| found.name == name) {
-        // The span starts with the whitespace before `@`, which stays.
-        let occurrence = text.get(found.span.clone()).unwrap_or_default();
-        let at = found.span.end - occurrence.trim_start_matches(is_whitespace).len();
-        out.replace_range(at..found.span.end, &tag);
+    if let Some(found) = first(text, name) {
+        out.replace_range(at_sign(text, &found)..found.span.end, &tag);
     } else {
         if !out.is_empty() && !out.ends_with(is_whitespace) {
             out.push(' ');
         }
         out.push_str(&tag);
+    }
+    out
+}
+
+/// `text` with its first tag `from` named `to` where it stands, keeping its value and every
+/// later occurrence of `from`; as it is without one.
+#[must_use]
+pub fn rename(text: &str, from: &str, to: &str) -> String {
+    let mut out = text.to_owned();
+    if let Some(found) = first(text, from) {
+        let at = at_sign(text, &found) + 1;
+        out.replace_range(at..at + from.len(), to);
     }
     out
 }
@@ -95,16 +104,44 @@ pub fn set(text: &str, name: &str, value: &str) -> String {
 #[must_use]
 pub fn remove(text: &str, name: &str) -> String {
     let mut out = text.to_owned();
-    while let Some(found) = scan(&out).into_iter().find(|found| found.name == name) {
-        let end = if found.span.start == 0 {
-            let after = out.get(found.span.end..).unwrap_or_default();
-            out.len() - after.trim_start_matches(is_whitespace).len()
-        } else {
-            found.span.end
-        };
-        out.replace_range(found.span.start..end, "");
+    while let Some(found) = first(&out, name) {
+        cut(&mut out, &found);
     }
     out
+}
+
+/// `text` without its first tag `name`, deleted as [`remove`] deletes each, the later
+/// occurrences kept.
+#[must_use]
+pub fn remove_first(text: &str, name: &str) -> String {
+    let mut out = text.to_owned();
+    if let Some(found) = first(text, name) {
+        cut(&mut out, &found);
+    }
+    out
+}
+
+/// The first occurrence of the tag `name` in `text`.
+fn first(text: &str, name: &str) -> Option<Tag> {
+    scan(text).into_iter().find(|found| found.name == name)
+}
+
+/// Where the `@` of `found`, a tag of `text`, is: its span starts with the whitespace before it.
+fn at_sign(text: &str, found: &Tag) -> usize {
+    let occurrence = text.get(found.span.clone()).unwrap_or_default();
+    found.span.end - occurrence.trim_start_matches(is_whitespace).len()
+}
+
+/// Deletes `found`, a tag of `out`, with its leading whitespace, or with the whitespace after it
+/// at the start of the line.
+fn cut(out: &mut String, found: &Tag) {
+    let end = if found.span.start == 0 {
+        let after = out.get(found.span.end..).unwrap_or_default();
+        out.len() - after.trim_start_matches(is_whitespace).len()
+    } else {
+        found.span.end
+    };
+    out.replace_range(found.span.start..end, "");
 }
 
 /// Whether changing the text `before` into `after` puts an `@` at the start of a word or makes a
@@ -420,6 +457,28 @@ mod tests {
     #[test]
     fn remove_deletes_every_occurrence() {
         check_remove("- a @done @done(1) @x @done", "done", "- a @x");
+    }
+
+    #[test]
+    fn remove_first_keeps_the_later_occurrences() {
+        assert_eq!(remove_first("- a @x(1) b @x(2) @y", "x"), "- a b @x(2) @y");
+        assert_eq!(remove_first("@x @x(2)", "x"), "@x(2)");
+        assert_eq!(remove_first("- a @y", "x"), "- a @y");
+    }
+
+    // editing.md §7
+    #[test]
+    fn rename_renames_the_first_occurrence_where_it_stands() {
+        assert_eq!(
+            rename("- a @context(phone) @x @context(work)", "context", "place"),
+            "- a @place(phone) @x @context(work)"
+        );
+        assert_eq!(rename("@x b", "x", "yz"), "@yz b");
+        assert_eq!(
+            rename("me@x.com", "x", "y"),
+            "me@x.com",
+            "no tag, no change"
+        );
     }
 
     #[test]
