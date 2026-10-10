@@ -157,6 +157,29 @@ fn a_date_field_quotes_where_its_text_stops_being_a_date_as_the_date_prompt_does
     );
 }
 
+// FR-MODE-09, FR-TAG-01, editing.md §7
+#[test]
+fn a_tag_field_refuses_text_after_the_value_such_as_a_second_tag() {
+    let text = "- a @context(phone)\n";
+    let mut app = Harness::with_text(text, 70, 22);
+    app.type_keys("e");
+    for _ in 0..8 {
+        press(&mut app, KeyCode::Tab);
+    }
+    app.type_keys(" context(home)");
+    press(&mut app, KeyCode::Enter);
+    let rows = screen(&mut app);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("│ nothing can follow the value's closing )")),
+        "{rows:#?}"
+    );
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Enter);
+    assert!(!open(&mut app));
+    assert_eq!(saved(&mut app), text, "the tag is kept as it was");
+}
+
 // FR-MODE-09, FR-OPS-05, D-56, editing.md §7
 #[test]
 fn choosing_a_parent_moves_the_block_with_its_subtree_under_it() {

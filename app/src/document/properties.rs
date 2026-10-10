@@ -161,13 +161,16 @@ pub enum TagError {
     /// The name is `hidden`, which only special nodes carry (special-nodes.md §1).
     #[error("@hidden is kept for hidden data")]
     Hidden,
-    /// The value lacks its closing parenthesis, or text follows it.
+    /// The value lacks the parenthesis that closes it.
     #[error("the value needs its closing )")]
     Value,
+    /// Text follows the parenthesis that closes the value, such as a second tag.
+    #[error("nothing can follow the value's closing )")]
+    Trailing,
 }
 
 /// The tag `text` names: `name` or `name(value)`, a leading `@` and surrounding whitespace
-/// dropped; an empty value makes a bare tag. `Ok(None)` for blank text, which removes a tag. Any
+/// dropped; an empty value makes a bare tag, and parentheses in a value pair up. `Ok(None)` for blank text, which removes a tag. Any
 /// value reads back as itself, since [`tags::set`] escapes its parentheses.
 ///
 /// # Errors
@@ -180,7 +183,10 @@ pub fn parse_tag(text: &str) -> Result<Option<(String, Option<String>)>, TagErro
         return Ok(None);
     }
     let (name, value) = match text.split_once('(') {
-        Some((name, rest)) => (name, Some(rest.strip_suffix(')').ok_or(TagError::Value)?)),
+        Some((name, rest)) => match closed(rest).ok_or(TagError::Value)? {
+            (value, "") => (name, Some(value)),
+            _ => return Err(TagError::Trailing),
+        },
         None => (text, None),
     };
     if matches!(name, "id" | "text" | "type") {
@@ -196,6 +202,20 @@ pub fn parse_tag(text: &str) -> Result<Option<(String, Option<String>)>, TagErro
     }
     let value = value.filter(|value| !value.is_empty());
     Ok(Some((name.to_owned(), value.map(str::to_owned))))
+}
+
+/// `text` split at the `)` that closes a value whose `(` came just before it, and after it.
+fn closed(text: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_usize;
+    for (at, character) in text.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' if depth == 0 => return text.get(..at).zip(text.get(at + 1..)),
+            ')' => depth -= 1,
+            _ => {}
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -395,7 +415,16 @@ mod tests {
         );
         assert_eq!(parse_tag("x()"), tag("x", None));
         assert_eq!(parse_tag("x(a"), Err(TagError::Value));
-        assert_eq!(parse_tag("x(a)b"), Err(TagError::Value));
+        assert_eq!(parse_tag("x(a (b) c)"), tag("x", Some("a (b) c")));
+        assert_eq!(parse_tag("x(a(b)"), Err(TagError::Value));
+        assert_eq!(parse_tag("x(a)b"), Err(TagError::Trailing));
+        assert_eq!(parse_tag("x(a) b"), Err(TagError::Trailing));
+        assert_eq!(
+            parse_tag("context(phone)context(home)"),
+            Err(TagError::Trailing),
+            "one tag at a time"
+        );
+        assert_eq!(parse_tag("x(a)(b)"), Err(TagError::Trailing));
         assert_eq!(parse_tag("a b"), Err(TagError::Name));
         assert_eq!(parse_tag("(a)"), Err(TagError::Name));
         assert_eq!(parse_tag("a:b"), Err(TagError::Name));
