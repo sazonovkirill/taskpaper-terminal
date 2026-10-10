@@ -87,13 +87,33 @@ pub enum OpenError {
         source: BackupError,
     },
     /// The file does not exist and its folder does not either, so it could never be saved.
-    #[error("cannot open {}: the folder {} does not exist", path.display(), folder.display())]
+    #[error("cannot open {}: {folder}", path.display())]
     MissingFolder {
         /// The file asked for.
         path: PathBuf,
         /// Its missing parent folder.
-        folder: PathBuf,
+        folder: MissingFolder,
     },
+}
+
+/// A folder that should hold a file but does not exist, in the words both opening and saving
+/// use for it.
+#[derive(Debug, Error)]
+#[error("the folder {} does not exist", .0.display())]
+pub struct MissingFolder(PathBuf);
+
+impl MissingFolder {
+    /// The folder of the file at `path`, when it does not exist.
+    pub(super) fn of(path: &Path) -> Option<Self> {
+        folder(path).filter(|folder| !folder.is_dir()).map(Self)
+    }
+}
+
+/// The absolute path of the folder holding the file at `path`, when it has one.
+fn folder(path: &Path) -> Option<PathBuf> {
+    std::path::absolute(path)
+        .ok()
+        .and_then(|absolute| absolute.parent().map(Path::to_owned))
 }
 
 /// Opens the file at `path`: read-only when the user may not write it (file-io.md §1).
@@ -225,22 +245,17 @@ pub(super) fn app_folder(
 fn read_document(path: &Path) -> Result<(Document, Option<Version>), OpenError> {
     match std::fs::read(path) {
         Ok(bytes) => decode(path, &bytes).map(|document| (document, Some(Version::of(&bytes)))),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            let folder = std::path::absolute(path)
-                .ok()
-                .and_then(|absolute| absolute.parent().map(Path::to_owned));
-            match folder {
-                Some(folder) if folder.is_dir() => Ok((Document::default(), None)),
-                Some(folder) => Err(OpenError::MissingFolder {
-                    path: path.to_owned(),
-                    folder,
-                }),
-                None => Err(OpenError::Read {
-                    path: path.to_owned(),
-                    source: error,
-                }),
-            }
-        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => match folder(path) {
+            Some(folder) if folder.is_dir() => Ok((Document::default(), None)),
+            Some(folder) => Err(OpenError::MissingFolder {
+                path: path.to_owned(),
+                folder: MissingFolder(folder),
+            }),
+            None => Err(OpenError::Read {
+                path: path.to_owned(),
+                source: error,
+            }),
+        },
         Err(source) => Err(OpenError::Read {
             path: path.to_owned(),
             source,
@@ -327,7 +342,7 @@ mod tests {
         let folder = dir.path().join("nowhere");
         let path = folder.join("new.taskpaper");
         let error = read_document(&path).unwrap_err();
-        assert!(matches!(&error, OpenError::MissingFolder { folder: f, .. } if *f == folder));
+        assert!(matches!(&error, OpenError::MissingFolder { folder: f, .. } if f.0 == folder));
         assert_eq!(
             error.to_string(),
             format!(

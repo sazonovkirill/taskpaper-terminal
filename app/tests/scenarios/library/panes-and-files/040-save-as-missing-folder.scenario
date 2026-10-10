@@ -1,4 +1,4 @@
-# Save As into a folder that does not exist says it cannot save and keeps the prompt open.
+# Save As into a folder that does not exist says so, as the command line does, and keeps the prompt open.
 file <<END
 Errands:
 	- Post office
@@ -8,4 +8,4 @@ type save as
 keys <Enter> <C-a>
 type /no/such/dir/x.taskpaper
 keys <Enter>
-see Cannot save: No such file or directory
+see Cannot save: the folder /no/such/dir does not exist

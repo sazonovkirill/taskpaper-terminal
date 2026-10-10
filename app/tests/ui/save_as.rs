@@ -161,7 +161,7 @@ fn a_failed_write_says_why_and_esc_keeps_the_file_open() {
     save_as(&mut app, &missing);
     let status = &prompt(&mut app)[2];
     assert!(
-        status.starts_with("│ Cannot save: ") && status.contains("No such file"),
+        status.starts_with("│ Cannot save: the folder /"),
         "{status}"
     );
     press(&mut app, KeyCode::Esc);

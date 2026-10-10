@@ -10,7 +10,7 @@ use std::{
 
 use toml_edit::Value;
 
-use super::{BackupSettings, Backups, Views, atomic};
+use super::{BackupSettings, Backups, MissingFolder, Views, atomic};
 use crate::{
     app::{Disk, Message, SaveAs, Version, ViewState},
     ui::{Input, config},
@@ -201,7 +201,16 @@ fn write(path: &Path, text: &str, expected: Option<Version>) -> Written {
             Ok(Written::Refused(found))
         }
     });
-    written.unwrap_or_else(|error| Written::Failed(error.to_string()))
+    written.unwrap_or_else(|error| Written::Failed(reason(path, &error)))
+}
+
+/// Why writing the file at `path` failed with `error`: a missing folder in the words opening
+/// uses, rather than the error about the temporary file beside the file.
+fn reason(path: &Path, error: &io::Error) -> String {
+    match MissingFolder::of(path) {
+        Some(missing) if error.kind() == io::ErrorKind::NotFound => missing.to_string(),
+        _ => error.to_string(),
+    }
 }
 
 /// What is at `path` now. A file that cannot be read is not reported: the next save reads it
@@ -280,9 +289,14 @@ mod tests {
         let results = results(&inputs);
         assert_eq!(results.len(), 3);
         assert_eq!(results[0], saved("one"));
-        assert!(
-            matches!(&results[1], Input::Core(Message::SaveFailed { reason }) if reason.contains("No such file")),
-            "{results:?}"
+        assert_eq!(
+            results[1],
+            Input::Core(Message::SaveFailed {
+                reason: format!(
+                    "the folder {} does not exist",
+                    dir.path().join("missing").display()
+                )
+            })
         );
         assert_eq!(results[2], saved("two"));
         assert_eq!(fs::read_to_string(&path)?, "two");
@@ -321,9 +335,14 @@ mod tests {
             "a file that must not be there is not replaced"
         );
         assert_eq!(results[2], saved("two"));
-        assert!(
-            matches!(&results[3], Input::Core(Message::SaveAs(SaveAs::Failed { reason })) if reason.contains("No such file")),
-            "{results:?}"
+        assert_eq!(
+            results[3],
+            Input::Core(Message::SaveAs(SaveAs::Failed {
+                reason: format!(
+                    "the folder {} does not exist",
+                    dir.path().join("missing").display()
+                )
+            }))
         );
         assert_eq!(fs::read_to_string(&path)?, "two");
         Ok(())
@@ -472,6 +491,24 @@ mod tests {
             fs::read_dir(dir.path())?.count(),
             1,
             "no temporary file is left"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_save_under_a_file_says_what_the_system_reported() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let (io, inputs) = start(dir.path());
+        let file = dir.path().join("file");
+        fs::write(&file, "")?;
+        io.submit(save_job(&file.join("x.taskpaper"), "mine"));
+        io.flush();
+        assert!(
+            matches!(
+                results(&inputs).as_slice(),
+                [Input::Core(Message::SaveFailed { reason })] if reason.contains("Not a directory")
+            ),
+            "only a folder that is missing is reported as missing"
         );
         Ok(())
     }
