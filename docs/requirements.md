@@ -34,7 +34,7 @@ Priorities use the same scale as the functional requirements: **Must** (v1), **S
 |---|---|---|
 | N-PERF-01 | Open and render a 10 MB / 100k-line file in under 300 ms on a modern laptop. | Must |
 | N-PERF-02 | Keystroke to rendered frame under 16 ms for typical edits on that file (FR-UI-07). | Must |
-| N-PERF-03 | Idle CPU near zero: render only on input, resize, file change or timer. | Must |
+| N-PERF-03 | Idle CPU near zero: render only on input, resize, file change or timer. The weather animation is the exception while it plays (D-129). | Must |
 | N-REL-01 | No panic may lose data: on panic, restore the terminal and write unsaved content to a recovery file. | Must |
 | N-REL-02 | Parser and serializer are covered by round-trip property tests and a corpus of TaskPaper samples. | Must |
 | N-PORT-01 | Runs on macOS and Linux in common terminals (iTerm2, Terminal.app, Ghostty, kitty, WezTerm, Alacritty, GNOME Terminal) and inside tmux; key bindings also work in Windows Terminal (FR-KEY-03) (OQ-17). | Must |
