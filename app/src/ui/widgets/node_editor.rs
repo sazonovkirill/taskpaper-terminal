@@ -1,7 +1,8 @@
 //! The Edit Node dialog ([editing.md §7](../../../../docs/specs/editing.md#7-edit-node-dialog-fr-mode-09),
 //! D-103): a box centered over the panes, one row per property of a block, a label and a value,
 //! the focused row marked as the outline marks its focused block, and a hint naming the keys of
-//! the focused row, or what its open field would do.
+//! the focused row, or what its open field would do. What does not fit ends in `…`, the Parent
+//! path keeping its end, as the status line keeps the file's (ui.md §1).
 
 use jiff::civil::Date;
 use ratatui::{
@@ -13,8 +14,8 @@ use ratatui::{
 };
 
 use super::{
-    FOCUS_MARKER, Field, due_style, flag_style, overdue_style, start_style, today_style,
-    warning_style,
+    FOCUS_MARKER, Field, due_style, fitted_path, flag_style, overdue_style, start_style,
+    today_style, truncate_before, warning_style, wrap::truncate,
 };
 use crate::{
     app::{DateValue, FieldOutcome, NodeEditorView, NodeRow},
@@ -68,7 +69,7 @@ impl<'a> NodeEditorWindow<'a> {
     /// tall as its lines, with the border.
     #[must_use]
     pub fn area(&self, area: Rect) -> Rect {
-        let height = u16::try_from(self.body().len() + 4).unwrap_or(u16::MAX);
+        let height = u16::try_from(self.lines() + 4).unwrap_or(u16::MAX);
         area.centered(
             Constraint::Length(WIDTH.min(area.width)),
             Constraint::Length(height.min(area.height)),
@@ -85,9 +86,7 @@ impl<'a> NodeEditorWindow<'a> {
         if !editing {
             return None;
         }
-        let body = self.body();
-        let at = body.iter().position(|line| line.row == focused)?;
-        let y = at.checked_sub(self.scroll(&body, inner.height))?;
+        let y = self.view.focus.checked_sub(self.scroll(inner.height))?;
         let (_, column) = self.input(usize::from(inner.width));
         let x = u16::try_from(column)
             .unwrap_or(u16::MAX)
@@ -130,8 +129,14 @@ impl<'a> NodeEditorWindow<'a> {
         (line, column)
     }
 
-    /// Each line of the body, in order: the rows, then the special nodes.
-    fn body(&self) -> Vec<BodyLine<'a>> {
+    /// How many lines the body has: one per row, then one per special node.
+    fn lines(&self) -> usize {
+        self.view.rows.len() + self.view.hidden.len()
+    }
+
+    /// Each line of the body, in order: the rows, then the special nodes, their values cut to
+    /// `columns` columns.
+    fn body(&self, columns: usize) -> Vec<BodyLine<'a>> {
         let view = self.view;
         let mut lines: Vec<BodyLine<'a>> = view
             .rows
@@ -142,7 +147,7 @@ impl<'a> NodeEditorWindow<'a> {
                 BodyLine {
                     row: Some(row),
                     label: label(row, view.tags.is_empty()),
-                    value: self.value(row),
+                    value: fit(&self.value(row, columns), columns),
                     typing,
                 }
             })
@@ -155,9 +160,12 @@ impl<'a> NodeEditorWindow<'a> {
             lines.push(BodyLine {
                 row: None,
                 label: if at == 0 { "Hidden" } else { "" },
-                value: Line::styled(
-                    format!("{} · {lines_count}", node.tags.join(" ")),
-                    Style::new().dim(),
+                value: truncate(
+                    &Line::styled(
+                        format!("{} · {lines_count}", node.tags.join(" ")),
+                        Style::new().dim(),
+                    ),
+                    columns,
                 ),
                 typing: false,
             });
@@ -165,8 +173,9 @@ impl<'a> NodeEditorWindow<'a> {
         lines
     }
 
-    /// The value of `row` as shown while no field is open over it.
-    fn value(&self, row: NodeRow) -> Line<'a> {
+    /// The value of `row` as shown while no field is open over it, the Parent path fitted to
+    /// `columns` columns.
+    fn value(&self, row: NodeRow, columns: usize) -> Line<'a> {
         let view = self.view;
         let icon = |icon: Icon| icon.glyph(self.icons);
         let unset = |text: &'static str| Line::styled(text, Style::new().dim());
@@ -188,7 +197,7 @@ impl<'a> NodeEditorWindow<'a> {
                 None => unset("Not done"),
             },
             NodeRow::Parent => match &view.parent {
-                Some(path) => Line::raw(path.join(" › ")),
+                Some(path) => Line::raw(fitted_path(&path.join(" › "), columns).into_owned()),
                 None => Line::raw(format!("{} Home", icon(Icon::Home))),
             },
             NodeRow::Start | NodeRow::Due => {
@@ -287,15 +296,16 @@ impl<'a> NodeEditorWindow<'a> {
     }
 
     /// How many body lines are scrolled past to keep the focused row in view in `height` rows.
-    fn scroll(&self, body: &[BodyLine], height: u16) -> usize {
+    fn scroll(&self, height: u16) -> usize {
         let room = room(height).max(1);
-        let focused = self.view.rows.get(self.view.focus).copied();
-        let at = body
-            .iter()
-            .position(|line| line.row == focused)
-            .unwrap_or_default();
-        (at + 1).saturating_sub(room)
+        (self.view.focus + 1).saturating_sub(room)
     }
+}
+
+/// `value` cut to `columns` columns, its spans after the first, markers such as `unsupported`,
+/// kept in view after the `…`.
+fn fit(value: &Line, columns: usize) -> Line<'static> {
+    truncate_before(value, 1..value.spans.len(), columns)
 }
 
 /// How many body lines fit in `height` rows: all but the blank line and the hint, unless there
@@ -333,8 +343,9 @@ impl Widget for NodeEditorWindow<'_> {
             .title(" Edit Node ");
         let inner = frame.inner(window);
         frame.render(window, buf);
-        let body = self.body();
-        let skip = self.scroll(&body, inner.height);
+        let columns = usize::from(inner.width).saturating_sub(LABEL_WIDTH);
+        let body = self.body(columns);
+        let skip = self.scroll(inner.height);
         let room = room(inner.height);
         let focused = self.view.rows.get(self.view.focus).copied();
         for (y, line) in (inner.y..).zip(body.iter().skip(skip).take(room)) {
@@ -370,7 +381,7 @@ impl Widget for NodeEditorWindow<'_> {
         if inner.height >= 3 {
             let mut line = self.hint();
             line.spans.insert(0, Span::raw(" "));
-            line.render(hint, buf);
+            truncate(&line, usize::from(inner.width)).render(hint, buf);
         }
     }
 }
@@ -559,7 +570,7 @@ mod tests {
                 "│  Hidden   @hidden · 1 line                     │",
                 "│           @hidden @log · 3 lines               │",
                 "│                                                │",
-                "│ Type or ←/→ a date · Del clears · Enter save · │",
+                "│ Type or ←/→ a date · Del clears · Enter save ·…│",
                 "└────────────────────────────────────────────────┘",
             ]
         );
@@ -590,7 +601,7 @@ mod tests {
                 "│  Flagged  Not flagged                │",
                 "│  Tags     + Add tag                  │",
                 "│                                      │",
-                "│ Type the text · Tab next · Enter save│",
+                "│ Type the text · Tab next · Enter sav…│",
             ]
         );
         assert_eq!(caret, Some((14, 2)), "in the text, after Mi");
@@ -777,6 +788,57 @@ mod tests {
         assert_eq!(caret, Some((15, 7)));
     }
 
+    // editing.md §7, ui.md §1
+    #[test]
+    fn a_value_too_wide_ends_in_an_ellipsis_keeping_the_parent_path_end_and_tag_markers() {
+        let view = NodeEditorView {
+            text: "A task whose text is far too long to fit",
+            parent: Some(vec![
+                "Alpha project with a long name".to_owned(),
+                "Beta subproject also long".to_owned(),
+                "Gamma".to_owned(),
+            ]),
+            due: Some(DateValue::Written(Some("some day when the moon is blue"))),
+            rows: vec![
+                NodeRow::Text,
+                NodeRow::Parent,
+                NodeRow::Due,
+                NodeRow::Tag(0),
+                NodeRow::AddTag,
+            ],
+            tags: vec![TagView {
+                name: "tag",
+                value: Some("a very long value that goes on and on"),
+                supported: false,
+            }],
+            hidden: vec![HiddenData {
+                tags: vec![
+                    "@hidden".to_owned(),
+                    "@log".to_owned(),
+                    "@archive".to_owned(),
+                ],
+                lines: 12,
+            }],
+            ..view(4)
+        };
+        let (rows, _) = render(&view, 50, 12);
+        assert_eq!(
+            rows[1..11],
+            [
+                "┌ Edit Node ─────────────────────────────────────┐",
+                "│  Text     A task whose text is far too long to…│",
+                "│  Parent   … › Beta subproject also long › Gamma│",
+                "│  Due      some day when the moon is… not a date│",
+                "│  Tags     @tag(a very long value t… unsupported│",
+                "│▌          + Add tag                            │",
+                "│  Hidden   @hidden @log @archive · 12 lines     │",
+                "│                                                │",
+                "│ Type a tag: name or name(value) · Enter save ·…│",
+                "└────────────────────────────────────────────────┘",
+            ]
+        );
+    }
+
     // editing.md §7
     #[test]
     fn scrolls_to_keep_the_focused_row_in_view() {
@@ -790,7 +852,7 @@ mod tests {
                 "│  Flagged  Not flagged                │",
                 "│▌ Tags     + Add tag                  │",
                 "│                                      │",
-                "│ Type a tag: name or name(value) · Ent│",
+                "│ Type a tag: name or name(value) · En…│",
                 "└──────────────────────────────────────┘",
             ]
         );

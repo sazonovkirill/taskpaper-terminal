@@ -188,3 +188,30 @@ fn ctrl_t_cycles_the_type_from_the_text_row() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "Milk\n");
 }
+
+// editing.md §7, ui.md §1
+#[test]
+fn a_narrow_dialog_keeps_the_parent_path_end_and_a_tag_marker_behind_an_ellipsis() {
+    let mut app = Harness::with_text(
+        "Alpha project with a long name:\n\tBeta subproject also long:\n\t\tGamma:\n\t\t\t- A task @tag(a very long value that goes on and on)\n",
+        50,
+        20,
+    );
+    app.type_keys("Ge");
+    let screen = screen(&mut app);
+    let row = |label: &str| {
+        screen
+            .iter()
+            .find(|row| row.contains(&format!(" {label:<9}")))
+            .cloned()
+            .unwrap_or_default()
+    };
+    assert_eq!(
+        row("Parent"),
+        "│  Parent   … › Beta subproject also long › Gamma│"
+    );
+    assert_eq!(
+        row("Tags"),
+        "│  Tags     @tag(a very long value t… unsupported│"
+    );
+}
