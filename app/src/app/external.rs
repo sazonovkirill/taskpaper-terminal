@@ -59,8 +59,11 @@ pub enum DiffLine {
 pub(super) struct External {
     /// The version the core last read or wrote, `None` when there is no file.
     known: Option<Version>,
-    /// Whether a save is under way.
-    saving: bool,
+    /// The document as the save under way writes it, `None` when no save is under way.
+    saving: Option<Document>,
+    /// The document as the file on disk last held it, as far as the core knows, which keeps
+    /// the ids of the open document: what Take theirs finds blocks again by.
+    on_disk: Option<Document>,
     /// Whether a check found the file deleted or moved away; the next save creates it again.
     gone: bool,
     conflict: Option<Conflict>,
@@ -91,19 +94,21 @@ enum Choice {
 }
 
 impl External {
-    /// Starts a save, returning the version the file must still be for it to go ahead.
-    pub(super) fn start_save(&mut self) -> Option<Version> {
-        self.saving = true;
+    /// Starts a save of `document`, returning the version the file must still be for it to go
+    /// ahead.
+    pub(super) fn start_save(&mut self, document: &Document) -> Option<Version> {
+        self.saving = Some(document.clone());
         self.known
     }
 
     /// The save under way left the file at `written`, or was not done when `None`.
     pub(super) fn save_ended(&mut self, written: Option<Version>) {
-        if std::mem::take(&mut self.saving)
+        if let Some(document) = self.saving.take()
             && let Some(written) = written
         {
             self.known = Some(written);
             self.gone = false;
+            self.on_disk = Some(document);
         }
     }
 
@@ -126,6 +131,7 @@ impl State {
     #[must_use]
     pub fn with_version(mut self, version: Option<Version>) -> Self {
         self.external.known = version;
+        self.external.on_disk = Some(self.document.clone());
         self
     }
 
@@ -327,7 +333,24 @@ impl State {
             Vec::new()
         };
         let old = std::mem::replace(&mut self.document, document);
-        let matches = text_path::matches(&old, &self.document);
+        let mut matches = text_path::matches(&old, &self.document);
+        // Blocks whose unsaved changes theirs discards are found again as they were on disk, so
+        // a block whose text was being typed is still found (D-123).
+        if let Some(disk) =
+            (self.external.on_disk.as_ref()).filter(|disk| disk.revision() != old.revision())
+        {
+            for (id, on_disk) in text_path::matches(disk, &self.document) {
+                matches
+                    .entry(id)
+                    .and_modify(|local| {
+                        if on_disk.1 || !local.1 {
+                            *local = on_disk;
+                        }
+                    })
+                    .or_insert(on_disk);
+            }
+        }
+        self.external.on_disk = Some(self.document.clone());
         let found = |id: ItemId| matches.get(&id).copied();
         let nearest = |id: ItemId| found(id).map(|(id, _)| id);
         let exact = |id: ItemId| found(id).and_then(|(id, exact)| exact.then_some(id));
@@ -992,6 +1015,50 @@ mod tests {
         assert_eq!(shown(&state), caret);
         typed(&mut state, "z");
         assert_eq!(format::serialize(state.document()), "- a\n- bzc @x\n- d\n");
+    }
+
+    // file-io.md §3, D-123
+    #[test]
+    fn taking_theirs_carries_on_editing_the_block_whose_text_was_the_unsaved_change() {
+        let mut state = opened("A:\n\t- x\n\t- y\n");
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, " mine");
+        autosaved(&mut state, "A:\n\t- x mine\n\t- y\n", ms(1000));
+        typed(&mut state, "s");
+        state.update(found("A:\n\t- x mine\n\t- y\n\t- from phone\n"));
+        state.update(Message::TakeTheirs);
+        state.update(copied());
+        assert_eq!(state.mode(), crate::app::Mode::Edit);
+        assert_eq!(shown(&state), "x mine|");
+        typed(&mut state, "Q");
+        assert_eq!(
+            format::serialize(state.document()),
+            "A:\n\t- x mineQ\n\t- y\n\t- from phone\n"
+        );
+    }
+
+    // file-io.md §3, D-123
+    #[test]
+    fn taking_theirs_prefers_where_a_block_was_on_disk_unless_only_its_local_place_is_whole() {
+        // The second `a` is the first `a` locally, but was the second on disk.
+        let mut state = opened("- a\n- a\n");
+        edit(&mut state, "- b", ms(0));
+        state.update(Message::FocusNext);
+        state.update(found("- a\n- a\n- c\n"));
+        state.update(Message::TakeTheirs);
+        state.update(copied());
+        assert_eq!(state.focus(), state.rows().get(1).map(|row| row.id));
+        // `Q2:` is whole only locally: on disk its path breaks off at `R:`.
+        let mut state = opened("R:\n\tQ:\n\t\t- x\n");
+        state.update(Message::FocusNext);
+        state.update(Message::EditAtEnd);
+        typed(&mut state, "2");
+        state.update(found("R:\n\tQ2:\n\t\t- x\n- new\n"));
+        state.update(Message::TakeTheirs);
+        state.update(copied());
+        assert_eq!(state.mode(), crate::app::Mode::Edit);
+        assert_eq!(text_of(&state, state.focus()).as_deref(), Some("Q2"));
     }
 
     // file-io.md §3, D-104

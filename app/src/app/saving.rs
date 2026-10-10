@@ -302,7 +302,7 @@ impl State {
             let save = Effect::Disk(Disk::Save {
                 path: path.clone(),
                 text: DocumentText::of(self.document()),
-                expected: self.external.start_save(),
+                expected: self.external.start_save(&self.document),
             });
             return self.backup().into_iter().chain([save]).collect();
         }

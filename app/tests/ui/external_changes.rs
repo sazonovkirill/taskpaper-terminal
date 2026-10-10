@@ -423,3 +423,24 @@ fn taking_theirs_carries_on_typing_where_it_was() {
         "Groceries:\n\t- Milk\n\t- Eggs and ham\n\t- Bread\n"
     );
 }
+
+// F-FILE-06, OQ-16, D-123: the block is found again as it was on disk, so typing in it is not
+// what keeps it from being found.
+#[test]
+fn taking_theirs_carries_on_typing_in_the_block_whose_text_was_unsaved() {
+    let mut app = Harness::with_text(GROCERIES, 80, 7);
+    app.settle();
+    app.type_keys("j");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.type_keys(" mine");
+    fs::write(path(&app), "Groceries:\n\t- Milk\n\t- Eggs\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('r'), KeyModifiers::CONTROL);
+    app.settle();
+    app.type_keys("Q");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(
+        saved(&mut app),
+        "Groceries:\n\t- MilkQ\n\t- Eggs\n\t- Bread\n"
+    );
+}
