@@ -194,8 +194,7 @@ fn the_status_line_shows_the_mode_and_the_path() {
 fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
     let mut app = Harness::demo(40, 4);
     app.type_keys("jg");
-    let status: String = app.status(40).chars().take(38).collect();
-    assert_eq!(status_line(&mut app), format!("{status} g"));
+    assert_eq!(status_line(&mut app), app.status_with(40, " g").trim_end());
     app.type_keys("g");
     assert_eq!(status_line(&mut app), app.status(40).trim_end());
     assert_focus(&mut app, &format!("Trip to Lisbon: {BOOKMARK}"));
@@ -206,16 +205,17 @@ fn a_pending_prefix_shows_in_the_status_line_until_the_sequence_ends() {
 fn a_pending_control_key_shows_with_its_modifier() {
     let mut app = Harness::with_text("- a\n", 40, 4);
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
-    let status: String = app.status(40).chars().take(33).collect();
-    assert_eq!(status_line(&mut app), format!("{status} Ctrl+W"));
+    assert_eq!(
+        status_line(&mut app),
+        app.status_with(40, " Ctrl+W").trim_end()
+    );
 }
 
 #[test]
-fn a_pending_prefix_covers_the_end_of_a_long_path() {
+fn a_long_path_gives_its_room_to_a_pending_prefix() {
     let mut app = Harness::with_text("- a\n", 16, 4);
     app.type_keys("g");
-    let status: String = app.status(16).chars().take(14).collect();
-    assert_eq!(status_line(&mut app), format!("{status} g"));
+    assert_eq!(status_line(&mut app), app.status_with(16, " g").trim_end());
 }
 
 #[test]

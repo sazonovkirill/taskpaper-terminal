@@ -1366,7 +1366,11 @@ impl Tui {
             .state
             .path()
             .map(|path| effects::abbreviate_path(path, self.home.as_deref()));
-        let width = usize::from(area.width);
+        // The pending keys are what the user is typing right now, so the rest of the line gives
+        // up its room to them, the path first, rather than being drawn over.
+        let pending = self.keymap.pending();
+        let pending = (!pending.is_empty()).then(|| Line::from(format!(" {pending}")));
+        let width = usize::from(area.width).saturating_sub(pending.as_ref().map_or(0, Line::width));
         let quiet_status = Line::from_iter(after_path(None)).width();
         // The message has the room the path leaves when cut to `…` alone.
         let shortest_path = path
@@ -1411,14 +1415,11 @@ impl Tui {
         frame.render_widget(line, area);
         self.animator
             .fade_status(frame.buffer_mut(), notice, &theme);
-        // The pending keys are what the user is typing right now, so they cover the end of a
-        // long path rather than the other way round.
         if let Some(spinner) = self.animator.spinner(icons) {
             frame.render_widget(Line::from(format!(" {spinner}")).right_aligned(), area);
         }
-        let pending = self.keymap.pending();
-        if !pending.is_empty() {
-            frame.render_widget(Line::from(format!(" {pending}")).right_aligned(), area);
+        if let Some(pending) = pending {
+            frame.render_widget(pending.right_aligned(), area);
         }
     }
 

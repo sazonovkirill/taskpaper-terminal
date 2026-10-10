@@ -76,6 +76,33 @@ fn a_file_changed_elsewhere_is_reloaded_keeping_the_focus() {
     assert_eq!(status_line(&mut app), app.status(80).trim_end());
 }
 
+// ui.md §1: a pending key prefix takes its room from the path first, and a message cut for it
+// ends in `…` rather than being drawn over.
+#[test]
+fn a_pending_prefix_leaves_a_message_whole_or_cut_with_an_ellipsis() {
+    let mut app = Harness::with_text(GROCERIES, 60, 7);
+    app.settle();
+    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.type_keys("g");
+    assert_eq!(
+        status_line(&mut app),
+        app.status_with(60, " · Reloaded (changed on disk) g")
+            .trim_end()
+    );
+
+    let mut app = Harness::with_text(GROCERIES, 30, 7);
+    app.settle();
+    fs::write(path(&app), "Groceries:\n\t- Bread\n").unwrap();
+    check(&mut app);
+    app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    let status = status_line(&mut app);
+    assert!(
+        status.ends_with("NAVIGATE · … · Reloa… Ctrl+W"),
+        "the message ends in … before the prefix: {status}"
+    );
+}
+
 // F-FILE-06, file-io.md §3
 #[test]
 fn coming_back_to_the_terminal_checks_the_file() {
