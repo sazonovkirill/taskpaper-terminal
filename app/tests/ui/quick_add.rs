@@ -195,12 +195,12 @@ fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_panel() {
     app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
     assert_eq!(
         screen(&mut app)[10],
-        inside(" - Renew passport - old"),
-        "what y copied, without its line break"
+        inside(" - Renew passport old"),
+        "the text of the block y copied"
     );
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\t- Renew passport - old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
+        "INBOX:\n\t- old\n\t- Renew passport old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
     );
 }

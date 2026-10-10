@@ -11,7 +11,7 @@ use super::{
     Access, MenuInput, Notice, State,
     finder::{Finder, FinderView},
     picker::Picked,
-    text_field::{self, TextEdit, TextField},
+    text_field::{TextEdit, TextField},
 };
 use crate::document::{
     DateTag, ItemId, blocks,
@@ -292,14 +292,15 @@ impl State {
         self.quick_add = Some(quick_add);
     }
 
-    /// Types `text` into the open panel's text, its lines as [`text_field::one_line`] joins them,
+    /// Types `text` into the open panel's text, as [`State::one_line`] gives it,
     /// as [`QuickAdd::paste`] does, unless its project picker is open, which takes no text
     /// pasted; `false` when no panel is open.
     pub(super) fn quick_add_paste(&mut self, text: &str) -> bool {
+        let line = self.one_line(text);
         let Some(quick_add) = &mut self.quick_add else {
             return false;
         };
-        if quick_add.picker.is_none() && !quick_add.paste(&text_field::one_line(text)) {
+        if quick_add.picker.is_none() && !quick_add.paste(&line) {
             self.notify(Notice::TypedTag);
         }
         true
@@ -554,6 +555,37 @@ mod tests {
         assert_eq!(shown(&state).1, "Renew passport for ann ");
         assert_eq!(listed(&state), all, "the picker's filter is unchanged");
         assert_eq!(lines(&state), lines(&open(OUTLINE)), "no block pasted");
+    }
+
+    // editing.md §6
+    #[test]
+    fn blocks_copied_by_the_app_are_typed_as_the_text_they_show() {
+        let mut state = open("INBOX:\n- buy milk @due(2026-10-12) @star\nWork:\n\t- plan\n- ");
+        state.update(Message::FocusNext);
+        for _ in 0..3 {
+            state.update(Message::Select(crate::app::SelectionChange::ExtendDown));
+        }
+        state.update(Message::Copy);
+        let paste = |state: &mut State, text: &str| {
+            let text = text.to_owned();
+            let at = crate::app::Paste::Below;
+            state.update(Message::Pasted { text, at });
+        };
+        let copy = "- buy milk @due(2026-10-12) @star\r\nWork:\r\n\t- plan\r\n- \r\n";
+        input(&mut state, QuickAddInput::Open(QuickAddTo::Inbox));
+        paste(&mut state, copy);
+        assert_eq!(
+            shown(&state).1,
+            "buy milk Work",
+            "the copied blocks' text, joined with spaces, without their children"
+        );
+        assert_eq!(state.notice(), None);
+        paste(&mut state, " - buy milk @star");
+        assert_eq!(
+            shown(&state).1,
+            "buy milk Work - buy milk star",
+            "a line from elsewhere"
+        );
     }
 
     // OQ-25

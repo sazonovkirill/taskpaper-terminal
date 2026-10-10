@@ -9,7 +9,7 @@ use jiff::civil::DateTime;
 
 use super::{
     Command, State,
-    text_field::{self, TextEdit, TextField},
+    text_field::{TextEdit, TextField},
 };
 use crate::document::{Attachment, Document, ItemId, attachments, comments, format::breaks_line};
 
@@ -493,11 +493,12 @@ impl State {
         }
     }
 
-    /// Pastes `text` into the note being edited or the comment being typed, which takes its line
-    /// breaks as spaces, if one is; returns whether it took it.
+    /// Pastes `text` into the note being edited or the comment being typed, which takes it as
+    /// [`State::one_line`] gives it, if one is; returns whether it took it.
     pub(super) fn attachments_paste(&mut self, text: &str) -> bool {
+        let line = self.one_line(text);
         if let Some(draft) = self.draft() {
-            draft.field = draft.field.pasted(&text_field::one_line(text));
+            draft.field = draft.field.pasted(&line);
             return true;
         }
         let editing = self
@@ -1347,6 +1348,7 @@ mod tests {
     #[test]
     fn a_paste_into_a_comment_takes_its_line_breaks_as_spaces() {
         let mut state = state();
+        state.update(Message::Copy);
         keys(
             &mut state,
             &[
@@ -1359,6 +1361,15 @@ mod tests {
             at: Paste::Below,
         });
         assert_eq!(listed(&state).2, Some((None, "a b c".to_owned())));
+        state.update(Message::Pasted {
+            text: TEXT.trim_end_matches("---\n").to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            listed(&state).2,
+            Some((None, "a b cMilk".to_owned())),
+            "the copied block's text, without its attachments"
+        );
     }
 
     // FR-ATT-05, FR-ATT-06, attachments.md §5, §6

@@ -3,12 +3,20 @@
 //! edited ([editing.md §2, §4](../../../docs/specs/editing.md#4-structural-operations-fr-ops),
 //! FR-OPS-06).
 
-use super::{Access, Effect, Notice, State, TextEdit};
+use super::{Access, Effect, Notice, State, TextEdit, text_field};
 use crate::document::{
-    Block,
+    Block, Item,
     format::{self, breaks_line},
     structure::{self, Place},
 };
+
+/// The lines of `text`, however they are broken, without the breaks that end it.
+fn lines(text: &str) -> Vec<&str> {
+    text.trim_end_matches(breaks_line)
+        .split("\r\n")
+        .flat_map(|line| line.split(breaks_line))
+        .collect()
+}
 
 /// Where pasted blocks go, relative to the focused block (editing.md §4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,11 +94,7 @@ impl State {
             return;
         }
         if !line.contains(breaks_line) {
-            let copied = self
-                .copied_blocks
-                .as_deref()
-                .map(|copied| copied.trim_end_matches(breaks_line));
-            let shown = (copied == Some(line)).then(|| format::display_text(line));
+            let shown = self.shown_copy(line);
             self.paste_text(shown.as_deref().unwrap_or(line));
             return;
         }
@@ -104,6 +108,31 @@ impl State {
             })
         });
         self.paste_blocks(text, at, empty);
+    }
+
+    /// `text` pasted into a field that cannot break its line: as the text the blocks copied last
+    /// show when it is their copy, else its lines as [`text_field::one_line`] joins them
+    /// (editing.md §6, §7, attachments.md §5).
+    pub(super) fn one_line(&self, text: &str) -> String {
+        self.shown_copy(text)
+            .unwrap_or_else(|| text_field::one_line(text))
+    }
+
+    /// The text the blocks copied last show, their subtrees aside, joined with spaces, when
+    /// `text` is their copy, whatever breaks its lines; `None` for any other text.
+    fn shown_copy(&self, text: &str) -> Option<String> {
+        let copied = self.copied_blocks.as_deref()?;
+        (lines(text) == lines(copied)).then(|| {
+            let blocks = format::parse(copied);
+            blocks
+                .descendants(blocks.root())
+                .filter(|&(_, depth)| depth == 0)
+                .filter_map(|(id, _)| blocks.get(id))
+                .map(Item::display_text)
+                .filter(|text| !text.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
     }
 
     /// Reads `text` as TaskPaper text and puts its blocks `at` the focused block at its depth,
