@@ -28,6 +28,9 @@ pub struct Theme {
     pub focus: Color,
     /// The band behind the focused block's lines (D-39).
     pub current_line: Color,
+    /// Text in no color of its own on the band and on tinted rows, so it reads on them whatever
+    /// the terminal's own text color (D-125).
+    pub band_text: Color,
     /// Sections and group headings (Textual's `$secondary`, D-49).
     pub headers: Color,
     /// Rule lines: under the breadcrumbs, between panes and dividers (D-33).
@@ -80,6 +83,7 @@ impl Theme {
         selection: Color::Reset,
         focus: Color::Reset,
         current_line: Color::Reset,
+        band_text: Color::Reset,
         headers: Color::Reset,
         rule: Color::Reset,
         link: Color::Reset,
@@ -97,7 +101,8 @@ impl Theme {
     /// done block (D-37, D-63). Its row tints are dark shades of the tags' colors from the 256
     /// colors' color cube, as 16 colors have no dim shades and text is unreadable on the bright
     /// ones; the focused row's is the cube's next step brighter, two steps for blue, whose first
-    /// step barely shows (D-48, D-119).
+    /// step barely shows (D-48, D-119). Text on those and on the black band is grey 255, as the
+    /// terminal's own text color is dark on a light palette (D-125).
     const fn terminal() -> Self {
         let (red, orange, yellow, green, blue, violet) = (
             Color::Red,
@@ -126,6 +131,7 @@ impl Theme {
             selection: primary,
             focus: primary,
             current_line: Color::Black,
+            band_text: Color::Indexed(255),
             headers: Color::LightMagenta,
             rule: Color::DarkGray,
             link: Color::Cyan,
@@ -184,6 +190,7 @@ impl Theme {
             selection: rgb(accent),
             focus: rgb(accent),
             current_line: rgb(surface),
+            band_text: rgb(text),
             headers: rgb(violet),
             rule: rgb(muted),
             link: rgb(blue),
@@ -436,6 +443,7 @@ mod tests {
             ("selection".to_owned(), theme.selection),
             ("focus".to_owned(), theme.focus),
             ("current_line".to_owned(), theme.current_line),
+            ("band_text".to_owned(), theme.band_text),
             ("headers".to_owned(), theme.headers),
             ("rule".to_owned(), theme.rule),
             ("link".to_owned(), theme.link),
@@ -554,12 +562,17 @@ mod tests {
         ];
         let dark = named("terminal-dark").colors(ColorSupport::Ansi);
         for (role, color) in roles(&dark) {
-            if role == "dim_text" || role.ends_with("tint") {
+            if ["dim_text", "band_text"].contains(&role.as_str()) || role.ends_with("tint") {
                 continue;
             }
             assert!(ansi.contains(&color), "{role}: {color:?}");
         }
         assert_eq!(dark.dim_text, Color::Indexed(248), "grey 248 (D-37)");
+        assert_eq!(
+            dark.band_text,
+            Color::Indexed(255),
+            "grey 255, light on the band and tints whatever the palette (D-125)"
+        );
         assert_eq!(dark, named("terminal-dark").colors(ColorSupport::TrueColor));
         assert_eq!(
             (dark.background, dark.text, dark.primary, dark.current_line),
@@ -621,6 +634,7 @@ mod tests {
         assert_eq!(nord.background, rgb(0x2e3440));
         assert_eq!(nord.text, rgb(0xd8dee9));
         assert_eq!(nord.current_line, rgb(0x434c5e));
+        assert_eq!(nord.band_text, nord.text);
         assert_eq!(nord.rule, rgb(0x4c566a));
         assert_eq!(
             [nord.primary, nord.focus, nord.selection],

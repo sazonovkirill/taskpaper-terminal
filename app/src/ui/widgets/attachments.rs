@@ -159,7 +159,7 @@ impl<'a> AttachmentsPanel<'a> {
                 Attachment::Comments => self.comments(&mut layout, width),
             }
         }
-        let band = Style::new().bg(self.theme.current_line);
+        let band = super::current_line_style(self.theme);
         for line in layout
             .band
             .clone()
@@ -167,7 +167,7 @@ impl<'a> AttachmentsPanel<'a> {
             .into_iter()
             .flatten()
         {
-            line.style = line.style.patch(band);
+            line.style = band.patch(line.style);
         }
         layout
     }

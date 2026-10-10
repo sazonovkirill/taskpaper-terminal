@@ -142,6 +142,10 @@ pub const TEXT: Color = Color::Indexed(248);
 /// The background of every line of the focused block (D-39), in Terminal Dark.
 pub const CURRENT_LINE: Color = Color::Black;
 
+/// The color of text in no color of its own on the focused block's band and on tinted rows, in
+/// Terminal Dark, so it reads on a light palette too (D-125).
+pub const BAND_TEXT: Color = Color::Indexed(255);
+
 /// A running app with its terminal, the temporary folder holding its file, its backups folder
 /// and its `views.json`, and a clock that only moves when the test says so.
 pub struct Harness {

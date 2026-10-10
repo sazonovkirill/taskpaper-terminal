@@ -7,7 +7,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 use taskpaper_terminal::app::demo;
 
-use crate::support::{BOOKMARK, CURRENT_LINE, Harness, NAVIGATE, TEXT, TODAY, line};
+use crate::support::{BAND_TEXT, BOOKMARK, CURRENT_LINE, Harness, NAVIGATE, TEXT, TODAY, line};
 
 // F-FILE-01, F-FILE-02, FR-DOC-01, FR-DOC-03
 #[test]
@@ -28,7 +28,10 @@ fn shows_the_file_as_an_indented_outline() {
     let project = Style::new().bold().light_blue();
     expected.set_style(Rect::new(2, 0, 34, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 36, 1), Style::new().dark_gray());
-    expected.set_style(Rect::new(0, 2, 36, 1), Style::new().bg(CURRENT_LINE));
+    expected.set_style(
+        Rect::new(0, 2, 36, 1),
+        Style::new().bg(CURRENT_LINE).fg(BAND_TEXT),
+    );
     expected.set_style(Rect::new(2, 2, 10, 1), project);
     expected.set_style(Rect::new(6, 5, 27, 1), Style::new().fg(TEXT));
     expected.set_style(Rect::new(4, 6, 6, 1), project);
@@ -52,7 +55,10 @@ fn shows_the_demo_outline_without_a_path() {
     ]);
     expected.set_style(Rect::new(2, 0, 38, 1), Style::new().bold());
     expected.set_style(Rect::new(0, 1, 40, 1), Style::new().dark_gray());
-    expected.set_style(Rect::new(0, 2, 40, 1), Style::new().bg(CURRENT_LINE));
+    expected.set_style(
+        Rect::new(0, 2, 40, 1),
+        Style::new().bg(CURRENT_LINE).fg(BAND_TEXT),
+    );
     expected.set_style(Rect::new(2, 2, 15, 1), Style::new().bold().light_blue());
     expected.set_style(Rect::new(18, 2, 1, 1), Style::new().light_blue());
     expected.set_style(Rect::new(0, 2, 1, 1), Style::new().light_blue());

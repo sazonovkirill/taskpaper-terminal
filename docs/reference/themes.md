@@ -65,9 +65,9 @@ Palette names behind the less obvious cells:
 
 `config.toml` names each theme in lower case with hyphens and without accents: `terminal-dark`, `catppuccin-mocha`, `catppuccin-latte`, `tokyo-night`, `dracula`, `nord`, `gruvbox-dark`, `rose-pine`, `rose-pine-dawn`, `kanagawa-wave`, `everforest-dark`, `one-dark` and `solarized-light`. The theme picker lists them in that order.
 
-The roles of [the UI spec](../specs/ui.md#3-themes-fr-ui-0608) come from a palette's columns as follows: text and background as named; the palette's Accent is the primary color (projects, the focus and selection markers, keys in menus); Orange is the accent (the focus marker while editing, finder and prompt borders), as Textual's default accent is orange; Violet the headers; Blue the links; Muted the rule lines; Surface the current line; Green the start chips and Red the due and overdue chips and errors; Yellow the `@today` star and warnings. Dim text (notes) is the text color mixed with 25% of the background; a tag's row tint is the background mixed with 15% of the tag's color, 25% on the focused row.
+The roles of [the UI spec](../specs/ui.md#3-themes-fr-ui-0608) come from a palette's columns as follows: text and background as named; the palette's Accent is the primary color (projects, the focus and selection markers, keys in menus); Orange is the accent (the focus marker while editing, finder and prompt borders), as Textual's default accent is orange; Violet the headers; Blue the links; Muted the rule lines; Surface the current line; Green the start chips and Red the due and overdue chips and errors; Yellow the `@today` star and warnings. Dim text (notes) is the text color mixed with 25% of the background; text on the current line and on row tints is the text color; a tag's row tint is the background mixed with 15% of the tag's color, 25% on the focused row.
 
-Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, so it follows its palette, except for notes and row tints: 16 colors have no grey between the default foreground, which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a done task, so notes take the 256-color grey 248 (D-37):
+Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, so it follows its palette, except for notes, row tints and the text on the band and tints (D-125): 16 colors have no grey between the default foreground, which many terminals draw as ANSI gray or white, and dark gray, which looks as dim as a done task, so notes take the 256-color grey 248 (D-37):
 
 | Role | Terminal Dark |
 |---|---|
@@ -76,6 +76,7 @@ Terminal Dark, the only 16-color theme (D-63), uses the terminal's ANSI colors, 
 | Primary, focus, selection | light blue |
 | Accent | yellow |
 | Current line | black |
+| Text on the current line and row tints | grey 255 (`#eeeeee`) of the 256 colors, as the terminal's text is dark on a light palette (D-125) |
 | Headers | light magenta |
 | Rule lines | dark gray |
 | Links | cyan |

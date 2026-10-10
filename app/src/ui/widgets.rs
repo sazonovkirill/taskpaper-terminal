@@ -267,7 +267,12 @@ impl Widget for OutlineView<'_> {
                     width: line_area.width.saturating_sub(indent),
                     ..line_area
                 };
-                buf.set_style(tinted, Style::new().bg(self.theme.tint(color, focused)));
+                buf.set_style(
+                    tinted,
+                    Style::new()
+                        .bg(self.theme.tint(color, focused))
+                        .fg(self.theme.band_text),
+                );
             }
             line.render(line_area, buf);
             chips.render(line_area, buf);
@@ -1791,9 +1796,10 @@ fn selection_style(theme: &Theme) -> Style {
     Style::new().fg(theme.selection).dim()
 }
 
-/// The band behind every line of the focused block, the full width of the pane (D-39).
+/// The band behind every line of the focused block, the full width of the pane (D-39), with the
+/// text color that reads on it (D-125).
 fn current_line_style(theme: &Theme) -> Style {
-    Style::new().bg(theme.current_line)
+    Style::new().bg(theme.current_line).fg(theme.band_text)
 }
 
 #[cfg(test)]
@@ -2356,7 +2362,11 @@ mod tests {
     // FR-TAG-05, D-48
     #[test]
     fn a_color_tag_tints_the_background_of_any_block_after_its_indent() {
-        let tint = |color| Style::new().bg(THEME.tint(color, false));
+        let tint = |color| {
+            Style::new()
+                .bg(THEME.tint(color, false))
+                .fg(THEME.band_text)
+        };
         let mut expected = Buffer::with_lines(["- a   ", "P:    ", "  S   ", "n     ", "✔ d   "]);
         expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Red));
         expected.set_style(Rect::new(0, 1, 6, 1), tint(TagColor::Orange));
@@ -2696,7 +2706,9 @@ mod tests {
         expected.set_style(Rect::new(4, 3, 8, 1), link);
         expected.set_style(
             Rect::new(0, 4, 12, 1),
-            Style::new().bg(THEME.tint(TagColor::Red, false)),
+            Style::new()
+                .bg(THEME.tint(TagColor::Red, false))
+                .fg(THEME.band_text),
         );
         expected.set_style(Rect::new(0, 4, 10, 1), text.bold().underlined());
         expected.set_style(
@@ -3170,7 +3182,7 @@ mod tests {
         assert_eq!(render_scrolled(0, Some(1), Rect::new(0, 0, 5, 3)), expected);
     }
 
-    // D-39
+    // D-39, D-125
     #[test]
     fn the_band_keeps_every_text_style_of_each_block_kind() {
         let rows = State::new(
@@ -3194,11 +3206,15 @@ mod tests {
                     (cell.symbol(), cell.fg, cell.modifier, cell.bg),
                     (
                         before.symbol(),
-                        before.fg,
+                        if before.fg == Color::Reset {
+                            THEME.band_text
+                        } else {
+                            before.fg
+                        },
                         before.modifier,
                         THEME.current_line
                     ),
-                    "row {index}, column {x}"
+                    "row {index}, column {x}: text in no color of its own takes the band's"
                 );
             }
         }

@@ -8,7 +8,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, style::Color};
 
 use crate::support::{
-    BOOKMARK, CURRENT_LINE, DUE, FLAG, Harness, STAR, line, outline_line, outline_rows,
+    BAND_TEXT, BOOKMARK, CURRENT_LINE, DUE, FLAG, Harness, STAR, line, outline_line, outline_rows,
 };
 
 /// The open file's text once the autosave delay has passed and its save is done.
@@ -56,7 +56,11 @@ fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() 
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 3), "- Bread");
     assert_eq!(background(&buffer, 3, 2), Some(FOCUSED_RED_TINT));
-    assert_eq!(buffer[(4, 3)].fg, Color::Reset, "the text keeps its color");
+    assert_eq!(
+        buffer[(4, 3)].fg,
+        BAND_TEXT,
+        "text in no color of its own is light on the tint (D-125)"
+    );
     app.type_keys("k");
     let buffer = app.render().buffer().clone();
     assert_eq!(background(&buffer, 3, 2), Some(RED_TINT));

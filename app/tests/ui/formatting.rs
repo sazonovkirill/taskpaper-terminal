@@ -6,7 +6,7 @@ use std::{fs, time::Duration};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Modifier};
 
-use crate::support::{Harness, outline_line, outline_rows};
+use crate::support::{BAND_TEXT, Harness, outline_line, outline_rows};
 
 /// The open file's text once the autosave delay has passed and its save is done.
 fn saved(app: &mut Harness) -> String {
@@ -29,8 +29,8 @@ fn navigate_mode_draws_bold_code_and_urls_without_delimiters_and_edit_mode_shows
     assert!(!buffer[(12, 2)].modifier.contains(Modifier::BOLD), "plain");
     assert_eq!(
         (buffer[(17, 2)].fg, buffer[(17, 2)].modifier),
-        (Color::Reset, Modifier::DIM),
-        "code keeps the task's color, dimmed"
+        (BAND_TEXT, Modifier::DIM),
+        "code keeps the task's color, dimmed, on the band"
     );
     assert!(
         buffer[(22, 2)].modifier.contains(Modifier::UNDERLINED),
