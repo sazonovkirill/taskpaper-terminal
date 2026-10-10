@@ -8,7 +8,7 @@ use std::{ops::Range, sync::Arc};
 use jiff::civil::DateTime;
 
 use super::{
-    Command, State,
+    Access, Command, Notice, State,
     text_field::{TextEdit, TextField},
 };
 use crate::document::{Attachment, Document, ItemId, attachments, comments, format::breaks_line};
@@ -391,6 +391,10 @@ impl State {
         {
             return;
         }
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
+            return;
+        }
         let text = comment
             .and_then(|at| {
                 attachments::content(&self.document, panel.block, Attachment::Comments)
@@ -478,6 +482,10 @@ impl State {
             || panel.editor.is_some()
             || panel.draft.is_some()
         {
+            return;
+        }
+        if self.access() == Access::ReadOnly {
+            self.notify(Notice::ReadOnly);
             return;
         }
         let lines = attachments::content(&self.document, panel.block, Attachment::Note);
@@ -1136,19 +1144,33 @@ mod tests {
             state.update(quit);
             assert!(file(&state).contains("Full fat!"));
         }
-        let mut state = State::new(format::parse(TEXT), Some(PathBuf::from("/a.taskpaper")))
-            .with_access(Access::ReadOnly);
-        keys(
-            &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
-        );
-        typed(&mut state, "!");
-        input(&mut state, AttachmentsInput::Save);
+        let read_only = |selected: isize, start: AttachmentsInput| {
+            let mut state = State::new(format::parse(TEXT), Some(PathBuf::from("/a.taskpaper")))
+                .with_access(Access::ReadOnly);
+            keys(
+                &mut state,
+                &[
+                    AttachmentsInput::Open(Attachment::Note),
+                    AttachmentsInput::Select(selected),
+                    start,
+                ],
+            );
+            state
+        };
+        for (selected, start) in [
+            (0, AttachmentsInput::Edit),
+            (1, AttachmentsInput::Edit),
+            (0, AttachmentsInput::AddComment),
+        ] {
+            let state = read_only(selected, start);
+            assert_eq!(state.notice(), Some(&Notice::ReadOnly), "{start:?}");
+            let view = state.attachments_panel().unwrap();
+            assert!(view.editing.is_none() && view.draft.is_none(), "{start:?}");
+        }
+        let mut state = read_only(0, AttachmentsInput::Select(0));
+        assert_eq!(state.notice(), None, "moving is no edit");
+        state.update(Message::Attachments(AttachmentsInput::Close));
         assert_eq!(file(&state), TEXT);
-        assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
 
     // FR-ATT-06, FR-SPC-01, editing.md §7

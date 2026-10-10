@@ -4,7 +4,7 @@
 //! comments are added, edited and deleted (FR-ATT-05); the scroll keys go through the selected
 //! item and then select the next (D-109).
 
-use std::{fs, time::Duration};
+use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
@@ -307,4 +307,26 @@ fn the_scroll_keys_move_the_selected_comment_and_keep_it_in_view() {
         saved(&mut app),
         "- Milk\n\tCOMMENTS @hidden\n\t\tc2\n\t\tc3\n\t\tc6\n\t\tc7\n\t\tc8\n"
     );
+}
+
+// FR-ATT-04, FR-ATT-05, file-io.md §1
+#[test]
+fn a_read_only_file_refuses_the_note_editor_and_the_comment_input_at_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("todo.taskpaper");
+    fs::write(&path, TEXT).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
+    let mut app = Harness::open_path(dir, &path, 80, 12);
+    app.type_keys("n");
+    let shown = screen(&mut app);
+    for start in ["e", "a"] {
+        app.type_keys(start);
+        app.type_keys("x");
+        let rows = screen(&mut app);
+        assert!(
+            rows[11].ends_with("read-only · cannot edit a read-only file"),
+            "{start}: {rows:?}"
+        );
+        assert_eq!(rows[..11], shown[..11], "{start}: x was not typed");
+    }
 }
