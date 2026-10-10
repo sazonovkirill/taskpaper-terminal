@@ -13,7 +13,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{Field, attachment_icon, drawable, run_style, wrap};
+use super::{Caret, Field, attachment_icon, drawable, run_style, wrap};
 use crate::{
     app::{AttachmentsView, CommentDraft, NoteCaret, PanelItem},
     document::{
@@ -29,13 +29,13 @@ const WIDTH: (u16, u16) = (40, 72);
 
 /// The panel's content laid out in lines: the lines; those of the selected item, the caret's line
 /// or the comment being typed, which scrolling keeps in view; those on the focused block's band;
-/// and the caret's line and column, while text is typed.
+/// and the caret's line and where it is on it, while text is typed.
 #[derive(Debug, Default)]
 struct Layout<'a> {
     lines: Vec<Line<'a>>,
     current: Option<Range<usize>>,
     band: Option<Range<usize>>,
-    caret: Option<(usize, usize)>,
+    caret: Option<(usize, Caret)>,
 }
 
 /// How the panel's content scrolls at a draw: the first line shown, the lines a page holds and
@@ -57,6 +57,7 @@ pub struct AttachmentsPanel<'a> {
     icons: IconSet,
     theme: &'a Theme,
     scroll: usize,
+    text_scroll: usize,
 }
 
 impl<'a> AttachmentsPanel<'a> {
@@ -68,6 +69,7 @@ impl<'a> AttachmentsPanel<'a> {
             icons,
             theme,
             scroll: 0,
+            text_scroll: 0,
         }
     }
 
@@ -75,6 +77,16 @@ impl<'a> AttachmentsPanel<'a> {
     #[must_use]
     pub fn scrolled(self, scroll: usize) -> Self {
         Self { scroll, ..self }
+    }
+
+    /// The panel with the text being typed scrolled on from `scroll` columns, as far as the last
+    /// frame scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self {
+            text_scroll: scroll,
+            ..self
+        }
     }
 
     /// Where the panel goes over `body`, the screen above the status line: at its right, half
@@ -116,19 +128,20 @@ impl<'a> AttachmentsPanel<'a> {
     }
 
     /// The caret's cell when the panel is drawn over `area`, while text is typed and its line is
-    /// in view.
+    /// in view, and how far the text is scrolled.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> Option<(u16, u16)> {
+    pub fn caret(&self, area: Rect) -> Option<((u16, u16), usize)> {
         let body = Self::body(area);
-        let (row, column) = self.layout(body.width).caret?;
+        let (row, caret) = self.layout(body.width).caret?;
         let y = row.checked_sub(self.scroll)?;
         (y < usize::from(body.height)).then(|| {
-            (
+            let cell = (
                 body.x
-                    .saturating_add(u16::try_from(column).unwrap_or(u16::MAX))
+                    .saturating_add(u16::try_from(caret.column).unwrap_or(u16::MAX))
                     .min(body.right().saturating_sub(1)),
                 body.y.saturating_add(u16::try_from(y).unwrap_or(u16::MAX)),
-            )
+            );
+            (cell, caret.scroll)
         })
     }
 
@@ -259,6 +272,7 @@ impl<'a> AttachmentsPanel<'a> {
             text: self.view.note.get(caret.row).map_or("", String::as_str),
             caret: caret.caret,
             selection: caret.selection.clone(),
+            scroll: self.text_scroll,
         }
     }
 
@@ -280,9 +294,9 @@ impl<'a> AttachmentsPanel<'a> {
         wrap::wrap(&shown, start, width, width)
     }
 
-    /// The comment being typed on a line `width` columns wide after a dimmed marker, and the
-    /// caret's column.
-    fn draft_line(&self, draft: &'a CommentDraft, width: usize) -> (Line<'a>, usize) {
+    /// The comment being typed on a line `width` columns wide after a dimmed marker, and where the
+    /// caret is on it.
+    fn draft_line(&self, draft: &'a CommentDraft, width: usize) -> (Line<'a>, Caret) {
         let marker = if self.icons == IconSet::Ascii {
             "> "
         } else {
@@ -292,12 +306,13 @@ impl<'a> AttachmentsPanel<'a> {
             text: &draft.text,
             caret: draft.caret,
             selection: draft.selection.clone(),
+            scroll: self.text_scroll,
         };
         let start = Span::raw(marker).width();
-        let (spans, column) = field.spans(Style::new(), start, width);
+        let (spans, caret) = field.spans(Style::new(), start, width);
         let mut line = Line::from(Span::styled(marker, Style::new().dim()));
         line.spans.extend(spans);
-        (line, column)
+        (line, caret)
     }
 
     /// A line of a note as Markdown shows it, wrapped to `width` columns: a heading bold, the
@@ -443,7 +458,7 @@ mod tests {
         let panel = AttachmentsPanel::new(view, icons, &THEME);
         let scrolled = panel.scroll(scroll, area, true);
         let panel = panel.scrolled(scrolled.scroll);
-        let caret = panel.caret(area);
+        let caret = panel.caret(area).map(|(cell, _)| cell);
         panel.render(area, &mut buf);
         (buf, caret)
     }

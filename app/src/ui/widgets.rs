@@ -69,6 +69,7 @@ pub struct OutlineView<'a> {
     offset: usize,
     focused: Option<usize>,
     editor: Option<&'a Editor<'a>>,
+    editor_scroll: usize,
     wrap: bool,
     icons: IconSet,
     kept: Option<&'a KeptLines>,
@@ -86,6 +87,7 @@ impl<'a> OutlineView<'a> {
             offset: 0,
             focused: None,
             editor: None,
+            editor_scroll: 0,
             wrap: false,
             icons: IconSet::Nerd,
             kept: None,
@@ -117,6 +119,16 @@ impl<'a> OutlineView<'a> {
     #[must_use]
     pub fn editor(self, editor: Option<&'a Editor<'a>>) -> Self {
         Self { editor, ..self }
+    }
+
+    /// Draws the editor's text scrolled on from `scroll` columns, as far as the last frame
+    /// scrolled it (editing.md §2).
+    #[must_use]
+    pub fn editor_scroll(self, scroll: usize) -> Self {
+        Self {
+            editor_scroll: scroll,
+            ..self
+        }
     }
 
     /// Wraps text too long for its line when `wrap` is on, else ends it in `…` (FR-UI-05).
@@ -191,7 +203,15 @@ impl<'a> OutlineView<'a> {
     ) -> impl Iterator<Item = (usize, &'a Row, Rc<[Line<'a>]>, Line<'static>)> {
         self.rows.iter().enumerate().map(move |(index, row)| {
             if let Some(editor) = self.editor.filter(|editor| editor.id == row.id) {
-                let line = editor_line(row, editor, width, self.icons, self.theme).0;
+                let line = editor_line(
+                    row,
+                    editor,
+                    self.editor_scroll,
+                    width,
+                    self.icons,
+                    self.theme,
+                )
+                .0;
                 return (index, row, Rc::from([line]), Line::default());
             }
             let lay_out = || self.lay_out(row, width);
@@ -1209,6 +1229,7 @@ impl Widget for ShortcutsPanel<'_> {
 pub struct DatePromptPanel<'a> {
     prompt: &'a DatePromptView<'a>,
     theme: &'a Theme,
+    scroll: usize,
 }
 
 impl<'a> DatePromptPanel<'a> {
@@ -1218,32 +1239,44 @@ impl<'a> DatePromptPanel<'a> {
     /// The panel showing `prompt` in `theme`.
     #[must_use]
     pub fn new(prompt: &'a DatePromptView<'a>, theme: &'a Theme) -> Self {
-        Self { prompt, theme }
+        Self {
+            prompt,
+            theme,
+            scroll: 0,
+        }
+    }
+
+    /// The panel with its text scrolled on from `scroll` columns, as far as the last frame
+    /// scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self { scroll, ..self }
     }
 
     /// The caret's cell when the panel is drawn over `area`, on the text's line, the first inside
-    /// the border.
+    /// the border, and how far the text is scrolled.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> (u16, u16) {
+    pub fn caret(&self, area: Rect) -> ((u16, u16), usize) {
         let inner = Block::bordered().inner(area);
-        let (_, column) = self.input(inner.width);
-        let x = u16::try_from(column)
+        let (_, caret) = self.input(inner.width);
+        let x = u16::try_from(caret.column)
             .unwrap_or(u16::MAX)
             .min(inner.width.saturating_sub(1));
-        (inner.x.saturating_add(x), inner.y)
+        ((inner.x.saturating_add(x), inner.y), caret.scroll)
     }
 
-    /// The text after a space, `width` columns wide, and the caret's column on it.
-    fn input(&self, width: u16) -> (Line<'a>, usize) {
+    /// The text after a space, `width` columns wide, and where the caret is on it.
+    fn input(&self, width: u16) -> (Line<'a>, Caret) {
         let field = Field {
             text: self.prompt.text,
             caret: self.prompt.caret,
             selection: self.prompt.selection.clone(),
+            scroll: self.scroll,
         };
-        let (spans, column) = field.spans(Style::new(), 1, usize::from(width));
+        let (spans, caret) = field.spans(Style::new(), 1, usize::from(width));
         let mut line = Line::from(" ");
         line.spans.extend(spans);
-        (line, column)
+        (line, caret)
     }
 
     /// What `Enter` does with the text: set the date, remove it, or nothing, quoting where the
@@ -1634,36 +1667,39 @@ fn row_style(row: &Row, theme: &Theme) -> (Style, Style) {
     }
 }
 
-/// The screen line of `row` while `editor` edits it, `width` columns wide, and the caret's column
-/// on it: the row's indent and marker from `icons`, then the text with the selection reversed,
-/// styled as the row (FR-MODE-02). When the caret would be past the right edge,
-/// the text scrolls left by whole graphemes to keep it in view. Colors are `theme`'s.
+/// The screen line of `row` while `editor` edits it, `width` columns wide, with its text scrolled
+/// on from `scroll` columns, and where the caret is on it: the row's indent and marker from
+/// `icons`, then the text with the selection reversed, styled as the row (FR-MODE-02). The text
+/// scrolls by whole graphemes only as far as keeps the caret in view. Colors are `theme`'s.
 #[must_use]
 pub fn editor_line<'a>(
     row: &Row,
     editor: &'a Editor,
+    scroll: usize,
     width: usize,
     icons: IconSet,
     theme: &Theme,
-) -> (Line<'a>, usize) {
+) -> (Line<'a>, Caret) {
     let (mut line, style) = lead(row, icons, theme);
     let field = Field {
         text: editor.text,
         caret: editor.caret,
         selection: editor.selection.clone(),
+        scroll,
     };
-    let (spans, column) = field.spans(style, line.width(), width);
+    let (spans, caret) = field.spans(style, line.width(), width);
     line.spans.extend(spans);
-    (line, column)
+    (line, caret)
 }
 
 /// The byte offset of `editor`'s text that column `column` of `row`'s screen line, `width`
-/// columns wide, shows as [`editor_line`] draws it with `icons`, where a click there puts the caret
-/// (FR-KEY-05): the first grapheme shown left of the text, the end right of it.
+/// columns wide, shows as [`editor_line`] draws it from `scroll` with `icons`, where a click there
+/// puts the caret (FR-KEY-05): the first grapheme shown left of the text, the end right of it.
 #[must_use]
 pub fn editor_offset(
     row: &Row,
     editor: &Editor,
+    scroll: usize,
     width: usize,
     icons: IconSet,
     column: usize,
@@ -1672,22 +1708,36 @@ pub fn editor_offset(
         text: editor.text,
         caret: editor.caret,
         selection: None,
+        scroll,
     };
     field.offset_at(text_column(row, icons), width, column)
 }
 
-/// A text being typed, with its caret and selection as byte offsets.
+/// A text being typed, with its caret and selection as byte offsets, and how many columns its
+/// text was scrolled left when last drawn.
 struct Field<'a> {
     text: &'a str,
     caret: usize,
     selection: Option<Range<usize>>,
+    scroll: usize,
+}
+
+/// Where a text field draws its caret: the column on its line, and how many columns its text is
+/// scrolled left, which the next frame draws it from so that the text stays still while the
+/// caret moves within view (editing.md §2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Caret {
+    /// The caret's column on the field's line.
+    pub column: usize,
+    /// How many columns of the text are scrolled off the left.
+    pub scroll: usize,
 }
 
 impl<'a> Field<'a> {
     /// The text styled `style` with the selection reversed, for a line `width` columns wide on
-    /// which it starts at column `start`, and the caret's column on that line. When the caret
-    /// would be past the right edge, the text scrolls left by whole graphemes to keep it in view.
-    fn spans(&self, style: Style, start: usize, width: usize) -> (Vec<Span<'a>>, usize) {
+    /// which it starts at column `start`, and where the caret is on that line. The text scrolls
+    /// by whole graphemes, from where it was, only as far as keeps the caret in view.
+    fn spans(&self, style: Style, start: usize, width: usize) -> (Vec<Span<'a>>, Caret) {
         let text = self.text;
         let selection = self.selection.clone().unwrap_or(self.caret..self.caret);
         let column = self.caret_column(start);
@@ -1700,7 +1750,11 @@ impl<'a> Field<'a> {
             Span::styled(piece(selected.clone()), style.reversed()),
             Span::styled(piece(selected.end..text.len()), style),
         ];
-        (spans, column - scrolled)
+        let caret = Caret {
+            column: column - scrolled,
+            scroll: scrolled,
+        };
+        (spans, caret)
     }
 
     /// The caret's column on a line on which the text starts at column `start`, before any
@@ -1710,14 +1764,18 @@ impl<'a> Field<'a> {
     }
 
     /// Where the text shown on a line `width` columns wide starting at column `start` begins,
-    /// scrolled left by whole graphemes to keep the caret in view: its byte offset and how many
+    /// scrolled left by whole graphemes as little as keeps the caret in view from where it was
+    /// scrolled, and no further than shows the end of the text: its byte offset and how many
     /// columns it scrolled past.
     fn scrolled(&self, start: usize, width: usize) -> (usize, usize) {
         // The caret takes a column of its own after the text before it.
-        let overflow = (self.caret_column(start) + 1).saturating_sub(width);
+        let caret = self.caret_column(start);
+        let least = (caret + 1).saturating_sub(width);
+        let end = (start + Span::raw(self.text).width() + 1).saturating_sub(width);
+        let target = self.scroll.min(end).max(least);
         let (mut from, mut scrolled) = (0, 0);
         for (at, grapheme) in self.text.grapheme_indices(true) {
-            if scrolled >= overflow || at >= self.caret {
+            if scrolled >= target || at >= self.caret {
                 break;
             }
             from = at + grapheme.len();
@@ -1988,7 +2046,7 @@ mod tests {
         let panel = DatePromptPanel::new(&view, &THEME);
         let area = Rect::new(0, 0, 30, DatePromptPanel::HEIGHT);
         let mut buf = Buffer::empty(area);
-        assert_eq!(panel.caret(area), (2 + text_width(text), 1));
+        assert_eq!(panel.caret(area), ((2 + text_width(text), 1), 0));
         panel.render(area, &mut buf);
         buf
     }
@@ -2891,9 +2949,17 @@ mod tests {
     /// The first row of `text` drawn as `editor` edits it, `width` columns wide, with the caret's
     /// column.
     fn edited(text: &str, editor: &Editor, width: u16) -> (Buffer, usize) {
+        let (buf, caret) = edited_from(text, editor, 0, width);
+        (buf, caret.column)
+    }
+
+    /// The first row of `text` drawn as `editor` edits it, `width` columns wide, its text scrolled
+    /// on from `scroll` columns, with where the caret is.
+    fn edited_from(text: &str, editor: &Editor, scroll: usize, width: u16) -> (Buffer, Caret) {
         let rows = State::new(format::parse(text), None).rows().to_vec();
         let mut buf = Buffer::empty(Rect::new(0, 0, width, 1));
-        let (line, caret) = editor_line(&rows[0], editor, usize::from(width), ICONS, &THEME);
+        let (line, caret) =
+            editor_line(&rows[0], editor, scroll, usize::from(width), ICONS, &THEME);
         line.render(buf.area, &mut buf);
         (buf, caret)
     }
@@ -2972,6 +3038,88 @@ mod tests {
         assert_eq!(caret, 2);
     }
 
+    // FR-MODE-02
+    #[test]
+    fn the_editor_scrolls_the_text_only_as_far_as_keeps_the_caret_in_view() {
+        // `abcdefghij` in 8 columns after `- `: at the end it is scrolled 5 columns.
+        let text = "abcdefghij";
+        let (buf, caret) = edited_from("- a", &editor(text, 10, None), 0, 8);
+        assert_eq!(buf, Buffer::with_lines(["- fghij "]));
+        assert_eq!(
+            caret,
+            Caret {
+                column: 7,
+                scroll: 5
+            }
+        );
+        let (buf, caret) = edited_from("- a", &editor(text, 8, None), 5, 8);
+        assert_eq!(
+            buf,
+            Buffer::with_lines(["- fghij "]),
+            "the caret moves left in view, the text stays"
+        );
+        assert_eq!(
+            caret,
+            Caret {
+                column: 5,
+                scroll: 5
+            }
+        );
+        let (buf, caret) = edited_from("- a", &editor(text, 5, None), 5, 8);
+        assert_eq!(buf, Buffer::with_lines(["- fghij "]));
+        assert_eq!(caret.column, 2, "at the left edge");
+        let (buf, caret) = edited_from("- a", &editor(text, 4, None), 5, 8);
+        assert_eq!(
+            buf,
+            Buffer::with_lines(["- efghij"]),
+            "past the left edge the text scrolls to the caret"
+        );
+        assert_eq!(
+            caret,
+            Caret {
+                column: 2,
+                scroll: 4
+            }
+        );
+        let (buf, caret) = edited_from("- a", &editor(text, 8, None), 1, 8);
+        assert_eq!(
+            buf,
+            Buffer::with_lines(["- defghi"]),
+            "past the right edge it scrolls as little as shows the caret"
+        );
+        assert_eq!(
+            caret,
+            Caret {
+                column: 7,
+                scroll: 3
+            }
+        );
+        let (buf, caret) = edited_from("- a", &editor("abcdefg", 7, None), 5, 8);
+        assert_eq!(
+            buf,
+            Buffer::with_lines(["- cdefg "]),
+            "no further than shows the end of the text"
+        );
+        assert_eq!(
+            caret,
+            Caret {
+                column: 7,
+                scroll: 2
+            }
+        );
+        let (_, caret) = edited_from("- a", &editor("日本語ab", 6, None), 1, 6);
+        assert_eq!(
+            caret,
+            Caret {
+                column: 4,
+                scroll: 2
+            },
+            "by whole graphemes, as the same scroll draws it again"
+        );
+        let (_, again) = edited_from("- a", &editor("日本語ab", 6, None), 2, 6);
+        assert_eq!(again, caret);
+    }
+
     /// The rows of `text` with its first block collapsed.
     fn collapsed(text: &str) -> Vec<Row> {
         let mut state = State::new(format::parse(text), None);
@@ -3040,8 +3188,9 @@ mod tests {
     #[test]
     fn a_column_of_the_editor_names_the_offset_of_the_grapheme_drawn_there() {
         let rows = State::new(format::parse("- a"), None).rows().to_vec();
-        let at =
-            |editor: &Editor, width, column| editor_offset(&rows[0], editor, width, ICONS, column);
+        let at = |editor: &Editor, width, column| {
+            editor_offset(&rows[0], editor, 0, width, ICONS, column)
+        };
         let plain = editor("ab日c", 0, None);
         assert_eq!(at(&plain, 20, 0), 0, "the marker");
         assert_eq!(at(&plain, 20, 2), 0);
@@ -3055,6 +3204,9 @@ mod tests {
         assert_eq!(at(&scrolled, 6, 0), 9, "the first grapheme shown");
         assert_eq!(at(&scrolled, 6, 3), 10);
         assert_eq!(at(&scrolled, 6, 5), 11);
+        // Kept scrolled 5 columns with the caret moved left, the line shows `- fghij `.
+        let kept = editor("abcdefghij", 8, None);
+        assert_eq!(editor_offset(&rows[0], &kept, 5, 8, ICONS, 2), 5);
     }
 
     // FR-MODE-02

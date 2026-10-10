@@ -25,6 +25,8 @@ pub(super) struct Drawn {
     pub(super) panes: Vec<DrawnPane>,
     /// The shortcuts panel's area.
     pub(super) shortcuts: Option<Rect>,
+    /// How many columns the text of the block being edited is scrolled (editing.md §2).
+    pub(super) editor_scroll: usize,
 }
 
 /// A pane as the last frame drew it.
@@ -334,6 +336,7 @@ impl Tui {
                     return Some(Target::Text(widgets::editor_offset(
                         row,
                         &editor,
+                        self.drawn.editor_scroll,
                         usize::from(width),
                         self.icons,
                         usize::from(column),
@@ -375,6 +378,7 @@ mod tests {
                 pane(2, Rect::new(15, 0, 12, 8), 0, 12),
             ],
             shortcuts: Some(Rect::new(24, 0, 3, 8)),
+            editor_scroll: 0,
         };
         let spot = |x, y| drawn.spot(Position::new(x, y));
         assert_eq!(spot(3, 2), Some(Spot::Navigator { line: 5, column: 3 }));
@@ -425,6 +429,7 @@ mod tests {
             navigator: Some((Rect::new(2, 1, 10, 8), 0)),
             panes: vec![pane(0, Rect::new(12, 1, 10, 8), 0, 10)],
             shortcuts: None,
+            editor_scroll: 0,
         };
         let spot = |x, y| below.spot(Position::new(x, y));
         assert_eq!(spot(5, 4), Some(Spot::Navigator { line: 3, column: 3 }));
@@ -441,6 +446,7 @@ mod tests {
             navigator: Some((Rect::new(4, 2, 10, 4), 0)),
             panes: vec![pane(0, Rect::new(0, 0, 12, 8), 0, 12)],
             shortcuts: Some(Rect::new(12, 0, 4, 8)),
+            editor_scroll: 0,
         };
         let spot = |x, y| over.spot(Position::new(x, y));
         assert_eq!(spot(5, 3), Some(Spot::Navigator { line: 1, column: 1 }));

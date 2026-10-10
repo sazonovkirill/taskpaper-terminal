@@ -27,8 +27,8 @@ use ratatui::{
 
 use crate::{
     app::{
-        Animations, AttachmentsInput, Configuration, Disk, Effect, Location, Message, Mode, Origin,
-        PaneId, PaneView, PanelItem, Row, SaveAs, SaveState, SettingsInput, State,
+        Animations, AttachmentsInput, Configuration, Disk, Editor, Effect, Location, Message, Mode,
+        Origin, PaneId, PaneView, PanelItem, Row, SaveAs, SaveState, SettingsInput, State,
         commands::{Command, REGISTRY},
     },
     document::ItemId,
@@ -141,6 +141,9 @@ pub struct Tui {
     attachments_page: usize,
     /// The lines of what the attachments panel had selected or typed at the last draw.
     attachments_current: Option<Range<usize>>,
+    /// How many columns the last draw scrolled the text being typed in a dialog, which the next
+    /// keeps while the caret stays in view (editing.md §2).
+    field_scroll: usize,
     /// Where the last draw put what the mouse acts on.
     drawn: mouse::Drawn,
     /// The panes the wheel scrolled, which stay where it left them rather than show their focus
@@ -210,6 +213,7 @@ impl Tui {
             attachments_selected: None,
             attachments_current: None,
             attachments_page: 0,
+            field_scroll: 0,
             drawn: mouse::Drawn::default(),
             wheel: HashMap::new(),
             menu_anchor: None,
@@ -736,13 +740,10 @@ impl Tui {
             let area = outline.centered(Constraint::Length(width), Constraint::Length(height));
             frame.render_widget(popup, area);
         }
+        // How far the text whose caret a dialog places is scrolled; the last placed wins.
+        let mut typed = None;
         if !self.state.in_conflict() {
-            self.draw_dialogs(frame, outline, screen_body, &theme);
-            if let Some(view) = self.state.save_as() {
-                let prompt = SaveAsPrompt::new(&view, &theme);
-                frame.set_cursor_position(prompt.caret(outline));
-                frame.render_widget(prompt, outline);
-            }
+            typed = self.draw_dialogs(frame, outline, screen_body, &theme);
             if self.state.context_menu().is_none() {
                 self.menu_anchor = None;
             }
@@ -762,8 +763,9 @@ impl Tui {
                 draw_anchored(frame, popup, screen_body, anchor);
             }
         }
-        self.draw_date_prompt(frame, panel);
-        self.draw_quick_add(frame, panel, screen_body, &theme);
+        let date = self.draw_date_prompt(frame, panel);
+        let quick_add = self.draw_quick_add(frame, panel, screen_body, &theme);
+        self.field_scroll = quick_add.or(date).or(typed).unwrap_or_default();
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
         }
@@ -1006,6 +1008,7 @@ impl Tui {
         let theme = self.palette();
         let view = OutlineView::new(&[], (self.clock)().date(), &theme)
             .editor(editor.as_ref())
+            .editor_scroll(self.drawn.editor_scroll)
             .wrap(self.wrap)
             .kept(&self.kept_lines)
             .icons(icons);
@@ -1080,18 +1083,9 @@ impl Tui {
             .as_ref()
             .filter(|_| !self.state.in_conflict())
             .zip(row)
-            .map(|(editor, row)| {
-                let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
-                let (_, column) =
-                    widgets::editor_line(row, editor, usize::from(text_width), icons, &theme);
-                let x = u16::try_from(column)
-                    .unwrap_or(u16::MAX)
-                    .min(text_width.saturating_sub(1));
-                (
-                    area.x.saturating_add(widgets::GUTTER_WIDTH + x),
-                    area.y.saturating_add(line),
-                )
-            });
+            .map(|(editor, row)| self.editor_caret(editor, row, area, line));
+        self.drawn.editor_scroll = caret.map(|(_, scroll)| scroll).unwrap_or_default();
+        let caret = caret.map(|(cell, _)| cell);
         let block = row.map(|row| {
             let column = u16::try_from(widgets::text_column(row, icons)).unwrap_or(u16::MAX);
             (
@@ -1102,6 +1096,34 @@ impl Tui {
             )
         });
         FocusedPane { caret, block }
+    }
+
+    /// The caret's cell while `editor` edits `row`, drawn on screen line `line` of a pane's
+    /// outline over `area`, and how far the text is scrolled, on from the last frame's scroll.
+    fn editor_caret(
+        &self,
+        editor: &Editor,
+        row: &Row,
+        area: Rect,
+        line: u16,
+    ) -> ((u16, u16), usize) {
+        let text_width = area.width.saturating_sub(widgets::GUTTER_WIDTH);
+        let (_, caret) = widgets::editor_line(
+            row,
+            editor,
+            self.drawn.editor_scroll,
+            usize::from(text_width),
+            self.icons,
+            &self.palette(),
+        );
+        let x = u16::try_from(caret.column)
+            .unwrap_or(u16::MAX)
+            .min(text_width.saturating_sub(1));
+        let cell = (
+            area.x.saturating_add(widgets::GUTTER_WIDTH + x),
+            area.y.saturating_add(line),
+        );
+        (cell, caret.scroll)
     }
 
     /// The open finder, Go to Symbol, Go to Project, Move to, Go to Command or the theme picker,
@@ -1144,18 +1166,18 @@ impl Tui {
     }
 
     /// The settings window over `area` in `theme`, with its value picker over it while open, and
-    /// the caret in the text it takes, if any (ui.md §8).
-    fn draw_settings(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
-        let Some(view) = self.state.settings() else {
-            return;
-        };
+    /// the caret in the text it takes, if any (ui.md §8); returns how far that text is scrolled.
+    fn draw_settings(&self, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<usize> {
+        let view = self.state.settings()?;
         let file = self
             .settings
             .as_deref()
             .map(|file| effects::abbreviate_path(file, self.home.as_deref()));
-        let window = SettingsWindow::new(&view, file.as_deref(), self.icons, settings::icon, theme);
-        if let Some(caret) = window.caret(area) {
-            frame.set_cursor_position(caret);
+        let window = SettingsWindow::new(&view, file.as_deref(), self.icons, settings::icon, theme)
+            .text_scroll(self.field_scroll);
+        let caret = window.caret(area);
+        if let Some((cell, _)) = caret {
+            frame.set_cursor_position(cell);
         }
         frame.render_widget(window, area);
         if let Some((name, picker)) = &view.picker {
@@ -1167,25 +1189,42 @@ impl Tui {
                 area,
             );
         }
+        caret.map(|(_, scroll)| scroll)
     }
 
-    /// The dialogs that take the keys, whichever is open: the finders and the Edit Node dialog
-    /// over `outline`, the panes below their headers, and the settings window and the
-    /// attachments panel over `body`, the screen above the status line.
-    fn draw_dialogs(&mut self, frame: &mut Frame, outline: Rect, body: Rect, theme: &Theme) {
+    /// The dialogs that take the keys, whichever is open: the finders, the Edit Node dialog and
+    /// Save As over `outline`, the panes below their headers, and the settings window and the
+    /// attachments panel over `body`, the screen above the status line; returns how far the text
+    /// whose caret they place is scrolled.
+    fn draw_dialogs(
+        &mut self,
+        frame: &mut Frame,
+        outline: Rect,
+        body: Rect,
+        theme: &Theme,
+    ) -> Option<usize> {
         self.draw_finders(frame, outline, theme);
-        self.draw_settings(frame, body, theme);
-        self.draw_node_editor(frame, outline, theme);
-        self.draw_attachments(frame, body, theme);
+        let settings = self.draw_settings(frame, body, theme);
+        let node = self.draw_node_editor(frame, outline, theme);
+        let attachments = self.draw_attachments(frame, body, theme);
+        let save_as = self.state.save_as().map(|view| {
+            let prompt = SaveAsPrompt::new(&view, theme).text_scroll(self.field_scroll);
+            let (caret, scroll) = prompt.caret(outline);
+            frame.set_cursor_position(caret);
+            frame.render_widget(prompt, outline);
+            scroll
+        });
+        save_as.or(attachments).or(node).or(settings)
     }
 
     /// The attachments panel over the right of `body`, while it is open, scrolled no further
     /// than its end, to the selected item when the selection moved and to the caret while text
-    /// is typed, with the caret (attachments.md §3, §4).
-    fn draw_attachments(&mut self, frame: &mut Frame, body: Rect, theme: &Theme) {
+    /// is typed, with the caret (attachments.md §3, §4); returns how far the typed text is
+    /// scrolled.
+    fn draw_attachments(&mut self, frame: &mut Frame, body: Rect, theme: &Theme) -> Option<usize> {
         let Some(view) = self.state.attachments_panel() else {
             (self.attachments_scroll, self.attachments_selected) = (0, None);
-            return;
+            return None;
         };
         let follow = self.attachments_selected != view.selected;
         self.attachments_selected = view.selected;
@@ -1197,11 +1236,15 @@ impl Tui {
             self.attachments_page,
             self.attachments_current,
         ) = (scrolled.scroll, scrolled.page, scrolled.current);
-        let panel = panel.scrolled(self.attachments_scroll);
-        if let Some(caret) = panel.caret(area) {
-            frame.set_cursor_position(caret);
+        let panel = panel
+            .scrolled(self.attachments_scroll)
+            .text_scroll(self.field_scroll);
+        let caret = panel.caret(area);
+        if let Some((cell, _)) = caret {
+            frame.set_cursor_position(cell);
         }
         frame.render_widget(panel, area);
+        caret.map(|(_, scroll)| scroll)
     }
 
     /// Moves through the attachments panel as `by` says at time `now`: down or up through the
@@ -1239,14 +1282,14 @@ impl Tui {
     }
 
     /// The Edit Node dialog centered over `area`, with its caret, and its parent finder over it,
-    /// while they are open (editing.md §7).
-    fn draw_node_editor(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
-        let Some(view) = self.state.node_editor() else {
-            return;
-        };
-        let window = NodeEditorWindow::new(&view, (self.clock)().date(), self.icons, theme);
-        if let Some(caret) = window.caret(area) {
-            frame.set_cursor_position(caret);
+    /// while they are open (editing.md §7); returns how far the typed text is scrolled.
+    fn draw_node_editor(&self, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<usize> {
+        let view = self.state.node_editor()?;
+        let window = NodeEditorWindow::new(&view, (self.clock)().date(), self.icons, theme)
+            .text_scroll(self.field_scroll);
+        let caret = window.caret(area);
+        if let Some((cell, _)) = caret {
+            frame.set_cursor_position(cell);
         }
         frame.render_widget(window, area);
         if let Some(finder) = self.state.node_editor_finder() {
@@ -1259,6 +1302,7 @@ impl Tui {
                 area,
             );
         }
+        caret.map(|(_, scroll)| scroll)
     }
 
     /// The Navigator centered over `area`, scrolled to keep its focused entry visible,
@@ -1288,28 +1332,39 @@ impl Tui {
         entry
     }
 
-    /// The date prompt's panel over `area` with its caret, if it is open (D-54). The conflict
-    /// prompt covers it.
-    fn draw_date_prompt(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        if let Some(prompt) = self.state.date_prompt()
-            && !self.state.in_conflict()
-        {
-            let theme = self.palette();
-            let panel = DatePromptPanel::new(&prompt, &theme);
-            frame.set_cursor_position(panel.caret(area));
-            frame.render_widget(panel, area);
-        }
+    /// The date prompt's panel over `area` with its caret, if it is open (D-54); returns how far
+    /// its text is scrolled. The conflict prompt covers it.
+    fn draw_date_prompt(&self, frame: &mut Frame, area: ratatui::layout::Rect) -> Option<usize> {
+        let prompt = self
+            .state
+            .date_prompt()
+            .filter(|_| !self.state.in_conflict())?;
+        let theme = self.palette();
+        let panel = DatePromptPanel::new(&prompt, &theme).text_scroll(self.field_scroll);
+        let (caret, scroll) = panel.caret(area);
+        frame.set_cursor_position(caret);
+        frame.render_widget(panel, area);
+        Some(scroll)
     }
 
     /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
     /// `body`, just above the panel, or over the panel too when `body` is too short to show one of
-    /// its entries, while they are open (D-96). The conflict prompt covers them.
-    fn draw_quick_add(&self, frame: &mut Frame, panel: Rect, body: Rect, theme: &Theme) {
-        let Some(view) = self.state.quick_add().filter(|_| !self.state.in_conflict()) else {
-            return;
-        };
-        let widget = QuickAddPanel::new(&view, self.icons, theme);
-        frame.set_cursor_position(widget.caret(panel));
+    /// its entries, while they are open (D-96); returns how far its text is scrolled. The conflict
+    /// prompt covers them.
+    fn draw_quick_add(
+        &self,
+        frame: &mut Frame,
+        panel: Rect,
+        body: Rect,
+        theme: &Theme,
+    ) -> Option<usize> {
+        let view = self
+            .state
+            .quick_add()
+            .filter(|_| !self.state.in_conflict())?;
+        let widget = QuickAddPanel::new(&view, self.icons, theme).text_scroll(self.field_scroll);
+        let (caret, scroll) = widget.caret(panel);
+        frame.set_cursor_position(caret);
         frame.render_widget(widget, panel);
         if let Some(picker) = self.state.quick_add_picker() {
             let document = self.state.document();
@@ -1330,6 +1385,7 @@ impl Tui {
             };
             draw_finder(frame, finder, above);
         }
+        Some(scroll)
     }
 
     /// The mode, the file, marked when temporary, with its save state and notice, and any pending

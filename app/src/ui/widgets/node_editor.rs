@@ -14,7 +14,7 @@ use ratatui::{
 };
 
 use super::{
-    FOCUS_MARKER, Field, due_style, fitted_path, flag_style, overdue_style, start_style,
+    Caret, FOCUS_MARKER, Field, due_style, fitted_path, flag_style, overdue_style, start_style,
     today_style, truncate_before, warning_style, wrap::truncate,
 };
 use crate::{
@@ -36,6 +36,7 @@ pub struct NodeEditorWindow<'a> {
     today: Date,
     icons: IconSet,
     theme: &'a Theme,
+    scroll: usize,
 }
 
 /// A line of the dialog's body: the row it shows, if the focus can be on it, its label and its
@@ -62,7 +63,15 @@ impl<'a> NodeEditorWindow<'a> {
             today,
             icons,
             theme,
+            scroll: 0,
         }
+    }
+
+    /// The dialog with the text being typed scrolled on from `scroll` columns, as far as the last
+    /// frame scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self { scroll, ..self }
     }
 
     /// Where the dialog goes over `area`: centered, as wide as it can be up to 64 columns and as
@@ -79,7 +88,7 @@ impl<'a> NodeEditorWindow<'a> {
     /// The caret's cell when the dialog is drawn over `area`: in the open field, else in the
     /// text while the Text row is focused, else none.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> Option<(u16, u16)> {
+    pub fn caret(&self, area: Rect) -> Option<((u16, u16), usize)> {
         let inner = Block::bordered().inner(self.area(area));
         let focused = self.view.rows.get(self.view.focus).copied();
         let editing = self.view.field.is_some() || focused == Some(NodeRow::Text);
@@ -87,19 +96,20 @@ impl<'a> NodeEditorWindow<'a> {
             return None;
         }
         let y = self.view.focus.checked_sub(self.scroll(inner.height))?;
-        let (_, column) = self.input(usize::from(inner.width));
-        let x = u16::try_from(column)
+        let (_, caret) = self.input(usize::from(inner.width));
+        let x = u16::try_from(caret.column)
             .unwrap_or(u16::MAX)
             .min(inner.width.saturating_sub(1));
-        Some((
+        let cell = (
             inner.x.saturating_add(x),
             inner.y.saturating_add(u16::try_from(y).unwrap_or(u16::MAX)),
-        ))
+        );
+        Some((cell, caret.scroll))
     }
 
     /// The text being typed on the focused row, the field's or the Text row's, from the value
-    /// column on a line `width` columns wide, and the caret's column on it.
-    fn input(&self, width: usize) -> (Line<'a>, usize) {
+    /// column on a line `width` columns wide, and where the caret is on it.
+    fn input(&self, width: usize) -> (Line<'a>, Caret) {
         let (field, prefix) = match &self.view.field {
             Some(field) => {
                 let tag = matches!(
@@ -110,6 +120,7 @@ impl<'a> NodeEditorWindow<'a> {
                     text: field.text,
                     caret: field.caret,
                     selection: field.selection.clone(),
+                    scroll: self.scroll,
                 };
                 (field, if tag { "@" } else { "" })
             }
@@ -118,15 +129,16 @@ impl<'a> NodeEditorWindow<'a> {
                     text: self.view.text,
                     caret: self.view.caret,
                     selection: self.view.selection.clone(),
+                    scroll: self.scroll,
                 },
                 "",
             ),
         };
         let start = LABEL_WIDTH + prefix.len();
-        let (spans, column) = field.spans(Style::new(), start, width);
+        let (spans, caret) = field.spans(Style::new(), start, width);
         let mut line = Line::from(prefix);
         line.spans.extend(spans);
-        (line, column)
+        (line, caret)
     }
 
     /// How many lines the body has: one per row, then one per special node.
@@ -424,7 +436,7 @@ mod tests {
         let area = Rect::new(0, 0, width, height);
         let mut buf = Buffer::empty(area);
         let window = NodeEditorWindow::new(view, TODAY, IconSet::Unicode, &THEME);
-        let caret = window.caret(area);
+        let caret = window.caret(area).map(|(cell, _)| cell);
         window.render(area, &mut buf);
         (buf, caret)
     }

@@ -13,7 +13,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Widget},
 };
 
-use super::{Field, error_style, fitted_path, rule_style, wrap::truncate};
+use super::{Caret, Field, error_style, fitted_path, rule_style, wrap::truncate};
 use crate::{
     app::{SettingsColumn, SettingsView, Typed},
     ui::{
@@ -40,6 +40,7 @@ pub struct SettingsWindow<'a> {
     icons: IconSet,
     icon: fn(usize) -> Icon,
     theme: &'a Theme,
+    scroll: usize,
 }
 
 impl<'a> SettingsWindow<'a> {
@@ -60,7 +61,15 @@ impl<'a> SettingsWindow<'a> {
             icons,
             icon,
             theme,
+            scroll: 0,
         }
+    }
+
+    /// The window with the text being typed scrolled on from `scroll` columns, as far as the last
+    /// frame scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self { scroll, ..self }
     }
 
     /// Where the window goes in `area`: centered, as wide as it can be up to 100 columns and as
@@ -90,40 +99,41 @@ impl<'a> SettingsWindow<'a> {
     }
 
     /// Where the caret goes when the window is drawn over `area`: in the prompt or the filter
-    /// being typed, if any.
+    /// being typed, if any, and how far that text is scrolled.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> Option<(u16, u16)> {
+    pub fn caret(&self, area: Rect) -> Option<((u16, u16), usize)> {
         let [_, _, status, _] = self.parts(area);
-        let (_, column) = self.status(status.width);
-        let x = u16::try_from(column?)
+        let caret = self.status(status.width).1?;
+        let x = u16::try_from(caret.column)
             .unwrap_or(u16::MAX)
             .min(status.width.saturating_sub(1));
-        Some((status.x.saturating_add(x), status.y))
+        Some(((status.x.saturating_add(x), status.y), caret.scroll))
     }
 
-    /// The status line, `width` columns wide, and the caret's column on it while text is typed:
+    /// The status line, `width` columns wide, and where the caret is on it while text is typed:
     /// the prompt, else the filter, else the keys.
-    fn status(&self, width: u16) -> (Line<'a>, Option<usize>) {
+    fn status(&self, width: u16) -> (Line<'a>, Option<Caret>) {
         let typed = |label: String, typed: &Typed<'a>| {
             let field = Field {
                 text: typed.text,
                 caret: typed.caret,
                 selection: typed.selection.clone(),
+                scroll: self.scroll,
             };
             let start = Span::raw(label.as_str()).width();
-            let (spans, column) = field.spans(Style::new(), start, usize::from(width));
+            let (spans, caret) = field.spans(Style::new(), start, usize::from(width));
             let mut line = Line::from(label);
             line.spans.extend(spans);
-            (line, column)
+            (line, caret)
         };
         if let Some((name, prompt)) = &self.view.prompt {
-            let (line, column) = typed(format!(" {name}: "), prompt);
-            return (line, Some(column));
+            let (line, caret) = typed(format!(" {name}: "), prompt);
+            return (line, Some(caret));
         }
         match &self.view.filter {
             Some((filter, typing)) => {
-                let (line, column) = typed(" /".to_owned(), filter);
-                (line, typing.then_some(column))
+                let (line, caret) = typed(" /".to_owned(), filter);
+                (line, typing.then_some(caret))
             }
             None => (
                 truncate(&Line::styled(KEYS, Style::new().dim()), usize::from(width)),

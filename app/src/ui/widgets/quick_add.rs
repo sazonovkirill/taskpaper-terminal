@@ -14,7 +14,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{Field, due_style, start_style};
+use super::{Caret, Field, due_style, start_style};
 use crate::{
     app::{Missing, QuickAddView},
     document::DateTag,
@@ -27,6 +27,7 @@ pub struct QuickAddPanel<'a> {
     view: &'a QuickAddView<'a>,
     icons: IconSet,
     theme: &'a Theme,
+    scroll: usize,
 }
 
 impl<'a> QuickAddPanel<'a> {
@@ -36,24 +37,36 @@ impl<'a> QuickAddPanel<'a> {
     /// The panel showing `view` in `theme`, its task marker from `icons`.
     #[must_use]
     pub fn new(view: &'a QuickAddView<'a>, icons: IconSet, theme: &'a Theme) -> Self {
-        Self { view, icons, theme }
+        Self {
+            view,
+            icons,
+            theme,
+            scroll: 0,
+        }
+    }
+
+    /// The panel with its text scrolled on from `scroll` columns, as far as the last frame
+    /// scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self { scroll, ..self }
     }
 
     /// The caret's cell when the panel is drawn over `area`, on the text's line, the first inside
-    /// the border.
+    /// the border, and how far the text is scrolled.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> (u16, u16) {
+    pub fn caret(&self, area: Rect) -> ((u16, u16), usize) {
         let inner = Block::bordered().inner(area);
-        let (_, column) = self.input(inner.width);
-        let x = u16::try_from(column)
+        let (_, caret) = self.input(inner.width);
+        let x = u16::try_from(caret.column)
             .unwrap_or(u16::MAX)
             .min(inner.width.saturating_sub(1));
-        (inner.x.saturating_add(x), inner.y)
+        ((inner.x.saturating_add(x), inner.y), caret.scroll)
     }
 
     /// The text after a space and a task's marker, `width` columns wide, the dates that count in
-    /// their chips' colors, and the caret's column on it.
-    fn input(&self, width: u16) -> (Line<'a>, usize) {
+    /// their chips' colors, and where the caret is on it.
+    fn input(&self, width: u16) -> (Line<'a>, Caret) {
         let mut line = Line::from(" ");
         if self.view.task {
             line.spans
@@ -64,6 +77,7 @@ impl<'a> QuickAddPanel<'a> {
             text: self.view.text,
             caret: self.view.caret,
             selection: self.view.selection.clone(),
+            scroll: self.scroll,
         };
         let highlights: Vec<(Range<usize>, Style)> = self
             .view
@@ -77,10 +91,10 @@ impl<'a> QuickAddPanel<'a> {
                 (date.span.clone(), style)
             })
             .collect();
-        let (spans, column) = field.spans(Style::new(), line.width(), usize::from(width));
+        let (spans, caret) = field.spans(Style::new(), line.width(), usize::from(width));
         line.spans
             .extend(highlighted(spans, self.view.text.len(), &highlights));
-        (line, column)
+        (line, caret)
     }
 
     /// What `Enter` does: says what is missing, or names the dates it sets.
@@ -241,7 +255,7 @@ mod tests {
         assert_eq!(buf[(26, 2)].fg, THEME.due);
         assert_eq!(
             QuickAddPanel::new(&view, IconSet::Nerd, &THEME).caret(buf.area),
-            (29, 1)
+            ((29, 1), 0)
         );
     }
 

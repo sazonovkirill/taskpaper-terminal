@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{Field, error_style, warning_style};
+use super::{Caret, Field, error_style, warning_style};
 use crate::{
     app::{SaveAsStatus, SaveAsView},
     ui::theme::Theme,
@@ -24,13 +24,25 @@ const SIZE: (u16, u16) = (80, 4);
 pub struct SaveAsPrompt<'a> {
     view: &'a SaveAsView<'a>,
     theme: &'a Theme,
+    scroll: usize,
 }
 
 impl<'a> SaveAsPrompt<'a> {
     /// The prompt showing `view` in `theme`.
     #[must_use]
     pub fn new(view: &'a SaveAsView<'a>, theme: &'a Theme) -> Self {
-        Self { view, theme }
+        Self {
+            view,
+            theme,
+            scroll: 0,
+        }
+    }
+
+    /// The prompt with its text scrolled on from `scroll` columns, as far as the last frame
+    /// scrolled it (editing.md §2).
+    #[must_use]
+    pub fn text_scroll(self, scroll: usize) -> Self {
+        Self { scroll, ..self }
     }
 
     /// Where the prompt goes in `area`: centered, as wide as it can be up to 80 columns.
@@ -39,28 +51,30 @@ impl<'a> SaveAsPrompt<'a> {
         area.centered(Constraint::Length(SIZE.0), Constraint::Length(SIZE.1))
     }
 
-    /// The caret's cell when the prompt is drawn over `area`: on the path's line.
+    /// The caret's cell when the prompt is drawn over `area`, on the path's line, and how far the
+    /// path is scrolled.
     #[must_use]
-    pub fn caret(&self, area: Rect) -> (u16, u16) {
+    pub fn caret(&self, area: Rect) -> ((u16, u16), usize) {
         let inner = Block::bordered().inner(Self::area(area));
-        let (_, column) = self.input(inner.width);
-        let x = u16::try_from(column)
+        let (_, caret) = self.input(inner.width);
+        let x = u16::try_from(caret.column)
             .unwrap_or(u16::MAX)
             .min(inner.width.saturating_sub(1));
-        (inner.x.saturating_add(x), inner.y)
+        ((inner.x.saturating_add(x), inner.y), caret.scroll)
     }
 
-    /// The path after a space, `width` columns wide, and the caret's column on it.
-    fn input(&self, width: u16) -> (Line<'a>, usize) {
+    /// The path after a space, `width` columns wide, and where the caret is on it.
+    fn input(&self, width: u16) -> (Line<'a>, Caret) {
         let field = Field {
             text: self.view.text,
             caret: self.view.caret,
             selection: self.view.selection.clone(),
+            scroll: self.scroll,
         };
-        let (spans, column) = field.spans(Style::new(), 1, usize::from(width));
+        let (spans, caret) = field.spans(Style::new(), 1, usize::from(width));
         let mut line = Line::from(" ");
         line.spans.extend(spans);
-        (line, column)
+        (line, caret)
     }
 
     /// What the prompt is doing, in words.
@@ -150,7 +164,7 @@ mod tests {
         };
         assert_eq!(
             SaveAsPrompt::new(&view, &THEME).caret(Rect::new(0, 0, 40, 6)),
-            (5, 2)
+            ((5, 2), 0)
         );
     }
 }

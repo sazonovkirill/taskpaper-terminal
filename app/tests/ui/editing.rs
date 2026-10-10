@@ -456,3 +456,69 @@ fn a_tab_inside_the_text_shows_as_a_space_in_the_finders_the_navigator_and_a_div
         ]
     );
 }
+
+// FR-MODE-02, editing.md §1: text wider than the pane scrolls only as far as keeps the caret in
+// view, so the caret moves through the part shown.
+#[test]
+fn the_caret_moves_through_a_long_line_shown_and_the_text_scrolls_only_past_its_edges() {
+    let mut app = Harness::with_text("- abcdefghijklmnopqrstuvwxyz\n", 20, 6);
+    press(&mut app, KeyCode::Enter, 1);
+    assert_eq!(focused_rows(&mut app), ["- lmnopqrstuvwxyz"]);
+    assert_caret(&mut app, 19, 2);
+    press(&mut app, KeyCode::Left, 3);
+    assert_eq!(
+        focused_rows(&mut app),
+        ["- lmnopqrstuvwxyz"],
+        "the text stays while the caret moves"
+    );
+    assert_caret(&mut app, 16, 2);
+    press(&mut app, KeyCode::Left, 20);
+    assert_eq!(
+        focused_rows(&mut app),
+        ["- defghijklmnopqrs"],
+        "past the left edge the text scrolls to the caret"
+    );
+    assert_caret(&mut app, 4, 2);
+    press(&mut app, KeyCode::Right, 3);
+    assert_eq!(focused_rows(&mut app), ["- defghijklmnopqrs"]);
+    assert_caret(&mut app, 7, 2);
+}
+
+/// Opens a dialog or panel with a text field.
+type Opens = fn(&mut Harness);
+
+// FR-MODE-02, editing.md §1: the one-line fields of the dialogs and panels keep their text still
+// too while the caret moves left through the part shown.
+#[test]
+fn every_text_field_moves_its_caret_through_the_text_shown() {
+    let long = "a long text that is much wider than the room the field has for it";
+    let open: [(&str, Opens); 7] = [
+        ("date prompt", |app| app.type_keys("md")),
+        ("Quick Add", |app| app.type_keys("qq")),
+        ("Edit Node", |app| app.type_keys("e")),
+        ("settings filter", |app| app.type_keys("g,/")),
+        ("note", |app| app.type_keys("ne")),
+        ("comment", |app| app.type_keys("Na")),
+        ("Save As", |app| {
+            app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+            app.type_keys("save as");
+            press(app, KeyCode::Enter, 1);
+            press(app, KeyCode::Backspace, 200);
+        }),
+    ];
+    for (field, open) in open {
+        let mut app = Harness::with_text("- Milk\n", 50, 14);
+        open(&mut app);
+        app.type_keys(long);
+        app.render();
+        let at_end = app.terminal.get_cursor_position().expect("a caret");
+        press(&mut app, KeyCode::Left, 3);
+        app.render();
+        let moved = app.terminal.get_cursor_position().expect("a caret");
+        assert_eq!(
+            (moved.x, moved.y),
+            (at_end.x - 3, at_end.y),
+            "the {field}'s caret moves left"
+        );
+    }
+}
