@@ -215,3 +215,31 @@ fn a_narrow_dialog_keeps_the_parent_path_end_and_a_tag_marker_behind_an_ellipsis
         "│  Tags     @tag(a very long value t… unsupported│"
     );
 }
+
+// editing.md §7, D-3
+#[test]
+fn focusing_the_last_row_of_a_short_dialog_scrolls_its_hidden_rows_into_view() {
+    let mut app = Harness::with_text(
+        "P:\n\t- a @x @y\n\t\tLOG @hidden\n\t\t\tsome text\n",
+        80,
+        14,
+    );
+    app.type_keys("je");
+    press(&mut app, KeyCode::Up);
+    for _ in 0..12 {
+        press(&mut app, KeyCode::Tab);
+    }
+    let screen = screen(&mut app);
+    assert!(
+        screen
+            .iter()
+            .any(|row| row.contains("▌          + Add tag")),
+        "{screen:#?}"
+    );
+    assert!(
+        screen
+            .iter()
+            .any(|row| row.contains("Hidden   @hidden · 2 lines")),
+        "{screen:#?}"
+    );
+}

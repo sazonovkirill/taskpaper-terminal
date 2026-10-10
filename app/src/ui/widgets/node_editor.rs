@@ -295,10 +295,17 @@ impl<'a> NodeEditorWindow<'a> {
         dim(&format!("{keys} · Enter save · Esc cancel"))
     }
 
-    /// How many body lines are scrolled past to keep the focused row in view in `height` rows.
+    /// How many body lines are scrolled past to keep the focused row in view in `height` rows,
+    /// and on the last row as many of the special nodes after it as fit, since the focus skips
+    /// them.
     fn scroll(&self, height: u16) -> usize {
         let room = room(height).max(1);
-        (self.view.focus + 1).saturating_sub(room)
+        let focus = self.view.focus;
+        if focus + 1 == self.view.rows.len() {
+            self.lines().saturating_sub(room).min(focus)
+        } else {
+            (focus + 1).saturating_sub(room)
+        }
     }
 }
 
@@ -857,6 +864,41 @@ mod tests {
             ]
         );
         assert_eq!(caret, None);
+        let hidden = NodeEditorView {
+            hidden: vec![
+                HiddenData {
+                    tags: vec!["@hidden".to_owned()],
+                    lines: 1,
+                },
+                HiddenData {
+                    tags: vec!["@log".to_owned()],
+                    lines: 2,
+                },
+            ],
+            ..view(8)
+        };
+        let (rows, _) = render(&hidden, 40, 8);
+        assert_eq!(
+            rows[1..5],
+            [
+                "│  Flagged  Not flagged                │",
+                "│▌ Tags     + Add tag                  │",
+                "│  Hidden   @hidden · 1 line           │",
+                "│           @log · 2 lines             │",
+            ],
+            "the last row shows the special nodes after it"
+        );
+        let (rows, caret) = render(&hidden, 40, 4);
+        assert_eq!(
+            rows[1], "│▌ Tags     + Add tag                  │",
+            "but stays in view itself"
+        );
+        assert_eq!(caret, None);
+        let (rows, _) = render(&NodeEditorView { focus: 7, ..hidden }, 40, 8);
+        assert_eq!(
+            rows[4], "│▌ Flagged  Not flagged                │",
+            "another row does not scroll past itself"
+        );
         let (rows, caret) = render(&view(0), 40, 3);
         assert_eq!(
             rows[1], "│▌ Text     Milk                       │",
