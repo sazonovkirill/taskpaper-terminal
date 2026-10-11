@@ -1,5 +1,7 @@
 +++
 title = "Reference"
+sort_by = "weight"
+insert_anchor_links = "right"
 description = "Every feature, key and setting of tpt."
 +++
 

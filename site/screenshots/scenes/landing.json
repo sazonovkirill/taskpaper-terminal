@@ -1,0 +1,13 @@
+{
+  "file": "demo.taskpaper.in",
+  "scenes": [
+    {"name": "outline", "title": "An outline with projects, sections and tasks",
+     "keys": ["j", "j", "j", "j", "j", "j"]},
+    {"name": "today", "title": "The Today view", "keys": ["g", "t"]},
+    {"name": "attachments", "title": "A project's note and comments in the attachments panel",
+     "keys": ["j", "j", "j", "n"]},
+    {"name": "navigator", "title": "The Navigator", "keys": ["j", "j", "j", "C-g"]},
+    {"name": "panes", "title": "Two panes: the outline and Home zoomed in",
+     "keys": ["j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "C-w", "v"]}
+  ]
+}

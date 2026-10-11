@@ -1,5 +1,7 @@
 +++
 title = "Tutorial"
+sort_by = "weight"
+insert_anchor_links = "right"
 description = "Learn tpt step by step, from your first outline to split panes."
 +++
 

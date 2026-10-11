@@ -1,0 +1,9 @@
+{# The sidebar of a docs section (Tutorial or Reference): its index and its pages in order. #}
+<nav class="docs-nav" aria-label="{{ docs.title }}">
+  <a class="docs-home{% if current_path == docs.path %} current{% endif %}" href="{{ docs.permalink }}">{{ docs.title }}</a>
+  <ol>
+    {% for p in docs.pages %}
+    <li><a href="{{ p.permalink }}"{% if current_path == p.path %} aria-current="page" class="current"{% endif %}>{{ p.title }}</a></li>
+    {% endfor %}
+  </ol>
+</nav>

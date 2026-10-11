@@ -92,7 +92,7 @@ Priorities use the scale of the functional requirements. IDs are stable; referen
 
 ## Milestones
 
-Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` work stops for the owner's review. Site changes need no independent review and no mutation testing ([agent workflow](quality/agent-workflow.md#the-product-website)).
+Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` work stops for the owner's review. For the website the owner waived that stop (2026-10-11): W1 to W5 are built straight through and reported together, and W5 builds the site without deploying it. Site changes need no independent review and no mutation testing ([agent workflow](quality/agent-workflow.md#the-product-website)).
 
 | # | Milestone | Covers | After |
 |---|---|---|---|

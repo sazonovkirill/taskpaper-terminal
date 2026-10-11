@@ -1,0 +1,5 @@
+{# A screenshot from site/screenshots/scenes: {{ shot(src="tutorial/zoom", alt="…", caption="…") }} #}
+<figure class="shot-figure">
+  <img src="{{ get_url(path='screenshots/' ~ src ~ '.png') }}" alt="{{ alt }}" loading="lazy" width="1070" height="691">
+  {% if caption %}<figcaption>{{ caption }}</figcaption>{% endif %}
+</figure>

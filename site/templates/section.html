@@ -1,8 +1,18 @@
 {% extends "base.html" %}
 {% block main %}
-<article class="prose">
-  <h1>{{ section.title }}</h1>
-  {{ section.content | safe }}
-  {% for p in section.pages %}<p><a href="{{ p.permalink }}">{{ p.title }}</a></p>{% endfor %}
-</article>
+{% set docs = section %}
+<div class="docs">
+  {% include "partials/docs-nav.html" %}
+  <article class="prose">
+    <h1>{{ section.title }}</h1>
+    {{ section.content | safe }}
+    {% if section.pages %}
+    <ol class="chapters">
+      {% for p in section.pages %}
+      <li><a href="{{ p.permalink }}">{{ p.title }}</a>{% if p.description %}<span>{{ p.description }}</span>{% endif %}</li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </article>
+</div>
 {% endblock %}

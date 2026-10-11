@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Take documentation screenshots of tpt by driving the real binary in tmux.
 
-Usage: python3 shoot.py /path/to/tpt OUT_DIR [--only NAME[,NAME]] [--plain]
+Usage: python3 shoot.py /path/to/tpt OUT_DIR [--only NAME[,NAME]]
 (normally through `bash site/site.sh shoot`)
 
 Each scene starts tpt fresh on demo.taskpaper.in (dates filled in relative to today, so the
@@ -10,7 +10,16 @@ truecolor Terminal Dark path (D-128) gets a terminal palette. The scene's keys a
 tmux send-keys, the screen is read with `tmux capture-pane -e`, turned into HTML cell by cell,
 and rendered to PNG by Chromium (Node Playwright) in JetBrains Mono Nerd Font, downloaded once at
 a pinned version and checksum into site/.cache/.
---plain drops the window frame around the terminal.
+Scenes live in scenes/<group>.json and are written to OUT_DIR/<group>/<name>.png:
+
+    {"file": "demo.taskpaper.in",
+     "scenes": [{"name": "outline", "title": "What it shows", "keys": ["j", "text:abc", "wait:1"],
+                 "cols": 110, "rows": 30, "config": {"theme": "nord"}, "plain": false}]}
+
+A key is a tmux key name (j, C-g, Escape, Enter, M-x); "text:" types literal text and "wait:"
+pauses. "config" adds settings to the app's config.toml; "plain" drops the window frame;
+"file" (per file or per scene) names the .taskpaper template, whose {today+N} become dates.
+--only takes scene or group names.
 """
 
 import datetime
@@ -33,32 +42,11 @@ CACHE = HERE.parent / ".cache"
 FONT_URL = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/JetBrainsMono.tar.xz"
 FONT_SHA256 = "6cf8822bc1ca18e34b06578c7499f380c019e6ffc883eed26df5f498dfcc4006"
 FONT_STYLES = ("Regular", "Bold", "Italic", "BoldItalic")
-COLS, ROWS = 110, 30
 
 # Terminal palette the proxy reports: Tomorrow Night.
 FG, BG = "c5c8c6", "1d1f21"
 ANSI = ("1d1f21 cc6666 b5bd68 f0c674 81a2be b294bb 8abeb7 c5c8c6 "
         "666666 d54e53 b9ca4a e7c547 7aa6da c397d8 70c0b1 eaeaea").split()
-
-# name: (title, [step, ...]); a step is ("keys", "j j"), ("text", "abc") or ("wait", seconds).
-SCENES = {
-    "outline": ("An outline with projects, sections and tasks", [
-        ("keys", "j j j j j j"),
-    ]),
-    "today": ("The Today view", [
-        ("keys", "g t"),
-    ]),
-    "attachments": ("A project's note and comments in the attachments panel", [
-        ("keys", "j j j n"),
-    ]),
-    "navigator": ("The Navigator (Ctrl+G)", [
-        ("keys", "j j j C-g"),
-    ]),
-    "panes": ("Two panes: the outline and Home zoomed in", [
-        ("keys", " ".join(["j"] * 17) + " C-w v"),
-    ]),
-}
-
 
 def fetch_fonts():
     """Puts the four JetBrains Mono Nerd Font Mono styles in CACHE / "fonts"."""
@@ -91,13 +79,24 @@ def tmux(*args):
     return subprocess.run(["tmux", *args], check=True, capture_output=True, text=True).stdout
 
 
-def shoot(tpt, name, steps):
+def toml_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return json.dumps(value)
+
+
+def shoot(tpt, scene, document):
+    """Runs one scene and returns the screen as tmux captured it, with its escape codes."""
     home = Path(tempfile.mkdtemp(prefix="tpt-shot-"))
     config = home / "config" / "taskpaper-terminal"
     config.mkdir(parents=True)
-    (config / "config.toml").write_text('weather = false\nanimations = "off"\n')
-    doc = home / "Launch.taskpaper"
-    doc.write_text(fill_dates((HERE / "demo.taskpaper.in").read_text()))
+    settings = {"weather": False, "animations": "off", **scene.get("config", {})}
+    (config / "config.toml").write_text(
+        "".join(f"{key} = {toml_value(value)}\n" for key, value in settings.items()))
+    doc = home / scene.get("save_as", "Launch.taskpaper")
+    doc.write_text(fill_dates(document.read_text()))
     hexrgb = lambda h: f"rgb:{h[0:2]*2}/{h[2:4]*2}/{h[4:6]*2}"
     env = {
         "HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"),
@@ -105,22 +104,21 @@ def shoot(tpt, name, steps):
         "LANG": "C.UTF-8", "TERM": "xterm-256color", "COLORTERM": "truecolor",
         "PALETTE": f"{hexrgb(FG)},{hexrgb(BG)}", "ANSI": ",".join(ANSI),
     }
-    session = f"shot-{name}"
+    session = f"shot-{scene['name']}"
     subprocess.run(["tmux", "kill-session", "-t", session], capture_output=True)
     command = ["env", *(f"{k}={v}" for k, v in env.items()),
                sys.executable, str(HERE / "osc-proxy.py"), tpt, str(doc)]
-    tmux("new-session", "-d", "-s", session, "-x", str(COLS), "-y", str(ROWS),
+    tmux("new-session", "-d", "-s", session, "-x", str(scene["cols"]), "-y", str(scene["rows"]),
          " ".join(map(shlex.quote, command)) + "; sleep 60")
     time.sleep(1.5)
-    for kind, value in steps:
-        if kind == "keys":
-            for key in value.split():
-                tmux("send-keys", "-t", session, key)
-                time.sleep(0.15)
-        elif kind == "text":
-            tmux("send-keys", "-t", session, "-l", value)
-        elif kind == "wait":
-            time.sleep(value)
+    for step in scene.get("keys", []):
+        if step.startswith("text:"):
+            tmux("send-keys", "-t", session, "-l", step[5:])
+        elif step.startswith("wait:"):
+            time.sleep(float(step[5:]))
+        else:
+            tmux("send-keys", "-t", session, step)
+        time.sleep(0.15 if step != "Escape" else 0.3)
     time.sleep(0.8)
     screen = tmux("capture-pane", "-p", "-e", "-N", "-t", session)
     tmux("kill-session", "-t", session)
@@ -144,10 +142,10 @@ def blend(fg, bg, t=0.5):
     return "".join(f"{round(x * t + y * (1 - t)):02x}" for x, y in zip(f, b))
 
 
-def to_html(screen):
+def to_html(screen, height):
     """Turns tmux's SGR-escaped capture into rows of styled spans."""
     rows = []
-    for line in screen.split("\n")[:ROWS]:
+    for line in screen.split("\n")[:height]:
         st = {"fg": None, "bg": None, "b": False, "d": False, "i": False, "u": False,
               "r": False, "s": False}
         spans, width = [], 0
@@ -221,7 +219,7 @@ pre{{margin:0;padding:{inner};font:15px/1.3 T;color:#{fg};background:#{bg};
 .c{{display:inline-block;width:1ch;font-style:inherit;overflow:visible;white-space:pre}}
 </style></head><body><div id="shot"><div class="win"><div class="bar">
 <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span>
-<span class="dot" style="background:#28c840"></span><span class="title">tpt — Launch.taskpaper</span>
+<span class="dot" style="background:#28c840"></span><span class="title">{title}</span>
 </div><pre>{body}</pre></div></div></body></html>"""
 
 RENDER = """
@@ -241,31 +239,43 @@ const { chromium } = require('playwright');
 """
 
 
+def load_scenes():
+    """Every scene of every scenes/*.json file, with its group (the file's name) and document."""
+    for path in sorted((HERE / "scenes").glob("*.json")):
+        spec = json.loads(path.read_text())
+        for scene in spec["scenes"]:
+            scene = {"cols": 110, "rows": 30, **scene}
+            document = HERE / scene.get("file", spec.get("file", "demo.taskpaper.in"))
+            yield path.stem, scene, document
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    plain = "--plain" in sys.argv
     only = None
     if "--only" in sys.argv:
         only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
         args.remove(sys.argv[sys.argv.index("--only") + 1])
     tpt = str(Path(args[0]).resolve())
     out_dir = Path(args[1]).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
     fetch_fonts()
     jobs = []
-    for name, (title, steps) in SCENES.items():
-        if only and name not in only:
+    for group, scene, document in load_scenes():
+        name = scene["name"]
+        if only and name not in only and group not in only:
             continue
-        body = to_html(shoot(tpt, name, steps))
-        page = CACHE / f"{name}.html"
+        body = to_html(shoot(tpt, scene, document), scene["rows"])
+        plain = scene.get("plain", False)
+        page = CACHE / f"{group}-{name}.html"
         page.write_text(PAGE.format(
-            body=body, fg=FG, bg=BG, cols=COLS,
+            body=body, fg=FG, bg=BG, cols=scene["cols"],
+            title=html.escape(scene.get("window_title", f"tpt — {scene.get('save_as', 'Launch.taskpaper')}")),
             outer="transparent", pad="0" if plain else "28px",
             inner="6px 8px" if plain else "10px 12px",
             shadow="" if plain else "box-shadow:0 12px 32px rgba(0,0,0,.35)",
             bar="none" if plain else "flex"))
-        jobs.append((str(page), str(out_dir / f"{name}.png")))
-        print(f"{name}: {title}")
+        (out_dir / group).mkdir(parents=True, exist_ok=True)
+        jobs.append((str(page), str(out_dir / group / f"{name}.png")))
+        print(f"{group}/{name}: {scene.get('title', '')}")
     subprocess.run(["node", "-e", RENDER, json.dumps(jobs)], check=True,
                    env={**os.environ, "NODE_PATH": subprocess.run(
                        ["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()})
