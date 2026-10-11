@@ -1,0 +1,14 @@
+{# The printable cheat sheet (W-REF-07), generated from the app's default key bindings. #}
+{% import "macros/reference.html" as ref %}
+{% set data = load_data(path="data/keys.json") %}
+{% set sheet = data.cheatsheet %}
+<div class="cheatsheet">
+{% for card in sheet.cards %}
+<section class="cs-card">
+<h3 class="cs-title">{{ card.title }} <small>{{ card.sub }}</small></h3>
+{% for r in card.rows %}<div class="cs-row"><span class="cs-what">{{ r.label }}{% if r.panel %} <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span>{% endif %}</span><span class="cs-keys">{% if r.typed | length > 0 %}{% for t in r.typed %}<span class="cs-typed">{{ ref::binding(b=t.keys) }} {{ t.label }}</span>{% endfor %}{% else %}{{ ref::bindings(list=r.keys, mark=true) }}{% endif %}</span></div>{% endfor %}
+{% for g in card.groups %}<h4 class="cs-sub">{{ g.title }}</h4>{% for r in g.rows %}<div class="cs-row"><span class="cs-what">{{ r.label }}{% if r.panel %} <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span>{% endif %}</span><span class="cs-keys">{% if r.typed | length > 0 %}{% for t in r.typed %}<span class="cs-typed">{{ ref::binding(b=t.keys) }} {{ t.label }}</span>{% endfor %}{% else %}{{ ref::bindings(list=r.keys, mark=true) }}{% endif %}</span></div>{% endfor %}{% endfor %}
+</section>
+{% endfor %}
+</div>
+<p class="cs-foot">No default key, run from Go to Command: {{ sheet.unbound | join(sep=", ") }}.</p>
