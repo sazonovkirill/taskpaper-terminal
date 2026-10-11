@@ -1,0 +1,14 @@
+{# The keys of one picker, prompt or dialog, generated from its table in app/src/ui/keymap.rs:
+   {{ context_keys(table="MENU") }} #}
+{% import "macros/reference.html" as ref %}
+{% set data = load_data(path="data/keys.json") %}
+{% set found = data.contexts | filter(attribute="table", value=table) %}
+{% if found | length == 0 %}{{ throw(message="context_keys: no key table " ~ table) }}{% endif %}
+{% set context = found | first %}
+<div class="ref-table" id="{{ context.id }}"><table class="ref-keys ref-context">
+<caption>{{ context.title }}</caption>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+{% for r in context.rows %}<tr><th scope="row">{{ r.label }}</th><td>{{ ref::bindings(list=r.keys) }}</td></tr>
+{% endfor %}
+</tbody></table></div>

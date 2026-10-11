@@ -1,0 +1,4 @@
+{# Pieces of the Reference's generated tables (site/scripts/reference_tables.py). mark=true tags
+   a kitty-protocol-only binding, where no column of its own says so. #}
+{% macro binding(b, mark=false) %}<span class="ref-seq">{% for p in b.presses %}<kbd>{{ p | join(sep="+") }}</kbd>{% endfor %}{% if mark and b.kitty %}<sup class="ref-k" title="Kitty keyboard protocol only">K</sup>{% endif %}</span>{% endmacro binding %}
+{% macro bindings(list, mark=false) %}{% for b in list %}{% if not loop.first %}<span class="ref-or">, </span>{% endif %}{{ self::binding(b=b, mark=mark) }}{% endfor %}{% endmacro bindings %}

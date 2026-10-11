@@ -1,0 +1,17 @@
+{# Settings generated from the settings window's list (app/src/ui/settings.rs):
+   {{ settings(topic="files") }} for one page's, or {{ settings(group="Appearance") }} for a window group. #}
+{% set data = load_data(path="data/settings.json") %}
+{% set rows = data.settings %}
+{% if topic is defined %}{% set rows = rows | filter(attribute="topic", value=topic) %}{% endif %}
+{% if group is defined %}{% set rows = rows | filter(attribute="group", value=group) %}{% endif %}
+{% if rows | length == 0 %}{{ throw(message="settings: no settings for that filter") }}{% endif %}
+<div class="ref-table"><table class="ref-settings">
+<thead><tr><th scope="col">Setting</th><th scope="col"><code>config.toml</code></th><th scope="col">Values</th><th scope="col">Default</th></tr></thead>
+<tbody>
+{% for s in rows %}
+<tr id="{{ s.id }}"><th scope="row"><a class="ref-anchor" href="#{{ s.id }}">{{ s.name }}</a><span class="ref-desc">{{ s.description }}</span></th>
+<td><code>{{ s.key }}</code></td>
+<td>{% if s.kind == "switch" %}<code>true</code>, <code>false</code>{% elif s.kind == "choice" %}{% for c in s.choices %}{% if not loop.first %}, {% endif %}<code>"{{ c }}"</code>{% endfor %}{% elif s.kind == "number" %}a whole number{% if s.unit %} of {% if s.unit == "ms" %}milliseconds{% elif s.unit == "min" %}minutes{% else %}{{ s.unit }}{% endif %}{% endif %}, at least {{ s.least }}{% else %}a folder; <code>~</code> is your home{% endif %}</td>
+<td>{% if s.default %}<code>{{ s.default }}</code>{% if s.default_text != s.default and s.kind != "switch" and s.default_text != s.default | replace(from='"', to='') %} ({{ s.default_text }}){% endif %}{% else %}{{ s.default_text }}{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>

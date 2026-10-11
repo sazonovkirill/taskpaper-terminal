@@ -1,0 +1,393 @@
+{
+ "settings": [
+  {
+   "id": "setting-theme",
+   "key": "theme",
+   "group": "Appearance",
+   "name": "Theme",
+   "description": "The colors of the whole app",
+   "kind": "choice",
+   "choices": [
+    "terminal-dark",
+    "catppuccin-mocha",
+    "catppuccin-latte",
+    "tokyo-night",
+    "dracula",
+    "nord",
+    "gruvbox-dark",
+    "rose-pine",
+    "rose-pine-dawn",
+    "kanagawa-wave",
+    "everforest-dark",
+    "one-dark",
+    "solarized-light"
+   ],
+   "least": null,
+   "unit": null,
+   "default": "\"terminal-dark\"",
+   "default_text": "terminal-dark",
+   "topic": "appearance"
+  },
+  {
+   "id": "setting-icons",
+   "key": "icons",
+   "group": "Appearance",
+   "name": "Icons",
+   "description": "Nerd Font icons; choose none if they show as boxes",
+   "kind": "choice",
+   "choices": [
+    "nerd",
+    "none"
+   ],
+   "least": null,
+   "unit": null,
+   "default": "\"nerd\"",
+   "default_text": "nerd",
+   "topic": "appearance"
+  },
+  {
+   "id": "setting-word-wrap",
+   "key": "word_wrap",
+   "group": "Appearance",
+   "name": "Word wrap",
+   "description": "Wrap long text, or end it in … on one line",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "false",
+   "default_text": "off",
+   "topic": "appearance"
+  },
+  {
+   "id": "setting-special-inbox",
+   "key": "special_inbox",
+   "group": "Appearance",
+   "name": "Special handling of INBOX project",
+   "description": "Show INBOX: above Today, not under Projects",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "navigator"
+  },
+  {
+   "id": "setting-special-today",
+   "key": "special_today",
+   "group": "Appearance",
+   "name": "Special handling of TODAY project",
+   "description": "Today lists its tasks, and qt adds to it",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "quick-add"
+  },
+  {
+   "id": "setting-today-starred",
+   "key": "today_starred",
+   "group": "Appearance",
+   "name": "Display starred items in Today view",
+   "description": "List starred blocks too, not only dated ones",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-upcoming",
+   "key": "sidebar_upcoming",
+   "group": "Appearance",
+   "name": "Show Upcoming in Navigator",
+   "description": "List the Upcoming view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-overdue",
+   "key": "sidebar_overdue",
+   "group": "Appearance",
+   "name": "Show Overdue in Navigator",
+   "description": "List the Overdue view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-colors",
+   "key": "sidebar_colors",
+   "group": "Appearance",
+   "name": "Show Colors in Navigator",
+   "description": "List the Colors view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-logbook",
+   "key": "sidebar_logbook",
+   "group": "Appearance",
+   "name": "Show Logbook in Navigator",
+   "description": "List the Logbook view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-starred",
+   "key": "sidebar_starred",
+   "group": "Appearance",
+   "name": "Show Starred in Navigator",
+   "description": "List the Starred view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-sidebar-flagged",
+   "key": "sidebar_flagged",
+   "group": "Appearance",
+   "name": "Show Flagged in Navigator",
+   "description": "List the Flagged view in the Navigator",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "views"
+  },
+  {
+   "id": "setting-attachments-notes",
+   "key": "attachments_notes",
+   "group": "Appearance",
+   "name": "Use Notes Attachments",
+   "description": "Give blocks a Markdown note, shown by an icon",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "attachments"
+  },
+  {
+   "id": "setting-attachments-comments",
+   "key": "attachments_comments",
+   "group": "Appearance",
+   "name": "Use Comments Attachments",
+   "description": "Give blocks dated comments, shown by an icon",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "attachments"
+  },
+  {
+   "id": "setting-animations",
+   "key": "animations",
+   "group": "Appearance",
+   "name": "Animations",
+   "description": "Flashes where focus lands and what changed; reduced or off for less motion",
+   "kind": "choice",
+   "choices": [
+    "full",
+    "reduced",
+    "off"
+   ],
+   "least": null,
+   "unit": null,
+   "default": "\"full\"",
+   "default_text": "full, or reduced over SSH",
+   "topic": "animation"
+  },
+  {
+   "id": "setting-weather",
+   "key": "weather",
+   "group": "Appearance",
+   "name": "Weather animation",
+   "description": "Leaves, snow or rain by season once the app sits idle",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "animation"
+  },
+  {
+   "id": "setting-weather-idle-minutes",
+   "key": "weather_idle_minutes",
+   "group": "Appearance",
+   "name": "Weather after idle",
+   "description": "How long the app sits idle before the weather starts",
+   "kind": "number",
+   "choices": null,
+   "least": 1,
+   "unit": "min",
+   "default": "3",
+   "default_text": "3",
+   "topic": "animation"
+  },
+  {
+   "id": "setting-autosave-delay-ms",
+   "key": "autosave_delay_ms",
+   "group": "Files",
+   "name": "Autosave delay",
+   "description": "How long after the last change the file is saved",
+   "kind": "number",
+   "choices": null,
+   "least": 100,
+   "unit": "ms",
+   "default": "1000",
+   "default_text": "1000",
+   "topic": "files"
+  },
+  {
+   "id": "setting-backups-enabled",
+   "key": "backups.enabled",
+   "group": "Files",
+   "name": "Backups",
+   "description": "Keep a copy of each file as it was each day",
+   "kind": "switch",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": "true",
+   "default_text": "on",
+   "topic": "files"
+  },
+  {
+   "id": "setting-backups-dir",
+   "key": "backups.dir",
+   "group": "Files",
+   "name": "Backup folder",
+   "description": "Where the copies go; empty for the default folder",
+   "kind": "text",
+   "choices": null,
+   "least": null,
+   "unit": null,
+   "default": null,
+   "default_text": "the default folder",
+   "topic": "files"
+  },
+  {
+   "id": "setting-backups-keep",
+   "key": "backups.keep",
+   "group": "Files",
+   "name": "Backups kept",
+   "description": "How many daily copies of each file are kept",
+   "kind": "number",
+   "choices": null,
+   "least": 1,
+   "unit": "",
+   "default": "30",
+   "default_text": "30",
+   "topic": "files"
+  }
+ ],
+ "themes": [
+  {
+   "id": "terminal-dark",
+   "name": "Terminal Dark",
+   "truecolor": false
+  },
+  {
+   "id": "catppuccin-mocha",
+   "name": "Catppuccin Mocha",
+   "truecolor": true
+  },
+  {
+   "id": "catppuccin-latte",
+   "name": "Catppuccin Latte",
+   "truecolor": true
+  },
+  {
+   "id": "tokyo-night",
+   "name": "Tokyo Night",
+   "truecolor": true
+  },
+  {
+   "id": "dracula",
+   "name": "Dracula",
+   "truecolor": true
+  },
+  {
+   "id": "nord",
+   "name": "Nord",
+   "truecolor": true
+  },
+  {
+   "id": "gruvbox-dark",
+   "name": "Gruvbox Dark",
+   "truecolor": true
+  },
+  {
+   "id": "rose-pine",
+   "name": "Rosé Pine",
+   "truecolor": true
+  },
+  {
+   "id": "rose-pine-dawn",
+   "name": "Rosé Pine Dawn",
+   "truecolor": true
+  },
+  {
+   "id": "kanagawa-wave",
+   "name": "Kanagawa Wave",
+   "truecolor": true
+  },
+  {
+   "id": "everforest-dark",
+   "name": "Everforest Dark",
+   "truecolor": true
+  },
+  {
+   "id": "one-dark",
+   "name": "One Dark",
+   "truecolor": true
+  },
+  {
+   "id": "solarized-light",
+   "name": "Solarized Light",
+   "truecolor": true
+  }
+ ],
+ "config_only": [
+  "keymap"
+ ],
+ "groups": [
+  "Appearance",
+  "Files"
+ ]
+}

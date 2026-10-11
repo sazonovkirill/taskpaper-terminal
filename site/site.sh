@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Builds, previews, checks and screenshots the tpt product website (docs/website.md).
 #
-# Usage: bash site/site.sh build | serve | check | shoot [scene,...]
+# Usage: bash site/site.sh build | serve | check | reference | shoot [scene,...]
 #
-#   build  render the site into site/public/
-#   serve  preview it at http://127.0.0.1:1111 with live reload
-#   check  build, then fail on a broken internal link, missing file or missing anchor
-#   shoot  build the release tpt and regenerate site/static/screenshots/ (needs tmux, Node
-#          Playwright and Chromium); name scenes to regenerate only those
+#   build      render the site into site/public/
+#   serve      preview it at http://127.0.0.1:1111 with live reload
+#   check      build, then fail on a broken internal link, missing file or missing anchor, on
+#              Reference data older than the app's source, or on a command or setting the
+#              Reference does not render
+#   reference  regenerate the Reference's key and settings data in site/data/ from app/src
+#   shoot      build the release tpt and regenerate site/static/screenshots/ (needs tmux, Node
+#              Playwright and Chromium); name scenes to regenerate only those
 #
 # Zola is downloaded once, at a pinned version and checksum, into site/.cache/.
 set -euo pipefail
@@ -49,11 +52,13 @@ case "${1:-}" in
     zola check --skip-external-links
     zola build
     python3 "$site/scripts/check_links.py" "$site/public"
+    python3 "$site/scripts/reference_tables.py" --check "$site/public"
     ;;
+  reference) python3 "$site/scripts/reference_tables.py" ;;
   shoot)
     cargo build --release --manifest-path "$site/../app/Cargo.toml"
     python3 "$site/screenshots/shoot.py" "$site/../app/target/release/tpt" \
       "$site/static/screenshots" ${2:+--only "$2"}
     ;;
-  *) sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

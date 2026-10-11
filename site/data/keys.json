@@ -1,0 +1,9805 @@
+{
+ "commands": [
+  {
+   "id": "navigate-quit",
+   "name": "Quit",
+   "config": "quit",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "files",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Q",
+     "presses": [
+      [
+       "Ctrl",
+       "Q"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-next-block",
+   "name": "Next Block",
+   "config": "next_block",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "j",
+     "presses": [
+      [
+       "j"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "↓",
+     "presses": [
+      [
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-previous-block",
+   "name": "Previous Block",
+   "config": "previous_block",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "k",
+     "presses": [
+      [
+       "k"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "↑",
+     "presses": [
+      [
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-collapse",
+   "name": "Collapse",
+   "config": "collapse",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "h",
+     "presses": [
+      [
+       "h"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "←",
+     "presses": [
+      [
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-expand",
+   "name": "Expand",
+   "config": "expand",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "l",
+     "presses": [
+      [
+       "l"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "→",
+     "presses": [
+      [
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-next-sibling",
+   "name": "Next Sibling",
+   "config": "next_sibling",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+↓",
+     "presses": [
+      [
+       "Ctrl",
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gj",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "j"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-previous-sibling",
+   "name": "Previous Sibling",
+   "config": "previous_sibling",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+↑",
+     "presses": [
+      [
+       "Ctrl",
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gk",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "k"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-first-sibling",
+   "name": "First Sibling",
+   "config": "first_sibling",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "^",
+     "presses": [
+      [
+       "^"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-last-sibling",
+   "name": "Last Sibling",
+   "config": "last_sibling",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "$",
+     "presses": [
+      [
+       "$"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-parent",
+   "name": "Parent",
+   "config": "parent",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "#",
+     "presses": [
+      [
+       "#"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-last-child",
+   "name": "Last Child",
+   "config": "last_child",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-first-block",
+   "name": "First Block",
+   "config": "first_block",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gg",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "g"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Home",
+     "presses": [
+      [
+       "Home"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-last-block",
+   "name": "Last Block",
+   "config": "last_block",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "G",
+     "presses": [
+      [
+       "G"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "End",
+     "presses": [
+      [
+       "End"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-page-down",
+   "name": "Page Down",
+   "config": "page_down",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+D",
+     "presses": [
+      [
+       "Ctrl",
+       "D"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "PgDn",
+     "presses": [
+      [
+       "PgDn"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-page-up",
+   "name": "Page Up",
+   "config": "page_up",
+   "mode": "navigate",
+   "group": "Moving",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+U",
+     "presses": [
+      [
+       "Ctrl",
+       "U"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "PgUp",
+     "presses": [
+      [
+       "PgUp"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-fold",
+   "name": "Toggle Fold",
+   "config": "toggle_fold",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "'",
+     "presses": [
+      [
+       "'"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Space",
+     "presses": [
+      [
+       "Space"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-subtree-fold",
+   "name": "Toggle Subtree Fold",
+   "config": "toggle_subtree_fold",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "\"",
+     "presses": [
+      [
+       "\""
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-expand-one-level",
+   "name": "Expand One Level",
+   "config": "expand_one_level",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "=",
+     "presses": [
+      [
+       "="
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-collapse-one-level",
+   "name": "Collapse One Level",
+   "config": "collapse_one_level",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "-",
+     "presses": [
+      [
+       "-"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-expand-all",
+   "name": "Expand All",
+   "config": "expand_all",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "+",
+     "presses": [
+      [
+       "+"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-collapse-all",
+   "name": "Collapse All",
+   "config": "collapse_all",
+   "mode": "navigate",
+   "group": "Folding",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "_",
+     "presses": [
+      [
+       "_"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-zoom-in",
+   "name": "Zoom In",
+   "config": "zoom_in",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": ".",
+     "presses": [
+      [
+       "."
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+l",
+     "presses": [
+      [
+       "Alt",
+       "l"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Alt+→",
+     "presses": [
+      [
+       "Alt",
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "gz",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "z"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-zoom-out",
+   "name": "Zoom Out",
+   "config": "zoom_out",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": ">",
+     "presses": [
+      [
+       ">"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+h",
+     "presses": [
+      [
+       "Alt",
+       "h"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Alt+←",
+     "presses": [
+      [
+       "Alt",
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "gu",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "u"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-home",
+   "name": "Go Home",
+   "config": "go_home",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+'",
+     "presses": [
+      [
+       "Ctrl",
+       "'"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
+     "label": "gh",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "h"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-today",
+   "name": "Go to Today",
+   "config": "go_to_today",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gt",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gT",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "T"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-upcoming",
+   "name": "Go to Upcoming",
+   "config": "go_to_upcoming",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gU",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "U"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-overdue",
+   "name": "Go to Overdue",
+   "config": "go_to_overdue",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gO",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "O"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-colors",
+   "name": "Go to Colors",
+   "config": "go_to_colors",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gC",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "C"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-logbook",
+   "name": "Go to Logbook",
+   "config": "go_to_logbook",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gL",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "L"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-starred",
+   "name": "Go to Starred",
+   "config": "go_to_starred",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gS",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "S"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-flagged",
+   "name": "Go to Flagged",
+   "config": "go_to_flagged",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "views",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gF",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "F"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-inbox",
+   "name": "Go to Inbox",
+   "config": "go_to_inbox",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gi",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "i"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-back",
+   "name": "Back",
+   "config": "back",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "H",
+     "presses": [
+      [
+       "H"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+Shift+←",
+     "presses": [
+      [
+       "Alt",
+       "Shift",
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-forward",
+   "name": "Forward",
+   "config": "forward",
+   "mode": "navigate",
+   "group": "Zoom and History",
+   "topic": "navigation",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "L",
+     "presses": [
+      [
+       "L"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+Shift+→",
+     "presses": [
+      [
+       "Alt",
+       "Shift",
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-edit",
+   "name": "Edit",
+   "config": "edit",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Enter",
+     "presses": [
+      [
+       "Enter"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-below",
+   "name": "New Block Below",
+   "config": "new_block_below",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "o",
+     "presses": [
+      [
+       "o"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-below",
+   "name": "New Section Below",
+   "config": "new_section_below",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "os",
+     "presses": [
+      [
+       "o"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-below",
+   "name": "New Project Below",
+   "config": "new_project_below",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "op",
+     "presses": [
+      [
+       "o"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-below",
+   "name": "New Task Below",
+   "config": "new_task_below",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "ot",
+     "presses": [
+      [
+       "o"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-below",
+   "name": "New Note Below",
+   "config": "new_note_below",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "on",
+     "presses": [
+      [
+       "o"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-above",
+   "name": "New Block Above",
+   "config": "new_block_above",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "O",
+     "presses": [
+      [
+       "O"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-above",
+   "name": "New Section Above",
+   "config": "new_section_above",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Os",
+     "presses": [
+      [
+       "O"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-above",
+   "name": "New Project Above",
+   "config": "new_project_above",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Op",
+     "presses": [
+      [
+       "O"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-above",
+   "name": "New Task Above",
+   "config": "new_task_above",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ot",
+     "presses": [
+      [
+       "O"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-above",
+   "name": "New Note Above",
+   "config": "new_note_above",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "On",
+     "presses": [
+      [
+       "O"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-as-last-child",
+   "name": "New Block as Last Child",
+   "config": "new_block_as_last_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "i",
+     "presses": [
+      [
+       "i"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-as-last-child",
+   "name": "New Section as Last Child",
+   "config": "new_section_as_last_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "is",
+     "presses": [
+      [
+       "i"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-as-last-child",
+   "name": "New Project as Last Child",
+   "config": "new_project_as_last_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "ip",
+     "presses": [
+      [
+       "i"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-as-last-child",
+   "name": "New Task as Last Child",
+   "config": "new_task_as_last_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "it",
+     "presses": [
+      [
+       "i"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-as-last-child",
+   "name": "New Note as Last Child",
+   "config": "new_note_as_last_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "in",
+     "presses": [
+      [
+       "i"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-as-first-child",
+   "name": "New Block as First Child",
+   "config": "new_block_as_first_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "I",
+     "presses": [
+      [
+       "I"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-as-first-child",
+   "name": "New Section as First Child",
+   "config": "new_section_as_first_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Is",
+     "presses": [
+      [
+       "I"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-as-first-child",
+   "name": "New Project as First Child",
+   "config": "new_project_as_first_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ip",
+     "presses": [
+      [
+       "I"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-as-first-child",
+   "name": "New Task as First Child",
+   "config": "new_task_as_first_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "It",
+     "presses": [
+      [
+       "I"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-as-first-child",
+   "name": "New Note as First Child",
+   "config": "new_note_as_first_child",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "In",
+     "presses": [
+      [
+       "I"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-at-end",
+   "name": "New Block at End",
+   "config": "new_block_at_end",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "a",
+     "presses": [
+      [
+       "a"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-at-end",
+   "name": "New Section at End",
+   "config": "new_section_at_end",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "as",
+     "presses": [
+      [
+       "a"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-at-end",
+   "name": "New Project at End",
+   "config": "new_project_at_end",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "ap",
+     "presses": [
+      [
+       "a"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-at-end",
+   "name": "New Task at End",
+   "config": "new_task_at_end",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "at",
+     "presses": [
+      [
+       "a"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-at-end",
+   "name": "New Note at End",
+   "config": "new_note_at_end",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "an",
+     "presses": [
+      [
+       "a"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-block-at-start",
+   "name": "New Block at Start",
+   "config": "new_block_at_start",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "A",
+     "presses": [
+      [
+       "A"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-section-at-start",
+   "name": "New Section at Start",
+   "config": "new_section_at_start",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "As",
+     "presses": [
+      [
+       "A"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-project-at-start",
+   "name": "New Project at Start",
+   "config": "new_project_at_start",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ap",
+     "presses": [
+      [
+       "A"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-task-at-start",
+   "name": "New Task at Start",
+   "config": "new_task_at_start",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "At",
+     "presses": [
+      [
+       "A"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-new-note-at-start",
+   "name": "New Note at Start",
+   "config": "new_note_at_start",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "An",
+     "presses": [
+      [
+       "A"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-quick-add",
+   "name": "Quick Add",
+   "config": "quick_add",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "quick-add",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "qq",
+     "presses": [
+      [
+       "q"
+      ],
+      [
+       "q"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-quick-add-to-inbox",
+   "name": "Quick Add to Inbox",
+   "config": "quick_add_to_inbox",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "quick-add",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "qi",
+     "presses": [
+      [
+       "q"
+      ],
+      [
+       "i"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-quick-add-to-today",
+   "name": "Quick Add to Today",
+   "config": "quick_add_to_today",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "quick-add",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "qt",
+     "presses": [
+      [
+       "q"
+      ],
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-extend-selection-down",
+   "name": "Extend Selection Down",
+   "config": "extend_selection_down",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "J",
+     "presses": [
+      [
+       "J"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Shift+↓",
+     "presses": [
+      [
+       "Shift",
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-extend-selection-up",
+   "name": "Extend Selection Up",
+   "config": "extend_selection_up",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "K",
+     "presses": [
+      [
+       "K"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Shift+↑",
+     "presses": [
+      [
+       "Shift",
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-selected",
+   "name": "Toggle Selected",
+   "config": "toggle_selected",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "v",
+     "presses": [
+      [
+       "v"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-select-all",
+   "name": "Select All",
+   "config": "select_all",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+A",
+     "presses": [
+      [
+       "Ctrl",
+       "A"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-clear-selection",
+   "name": "Clear Selection",
+   "config": "clear_selection",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Esc",
+     "presses": [
+      [
+       "Esc"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-indent",
+   "name": "Indent",
+   "config": "indent",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Tab",
+     "presses": [
+      [
+       "Tab"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-outdent",
+   "name": "Outdent",
+   "config": "outdent",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Shift+Tab",
+     "presses": [
+      [
+       "Shift",
+       "Tab"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-move-up",
+   "name": "Move Up",
+   "config": "move_up",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+k",
+     "presses": [
+      [
+       "Alt",
+       "k"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Alt+↑",
+     "presses": [
+      [
+       "Alt",
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-move-down",
+   "name": "Move Down",
+   "config": "move_down",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+j",
+     "presses": [
+      [
+       "Alt",
+       "j"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Alt+↓",
+     "presses": [
+      [
+       "Alt",
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-group",
+   "name": "Group",
+   "config": "group",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gG",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "G"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-move-to",
+   "name": "Move to…",
+   "config": "move_to",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gm",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "m"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-delete",
+   "name": "Delete",
+   "config": "delete",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "dd",
+     "presses": [
+      [
+       "d"
+      ],
+      [
+       "d"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Delete",
+     "presses": [
+      [
+       "Delete"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-duplicate",
+   "name": "Duplicate",
+   "config": "duplicate",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "D",
+     "presses": [
+      [
+       "D"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-copy",
+   "name": "Copy",
+   "config": "copy",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "y",
+     "presses": [
+      [
+       "y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+C",
+     "presses": [
+      [
+       "Ctrl",
+       "C"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-cut",
+   "name": "Cut",
+   "config": "cut",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+X",
+     "presses": [
+      [
+       "Ctrl",
+       "X"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-paste-below",
+   "name": "Paste Below",
+   "config": "paste_below",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "p",
+     "presses": [
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+V",
+     "presses": [
+      [
+       "Ctrl",
+       "V"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-paste-above",
+   "name": "Paste Above",
+   "config": "paste_above",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "P",
+     "presses": [
+      [
+       "P"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+v",
+     "presses": [
+      [
+       "Alt",
+       "v"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-undo",
+   "name": "Undo",
+   "config": "undo",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "z",
+     "presses": [
+      [
+       "z"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+Z",
+     "presses": [
+      [
+       "Ctrl",
+       "Z"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-redo",
+   "name": "Redo",
+   "config": "redo",
+   "mode": "navigate",
+   "group": "Structure",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Z",
+     "presses": [
+      [
+       "Z"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+Shift+Z",
+     "presses": [
+      [
+       "Ctrl",
+       "Shift",
+       "Z"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+Y",
+     "presses": [
+      [
+       "Ctrl",
+       "Y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-done",
+   "name": "Toggle Done",
+   "config": "toggle_done",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "x",
+     "presses": [
+      [
+       "x"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+Enter",
+     "presses": [
+      [
+       "Ctrl",
+       "Enter"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-start-today",
+   "name": "Start Today",
+   "config": "start_today",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "t",
+     "presses": [
+      [
+       "t"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-start-tomorrow",
+   "name": "Start Tomorrow",
+   "config": "start_tomorrow",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "w",
+     "presses": [
+      [
+       "w"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-due-today",
+   "name": "Due Today",
+   "config": "due_today",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "T",
+     "presses": [
+      [
+       "T"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-due-tomorrow",
+   "name": "Due Tomorrow",
+   "config": "due_tomorrow",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "W",
+     "presses": [
+      [
+       "W"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-start-one-day-earlier",
+   "name": "Start One Day Earlier",
+   "config": "start_one_day_earlier",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "[",
+     "presses": [
+      [
+       "["
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-start-one-day-later",
+   "name": "Start One Day Later",
+   "config": "start_one_day_later",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "]",
+     "presses": [
+      [
+       "]"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-due-one-day-earlier",
+   "name": "Due One Day Earlier",
+   "config": "due_one_day_earlier",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "{",
+     "presses": [
+      [
+       "{"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-due-one-day-later",
+   "name": "Due One Day Later",
+   "config": "due_one_day_later",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "}",
+     "presses": [
+      [
+       "}"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-set-start-date",
+   "name": "Set Start Date",
+   "config": "set_start_date",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "ms",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-set-due-date",
+   "name": "Set Due Date",
+   "config": "set_due_date",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "md",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "d"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-clear-start-date",
+   "name": "Clear Start Date",
+   "config": "clear_start_date",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-clear-due-date",
+   "name": "Clear Due Date",
+   "config": "clear_due_date",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-color-red",
+   "name": "Color: Red",
+   "config": "color_red",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c1",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "1"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-color-orange",
+   "name": "Color: Orange",
+   "config": "color_orange",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c2",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "2"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-color-yellow",
+   "name": "Color: Yellow",
+   "config": "color_yellow",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c3",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "3"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-color-green",
+   "name": "Color: Green",
+   "config": "color_green",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c4",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "4"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-color-blue",
+   "name": "Color: Blue",
+   "config": "color_blue",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c5",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "5"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-color-violet",
+   "name": "Color: Violet",
+   "config": "color_violet",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c6",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "6"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-remove-color",
+   "name": "Remove Color",
+   "config": "remove_color",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "C",
+     "presses": [
+      [
+       "C"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-cycle-color",
+   "name": "Cycle Color",
+   "config": "cycle_color",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "cc",
+     "presses": [
+      [
+       "c"
+      ],
+      [
+       "c"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-pick-color",
+   "name": "Pick Color",
+   "config": "pick_color",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "mc",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "c"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-star",
+   "name": "Toggle Star",
+   "config": "toggle_star",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "*",
+     "presses": [
+      [
+       "*"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-bookmark",
+   "name": "Toggle Bookmark",
+   "config": "toggle_bookmark",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "mb",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "b"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-flag",
+   "name": "Toggle Flag",
+   "config": "toggle_flag",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "mf",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "f"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "!",
+     "presses": [
+      [
+       "!"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-convert-type",
+   "name": "Convert Type",
+   "config": "convert_type",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "blocks",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "my",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-make-section",
+   "name": "Make Section",
+   "config": "make_section",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "blocks",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "S",
+     "presses": [
+      [
+       "S"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-remove-section",
+   "name": "Remove Section",
+   "config": "remove_section",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "blocks",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "s",
+     "presses": [
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-edit-node",
+   "name": "Edit Node",
+   "config": "edit_node",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "e",
+     "presses": [
+      [
+       "e"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "mi",
+     "presses": [
+      [
+       "m"
+      ],
+      [
+       "i"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-note",
+   "name": "Open Note",
+   "config": "open_note",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "attachments",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "n",
+     "presses": [
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-comments",
+   "name": "Open Comments",
+   "config": "open_comments",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "attachments",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "N",
+     "presses": [
+      [
+       "N"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-link",
+   "name": "Open Link",
+   "config": "open_link",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "blocks",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gx",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "x"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-show-hide-completed",
+   "name": "Show/Hide Completed",
+   "config": "show_hide_completed",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+O",
+     "presses": [
+      [
+       "Ctrl",
+       "O"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gc",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "c"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-toggle-word-wrap",
+   "name": "Toggle Word Wrap",
+   "config": "toggle_word_wrap",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "appearance",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+z",
+     "presses": [
+      [
+       "Alt",
+       "z"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "gw",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "w"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-choose-theme",
+   "name": "Choose Theme",
+   "config": "choose_theme",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "appearance",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+T",
+     "presses": [
+      [
+       "Ctrl",
+       "T"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-settings",
+   "name": "Open Settings",
+   "config": "open_settings",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "settings",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "g,",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       ","
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-animations-full",
+   "name": "Animations: Full",
+   "config": "animations_full",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "animation",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-animations-reduced",
+   "name": "Animations: Reduced",
+   "config": "animations_reduced",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "animation",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-animations-off",
+   "name": "Animations: Off",
+   "config": "animations_off",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "animation",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-start-weather-animation",
+   "name": "Start Weather Animation",
+   "config": "start_weather_animation",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "animation",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-go-to-symbol",
+   "name": "Go to Symbol",
+   "config": "go_to_symbol",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+K",
+     "presses": [
+      [
+       "Ctrl",
+       "K"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gs",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "/",
+     "presses": [
+      [
+       "/"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-project",
+   "name": "Go to Project",
+   "config": "go_to_project",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "gP",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "P"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-shortcuts",
+   "name": "Shortcuts",
+   "config": "shortcuts",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "?",
+     "presses": [
+      [
+       "?"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-scroll-shortcuts-down",
+   "name": "Scroll Shortcuts Down",
+   "config": "scroll_shortcuts_down",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": ")",
+     "presses": [
+      [
+       ")"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-scroll-shortcuts-up",
+   "name": "Scroll Shortcuts Up",
+   "config": "scroll_shortcuts_up",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "(",
+     "presses": [
+      [
+       "("
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-navigator",
+   "name": "Open Navigator",
+   "config": "open_navigator",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+G",
+     "presses": [
+      [
+       "Ctrl",
+       "G"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-go-to-command",
+   "name": "Go to Command",
+   "config": "go_to_command",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+P",
+     "presses": [
+      [
+       "Ctrl",
+       "P"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": ":",
+     "presses": [
+      [
+       ":"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-count-blocks-and-words",
+   "name": "Count Blocks and Words",
+   "config": "count_blocks_and_words",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "structure",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-save-as",
+   "name": "Save As",
+   "config": "save_as",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "files",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-context-menu",
+   "name": "Context Menu",
+   "config": "context_menu",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "navigator",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "\\",
+     "presses": [
+      [
+       "\\"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Shift+F10",
+     "presses": [
+      [
+       "Shift",
+       "F10"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Menu",
+     "presses": [
+      [
+       "Menu"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-in-new-pane",
+   "name": "Open in New Pane",
+   "config": "open_in_new_pane",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+\\",
+     "presses": [
+      [
+       "Ctrl",
+       "\\"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W v",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "v"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-open-location-in-new-pane",
+   "name": "Open Location in New Pane",
+   "config": "open_location_in_new_pane",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W s",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "s"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-1",
+   "name": "Focus Pane 1",
+   "config": "focus_pane_1",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+1",
+     "presses": [
+      [
+       "Alt",
+       "1"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g1",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "1"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-2",
+   "name": "Focus Pane 2",
+   "config": "focus_pane_2",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+2",
+     "presses": [
+      [
+       "Alt",
+       "2"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g2",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "2"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-3",
+   "name": "Focus Pane 3",
+   "config": "focus_pane_3",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+3",
+     "presses": [
+      [
+       "Alt",
+       "3"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g3",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "3"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-4",
+   "name": "Focus Pane 4",
+   "config": "focus_pane_4",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+4",
+     "presses": [
+      [
+       "Alt",
+       "4"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g4",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "4"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-5",
+   "name": "Focus Pane 5",
+   "config": "focus_pane_5",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+5",
+     "presses": [
+      [
+       "Alt",
+       "5"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g5",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "5"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-6",
+   "name": "Focus Pane 6",
+   "config": "focus_pane_6",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+6",
+     "presses": [
+      [
+       "Alt",
+       "6"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g6",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "6"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-7",
+   "name": "Focus Pane 7",
+   "config": "focus_pane_7",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+7",
+     "presses": [
+      [
+       "Alt",
+       "7"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g7",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "7"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-8",
+   "name": "Focus Pane 8",
+   "config": "focus_pane_8",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+8",
+     "presses": [
+      [
+       "Alt",
+       "8"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g8",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "8"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-9",
+   "name": "Focus Pane 9",
+   "config": "focus_pane_9",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+9",
+     "presses": [
+      [
+       "Alt",
+       "9"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "g9",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "9"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-left",
+   "name": "Focus Pane Left",
+   "config": "focus_pane_left",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Shift+←",
+     "presses": [
+      [
+       "Ctrl",
+       "Shift",
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W ←",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W h",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "h"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gl",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "l"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gp",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "p"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-focus-pane-right",
+   "name": "Focus Pane Right",
+   "config": "focus_pane_right",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Shift+→",
+     "presses": [
+      [
+       "Ctrl",
+       "Shift",
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W →",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W l",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "l"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gr",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "r"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "gn",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "n"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-move-pane-left",
+   "name": "Move Pane Left",
+   "config": "move_pane_left",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W H",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "H"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-move-pane-right",
+   "name": "Move Pane Right",
+   "config": "move_pane_right",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W L",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "L"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-close-pane",
+   "name": "Close Pane",
+   "config": "close_pane",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W c",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "c"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-narrow-pane",
+   "name": "Narrow Pane",
+   "config": "narrow_pane",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W <",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "<"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+Shift+H",
+     "presses": [
+      [
+       "Alt",
+       "Shift",
+       "H"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "navigate-widen-pane",
+   "name": "Widen Pane",
+   "config": "widen_pane",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "panes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+W >",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       ">"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Alt+Shift+L",
+     "presses": [
+      [
+       "Alt",
+       "Shift",
+       "L"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    }
+   ]
+  },
+  {
+   "id": "edit-quit",
+   "name": "Quit",
+   "config": "quit",
+   "mode": "edit",
+   "group": "View and Panels",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Q",
+     "presses": [
+      [
+       "Ctrl",
+       "Q"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-stop-editing",
+   "name": "Stop Editing",
+   "config": "stop_editing",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Esc",
+     "presses": [
+      [
+       "Esc"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-stop-editing-and-add-next-block",
+   "name": "Stop Editing and Add Next Block",
+   "config": "stop_editing_and_add_next_block",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Enter",
+     "presses": [
+      [
+       "Enter"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-edit-previous-block",
+   "name": "Edit Previous Block",
+   "config": "edit_previous_block",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "↑",
+     "presses": [
+      [
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-edit-next-block",
+   "name": "Edit Next Block",
+   "config": "edit_next_block",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "↓",
+     "presses": [
+      [
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-command-menu",
+   "name": "Command Menu",
+   "config": "command_menu",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "/",
+     "presses": [
+      [
+       "/"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-cycle-type",
+   "name": "Cycle Type",
+   "config": "cycle_type",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+T",
+     "presses": [
+      [
+       "Ctrl",
+       "T"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-project",
+   "name": "Project",
+   "config": null,
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": true,
+   "keys": []
+  },
+  {
+   "id": "edit-task",
+   "name": "Task",
+   "config": null,
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": true,
+   "keys": []
+  },
+  {
+   "id": "edit-note",
+   "name": "Note",
+   "config": null,
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": true,
+   "keys": []
+  },
+  {
+   "id": "edit-make-section",
+   "name": "Make Section",
+   "config": null,
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": true,
+   "keys": []
+  },
+  {
+   "id": "edit-indent",
+   "name": "Indent",
+   "config": "indent",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Tab",
+     "presses": [
+      [
+       "Tab"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-outdent",
+   "name": "Outdent",
+   "config": "outdent",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Shift+Tab",
+     "presses": [
+      [
+       "Shift",
+       "Tab"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-bold",
+   "name": "Bold",
+   "config": "bold",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+B",
+     "presses": [
+      [
+       "Ctrl",
+       "B"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-inline-code",
+   "name": "Inline Code",
+   "config": "inline_code",
+   "mode": "edit",
+   "group": "Editing",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+`",
+     "presses": [
+      [
+       "Alt",
+       "`"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Ctrl+E",
+     "presses": [
+      [
+       "Ctrl",
+       "E"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-undo",
+   "name": "Undo",
+   "config": "undo",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Z",
+     "presses": [
+      [
+       "Ctrl",
+       "Z"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-redo",
+   "name": "Redo",
+   "config": "redo",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Shift+Z",
+     "presses": [
+      [
+       "Ctrl",
+       "Shift",
+       "Z"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+Y",
+     "presses": [
+      [
+       "Ctrl",
+       "Y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-copy",
+   "name": "Copy",
+   "config": "copy",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+C",
+     "presses": [
+      [
+       "Ctrl",
+       "C"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-cut",
+   "name": "Cut",
+   "config": "cut",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+X",
+     "presses": [
+      [
+       "Ctrl",
+       "X"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "edit-paste-below",
+   "name": "Paste Below",
+   "config": "paste_below",
+   "mode": "edit",
+   "group": "Structure",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+V",
+     "presses": [
+      [
+       "Ctrl",
+       "V"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-next-entry",
+   "name": "Next Entry",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "↓",
+     "presses": [
+      [
+       "↓"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+N",
+     "presses": [
+      [
+       "Ctrl",
+       "N"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-previous-entry",
+   "name": "Previous Entry",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "↑",
+     "presses": [
+      [
+       "↑"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+P",
+     "presses": [
+      [
+       "Ctrl",
+       "P"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-collapse-entry",
+   "name": "Collapse Entry",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "←",
+     "presses": [
+      [
+       "←"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-expand-entry",
+   "name": "Expand Entry",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "→",
+     "presses": [
+      [
+       "→"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-go-to-entry",
+   "name": "Go to Entry",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Enter",
+     "presses": [
+      [
+       "Enter"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-open-in-new-pane",
+   "name": "Open in New Pane",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Alt+Enter",
+     "presses": [
+      [
+       "Alt",
+       "Enter"
+      ]
+     ],
+     "kitty": false,
+     "alt": true
+    },
+    {
+     "label": "Ctrl+V",
+     "presses": [
+      [
+       "Ctrl",
+       "V"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+T",
+     "presses": [
+      [
+       "Ctrl",
+       "T"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-erase-filter-character",
+   "name": "Erase Filter Character",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Backspace",
+     "presses": [
+      [
+       "Backspace"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-return-to-outline",
+   "name": "Return to Outline",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Esc",
+     "presses": [
+      [
+       "Esc"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-context-menu",
+   "name": "Context Menu",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+R",
+     "presses": [
+      [
+       "Ctrl",
+       "R"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Shift+F10",
+     "presses": [
+      [
+       "Shift",
+       "F10"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Menu",
+     "presses": [
+      [
+       "Menu"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-close-navigator",
+   "name": "Close Navigator",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+G",
+     "presses": [
+      [
+       "Ctrl",
+       "G"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigator-quit",
+   "name": "Quit",
+   "config": null,
+   "mode": "navigator",
+   "group": "Navigator",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "Ctrl+Q",
+     "presses": [
+      [
+       "Ctrl",
+       "Q"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  }
+ ],
+ "contexts": [
+  {
+   "id": "keys-text",
+   "table": "TEXT",
+   "title": "Text fields",
+   "topic": "modes",
+   "rows": [
+    {
+     "label": "Caret left",
+     "keys": [
+      {
+       "label": "←",
+       "presses": [
+        [
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Caret right",
+     "keys": [
+      {
+       "label": "→",
+       "presses": [
+        [
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Word left",
+     "keys": [
+      {
+       "label": "Ctrl+←",
+       "presses": [
+        [
+         "Ctrl",
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Alt+b",
+       "presses": [
+        [
+         "Alt",
+         "b"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      }
+     ]
+    },
+    {
+     "label": "Word right",
+     "keys": [
+      {
+       "label": "Ctrl+→",
+       "presses": [
+        [
+         "Ctrl",
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Alt+f",
+       "presses": [
+        [
+         "Alt",
+         "f"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      }
+     ]
+    },
+    {
+     "label": "To the start",
+     "keys": [
+      {
+       "label": "Home",
+       "presses": [
+        [
+         "Home"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "To the end",
+     "keys": [
+      {
+       "label": "End",
+       "presses": [
+        [
+         "End"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select left",
+     "keys": [
+      {
+       "label": "Shift+←",
+       "presses": [
+        [
+         "Shift",
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select right",
+     "keys": [
+      {
+       "label": "Shift+→",
+       "presses": [
+        [
+         "Shift",
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select a word left",
+     "keys": [
+      {
+       "label": "Ctrl+Shift+←",
+       "presses": [
+        [
+         "Ctrl",
+         "Shift",
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select a word right",
+     "keys": [
+      {
+       "label": "Ctrl+Shift+→",
+       "presses": [
+        [
+         "Ctrl",
+         "Shift",
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select to the start",
+     "keys": [
+      {
+       "label": "Shift+Home",
+       "presses": [
+        [
+         "Shift",
+         "Home"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Shift+↑",
+       "presses": [
+        [
+         "Shift",
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Select to the end",
+     "keys": [
+      {
+       "label": "Shift+End",
+       "presses": [
+        [
+         "Shift",
+         "End"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Shift+↓",
+       "presses": [
+        [
+         "Shift",
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Delete before the caret",
+     "keys": [
+      {
+       "label": "Backspace",
+       "presses": [
+        [
+         "Backspace"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Delete after the caret",
+     "keys": [
+      {
+       "label": "Delete",
+       "presses": [
+        [
+         "Delete"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Delete the word before the caret",
+     "keys": [
+      {
+       "label": "Ctrl+W",
+       "presses": [
+        [
+         "Ctrl",
+         "W"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Alt+Backspace",
+       "presses": [
+        [
+         "Alt",
+         "Backspace"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      }
+     ]
+    },
+    {
+     "label": "Select all",
+     "keys": [
+      {
+       "label": "Ctrl+A",
+       "presses": [
+        [
+         "Ctrl",
+         "A"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-menu",
+   "table": "MENU",
+   "title": "Pickers, palettes and menus",
+   "topic": "navigator",
+   "rows": [
+    {
+     "label": "Close",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Choose the highlighted entry",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Previous entry",
+     "keys": [
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+P",
+       "presses": [
+        [
+         "Ctrl",
+         "P"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Next entry",
+     "keys": [
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+N",
+       "presses": [
+        [
+         "Ctrl",
+         "N"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Erase a filter character",
+     "keys": [
+      {
+       "label": "Backspace",
+       "presses": [
+        [
+         "Backspace"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-open-in-new-pane",
+   "table": "OPEN_IN_NEW_PANE",
+   "title": "Open in a new pane, from Go to Symbol and Go to Project",
+   "topic": "navigator",
+   "rows": [
+    {
+     "label": "Open the highlighted block in a new pane",
+     "keys": [
+      {
+       "label": "Alt+Enter",
+       "presses": [
+        [
+         "Alt",
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      },
+      {
+       "label": "Ctrl+V",
+       "presses": [
+        [
+         "Ctrl",
+         "V"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+T",
+       "presses": [
+        [
+         "Ctrl",
+         "T"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-settings",
+   "table": "SETTINGS",
+   "title": "Settings window",
+   "topic": "settings",
+   "rows": [
+    {
+     "label": "Next",
+     "keys": [
+      {
+       "label": "j",
+       "presses": [
+        [
+         "j"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Previous",
+     "keys": [
+      {
+       "label": "k",
+       "presses": [
+        [
+         "k"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Switch between groups and settings",
+     "keys": [
+      {
+       "label": "Tab",
+       "presses": [
+        [
+         "Tab"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Toggle, or open the value picker or prompt",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Space",
+       "presses": [
+        [
+         "Space"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Previous choice, or toggle",
+     "keys": [
+      {
+       "label": "h",
+       "presses": [
+        [
+         "h"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "←",
+       "presses": [
+        [
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Next choice, or toggle",
+     "keys": [
+      {
+       "label": "l",
+       "presses": [
+        [
+         "l"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "→",
+       "presses": [
+        [
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Reset to the default",
+     "keys": [
+      {
+       "label": "r",
+       "presses": [
+        [
+         "r"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Filter by name",
+     "keys": [
+      {
+       "label": "/",
+       "presses": [
+        [
+         "/"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Close",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-settings-text",
+   "table": "SETTINGS_TEXT",
+   "title": "Settings window: prompt and filter",
+   "topic": "settings",
+   "rows": [
+    {
+     "label": "Accept",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Cancel",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Next",
+     "keys": [
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Previous",
+     "keys": [
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-date-prompt",
+   "table": "DATE_PROMPT",
+   "title": "Date prompt",
+   "topic": "tags",
+   "rows": [
+    {
+     "label": "Set the date",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Cancel",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-quick-add",
+   "table": "QUICK_ADD",
+   "title": "Quick Add panel",
+   "topic": "quick-add",
+   "rows": [
+    {
+     "label": "Add the block",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Close, adding nothing",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-node-editor",
+   "table": "NODE_EDITOR",
+   "title": "Edit Node dialog",
+   "topic": "tags",
+   "rows": [
+    {
+     "label": "Save every change and close",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Close, changing nothing",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Next row",
+     "keys": [
+      {
+       "label": "Tab",
+       "presses": [
+        [
+         "Tab"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Previous row",
+     "keys": [
+      {
+       "label": "Shift+Tab",
+       "presses": [
+        [
+         "Shift",
+         "Tab"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Change the type",
+     "keys": [
+      {
+       "label": "Ctrl+T",
+       "presses": [
+        [
+         "Ctrl",
+         "T"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-attachments",
+   "table": "ATTACHMENTS",
+   "title": "Attachments panel",
+   "topic": "attachments",
+   "rows": [
+    {
+     "label": "Close",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Edit the selected note or comment",
+     "keys": [
+      {
+       "label": "e",
+       "presses": [
+        [
+         "e"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Add a comment",
+     "keys": [
+      {
+       "label": "a",
+       "presses": [
+        [
+         "a"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Delete the selected comment",
+     "keys": [
+      {
+       "label": "d",
+       "presses": [
+        [
+         "d"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Delete",
+       "presses": [
+        [
+         "Delete"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-scroll",
+   "table": "SCROLL",
+   "title": "Attachments panel: scrolling and selection",
+   "topic": "attachments",
+   "rows": [
+    {
+     "label": "Down a line, or the next item",
+     "keys": [
+      {
+       "label": "j",
+       "presses": [
+        [
+         "j"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Up a line, or the previous item",
+     "keys": [
+      {
+       "label": "k",
+       "presses": [
+        [
+         "k"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Down a page, or the next item",
+     "keys": [
+      {
+       "label": "PgDn",
+       "presses": [
+        [
+         "PgDn"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+D",
+       "presses": [
+        [
+         "Ctrl",
+         "D"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Up a page, or the previous item",
+     "keys": [
+      {
+       "label": "PgUp",
+       "presses": [
+        [
+         "PgUp"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+U",
+       "presses": [
+        [
+         "Ctrl",
+         "U"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Top, with the first item",
+     "keys": [
+      {
+       "label": "Home",
+       "presses": [
+        [
+         "Home"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "g",
+       "presses": [
+        [
+         "g"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Bottom, with the last item",
+     "keys": [
+      {
+       "label": "End",
+       "presses": [
+        [
+         "End"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "G",
+       "presses": [
+        [
+         "G"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-note-editor",
+   "table": "NOTE_EDITOR",
+   "title": "Note editor",
+   "topic": "attachments",
+   "rows": [
+    {
+     "label": "Save the note and stop editing",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Break the line",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Line up",
+     "keys": [
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Line down",
+     "keys": [
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-save-as",
+   "table": "SAVE_AS",
+   "title": "Save As prompt",
+   "topic": "files",
+   "rows": [
+    {
+     "label": "Save there",
+     "keys": [
+      {
+       "label": "Enter",
+       "presses": [
+        [
+         "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Cancel",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Complete the folder being typed",
+     "keys": [
+      {
+       "label": "Tab",
+       "presses": [
+        [
+         "Tab"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keys-prompt",
+   "table": "PROMPT",
+   "title": "Conflict prompt",
+   "topic": "files",
+   "rows": [
+    {
+     "label": "Quit",
+     "keys": [
+      {
+       "label": "Ctrl+Q",
+       "presses": [
+        [
+         "Ctrl",
+         "Q"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Keep mine",
+     "keys": [
+      {
+       "label": "Ctrl+K",
+       "presses": [
+        [
+         "Ctrl",
+         "K"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Take theirs",
+     "keys": [
+      {
+       "label": "Ctrl+R",
+       "presses": [
+        [
+         "Ctrl",
+         "R"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Show or hide the diff",
+     "keys": [
+      {
+       "label": "Ctrl+L",
+       "presses": [
+        [
+         "Ctrl",
+         "L"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Scroll the diff down a line",
+     "keys": [
+      {
+       "label": "j",
+       "presses": [
+        [
+         "j"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↓",
+       "presses": [
+        [
+         "↓"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Scroll the diff up a line",
+     "keys": [
+      {
+       "label": "k",
+       "presses": [
+        [
+         "k"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "↑",
+       "presses": [
+        [
+         "↑"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Scroll the diff down a page",
+     "keys": [
+      {
+       "label": "Ctrl+D",
+       "presses": [
+        [
+         "Ctrl",
+         "D"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "PgDn",
+       "presses": [
+        [
+         "PgDn"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Scroll the diff up a page",
+     "keys": [
+      {
+       "label": "Ctrl+U",
+       "presses": [
+        [
+         "Ctrl",
+         "U"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "PgUp",
+       "presses": [
+        [
+         "PgUp"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "renamed": [
+  {
+   "old": "toggle_sidebar",
+   "new": "open_navigator"
+  },
+  {
+   "old": "focus_sidebar",
+   "new": "open_navigator"
+  },
+  {
+   "old": "show_details",
+   "new": "edit_node"
+  }
+ ],
+ "sequence_timeout_ms": 1000,
+ "cheatsheet": {
+  "cards": [
+   {
+    "title": "Moving",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Next Block",
+      "panel": true,
+      "keys": [
+       {
+        "label": "j",
+        "presses": [
+         [
+          "j"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "↓",
+        "presses": [
+         [
+          "↓"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Previous Block",
+      "panel": true,
+      "keys": [
+       {
+        "label": "k",
+        "presses": [
+         [
+          "k"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "↑",
+        "presses": [
+         [
+          "↑"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Collapse",
+      "panel": true,
+      "keys": [
+       {
+        "label": "h",
+        "presses": [
+         [
+          "h"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "←",
+        "presses": [
+         [
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Expand",
+      "panel": true,
+      "keys": [
+       {
+        "label": "l",
+        "presses": [
+         [
+          "l"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "→",
+        "presses": [
+         [
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Next Sibling",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+↓",
+        "presses": [
+         [
+          "Ctrl",
+          "↓"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gj",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "j"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Previous Sibling",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+↑",
+        "presses": [
+         [
+          "Ctrl",
+          "↑"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gk",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "k"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "First Sibling",
+      "panel": false,
+      "keys": [
+       {
+        "label": "^",
+        "presses": [
+         [
+          "^"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Last Sibling",
+      "panel": false,
+      "keys": [
+       {
+        "label": "$",
+        "presses": [
+         [
+          "$"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Parent",
+      "panel": false,
+      "keys": [
+       {
+        "label": "#",
+        "presses": [
+         [
+          "#"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "First Block",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gg",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "g"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Home",
+        "presses": [
+         [
+          "Home"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Last Block",
+      "panel": true,
+      "keys": [
+       {
+        "label": "G",
+        "presses": [
+         [
+          "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "End",
+        "presses": [
+         [
+          "End"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Page Down",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+D",
+        "presses": [
+         [
+          "Ctrl",
+          "D"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "PgDn",
+        "presses": [
+         [
+          "PgDn"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Page Up",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+U",
+        "presses": [
+         [
+          "Ctrl",
+          "U"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "PgUp",
+        "presses": [
+         [
+          "PgUp"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Folding",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Toggle Fold",
+      "panel": true,
+      "keys": [
+       {
+        "label": "'",
+        "presses": [
+         [
+          "'"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Space",
+        "presses": [
+         [
+          "Space"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Subtree Fold",
+      "panel": false,
+      "keys": [
+       {
+        "label": "\"",
+        "presses": [
+         [
+          "\""
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Expand One Level",
+      "panel": false,
+      "keys": [
+       {
+        "label": "=",
+        "presses": [
+         [
+          "="
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Collapse One Level",
+      "panel": false,
+      "keys": [
+       {
+        "label": "-",
+        "presses": [
+         [
+          "-"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Expand All",
+      "panel": true,
+      "keys": [
+       {
+        "label": "+",
+        "presses": [
+         [
+          "+"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Collapse All",
+      "panel": true,
+      "keys": [
+       {
+        "label": "_",
+        "presses": [
+         [
+          "_"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Zoom and History",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Zoom In",
+      "panel": true,
+      "keys": [
+       {
+        "label": ".",
+        "presses": [
+         [
+          "."
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+l",
+        "presses": [
+         [
+          "Alt",
+          "l"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "Alt+→",
+        "presses": [
+         [
+          "Alt",
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "gz",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "z"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Zoom Out",
+      "panel": true,
+      "keys": [
+       {
+        "label": ">",
+        "presses": [
+         [
+          ">"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+h",
+        "presses": [
+         [
+          "Alt",
+          "h"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "Alt+←",
+        "presses": [
+         [
+          "Alt",
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "gu",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "u"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go Home",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+'",
+        "presses": [
+         [
+          "Ctrl",
+          "'"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       },
+       {
+        "label": "gh",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "h"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Today",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gt",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "t"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gT",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "T"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Upcoming",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gU",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "U"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Overdue",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gO",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "O"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Colors",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gC",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "C"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Logbook",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gL",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "L"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Starred",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gS",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "S"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Flagged",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gF",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "F"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Inbox",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gi",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "i"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Back",
+      "panel": true,
+      "keys": [
+       {
+        "label": "H",
+        "presses": [
+         [
+          "H"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+Shift+←",
+        "presses": [
+         [
+          "Alt",
+          "Shift",
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Forward",
+      "panel": true,
+      "keys": [
+       {
+        "label": "L",
+        "presses": [
+         [
+          "L"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+Shift+→",
+        "presses": [
+         [
+          "Alt",
+          "Shift",
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Editing and Creating",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Edit",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Enter",
+        "presses": [
+         [
+          "Enter"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block Below",
+      "panel": true,
+      "keys": [
+       {
+        "label": "o",
+        "presses": [
+         [
+          "o"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block Above",
+      "panel": false,
+      "keys": [
+       {
+        "label": "O",
+        "presses": [
+         [
+          "O"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block as Last Child",
+      "panel": true,
+      "keys": [
+       {
+        "label": "i",
+        "presses": [
+         [
+          "i"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block as First Child",
+      "panel": false,
+      "keys": [
+       {
+        "label": "I",
+        "presses": [
+         [
+          "I"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block at End",
+      "panel": false,
+      "keys": [
+       {
+        "label": "a",
+        "presses": [
+         [
+          "a"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "New Block at Start",
+      "panel": false,
+      "keys": [
+       {
+        "label": "A",
+        "presses": [
+         [
+          "A"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "…then a type letter",
+      "panel": false,
+      "keys": [],
+      "typed": [
+       {
+        "keys": {
+         "label": "s",
+         "presses": [
+          [
+           "s"
+          ]
+         ],
+         "kitty": false,
+         "alt": false
+        },
+        "label": "section"
+       },
+       {
+        "keys": {
+         "label": "p",
+         "presses": [
+          [
+           "p"
+          ]
+         ],
+         "kitty": false,
+         "alt": false
+        },
+        "label": "project"
+       },
+       {
+        "keys": {
+         "label": "t",
+         "presses": [
+          [
+           "t"
+          ]
+         ],
+         "kitty": false,
+         "alt": false
+        },
+        "label": "task"
+       },
+       {
+        "keys": {
+         "label": "n",
+         "presses": [
+          [
+           "n"
+          ]
+         ],
+         "kitty": false,
+         "alt": false
+        },
+        "label": "note"
+       }
+      ]
+     },
+     {
+      "label": "Quick Add",
+      "panel": true,
+      "keys": [
+       {
+        "label": "qq",
+        "presses": [
+         [
+          "q"
+         ],
+         [
+          "q"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Quick Add to Inbox",
+      "panel": false,
+      "keys": [
+       {
+        "label": "qi",
+        "presses": [
+         [
+          "q"
+         ],
+         [
+          "i"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Quick Add to Today",
+      "panel": false,
+      "keys": [
+       {
+        "label": "qt",
+        "presses": [
+         [
+          "q"
+         ],
+         [
+          "t"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Selection",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Extend Selection Down",
+      "panel": true,
+      "keys": [
+       {
+        "label": "J",
+        "presses": [
+         [
+          "J"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Shift+↓",
+        "presses": [
+         [
+          "Shift",
+          "↓"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Extend Selection Up",
+      "panel": false,
+      "keys": [
+       {
+        "label": "K",
+        "presses": [
+         [
+          "K"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Shift+↑",
+        "presses": [
+         [
+          "Shift",
+          "↑"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Selected",
+      "panel": true,
+      "keys": [
+       {
+        "label": "v",
+        "presses": [
+         [
+          "v"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Select All",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+A",
+        "presses": [
+         [
+          "Ctrl",
+          "A"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Clear Selection",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Esc",
+        "presses": [
+         [
+          "Esc"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Structure",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Indent",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Tab",
+        "presses": [
+         [
+          "Tab"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Outdent",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Shift+Tab",
+        "presses": [
+         [
+          "Shift",
+          "Tab"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Move Up",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Alt+k",
+        "presses": [
+         [
+          "Alt",
+          "k"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "Alt+↑",
+        "presses": [
+         [
+          "Alt",
+          "↑"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Move Down",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Alt+j",
+        "presses": [
+         [
+          "Alt",
+          "j"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "Alt+↓",
+        "presses": [
+         [
+          "Alt",
+          "↓"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Group",
+      "panel": false,
+      "keys": [
+       {
+        "label": "gG",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Move to…",
+      "panel": false,
+      "keys": [
+       {
+        "label": "gm",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "m"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Delete",
+      "panel": true,
+      "keys": [
+       {
+        "label": "dd",
+        "presses": [
+         [
+          "d"
+         ],
+         [
+          "d"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Delete",
+        "presses": [
+         [
+          "Delete"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Duplicate",
+      "panel": false,
+      "keys": [
+       {
+        "label": "D",
+        "presses": [
+         [
+          "D"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Copy",
+      "panel": true,
+      "keys": [
+       {
+        "label": "y",
+        "presses": [
+         [
+          "y"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+C",
+        "presses": [
+         [
+          "Ctrl",
+          "C"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Cut",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+X",
+        "presses": [
+         [
+          "Ctrl",
+          "X"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Paste Below",
+      "panel": true,
+      "keys": [
+       {
+        "label": "p",
+        "presses": [
+         [
+          "p"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+V",
+        "presses": [
+         [
+          "Ctrl",
+          "V"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Paste Above",
+      "panel": false,
+      "keys": [
+       {
+        "label": "P",
+        "presses": [
+         [
+          "P"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+v",
+        "presses": [
+         [
+          "Alt",
+          "v"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Undo",
+      "panel": true,
+      "keys": [
+       {
+        "label": "z",
+        "presses": [
+         [
+          "z"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+Z",
+        "presses": [
+         [
+          "Ctrl",
+          "Z"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Redo",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Z",
+        "presses": [
+         [
+          "Z"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+Shift+Z",
+        "presses": [
+         [
+          "Ctrl",
+          "Shift",
+          "Z"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+Y",
+        "presses": [
+         [
+          "Ctrl",
+          "Y"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Block Metadata",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Toggle Done",
+      "panel": true,
+      "keys": [
+       {
+        "label": "x",
+        "presses": [
+         [
+          "x"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+Enter",
+        "presses": [
+         [
+          "Ctrl",
+          "Enter"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Start Today",
+      "panel": true,
+      "keys": [
+       {
+        "label": "t",
+        "presses": [
+         [
+          "t"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Start Tomorrow",
+      "panel": false,
+      "keys": [
+       {
+        "label": "w",
+        "presses": [
+         [
+          "w"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Due Today",
+      "panel": true,
+      "keys": [
+       {
+        "label": "T",
+        "presses": [
+         [
+          "T"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Due Tomorrow",
+      "panel": false,
+      "keys": [
+       {
+        "label": "W",
+        "presses": [
+         [
+          "W"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Start One Day Earlier",
+      "panel": false,
+      "keys": [
+       {
+        "label": "[",
+        "presses": [
+         [
+          "["
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Start One Day Later",
+      "panel": false,
+      "keys": [
+       {
+        "label": "]",
+        "presses": [
+         [
+          "]"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Due One Day Earlier",
+      "panel": false,
+      "keys": [
+       {
+        "label": "{",
+        "presses": [
+         [
+          "{"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Due One Day Later",
+      "panel": false,
+      "keys": [
+       {
+        "label": "}",
+        "presses": [
+         [
+          "}"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Set Start Date",
+      "panel": false,
+      "keys": [
+       {
+        "label": "ms",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "s"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Set Due Date",
+      "panel": true,
+      "keys": [
+       {
+        "label": "md",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "d"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Color 1–6: Red, Orange, Yellow, Green, Blue, Violet",
+      "panel": false,
+      "keys": [
+       {
+        "label": "c 1–6",
+        "presses": [
+         [
+          "c"
+         ],
+         [
+          "1–6"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Remove Color",
+      "panel": false,
+      "keys": [
+       {
+        "label": "C",
+        "presses": [
+         [
+          "C"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Cycle Color",
+      "panel": false,
+      "keys": [
+       {
+        "label": "cc",
+        "presses": [
+         [
+          "c"
+         ],
+         [
+          "c"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Pick Color",
+      "panel": true,
+      "keys": [
+       {
+        "label": "mc",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "c"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Star",
+      "panel": false,
+      "keys": [
+       {
+        "label": "*",
+        "presses": [
+         [
+          "*"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Bookmark",
+      "panel": true,
+      "keys": [
+       {
+        "label": "mb",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "b"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Flag",
+      "panel": false,
+      "keys": [
+       {
+        "label": "mf",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "f"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "!",
+        "presses": [
+         [
+          "!"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Convert Type",
+      "panel": false,
+      "keys": [
+       {
+        "label": "my",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "y"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Make Section",
+      "panel": false,
+      "keys": [
+       {
+        "label": "S",
+        "presses": [
+         [
+          "S"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Remove Section",
+      "panel": false,
+      "keys": [
+       {
+        "label": "s",
+        "presses": [
+         [
+          "s"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Edit Node",
+      "panel": true,
+      "keys": [
+       {
+        "label": "e",
+        "presses": [
+         [
+          "e"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "mi",
+        "presses": [
+         [
+          "m"
+         ],
+         [
+          "i"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Note",
+      "panel": true,
+      "keys": [
+       {
+        "label": "n",
+        "presses": [
+         [
+          "n"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Comments",
+      "panel": true,
+      "keys": [
+       {
+        "label": "N",
+        "presses": [
+         [
+          "N"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Link",
+      "panel": false,
+      "keys": [
+       {
+        "label": "gx",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "x"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "View and Panels",
+    "sub": "navigate mode",
+    "rows": [
+     {
+      "label": "Quit",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+Q",
+        "presses": [
+         [
+          "Ctrl",
+          "Q"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Show/Hide Completed",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+O",
+        "presses": [
+         [
+          "Ctrl",
+          "O"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gc",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "c"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Word Wrap",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Alt+z",
+        "presses": [
+         [
+          "Alt",
+          "z"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "gw",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "w"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Choose Theme",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+T",
+        "presses": [
+         [
+          "Ctrl",
+          "T"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Settings",
+      "panel": true,
+      "keys": [
+       {
+        "label": "g,",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          ","
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Symbol",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+K",
+        "presses": [
+         [
+          "Ctrl",
+          "K"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gs",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "s"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "/",
+        "presses": [
+         [
+          "/"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Project",
+      "panel": true,
+      "keys": [
+       {
+        "label": "gP",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "P"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Shortcuts",
+      "panel": false,
+      "keys": [
+       {
+        "label": "?",
+        "presses": [
+         [
+          "?"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Scroll Shortcuts Down",
+      "panel": false,
+      "keys": [
+       {
+        "label": ")",
+        "presses": [
+         [
+          ")"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Scroll Shortcuts Up",
+      "panel": false,
+      "keys": [
+       {
+        "label": "(",
+        "presses": [
+         [
+          "("
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Navigator",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+G",
+        "presses": [
+         [
+          "Ctrl",
+          "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Command",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+P",
+        "presses": [
+         [
+          "Ctrl",
+          "P"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": ":",
+        "presses": [
+         [
+          ":"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Context Menu",
+      "panel": true,
+      "keys": [
+       {
+        "label": "\\",
+        "presses": [
+         [
+          "\\"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Shift+F10",
+        "presses": [
+         [
+          "Shift",
+          "F10"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Menu",
+        "presses": [
+         [
+          "Menu"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open in New Pane",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+\\",
+        "presses": [
+         [
+          "Ctrl",
+          "\\"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W v",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "v"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open Location in New Pane",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+W s",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "s"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Focus Pane 1–9",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Alt+1–9",
+        "presses": [
+         [
+          "Alt",
+          "1–9"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "g 1–9",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "1–9"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Focus Pane Left",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+Shift+←",
+        "presses": [
+         [
+          "Ctrl",
+          "Shift",
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W ←",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W h",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "h"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gl",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "l"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gp",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "p"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Focus Pane Right",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+Shift+→",
+        "presses": [
+         [
+          "Ctrl",
+          "Shift",
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W →",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W l",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "l"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gr",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "r"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "gn",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "n"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Move Pane Left",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+W H",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "H"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Move Pane Right",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+W L",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "L"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Close Pane",
+      "panel": true,
+      "keys": [
+       {
+        "label": "Ctrl+W c",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "c"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Narrow Pane",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+W <",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "<"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+Shift+H",
+        "presses": [
+         [
+          "Alt",
+          "Shift",
+          "H"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Widen Pane",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+W >",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          ">"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Alt+Shift+L",
+        "presses": [
+         [
+          "Alt",
+          "Shift",
+          "L"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   },
+   {
+    "title": "Edit mode",
+    "sub": "while typing in a block",
+    "rows": [],
+    "groups": [
+     {
+      "title": "Editing",
+      "rows": [
+       {
+        "label": "Stop Editing",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Esc",
+          "presses": [
+           [
+            "Esc"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Stop Editing and Add Next Block",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Enter",
+          "presses": [
+           [
+            "Enter"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Edit Previous Block",
+        "panel": true,
+        "keys": [
+         {
+          "label": "↑",
+          "presses": [
+           [
+            "↑"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Edit Next Block",
+        "panel": true,
+        "keys": [
+         {
+          "label": "↓",
+          "presses": [
+           [
+            "↓"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Command Menu",
+        "panel": true,
+        "keys": [
+         {
+          "label": "/",
+          "presses": [
+           [
+            "/"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Cycle Type",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+T",
+          "presses": [
+           [
+            "Ctrl",
+            "T"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Bold",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+B",
+          "presses": [
+           [
+            "Ctrl",
+            "B"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Inline Code",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Alt+`",
+          "presses": [
+           [
+            "Alt",
+            "`"
+           ]
+          ],
+          "kitty": false,
+          "alt": true
+         },
+         {
+          "label": "Ctrl+E",
+          "presses": [
+           [
+            "Ctrl",
+            "E"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       }
+      ]
+     },
+     {
+      "title": "Structure",
+      "rows": [
+       {
+        "label": "Indent",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Tab",
+          "presses": [
+           [
+            "Tab"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Outdent",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Shift+Tab",
+          "presses": [
+           [
+            "Shift",
+            "Tab"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Undo",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+Z",
+          "presses": [
+           [
+            "Ctrl",
+            "Z"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Redo",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+Shift+Z",
+          "presses": [
+           [
+            "Ctrl",
+            "Shift",
+            "Z"
+           ]
+          ],
+          "kitty": true,
+          "alt": false
+         },
+         {
+          "label": "Ctrl+Y",
+          "presses": [
+           [
+            "Ctrl",
+            "Y"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Copy",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+C",
+          "presses": [
+           [
+            "Ctrl",
+            "C"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Cut",
+        "panel": false,
+        "keys": [
+         {
+          "label": "Ctrl+X",
+          "presses": [
+           [
+            "Ctrl",
+            "X"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       },
+       {
+        "label": "Paste Below",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+V",
+          "presses": [
+           [
+            "Ctrl",
+            "V"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       }
+      ]
+     },
+     {
+      "title": "View and Panels",
+      "rows": [
+       {
+        "label": "Quit",
+        "panel": true,
+        "keys": [
+         {
+          "label": "Ctrl+Q",
+          "presses": [
+           [
+            "Ctrl",
+            "Q"
+           ]
+          ],
+          "kitty": false,
+          "alt": false
+         }
+        ],
+        "typed": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Navigator",
+    "sub": "the window of places to go",
+    "rows": [
+     {
+      "label": "Next Entry",
+      "panel": false,
+      "keys": [
+       {
+        "label": "↓",
+        "presses": [
+         [
+          "↓"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+N",
+        "presses": [
+         [
+          "Ctrl",
+          "N"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Previous Entry",
+      "panel": false,
+      "keys": [
+       {
+        "label": "↑",
+        "presses": [
+         [
+          "↑"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+P",
+        "presses": [
+         [
+          "Ctrl",
+          "P"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Collapse Entry",
+      "panel": false,
+      "keys": [
+       {
+        "label": "←",
+        "presses": [
+         [
+          "←"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Expand Entry",
+      "panel": false,
+      "keys": [
+       {
+        "label": "→",
+        "presses": [
+         [
+          "→"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Go to Entry",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Enter",
+        "presses": [
+         [
+          "Enter"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Open in New Pane",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Alt+Enter",
+        "presses": [
+         [
+          "Alt",
+          "Enter"
+         ]
+        ],
+        "kitty": false,
+        "alt": true
+       },
+       {
+        "label": "Ctrl+V",
+        "presses": [
+         [
+          "Ctrl",
+          "V"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+T",
+        "presses": [
+         [
+          "Ctrl",
+          "T"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Erase Filter Character",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Backspace",
+        "presses": [
+         [
+          "Backspace"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Return to Outline",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Esc",
+        "presses": [
+         [
+          "Esc"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Context Menu",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+R",
+        "presses": [
+         [
+          "Ctrl",
+          "R"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Shift+F10",
+        "presses": [
+         [
+          "Shift",
+          "F10"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Menu",
+        "presses": [
+         [
+          "Menu"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Close Navigator",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+G",
+        "presses": [
+         [
+          "Ctrl",
+          "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Quit",
+      "panel": false,
+      "keys": [
+       {
+        "label": "Ctrl+Q",
+        "presses": [
+         [
+          "Ctrl",
+          "Q"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     }
+    ],
+    "groups": []
+   }
+  ],
+  "unbound": [
+   "Last Child",
+   "Clear Start Date",
+   "Clear Due Date",
+   "Animations: Full",
+   "Animations: Reduced",
+   "Animations: Off",
+   "Start Weather Animation",
+   "Count Blocks and Words",
+   "Save As"
+  ]
+ }
+}

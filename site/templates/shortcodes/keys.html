@@ -1,0 +1,18 @@
+{# The commands of one Reference page, generated from the app's command registry:
+   {{ keys(topic="navigation") }}, optionally narrowed with mode="navigate|edit|navigator" or group="Folding". #}
+{% import "macros/reference.html" as ref %}
+{% set data = load_data(path="data/keys.json") %}
+{% set rows = data.commands | filter(attribute="topic", value=topic) %}
+{% if mode is defined %}{% set rows = rows | filter(attribute="mode", value=mode) %}{% endif %}
+{% if group is defined %}{% set rows = rows | filter(attribute="group", value=group) %}{% endif %}
+{% if rows | length == 0 %}{{ throw(message="keys: no commands for topic " ~ topic) }}{% endif %}
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+{% for c in rows %}{% set classic = c.keys | filter(attribute="kitty", value=false) %}{% set kitty = c.keys | filter(attribute="kitty", value=true) %}
+<tr id="{{ c.id }}"><th scope="row"><a class="ref-anchor" href="#{{ c.id }}">{{ c.name }}</a>{% if c.panel %} <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span>{% endif %}</th>
+<td>{% if c.menu_only %}<span class="ref-none">command menu only</span>{% elif c.keys | length == 0 %}<span class="ref-none">none; Go to Command</span>{% else %}{{ ref::bindings(list=classic) }}{% endif %}</td>
+<td>{% if kitty | length > 0 %}{{ ref::bindings(list=kitty) }}{% endif %}</td>
+<td>{% if c.config %}<code>{{ c.config }}</code>{% else %}<span class="ref-none">—</span>{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>
