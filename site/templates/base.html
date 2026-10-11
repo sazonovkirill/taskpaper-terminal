@@ -8,6 +8,7 @@
 <meta name="description" content="{{ section.description | default(value=page.description | default(value=config.description)) }}">
 <link rel="stylesheet" href="{{ get_url(path='css/site.css', cachebust=true) }}">
 <link rel="icon" href="{{ get_url(path='favicon.svg') }}" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
 {% block head %}{% endblock %}
 </head>
 <body>

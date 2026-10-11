@@ -1,3 +1,14 @@
+// Scroll reveal: elements marked .reveal fade and slide in as they come into view.
+const reveal = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("in");
+      reveal.unobserve(entry.target);
+    }
+  }
+}, { rootMargin: "0px 0px -10% 0px" });
+for (const element of document.querySelectorAll(".reveal")) reveal.observe(element);
+
 // Copy buttons: <button data-copy="id"> copies the text of the element with that id.
 for (const button of document.querySelectorAll("[data-copy]")) {
   button.addEventListener("click", async () => {

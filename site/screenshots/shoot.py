@@ -17,7 +17,9 @@ Scenes live in scenes/<group>.json and are written to OUT_DIR/<group>/<name>.png
                  "cols": 110, "rows": 30, "config": {"theme": "nord"}, "plain": false}]}
 
 A key is a tmux key name (j, C-g, Escape, Enter, M-x); "text:" types literal text and "wait:"
-pauses. "config" adds settings to the app's config.toml; "plain" drops the window frame;
+pauses. A scene with "frame:MS" steps (capture the screen and show it for MS milliseconds) or
+"type:TEXT" steps (type TEXT a character at a time, one frame per character) becomes an
+animated OUT_DIR/<group>/<name>.webp clip instead of a PNG; clips need Pillow. "config" adds settings to the app's config.toml; "plain" drops the window frame;
 "file" (per file or per scene) names the .taskpaper template, whose {today+N} become dates.
 --only takes scene or group names.
 """
@@ -88,7 +90,9 @@ def toml_value(value):
 
 
 def shoot(tpt, scene, document):
-    """Runs one scene and returns the screen as tmux captured it, with its escape codes."""
+    """Runs one scene and returns its frames: (screen with its escape codes, milliseconds).
+
+    A scene without "frame:" or "type:" steps has one frame, the screen at its end."""
     home = Path(tempfile.mkdtemp(prefix="tpt-shot-"))
     config = home / "config" / "taskpaper-terminal"
     config.mkdir(parents=True)
@@ -111,7 +115,18 @@ def shoot(tpt, scene, document):
     tmux("new-session", "-d", "-s", session, "-x", str(scene["cols"]), "-y", str(scene["rows"]),
          " ".join(map(shlex.quote, command)) + "; sleep 60")
     time.sleep(1.5)
+    frames = []
     for step in scene.get("keys", []):
+        if step.startswith("frame:"):
+            time.sleep(0.4)
+            frames.append((tmux("capture-pane", "-p", "-e", "-N", "-t", session), int(step[6:])))
+            continue
+        if step.startswith("type:"):
+            for char in step[5:]:
+                tmux("send-keys", "-t", session, "-l", char)
+                time.sleep(0.05)
+                frames.append((tmux("capture-pane", "-p", "-e", "-N", "-t", session), 90))
+            continue
         if step.startswith("text:"):
             tmux("send-keys", "-t", session, "-l", step[5:])
         elif step.startswith("wait:"):
@@ -123,7 +138,7 @@ def shoot(tpt, scene, document):
     screen = tmux("capture-pane", "-p", "-e", "-N", "-t", session)
     tmux("kill-session", "-t", session)
     shutil.rmtree(home, ignore_errors=True)
-    return screen
+    return frames or [(screen, 0)]
 
 
 def color256(n):
@@ -239,6 +254,20 @@ const { chromium } = require('playwright');
 """
 
 
+def make_clip(pngs, durations, out):
+    """Joins a clip's frames into one looping animated WebP at half the 2x render size."""
+    from PIL import Image
+
+    frames = []
+    for png in pngs:
+        with Image.open(png) as image:
+            frames.append(image.convert("RGBA").resize((image.width // 2, image.height // 2), Image.LANCZOS))
+        png.unlink()
+    frames[0].save(out, save_all=True, append_images=frames[1:], duration=durations, loop=0,
+                   lossless=False, quality=90, method=6)
+    print(out)
+
+
 def load_scenes():
     """Every scene of every scenes/*.json file, with its group (the file's name) and document."""
     for path in sorted((HERE / "scenes").glob("*.json")):
@@ -258,30 +287,40 @@ def main():
     tpt = str(Path(args[0]).resolve())
     out_dir = Path(args[1]).resolve()
     fetch_fonts()
-    jobs = []
+    jobs, clips = [], []
     for group, scene, document in load_scenes():
         name = scene["name"]
         if only and name not in only and group not in only:
             continue
-        body = to_html(shoot(tpt, scene, document), scene["rows"])
+        frames = shoot(tpt, scene, document)
         plain = scene.get("plain", False)
-        page = CACHE / f"{group}-{name}.html"
-        page.write_text(PAGE.format(
-            body=body, fg=FG, bg=BG, cols=scene["cols"],
-            title=html.escape(scene.get("window_title", f"tpt — {scene.get('save_as', 'Launch.taskpaper')}")),
-            outer="transparent", pad="0" if plain else "28px",
-            inner="6px 8px" if plain else "10px 12px",
-            shadow="" if plain else "box-shadow:0 12px 32px rgba(0,0,0,.35)",
-            bar="none" if plain else "flex"))
         (out_dir / group).mkdir(parents=True, exist_ok=True)
-        jobs.append((str(page), str(out_dir / group / f"{name}.png")))
+        pngs = []
+        for index, (screen, _) in enumerate(frames):
+            page = CACHE / f"{group}-{name}-{index}.html"
+            page.write_text(PAGE.format(
+                body=to_html(screen, scene["rows"]), fg=FG, bg=BG, cols=scene["cols"],
+                title=html.escape(scene.get("window_title", f"tpt — {scene.get('save_as', 'Launch.taskpaper')}")),
+                outer="transparent", pad="0" if plain else "28px",
+                inner="6px 8px" if plain else "10px 12px",
+                shadow="" if plain else "box-shadow:0 12px 32px rgba(0,0,0,.35)",
+                bar="none" if plain else "flex"))
+            png = out_dir / group / f"{name}.png" if len(frames) == 1 else CACHE / f"{group}-{name}-{index}.png"
+            jobs.append((str(page), str(png)))
+            pngs.append(png)
+        if len(frames) > 1:
+            clips.append((pngs, [ms for _, ms in frames], out_dir / group / f"{name}.webp"))
         print(f"{group}/{name}: {scene.get('title', '')}")
     subprocess.run(["node", "-e", RENDER, json.dumps(jobs)], check=True,
                    env={**os.environ, "NODE_PATH": subprocess.run(
                        ["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()})
     for page, out in jobs:
         Path(page).unlink()
-        print(out)
+    for pngs, durations, out in clips:
+        make_clip(pngs, durations, out)
+    for _, out in jobs:
+        if not out.startswith(str(CACHE)):
+            print(out)
 
 
 if __name__ == "__main__":

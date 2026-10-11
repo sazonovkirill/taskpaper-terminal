@@ -1,13 +1,242 @@
 {
-  "file": "demo.taskpaper.in",
-  "scenes": [
-    {"name": "outline", "title": "An outline with projects, sections and tasks",
-     "keys": ["j", "j", "j", "j", "j", "j"]},
-    {"name": "today", "title": "The Today view", "keys": ["g", "t"]},
-    {"name": "attachments", "title": "A project's note and comments in the attachments panel",
-     "keys": ["j", "j", "j", "n"]},
-    {"name": "navigator", "title": "The Navigator", "keys": ["j", "j", "j", "C-g"]},
-    {"name": "panes", "title": "Two panes: the outline and Home zoomed in",
-     "keys": ["j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "C-w", "v"]}
-  ]
+ "file": "demo.taskpaper.in",
+ "scenes": [
+  {
+   "name": "outline",
+   "title": "An outline with projects, sections and tasks",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "today",
+   "title": "The Today view",
+   "keys": [
+    "g",
+    "t"
+   ]
+  },
+  {
+   "name": "attachments",
+   "title": "A project's note and comments in the attachments panel",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "n"
+   ]
+  },
+  {
+   "name": "navigator",
+   "title": "The Navigator",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "C-g"
+   ]
+  },
+  {
+   "name": "panes",
+   "title": "Two panes: the outline and Home zoomed in",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "C-w",
+    "v"
+   ]
+  },
+  {
+   "name": "zoom",
+   "title": "Zooming into a project, then into a section, and back out",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "frame:1400",
+    ".",
+    "frame:1600",
+    "j",
+    "j",
+    "frame:900",
+    ".",
+    "frame:1800",
+    ">",
+    "frame:1000",
+    ">",
+    "frame:1600"
+   ]
+  },
+  {
+   "name": "quick-add",
+   "title": "Quick Add puts a task in the INBOX with its date",
+   "keys": [
+    "frame:1000",
+    "q",
+    "i",
+    "frame:500",
+    "type:Call the dentist tomorrow",
+    "frame:1800",
+    "Enter",
+    "frame:2400"
+   ]
+  },
+  {
+   "name": "editing",
+   "title": "Adding a task below the focused one",
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "frame:1000",
+    "o",
+    "t",
+    "frame:500",
+    "type:Ask a friend to proofread",
+    "frame:900",
+    "Escape",
+    "frame:2200"
+   ]
+  },
+  {
+   "name": "theme-catppuccin-mocha",
+   "title": "The catppuccin-mocha theme",
+   "cols": 72,
+   "rows": 18,
+   "plain": true,
+   "config": {
+    "theme": "catppuccin-mocha"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "."
+   ]
+  },
+  {
+   "name": "theme-nord",
+   "title": "The nord theme",
+   "cols": 72,
+   "rows": 18,
+   "plain": true,
+   "config": {
+    "theme": "nord"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "."
+   ]
+  },
+  {
+   "name": "theme-gruvbox-dark",
+   "title": "The gruvbox-dark theme",
+   "cols": 72,
+   "rows": 18,
+   "plain": true,
+   "config": {
+    "theme": "gruvbox-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "."
+   ]
+  },
+  {
+   "name": "theme-solarized-light",
+   "title": "The solarized-light theme",
+   "cols": 72,
+   "rows": 18,
+   "plain": true,
+   "config": {
+    "theme": "solarized-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "."
+   ]
+  },
+  {
+   "name": "weather",
+   "title": "Autumn leaves fall over the outline after the app sits idle",
+   "config": {
+    "weather": true,
+    "animations": "full"
+   },
+   "keys": [
+    "C-p",
+    "text:Start Weather",
+    "wait:0.5",
+    "Enter",
+    "wait:2",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250",
+    "frame:250"
+   ]
+  },
+  {
+   "name": "file-view",
+   "title": "The Launch project zoomed in, in Terminal Dark",
+   "cols": 72,
+   "rows": 18,
+   "plain": true,
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "."
+   ]
+  }
+ ]
 }

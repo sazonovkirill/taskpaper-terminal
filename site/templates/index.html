@@ -1,15 +1,157 @@
 {% extends "base.html" %}
 {% block main %}
+{% set shots = "screenshots/landing/" %}
 <section class="hero">
+  <p class="eyebrow">tpt · the infinite outliner for your terminal</p>
   <h1>Think in outlines.<br>Stay in the terminal.</h1>
   <p class="pitch">tpt is a keyboard-driven infinite outliner that keeps everything in one plain TaskPaper file you own.</p>
   <div class="install">
-    <code id="install">{{ config.extra.install }}</code>
+    <code id="install">{{ config.extra.install | safe }}</code>
     <button type="button" class="copy" data-copy="install">Copy</button>
   </div>
   <p class="links"><a class="button" href="{{ get_url(path='@/tutorial/_index.md') }}">Read the Tutorial</a> <a href="{{ config.extra.github | safe }}">View on GitHub</a></p>
-  <img class="shot" src="{{ get_url(path='screenshots/landing/outline.png') }}" width="1070" height="691"
+  <img class="shot hero-shot reveal grow" src="{{ get_url(path=shots ~ 'outline.png') }}" width="1070" height="691"
        alt="tpt showing an outline of projects, sections and tasks with date chips, stars, flags and colored rows">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Plain text</p>
+    <h2>Your outline is a text file.</h2>
+    <p>Everything lives in one <code>.taskpaper</code> file: readable in any editor, easy to sync, diff and back up, and open in TaskPaper too. Tags like <code>@due</code> and <code>@done</code> stay in the file and out of your way.</p>
+  </div>
+  <div class="split reveal">
+    <figure class="file">
+      <figcaption>Launch.taskpaper</figcaption>
+<pre><span class="p">Launch tpt 1.0:</span>
+	Ship a terminal outliner people love.
+	Documentation <span class="t">@section</span>
+		- Write the getting started guide <span class="t">@due(2026-10-11) @star</span>
+		- Record a GIF of Quick Add <span class="t">@start(2026-10-12)</span>
+		- Proofread the keyboard reference <span class="t">@done(2026-10-09)</span>
+	Website <span class="t">@section</span>
+		- Landing page with the hero shot <span class="t">@due(2026-10-13) @flag</span>
+		- Pricing page: "Free. Forever." <span class="t">@green</span></pre>
+    </figure>
+    <img src="{{ get_url(path=shots ~ 'file-view.png') }}" loading="lazy" width="664" height="363"
+         alt="The same project in tpt: tags hidden, dates shown as chips, the done task struck through">
+  </div>
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Infinite outline</p>
+    <h2>Zoom into anything.</h2>
+    <p>Every block can hold more blocks, as deep as you like. Zoom into one and it becomes the whole screen, with breadcrumbs to find your way back. Fold what you don't need right now.</p>
+    <p class="keys"><kbd>.</kbd> zoom in <kbd>&gt;</kbd> zoom out <kbd>h</kbd> <kbd>l</kbd> fold and unfold</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'zoom.webp') }}" loading="lazy" width="1070" height="691"
+       alt="Animation: zooming into the Launch project, then into its Documentation section, and back out">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Keyboard first</p>
+    <h2>Move like vim. Type like a notebook.</h2>
+    <p>In navigate mode the keys move, fold, indent and rearrange whole blocks. Press <kbd>Enter</kbd> to type into one, <kbd>Esc</kbd> to step back out. Every key has a classic form and a kitty-protocol form, so they work in any terminal.</p>
+    <p class="keys"><kbd>j</kbd> <kbd>k</kbd> move <kbd>o</kbd> new block <kbd>Tab</kbd> indent <kbd>x</kbd> done <kbd>z</kbd> undo</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'editing.webp') }}" loading="lazy" width="1070" height="691"
+       alt="Animation: a new task is added below the focused one and typed in">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Quick Add</p>
+    <h2>Catch the thought. Keep your place.</h2>
+    <p>Quick Add drops a task into your inbox, or any project, without leaving where you are. Say "tomorrow" or "next Friday" and it becomes a date.</p>
+    <p class="keys"><kbd>q</kbd> <kbd>i</kbd> add to the inbox</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'quick-add.webp') }}" loading="lazy" width="1070" height="691"
+       alt="Animation: typing 'Call the dentist tomorrow' into Quick Add puts it in the INBOX with a tomorrow chip">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Dates and views</p>
+    <h2>Today, gathered for you.</h2>
+    <p>Start and due dates read as "today", "Tue" or "yesterday". The Today view gathers what needs you today from across the whole outline, with the path to each. Upcoming, Overdue, Logbook, Starred, Flagged and Colors are a keystroke away.</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'today.png') }}" loading="lazy" width="1070" height="691"
+       alt="The Today view listing tasks due today, an overdue one and starred ones, each with its breadcrumb path">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Navigator</p>
+    <h2>Everywhere is close.</h2>
+    <p>The Navigator lists your inbox, the special views, bookmarks and every project with its open tasks. Type to filter, press <kbd>Enter</kbd> to go. Finders jump to any block or command by name.</p>
+    <p class="keys"><kbd>Ctrl+G</kbd> Navigator <kbd>Ctrl+K</kbd> go to block <kbd>Ctrl+P</kbd> commands</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'navigator.png') }}" loading="lazy" width="1070" height="691"
+       alt="The Navigator window over the outline, listing the inbox, special views, a bookmark and three projects">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Notes and comments</p>
+    <h2>Details, out of the way.</h2>
+    <p>Give any block a Markdown note and dated comments. In the outline they're a quiet icon; open the panel to read and write them. In the file they're ordinary indented lines, so nothing is lost.</p>
+    <p class="keys"><kbd>n</kbd> note <kbd>N</kbd> comments</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'attachments.png') }}" loading="lazy" width="1070" height="691"
+       alt="The attachments panel beside the outline, showing a project's Markdown note and two dated comments">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Panes</p>
+    <h2>Two places at once. Or ten.</h2>
+    <p>Split the screen into as many panes as fit, each zoomed into its own part of the same file. Edit in one and the others follow.</p>
+    <p class="keys"><kbd>Ctrl+W</kbd> <kbd>v</kbd> open the focused block in a new pane</p>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'panes.png') }}" loading="lazy" width="1070" height="691"
+       alt="Two panes side by side: the whole outline on the left and the Home project zoomed in on the right">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Make it yours</p>
+    <h2>Twelve themes. A little weather.</h2>
+    <p>Pick from twelve built-in themes, or keep Terminal Dark, which takes its colors from your terminal. Gentle animations show where things land. Step away for a few minutes and the season's weather drifts across the screen.</p>
+  </div>
+  <div class="themes reveal">
+    <figure><img src="{{ get_url(path=shots ~ 'theme-catppuccin-mocha.png') }}" loading="lazy" width="664" height="363" alt="tpt in the Catppuccin Mocha theme"><figcaption>Catppuccin Mocha</figcaption></figure>
+    <figure><img src="{{ get_url(path=shots ~ 'theme-nord.png') }}" loading="lazy" width="664" height="363" alt="tpt in the Nord theme"><figcaption>Nord</figcaption></figure>
+    <figure><img src="{{ get_url(path=shots ~ 'theme-gruvbox-dark.png') }}" loading="lazy" width="664" height="363" alt="tpt in the Gruvbox Dark theme"><figcaption>Gruvbox Dark</figcaption></figure>
+    <figure><img src="{{ get_url(path=shots ~ 'theme-solarized-light.png') }}" loading="lazy" width="664" height="363" alt="tpt in the Solarized Light theme"><figcaption>Solarized Light</figcaption></figure>
+  </div>
+  <img class="shot reveal grow" src="{{ get_url(path=shots ~ 'weather.webp') }}" loading="lazy" width="1070" height="691"
+       alt="Animation: autumn leaves drift down over the outline and pile up at the bottom">
+</section>
+
+<section class="feature">
+  <div class="copy-block reveal">
+    <p class="eyebrow">Anywhere</p>
+    <h2>Wherever there's a terminal.</h2>
+  </div>
+  <ul class="facts reveal">
+    <li><b>SSH and tmux</b>Runs on a server as well as on your laptop.</li>
+    <li><b>macOS and Linux</b>iTerm2, Terminal.app, Ghostty, kitty, WezTerm, Alacritty, GNOME Terminal.</li>
+    <li><b>Saves as you go</b>Every change is written to the file, with a daily backup.</li>
+    <li><b>Edit it anywhere</b>Change the file in another app and tpt picks it up.</li>
+    <li><b>Fast</b>Built to open a 100,000-line outline in under a third of a second.</li>
+    <li><b>No account</b>No sign-in, no cloud, no telemetry.</li>
+  </ul>
+</section>
+
+<section class="cta reveal">
+  <h2>Start your outline.</h2>
+  <div class="install">
+    <code id="install-again">{{ config.extra.install | safe }}</code>
+    <button type="button" class="copy" data-copy="install-again">Copy</button>
+  </div>
+  <p class="links"><a class="button" href="{{ get_url(path='@/tutorial/_index.md') }}">Read the Tutorial</a> <a href="{{ get_url(path='@/reference/_index.md') }}">Browse the Reference</a> <a href="{{ config.extra.github | safe }}">Star on GitHub</a></p>
 </section>
 {% endblock %}
 {% block scripts %}<script src="{{ get_url(path='js/site.js', cachebust=true) }}" defer></script>{% endblock %}
