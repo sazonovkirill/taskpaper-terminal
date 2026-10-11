@@ -158,11 +158,12 @@ def blend(fg, bg, t=0.5):
 
 
 def to_html(screen, height):
-    """Turns tmux's SGR-escaped capture into rows of styled spans."""
-    rows = []
+    """Turns tmux's SGR-escaped capture into rows of styled spans, and the most common background."""
+    rows, backgrounds = [], {}
+    # tmux does not repeat the style at the start of a line, so it carries over from the last.
+    st = {"fg": None, "bg": None, "b": False, "d": False, "i": False, "u": False,
+          "r": False, "s": False}
     for line in screen.split("\n")[:height]:
-        st = {"fg": None, "bg": None, "b": False, "d": False, "i": False, "u": False,
-              "r": False, "s": False}
         spans, width = [], 0
         for part in re.split(r"(\x1b\[[0-9;:]*m)", line):
             if part.startswith("\x1b["):
@@ -212,9 +213,10 @@ def to_html(screen, height):
             text = "".join(html.escape(c) if ord(c) < 0x2500 else f'<i class="c">{html.escape(c)}</i>'
                            for c in part)
             spans.append(f'<span style="{";".join(css)}">{text}</span>')
+            backgrounds[bg] = backgrounds.get(bg, 0) + len(part)
             width += len(part)
         rows.append("".join(spans))
-    return "\n".join(rows)
+    return "\n".join(rows), max(backgrounds, key=backgrounds.get, default=BG)
 
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><style>
@@ -317,8 +319,9 @@ def main():
         pngs = []
         for index, (screen, _) in enumerate(frames):
             page = CACHE / f"{group}-{name}-{index}.html"
+            body, background = to_html(screen, scene["rows"])
             page.write_text(PAGE.format(
-                body=to_html(screen, scene["rows"]), fg=FG, bg=BG, cols=scene["cols"],
+                body=body, fg=FG, bg=background, cols=scene["cols"],
                 title=html.escape(scene.get("window_title", f"tpt — {scene.get('save_as', 'Launch.taskpaper')}")),
                 outer="transparent", pad="0" if plain else "28px",
                 inner="6px 8px" if plain else "10px 12px",
