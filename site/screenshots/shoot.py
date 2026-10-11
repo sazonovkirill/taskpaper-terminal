@@ -254,6 +254,11 @@ const { chromium } = require('playwright');
 """
 
 
+def node_env():
+    root = subprocess.run(["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()
+    return {**os.environ, "NODE_PATH": root}
+
+
 def make_clip(pngs, durations, out):
     """Joins a clip's frames into one looping animated WebP at half the 2x render size."""
     from PIL import Image
@@ -276,6 +281,20 @@ def load_scenes():
             scene = {"cols": 110, "rows": 30, **scene}
             document = HERE / scene.get("file", spec.get("file", "demo.taskpaper.in"))
             yield path.stem, scene, document
+
+# The social preview image (Open Graph) for every page: 1200 x 630 at 1x.
+RENDER_SOCIAL = """
+const { chromium } = require('playwright');
+(async () => {
+  let browser;
+  try { browser = await chromium.launch(); }
+  catch (e) { browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); }
+  const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
+  await page.goto('file://' + process.argv[1]);
+  await (await page.$('#shot')).screenshot({ path: process.argv[2] });
+  await browser.close();
+})();
+"""
 
 
 def main():
@@ -311,11 +330,13 @@ def main():
         if len(frames) > 1:
             clips.append((pngs, [ms for _, ms in frames], out_dir / group / f"{name}.webp"))
         print(f"{group}/{name}: {scene.get('title', '')}")
-    subprocess.run(["node", "-e", RENDER, json.dumps(jobs)], check=True,
-                   env={**os.environ, "NODE_PATH": subprocess.run(
-                       ["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()})
+    subprocess.run(["node", "-e", RENDER, json.dumps(jobs)], check=True, env=node_env())
     for page, out in jobs:
         Path(page).unlink()
+    if not only:
+        subprocess.run(["node", "-e", RENDER_SOCIAL, str(HERE / "social.html"),
+                        str(out_dir.parent / "social.png")], check=True, env=node_env())
+        print(out_dir.parent / "social.png")
     for pngs, durations, out in clips:
         make_clip(pngs, durations, out)
     for _, out in jobs:

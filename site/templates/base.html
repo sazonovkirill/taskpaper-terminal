@@ -7,6 +7,15 @@
 <title>{% if page_title == config.title %}tpt · the infinite outliner for your terminal{% else %}{{ page_title }} · tpt{% endif %}</title>
 <meta name="description" content="{{ section.description | default(value=page.description | default(value=config.description)) }}">
 <link rel="stylesheet" href="{{ get_url(path='css/site.css', cachebust=true) }}">
+{% set page_description = section.description | default(value=page.description | default(value=config.description)) %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="{% if page_title == config.title %}tpt · the infinite outliner for your terminal{% else %}{{ page_title }} · tpt{% endif %}">
+<meta property="og:description" content="{{ page_description }}">
+<meta property="og:image" content="{{ get_url(path='social.png') }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="{{ get_url(path='favicon.svg') }}" type="image/svg+xml">
 <script>document.documentElement.classList.add("js")</script>
 {% block head %}{% endblock %}

@@ -6,6 +6,7 @@ A terminal editor for `.taskpaper` files: an infinite, Workflowy-like outliner b
 
 - `app/` — the application (Rust crate: source code, resources)
 - `docs/` — requirements, specs and references ([index](docs/README.md))
+- `site/` — the product website: landing page, Tutorial and Reference (`bash site/site.sh serve` to preview)
 
 Agents start with [AGENTS.md](AGENTS.md), which links the workflow and quality rules in [docs/quality/](docs/quality/README.md).
 
@@ -17,3 +18,7 @@ cargo run
 ```
 
 Settings, such as key bindings, live in `~/.config/taskpaper-terminal/config.toml` (`$XDG_CONFIG_HOME` respected, also on macOS); see [keybindings.md §5](docs/specs/keybindings.md#5-configuration).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
