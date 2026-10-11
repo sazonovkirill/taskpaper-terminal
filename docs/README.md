@@ -20,6 +20,7 @@ taskpaper-terminal is a keyboard-driven terminal editor for [TaskPaper](https://
 | [implementation-plan.md](implementation-plan.md) | Draft | The order v1 is built in: milestones of small steps, each leaving a working app. |
 | [open-questions.md](open-questions.md) | Living | Undecided choices, each with a proposed default, plus the ones already decided. |
 | [specs/](specs/README.md) | Accepted | How each area works. |
+| [website.md](website.md) | Draft | The product website in `site/`: its pages, Tutorial, Reference, screenshots and milestones. |
 | [key-mnemonics.md](key-mnemonics.md) | Guide | The logic behind the default keys, to help memorize them. |
 | [reference/](reference/README.md) | Reference | TaskPaper format and Workflowy features, sourced from official docs. |
 | [quality/](quality/README.md) | Accepted | How agents work on this project. |
