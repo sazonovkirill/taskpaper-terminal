@@ -79,9 +79,3 @@ kbd { display: inline-block; font: 0.85em/1.4 var(--mono); color: var(--text); b
   .ref-k { color: #000; }
   .ref-panel { background: none; color: #000; border: 1px solid #999; }
 }
-
-/* Wide key tables scroll inside their own box; without minmax(0, …) the one-column docs grid
-   would grow to the widest table and scroll the whole page sideways. */
-@media (max-width: 860px) {
-  .docs { grid-template-columns: minmax(0, 1fr); }
-}

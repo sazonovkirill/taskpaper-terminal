@@ -127,7 +127,7 @@ kbd { font: 600 0.82em var(--mono); color: var(--text); background: var(--panel-
 .pager .next { margin-left: auto; text-align: right; }
 .pager span { color: var(--faint); font-size: 13px; font-weight: 400; }
 @media (max-width: 860px) {
-  .docs { grid-template-columns: 1fr; gap: 24px; }
+  .docs { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .docs-nav { position: static; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 }
 
