@@ -1,0 +1,10 @@
+{# Every built-in theme (app/src/ui/theme/colors.rs) with its screenshot from scenes/reference.json. #}
+{% set data = load_data(path="data/settings.json") %}
+<div class="ref-themes">
+{% for t in data.themes %}{% set src = "screenshots/reference/theme-" ~ t.id ~ ".png" %}{% set meta = get_image_metadata(path=src) %}
+<figure class="ref-theme" id="theme-{{ t.id }}">
+  <img src="{{ get_url(path=src) }}" alt="The demo outline in the {{ t.name }} theme" loading="lazy" width="{{ meta.width / 2 | round }}" height="{{ meta.height / 2 | round }}">
+  <figcaption><strong>{{ t.name }}</strong> <code>theme = "{{ t.id }}"</code>{% if not t.truecolor %} · the default, in your terminal's own colors{% endif %}</figcaption>
+</figure>
+{% endfor %}
+</div>

@@ -1,0 +1,226 @@
+{
+ "file": "demo.taskpaper.in",
+ "scenes": [
+  {
+   "name": "theme-terminal-dark",
+   "title": "tpt in the Terminal Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "terminal-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-catppuccin-mocha",
+   "title": "tpt in the Catppuccin Mocha theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "catppuccin-mocha"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-catppuccin-latte",
+   "title": "tpt in the Catppuccin Latte theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "catppuccin-latte"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-tokyo-night",
+   "title": "tpt in the Tokyo Night theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "tokyo-night"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-dracula",
+   "title": "tpt in the Dracula theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "dracula"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-nord",
+   "title": "tpt in the Nord theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "nord"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-gruvbox-dark",
+   "title": "tpt in the Gruvbox Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "gruvbox-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-rose-pine",
+   "title": "tpt in the Rosé Pine theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "rose-pine"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-rose-pine-dawn",
+   "title": "tpt in the Rosé Pine Dawn theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "rose-pine-dawn"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-kanagawa-wave",
+   "title": "tpt in the Kanagawa Wave theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "kanagawa-wave"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-everforest-dark",
+   "title": "tpt in the Everforest Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "everforest-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-one-dark",
+   "title": "tpt in the One Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "one-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-solarized-light",
+   "title": "tpt in the Solarized Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "solarized-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  }
+ ]
+}
