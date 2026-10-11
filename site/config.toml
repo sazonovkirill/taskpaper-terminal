@@ -4,7 +4,7 @@ base_url = "https://tpt.invalid"
 title = "tpt"
 description = "A keyboard-driven infinite outliner for the terminal that keeps your outline in a plain TaskPaper file."
 compile_sass = false
-build_search_index = false
+build_search_index = true
 generate_feeds = false
 
 [markdown]

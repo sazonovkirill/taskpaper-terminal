@@ -1,0 +1,64 @@
+{# The Reference's search box (W-REF-06): Zola's build-time index, loaded on first use, filtered to the Reference. #}
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("{{ get_url(path='elasticlunr.min.js') }}")
+    .then(() => load("{{ get_url(path='search_index.en.js') }}"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith("/reference/")).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
