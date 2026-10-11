@@ -1,0 +1,15 @@
+# The tpt product website (docs/website.md). Build with `bash site/site.sh build`.
+# base_url is a placeholder until the site has a host (milestone W5).
+base_url = "https://tpt.invalid"
+title = "tpt"
+description = "A keyboard-driven infinite outliner for the terminal that keeps your outline in a plain TaskPaper file."
+compile_sass = false
+build_search_index = false
+generate_feeds = false
+
+[markdown]
+smart_punctuation = true
+
+[extra]
+github = "https://github.com/sazonovkirill/taskpaper-terminal"
+install = "cargo install --git https://github.com/sazonovkirill/taskpaper-terminal"

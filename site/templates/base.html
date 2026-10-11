@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% set page_title = section.title | default(value=page.title | default(value=config.title)) %}
+<title>{% if page_title == config.title %}tpt · the infinite outliner for your terminal{% else %}{{ page_title }} · tpt{% endif %}</title>
+<meta name="description" content="{{ section.description | default(value=page.description | default(value=config.description)) }}">
+<link rel="stylesheet" href="{{ get_url(path='css/site.css', cachebust=true) }}">
+<link rel="icon" href="{{ get_url(path='favicon.svg') }}" type="image/svg+xml">
+{% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{% set here = current_path | default(value="/") %}
+<header class="site-header">
+  <a class="logo" href="{{ get_url(path='@/_index.md') }}"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="{{ get_url(path='@/_index.md') }}"{% if here == "/" %} aria-current="page"{% endif %}>Home</a>
+    <a href="{{ get_url(path='@/tutorial/_index.md') }}"{% if here is starting_with("/tutorial/") %} aria-current="page"{% endif %}>Tutorial</a>
+    <a href="{{ get_url(path='@/reference/_index.md') }}"{% if here is starting_with("/reference/") %} aria-current="page"{% endif %}>Reference</a>
+    <a href="{{ get_url(path='@/pricing.md') }}"{% if here is starting_with("/pricing/") %} aria-current="page"{% endif %}>Pricing</a>
+    <a href="{{ config.extra.github | safe }}">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="{{ config.extra.github | safe }}">GitHub</a></p>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

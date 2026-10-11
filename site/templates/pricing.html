@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="pricing">
+  <h1>Simple, transparent pricing</h1>
+  <p class="sub">Choose the plan that fits your outline. Upgrade, downgrade or cancel at any time. Nothing will happen.</p>
+
+  <div class="toggle">
+    <div class="switch" role="group" aria-label="Billing period">
+      <button type="button" aria-pressed="true" data-period="monthly">Monthly</button>
+      <button type="button" aria-pressed="false" data-period="annually">Annually</button>
+    </div>
+    <span class="save">Save 0%</span>
+  </div>
+
+  <div class="plans">
+    <div class="plan">
+      <h2>Basic</h2>
+      <p class="tag">For people who just need an outline.</p>
+      <div class="price"><b>$0</b><span class="per">/ month</span></div>
+      <div class="was">($0 annually)</div>
+      <a class="cta" href="#get-it">Start with Basic</a>
+      <ul>
+        <li>Plain-text <code>.taskpaper</code> files you own</li>
+        <li>Infinite outline: fold and zoom into any block</li>
+        <li>Navigate and edit modes, keyboard-first</li>
+        <li>Projects, tasks, notes, sections and dividers</li>
+        <li>Undo, autosave and daily backups</li>
+      </ul>
+    </div>
+
+    <div class="plan pro">
+      <span class="badge">Most popular</span>
+      <h2>Pro</h2>
+      <p class="tag">For people who get things done. Like you.</p>
+      <div class="price"><b>$0</b><span class="per">/ month</span></div>
+      <div class="was">($0 annually) · <s>$0</s> limited-time offer</div>
+      <a class="cta" href="#get-it">Get Pro</a>
+      <p class="nudge">★ Chosen by 100% of people who chose it</p>
+      <ul>
+        <li class="plus">Everything in Basic, plus:</li>
+        <li>Due and start dates as friendly chips</li>
+        <li>Today, Upcoming, Overdue and Logbook views</li>
+        <li>Stars, flags and color tags</li>
+        <li>Notes and comments on any block</li>
+        <li>Quick Add from anywhere in the outline</li>
+        <li>The Navigator, finders and command palette</li>
+      </ul>
+    </div>
+
+    <div class="plan max">
+      <h2>Pro Max</h2>
+      <p class="tag">For power users with very large outlines and opinions.</p>
+      <div class="price"><b>$0</b><span class="per">/ month</span></div>
+      <div class="was">($0 annually)</div>
+      <a class="cta" href="#get-it">Go Max</a>
+      <ul>
+        <li class="plus">Everything in Pro, plus:</li>
+        <li>Unlimited split panes</li>
+        <li>Twelve built-in color themes</li>
+        <li>Animations and seasonal weather when idle</li>
+        <li>Kitty keyboard protocol support</li>
+        <li>Works over SSH and inside tmux</li>
+        <li>Priority support: you, reading the source</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="fine">All prices exclude nothing. No credit card required, or accepted.</p>
+
+  <section class="real">
+    <h2>The fine print, honestly</h2>
+    <dl>
+      <dt>Is tpt really free?</dt>
+      <dd>Yes. tpt is open source under the MIT license. Every feature above is in the one and only version, and all three plans are the same app.</dd>
+      <dt>Do I need an account?</dt>
+      <dd>No. There is no account, no sign-in, no subscription and no telemetry. tpt reads and writes a file on your disk, and that's it.</dd>
+      <dt id="get-it">How do I get it?</dt>
+      <dd><code>{{ config.extra.install }}</code></dd>
+      <dt>Then why is there a pricing page?</dt>
+      <dd>Every product website has one. We felt left out.</dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ get_url(path='js/site.js', cachebust=true) }}" defer></script>{% endblock %}

@@ -1,0 +1,39 @@
+INBOX:
+	- Call the bike shop about the brakes
+	- Read "The Pragmatic Programmer" chapter 4
+Launch tpt 1.0:
+	Ship a terminal outliner people love. **Docs first**, then the website.
+	NOTE @hidden
+		# Launch plan
+		The site goes live with the 1.0 tag. Keep the landing page short:
+		​- one screenshot above the fold
+		​- install in one line
+		​- a link to the docs
+		Pricing page is a joke: **it's free**.
+	COMMENTS @hidden
+		[{today-1} 18:20] Screenshots look great in Terminal Dark
+		[{today-3} 09:05] Agreed to ship docs before the blog post
+	Documentation @section
+		- Write the getting started guide @due({today}) @star
+		- Record a GIF of Quick Add @start({today+1})
+		- Screenshot every special view @due({today+3}) @yellow
+		- Proofread the keyboard reference @done({today-2})
+	Website @section
+		- Landing page with the hero shot @due({today+2}) @flag
+		- Pricing page: "Free. Forever." @green
+		- Link to GitHub from every page
+	---Later---
+	- Announce on Hacker News @start({today+9})
+	- Package for Homebrew @due({today-1})
+Home:
+	- Book the plumber @due({today}) @red
+	- Plan Sunday dinner
+		- Buy lemons and thyme
+		- Roast chicken @star
+		- Bake the apple tart @done({today})
+	- Renew passport @due({today+12}) @bookmark
+Reading list:
+	Books to finish before the end of the year.
+	- Designing Data-Intensive Applications @star
+	- The Mythical Man-Month @done({today-20})
+	- A Philosophy of Software Design @blue

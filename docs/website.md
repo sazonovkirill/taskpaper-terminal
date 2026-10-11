@@ -21,7 +21,7 @@ Priorities use the scale of the functional requirements. IDs are stable; referen
 |---|---|---|
 | W-SITE-01 | A static site in `site/`, built with [Zola](https://www.getzola.org) (a single Rust binary, pinned to one version) into plain HTML, CSS and a little JavaScript that any static host serves with no server code. Pages work with JavaScript off, except for animations. | Must |
 | W-SITE-02 | Pages: Home (landing), Tutorial, Reference, Pricing. Every page has the same header with links to all four and to the GitHub repository, and the same footer. | Must |
-| W-SITE-03 | One command from the repository root builds the site into an ignored output folder, and one serves it locally with live reload. | Must |
+| W-SITE-03 | One command from the repository root builds the site into an ignored output folder, and one serves it locally with live reload: `bash site/site.sh build`, `serve`, `check` and `shoot`. | Must |
 | W-SITE-04 | Tutorial and Reference are written in Markdown, one file per chapter or topic, so they read well in a diff and stay easy to update. | Must |
 | W-SITE-05 | The visual style matches the app: dark by default, the Terminal Dark palette as accent colors, a monospace font for keys and code. The site follows the system's light or dark preference. | Must |
 | W-SITE-06 | Works on phones: readable at 360 px wide, no horizontal page scroll, screenshots scale down. | Must |
@@ -92,7 +92,7 @@ Priorities use the scale of the functional requirements. IDs are stable; referen
 
 ## Milestones
 
-Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` the Codex milestone review runs (unless the owner skips it) and work stops for the owner's review.
+Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` work stops for the owner's review. Site changes need no independent review and no mutation testing ([agent workflow](quality/agent-workflow.md#the-product-website)).
 
 | # | Milestone | Covers | After |
 |---|---|---|---|

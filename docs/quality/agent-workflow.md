@@ -143,6 +143,10 @@ The script launches reviewers from the frozen worktree with the prompt on standa
 - Codex: `codex exec --model gpt-5.5 --config model_reasoning_effort="<effort>" --config mcp_servers.todoist.enabled=false --sandbox read-only --ephemeral -`
 - Claude: `claude --model claude-opus-5-5 --effort <effort> --print --permission-mode dontAsk --tools Read,Grep,Glob --strict-mcp-config --no-session-persistence --add-dir ~/.cargo/registry/src "$(rustc --print sysroot)/lib/rustlib/src/rust/library"`
 
+### The product website
+
+Changes to the product website in `site/` ([website.md](../website.md)) have a lower quality bar than the app (owner, 2026-10-11): they need no independent review, neither the per-commit Claude review nor the Codex milestone review, and no mutation testing. Their validation is `bash site/site.sh check`, which must pass for the committed contents; the `pre-push` hook still runs. A commit that also changes `app/` follows the full gate for that part.
+
 ## Validation, publication and delivery
 
 Code changes require `bash app/scripts/validate.sh all` (format, lint, cargo-deny, tests and the coverage gate) and `bash app/scripts/validate.sh mutants` to pass for the exact contents being committed, before pushing. There is no GitHub CI. Record the command and exit status on the task. Investigate failures and review and validate any corrective commit through the same gate. Do not hide failures with weaker tests, repeated blind retries or results from earlier contents.

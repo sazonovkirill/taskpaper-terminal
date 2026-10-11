@@ -79,7 +79,7 @@ Apply each item that is relevant to the change type. Documentation-only validati
 1. **Todoist is the backlog and the task record.** The Todoist project `taskpaper-terminal` holds tasks with status (section), priority, scope and acceptance criteria (description), and progress, review evidence, blockers and next actions (comments). Do not keep a competing task list in Markdown, local notes or agent memory.
 2. **Markdown under `docs/` is authoritative durable knowledge.** Requirements, specs, the TaskPaper format reference, design decisions and workflow documentation live there. Link lasting decisions from the task record; do not leave them only in discussion. Each kind of decision has one home: product decisions in the Decisions table of [functional-requirements.md](docs/functional-requirements.md) (`D-n`) or, for choices it leaves open, in [open-questions.md](docs/open-questions.md) (`OQ-n`); engineering and process decisions as rules in the `docs/quality/` document they change. Check those before asking the owner, and record new answers there.
 3. **Local validation is authoritative.** Code changes need `bash app/scripts/validate.sh all` to pass for the exact committed contents. There is no GitHub CI. Documentation-only changes need local review and the `git diff --check` steps in the agent workflow.
-4. **Review happens in the agent's session, not in pull requests.** A fresh Claude reviewer inspects each non-trivial commit, and a Codex reviewer inspects the whole app on the owner's Mac after each milestone ([milestone review](docs/quality/agent-workflow.md#milestone-review)). Agents do not open PRs unless explicitly asked, and have standing authorization to push scoped, reviewed, validated work to `main`.
+4. **Review happens in the agent's session, not in pull requests.** A fresh Claude reviewer inspects each non-trivial commit, and a Codex reviewer inspects the whole app on the owner's Mac after each milestone ([milestone review](docs/quality/agent-workflow.md#milestone-review)); the product website in `site/` is exempt from both ([the product website](docs/quality/agent-workflow.md#the-product-website)). Agents do not open PRs unless explicitly asked, and have standing authorization to push scoped, reviewed, validated work to `main`.
 
 ## Working agreement
 
@@ -108,6 +108,7 @@ Either tool may instead be launched as an independent reviewer: Claude of a prop
 ## Repository boundaries
 
 - `app/`: the Rust crate, its source, tests and `scripts/`.
+- `site/`: the product website ([website.md](docs/website.md)), built with `bash site/site.sh`; its lighter quality bar is in [the agent workflow](docs/quality/agent-workflow.md#the-product-website).
 - `docs/`: requirements, specs, references and workflow documentation (`docs/quality/`); no task tracking.
 - `.worktrees/` and `.claude/worktrees/`: agent worktrees, ignored by Git.
 - `.agents/skills/`: procedures both tools load on demand (`claim-task`, `review-commit`, `deliver-task`); `.claude/skills` links to it. The documents under `docs/quality/` stay authoritative; a skill only sequences their steps.
