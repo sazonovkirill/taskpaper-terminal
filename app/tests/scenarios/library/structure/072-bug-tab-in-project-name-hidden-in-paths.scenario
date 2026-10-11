@@ -1,0 +1,24 @@
+# A tab inside a project's name shows as a space in the paths that name it: a view entry's path, the breadcrumbs and the Quick Add title.
+file <<END
+Big	Work:
+	- Ship @due({today+2})
+END
+keys gU j
+see - Ship  Big Work
+hide BigWork
+keys gz
+see › Big Work
+hide BigWork
+keys qq
+type Plan
+keys <Space> /
+type big
+keys <Enter>
+see Quick Add → Big Work
+hide BigWork
+keys <Esc>
+quit
+saved <<END
+Big	Work:
+	- Ship @due({today+2})
+END

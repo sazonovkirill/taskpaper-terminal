@@ -355,8 +355,8 @@ const FOCUS_MARKER: &str = "▌";
 #[must_use]
 pub fn breadcrumbs(crumbs: &[String], width: usize, icons: IconSet) -> Line<'static> {
     let (cut, shown) = shown_crumbs(crumbs, width, icons);
-    let texts: Vec<&str> = cut
-        .then_some("…")
+    let texts: Vec<Cow<'_, str>> = cut
+        .then_some(Cow::Borrowed("…"))
         .into_iter()
         .chain(shown.into_iter().map(|(_, text)| text))
         .collect();
@@ -376,7 +376,7 @@ pub fn crumb_at(crumbs: &[String], width: usize, icons: IconSet, column: usize) 
         0
     };
     for (depth, text) in shown {
-        let end = start + Span::raw(text).width();
+        let end = start + Span::raw(text.as_ref()).width();
         if (start..end.min(width)).contains(&column) {
             return Some(depth);
         }
@@ -389,17 +389,23 @@ pub fn crumb_at(crumbs: &[String], width: usize, icons: IconSet, column: usize) 
 const CRUMB_SEPARATOR: &str = " › ";
 
 /// Whether the breadcrumb header for `crumbs` drops some from the left to fit in `width`
-/// columns, and the crumbs it shows with their depths, the home icon of `icons` being 0.
-fn shown_crumbs(crumbs: &[String], width: usize, icons: IconSet) -> (bool, Vec<(usize, &str)>) {
-    let path: Vec<(usize, &str)> = std::iter::once(Icon::Home.glyph(icons))
+/// columns, and the crumbs it shows with their depths, the home icon of `icons` being 0, as
+/// [`drawable`] draws them.
+fn shown_crumbs(
+    crumbs: &[String],
+    width: usize,
+    icons: IconSet,
+) -> (bool, Vec<(usize, Cow<'_, str>)>) {
+    let path: Vec<(usize, Cow<'_, str>)> = std::iter::once(Icon::Home.glyph(icons))
         .chain(crumbs.iter().map(String::as_str))
+        .map(drawable)
         .enumerate()
         .collect();
     let separator = Span::raw(CRUMB_SEPARATOR).width();
-    let line_width = |shown: &[(usize, &str)], cut: bool| {
+    let line_width = |shown: &[(usize, Cow<'_, str>)], cut: bool| {
         shown
             .iter()
-            .map(|(_, text)| Span::raw(*text).width())
+            .map(|(_, text)| Span::raw(text.as_ref()).width())
             .chain(cut.then(|| Span::raw("…").width()))
             .map(|text| text + separator)
             .sum::<usize>()
@@ -1478,7 +1484,7 @@ fn row_line<'a>(
     }
     if !row.path.is_empty() {
         line.push_span(Span::styled(
-            format!("  {}", row.path.join(" › ")),
+            format!("  {}", drawable(&row.path.join(" › "))),
             Style::new().dim(),
         ));
     }
@@ -2930,6 +2936,23 @@ mod tests {
         assert_eq!(crumb_at(&[], 1, ICONS, 0), Some(0));
     }
 
+    // FR-NAV-03, FR-KEY-05
+    #[test]
+    fn a_tab_in_a_crumb_is_drawn_as_a_space_that_fits_and_clicks_as_one_column() {
+        let crumbs = ["Big\tWork".to_owned(), "Draft".to_owned()];
+        assert_eq!(
+            breadcrumbs(&crumbs, 20, ICONS).to_string(),
+            "⌂ › Big Work › Draft"
+        );
+        assert_eq!(
+            breadcrumbs(&crumbs, 19, ICONS).to_string(),
+            "… › Draft",
+            "the tab takes a column"
+        );
+        assert_eq!(crumb_at(&crumbs, 20, ICONS, 11), Some(1));
+        assert_eq!(crumb_at(&crumbs, 20, ICONS, 12), None, "a separator");
+    }
+
     // FR-NAV-03
     #[test]
     fn the_title_row_is_styled_by_its_type_in_bold_over_its_indented_children() {
@@ -3003,6 +3026,23 @@ mod tests {
         expected.set_style(Rect::new(3, 0, 1, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         assert_eq!(caret, 6, "the tab takes the column it is drawn in");
+    }
+
+    // D-7, ui.md §2
+    #[test]
+    fn a_tab_in_a_today_entrys_path_is_drawn_as_a_space() {
+        let mut state = State::new(format::parse("Big\tWork:\n\t- c @due(2026-10-05)\n"), None);
+        state.update(Message::Tick {
+            now: std::time::Duration::ZERO,
+            today: TODAY,
+        });
+        state.update(Message::ToggleNavigator);
+        state.update(Message::Navigator(crate::app::NavigatorInput::Choose));
+        let line = draw(&state.rows().to_vec(), 24, 1);
+        assert_eq!(
+            (0..12).map(|x| line[(x, 0)].symbol()).collect::<String>(),
+            "- c  Big Wor"
+        );
     }
 
     // FR-BLK-07, D-52

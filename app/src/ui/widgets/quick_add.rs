@@ -14,7 +14,7 @@ use ratatui::{
     widgets::{Block, Clear, Widget},
 };
 
-use super::{Caret, Field, due_style, start_style};
+use super::{Caret, Field, drawable, due_style, start_style};
 use crate::{
     app::{Missing, QuickAddView},
     document::DateTag,
@@ -164,7 +164,7 @@ impl Widget for QuickAddPanel<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let title = match &self.view.destination {
-            Some(path) => format!(" Quick Add → {} ", path.join(" › ")),
+            Some(path) => format!(" Quick Add → {} ", drawable(&path.join(" › "))),
             None => " Quick Add ".to_owned(),
         };
         let accent = Style::new().fg(self.theme.accent);
@@ -256,6 +256,19 @@ mod tests {
         assert_eq!(
             QuickAddPanel::new(&view, IconSet::Nerd, &THEME).caret(buf.area),
             ((29, 1), 0)
+        );
+    }
+
+    // FR-MODE-07, ui.md §1
+    #[test]
+    fn a_tab_in_the_destinations_path_is_drawn_as_a_space() {
+        let view = QuickAddView {
+            destination: Some(vec!["Big\tWork".to_owned()]),
+            ..view("")
+        };
+        assert_eq!(
+            row(&render(&view), 0),
+            "┌ Quick Add → Big Work ────────────────┐"
         );
     }
 
