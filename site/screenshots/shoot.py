@@ -104,7 +104,7 @@ def shoot(tpt, scene, document):
         "LANG": "C.UTF-8", "TERM": "xterm-256color", "COLORTERM": "truecolor",
         "PALETTE": f"{hexrgb(FG)},{hexrgb(BG)}", "ANSI": ",".join(ANSI),
     }
-    session = f"shot-{scene['name']}"
+    session = f"shot-{os.getpid()}-{scene['name']}"
     subprocess.run(["tmux", "kill-session", "-t", session], capture_output=True)
     command = ["env", *(f"{k}={v}" for k, v in env.items()),
                sys.executable, str(HERE / "osc-proxy.py"), tpt, str(doc)]
