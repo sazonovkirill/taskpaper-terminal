@@ -1,14 +1,14 @@
-# * on a starred undated Today entry removes the star and the entry; on a dated one it keeps it listed.
+# s on a starred undated Today entry removes the star and the entry; on a dated one it keeps it listed.
 file <<END
 - Call mom @star
 - Rent @due({today}) @star
 END
 keys gt
 see Call mom
-keys *
+keys s
 hide Call mom
 see ▌ - Rent
-keys *
+keys s
 see ▌ - Rent
 quit
 saved <<END

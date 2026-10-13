@@ -11,7 +11,7 @@ Chores:
 END
 keys <C-g>
 see 󰓎 Starred                                 1 │
-keys <Esc> j j * ! c2 <C-g>
+keys <Esc> j j s ! c2 <C-g>
 see 󰓎 Starred                                 2 │
 see 󰈻 Flagged                                 2 │
 see 󰸌 Colors                                  2 │

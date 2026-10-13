@@ -1,10 +1,10 @@
-# * on a selection where only one block is starred stars the rest.
+# s on a selection where only one block is starred stars the rest.
 file <<END
 Mixed:
 	- A @star
 	- B
 END
-keys j J *
+keys j J s
 quit
 saved <<END
 Mixed:

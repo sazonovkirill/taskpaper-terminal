@@ -301,7 +301,7 @@ impl<'a> NodeEditorWindow<'a> {
             Some(NodeRow::Tag(_)) => "Space or type to edit · Del removes",
             Some(NodeRow::AddTag) => "Type a tag: name or name(value)",
             Some(NodeRow::Done) => "Space or x toggles",
-            Some(NodeRow::Starred) => "Space or * toggles",
+            Some(NodeRow::Starred) => "Space or s toggles",
             _ => "Space or ! toggles",
         };
         dim(&format!("{keys} · Enter save · Esc cancel"))
@@ -704,7 +704,7 @@ mod tests {
                 "│ Space or type to choose · Enter save · Esc cancel            │",
                 "│ Type or ←/→ a date · Del clears · Enter save · Esc cancel    │",
                 "│ Type or ←/→ a date · Del clears · Enter save · Esc cancel    │",
-                "│ Space or * toggles · Enter save · Esc cancel                 │",
+                "│ Space or s toggles · Enter save · Esc cancel                 │",
                 "│ Space or ! toggles · Enter save · Esc cancel                 │",
                 "│ Type a tag: name or name(value) · Enter save · Esc cancel    │",
             ]

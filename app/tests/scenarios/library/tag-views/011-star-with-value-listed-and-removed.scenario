@@ -1,4 +1,4 @@
-# A hand-written @star(high) counts as starred, and * removes it with its value.
+# A hand-written @star(high) counts as starred, and s removes it with its value.
 file <<END
 Work:
 	- Report @star(high)
@@ -6,7 +6,7 @@ Work:
 END
 keys gS
 see - Report 󰓎  Work
-keys *
+keys s
 hide Report
 quit
 saved <<END

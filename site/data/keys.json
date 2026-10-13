@@ -2902,10 +2902,10 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "*",
+     "label": "s",
      "presses": [
       [
-       "*"
+       "s"
       ]
      ],
      "kitty": false,
@@ -2999,9 +2999,9 @@
    ]
   },
   {
-   "id": "navigate-make-section",
-   "name": "Make Section",
-   "config": "make_section",
+   "id": "navigate-toggle-section",
+   "name": "Toggle Section",
+   "config": "toggle_section",
    "mode": "navigate",
    "group": "Block Metadata",
    "topic": "blocks",
@@ -3021,6 +3021,17 @@
    ]
   },
   {
+   "id": "navigate-make-section",
+   "name": "Make Section",
+   "config": "make_section",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "blocks",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
    "id": "navigate-remove-section",
    "name": "Remove Section",
    "config": "remove_section",
@@ -3029,18 +3040,7 @@
    "topic": "blocks",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "s",
-     "presses": [
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-edit-node",
@@ -8316,10 +8316,10 @@
       "panel": false,
       "keys": [
        {
-        "label": "*",
+        "label": "s",
         "presses": [
          [
-          "*"
+          "s"
          ]
         ],
         "kitty": false,
@@ -8399,7 +8399,7 @@
       "typed": []
      },
      {
-      "label": "Make Section",
+      "label": "Toggle Section",
       "panel": false,
       "keys": [
        {
@@ -8407,23 +8407,6 @@
         "presses": [
          [
           "S"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Remove Section",
-      "panel": false,
-      "keys": [
-       {
-        "label": "s",
-        "presses": [
-         [
-          "s"
          ]
         ],
         "kitty": false,
@@ -9794,6 +9777,8 @@
    "Last Child",
    "Clear Start Date",
    "Clear Due Date",
+   "Make Section",
+   "Remove Section",
    "Animations: Full",
    "Animations: Reduced",
    "Animations: Off",

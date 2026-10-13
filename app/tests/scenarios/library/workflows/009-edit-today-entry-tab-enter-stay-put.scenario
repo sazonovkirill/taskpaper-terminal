@@ -16,7 +16,7 @@ type  draft
 keys <Tab> <S-Tab> <Enter>
 see ▌ - Write quarterly report draft  Work
 status NAVIGATE
-keys j *
+keys j s
 keys gS
 see Starred
 see ▌ - Pay rent 󰓎  Home

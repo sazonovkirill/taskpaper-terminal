@@ -225,9 +225,10 @@ pub enum Message {
     /// Open the color picker on the focused block, for it or the selected blocks (FR-TAG-05).
     OpenColorPicker,
     /// Make the selected text blocks, else the focused block, sections by adding `@section`, or
-    /// with `false` plain text by removing it; a task or project is left as it is, with a notice
-    /// (FR-BLK-04, FR-OPS-07, D-52).
-    SetSection(bool),
+    /// with `Some(false)` plain text by removing it, or with `None` plain text when every one is
+    /// a section and sections otherwise; a task or project is left as it is, with a notice
+    /// (FR-BLK-04, FR-OPS-07, D-52, D-130).
+    SetSection(Option<bool>),
     /// Open the prompt for the focused block's `tag` date, resolving what is typed against
     /// `today`, the frontend's local date (FR-TAG-03).
     OpenDatePrompt {

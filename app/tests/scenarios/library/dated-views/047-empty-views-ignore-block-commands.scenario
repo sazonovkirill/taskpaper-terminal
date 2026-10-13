@@ -2,7 +2,7 @@
 file <<END
 - Plain task
 END
-keys gU x dd T * <Enter>
+keys gU x dd T s <Enter>
 keys <Esc> gO x D W
 keys gL x dd <C-a> c1
 keys gh x

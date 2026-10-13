@@ -7,7 +7,7 @@ file <<END
 - Call mom @star
 - Pay rent @star
 END
-keys gS *
+keys gS s
 see Starred
 quit
 saved <<END

@@ -8,13 +8,13 @@ Home:
 	- Call mom
 	- Fix the bike
 END
-keys j * j *
-keys G *
+keys j s j s
+keys G s
 keys gS
 see 󰓎 Starred
 see - Budget review 󰓎  Work
 see ▌ - Fix the bike 󰓎  Home
-keys gg j *
+keys gg j s
 hide Hire a designer
 see ▌ - Fix the bike 󰓎  Home
 keys gt

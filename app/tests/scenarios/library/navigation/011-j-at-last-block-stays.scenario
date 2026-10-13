@@ -3,7 +3,7 @@ file <<END
 First
 Last
 END
-keys j j j x k k k *
+keys j j j x k k k s
 quit
 saved <<END
 First @star

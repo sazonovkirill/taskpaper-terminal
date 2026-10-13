@@ -84,7 +84,7 @@ fn its_keys_change_each_property_and_enter_writes_them_as_one_step_to_undo() {
     press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Backspace);
     press(&mut app, KeyCode::Tab);
-    app.type_keys("*");
+    app.type_keys("s");
     press(&mut app, KeyCode::Tab);
     app.type_keys(" ");
     press(&mut app, KeyCode::Tab);

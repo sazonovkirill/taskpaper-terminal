@@ -6,7 +6,7 @@ END
 keys gt
 see - Starred
 hide Old style
-keys *
+keys s
 saved <<END
 - Old style @today
 - Starred

@@ -6,7 +6,7 @@ Shopping:
 	- Bread
 	- Cheese
 END
-keys G x gg *
+keys G x gg s
 quit
 saved <<END
 Errands: @star

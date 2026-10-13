@@ -93,9 +93,9 @@ fn a_task_becomes_a_note_keeping_its_tags_and_esc_leaves_a_block_alone() {
     assert_eq!(saved(&mut app), "Milk @red\n- Bread\n");
 }
 
-// FR-BLK-04, D-52
+// FR-BLK-04, D-52, D-130
 #[test]
-fn shift_s_makes_the_selected_text_blocks_sections_and_s_takes_it_back() {
+fn shift_s_toggles_the_selected_text_blocks_sections() {
     let mut app = Harness::with_text("Fruit\n- Milk\nBread\n", 100, 14);
     app.type_keys("JJS");
     assert_eq!(saved(&mut app), "Fruit @section\n- Milk\nBread @section\n");
@@ -112,7 +112,7 @@ fn shift_s_makes_the_selected_text_blocks_sections_and_s_takes_it_back() {
     );
     app.type_keys("Z");
     press(&mut app, KeyCode::Esc);
-    app.type_keys("s");
+    app.type_keys("S");
     assert_eq!(saved(&mut app), "Fruit @section\n- Milk\nBread\n");
 }
 

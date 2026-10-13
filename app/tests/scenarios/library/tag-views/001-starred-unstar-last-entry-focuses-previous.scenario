@@ -5,9 +5,9 @@ Ideas:
 	- Blog
 	- Newsletter @star
 END
-keys gS G *
+keys gS G s
 hide Newsletter
-keys *
+keys s
 hide Podcast
 quit
 saved <<END

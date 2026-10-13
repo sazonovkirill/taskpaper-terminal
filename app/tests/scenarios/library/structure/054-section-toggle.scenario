@@ -1,4 +1,4 @@
-# S makes a text block a section and skips tasks with a message; s removes the section again.
+# S makes a text block a section and skips tasks with a message; S on a section makes it text again (D-130).
 file <<END
 Packing:
 	Clothes
@@ -7,7 +7,7 @@ Packing:
 END
 keys j S j S
 status Only text can be a section: 1 skipped
-keys j s
+keys j S
 quit
 saved <<END
 Packing:

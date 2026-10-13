@@ -127,6 +127,8 @@ pub enum Command {
     OpenColorPicker,
     /// Make text blocks sections, or with `false` plain text.
     SetSection(bool),
+    /// Make text blocks sections, or plain text when every one already is.
+    ToggleSection,
     /// Convert the type in the type picker.
     OpenTypePicker,
     /// Give the block being edited a type, as a change of its edit session (D-44); only the
@@ -292,6 +294,7 @@ impl Command {
             Self::OpenColorPicker => "Pick Color".into(),
             Self::SetSection(true) | Self::Retype(Typed::Section) => "Make Section".into(),
             Self::SetSection(false) => "Remove Section".into(),
+            Self::ToggleSection => "Toggle Section".into(),
             Self::OpenTypePicker => "Convert Type".into(),
             Self::Retype(Typed::Project) => "Project".into(),
             Self::Retype(Typed::Task) => "Task".into(),
@@ -395,7 +398,8 @@ impl Command {
             Self::CycleColor => Message::CycleColor,
             Self::SetColor(color) => Message::SetColor(color),
             Self::OpenColorPicker => Message::OpenColorPicker,
-            Self::SetSection(on) => Message::SetSection(on),
+            Self::SetSection(on) => Message::SetSection(Some(on)),
+            Self::ToggleSection => Message::SetSection(None),
             Self::OpenTypePicker => Message::OpenTypePicker,
             Self::Retype(_)
             | Self::ToggleWrap

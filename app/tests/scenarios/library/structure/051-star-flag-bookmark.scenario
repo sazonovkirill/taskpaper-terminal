@@ -1,10 +1,10 @@
-# * stars, mf flags, mf then ! flags and unflags, and mb bookmarks with a status message.
+# s stars, mf flags, mf then ! flags and unflags, and mb bookmarks with a status message.
 file <<END
 Launch:
 	- Write announcement
 	Notes about launch
 END
-keys j * j mf
+keys j s j mf
 keys gg mb
 status Bookmarked
 keys j mf !

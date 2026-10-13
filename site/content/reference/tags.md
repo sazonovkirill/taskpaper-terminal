@@ -14,10 +14,10 @@ Typing `@` at the start of a word, while editing, does nothing but say "Tags are
 | `@start(DATE)` | Start date | `t`, `w`, `[`, `]`, `ms` |
 | `@due(DATE)` | Due date | `T`, `W`, `{`, `}`, `md` |
 | `@red` `@orange` `@yellow` `@green` `@blue` `@violet` | Color, at most one | `c1` … `c6`, `cc`, `mc`, `C` |
-| `@star` | Starred | `*` |
+| `@star` | Starred | `s` |
 | `@flag` | Flagged | `!`, `mf` |
 | `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `mb` |
-| `@section` | A [section](@/reference/blocks.md#sections), on text blocks | `S`, `s` |
+| `@section` | A [section](@/reference/blocks.md#sections), on text blocks | `S` |
 | `@url(ADDRESS)` | The block's [link](@/reference/blocks.md#text-formatting-and-links) | Edit Node |
 | `@hidden` | A [hidden line](@/reference/blocks.md#hidden-lines) the app keeps but never shows | never; reserved |
 
@@ -107,7 +107,7 @@ Setting a color removes any other color tag. The [Colors view](@/reference/views
 
 ## Star, flag and bookmark
 
-- `*` **stars** a block, shown as a star after its text. Starred blocks have their own [view](@/reference/views.md#starred), and the [Today view](@/reference/views.md#today) lists them too, unless you turn that off.
+- `s` **stars** a block, shown as a star after its text. Starred blocks have their own [view](@/reference/views.md#starred), and the [Today view](@/reference/views.md#today) lists them too, unless you turn that off.
 - `!` or `mf` **flags** a block, shown as a red flag after its text. There is one flag, and it is red. Flagged blocks have their own [view](@/reference/views.md#flagged).
 - `mb` **bookmarks** a block, shown as a bookmark icon after its text, and lists it under Bookmarks in the [Navigator](@/reference/navigator.md). The status line says "Bookmarked" or "Bookmark removed".
 
@@ -126,7 +126,7 @@ The flag, star and bookmark come in that order, each a space after the text. The
 | Done | `Not done`, or `Done` and its date | `Space` or `x` |
 | Parent | The path to the block's parent, or `Home` | `Space` or typing opens a finder over the blocks it can move under, as [Move to…](@/reference/structure.md#move-to) lists them |
 | Start, Due | The date, such as `Thu 8 Oct 2026 · Today`, or `None` | `Space` opens a field with the date; typing opens it empty. `←`/`→` move the date a day. `Backspace` or `Delete` removes it. |
-| Starred, Flagged | Whether the block has `@star` or `@flag` | `Space`, or `*` and `!` |
+| Starred, Flagged | Whether the block has `@star` or `@flag` | `Space`, or `s` and `!` |
 | Tags | Every other tag, one per row, as `@name` or `@name(value)`. Tags tpt doesn't read are marked "unsupported". | `Space` opens a field holding the tag; typing opens it empty. `Backspace` or `Delete` removes the tag. |
 | + Add tag | The row after the tags | Typing a tag here adds it. A name the block already has changes that tag. |
 | Hidden | The [hidden lines](@/reference/blocks.md#hidden-lines) under the block, each with its tags and line count | Nothing: the focus skips it |

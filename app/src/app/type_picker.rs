@@ -1,13 +1,13 @@
 //! The type picker that `my` opens: the three block types and making sections, and what choosing
-//! one does to the selected or focused blocks, with `S` and `s`, which make and unmake sections
+//! one does to the selected or focused blocks, with `S`, which toggles sections
 //! ([editing.md §5](../../../docs/specs/editing.md#5-block-commands), FR-BLK-04, FR-BLK-08,
-//! D-52).
+//! D-52, D-130).
 
 use super::{
     Access, MenuInput, Notice, State,
     picker::{Picked, Picker, PickerView},
 };
-use crate::document::{BlockKind, format::Typed, metadata};
+use crate::document::{Block, BlockKind, format::Typed, metadata};
 
 /// What the type picker gives the blocks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,7 +62,7 @@ impl State {
         self.type_picker = None;
         match closed {
             Picked::Chosen(Conversion::To(typed)) => self.convert_type(typed),
-            Picked::Chosen(Conversion::Section(on)) => self.set_section(on),
+            Picked::Chosen(Conversion::Section(on)) => self.set_section(Some(on)),
             Picked::Cancelled => {}
         }
     }
@@ -78,10 +78,11 @@ impl State {
         self.commit_any(ops);
     }
 
-    /// `S`, or `s` with `on` false: makes the selected text blocks, else the focused block,
-    /// sections, or plain text, as one step, and says how many tasks and projects it skipped,
-    /// which cannot be sections (FR-BLK-04, FR-OPS-07, D-52).
-    pub(super) fn set_section(&mut self, on: bool) {
+    /// Make Section, `S` with `on` `None`, or Remove Section with `on` `Some(false)`: makes the
+    /// selected text blocks, else the focused block, sections, or plain text, `S` when every one
+    /// is a section, as one step, and says how many tasks and projects it skipped, which cannot
+    /// be sections (FR-BLK-04, FR-OPS-07, D-52, D-130).
+    pub(super) fn set_section(&mut self, on: Option<bool>) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
             return;
@@ -90,6 +91,7 @@ impl State {
             .targets()
             .into_iter()
             .partition(|block| block.kind() == BlockKind::Text);
+        let on = on.unwrap_or_else(|| !text.iter().all(Block::section));
         let ops = text
             .iter()
             .filter_map(|block| metadata::set_section(self.document(), block, on))
@@ -242,27 +244,27 @@ P:
         assert_eq!(texts(&state), ["- a", "b https://b.c", "P:", "- d"]);
     }
 
-    /// The lines of `text` after `J` `extend` times from its first block, then `S`, or `s` with
-    /// `on` false, with the notice it left.
+    /// The lines of `text` after `J` `extend` times from its first block, then Make Section, or
+    /// Remove Section with `on` false, with the notice it left.
     fn sectioned(text: &str, extend: usize, on: bool) -> (State, Option<Notice>) {
         let mut state = State::new(format::parse(text), None);
         for _ in 0..extend {
             state.update(Message::Select(SelectionChange::ExtendDown));
         }
-        state.update(Message::SetSection(on));
+        state.update(Message::SetSection(Some(on)));
         let notice = state.notice().cloned();
         (state, notice)
     }
 
     // FR-BLK-04, D-52
     #[test]
-    fn s_keys_make_the_focused_text_block_a_section_and_plain_text_again() {
+    fn make_and_remove_section_make_the_focused_text_block_a_section_and_plain_text_again() {
         let (mut state, notice) = sectioned("a @x\n- t", 0, true);
         assert_eq!(texts(&state), ["a @x @section", "- t"]);
         assert_eq!(notice, None);
-        state.update(Message::SetSection(true));
+        state.update(Message::SetSection(Some(true)));
         assert_eq!(texts(&state), ["a @x @section", "- t"], "already one");
-        state.update(Message::SetSection(false));
+        state.update(Message::SetSection(Some(false)));
         assert_eq!(texts(&state), ["a @x", "- t"]);
         state.update(Message::Undo);
         assert_eq!(texts(&state), ["a @x @section", "- t"]);
@@ -295,9 +297,45 @@ P:
         assert_eq!(notice, None);
     }
 
+    /// The lines of `text` after `J` `extend` times from its first block, then Toggle Section,
+    /// with the notice it left.
+    fn toggled(text: &str, extend: usize) -> (State, Option<Notice>) {
+        let mut state = State::new(format::parse(text), None);
+        for _ in 0..extend {
+            state.update(Message::Select(SelectionChange::ExtendDown));
+        }
+        state.update(Message::SetSection(None));
+        let notice = state.notice().cloned();
+        (state, notice)
+    }
+
+    // FR-BLK-04, FR-OPS-07, D-130
+    #[test]
+    fn toggle_section_makes_text_sections_unless_every_one_is_already() {
+        let (mut state, notice) = toggled("a @x\n- t", 0);
+        assert_eq!(texts(&state), ["a @x @section", "- t"]);
+        assert_eq!(notice, None);
+        state.update(Message::SetSection(None));
+        assert_eq!(texts(&state), ["a @x", "- t"]);
+        state.update(Message::Undo);
+        assert_eq!(texts(&state), ["a @x @section", "- t"]);
+        let (mut state, notice) = toggled("a\n- t\nb @section\nc", 3);
+        assert_eq!(
+            texts(&state),
+            ["a @section", "- t", "b @section", "c @section"]
+        );
+        assert_eq!(notice, Some(Notice::NotSections { skipped: 1 }));
+        state.update(Message::SetSection(None));
+        assert_eq!(texts(&state), ["a", "- t", "b", "c"], "all were sections");
+        let (state, notice) = toggled("- t\nP:", 1);
+        assert_eq!(texts(&state), ["- t", "P:"]);
+        assert_eq!(notice, Some(Notice::NotSections { skipped: 2 }));
+        assert_eq!(state.document().revision(), 0);
+    }
+
     // FR-BLK-08, D-52
     #[test]
-    fn the_pickers_section_entries_act_as_the_s_keys() {
+    fn the_pickers_section_entries_act_as_make_and_remove_section() {
         let mut state = State::new(format::parse("a\n- t"), None);
         state.update(Message::Select(SelectionChange::ExtendDown));
         state.update(Message::OpenTypePicker);
@@ -314,7 +352,7 @@ P:
     fn a_read_only_file_makes_no_section() {
         let mut state = State::new(format::parse("a"), Some(PathBuf::from("/a.taskpaper")))
             .with_access(Access::ReadOnly);
-        state.update(Message::SetSection(true));
+        state.update(Message::SetSection(Some(true)));
         assert_eq!(texts(&state), ["a"]);
         assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }

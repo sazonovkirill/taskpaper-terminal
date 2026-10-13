@@ -13,7 +13,7 @@ Home:
 END
 keys gt <Enter>
 type  online
-keys <Esc> * j x gh j gm
+keys <Esc> s j x gh j gm
 type home
 keys <Enter> <Tab> c2 G y gg p
 see ▌ - Review pull requests

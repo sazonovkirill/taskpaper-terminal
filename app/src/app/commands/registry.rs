@@ -412,7 +412,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetColor(None), Mode::Navigate, &["C"]),
     entry!(Command::CycleColor, Mode::Navigate, &["c c"]),
     entry!(Command::OpenColorPicker, Mode::Navigate, &["m c"]),
-    entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["*"]),
+    entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["s"]),
     entry!(
         Command::ToggleFlag(Flag::Bookmark),
         Mode::Navigate,
@@ -424,8 +424,9 @@ pub const REGISTRY: &[Entry] = &[
         &["m f", "!"],
     ),
     entry!(Command::OpenTypePicker, Mode::Navigate, &["m y"]),
-    entry!(Command::SetSection(true), Mode::Navigate, &["S"]),
-    entry!(Command::SetSection(false), Mode::Navigate, &["s"]),
+    entry!(Command::ToggleSection, Mode::Navigate, &["S"]),
+    entry!(Command::SetSection(true), Mode::Navigate, &[]),
+    entry!(Command::SetSection(false), Mode::Navigate, &[]),
     entry!(Command::EditNode, Mode::Navigate, &["e", "m i"]),
     entry!(
         Command::OpenAttachment(Attachment::Note),

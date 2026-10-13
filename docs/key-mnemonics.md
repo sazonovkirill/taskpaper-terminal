@@ -29,7 +29,7 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 | `t` start today | `T` due today | due date is the bigger deal |
 | `w` start tomorrow | `W` due tomorrow | same rule as `t` |
 | `z` undo | `Z` redo | Ctrl+Z / Ctrl+Shift+Z without Ctrl |
-| `s` remove section | `S` make section | capital = promote to a heading |
+| `s` toggle **s**tar | `S` toggle **S**ection | capital = the bigger mark, a heading (D-130) |
 | `d` (`dd`) delete | `D` duplicate | "**D**ouble it" |
 | `cc` cycle color | `C` clear color | one exception to "capital = more": **C**lear |
 | `gg` first block | `G` last block | vim |
@@ -70,7 +70,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 |---|---|
 | `ms` / `md` | **s**tart / **d**ue date, typed |
 | `mc` | **c**olor picker |
-| `*` / `mb` / `mf` | star (`@star`) / **b**ookmark / red **f**lag (also `!`, D-91) |
+| `mb` / `mf` | **b**ookmark / red **f**lag (also `!`, D-91); the star is `s` |
 | `my` | t**y**pe (`t` was taken) |
 | `mi` | **i**nfo: Edit Node, as `e` (**e**dit) |
 
@@ -116,6 +116,6 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 
 ## Where the logic breaks
 
-- `C` clears the color while `S` adds a section, so "capital = more" has exceptions.
+- `C` clears the color while `S` toggles a section, so "capital = more" has exceptions.
 - `w` for tomorrow is a fallback: `y` went to copy ([D-53](functional-requirements.md)).
 - `/` opens Go to Symbol until real search exists.

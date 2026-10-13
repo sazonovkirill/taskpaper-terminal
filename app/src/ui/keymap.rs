@@ -1765,14 +1765,17 @@ mod tests {
         assert!(!keymap.replay());
     }
 
-    // FR-BLK-04, D-52
+    // FR-BLK-04, FR-TAG-04, D-130
     #[test]
-    fn upper_and_lower_s_make_and_unmake_sections() {
-        let make = Some(&Message::SetSection(true));
-        check(KeyCode::Char('S'), KeyModifiers::SHIFT, make);
-        check(KeyCode::Char('S'), KeyModifiers::NONE, make);
-        let unmake = Some(&Message::SetSection(false));
-        check(KeyCode::Char('s'), KeyModifiers::NONE, unmake);
+    fn s_toggles_the_star_and_shift_s_the_section() {
+        let section = Some(&Message::SetSection(None));
+        check(KeyCode::Char('S'), KeyModifiers::SHIFT, section);
+        check(KeyCode::Char('S'), KeyModifiers::NONE, section);
+        let star = Some(&Message::ToggleFlag(Flag::Star));
+        check(KeyCode::Char('s'), KeyModifiers::NONE, star);
+        for modifiers in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
+            check(KeyCode::Char('*'), modifiers, None);
+        }
     }
 
     // FR-OPS-02, FR-OPS-03
@@ -2366,13 +2369,6 @@ mod tests {
             [None, None],
             "was Toggle Today (D-88)"
         );
-        for modifiers in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
-            check(
-                KeyCode::Char('*'),
-                modifiers,
-                Some(&Message::ToggleFlag(Flag::Star)),
-            );
-        }
         assert_eq!(
             messages("mc", EDITING),
             [

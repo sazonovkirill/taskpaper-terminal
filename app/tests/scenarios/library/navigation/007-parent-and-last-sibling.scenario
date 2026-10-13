@@ -6,7 +6,7 @@ Home:
 	- Water plants
 Garden
 END
-keys j $ x # *
+keys j $ x # s
 quit
 saved <<END
 Home: @star

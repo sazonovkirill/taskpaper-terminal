@@ -156,11 +156,11 @@ fn typing_in_the_picker_filters_it_and_esc_closes_it_unchanged() {
     assert_eq!(saved(&mut app), "- Milk\n");
 }
 
-// FR-TAG-04, D-47, D-88, ui.md §2
+// FR-TAG-04, D-47, D-88, D-130, ui.md §2
 #[test]
 fn star_key_stars_the_focused_block_with_a_star_after_its_text() {
     let mut app = Harness::with_text("- Milk @due(2026-10-09)\n", 40, 4);
-    app.type_keys("*");
+    app.type_keys("s");
     assert_eq!(
         outline_rows(&mut app)[0],
         format!("- Milk {STAR}{:>30}", format!("{DUE} Fri"))
@@ -168,7 +168,7 @@ fn star_key_stars_the_focused_block_with_a_star_after_its_text() {
     let buffer = app.render().buffer().clone();
     assert_eq!(buffer[(9, 2)].fg, Color::Yellow);
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09) @star\n");
-    app.type_keys("*");
+    app.type_keys("s");
     assert_eq!(
         outline_rows(&mut app)[0],
         format!("{:<33}{DUE} Fri", "- Milk")

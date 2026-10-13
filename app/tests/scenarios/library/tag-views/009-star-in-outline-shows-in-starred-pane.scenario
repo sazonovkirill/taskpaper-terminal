@@ -10,7 +10,7 @@ keys <C-g>
 type starred
 keys <C-t>
 see │▌ - Call mom
-keys <C-w> h j j *
+keys <C-w> h j j s
 see - Pay bill 󰓎  Inbox stuff
 quit
 saved <<END

@@ -367,7 +367,7 @@ impl NodeEditor {
                     _ => open_typed(self, Some(Target::Date(tag)), typed),
                 }
             }
-            (NodeRow::Starred, RowKey::Typed(' ' | '*')) => self.toggle("star"),
+            (NodeRow::Starred, RowKey::Typed(' ' | 's' | '*')) => self.toggle("star"),
             (NodeRow::Flagged, RowKey::Typed(' ' | '!')) => self.toggle("flag"),
             (NodeRow::Tag(at), _) => {
                 let name = self.listed().nth(at).map(|(name, _)| name.clone());
@@ -986,6 +986,10 @@ mod tests {
         typed(&mut state, "*y");
         assert!(!view(&state).starred);
         typed(&mut state, " ");
+        assert!(view(&state).starred);
+        typed(&mut state, "s");
+        assert!(!view(&state).starred, "s as in navigate mode (D-130)");
+        typed(&mut state, "*");
         assert!(view(&state).starred);
         focus(&mut state, NodeRow::Flagged);
         typed(&mut state, "!y");

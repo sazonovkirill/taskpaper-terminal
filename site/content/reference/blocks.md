@@ -16,7 +16,7 @@ A line's type is read the way TaskPaper reads it. A line starting with `- ` is a
 
 ## Sections
 
-A **section** is a text block tagged `@section`. It is drawn as a bold italic header in the theme's headers color, and the blocks indented under it are its children. `S` makes the selected text blocks sections, and `s` makes them plain text again. Tasks and projects can't be sections: `S` leaves them as they are, and the status line says how many it skipped ("Only text can be a section: 1 skipped"). An `@section` tag on a task or project is kept but does nothing.
+A **section** is a text block tagged `@section`. It is drawn as a bold italic header in the theme's headers color, and the blocks indented under it are its children. `S` makes the selected text blocks sections, or plain text again when every one already is a section. Tasks and projects can't be sections: `S` leaves them as they are, and the status line says how many it skipped ("Only text can be a section: 1 skipped"). An `@section` tag on a task or project is kept but does nothing.
 
 You can also add a section with the [creation keys](@/reference/modes.md#creating-blocks) (`os`, `is`, …), from the command menu while editing, and with `Ctrl+T` while editing.
 

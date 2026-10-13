@@ -1,4 +1,4 @@
-# Selecting every Starred entry and pressing * empties the view, and one undo brings all of them back.
+# Selecting every Starred entry and pressing s empties the view, and one undo brings all of them back.
 file <<END
 Home:
 	- Water plants @star
@@ -6,7 +6,7 @@ Home:
 Work:
 	- Expense report @star
 END
-keys gS <C-a> *
+keys gS <C-a> s
 hide Water plants
 hide Expense report
 keys z

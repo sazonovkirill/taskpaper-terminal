@@ -8,7 +8,7 @@ Beta:
 Gamma:
 	- g1
 END
-keys <C-Down> <C-Down> x <C-Up> *
+keys <C-Down> <C-Down> x <C-Up> s
 quit
 saved <<END
 Alpha:

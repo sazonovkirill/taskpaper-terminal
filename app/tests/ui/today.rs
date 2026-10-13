@@ -159,7 +159,7 @@ fn block_commands_act_on_the_focused_entry_and_the_list_follows() {
     );
     app.type_keys("gc");
     assert_eq!(shown(&mut app), [format!("- Water plants {STAR}  Home")]);
-    app.type_keys("*");
+    app.type_keys("s");
     assert_eq!(shown(&mut app), Vec::<String>::new());
     app.wait(Duration::from_secs(1));
     app.settle();
