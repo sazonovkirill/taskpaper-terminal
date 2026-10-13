@@ -96,10 +96,6 @@ doctor() {
   ((cloud)) || need codex 'install Codex CLI: https://developers.openai.com/codex/cli'
   need rustup 'install rustup: https://rustup.rs'
   need jq 'brew install jq'
-  if [[ "$(git config core.hooksPath || true)" != .githooks ]]; then
-    echo 'doctor: the pre-push validation hook is not installed; git config core.hooksPath .githooks' >&2
-    missing=1
-  fi
   if ((!cloud)) && command -v claude >/dev/null 2>&1 && ! claude mcp get todoist >/dev/null 2>&1; then
     echo 'doctor: Claude Code has no todoist MCP server; claude mcp add --transport http --scope user todoist https://ai.todoist.net/mcp' >&2
     missing=1

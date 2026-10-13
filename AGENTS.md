@@ -22,7 +22,7 @@ This project's conventions override tool defaults. Before writing code:
 
 - **Product:** a feature-complete terminal clone of Workflowy that stores outlines as `.taskpaper` files. Requirements, specs and format references live in `docs/`.
 - **Language and stack:** Rust (edition 2024) with [Ratatui](https://ratatui.rs) 0.30 and crossterm 0.29. The crate lives in `app/`; versions are pinned in `app/Cargo.lock`.
-- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, cargo-deny, tests, 100% line coverage gate). `bash app/scripts/validate.sh mutants` mutation-tests the changed code and is required before review. Run `bash app/scripts/validate.sh doctor` first in every session to check the tools the others need. A tracked `pre-push` hook runs `validate.sh all` before every push; never bypass it. `trace` lists Must requirements no test names yet. Use `format` to apply `rustfmt`, `static` for format, lint and cargo-deny only, `test` for tests only, or `coverage` for the coverage gate only. Run the app with `cargo run` from `app/`. To see what the app shows, render it through Ratatui's `TestBackend` in an integration test and print the screen as text ([testing strategy](docs/quality/testing-strategy.md#seeing-the-app-without-a-terminal)); you cannot view a running terminal.
+- **Commands:** from the repo root, `bash app/scripts/validate.sh all` runs the required validation (format check, Clippy with warnings denied, cargo-deny, tests, 100% line coverage gate). `bash app/scripts/validate.sh mutants` mutation-tests the changed code and is required before review. Run `bash app/scripts/validate.sh doctor` first in every session to check the tools the others need. `trace` lists Must requirements no test names yet. Use `format` to apply `rustfmt`, `static` for format, lint and cargo-deny only, `test` for tests only, or `coverage` for the coverage gate only. Run the app with `cargo run` from `app/`. To see what the app shows, render it through Ratatui's `TestBackend` in an integration test and print the screen as text ([testing strategy](docs/quality/testing-strategy.md#seeing-the-app-without-a-terminal)); you cannot view a running terminal.
 
 ### 2. Correct, not just green
 
@@ -112,4 +112,4 @@ Either tool may instead be launched as an independent reviewer: Claude of a prop
 - `docs/`: requirements, specs, references and workflow documentation (`docs/quality/`); no task tracking.
 - `.worktrees/` and `.claude/worktrees/`: agent worktrees, ignored by Git.
 - `.agents/skills/`: procedures both tools load on demand (`claim-task`, `review-commit`, `deliver-task`); `.claude/skills` links to it. The documents under `docs/quality/` stay authoritative; a skill only sequences their steps.
-- `.claude/` and `.githooks/`: Claude Code settings and hooks, and the Git hooks `core.hooksPath` points to.
+- `.claude/`: Claude Code settings and hooks.

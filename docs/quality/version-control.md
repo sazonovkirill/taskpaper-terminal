@@ -40,7 +40,7 @@ Agents push directly to `main`; there are no pull requests unless the owner asks
    ```
 
 3. A replayed commit keeps its earlier reviews when the rebase applies without conflicts, its `git patch-id --stable` matches the reviewed patch, and the validation required for its change type passes on the rebased tip. Record the old and new base and matching patch IDs on the task. A conflict, changed patch or failed validation requires fresh independent reviews of each affected non-trivial commit before pushing.
-4. Push as a fast-forward: `git push origin HEAD:main`. If the push is rejected because `main` advanced, go back to step 2. Never force-push `main`. The tracked `pre-push` hook in `.githooks/` runs `validate.sh all` on a clean checkout of the commit being pushed and refuses the push otherwise; never bypass it with `--no-verify`.
+4. Push as a fast-forward: `git push origin HEAD:main`. If the push is rejected because `main` advanced, go back to step 2. Never force-push `main`.
 5. Verify `origin/main` contains your commits, then fast-forward the primary checkout with `git -C <primary checkout> merge --ff-only origin/main` when it is clean and on `main`; otherwise leave it for the owner.
 
 To pause unfinished work across sessions, push the branch to `origin` under the same name and record it on the task. Rebase it onto `main` before resuming.
