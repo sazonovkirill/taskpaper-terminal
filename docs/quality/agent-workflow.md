@@ -1,7 +1,7 @@
 # Agent Workflow
 
 - Status: Accepted
-- Last updated: 2026-10-04
+- Last updated: 2026-10-14
 
 ## Authority and boundaries
 
@@ -20,7 +20,7 @@ Todoist is the backlog and the task record. The backlog is the Todoist project `
 
 Tasks elsewhere in Todoist do not authorize project work. An actionable Ready task authorizes its scoped work, as does a task the owner names in the session, wherever it sits. Infer routine acceptance details from accepted specs and record them on the task; ask before inventing material product requirements.
 
-When asked to pick the next task, first resume an In Progress task with no `agent-` label and no unresolved blocker. Otherwise choose the runnable Ready task with the highest priority, p1 through p4, then the oldest creation time. A task is not runnable while a dependency named in its description remains unaccepted.
+When asked to pick the next task, first resume an In Progress task with no `agent-` label and no unresolved blocker. Otherwise choose the runnable Ready task with the highest priority, p1 through p4, then the oldest creation time. A task is not runnable while a dependency named in its description remains unaccepted, or while it carries the label WILL_NOT_FIX, which marks a bug the [bug hunt](bug-hunt.md#bug-reviewer) decided not to fix.
 
 ### Claims
 
