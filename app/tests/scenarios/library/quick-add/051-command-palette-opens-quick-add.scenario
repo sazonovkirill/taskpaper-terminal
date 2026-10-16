@@ -1,11 +1,12 @@
-# Go to Command lists the three Quick Add commands; choosing Quick Add to Inbox opens the panel on INBOX.
+# Go to Command lists Quick Add with its key q; choosing it opens the panel on INBOX.
 file <<END
 INBOX:
 	- Old item
 END
 keys :
-type quick add to inbox
-see Quick Add to Inbox  qi
+type quick add
+see Quick Add  q
+hide Quick Add to
 keys <Enter>
 see Quick Add → INBOX
 type From the palette

@@ -17,7 +17,7 @@ use crate::document::{Block, BlockKind, ItemId, Stamp, blocks};
 /// The text of the project the Navigator lists apart, above Today (D-75).
 const INBOX: &str = "INBOX";
 
-/// The text of the project `qt` adds to and whose tasks the Today view lists (D-98, D-102).
+/// The text of the project whose tasks the Today view lists (D-98, D-102).
 const TODAY: &str = "TODAY";
 
 /// The Navigator's focused entry while it is open, its folded project entries, which are its own
@@ -546,7 +546,7 @@ impl State {
         })
     }
 
-    /// The project the Navigator lists apart as the inbox, which `qi` adds to (D-75, D-96).
+    /// The project the Navigator lists apart as the inbox, which Quick Add adds to (D-75, D-133).
     pub(super) fn inbox_project(&self) -> Option<ItemId> {
         self.navigator
             .special_inbox
@@ -555,8 +555,8 @@ impl State {
             .map(|block| block.id())
     }
 
-    /// The TODAY project while `special_today` is on, among the blocks `pane` shows: the one `qt`
-    /// adds to and whose tasks the Today view lists (D-98, D-102).
+    /// The TODAY project while `special_today` is on, among the blocks `pane` shows, whose tasks
+    /// the Today view lists (D-98, D-102).
     pub(super) fn today_project(&self, pane: &Pane) -> Option<ItemId> {
         self.special_today
             .then(|| self.top_project_in(TODAY, pane))

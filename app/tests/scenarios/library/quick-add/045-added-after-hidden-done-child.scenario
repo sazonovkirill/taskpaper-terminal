@@ -6,7 +6,7 @@ INBOX:
 END
 keys gc
 hide Done item
-keys qi
+keys q
 type Next item
 keys <Enter>
 see - Next item

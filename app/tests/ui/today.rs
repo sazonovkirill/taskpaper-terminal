@@ -311,3 +311,17 @@ fn turning_off_starred_items_in_today_leaves_only_dated_blocks_and_is_kept() {
         "off from the start"
     );
 }
+
+// FR-TAG-04, D-102, ui.md §8: `special_today` in the settings file decides whether Today lists
+// the TODAY project's tasks.
+#[test]
+fn special_today_off_in_the_settings_file_leaves_the_today_projects_tasks_out() {
+    let text = "TODAY:\n\t- call\n- b @due(2026-10-05)\n";
+    let mut app = Harness::with_config(text, "", 80, 24);
+    app.type_keys("gt");
+    let due = row("- b", &format!("{DUE} today"));
+    assert_eq!(shown(&mut app), ["- call  TODAY".to_owned(), due.clone()]);
+    let mut app = Harness::with_config(text, "special_today = false\n", 80, 24);
+    app.type_keys("gt");
+    assert_eq!(shown(&mut app), [due]);
+}

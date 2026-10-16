@@ -1,28 +1,21 @@
 +++
 title = "Quick Add"
 weight = 100
-description = "Adding a task or note to any project, with dates typed in plain words, without leaving the view you are in."
+description = "Adding a task or note to the inbox, with dates typed in plain words, without leaving the view you are in."
 +++
 
-**Quick Add** adds a task or a note to a project without moving the panes. It opens from anywhere in navigate mode, the special views included.
+**Quick Add** adds a task or a note to the [inbox](@/reference/navigator.md#the-inbox), the INBOX project, without moving the panes. `q` opens it from anywhere in navigate mode, the special views included.
 
-| Key | Opens Quick Add |
-|---|---|
-| `qq` | with no project chosen yet |
-| `qi` | for the [inbox](@/reference/navigator.md#the-inbox) |
-| `qt` | for the TODAY project, whose tasks the [Today view](@/reference/views.md#today) lists |
-
-When the inbox or the TODAY project is missing, or its setting is off, `qi` and `qt` change nothing, and the status line says "No INBOX project in the Navigator" or "No TODAY project". A read-only file refuses Quick Add.
+When there is no inbox, or its setting is off, `q` changes nothing, and the status line says "No INBOX project in the Navigator". A read-only file refuses Quick Add.
 
 {{ keys(topic="quick-add") }}
 
 ## The panel
 
-Quick Add is a panel above the status line, titled `Quick Add` and, once there is one, the project's path: `Quick Add → Work › Launch`. The first line holds the text, and the second what `Enter` would do: the dates found, such as `Start Thu 8 Oct · Due Mon 12 Oct`, or what is missing: "Choose a project with /" or "Type the text".
+Quick Add is a panel above the status line, titled `Quick Add → INBOX`. The first line holds the text, and the second what `Enter` would do: the dates found, such as `Start Thu 8 Oct · Due Mon 12 Oct`, or what is missing: "Type the text", or "No INBOX project in the Navigator" when the inbox is gone.
 
 - **Task or note.** The text starts as a task, with its dash in front. `Backspace` at the start deletes the dash and makes it a note, and `- ` typed at the start makes it a task again. Colons ending a note's text are dropped, so it doesn't become a project.
 - **Text.** The [text keys](@/reference/modes.md#text-keys) edit it. Nothing breaks the line: a paste's line breaks become spaces. An `@` that would start a tag is not typed.
-- **Project.** `/`, at the start or after a space, opens a project finder over the panel, as [Go to Project](@/reference/navigator.md#go-to-project) lists them. `Enter` chooses one. `Esc`, or a filter that matches nothing, closes the finder and types `/` and the filter into the text, and `Backspace` on an empty filter closes it. A `/` anywhere else is just typed.
 
 {{ context_keys(table="QUICK_ADD") }}
 
@@ -49,12 +42,8 @@ The dates that count are highlighted as you type, a start date in the start chip
 
 ## Adding
 
-`Enter` adds the block, once there is a project and some text besides the dates. The dates that count and the spaces around them leave the text and become `@start` and `@due` tags. The block goes in as the project's last child, without expanding anything, as one step to undo. The panel closes, and the status line says where the block went: "Added to INBOX". `Esc` closes the panel and adds nothing.
+`Enter` adds the block, once there is some text besides the dates. The dates that count and the spaces around them leave the text and become `@start` and `@due` tags. The block goes in as the inbox's last child, without expanding anything, as one step to undo. The panel closes, and the status line says where the block went: "Added to INBOX". `Esc` closes the panel and adds nothing.
 
-If the file is [reloaded from disk](@/reference/files.md#when-the-file-changes-on-disk) while Quick Add is open, the panel stays, and so does its project, found again by its path.
-
-## Settings
-
-{{ settings(topic="quick-add") }}
+If the file is [reloaded from disk](@/reference/files.md#when-the-file-changes-on-disk) while Quick Add is open, the panel stays and adds to the reloaded file's inbox.
 
 The inbox's setting is with the [Navigator](@/reference/navigator.md#the-inbox).

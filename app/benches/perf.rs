@@ -279,25 +279,23 @@ const SCENARIOS: &[Scenario] = &[
         },
     },
     Scenario {
-        name: "qq, type, Esc (Quick Add)",
+        name: "q, type, Esc (Quick Add)",
         run: |app| {
-            let open = app.keys("qq");
+            let open = app.keys("q");
             let typed = app.keys("c");
             let left = app.key(KeyCode::Esc, KeyModifiers::NONE);
             open.max(typed).max(left)
         },
     },
     Scenario {
-        name: "Quick Add to a project",
+        name: "Quick Add to the inbox",
         run: |app| {
             app.keys("x");
-            let open = app.keys("qq");
-            let typed = app.keys("c ");
-            let picker = app.keys("/");
-            let chosen = app.key(KeyCode::Enter, KeyModifiers::NONE);
+            let open = app.keys("q");
+            let typed = app.keys("c");
             let added = app.key(KeyCode::Enter, KeyModifiers::NONE);
             app.keys("z");
-            open.max(typed).max(picker).max(chosen).max(added)
+            open.max(typed).max(added)
         },
     },
     Scenario {
@@ -505,8 +503,10 @@ fn check_size() {
 
 /// A made-up outline of about `lines` lines and 100 bytes per line, the shape of a large
 /// personal outline: top-level projects of nested projects, tasks and notes, with dates, done
-/// tasks, colors, links, Markdown and tags of the user's own. The same for every run.
+/// tasks, colors, links, Markdown and tags of the user's own, and last an INBOX project for Quick
+/// Add. The same for every run.
 fn outline(lines: usize) -> String {
+    let lines = lines - 1;
     let mut random = Random(0x5eed);
     let mut text = String::with_capacity(lines * 100);
     let mut written = 0;
@@ -558,6 +558,7 @@ fn outline(lines: usize) -> String {
             };
         }
     }
+    text.push_str("INBOX:\n");
     text
 }
 

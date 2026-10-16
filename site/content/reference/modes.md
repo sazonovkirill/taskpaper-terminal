@@ -14,7 +14,7 @@ Navigate-mode keys are vi-inspired. `j`/`k` move, `h`/`l` fold and unfold, `gg`/
 
 Many keys are two-key sequences: `gg`, `dd`, `ms`, `c1`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else. The exception is a first key that is a command of its own, such as `o`: that command runs, then the second key acts as usual.
 
-The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `c` colors, `q` is Quick Add, `d` deletes, and `Ctrl+W` handles panes.
+The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `c` colors, `d` deletes, and `Ctrl+W` handles panes.
 
 ### Classic and kitty keys
 

@@ -4,7 +4,7 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi
+keys q
 type Pack charger
 resize 40 10
 see - Pack charger

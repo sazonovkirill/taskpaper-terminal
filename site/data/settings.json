@@ -78,14 +78,14 @@
    "key": "special_today",
    "group": "Appearance",
    "name": "Special handling of TODAY project",
-   "description": "Today lists its tasks, and qt adds to it",
+   "description": "Today lists its tasks",
    "kind": "switch",
    "choices": null,
    "least": null,
    "unit": null,
    "default": "true",
    "default_text": "on",
-   "topic": "quick-add"
+   "topic": "views"
   },
   {
    "id": "setting-today-starred",

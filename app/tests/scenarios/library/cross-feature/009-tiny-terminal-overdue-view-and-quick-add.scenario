@@ -9,7 +9,7 @@ END
 keys gO
 see Overdue
 keys j }
-keys qi
+keys q
 see Quick Add
 type Buy milk
 keys <Enter>

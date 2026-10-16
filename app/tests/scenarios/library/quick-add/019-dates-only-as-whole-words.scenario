@@ -2,13 +2,13 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Read today's paper
-keys <Enter> qi
+keys <Enter> q
 type Fix a-tomorrow bug
-keys <Enter> qi
+keys <Enter> q
 type Pick tomorrow/friday
-keys <Enter> qi
+keys <Enter> q
 type Call mom tomorrow.
 keys <Enter>
 quit

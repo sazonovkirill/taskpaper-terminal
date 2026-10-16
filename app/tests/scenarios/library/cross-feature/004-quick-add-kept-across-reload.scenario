@@ -1,21 +1,19 @@
-# A project chosen in Quick Add stays the destination when another program changes the file while the panel is open.
+# Quick Add stays open when another program changes the file, and Enter adds to the reloaded INBOX.
 file <<END
 Work:
 	- Write report
-Home:
+INBOX:
 	- Fix the shelf
 END
-keys qq
-type Fix sink /ho
-see Home
-keys <Enter>
-see Quick Add → Home
+keys q
+type Fix sink
+see Quick Add → INBOX
 outside <<END
 Garden:
 	- Rake leaves
 Work:
 	- Write report
-Home:
+INBOX:
 	- Fix the shelf
 END
 see Garden:
@@ -27,7 +25,7 @@ Garden:
 	- Rake leaves
 Work:
 	- Write report
-Home:
+INBOX:
 	- Fix the shelf
 	- Fix sink
 END

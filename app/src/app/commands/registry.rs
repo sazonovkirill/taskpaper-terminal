@@ -5,9 +5,7 @@
 
 use super::{Animations, Command};
 use crate::{
-    app::{
-        Mode, NavigatorInput, NewBlock, PaneChange, Paste, QuickAddTo, SelectionChange, SpecialView,
-    },
+    app::{Mode, NavigatorInput, NewBlock, PaneChange, Paste, SelectionChange, SpecialView},
     document::{Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
 };
 
@@ -252,21 +250,7 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["A n"],
     ),
-    entry!(
-        Command::QuickAdd(QuickAddTo::Chosen),
-        Mode::Navigate,
-        &["q q"]
-    ),
-    entry!(
-        Command::QuickAdd(QuickAddTo::Inbox),
-        Mode::Navigate,
-        &["q i"]
-    ),
-    entry!(
-        Command::QuickAdd(QuickAddTo::Today),
-        Mode::Navigate,
-        &["q t"]
-    ),
+    entry!(Command::QuickAdd, Mode::Navigate, &["q"]),
     entry!(
         Command::Select(SelectionChange::ExtendDown),
         Mode::Navigate,
@@ -712,7 +696,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::Edit,
             Command::New(NewBlock::Below, None),
             Command::New(NewBlock::LastChild, None),
-            Command::QuickAdd(QuickAddTo::Chosen),
+            Command::QuickAdd,
         ],
     ),
     (

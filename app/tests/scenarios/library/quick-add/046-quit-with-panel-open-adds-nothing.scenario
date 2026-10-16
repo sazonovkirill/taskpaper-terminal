@@ -3,7 +3,7 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi
+keys q
 type Unfinished thought
 see - Unfinished thought
 quit

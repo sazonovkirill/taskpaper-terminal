@@ -7,7 +7,7 @@ Work:
 END
 keys gt j <A-k>
 see ▌ - Review PRs  Work
-keys qi
+keys q
 type Call mom today
 keys <Enter>
 see - Call mom  INBOX

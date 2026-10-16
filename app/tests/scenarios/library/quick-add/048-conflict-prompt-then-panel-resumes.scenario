@@ -6,9 +6,9 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi
+keys q
 type First
-keys <Enter> qi
+keys <Enter> q
 type Second
 outside <<END
 INBOX:

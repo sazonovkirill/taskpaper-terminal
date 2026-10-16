@@ -1,0 +1,16 @@
+# "/" is typed as text, inside a word and at a word start alike; no project picker opens.
+file <<END
+INBOX:
+Work:
+END
+keys q /
+type and/or /wor
+see - /and/or /wor
+hide Project
+keys <Enter>
+quit
+saved <<END
+INBOX:
+	- /and/or /wor
+Work:
+END

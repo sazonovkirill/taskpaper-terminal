@@ -3,7 +3,7 @@ file <<END
 INBOX:
 	- Call the plumber
 END
-keys qi
+keys q
 type Buy milk
 keys <Enter>
 keys G <C-w> v

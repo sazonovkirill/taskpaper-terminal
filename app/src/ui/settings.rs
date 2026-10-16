@@ -29,7 +29,7 @@ enum Listed {
     NavigatorView(OptionalView),
     /// Whether the Today view lists starred blocks (D-88).
     TodayStarred,
-    /// Whether `qt` adds to the `TODAY` project (D-98).
+    /// Whether the Today view lists the `TODAY` project's tasks (D-98, D-102).
     SpecialToday,
     /// Whether this kind of attachment is turned on (attachments.md §6).
     Attachments(Attachment),
@@ -241,7 +241,7 @@ impl Tui {
             Listed::SpecialToday => switch_on_by_default(
                 "Appearance",
                 "Special handling of TODAY project",
-                "Today lists its tasks, and qt adds to it",
+                "Today lists its tasks",
                 self.state.special_today(),
             ),
             Listed::TodayStarred => switch_on_by_default(

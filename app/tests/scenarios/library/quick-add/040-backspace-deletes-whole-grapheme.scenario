@@ -2,7 +2,7 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type café
 keys <BS>
 type e and 👍🏽

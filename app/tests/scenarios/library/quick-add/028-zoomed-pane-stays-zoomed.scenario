@@ -8,7 +8,7 @@ Work:
 END
 keys j j . j
 see 󰋜 › Work
-keys qi
+keys q
 type Idea
 keys <Enter>
 status Added to INBOX

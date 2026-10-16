@@ -24,7 +24,7 @@ Completed blocks follow the pane's [show completed](@/reference/tags.md#showing-
 - every starred block, while **Display starred items in Today view** is on,
 - every task inside the TODAY project, at any depth and with or without a date, while **Special handling of TODAY project** is on.
 
-The TODAY project is the first top-level project whose text is exactly `TODAY`, in capitals, maybe after emoji and a space, as in `☀️ TODAY:`. [Quick Add to Today](@/reference/quick-add.md) adds tasks to it. Both settings are on by default. The list changes at midnight, and whenever the document or either setting changes. The Navigator always lists Today.
+The TODAY project is the first top-level project whose text is exactly `TODAY`, in capitals, maybe after emoji and a space, as in `☀️ TODAY:`. Both settings are on by default. The list changes at midnight, and whenever the document or either setting changes. The Navigator always lists Today.
 
 ### Reordering Today
 

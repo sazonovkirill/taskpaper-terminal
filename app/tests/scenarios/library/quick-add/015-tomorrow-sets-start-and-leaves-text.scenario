@@ -2,7 +2,7 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Buy milk tomorrow
 see Start 
 keys <Enter>

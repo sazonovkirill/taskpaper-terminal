@@ -6,7 +6,7 @@ file <<END
 INBOX:
 	- Call the plumber
 END
-keys j x qi
+keys j x q
 type Half typed
 see - Half typed
 signal TERM

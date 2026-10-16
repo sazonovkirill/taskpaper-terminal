@@ -7,7 +7,7 @@ Work:
 END
 keys j j <C-w> v
 see 󰋜 › Work
-keys qi
+keys q
 type From the right
 keys <Enter>
 see     - From the right

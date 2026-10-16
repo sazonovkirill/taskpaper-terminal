@@ -3,7 +3,7 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi <Enter>
+keys q <Enter>
 see Type the text
 keys <Space> <Space> <Space>
 keys <Enter>

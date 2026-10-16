@@ -145,8 +145,8 @@ pub struct Config {
     pub(super) navigator_views: Vec<(SpecialView, bool)>,
     /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
     pub(super) today_starred: Option<bool>,
-    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks, when the file
-    /// says (`special_today`, D-98, D-102).
+    /// Whether the Today view lists the `TODAY` project's tasks, when the file says
+    /// (`special_today`, D-98, D-102).
     pub(super) special_today: Option<bool>,
     /// Whether each kind of attachment the file says about is turned on (`attachments_notes`,
     /// `attachments_comments`, attachments.md §6).

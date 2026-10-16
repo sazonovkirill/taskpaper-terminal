@@ -2,7 +2,7 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Draft memo
 keys <Home> <S-Right> <S-Right> <S-Right> <S-Right> <S-Right> <S-Right> <BS>
 see - memo

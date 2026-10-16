@@ -1,29 +1,21 @@
-# With completed hidden, a done INBOX is not the inbox: qi adds to the first INBOX still shown, and likewise qt.
+# With completed hidden, a done INBOX is not the inbox: q adds to the first INBOX still shown.
 file <<END
 INBOX: @done(2026-10-01)
 	- Old
-TODAY: @done(2026-10-01)
 INBOX:
 	- Live
-TODAY:
 END
 keys gc
 hide @done
-keys qi
+keys q
 see Quick Add → INBOX
 type To the shown inbox
-keys <Enter> qt
-see Quick Add → TODAY
-type Water plants
 keys <Enter>
 quit
 saved <<END
 INBOX: @done(2026-10-01)
 	- Old
-TODAY: @done(2026-10-01)
 INBOX:
 	- Live
 	- To the shown inbox
-TODAY:
-	- Water plants
 END

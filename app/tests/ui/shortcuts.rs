@@ -442,7 +442,8 @@ fn the_panel_lists_the_keys_of_the_open_edit_node_dialog_quick_add_or_date_promp
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(right_of(&mut app, 68)[1], "│ Moving", "the outline's again");
-    app.type_keys("qq");
+    let mut app = Harness::with_text("INBOX:\n", 100, 30);
+    app.type_keys("?q");
     assert_eq!(
         right_of(&mut app, 68)[..7],
         dialog(

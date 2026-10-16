@@ -2,12 +2,12 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Pay rent DUE Tomorrow
 see Due 
-keys <Enter> qi
+keys <Enter> q
 type Pay what is due
-keys <Enter> qi
+keys <Enter> q
 type Overdue report today
 keys <Enter>
 quit

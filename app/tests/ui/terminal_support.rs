@@ -192,7 +192,7 @@ fn every_size_down_to_nothing_shows_the_status_line_and_the_focused_block() {
 }
 
 // N-PORT-02, D-79, D-80, D-96, D-101: every overlay, the Navigator, its filter and its context
-// menu, every special view, Quick Add and its project picker open on every size without failing,
+// menu, every special view and Quick Add open on every size without failing,
 // and keys go on working.
 #[test]
 fn every_overlay_opens_on_every_size() {
@@ -221,11 +221,9 @@ fn every_overlay_opens_on_every_size() {
         "gL",
         "gS",
         "gF",
-        "qq",
-        "qq/",
-        "qq/日本",
-        "qi",
-        "qt日本語 due tomorrow",
+        "q",
+        "q/日本",
+        "q日本語 due tomorrow",
     ];
     for (width, height) in SIZES {
         for keys in overlays {
@@ -336,11 +334,11 @@ fn the_special_views_show_wide_entries_whole() {
 }
 
 // N-PORT-04, FR-MODE-07, D-96, D-97: Quick Add scrolls wide text a whole grapheme at a time with
-// the caret at its display width, and its project picker lists wide project names whole.
+// the caret at its display width.
 #[test]
 fn quick_add_keeps_wide_text_whole_as_it_scrolls() {
     let mut app = Harness::with_text(VIEWS, 24, 8);
-    app.type_keys("qi");
+    app.type_keys("q");
     for c in "とても長い仕事の名前です tomorrow 買い物".chars() {
         app.type_keys(&c.to_string());
     }
@@ -361,62 +359,4 @@ fn quick_add_keeps_wide_text_whole_as_it_scrolls() {
         columns.push(caret(&mut app));
     }
     assert_eq!(columns, [4, 6, 8]);
-    let mut app = Harness::with_text(VIEWS, 40, 12);
-    app.type_keys("qq/");
-    assert_eq!(
-        screen(&mut app)[1..7],
-        [
-            "┌Project───────────────────────────────┐",
-            "│›                                     │",
-            "│ ▸ INBOX                              │",
-            "│ ▸ 日本語の仕事                       │",
-            "│ ▸ TODAY                              │",
-            "└──────────────────────────────────────┘",
-        ]
-    );
-}
-
-// N-PORT-02, FR-MODE-07, D-96, ui.md §1: on a screen too short for Quick Add's project picker
-// to list a project above its panel, the picker covers the panel to list them; with room for one,
-// it stays above the panel.
-#[test]
-fn quick_adds_project_picker_lists_projects_on_a_small_screen() {
-    for (width, height) in [(20, 6), (30, 8)] {
-        let mut app = Harness::with_text(VIEWS, width, height);
-        app.type_keys("qq/");
-        let rows = screen(&mut app);
-        assert!(
-            rows.iter().any(|row| row.contains("▸ INBOX")),
-            "{width}×{height}: {rows:#?}"
-        );
-    }
-    let mut app = Harness::with_text(VIEWS, 24, 8);
-    app.type_keys("qq/");
-    assert_eq!(
-        screen(&mut app)[1..7],
-        [
-            "┌Project───────────────┐",
-            "│›                     │",
-            "│ ▸ INBOX              │",
-            "│ ▸ 日本語の仕事       │",
-            "│ ▸ TODAY              │",
-            "└──────────────────────┘",
-        ]
-    );
-    app.terminal.backend_mut().assert_cursor_position((3, 2));
-    let mut app = Harness::with_text(VIEWS, 24, 9);
-    app.type_keys("qq/");
-    assert_eq!(
-        screen(&mut app)[..8],
-        [
-            "┌Project───────────────┐",
-            "│›                     │",
-            "│ ▸ INBOX              │",
-            "└──────────────────────┘",
-            "┌ Quick Add ───────────┐",
-            "│ -                    │",
-            "│ Type the text        │",
-            "└──────────────────────┘",
-        ]
-    );
 }

@@ -5,7 +5,7 @@ INBOX:
 Work:
 	- Write report @due({today-2})
 END
-keys gt qi
+keys gt q
 type Call mom today
 keys <Enter>
 see - Call mom  INBOX

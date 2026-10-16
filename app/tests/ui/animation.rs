@@ -390,7 +390,7 @@ fn a_jump_in_a_special_view_flashes_the_block_focus_lands_on_but_not_its_heading
 fn quick_add_highlights_the_block_it_adds() {
     let text = "INBOX:\n\t- old\n- loose\n";
     let (full, off) = full_and_off(text, |app| {
-        app.type_keys("GqiIdea");
+        app.type_keys("GqIdea");
         app.press(KeyCode::Enter, KeyModifiers::NONE);
     });
     assert!(

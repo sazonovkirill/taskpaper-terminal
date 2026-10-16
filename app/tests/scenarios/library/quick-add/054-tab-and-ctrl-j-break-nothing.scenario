@@ -2,7 +2,7 @@
 file <<END
 INBOX:
 END
-keys qi a <Tab> b <S-Tab> c <C-j> d
+keys q a <Tab> b <S-Tab> c <C-j> d
 see - abcd
 keys <Enter>
 quit

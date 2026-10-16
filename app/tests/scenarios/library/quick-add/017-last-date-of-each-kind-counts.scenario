@@ -2,7 +2,7 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Report tomorrow then today due +3d or due +5d
 keys <Enter>
 quit

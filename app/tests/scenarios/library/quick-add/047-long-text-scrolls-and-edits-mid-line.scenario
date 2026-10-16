@@ -3,7 +3,7 @@ size 30 8
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type The quick brown fox jumps over the lazy dog
 see lazy dog
 keys <Home>

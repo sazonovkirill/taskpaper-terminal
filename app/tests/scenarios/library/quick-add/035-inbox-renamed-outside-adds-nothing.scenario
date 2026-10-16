@@ -1,0 +1,26 @@
+# When INBOX is renamed by another program while the panel is open, there is no INBOX project: Enter adds nothing.
+file <<END
+INBOX:
+	- Old item
+Work:
+END
+keys q
+type Keep me
+see Quick Add → INBOX
+outside <<END
+Inbox:
+	- Old item
+Work:
+END
+status Reloaded
+see No INBOX project in the Navigator
+see - Keep me
+keys <Enter>
+see No INBOX project in the Navigator
+keys <Esc>
+quit
+saved <<END
+Inbox:
+	- Old item
+Work:
+END

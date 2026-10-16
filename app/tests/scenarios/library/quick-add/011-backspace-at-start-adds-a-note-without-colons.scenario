@@ -3,7 +3,7 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi <BS>
+keys q <BS>
 type Questions for Ana::
 keys <Enter>
 status Added to INBOX

@@ -34,8 +34,8 @@ pub enum Configuration {
     /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
     /// (`today_starred`, navigation.md §7, D-88).
     TodayStarred(bool),
-    /// Let `qt` add to the `TODAY` project and the Today view list its tasks, or neither when
-    /// `false` (`special_today`, D-98, D-102).
+    /// Let the Today view list the `TODAY` project's tasks, or not when `false`
+    /// (`special_today`, D-98, D-102).
     SpecialToday(bool),
     /// Turn this kind of attachment on, or off when `false` (`attachments_notes`,
     /// `attachments_comments`, attachments.md §6).
@@ -239,7 +239,7 @@ pub enum Message {
     },
     /// A key of the open date prompt (FR-TAG-03).
     DatePrompt(DateInput),
-    /// Open Quick Add, or a key of its open panel (`qq`, `qi`, `qt`, D-96).
+    /// Open Quick Add, or a key of its open panel (`q`, D-96, D-133).
     QuickAdd(QuickAddInput),
     /// Remove the `tag` date of the selected blocks, else the focused block (FR-TAG-03, D-50).
     ClearDate(DateTag),
@@ -389,8 +389,6 @@ pub enum Menu {
     ContextMenu,
     /// The theme picker (FR-UI-06).
     ThemePicker,
-    /// Quick Add's project picker (D-96).
-    QuickAdd,
     /// The Edit Node dialog's parent finder (FR-MODE-09).
     NodeEditor,
 }
@@ -517,7 +515,6 @@ impl Menu {
             | Self::GoToCommand
             | Self::ContextMenu
             | Self::ThemePicker
-            | Self::QuickAdd
             | Self::NodeEditor => true,
         }
     }
@@ -778,7 +775,6 @@ impl State {
             Menu::CommandMenu => return self.command_menu_input(input),
             Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),
             Menu::ThemePicker => return self.theme_picker_input(input).into_iter().collect(),
-            Menu::QuickAdd => self.quick_add_picker_input(input),
             Menu::NodeEditor => self.node_editor_finder_input(input),
         }
         Vec::new()

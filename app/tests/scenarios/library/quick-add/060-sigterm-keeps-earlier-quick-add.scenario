@@ -5,9 +5,9 @@ END
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Saved one
-keys <Enter> qi
+keys <Enter> q
 type Lost one
 see - Lost one
 signal TERM

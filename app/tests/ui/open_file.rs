@@ -1,7 +1,7 @@
 //! Step 1.1: opening a file, showing it as an outline, the demo, and quitting. Step 2.10: the
 //! demo in a new temporary file.
 
-use std::{fs, time::Duration};
+use std::fs;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, style::Style};
@@ -72,7 +72,6 @@ fn ctrl_q_quits() {
     assert!(!app.tui.should_quit());
     app.press(KeyCode::Char('q'), KeyModifiers::NONE);
     assert!(!app.tui.should_quit(), "plain q must not quit");
-    app.wait(Duration::from_secs(1));
     app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
     assert!(app.tui.should_quit());
 }
@@ -114,7 +113,7 @@ fn the_status_line_reads_the_home_folder_as_a_tilde() {
 #[test]
 fn a_path_too_long_for_the_status_line_gives_its_room_to_a_message() {
     let mut app = Harness::with_text("- a\n", 60, 3);
-    app.type_keys("qi");
+    app.type_keys("q");
     let buffer = app.render().buffer().clone();
     assert_eq!(
         line(&buffer, 2),

@@ -6,7 +6,7 @@ INBOX:
 	COMMENTS @hidden
 		[2026-10-08 00:40] Empty it daily
 END
-keys qi
+keys q
 type Sort mail
 keys <Enter>
 quit

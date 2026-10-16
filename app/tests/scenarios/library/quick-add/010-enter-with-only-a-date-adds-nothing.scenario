@@ -3,7 +3,7 @@ file <<END
 INBOX:
 	- Old item
 END
-keys qi
+keys q
 type due tomorrow
 keys <Enter>
 see Type the text

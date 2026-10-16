@@ -365,9 +365,6 @@ impl State {
         self.folds = self.folds.iter().filter_map(|&id| exact(id)).collect();
         self.navigator.rematch_folds(exact);
         self.today_order.rematch(exact);
-        if let Some(quick_add) = &mut self.quick_add {
-            quick_add.rematch(exact);
-        }
         self.resume = self
             .resume
             .take()
@@ -485,7 +482,7 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            DateInput, DocumentText, Menu, MenuInput, MenuRow, Message, QuickAddInput, QuickAddTo,
+            DateInput, DocumentText, Menu, MenuInput, MenuRow, Message, QuickAddInput,
             SelectionChange, SpecialView, Symbols, TextEdit, state::NOTICE_TIME, walks::Walks,
         },
         document::{Op, Transaction},
@@ -715,32 +712,25 @@ mod tests {
         );
     }
 
-    // F-FILE-06, D-96
+    // F-FILE-06, D-133
     #[test]
-    fn a_reload_keeps_quick_adds_destination_on_its_project_and_closes_the_picker() {
-        let mut state = opened("A:\nB:\n");
+    fn a_reload_keeps_quick_add_open_on_the_reloaded_inbox_project() {
+        let mut state = opened("INBOX:\nB:\n");
         let quick_add = |state: &mut State, input| state.update(Message::QuickAdd(input));
-        quick_add(&mut state, QuickAddInput::Open(QuickAddTo::Chosen));
-        for c in ['x', ' ', '/'] {
-            quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert(c)));
-        }
-        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Next));
-        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Choose));
-        quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
-        assert!(state.quick_add_picker().is_some());
-        state.update(found("New:\nA:\nB:\n"));
-        assert_eq!(state.quick_add_picker(), None);
+        quick_add(&mut state, QuickAddInput::Open);
+        quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('x')));
+        state.update(found("New:\nINBOX:\nB:\n"));
         let destination = |state: &State| state.quick_add().unwrap().destination;
-        assert_eq!(destination(&state), Some(vec!["B".to_owned()]));
+        assert_eq!(destination(&state), Some(vec!["INBOX".to_owned()]));
         quick_add(&mut state, QuickAddInput::Add);
-        assert_eq!(format::serialize(state.document()), "New:\nA:\nB:\n\t- x\n");
-        let mut state = opened("A:\nB:\n");
-        quick_add(&mut state, QuickAddInput::Open(QuickAddTo::Chosen));
-        quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
-        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Choose));
-        assert_eq!(destination(&state), Some(vec!["A".to_owned()]));
+        assert_eq!(
+            format::serialize(state.document()),
+            "New:\nINBOX:\n\t- x\nB:\n"
+        );
+        let mut state = opened("INBOX:\n");
+        quick_add(&mut state, QuickAddInput::Open);
         state.update(found("B:\n"));
-        assert_eq!(destination(&state), None, "A is gone");
+        assert_eq!(destination(&state), None, "INBOX is gone");
     }
 
     // F-FILE-06, D-7

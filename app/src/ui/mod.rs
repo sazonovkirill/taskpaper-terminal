@@ -811,7 +811,7 @@ impl Tui {
             }
         }
         let date = self.draw_date_prompt(frame, panel);
-        let quick_add = self.draw_quick_add(frame, panel, screen_body, &theme);
+        let quick_add = self.draw_quick_add(frame, panel, &theme);
         self.field_scroll = quick_add.or(date).or(typed).unwrap_or_default();
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
@@ -1398,17 +1398,9 @@ impl Tui {
         Some(scroll)
     }
 
-    /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
-    /// `body`, just above the panel, or over the panel too when `body` is too short to show one of
-    /// its entries, while they are open (D-96); returns how far its text is scrolled. The conflict
-    /// prompt covers them.
-    fn draw_quick_add(
-        &self,
-        frame: &mut Frame,
-        panel: Rect,
-        body: Rect,
-        theme: &Theme,
-    ) -> Option<usize> {
+    /// Quick Add's panel over `panel` with its caret, while it is open (D-96); returns how far its
+    /// text is scrolled. The conflict prompt covers it.
+    fn draw_quick_add(&self, frame: &mut Frame, panel: Rect, theme: &Theme) -> Option<usize> {
         let view = self
             .state
             .quick_add()
@@ -1417,25 +1409,6 @@ impl Tui {
         let (caret, scroll) = widget.caret(panel);
         frame.set_cursor_position(caret);
         frame.render_widget(widget, panel);
-        if let Some(picker) = self.state.quick_add_picker() {
-            let document = self.state.document();
-            let icon = |id: &ItemId| widgets::block_icon(document, *id);
-            let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
-            let finder =
-                FinderPopup::new("Project", &picker, self.icons, &icon, theme).text_style(&text);
-            let room = if body.height < FinderPopup::<ItemId>::LEAST_HEIGHT {
-                body.union(panel)
-            } else {
-                body
-            };
-            let height = finder.area(room).height;
-            let above = Rect {
-                y: room.bottom().saturating_sub(height),
-                height,
-                ..room
-            };
-            draw_finder(frame, finder, above);
-        }
         Some(scroll)
     }
 
@@ -1534,8 +1507,6 @@ impl Tui {
     fn overlay(&self) -> Option<Overlay> {
         if self.state.date_prompt().is_some() {
             Some(Overlay::DatePrompt)
-        } else if self.state.quick_add_picker().is_some() {
-            Some(Overlay::QuickAddPicker)
         } else if self.state.quick_add().is_some() {
             Some(Overlay::QuickAdd)
         } else if self.state.color_picker().is_some() {

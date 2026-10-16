@@ -8,7 +8,7 @@ Work:
 END
 keys '
 see INBOX: ▸ 2
-keys qi
+keys q
 type Three
 keys <Enter>
 see INBOX: ▸ 3

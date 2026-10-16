@@ -1715,63 +1715,10 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "qq",
+     "label": "q",
      "presses": [
       [
        "q"
-      ],
-      [
-       "q"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
-  },
-  {
-   "id": "navigate-quick-add-to-inbox",
-   "name": "Quick Add to Inbox",
-   "config": "quick_add_to_inbox",
-   "mode": "navigate",
-   "group": "Editing and Creating",
-   "topic": "quick-add",
-   "panel": false,
-   "menu_only": false,
-   "keys": [
-    {
-     "label": "qi",
-     "presses": [
-      [
-       "q"
-      ],
-      [
-       "i"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
-  },
-  {
-   "id": "navigate-quick-add-to-today",
-   "name": "Quick Add to Today",
-   "config": "quick_add_to_today",
-   "mode": "navigate",
-   "group": "Editing and Creating",
-   "topic": "quick-add",
-   "panel": false,
-   "menu_only": false,
-   "keys": [
-    {
-     "label": "qt",
-     "presses": [
-      [
-       "q"
-      ],
-      [
-       "t"
       ]
      ],
      "kitty": false,
@@ -7368,53 +7315,10 @@
       "panel": true,
       "keys": [
        {
-        "label": "qq",
+        "label": "q",
         "presses": [
          [
           "q"
-         ],
-         [
-          "q"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Quick Add to Inbox",
-      "panel": false,
-      "keys": [
-       {
-        "label": "qi",
-        "presses": [
-         [
-          "q"
-         ],
-         [
-          "i"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Quick Add to Today",
-      "panel": false,
-      "keys": [
-       {
-        "label": "qt",
-        "presses": [
-         [
-          "q"
-         ],
-         [
-          "t"
          ]
         ],
         "kitty": false,

@@ -6,7 +6,7 @@ INBOX:
 		[2026-10-04 12:09] Started
 Work:
 END
-keys qi
+keys q
 type New item
 keys <Enter>
 quit

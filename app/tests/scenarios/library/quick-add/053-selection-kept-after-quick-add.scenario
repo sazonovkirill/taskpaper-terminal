@@ -6,7 +6,7 @@ Work:
 	- Two
 END
 keys j j J
-keys qi
+keys q
 type Three
 keys <Enter> x
 quit

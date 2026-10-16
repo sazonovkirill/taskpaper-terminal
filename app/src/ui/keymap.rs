@@ -113,8 +113,6 @@ pub enum Overlay {
     DatePrompt,
     /// The Quick Add panel (D-96).
     QuickAdd,
-    /// Quick Add's project picker (D-96).
-    QuickAddPicker,
     /// The type picker (FR-BLK-08).
     TypePicker,
     /// The Edit Node dialog (FR-MODE-09).
@@ -155,7 +153,6 @@ impl Overlay {
     fn menu(self) -> Option<Menu> {
         match self {
             Self::ColorPicker => Some(Menu::ColorPicker),
-            Self::QuickAddPicker => Some(Menu::QuickAdd),
             Self::TypePicker => Some(Menu::TypePicker),
             Self::NodeEditorFinder => Some(Menu::NodeEditor),
             Self::GoToSymbol => Some(Menu::GoToSymbol),
@@ -1199,7 +1196,6 @@ impl Keymap {
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::QuickAdd => quick_add_message(pressed),
-                Overlay::QuickAddPicker => menu_message(pressed, Menu::QuickAdd),
                 Overlay::ColorPicker => menu_message(pressed, Menu::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Menu::TypePicker),
                 Overlay::GoToSymbol if OPEN_IN_NEW_PANE.contains(&pressed) => {
@@ -1385,9 +1381,14 @@ mod tests {
         );
     }
 
+    // D-133: `q` is no prefix, so it opens Quick Add at once.
     #[test]
-    fn q_without_ctrl_or_with_more_modifiers_does_nothing() {
-        check(KeyCode::Char('q'), KeyModifiers::NONE, None);
+    fn q_opens_quick_add_and_with_more_modifiers_does_nothing() {
+        check(
+            KeyCode::Char('q'),
+            KeyModifiers::NONE,
+            Some(&Message::QuickAdd(QuickAddInput::Open)),
+        );
         check(
             KeyCode::Char('q'),
             KeyModifiers::CONTROL | KeyModifiers::ALT,
@@ -3009,10 +3010,6 @@ mod tests {
         assert_eq!(keymap.message_for(&pasted, ms(0), &quick_add), expected);
         for context in [
             Context {
-                overlay: Some(Overlay::QuickAddPicker),
-                ..*CONTEXT
-            },
-            Context {
                 command_menu: true,
                 ..*EDITING
             },
@@ -3411,7 +3408,7 @@ mod tests {
 
     // FR-MODE-07, keybindings.md §4
     #[test]
-    fn quick_add_takes_text_keys_enter_and_esc_and_its_picker_the_keys_of_a_picker() {
+    fn quick_add_takes_text_keys_enter_and_esc() {
         let none = KeyModifiers::NONE;
         let panel = |code| overlay_message(Overlay::QuickAdd, code, none);
         for (code, input) in [
@@ -3429,30 +3426,14 @@ mod tests {
             assert_eq!(panel(code), Some(Message::QuickAdd(input)), "{code:?}");
         }
         assert_eq!(panel(KeyCode::F(2)), None);
-        let pick = |code| overlay_message(Overlay::QuickAddPicker, code, none);
-        for (code, input) in [
-            (KeyCode::Char('l'), MenuInput::Type('l')),
-            (KeyCode::Down, MenuInput::Next),
-            (KeyCode::Enter, MenuInput::Choose),
-            (KeyCode::Esc, MenuInput::Dismiss),
-        ] {
-            assert_eq!(
-                pick(code),
-                Some(Message::Menu(Menu::QuickAdd, input)),
-                "{code:?}"
-            );
-        }
         assert_eq!(
             overlay_message(Overlay::QuickAdd, KeyCode::Char('v'), KeyModifiers::CONTROL),
             Some(Message::Paste(Paste::Below))
         );
-        for overlay in [Overlay::QuickAdd, Overlay::QuickAddPicker] {
-            assert_eq!(
-                overlay_message(overlay, KeyCode::Char('q'), KeyModifiers::CONTROL),
-                Some(Message::Quit),
-                "{overlay:?}"
-            );
-        }
+        assert_eq!(
+            overlay_message(Overlay::QuickAdd, KeyCode::Char('q'), KeyModifiers::CONTROL),
+            Some(Message::Quit)
+        );
     }
 
     // FR-NAV-06
@@ -4197,7 +4178,6 @@ mod tests {
             Overlay::ColorPicker,
             Overlay::DatePrompt,
             Overlay::QuickAdd,
-            Overlay::QuickAddPicker,
             Overlay::TypePicker,
             Overlay::NodeEditor,
             Overlay::NodeEditorFinder,

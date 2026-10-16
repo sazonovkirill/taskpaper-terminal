@@ -1,14 +1,14 @@
-# Inbox zero: capture three tasks with qi, move two of them to Work together, delete the third, then undo the delete.
+# Inbox zero: capture three tasks with q, move two of them to Work together, delete the third, then undo the delete.
 file <<END
 INBOX:
 Work:
 	- Write report
 END
-keys qi
+keys q
 type Email Bob tomorrow
-keys <Enter> qi
+keys <Enter> q
 type Order toner
-keys <Enter> qi
+keys <Enter> q
 type Lunch idea
 keys <Enter>
 keys gi

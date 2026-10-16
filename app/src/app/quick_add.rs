@@ -1,45 +1,31 @@
 //! Quick Add: a one-line prompt that adds a task or note, with the dates its words name, as the
-//! last child of a project chosen in it or the INBOX or TODAY project it opens with
+//! last child of the INBOX project
 //! ([editing.md §6](../../../docs/specs/editing.md#6-quick-add-fr-mode-07-fr-mode-08),
-//! FR-MODE-07, FR-MODE-08, D-96, D-97, D-98).
+//! FR-MODE-07, FR-MODE-08, D-96, D-97, D-133).
 
 use std::ops::Range;
 
 use jiff::civil::Date;
 
 use super::{
-    Access, MenuInput, Notice, State,
-    finder::{Finder, FinderView},
-    picker::Picked,
+    Access, Notice, State,
     text_field::{TextEdit, TextField},
 };
 use crate::document::{
-    DateTag, ItemId, blocks,
+    DateTag, blocks,
     dates::{self, Found},
     format::{self, LineParts, Typed, tags},
     structure::{self, Place},
 };
 
-/// The project Quick Add opens with as its destination.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum QuickAddTo {
-    /// None: one is chosen with `/` (`qq`).
-    Chosen,
-    /// The INBOX project the Navigator lists apart (`qi`, D-75).
-    Inbox,
-    /// The TODAY project (`qt`, D-98).
-    Today,
-}
-
-/// Opening Quick Add, or a key of the open panel, as an intent; the project picker's keys are
-/// menu keys.
+/// Opening Quick Add, or a key of the open panel, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuickAddInput {
-    /// Open the panel with the destination this names (`qq`, `qi`, `qt`, D-96).
-    Open(QuickAddTo),
-    /// Change the text typed; `/` at the start of a word opens the project picker.
+    /// Open the panel (`q`, D-133).
+    Open,
+    /// Change the text typed.
     Edit(TextEdit),
-    /// Add the block, when there is a destination and text.
+    /// Add the block, when there is an INBOX project and text.
     Add,
     /// Close the panel, adding nothing.
     Cancel,
@@ -50,8 +36,8 @@ pub enum QuickAddInput {
 pub enum Missing {
     /// Text besides the dates.
     Text,
-    /// A destination.
-    Project,
+    /// The INBOX project the Navigator lists apart (D-75).
+    Inbox,
 }
 
 /// The open panel as a frontend shows it.
@@ -67,31 +53,20 @@ pub struct QuickAddView<'a> {
     pub selection: Option<Range<usize>>,
     /// The dates that count in `text`, in order (D-97).
     pub dates: Vec<Found>,
-    /// The destination's path, its own text last, if there is one.
+    /// The INBOX project's path, its own text last, if there is one.
     pub destination: Option<Vec<String>>,
     /// What `Enter` lacks, or `None` when it adds the block.
     pub missing: Option<Missing>,
 }
 
-/// The open panel: whether it adds a task, the text field, the destination and the project
-/// picker while `/` has it open.
+/// The open panel: whether it adds a task, and the text field.
 #[derive(Debug, Clone)]
 pub(super) struct QuickAdd {
     task: bool,
     field: TextField,
-    destination: Option<ItemId>,
-    picker: Option<Finder<ItemId>>,
 }
 
 impl QuickAdd {
-    /// Keeps the destination on the project `exact` finds for it in a reloaded document, none
-    /// when it finds none, and closes the project picker, whose candidates name blocks of the
-    /// old document (file-io.md §3).
-    pub(super) fn rematch(&mut self, exact: impl Fn(ItemId) -> Option<ItemId>) {
-        self.destination = self.destination.and_then(exact);
-        self.picker = None;
-    }
-
     /// Applies `edit` to the text, or returns `false` and changes nothing when it would type a
     /// tag (OQ-25). A character that breaks a line is not typed. Text that starts with a task's
     /// dash and space makes a note a task, the dash moving before the text (OQ-27).
@@ -127,14 +102,6 @@ impl QuickAdd {
             typed &= self.edit(TextEdit::Insert(c));
         }
         typed
-    }
-
-    /// Whether `/` typed now opens the project picker: nothing is selected and the caret is at
-    /// the start of the text or after a space.
-    fn at_word_start(&self) -> bool {
-        let before = &self.field.text()[..self.field.caret()];
-        self.field.selection().is_none()
-            && (before.is_empty() || before.ends_with(char::is_whitespace))
     }
 
     /// The line the text adds with the dates found in it on `today`: the text without them,
@@ -179,11 +146,11 @@ impl State {
     #[must_use]
     pub fn quick_add(&self) -> Option<QuickAddView<'_>> {
         let quick_add = self.quick_add.as_ref()?;
-        let destination = self.quick_add_destination(quick_add);
+        let destination = self.inbox_block();
         let missing = if quick_add.line(self.today).is_none() {
             Some(Missing::Text)
         } else if destination.is_none() {
-            Some(Missing::Project)
+            Some(Missing::Inbox)
         } else {
             None
         };
@@ -198,174 +165,93 @@ impl State {
         })
     }
 
-    /// Quick Add's project picker, while `/` has it open.
-    #[must_use]
-    pub fn quick_add_picker(&self) -> Option<FinderView<'_, ItemId>> {
-        self.quick_add.as_ref()?.picker.as_ref().map(Finder::view)
-    }
-
-    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks
-    /// (`special_today`, D-98, D-102).
+    /// Whether the Today view lists the `TODAY` project's tasks (`special_today`, D-98, D-102).
     #[must_use]
     pub fn special_today(&self) -> bool {
         self.special_today
     }
 
-    /// The destination of `quick_add` while it is in the document.
-    fn quick_add_destination(&self, quick_add: &QuickAdd) -> Option<blocks::Block> {
-        quick_add
-            .destination
+    /// The INBOX project Quick Add adds to, found when it is needed, so a reload or a change
+    /// while the panel is open needs nothing kept up to date.
+    fn inbox_block(&self) -> Option<blocks::Block> {
+        self.inbox_project()
             .and_then(|id| blocks::block(&self.document, id))
     }
 
-    /// `qq`, `qi` and `qt`: opens Quick Add with the destination `to` names, or, when that
-    /// project is missing, says so and opens nothing. A read-only file refuses with a notice.
-    fn open_quick_add(&mut self, to: QuickAddTo) {
+    /// `q`: opens Quick Add, or, when there is no INBOX project, says so and opens nothing. A
+    /// read-only file refuses with a notice.
+    fn open_quick_add(&mut self) {
         if self.access() == Access::ReadOnly {
             self.notify(Notice::ReadOnly);
-            return;
+        } else if self.inbox_project().is_none() {
+            self.notify(Notice::NoInbox);
+        } else {
+            self.quick_add = Some(QuickAdd {
+                task: true,
+                field: TextField::new(String::new()),
+            });
         }
-        let destination = match to {
-            QuickAddTo::Chosen => None,
-            QuickAddTo::Inbox => {
-                let Some(inbox) = self.inbox_project() else {
-                    self.notify(Notice::NoInbox);
-                    return;
-                };
-                Some(inbox)
-            }
-            QuickAddTo::Today => {
-                let Some(today) = self.today_project(&self.pane) else {
-                    self.notify(Notice::NoTodayProject);
-                    return;
-                };
-                Some(today)
-            }
-        };
-        self.quick_add = Some(QuickAdd {
-            task: true,
-            field: TextField::new(String::new()),
-            destination,
-            picker: None,
-        });
     }
 
     /// Applies `input`: opens the panel, or changes, adds or closes the open one; adding puts
     /// the block in as one step to undo and closes the panel, saying where the block went.
     pub(super) fn quick_add_input(&mut self, input: QuickAddInput) {
         match input {
-            QuickAddInput::Open(to) => self.open_quick_add(to),
+            QuickAddInput::Open => self.open_quick_add(),
             QuickAddInput::Edit(edit) => self.quick_add_edit(edit),
             QuickAddInput::Cancel => self.quick_add = None,
             QuickAddInput::Add => self.add_quickly(),
         }
     }
 
-    /// Applies `edit` to the open panel's text: `/` at the start of a word opens the project
-    /// picker, and `Backspace` at the start of a task's text makes it a note.
+    /// Applies `edit` to the open panel's text: `Backspace` at the start of a task's text makes
+    /// it a note.
     fn quick_add_edit(&mut self, edit: TextEdit) {
-        let Some(mut quick_add) = self.quick_add.take() else {
+        let Some(quick_add) = &mut self.quick_add else {
             return;
         };
-        match edit {
-            TextEdit::Insert('/') if quick_add.at_word_start() => {
-                let candidates = self.project_candidates();
-                if candidates.is_empty() {
-                    quick_add.edit(edit);
-                } else {
-                    quick_add.picker = Some(Finder::new(candidates));
-                }
-            }
-            TextEdit::DeleteBackward
-                if quick_add.task
-                    && quick_add.field.caret() == 0
-                    && quick_add.field.selection().is_none() =>
-            {
-                quick_add.task = false;
-            }
-            _ => {
-                if !quick_add.edit(edit) {
-                    self.notify(Notice::TypedTag);
-                }
-            }
+        if edit == TextEdit::DeleteBackward
+            && quick_add.task
+            && quick_add.field.caret() == 0
+            && quick_add.field.selection().is_none()
+        {
+            quick_add.task = false;
+        } else if !quick_add.edit(edit) {
+            self.notify(Notice::TypedTag);
         }
-        self.quick_add = Some(quick_add);
     }
 
     /// Types `text` into the open panel's text, as [`State::one_line`] gives it,
-    /// as [`QuickAdd::paste`] does, unless its project picker is open, which takes no text
-    /// pasted; `false` when no panel is open.
+    /// as [`QuickAdd::paste`] does; `false` when no panel is open.
     pub(super) fn quick_add_paste(&mut self, text: &str) -> bool {
         let line = self.one_line(text);
         let Some(quick_add) = &mut self.quick_add else {
             return false;
         };
-        if quick_add.picker.is_none() && !quick_add.paste(&line) {
+        if !quick_add.paste(&line) {
             self.notify(Notice::TypedTag);
         }
         true
     }
 
-    /// Adds the block the open panel holds as its destination's last child and closes the
-    /// panel; does nothing while it lacks a destination or text.
+    /// Adds the block the open panel holds as the INBOX project's last child and closes the
+    /// panel; does nothing while there is no INBOX project or no text.
     fn add_quickly(&mut self) {
         let Some(quick_add) = &self.quick_add else {
             return;
         };
-        let (Some(destination), Some(line)) = (
-            self.quick_add_destination(quick_add),
-            quick_add.line(self.today),
-        ) else {
+        let (Some(destination), Some(line)) = (self.inbox_block(), quick_add.line(self.today))
+        else {
             return;
         };
         self.quick_add = None;
         let (_, ops) =
             structure::new_line(&mut self.document, Place::LastChild(&destination), line)
-                .expect("the destination was just found in the document");
+                .expect("the INBOX project was just found in the document");
         self.commit(ops);
         self.notify(Notice::QuickAdded {
             project: self.shown_text(destination.id()),
         });
-    }
-
-    /// Applies `input` to Quick Add's open project picker: choosing makes the highlighted
-    /// project the destination; `Esc`, or a character after which nothing matches, closes it and
-    /// types `/` and the filter, and `Backspace` on an empty filter closes it (editing.md §6).
-    pub(super) fn quick_add_picker_input(&mut self, input: MenuInput) {
-        let Some(quick_add) = &mut self.quick_add else {
-            return;
-        };
-        let Some(picker) = &mut quick_add.picker else {
-            return;
-        };
-        let typed = format!("/{}", picker.view().query);
-        let literal = match input {
-            MenuInput::Erase if picker.view().query.is_empty() => None,
-            MenuInput::Dismiss => Some(typed),
-            MenuInput::Type(c) => {
-                picker.input(input);
-                if !picker.view().entries.is_empty() {
-                    return;
-                }
-                Some(format!("{typed}{c}"))
-            }
-            MenuInput::Choose => {
-                if let Some(Picked::Chosen(id)) = picker.input(input) {
-                    quick_add.destination = Some(id);
-                }
-                None
-            }
-            MenuInput::Erase | MenuInput::Previous | MenuInput::Next => {
-                picker.input(input);
-                return;
-            }
-        };
-        quick_add.picker = None;
-        if let Some(text) = literal
-            && !quick_add.paste(&text)
-        {
-            self.notify(Notice::TypedTag);
-        }
     }
 }
 
@@ -377,7 +263,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Configuration, Menu, Message, Motion, Notice},
+        app::{Configuration, Message, Motion, Notice},
         document::format,
     };
 
@@ -405,10 +291,6 @@ mod tests {
         }
     }
 
-    fn pick(state: &mut State, input: MenuInput) {
-        assert_eq!(state.update(Message::Menu(Menu::QuickAdd, input)), []);
-    }
-
     /// Each line as one tab per depth and its text.
     fn lines(state: &State) -> Vec<String> {
         let document = state.document();
@@ -430,15 +312,15 @@ mod tests {
         path.iter().map(|&crumb| crumb.to_owned()).collect()
     }
 
-    // FR-MODE-07, D-96
+    // FR-MODE-07, D-96, D-133
     #[test]
-    fn qq_opens_an_empty_task_without_a_destination() {
+    fn q_opens_an_empty_task_for_the_inbox_project() {
         let mut state = open(OUTLINE);
         input(&mut state, QuickAddInput::Edit(TextEdit::Insert('x')));
         input(&mut state, QuickAddInput::Add);
         assert_eq!(state.quick_add(), None, "keys without a panel do nothing");
         assert_eq!(lines(&state).len(), 7);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         let view = state.quick_add().unwrap();
         assert_eq!(
             view,
@@ -448,49 +330,39 @@ mod tests {
                 caret: 0,
                 selection: None,
                 dates: Vec::new(),
-                destination: None,
+                destination: Some(path(&["INBOX"])),
                 missing: Some(Missing::Text),
             }
         );
-        assert_eq!(state.quick_add_picker(), None);
+        input(&mut state, QuickAddInput::Cancel);
+        assert_eq!(state.quick_add(), None);
     }
 
-    // D-96, D-98
+    // D-96, D-133
     #[test]
-    fn qi_and_qt_open_on_the_inbox_and_today_projects_or_say_there_is_none() {
+    fn q_without_an_inbox_project_says_there_is_none() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
-        assert_eq!(shown(&state).2, Some(path(&["INBOX"])));
-        input(&mut state, QuickAddInput::Cancel);
-        assert_eq!(state.quick_add(), None);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
-        assert_eq!(shown(&state).2, Some(path(&["TODAY"])));
-        input(&mut state, QuickAddInput::Cancel);
-        assert!(state.special_today(), "on by default");
-        state.update(Message::Configure(Configuration::SpecialToday(false)));
-        assert!(!state.special_today());
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
-        assert_eq!(state.quick_add(), None);
-        assert_eq!(state.notice(), Some(&Notice::NoTodayProject));
         state.update(Message::Configure(Configuration::SpecialInbox(false)));
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         assert_eq!(state.quick_add(), None);
         assert_eq!(state.notice(), Some(&Notice::NoInbox));
-        let mut state = open("Work:\n\tTODAY:\nToday:\n- TODAY");
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
-        assert_eq!(
-            state.quick_add(),
-            None,
-            "only a top-level project named TODAY counts"
-        );
-        assert_eq!(state.notice(), Some(&Notice::NoTodayProject));
+        for text in ["Work:\n\tINBOX:\nInbox:\n- INBOX", "TODAY:\n- a"] {
+            let mut state = open(text);
+            state.update(Message::QuickAdd(QuickAddInput::Open));
+            assert_eq!(
+                state.quick_add(),
+                None,
+                "{text}: only a top-level project named INBOX counts"
+            );
+            assert_eq!(state.notice(), Some(&Notice::NoInbox), "{text}");
+        }
     }
 
     // FR-MODE-07, file-io.md §1
     #[test]
     fn a_read_only_file_refuses() {
         let mut state = open(OUTLINE).with_access(Access::ReadOnly);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         assert_eq!(state.quick_add(), None);
         assert_eq!(state.notice(), Some(&Notice::ReadOnly));
     }
@@ -499,7 +371,7 @@ mod tests {
     #[test]
     fn backspace_at_the_start_makes_a_note_and_a_typed_dash_a_task_again() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "ab");
         input(&mut state, QuickAddInput::Edit(TextEdit::DeleteBackward));
         assert_eq!(
@@ -529,16 +401,16 @@ mod tests {
         );
     }
 
-    // editing.md §6: the panel takes pasted text as typed, and its project picker none.
+    // editing.md §6
     #[test]
-    fn pasted_text_is_typed_into_the_panel_but_not_its_picker() {
+    fn pasted_text_is_typed_into_the_panel() {
         let mut state = open(OUTLINE);
         let paste = |state: &mut State, text: &str| {
             let text = text.to_owned();
             let at = crate::app::Paste::Below;
             assert_eq!(state.update(Message::Pasted { text, at }), []);
         };
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         paste(&mut state, "Renew\r\npassport\n");
         assert_eq!(
             shown(&state).1,
@@ -549,11 +421,6 @@ mod tests {
         paste(&mut state, " for @ann");
         assert_eq!(shown(&state).1, "Renew passport for ann", "as typed");
         assert_eq!(state.notice(), Some(&Notice::TypedTag));
-        typed(&mut state, " /");
-        let all = listed(&state);
-        paste(&mut state, "Wo");
-        assert_eq!(shown(&state).1, "Renew passport for ann ");
-        assert_eq!(listed(&state), all, "the picker's filter is unchanged");
         assert_eq!(lines(&state), lines(&open(OUTLINE)), "no block pasted");
     }
 
@@ -572,7 +439,7 @@ mod tests {
             state.update(Message::Pasted { text, at });
         };
         let copy = "- buy milk @due(2026-10-12) @star\r\nWork:\r\n\t- plan\r\n- \r\n";
-        input(&mut state, QuickAddInput::Open(QuickAddTo::Inbox));
+        input(&mut state, QuickAddInput::Open);
         paste(&mut state, copy);
         assert_eq!(
             shown(&state).1,
@@ -592,22 +459,21 @@ mod tests {
     #[test]
     fn tags_and_line_breaks_are_not_typed() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
-        typed(&mut state, "a @x\nb ann@example.com");
+        state.update(Message::QuickAdd(QuickAddInput::Open));
+        typed(&mut state, "a ");
+        assert_eq!(state.notice(), None, "typed text has no notice");
+        typed(&mut state, "@x\nb ann@example.com");
         assert_eq!(shown(&state).1, "a xb ann@example.com");
         assert_eq!(state.notice(), Some(&Notice::TypedTag));
     }
 
     // D-96
     #[test]
-    fn enter_needs_text_besides_the_dates_and_a_destination() {
+    fn enter_needs_text_besides_the_dates() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "tomorrow");
         assert_eq!(state.quick_add().unwrap().missing, Some(Missing::Text));
-        input(&mut state, QuickAddInput::Add);
-        typed(&mut state, " milk");
-        assert_eq!(state.quick_add().unwrap().missing, Some(Missing::Project));
         input(&mut state, QuickAddInput::Add);
         assert!(state.quick_add().is_some(), "nothing added yet");
         assert_eq!(lines(&state), lines(&open(OUTLINE)));
@@ -617,7 +483,7 @@ mod tests {
     #[test]
     fn a_weekday_abbreviation_in_the_text_stays_text() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "Buy sun screen this fri");
         input(&mut state, QuickAddInput::Add);
         assert_eq!(lines(&state)[2], "\t- Buy sun screen @start(2026-10-09)");
@@ -629,7 +495,7 @@ mod tests {
         let mut state = open(OUTLINE);
         state.update(Message::FocusLast);
         let focus = state.focused().map(|(block, _)| block.id());
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "Buy milk tomorrow due next Mon.");
         let view = state.quick_add().unwrap();
         assert_eq!(view.missing, None);
@@ -672,13 +538,13 @@ mod tests {
     #[test]
     fn a_note_keeps_no_dash_and_loses_the_colons_that_would_make_it_a_project() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         input(&mut state, QuickAddInput::Edit(TextEdit::DeleteBackward));
         typed(&mut state, "  Groceries:  today ");
         input(&mut state, QuickAddInput::Add);
         assert_eq!(
-            lines(&state)[5..7],
-            ["TODAY:", "\tGroceries @start(2026-10-07)"]
+            lines(&state)[..3],
+            ["INBOX:", "\t- old", "\tGroceries @start(2026-10-07)"]
         );
     }
 
@@ -686,12 +552,12 @@ mod tests {
     #[test]
     fn a_task_keeps_the_colon_ending_its_text() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "Questions for Ana: tomorrow");
         input(&mut state, QuickAddInput::Add);
         assert_eq!(
-            lines(&state)[5..7],
-            ["TODAY:", "\t- Questions for Ana: @start(2026-10-08)"]
+            lines(&state)[2],
+            "\t- Questions for Ana: @start(2026-10-08)"
         );
     }
 
@@ -700,7 +566,7 @@ mod tests {
     fn a_note_of_only_colons_and_dates_has_no_text() {
         for text in [":", " :: ", ":: tomorrow"] {
             let mut state = open(OUTLINE);
-            state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+            state.update(Message::QuickAdd(QuickAddInput::Open));
             input(&mut state, QuickAddInput::Edit(TextEdit::DeleteBackward));
             typed(&mut state, text);
             assert_eq!(
@@ -714,156 +580,32 @@ mod tests {
         }
     }
 
-    // D-96
+    // D-96, D-133
     #[test]
-    fn a_destination_deleted_meanwhile_counts_as_none() {
-        let mut state = open("TODAY:\n- a");
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)));
+    fn an_inbox_project_deleted_meanwhile_is_missing() {
+        let mut state = open("INBOX:\n- a");
+        state.update(Message::QuickAdd(QuickAddInput::Open));
         typed(&mut state, "b");
-        let today = state.top_project("TODAY").unwrap();
-        let ops = structure::delete(state.document(), &today)
+        let inbox = state.top_project("INBOX").unwrap();
+        let ops = structure::delete(state.document(), &inbox)
             .into_iter()
             .collect();
         state.commit(ops);
         assert_eq!(state.quick_add().unwrap().destination, None);
-        assert_eq!(state.quick_add().unwrap().missing, Some(Missing::Project));
+        assert_eq!(state.quick_add().unwrap().missing, Some(Missing::Inbox));
         input(&mut state, QuickAddInput::Add);
+        assert!(state.quick_add().is_some(), "nothing added");
         assert_eq!(lines(&state), ["- a"]);
     }
 
-    /// The texts of the projects the picker lists and the highlighted position.
-    fn listed(state: &State) -> (Vec<String>, usize) {
-        let view = state.quick_add_picker().expect("the picker is open");
-        (
-            view.entries
-                .iter()
-                .map(|entry| entry.text.to_string())
-                .collect(),
-            view.selected,
-        )
-    }
-
-    // D-96, D-65
+    // D-133
     #[test]
-    fn slash_at_a_word_start_picks_a_project_and_elsewhere_is_typed() {
+    fn a_slash_is_typed_as_text() {
         let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
-        typed(&mut state, "a/b ");
-        assert_eq!(shown(&state).1, "a/b ");
-        assert_eq!(state.quick_add_picker(), None);
-        typed(&mut state, "/");
-        assert_eq!(
-            listed(&state),
-            (
-                ["INBOX", "Work", "Launch", "TODAY"]
-                    .map(str::to_owned)
-                    .to_vec(),
-                0
-            )
-        );
-        pick(&mut state, MenuInput::Type('l'));
-        pick(&mut state, MenuInput::Type('a'));
-        assert_eq!(listed(&state).0, ["Launch"]);
-        pick(&mut state, MenuInput::Previous);
-        pick(&mut state, MenuInput::Next);
-        pick(&mut state, MenuInput::Erase);
-        assert_eq!(listed(&state).0, ["Launch"]);
-        pick(&mut state, MenuInput::Erase);
-        assert_eq!(listed(&state).0.len(), 4);
-        pick(&mut state, MenuInput::Next);
-        pick(&mut state, MenuInput::Next);
-        assert_eq!(listed(&state).1, 2);
-        pick(&mut state, MenuInput::Previous);
-        pick(&mut state, MenuInput::Type('l'));
-        pick(&mut state, MenuInput::Choose);
-        assert_eq!(state.quick_add_picker(), None);
-        assert_eq!(
-            shown(&state),
-            (true, "a/b ".to_owned(), Some(path(&["Work", "Launch"])))
-        );
+        state.update(Message::QuickAdd(QuickAddInput::Open));
+        typed(&mut state, "/a b/ /");
         input(&mut state, QuickAddInput::Add);
-        assert_eq!(lines(&state)[5], "\t\t- a/b");
-        let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Inbox)));
-        input(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
-        assert!(
-            state.quick_add_picker().is_some(),
-            "at the start of the text"
-        );
-        pick(&mut state, MenuInput::Choose);
-        assert_eq!(shown(&state).2, Some(path(&["INBOX"])));
-        typed(&mut state, "x");
-        input(&mut state, QuickAddInput::Edit(TextEdit::SelectAll));
-        input(&mut state, QuickAddInput::Edit(TextEdit::Insert('/')));
-        assert_eq!(state.quick_add_picker(), None, "not over a selection");
-        assert_eq!(shown(&state).1, "/");
-    }
-
-    // D-96, D-44
-    #[test]
-    fn esc_or_a_filter_matching_nothing_types_the_slash_and_the_filter() {
-        let mut state = open(OUTLINE);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
-        typed(&mut state, "/");
-        pick(&mut state, MenuInput::Type('w'));
-        pick(&mut state, MenuInput::Type('o'));
-        pick(&mut state, MenuInput::Dismiss);
-        assert_eq!(state.quick_add_picker(), None);
-        assert_eq!(shown(&state), (true, "/wo".to_owned(), None));
-        typed(&mut state, " /");
-        pick(&mut state, MenuInput::Type('z'));
-        assert_eq!(state.quick_add_picker(), None);
-        assert_eq!(shown(&state).1, "/wo /z");
-        typed(&mut state, " /");
-        pick(&mut state, MenuInput::Type('w'));
-        pick(&mut state, MenuInput::Type('@'));
-        assert_eq!(
-            shown(&state).1,
-            "/wo /z /w@",
-            "an @ inside a word is no tag"
-        );
-        assert_eq!(state.notice(), None);
-        typed(&mut state, " /");
-        pick(&mut state, MenuInput::Erase);
-        assert_eq!(
-            state.quick_add_picker(),
-            None,
-            "Backspace on an empty filter closes it"
-        );
-        assert_eq!(shown(&state).1, "/wo /z /w@ ");
-        let mut state = open("- no projects");
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
-        typed(&mut state, "/");
-        assert_eq!(state.quick_add_picker(), None);
-        assert_eq!(shown(&state).1, "/");
-    }
-
-    // OQ-25
-    #[test]
-    fn a_filter_typed_back_as_text_leaves_out_an_at_that_would_start_a_tag() {
-        let mut state = open("Work:");
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
-        typed(&mut state, "/");
-        pick(&mut state, MenuInput::Type(' '));
-        assert!(
-            state.quick_add_picker().is_some(),
-            "a space filters nothing out"
-        );
-        pick(&mut state, MenuInput::Type('@'));
-        assert_eq!(state.quick_add_picker(), None);
-        assert_eq!(shown(&state).1, "/ ");
-        assert_eq!(state.notice(), Some(&Notice::TypedTag));
-    }
-
-    #[test]
-    fn keys_without_an_open_panel_or_picker_do_nothing() {
-        let mut state = open(OUTLINE);
-        input(&mut state, QuickAddInput::Add);
-        pick(&mut state, MenuInput::Choose);
-        state.update(Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Chosen)));
-        pick(&mut state, MenuInput::Choose);
-        assert_eq!(state.quick_add_picker(), None);
-        assert!(state.quick_add().is_some());
+        assert_eq!(lines(&state)[2], "\t- /a b/ /");
     }
 
     // D-97

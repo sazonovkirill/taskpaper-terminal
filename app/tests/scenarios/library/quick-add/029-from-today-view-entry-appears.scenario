@@ -7,7 +7,7 @@ Work:
 END
 keys gt
 see 󰖙 Today
-keys qi
+keys q
 type Buy stamps today
 keys <Enter>
 see - Buy stamps  INBOX

@@ -100,7 +100,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │   ⊔ Special handling of INBOX project          on  │",
             "│               │     Show INBOX: above Today, not under Projects    │",
             "│               │   ☼ Special handling of TODAY project          on  │",
-            "│               │     Today lists its tasks, and qt adds to it       │",
+            "│               │     Today lists its tasks                          │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
             "│               │   » Show Upcoming in Navigator                 on  │",
@@ -573,7 +573,7 @@ fn a_narrow_window_cuts_names_short_of_their_values_and_keeps_the_end_of_the_pat
             "│               │   ⊔ Special handling of INBOX proje… on  │",
             "│               │     Show INBOX: above Today, not under P…│",
             "│               │   ☼ Special handling of TODAY proje… on  │",
-            "│               │     Today lists its tasks, and qt adds t…│",
+            "│               │     Today lists its tasks                │",
             "│──────────────────────────────────────────────────────────│",
             "│ Tab: groups/settings · Enter: change · h/l: cycle · r: r…│",
         ]

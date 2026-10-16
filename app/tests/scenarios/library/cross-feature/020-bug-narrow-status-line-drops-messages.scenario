@@ -4,6 +4,6 @@ file <<END
 Work:
 	- Write report
 END
-keys qi
+keys q
 status No INBOX project
 quit

@@ -17,7 +17,7 @@ pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
 
 use super::{
     AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
-    QuickAddInput, QuickAddTo, SaveAs, SelectionChange, Sibling, SpecialView, Symbols, TextEdit,
+    QuickAddInput, SaveAs, SelectionChange, Sibling, SpecialView, Symbols, TextEdit,
 };
 use crate::document::{
     Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker,
@@ -144,9 +144,8 @@ pub enum Command {
     GoToProject,
     /// Find a block by name and move the selection under it.
     MoveTo,
-    /// Add a task or note to a project without leaving the view, with Quick Add opened on the
-    /// destination this names (D-96).
-    QuickAdd(QuickAddTo),
+    /// Add a task or note to the INBOX project without leaving the view (D-96, D-133).
+    QuickAdd,
     /// Find a command by name and give it, which the frontend opens with the bindings it shows
     /// (FR-NAV-06).
     GoToCommand,
@@ -305,9 +304,7 @@ impl Command {
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
-            Self::QuickAdd(QuickAddTo::Chosen) => "Quick Add".into(),
-            Self::QuickAdd(QuickAddTo::Inbox) => "Quick Add to Inbox".into(),
-            Self::QuickAdd(QuickAddTo::Today) => "Quick Add to Today".into(),
+            Self::QuickAdd => "Quick Add".into(),
             Self::GoToCommand => "Go to Command".into(),
             Self::Count => "Count Blocks and Words".into(),
             Self::SaveAs => "Save As".into(),
@@ -417,7 +414,7 @@ impl Command {
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,
-            Self::QuickAdd(to) => Message::QuickAdd(QuickAddInput::Open(to)),
+            Self::QuickAdd => Message::QuickAdd(QuickAddInput::Open),
             Self::Count => Message::Count,
             Self::SaveAs => Message::SaveAs(SaveAs::Open),
             Self::ContextMenu => Message::OpenContextMenu,
@@ -647,9 +644,7 @@ mod tests {
             (Command::GoToView(SpecialView::Overdue), "Go to Overdue"),
             (Command::GoToView(SpecialView::Starred), "Go to Starred"),
             (Command::GoToProject, "Go to Project"),
-            (Command::QuickAdd(QuickAddTo::Chosen), "Quick Add"),
-            (Command::QuickAdd(QuickAddTo::Inbox), "Quick Add to Inbox"),
-            (Command::QuickAdd(QuickAddTo::Today), "Quick Add to Today"),
+            (Command::QuickAdd, "Quick Add"),
             (Command::Pane(PaneChange::OpenCrumb(1)), "Open in New Pane"),
             (Command::Pane(PaneChange::Open), "Open in New Pane"),
             (
@@ -738,10 +733,7 @@ mod tests {
                 Command::GoToProject,
                 Message::OpenGoToSymbol(Symbols::Projects),
             ),
-            (
-                Command::QuickAdd(QuickAddTo::Today),
-                Message::QuickAdd(QuickAddInput::Open(QuickAddTo::Today)),
-            ),
+            (Command::QuickAdd, Message::QuickAdd(QuickAddInput::Open)),
         ] {
             assert_eq!(command.message(&INPUTS), Some(message), "{command:?}");
         }

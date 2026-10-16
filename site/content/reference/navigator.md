@@ -31,7 +31,7 @@ The Navigator keeps the keys while it is open: keys that are not its own do noth
 
 The **inbox** is the first top-level project whose text is exactly `INBOX`, in capitals: `INBOX:` in the file, maybe after emoji and a space, as in `📥 INBOX:`. The Navigator lists it above Today, behind a tray icon, and leaves it and the projects inside it out of the Projects tree.
 
-`gi` (**Go to Inbox**) zooms the focused pane to it from anywhere. When there is no inbox, the status line says "No INBOX project in the Navigator". [Quick Add to Inbox](@/reference/quick-add.md) adds tasks to it.
+`gi` (**Go to Inbox**) zooms the focused pane to it from anywhere. When there is no inbox, the status line says "No INBOX project in the Navigator". [Quick Add](@/reference/quick-add.md) adds tasks to it.
 
 Turn off **Special handling of INBOX project** to list it among the other projects instead:
 

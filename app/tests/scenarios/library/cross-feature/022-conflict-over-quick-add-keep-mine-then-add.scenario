@@ -8,7 +8,7 @@ INBOX:
 Home:
 	- Fix the shelf
 END
-keys j x qi
+keys j x q
 type Buy milk
 see - Buy milk
 outside <<END

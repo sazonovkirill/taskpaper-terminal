@@ -55,15 +55,15 @@ fn bottom_border() -> String {
     format!("└{}┘", "─".repeat(usize::from(WIDTH) - 2))
 }
 
-// FR-MODE-07, editing.md §6, D-96, D-97
+// FR-MODE-07, editing.md §6, D-96, D-97, D-133
 #[test]
-fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
+fn q_adds_a_task_with_its_dates_to_the_inbox() {
     let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
-    app.type_keys("qq");
+    app.type_keys("q");
     assert_eq!(
         screen(&mut app)[9..13],
         [
-            top(" Quick Add "),
+            top(" Quick Add → INBOX "),
             inside(" -"),
             inside(" Type the text"),
             bottom_border(),
@@ -73,29 +73,19 @@ fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
     let dimmed = |x, y| buffer[(x, y)].modifier.contains(Modifier::DIM);
     assert!(dimmed(4, 2) && dimmed(0, 13), "the outline and status line");
     assert!(!dimmed(0, 9) && !dimmed(2, 10), "the panel");
-    app.type_keys("Call Bob tomorrow due fri");
+    app.type_keys("tomorrow");
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         screen(&mut app)[11],
-        inside(" Choose a project with /"),
-        "Enter needs a project"
+        inside(" Type the text"),
+        "Enter needs text besides the dates"
     );
-    app.type_keys(" /la");
-    assert_eq!(
-        screen(&mut app)[5..9],
-        [
-            top("Project"),
-            inside("› la"),
-            inside(" ▸ Launch  Work"),
-            bottom_border(),
-        ]
-    );
-    press(&mut app, KeyCode::Enter);
+    app.type_keys(" call Bob/Ann due fri");
     assert_eq!(
         screen(&mut app)[9..12],
         [
-            top(" Quick Add → Work › Launch "),
-            inside(" - Call Bob tomorrow due fri"),
+            top(" Quick Add → INBOX "),
+            inside(" - tomorrow call Bob/Ann due fri"),
             inside(" Start Tue 6 Oct · Due Fri 9 Oct"),
         ]
     );
@@ -105,10 +95,10 @@ fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
         [
             "▌ INBOX:".to_owned(),
             "    - old".to_owned(),
+            format!("    - call Bob/Ann{:>61}", "↦ tomorrow ⇥ Fri"),
             "  Work:".to_owned(),
             "    Launch:".to_owned(),
             "      - plan".to_owned(),
-            format!("      - Call Bob{:>63}", "↦ tomorrow ⇥ Fri"),
             "  TODAY:".to_owned(),
             "  - loose".to_owned(),
             String::new(),
@@ -118,14 +108,14 @@ fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
         "the panel closed and the focus stayed"
     );
     assert!(
-        status(&mut app).ends_with("· Added to Launch"),
+        status(&mut app).ends_with("· Added to INBOX"),
         "{}",
         status(&mut app)
     );
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\nWork:\n\tLaunch:\n\t\t- plan\n\t\t- Call Bob @start(2026-10-06) \
-         @due(2026-10-09)\nTODAY:\n- loose\n"
+        "INBOX:\n\t- old\n\t- call Bob/Ann @start(2026-10-06) @due(2026-10-09)\nWork:\n\tLaunch:\
+         \n\t\t- plan\nTODAY:\n- loose\n"
     );
     app.type_keys("z");
     assert_eq!(saved(&mut app), OUTLINE, "one step to undo");
@@ -135,7 +125,7 @@ fn q_q_adds_a_task_with_its_dates_to_the_project_picked_with_slash() {
 #[test]
 fn words_naming_a_past_day_stay_in_the_text_unless_due_comes_before_them() {
     let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
-    app.type_keys("qiReview last week sales due yesterday");
+    app.type_keys("qReview last week sales due yesterday");
     assert_eq!(screen(&mut app)[11], inside(" Due Sun 4 Oct"));
     press(&mut app, KeyCode::Enter);
     assert_eq!(
@@ -145,48 +135,48 @@ fn words_naming_a_past_day_stay_in_the_text_unless_due_comes_before_them() {
     );
 }
 
-// FR-MODE-07, FR-MODE-08, editing.md §6, D-96, D-98
+// FR-MODE-07, editing.md §6, D-96
 #[test]
-fn q_i_and_q_t_start_at_the_inbox_and_today_and_backspace_makes_a_note() {
+fn backspace_at_the_start_makes_a_note_and_esc_adds_nothing() {
     let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
-    app.type_keys("qi");
-    assert_eq!(screen(&mut app)[9], top(" Quick Add → INBOX "));
+    app.type_keys("q");
     press(&mut app, KeyCode::Backspace);
     app.type_keys("Idea");
     assert_eq!(screen(&mut app)[10], inside(" Idea"));
     press(&mut app, KeyCode::Enter);
     assert!(status(&mut app).ends_with("· Added to INBOX"));
-    app.type_keys("qtx");
+    app.type_keys("qx");
     press(&mut app, KeyCode::Esc);
     assert_eq!(screen(&mut app)[12], "", "Esc closed the panel");
-    app.type_keys("qty");
-    press(&mut app, KeyCode::Enter);
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\tIdea\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n\t- y\n- loose\n"
+        "INBOX:\n\t- old\n\tIdea\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
     );
 }
 
-// FR-MODE-08, D-78, D-98
+// FR-MODE-07, D-78, D-133
 #[test]
-fn q_i_and_q_t_say_when_their_project_is_missing_or_turned_off() {
-    let mut app = Harness::with_config(OUTLINE, "special_today = false\n", WIDTH, 14);
-    app.type_keys("qt");
-    assert_eq!(screen(&mut app)[9], "", "nothing opened");
-    assert!(status(&mut app).ends_with("· No TODAY project"));
-    let mut app = Harness::with_text("- loose\n", WIDTH, 14);
-    app.type_keys("qi");
-    let said = status(&mut app);
-    assert!(said.contains("· No INBOX project"), "{said}");
-    app.type_keys("qt");
-    assert!(status(&mut app).ends_with("· No TODAY project"));
+fn q_says_when_there_is_no_inbox_or_it_is_turned_off() {
+    for (outline, config) in [
+        (OUTLINE, "special_inbox = false\n"),
+        ("TODAY:\n- loose\n", ""),
+    ] {
+        let mut app = Harness::with_config(outline, config, WIDTH, 14);
+        app.type_keys("q");
+        assert_eq!(screen(&mut app)[9], "", "{outline:?}: nothing opened");
+        let said = status(&mut app);
+        assert!(
+            said.ends_with("· No INBOX project in the Navigator"),
+            "{said}"
+        );
+    }
 }
 
 // editing.md §6, keybindings.md §4: the panel takes the standard text keys, pasting included.
 #[test]
 fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_panel() {
     let mut app = Harness::with_text(OUTLINE, WIDTH, 14);
-    app.type_keys("jyqi");
+    app.type_keys("jyq");
     app.send(Input::Terminal(Event::Paste(
         "Renew\npassport\n".to_owned(),
     )));

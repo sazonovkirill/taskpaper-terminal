@@ -1,17 +1,12 @@
-# Planning the day: add two tasks to the TODAY project with qt, which Today lists with the dated ones, put a dated one first in Today, and find the same list after reopening.
+# Planning the day: tasks in the TODAY project join Today with the dated ones, a dated one put first in Today, and the same list after reopening.
 file <<END
 TODAY:
+	- Call the bank @due({today})
+	- Water plants
 Work:
 	- Review PRs
 	- Write report @due({today})
 END
-keys qt
-type Call the bank due today
-keys <Enter>
-status Added to TODAY
-keys qt
-type Water plants
-keys <Enter>
 keys gt
 see - Water plants
 hide Review PRs

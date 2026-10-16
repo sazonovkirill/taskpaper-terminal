@@ -494,7 +494,7 @@ fn every_text_field_moves_its_caret_through_the_text_shown() {
     let long = "a long text that is much wider than the room the field has for it";
     let open: [(&str, Opens); 7] = [
         ("date prompt", |app| app.type_keys("md")),
-        ("Quick Add", |app| app.type_keys("qq")),
+        ("Quick Add", |app| app.type_keys("q")),
         ("Edit Node", |app| app.type_keys("e")),
         ("settings filter", |app| app.type_keys("g,/")),
         ("note", |app| app.type_keys("ne")),
@@ -507,7 +507,8 @@ fn every_text_field_moves_its_caret_through_the_text_shown() {
         }),
     ];
     for (field, open) in open {
-        let mut app = Harness::with_text("- Milk\n", 50, 14);
+        // Quick Add opens only with an INBOX project to add to.
+        let mut app = Harness::with_text("- Milk\nINBOX:\n", 50, 14);
         open(&mut app);
         app.type_keys(long);
         app.render();

@@ -1,13 +1,5 @@
-# In an empty file qi and qt say there is no such project, and qq has no project to choose, so Enter adds nothing.
-keys qi
+# In an empty file q says there is no INBOX project and opens nothing.
+keys q
 status No INBOX project in the Navigator
-keys qt
-status No TODAY project
-keys qq
-type Something
-keys <Space> /
-see - Something /
-keys <Enter>
-see Choose a project with /
-keys <Esc>
+hide Quick Add
 quit

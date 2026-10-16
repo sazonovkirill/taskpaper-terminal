@@ -6,7 +6,7 @@ Work:
 END
 keys gU
 see - Report
-keys qi
+keys q
 type Renew lease due +3d
 keys <Enter>
 see - Renew lease

@@ -85,8 +85,7 @@ pub struct State {
     pub(super) date_prompt: Option<DatePrompt>,
     /// Quick Add, while it is open (FR-MODE-07).
     pub(super) quick_add: Option<QuickAdd>,
-    /// Whether `qt` adds to the `TODAY` project and the Today view lists its tasks
-    /// (`special_today`, D-98, D-102).
+    /// Whether the Today view lists the `TODAY` project's tasks (`special_today`, D-98, D-102).
     pub(super) special_today: bool,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
@@ -275,12 +274,9 @@ pub enum Notice {
         /// Whether the block is bookmarked now.
         added: bool,
     },
-    /// `gi` found no inbox: no top-level `INBOX` project is shown, or the setting that lists it
-    /// apart is off (D-78).
+    /// `gi` or Quick Add found no inbox: no top-level `INBOX` project is shown, or the setting
+    /// that lists it apart is off (D-78, D-133).
     NoInbox,
-    /// `qt` found no `TODAY` project: no top-level `TODAY` project is shown, or the setting
-    /// that makes it special is off (D-98).
-    NoTodayProject,
     /// The frontend was asked to start the weather in summer, which has none (FR-UI-12).
     NoWeather,
     /// Quick Add added a block to the project with this text (D-96).
@@ -325,7 +321,6 @@ impl Notice {
             | Self::WhitespaceTrimmed
             | Self::NotSections { .. }
             | Self::NoInbox
-            | Self::NoTodayProject
             | Self::NoWeather
             | Self::QuickAdded { .. }
             | Self::Bookmark { .. }

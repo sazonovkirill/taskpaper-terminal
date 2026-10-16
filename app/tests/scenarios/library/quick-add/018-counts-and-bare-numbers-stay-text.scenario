@@ -2,13 +2,13 @@
 file <<END
 INBOX:
 END
-keys qi
+keys q
 type Call back in 3 days
-keys <Enter> qi
+keys <Enter> q
 type Renew due 2 weeks
-keys <Enter> qi
+keys <Enter> q
 type Check +3d
-keys <Enter> qi
+keys <Enter> q
 type Flight 2030-01-15 due 2030-01-20
 keys <Enter>
 quit

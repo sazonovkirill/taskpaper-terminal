@@ -4,11 +4,11 @@ INBOX:
 Home:
 	- Fix the shelf
 END
-keys qi
+keys q
 type Buy milk due tomorrow
 keys <Enter>
 status Added to INBOX
-keys qi
+keys q
 type Call the plumber
 keys <Enter>
 keys gi

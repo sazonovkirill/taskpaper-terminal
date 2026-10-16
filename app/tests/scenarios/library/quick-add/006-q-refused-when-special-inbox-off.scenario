@@ -1,0 +1,16 @@
+# With special_inbox off, q says there is no INBOX and adds nothing.
+config <<END
+special_inbox = false
+END
+file <<END
+INBOX:
+	- Old item
+END
+keys q
+status No INBOX project in the Navigator
+hide Quick Add
+quit
+saved <<END
+INBOX:
+	- Old item
+END

@@ -99,8 +99,8 @@ impl State {
         }
     }
 
-    /// The candidates of [`State::block_candidates`] that are projects, as Go to Project and
-    /// Quick Add's project picker list them (D-65, D-96).
+    /// The candidates of [`State::block_candidates`] that are projects, as Go to Project lists
+    /// them (D-65).
     pub(super) fn project_candidates(&self) -> Vec<Candidate<ItemId>> {
         self.candidates(&[], Symbols::Projects)
     }
