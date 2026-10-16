@@ -178,7 +178,10 @@ impl Session<'_> {
             Step::See(_) | Step::Hide(_) | Step::Status(_) | Step::Resize(..)
         ) {
             self.react();
-        } else if !self.exited && !matches!(step, Step::Saved(_)) && self.before.is_none() {
+        } else if !self.exited
+            && !matches!(step, Step::Saved(_) | Step::Outside(_))
+            && self.before.is_none()
+        {
             self.before = Some(self.terminal.screen().text());
         }
         match step {
@@ -217,13 +220,31 @@ impl Session<'_> {
                     .map_err(|_| format!("the status line never showed {text:?}"))
             }
             Step::Resize(width, height) => self.resize(*width, *height),
-            Step::Outside(text) => std::fs::write(self.launch.path, expand(text, self.today))
-                .map_err(|error| format!("cannot write the file: {error}")),
+            Step::Outside(text) => {
+                self.settle()?;
+                std::fs::write(self.launch.path, expand(text, self.today))
+                    .map_err(|error| format!("cannot write the file: {error}"))
+            }
             Step::Restart => self.restart(),
             Step::Signal(signal) => self.signal(*signal),
             Step::Quit => self.quit(),
             Step::Saved(text) => self.saved(&expand(text, self.today)),
         }
+    }
+
+    /// Waits until the app has drawn what the input before asked for, and takes that screen as the
+    /// one the next check waits to see change. The app shows a change on disk only after its file
+    /// watch's quiet time, longer than [`QUIET`], so a check that took the rest of that drawing for
+    /// the app's reaction would judge the screen before the change could show.
+    fn settle(&mut self) -> Result<(), String> {
+        if !self.exited {
+            let screen = self
+                .terminal
+                .wait_stable(QUIET)
+                .map_err(|error| error.to_string())?;
+            self.before = Some(screen.text());
+        }
+        Ok(())
     }
 
     /// Waits until the screen differs from the one before the latest input, or for
