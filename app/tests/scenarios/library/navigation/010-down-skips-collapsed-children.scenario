@@ -6,7 +6,7 @@ Reading list:
 Movies:
 	- Alien
 END
-keys <Space> j x
+keys ' j x
 see Reading list: ▸ 2
 quit
 saved <<END

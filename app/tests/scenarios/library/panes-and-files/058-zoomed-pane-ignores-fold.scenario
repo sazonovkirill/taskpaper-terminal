@@ -6,6 +6,6 @@ Errands:
 Work:
 	- Report
 END
-keys <C-w> v <C-w> h <Space>
+keys <C-w> v <C-w> h '
 see ▌ Errands: ▸ 2
 see │    - Buy milk

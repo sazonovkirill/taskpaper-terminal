@@ -1,4 +1,4 @@
-# Space collapses and expands the focused block, and ' does the same.
+# ' collapses and expands the focused block, and Space does nothing.
 file <<END
 Movies:
 	- Alien
@@ -6,11 +6,11 @@ Movies:
 Books
 END
 keys <Space>
+see - Alien
+keys '
 see Movies: ▸ 2
 hide Alien
 keys <Space>
-see - Alien
-keys '
 see Movies: ▸ 2
 keys '
 see - Heat

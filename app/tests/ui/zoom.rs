@@ -76,10 +76,17 @@ fn zooming_in_shows_the_block_as_a_title_over_its_children() {
 #[test]
 fn every_zoom_key_zooms_in_and_breadcrumbs_show_the_path() {
     let mut app = app(30);
-    app.type_keys("jjjj");
-    app.press(KeyCode::Char('l'), KeyModifiers::ALT);
+    app.type_keys("jjjj.");
     assert_eq!(header(&mut app), "⌂ › Work");
+    app.press(KeyCode::Char('l'), KeyModifiers::ALT);
     app.press(KeyCode::Right, KeyModifiers::ALT);
+    assert_eq!(
+        header(&mut app),
+        "⌂ › Work",
+        "Alt+l and Alt+→ do not zoom (D-132)"
+    );
+    assert_focus(&mut app, "  - Report");
+    app.type_keys(".");
     assert_eq!(header(&mut app), "⌂ › Work › Report");
     app.type_keys("gz");
     assert_eq!(header(&mut app), "⌂ › Work › Report › Draft");
@@ -108,9 +115,15 @@ fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
     assert_eq!(header(&mut app), "⌂ › Work › Report");
     assert_focus(&mut app, "  - Draft");
     app.press(KeyCode::Char('h'), KeyModifiers::ALT);
+    assert_eq!(
+        header(&mut app),
+        "⌂ › Work › Report",
+        "Alt+h does not zoom out (D-132)"
+    );
+    app.type_keys(">");
     assert_eq!(header(&mut app), "⌂ › Work");
     assert_focus(&mut app, "  - Report");
-    app.press(KeyCode::Left, KeyModifiers::ALT);
+    app.type_keys("gu");
     assert_eq!(header(&mut app), "⌂");
     assert_focus(&mut app, "Work:");
     app.type_keys("gu");
@@ -146,6 +159,12 @@ fn back_and_forward_walk_the_zoom_history() {
     app.type_keys("L");
     assert_eq!(header(&mut app), "⌂ › Work");
     app.press(KeyCode::Right, KeyModifiers::ALT | KeyModifiers::SHIFT);
+    assert_eq!(
+        header(&mut app),
+        "⌂ › Work",
+        "Alt+Shift+→ is unbound (D-132)"
+    );
+    app.press(KeyCode::Right, KeyModifiers::ALT);
     assert_eq!(header(&mut app), "⌂ › Work › Report");
     app.type_keys("L");
     assert_eq!(
@@ -153,7 +172,7 @@ fn back_and_forward_walk_the_zoom_history() {
         "⌂ › Work › Report",
         "nothing after the end"
     );
-    app.press(KeyCode::Left, KeyModifiers::ALT | KeyModifiers::SHIFT);
+    app.press(KeyCode::Left, KeyModifiers::ALT);
     assert_eq!(header(&mut app), "⌂ › Work");
     app.type_keys("gh");
     app.type_keys("L");

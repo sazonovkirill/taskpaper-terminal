@@ -7,7 +7,7 @@ Trip:
 		- Tokyo capsule
 	- Visa
 END
-keys j j <Space>
+keys j j '
 see - Hotel ▸ 2
 keys .
 see - Kyoto ryokan

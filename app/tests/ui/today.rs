@@ -181,11 +181,11 @@ fn enter_edits_an_entry_in_place_and_enter_again_stops_editing() {
     assert_eq!(shown(&mut app).len(), 3, "no block was added");
 }
 
-// D-7, navigation §7: the classic and kitty variants of D-42
+// D-7, navigation §7, D-132: the zoom keys that both key reportings send
 #[test]
-fn alt_l_and_gz_go_from_an_entry_to_it_in_the_outline_and_back_returns() {
+fn dot_and_gz_go_from_an_entry_to_it_in_the_outline_and_back_returns() {
     for keys in [
-        &[(KeyCode::Char('l'), KeyModifiers::ALT)][..],
+        &[(KeyCode::Char('.'), KeyModifiers::NONE)][..],
         &[
             (KeyCode::Char('g'), KeyModifiers::NONE),
             (KeyCode::Char('z'), KeyModifiers::NONE),

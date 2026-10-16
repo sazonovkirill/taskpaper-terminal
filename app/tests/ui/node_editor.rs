@@ -1,4 +1,4 @@
-//! The Edit Node dialog: `e` and `mi` open it on the focused block, showing every property and
+//! The Edit Node dialog: `e` opens it on the focused block, showing every property and
 //! tag; its keys change them in a draft that `Enter` writes as one step to undo.
 
 use std::{fs, time::Duration};
@@ -65,7 +65,7 @@ fn e_shows_every_property_and_tag_of_the_focused_block_and_esc_closes_it() {
     press(&mut app, KeyCode::Esc);
     assert!(!open(&mut app));
     app.type_keys("mi");
-    assert!(open(&mut app), "m i opens it too");
+    assert!(!open(&mut app), "m i no longer opens it (D-132)");
 }
 
 // FR-MODE-09, FR-TAG-01, FR-OPS-08, editing.md §7

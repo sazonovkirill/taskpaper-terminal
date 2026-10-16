@@ -117,7 +117,7 @@ The flag, star and bookmark come in that order, each a space after the text. The
 
 ## Edit Node
 
-`e` or `mi` opens the **Edit Node** dialog on the focused block, the zoom title included, also while blocks are selected and in the special views. **Edit Node** in the edit-mode [command menu](@/reference/modes.md#the-command-menu) opens it on the block being edited, and editing resumes when it closes. It shows every property of the block, one row each, and changes any of them:
+`e` opens the **Edit Node** dialog on the focused block, the zoom title included, also while blocks are selected and in the special views. **Edit Node** in the edit-mode [command menu](@/reference/modes.md#the-command-menu) opens it on the block being edited, and editing resumes when it closes. It shows every property of the block, one row each, and changes any of them:
 
 | Row | Shows | Change it with |
 |---|---|---|

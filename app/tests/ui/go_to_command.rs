@@ -42,7 +42,7 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
             "│ ≈ Animations: Full                                       │",
             "│ ≈ Animations: Off                                        │",
             "│ ≈ Animations: Reduced                                    │",
-            "│ › Back  H, Alt+Shift+←                                   │",
+            "│ › Back  H, Alt+←                                         │",
             "│ ● Choose Theme  Ctrl+T                                   │",
         ]
     );

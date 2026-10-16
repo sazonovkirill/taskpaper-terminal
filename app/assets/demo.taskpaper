@@ -46,7 +46,7 @@ Weekend errands:
 	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with - and a space for a task or end it with : for a project, and Backspace at its start or Delete at its end makes it text again.
 	While editing, type / for this block's commands and filter them as you type, as in /due or /color, then Enter.
-	Open Today with gt for what is due or started by today; Alt+l or gz on one of its blocks goes to it in the outline.
+	Open Today with gt for what is due or started by today; gz or . on one of its blocks goes to it in the outline.
 	Press G for the last block and gg for the first: the block focus lands on flashes, and z flashes what an undo brings back. Turn this down with Animations in the settings.
 	In a truecolor theme such as Nord, complete a task with x and its text eases into the done style, zoom in with . and the outline fades in from the top, and themes crossfade as you move through them.
 	Jump to any block by name with Ctrl+K, or to a project with gP; Alt+Enter or Ctrl+V there opens it in a new pane.

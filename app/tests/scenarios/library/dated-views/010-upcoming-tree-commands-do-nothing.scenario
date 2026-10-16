@@ -7,7 +7,7 @@ Work:
 END
 keys gU j
 see ▌ - Ship  Work
-keys y <Tab> <S-Tab> > <Space> gG p P
+keys y <Tab> <S-Tab> > ' gG p P
 keys k x
 quit
 saved <<END

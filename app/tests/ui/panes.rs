@@ -169,7 +169,7 @@ fn each_pane_keeps_its_own_zoom_focus_and_history() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     window(&mut app, "s");
     app.type_keys("jjj");
-    app.press(KeyCode::Right, KeyModifiers::ALT);
+    app.type_keys(".");
     alt(&mut app, '1');
     app.type_keys("j");
     let screen = screen(&mut app);
@@ -205,7 +205,7 @@ fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.type_keys("!");
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-    app.type_keys("k ");
+    app.type_keys("k'");
     let screen = screen(&mut app);
     assert_eq!(
         screen[2],
@@ -213,7 +213,7 @@ fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
     );
     assert_eq!(screen[3], "  Home:                                │  Home:");
     alt(&mut app, '1');
-    app.press(KeyCode::Char(' '), KeyModifiers::NONE);
+    app.type_keys("'");
     assert_eq!(
         self::screen(&mut app)[3],
         "    - Report!                          │    - Report!"

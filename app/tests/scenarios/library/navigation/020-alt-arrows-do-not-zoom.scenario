@@ -1,0 +1,13 @@
+# Alt+Right and Alt+Left do not zoom: with no history to walk they leave the view as it is.
+file <<END
+Work:
+	- Write report
+Home
+END
+keys <A-Right>
+see Home
+hide › Work
+keys <A-Left>
+see Home
+hide › Work
+quit

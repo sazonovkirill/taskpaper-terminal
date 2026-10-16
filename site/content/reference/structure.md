@@ -55,7 +55,7 @@ The clipboard gets TaskPaper text: each block's line with its tags, children and
 
 ## Undo and redo
 
-`z` or `Ctrl+Z` undoes, and `Z`, `Ctrl+Y` or `Ctrl+Shift+Z` (kitty protocol) redoes. Each command is one step however many blocks it changed, and so is a whole edit-mode session. Undo restores attachments and hidden lines with their blocks. When the file is reloaded after an [outside change](@/reference/files.md#when-the-file-changes-on-disk), the undo history starts over.
+`z` or `Ctrl+Z` undoes, and `Z` or `Ctrl+Y` redoes. Each command is one step however many blocks it changed, and so is a whole edit-mode session. Undo restores attachments and hidden lines with their blocks. When the file is reloaded after an [outside change](@/reference/files.md#when-the-file-changes-on-disk), the undo history starts over.
 
 {{ keys(topic="structure", group="Structure") }}
 

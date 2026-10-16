@@ -204,7 +204,7 @@ fn every_overlay_opens_on_every_size() {
         ":",
         "mc",
         "my",
-        "mi",
+        "e",
         "\\",
         "g,",
         "\n/",

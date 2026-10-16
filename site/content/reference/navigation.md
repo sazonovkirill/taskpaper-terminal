@@ -26,7 +26,7 @@ Any block with children can be folded, not only projects. Expanded blocks show n
 
 | Key | Folds |
 |---|---|
-| `'` or `Space` | the focused block: open it if it is collapsed, close it otherwise |
+| `'` | the focused block: open it if it is collapsed, close it otherwise |
 | `"` | the focused block's whole subtree: collapses it if anything in it is expanded, otherwise expands all of it |
 | `=` / `-` | the pane, one level at a time: expands every collapsed block at the shallowest level that has one, or collapses every expanded block at the deepest level |
 | `+` / `_` | everything under the pane's zoom block |
@@ -37,9 +37,9 @@ Folds belong to the document, not the pane: a block folded in one pane is folded
 
 ## Zoom
 
-**Zoom In** (`.`, `Alt+l`, `Alt+→` or `gz`) makes the focused block the pane's root. The pane shows it as a bold **title row** at the top, in its type's style, with its children one level in below it. The title row is a block like any other: you can focus it, edit it and run commands on it. Zooming into a block without children shows its title and nothing else. New blocks you add on the title row become its children (see [Creating blocks](@/reference/modes.md#creating-blocks)).
+**Zoom In** (`.` or `gz`) makes the focused block the pane's root. The pane shows it as a bold **title row** at the top, in its type's style, with its children one level in below it. The title row is a block like any other: you can focus it, edit it and run commands on it. Zooming into a block without children shows its title and nothing else. New blocks you add on the title row become its children (see [Creating blocks](@/reference/modes.md#creating-blocks)).
 
-**Zoom Out** (`>`, `Alt+h`, `Alt+←` or `gu`) zooms to the parent and focuses the block you were zoomed into. **Go Home** (`gh`, or `Ctrl+'` with the kitty protocol) zooms back to the whole document.
+**Zoom Out** (`>` or `gu`) zooms to the parent and focuses the block you were zoomed into. **Go Home** (`gh`, or `Ctrl+'` with the kitty protocol) zooms back to the whole document.
 
 When a block that a pane is zoomed into goes away, deleted in any pane or changed on disk, that pane zooms out to its nearest ancestor that still exists.
 
@@ -49,7 +49,7 @@ The first row of each pane is its **breadcrumb bar**: a house icon `⌂` for the
 
 ## History
 
-Every change of a pane's root, by zooming, going home, a [Navigator](@/reference/navigator.md) entry, a finder or a [special view](@/reference/views.md), is a step in that pane's history. **Back** (`H`, `Alt+Shift+←`) and **Forward** (`L`, `Alt+Shift+→`) walk it, like a browser. Steps to blocks that no longer exist are skipped, and so is a step to the place already shown, so every press goes somewhere. Each pane has a history of its own, and the history is saved with the [pane layout](@/reference/files.md#pane-layout).
+Every change of a pane's root, by zooming, going home, a [Navigator](@/reference/navigator.md) entry, a finder or a [special view](@/reference/views.md), is a step in that pane's history. **Back** (`H`, `Alt+←`) and **Forward** (`L`, `Alt+→`) walk it, like a browser. Steps to blocks that no longer exist are skipped, and so is a step to the place already shown, so every press goes somewhere. Each pane has a history of its own, and the history is saved with the [pane layout](@/reference/files.md#pane-layout).
 
 {{ keys(topic="navigation", group="Zoom and History") }}
 

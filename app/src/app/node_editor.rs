@@ -1,4 +1,4 @@
-//! The Edit Node dialog that `e` and `mi` open: one block's type, text, completion, parent,
+//! The Edit Node dialog that `e` opens: one block's type, text, completion, parent,
 //! dates, star, flag and every other tag, changed in a draft and applied as one step to undo
 //! ([editing.md §7](../../../docs/specs/editing.md#7-edit-node-dialog-fr-mode-09), FR-MODE-09,
 //! D-103).
@@ -28,7 +28,7 @@ const OWN_ROWS: [&str; 5] = ["done", "start", "due", "star", "flag"];
 /// A key of the open dialog, as an intent; its parent finder's keys are menu keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeInput {
-    /// Open the dialog on the focused block (`e`, `mi`).
+    /// Open the dialog on the focused block (`e`).
     Open,
     /// Focus the next row.
     Next,
@@ -516,7 +516,7 @@ impl State {
         self.node_editor = Some(editor);
     }
 
-    /// `e` and `mi`: opens the dialog on the focused block, if there is one.
+    /// `e`: opens the dialog on the focused block, if there is one.
     fn open_node_editor(&mut self) {
         let Some((id, item)) = self
             .focused()

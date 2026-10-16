@@ -117,11 +117,13 @@ fn l_expands_then_goes_to_the_first_child() {
 
 // FR-NAV-02
 #[test]
-fn quote_and_space_toggle_the_fold() {
+fn quote_toggles_the_fold_and_space_does_not() {
     let mut app = app();
     app.type_keys("'");
     assert_focus(&mut app, "Home: ▸ 2");
     app.type_keys(" ");
+    assert_focus(&mut app, "Home: ▸ 2");
+    app.type_keys("'");
     assert_focus(&mut app, "Home:");
     app.type_keys("jjj");
     app.type_keys("'");

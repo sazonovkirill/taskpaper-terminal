@@ -66,22 +66,14 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::FocusLast, Mode::Navigate, &["G", "end"]),
     entry!(Command::PageDown, Mode::Navigate, &["ctrl+d", "pagedown"]),
     entry!(Command::PageUp, Mode::Navigate, &["ctrl+u", "pageup"]),
-    entry!(Command::ToggleFold, Mode::Navigate, &["'", "space"]),
+    entry!(Command::ToggleFold, Mode::Navigate, &["'"]),
     entry!(Command::ToggleSubtree, Mode::Navigate, &["\""]),
     entry!(Command::ExpandLevel, Mode::Navigate, &["="]),
     entry!(Command::CollapseLevel, Mode::Navigate, &["-"]),
     entry!(Command::ExpandAll, Mode::Navigate, &["+"]),
     entry!(Command::CollapseAll, Mode::Navigate, &["_"]),
-    entry!(
-        Command::ZoomIn,
-        Mode::Navigate,
-        &[".", "alt+l", "alt+right", "g z"],
-    ),
-    entry!(
-        Command::ZoomOut,
-        Mode::Navigate,
-        &[">", "alt+h", "alt+left", "g u"],
-    ),
+    entry!(Command::ZoomIn, Mode::Navigate, &[".", "g z"]),
+    entry!(Command::ZoomOut, Mode::Navigate, &[">", "g u"]),
     entry!(Command::GoHome, Mode::Navigate, &["ctrl+'", "g h"]),
     entry!(
         Command::GoToView(SpecialView::Today),
@@ -123,8 +115,8 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["g i"]
     ),
-    entry!(Command::Back, Mode::Navigate, &["H", "alt+shift+left"]),
-    entry!(Command::Forward, Mode::Navigate, &["L", "alt+shift+right"]),
+    entry!(Command::Back, Mode::Navigate, &["H", "alt+left"]),
+    entry!(Command::Forward, Mode::Navigate, &["L", "alt+right"]),
     entry!(Command::Edit, Mode::Navigate, &["enter"]),
     entry!(Command::New(NewBlock::Below, None), Mode::Navigate, &["o"]),
     entry!(
@@ -321,11 +313,7 @@ pub const REGISTRY: &[Entry] = &[
         &["P", "alt+v"],
     ),
     entry!(Command::Undo, Mode::Navigate, &["z", "ctrl+z"]),
-    entry!(
-        Command::Redo,
-        Mode::Navigate,
-        &["Z", "ctrl+shift+z", "ctrl+y"],
-    ),
+    entry!(Command::Redo, Mode::Navigate, &["Z", "ctrl+y"],),
     entry!(Command::ToggleDone, Mode::Navigate, &["x", "ctrl+enter"]),
     entry!(
         Command::ChangeDate(DateTag::Start, DateChange::Today),
@@ -427,7 +415,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleSection, Mode::Navigate, &["S"]),
     entry!(Command::SetSection(true), Mode::Navigate, &[]),
     entry!(Command::SetSection(false), Mode::Navigate, &[]),
-    entry!(Command::EditNode, Mode::Navigate, &["e", "m i"]),
+    entry!(Command::EditNode, Mode::Navigate, &["e"]),
     entry!(
         Command::OpenAttachment(Attachment::Note),
         Mode::Navigate,
@@ -460,7 +448,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
-    entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+g"]),
+    entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+g", "|"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+p", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::SaveAs, Mode::Navigate, &[]),
@@ -579,7 +567,7 @@ pub const REGISTRY: &[Entry] = &[
         &["alt+`", "ctrl+e"],
     ),
     entry!(Command::Undo, Mode::Edit, &["ctrl+z"]),
-    entry!(Command::Redo, Mode::Edit, &["ctrl+shift+z", "ctrl+y"]),
+    entry!(Command::Redo, Mode::Edit, &["ctrl+y"]),
     entry!(Command::Copy, Mode::Edit, &["ctrl+c"]),
     entry!(Command::Cut, Mode::Edit, &["ctrl+x"]),
     entry!(Command::Paste(Paste::Below), Mode::Edit, &["ctrl+v"]),
@@ -919,7 +907,7 @@ mod tests {
         let (_, zoom) = &shortcuts(Mode::Navigate)[2];
         assert_eq!(zoom[2].keys, ["ctrl+'", "g h"], "Go Home");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[2].keys, ["ctrl+g"], "Open Navigator");
+        assert_eq!(view[2].keys, ["ctrl+g", "|"], "Open Navigator");
         assert_eq!(view[10].keys, ["ctrl+q"]);
     }
 

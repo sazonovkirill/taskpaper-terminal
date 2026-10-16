@@ -87,7 +87,7 @@ Big:
 Next:
 	- n
 END
-keys <Space> dd
+keys ' dd
 see ▌ Next:
 keys z
 see Big:

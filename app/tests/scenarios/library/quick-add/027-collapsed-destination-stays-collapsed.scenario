@@ -6,7 +6,7 @@ INBOX:
 Work:
 	- a
 END
-keys <Space>
+keys '
 see INBOX: ▸ 2
 keys qi
 type Three

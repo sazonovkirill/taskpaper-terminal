@@ -26,7 +26,6 @@ Every command has at least one key that works with classic reporting. A few comm
 |---|---|---|
 | `Ctrl+Enter` | Toggle Done | `x` |
 | `Ctrl+'` | Go Home | `gh` |
-| `Ctrl+Shift+Z` | Redo | `Ctrl+Y`, or `Z` in navigate mode |
 | `Ctrl+M` | Move To | `gm` |
 | `Ctrl+\` | Open in New Pane | `Ctrl+W v` |
 | `Menu` | Context Menu | `\`, `Shift+F10`, or `Ctrl+R` in the Navigator |
@@ -46,8 +45,7 @@ Some terminals and desktops keep certain keys for themselves. Each such key has 
 | `Alt+Enter` in the Navigator and finders | Windows Terminal, WezTerm | `Ctrl+T` |
 | `Ctrl+V` in the Navigator and finders | Windows Terminal | `Ctrl+T` |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | kitty, WezTerm | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l` |
-| `Ctrl+Shift+Z` | kitty, WezTerm | `Z`, `Ctrl+Y` |
-| `Alt` with arrows | Windows Terminal | `>` / `.`, `Alt+k` / `Alt+j`, `H` / `L` |
+| `Alt` with arrows | Windows Terminal | `H` / `L`, `Alt+k` / `Alt+j` |
 | `Alt+1` … `Alt+9` | GNOME Terminal and Ghostty on Linux | `g1` … `g9` |
 | `Shift+F10` | GNOME Terminal | `\`, or `Ctrl+R` in the Navigator |
 | `Ctrl+B` while editing | tmux | press `Ctrl+B` twice |

@@ -1,0 +1,15 @@
+# gi zooms to the INBOX project from anywhere, and | opens the Navigator, which lists it.
+file <<END
+Work:
+	- Report
+INBOX:
+	- Call the plumber
+END
+keys j gi
+see › INBOX
+see - Call the plumber
+hide Report
+keys gh |
+see Navigator
+keys <Esc>
+quit

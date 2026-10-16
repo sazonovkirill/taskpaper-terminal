@@ -25,10 +25,10 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 | `a` new at end of list | `A` new at start | capital goes to the top |
 | `p` paste below | `P` paste above | capital goes up |
 | `j`/`k` move focus | `J`/`K` extend selection | Shift+arrow selects, everywhere |
-| `h`/`l` fold / unfold | `H`/`L` back / forward | big step sideways = history, like a browser |
+| `h`/`l` fold / unfold | `H`/`L` back / forward | big step sideways = history, like a browser's `Alt+←`/`Alt+→` |
 | `t` start today | `T` due today | due date is the bigger deal |
 | `w` start tomorrow | `W` due tomorrow | same rule as `t` |
-| `z` undo | `Z` redo | Ctrl+Z / Ctrl+Shift+Z without Ctrl |
+| `z` undo | `Z` redo | Ctrl+Z without Ctrl, plus Shift for the other way |
 | `s` toggle **s**tar | `S` toggle **S**ection | capital = the bigger mark, a heading (D-130) |
 | `d` (`dd`) delete | `D` duplicate | "**D**ouble it" |
 | `cc` cycle color | `C` clear color | one exception to "capital = more": **C**lear |
@@ -72,7 +72,6 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 | `mc` | **c**olor picker |
 | `mb` / `mf` | **b**ookmark / red **f**lag (also `!`, D-91); the star is `s` |
 | `my` | t**y**pe (`t` was taken) |
-| `mi` | **i**nfo: Edit Node, as `e` (**e**dit) |
 
 ## 6. Colors, dates, done
 
@@ -84,7 +83,7 @@ So `ot` = task below, `ip` = project inside, `As` = section at the top. Type any
 ## 7. Modifier keys
 
 - **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+G` **g**o: the Navigator, `Ctrl+K` go to a block and `Ctrl+P` command palette (D-72), `Ctrl+T` choose **t**heme, `Ctrl+O` show completed (**O**ld tasks), `Ctrl+↑/↓` jump between siblings (`gk`/`gj` too).
-- **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+h/l` zoom out/in, `Alt+Shift+h/l` narrow/widen the pane, `Alt+Shift+←/→` back/forward, `Alt+z` wrap (as in VS Code), `Alt+1…9` panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
+- **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+Shift+h/l` narrow/widen the pane, `Alt+←/→` back/forward (as in a browser), `Alt+z` wrap (as in VS Code), `Alt+1…9` panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
@@ -100,18 +99,17 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 |---|---|
 | `Ctrl+Enter` done | `x` |
 | `Ctrl+'` home | `gh` |
-| `Ctrl+Shift+Z` redo | `Z`, `Ctrl+Y` |
 | `Ctrl+\` block in new pane | `Ctrl+W v` |
 | Menu key | `\`, `Shift+F10`; in the Navigator, `Ctrl+R` |
 
 ## 10. Odds and ends
 
-- `'` and `Space` fold, `"` folds the subtree.
+- `'` folds, `"` folds the subtree.
 - `\` is the "right-click": context menu.
 - `?` shortcuts panel; `(`/`)` page it.
 - `Enter` edits; `Esc` clears the selection.
 - `Tab`/`Shift+Tab` indent/outdent, in both modes.
-- The **Navigator** (`Ctrl+G`) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+R` (**r**ight-click, as `\` is outside it), `Shift+F10` or the Menu key opens the context menu, `Esc` or `Ctrl+G` closes, `Ctrl+Q` quits.
+- The **Navigator** (`Ctrl+G` or `|`, a side bar) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+R` (**r**ight-click, as `\` is outside it), `Shift+F10` or the Menu key opens the context menu, `Esc` or `Ctrl+G` closes, `Ctrl+Q` quits.
 - **Edit mode** uses normal text-editor keys, plus `/` command menu, `Ctrl+T` cycle **t**ype, `Ctrl+B` **b**old, `Ctrl+E` inline cod**e** (or `` Alt+` ``), `↑`/`↓` edit the neighbor block.
 
 ## Where the logic breaks

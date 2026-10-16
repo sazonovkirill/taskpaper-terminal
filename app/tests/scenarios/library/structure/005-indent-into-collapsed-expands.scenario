@@ -8,7 +8,7 @@ Plan:
 Other:
 	- D
 END
-keys j j <Space>
+keys j j '
 see - B ▸
 keys j <Tab>
 see       Note on B

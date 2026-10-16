@@ -6,5 +6,5 @@ Errands:
 Work:
 	- Report
 END
-keys <C-w> s <Space>
+keys <C-w> s '
 see   Errands: ▸ 2                                   │▌ Errands: ▸ 2

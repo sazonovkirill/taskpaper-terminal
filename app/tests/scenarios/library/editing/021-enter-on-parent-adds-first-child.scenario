@@ -8,7 +8,7 @@ END
 see Agenda
 keys <Enter> <Enter>
 type Decisions
-keys <Esc> k <Space> <Enter> <Enter>
+keys <Esc> k ' <Enter> <Enter>
 type After
 keys <Esc>
 see After

@@ -12,7 +12,6 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   |---|---|---|
   | `Ctrl+Enter` | Toggle done | `x` |
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
-  | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`; `Z` in navigate mode (legacy sends `Ctrl+Z`, which undoes) |
   | `Ctrl+M` | Move to… | `gm` (legacy sends `Enter`, which edits; D-131) |
   | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
   | Menu key | Context menu | `\`, `Shift+F10`; `Ctrl+R` in the Navigator (D-101) |
@@ -46,7 +45,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 
 | Command | Keys |
 |---|---|
-| Toggle fold | `'`, `Space` |
+| Toggle fold | `'` (`Space` is unbound, D-132) |
 | Toggle fold of the whole subtree | `"` |
 | Expand / collapse all blocks by one level | `=` / `-` |
 | Expand / collapse all | `+` / `_` |
@@ -55,15 +54,15 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 
 | Command | Keys |
 |---|---|
-| Zoom into focused block | `.`, `Alt+l`, `Alt+→`, `gz` |
-| Zoom out | `>` (`Shift+.`), `Alt+h`, `Alt+←`, `gu` |
+| Zoom into focused block | `.`, `gz` (`Alt+l` and `Alt+→` are gone, D-132) |
+| Zoom out | `>` (`Shift+.`), `gu` (`Alt+h` and `Alt+←` are gone, D-132) |
 | Go home | `Ctrl+'` (kitty keyboard protocol only, §1), `gh` |
 | Go to Today: show the Today view, as choosing it in the Navigator does (D-64, D-95) | `gt`, `gT` |
 | Go to Upcoming / Overdue / Colors / Logbook: show that special view, as choosing it in the Navigator does (D-80, D-95) | `gU` / `gO` / `gC` / `gL` |
 | Go to Starred: show the Starred view, as choosing it in the Navigator does (D-92, D-95) | `gS` |
 | Go to Flagged: show the Flagged view, as choosing it in the Navigator does (D-93, D-95) | `gF` |
 | Go to Inbox: zoom to the INBOX project the Navigator lists apart, as choosing its entry does; with none, or the setting off, a status notice says so (D-78) | `gi` |
-| Back / forward | `H` / `L`, `Alt+Shift+←` / `Alt+Shift+→` |
+| Back / forward | `H` / `L`, `Alt+←` / `Alt+→` (were `Alt+Shift+←` / `Alt+Shift+→`, D-132) |
 
 ### Editing and creating (FR-MODE)
 
@@ -100,7 +99,7 @@ The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for 
 | Duplicate | `D` (was `yd`) |
 | Copy / cut | `y`, `Ctrl+C` / `Ctrl+X` (D-53) |
 | Paste below / above | `p`, `Ctrl+V` / `P`, `Alt+V` (D-53); text pasted into the terminal goes below |
-| Undo / redo | `z` / `Z`, `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
+| Undo / redo | `z` / `Z`, `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` is gone, D-132) |
 
 ### Block metadata (FR-BLK-08, FR-TAG, FR-DONE-01)
 
@@ -123,7 +122,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Toggle flag (D-91) | `mf`, `!` |
 | Convert block type | `my` |
 | Toggle section: make the selected text blocks sections, or plain text when every one is (D-52, D-130) | `S` (was Make Section, with `s` Remove Section; both now in Go to Command only) |
-| Edit Node: every property and tag of the focused block ([editing.md §7](editing.md#7-edit-node-dialog-fr-mode-09), D-103) | `e`, `mi` |
+| Edit Node: every property and tag of the focused block ([editing.md §7](editing.md#7-edit-node-dialog-fr-mode-09), D-103) | `e` (`mi` is gone, D-132) |
 | Open Note / Open Comments: the attachments panel on the focused block's note or comments ([attachments.md §3](attachments.md#3-attachments-panel-fr-att-03), D-106) | `n` / `N` |
 | Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
 
@@ -133,7 +132,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 |---|---|
 | Show/hide completed in this pane (FR-DONE-02) | `Ctrl+O`, `gc` |
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
-| Open Navigator: the window of places to go, on the entry of where the pane is, else the first (FR-UI-01, D-68, D-79); one control key in both key reportings (D-42) | `Ctrl+G` |
+| Open Navigator: the window of places to go, on the entry of where the pane is, else the first (FR-UI-01, D-68, D-79); one control key in both key reportings (D-42) | `Ctrl+G`, `\|` (D-132) |
 | Shortcuts panel (FR-KEY-04) | `?` |
 | Scroll the shortcuts panel down / up a page, while it is open (D-55) | `)` / `(` |
 | Go to Symbol (FR-NAV-05) | `Ctrl+K`, `gs` (was `Ctrl+P`, D-72) |
@@ -172,7 +171,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Indent / outdent block | `Tab` / `Shift+Tab` |
 | Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Symbol) |
-| Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Shift+Z` (fallback `Ctrl+Y`) |
+| Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` is gone, D-132) |
 | Copy / cut the selected text, paste ([editing.md §2](editing.md#2-edit-mode)) | `Ctrl+C` / `Ctrl+X`, `Ctrl+V` |
 
 ## 4. Other contexts
@@ -180,10 +179,10 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Command menu** ([editing.md §2.3](editing.md#23-command-menu)): characters filter by the starts of the labels' words, in order (`/date`, `/due`, `/color r`); `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, skipping the lines between groups, `Enter` runs the highlighted entry (the first by default), `Esc` closes and types `/` and the filter, `Backspace` on an empty filter closes. There are no instant letters (D-50): `/p` then `Enter` makes a project. The menu shows the labels only.
 - **Color picker** (`mc`, [editing.md §5](editing.md#5-block-commands)): a picker as below that lists each color with its number; typing `1` to `6` chooses that color at once (D-48), and other characters filter by name.
 - **Type picker** (`my`, [editing.md §5](editing.md#5-block-commands)): a picker as below; it has no letter shortcuts, so `my` then typing `make` and `Enter` makes a section (D-52).
-- **Edit Node dialog** (`e`, `mi`, [editing.md §7](editing.md#7-edit-node-dialog-fr-mode-09)): `Tab`/`↓` and `Shift+Tab`/`↑` move between rows, `Ctrl+T` cycles the type, `Enter` saves and `Esc` cancels; on a row, `Space` acts, a character starts its field, `←`/`→` step its value and `Backspace`/`Delete` remove it; `p`/`t`/`n` on Type, `x` on Done, `s` on Starred and `!` on Flagged as in navigate mode, and `*` on Starred too, its navigate-mode key before D-130. An open field takes the standard text keys, `Enter` and `Esc`; the parent finder the keys of pickers. `Ctrl+Q` still quits.
+- **Edit Node dialog** (`e`, [editing.md §7](editing.md#7-edit-node-dialog-fr-mode-09)): `Tab`/`↓` and `Shift+Tab`/`↑` move between rows, `Ctrl+T` cycles the type, `Enter` saves and `Esc` cancels; on a row, `Space` acts, a character starts its field, `←`/`→` step its value and `Backspace`/`Delete` remove it; `p`/`t`/`n` on Type, `x` on Done, `s` on Starred and `!` on Flagged as in navigate mode, and `*` on Starred too, its navigate-mode key before D-130. An open field takes the standard text keys, `Enter` and `Esc`; the parent finder the keys of pickers. `Ctrl+Q` still quits.
 - **Attachments panel** (`n`, `N`, [attachments.md §3](attachments.md#3-attachments-panel-fr-att-03), D-106, D-107, D-108, D-109): `j`/`k` or `↓`/`↑` scroll a line and `Ctrl+D`/`Ctrl+U` or `Page Down`/`Page Up` a page through the selected item, the note or a comment, while it goes past the panel's edge, and otherwise select the next or previous item; `g`/`Home` and `G`/`End` go to the top with the first item and the bottom with the last. `e` or `Enter` edits the selected item, `a` adds a comment, `d` or `Delete` deletes the selected comment, `Esc` closes, `Ctrl+Q` quits; other keys do nothing. While the note is edited, `Enter` breaks the line, `↑`/`↓` move between lines, the text keys of edit mode edit the line, `Ctrl+V` pastes and `Esc` saves. While a comment is typed, `Enter` adds or saves it, `Esc` cancels, the text keys of edit mode edit it and `Ctrl+V` pastes.
 - **Context menu:** opens on the focused block or selection, or on the focused Navigator entry, crumb or pane header; `↑`/`↓` move, typing filters, `Enter` runs, `Esc` closes. `\`, `Shift+F10` and the Menu key open it in every navigate context, but `\` is typed into the Navigator's filter (D-86), where `Ctrl+R` opens it instead (D-101).
-- **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Ctrl+R`, `Shift+F10` or the Menu key opens the context menu (`\` is typed; D-101), `Esc` or `Ctrl+G` closes it, `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
+- **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Ctrl+R`, `Shift+F10` or the Menu key opens the context menu (`\` is typed; D-101), `Esc` or `Ctrl+G` closes it (`|`, which opens it, is typed; D-132), `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
 - **Quick Add** ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)): standard text keys, `Enter` adds, `Esc` cancels, `Backspace` at the start of the text deletes the task's dash, `/` at the start of the text or after a space opens the project picker, which takes the keys of pickers above, except that `Esc`, or a filter that matches nothing, closes it and types `/` and the filter, and `Backspace` on an empty filter closes it. Every key is a plain key (D-42).
@@ -220,8 +219,7 @@ Keys that common terminals, multiplexers and desktops take for themselves by def
 | `Alt+Enter` (new pane from the Navigator and Go to Symbol) | Windows Terminal and WezTerm: full screen | `Ctrl+T` |
 | `Ctrl+V` (new pane from the Navigator and Go to Symbol; paste) | Windows Terminal: paste | `Ctrl+T`; paste arrives as pasted text |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` (pane left / right; select a word in edit mode) | kitty: tabs; WezTerm: panes | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`; in edit mode, `Shift+←` / `Shift+→` |
-| `Ctrl+Shift+Z` (redo) | kitty: previous prompt; WezTerm: zoom pane | `Z`, `Ctrl+Y` |
-| `Alt+←` / `Alt+→`, `Alt+↑` / `Alt+↓`, `Alt+Shift+←` / `Alt+Shift+→` | Windows Terminal, between its own split panes | `>` / `.`, `Alt+k` / `Alt+j`, `H` / `L` |
+| `Alt+←` / `Alt+→` (back / forward), `Alt+↑` / `Alt+↓` (move up / down) | Windows Terminal, between its own split panes | `H` / `L`, `Alt+k` / `Alt+j` |
 | `Alt+1` … `Alt+9` (focus pane N) | GNOME Terminal and Ghostty on Linux: tabs | `g1` … `g9` |
 | `Shift+F10` (context menu) | GNOME Terminal: its own menu | `\`; in the Navigator, `Ctrl+R` (D-101) |
 | `Ctrl+B` (bold, edit mode) | tmux: its prefix | `Ctrl+B` twice in tmux, which sends it on |

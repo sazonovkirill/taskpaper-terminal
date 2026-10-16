@@ -1,4 +1,4 @@
-# gz and Alt+l zoom in, gu and Alt+h zoom out, like . and >.
+# gz zooms in and gu zooms out, like . and >, and Alt+l and Alt+h do neither.
 file <<END
 Work:
 	Launch:
@@ -8,11 +8,16 @@ END
 keys gz
 see › Work
 keys <A-l>
+see › Work
+hide › Launch
+keys gz
 see › Work › Launch
 keys gu
-see - Draft announcement
+see ▌   Launch:
 hide › Launch
 keys <A-h>
+see › Work
+keys gu
 see Home
 hide › Work
 quit

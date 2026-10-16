@@ -22,7 +22,7 @@ On a Mac, <kbd>Alt</kbd> is Option, and your terminal must send it: turn on "Use
 
 Move to "Trip to Lisbon" and press <kbd>h</kbd>. The project folds up into one line, ending in `▸ 9`: nine open tasks are hidden inside. Press <kbd>l</kbd> to unfold it.
 
-On a folded line, or one with nothing inside, <kbd>h</kbd> goes to the parent instead. <kbd>Space</kbd> just toggles the fold.
+On a folded line, or one with nothing inside, <kbd>h</kbd> goes to the parent instead. <kbd>'</kbd> just toggles the fold.
 
 Press <kbd>_</kbd> to fold everything and <kbd>+</kbd> to unfold it all. A file always opens unfolded.
 

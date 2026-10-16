@@ -1,4 +1,4 @@
-# Alt+Shift+Left goes back and Alt+Shift+Right goes forward, like H and L.
+# Alt+Left goes back and Alt+Right goes forward, like H and L, and Alt+Shift+Left does nothing.
 file <<END
 Projects:
 	Website:
@@ -7,8 +7,10 @@ END
 keys . j .
 see › Projects › Website
 keys <A-S-Left>
+see › Projects › Website
+keys <A-Left>
 see › Projects
 hide › Website
-keys <A-S-Right>
+keys <A-Right>
 see › Projects › Website
 quit

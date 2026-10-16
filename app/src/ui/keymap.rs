@@ -1612,14 +1612,55 @@ mod tests {
         assert_eq!(keymap.pending(), "", "the prompt ends a pending sequence");
     }
 
-    // D-42: the kitty protocol sends `Ctrl+Shift+Z` as `z` with `Shift`, other reportings as `Z`.
+    // D-42, D-132: the kitty protocol sends `Ctrl+Shift+Z` as `z` with `Shift`, other reportings
+    // as `Z`; neither redoes any more, and `Ctrl+Y`, and `Z` in navigate mode, still do.
     #[test]
-    fn ctrl_shift_z_redoes_in_both_key_reportings() {
+    fn ctrl_shift_z_does_not_redo_in_either_key_reporting() {
         let ctrl_shift = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
         for code in [KeyCode::Char('Z'), KeyCode::Char('z')] {
-            check(code, ctrl_shift, Some(&Message::Redo));
-            check_editing(code, ctrl_shift, Some(&Message::Redo));
+            check(code, ctrl_shift, None);
+            check_editing(code, ctrl_shift, None);
         }
+        let redo = Some(&Message::Redo);
+        check(KeyCode::Char('Z'), KeyModifiers::SHIFT, redo);
+        check(KeyCode::Char('y'), KeyModifiers::CONTROL, redo);
+        check_editing(KeyCode::Char('y'), KeyModifiers::CONTROL, redo);
+    }
+
+    // D-132: Space no longer folds, the `Alt` keys of zooming are gone, `Alt+←` and `Alt+→` go
+    // back and forward in place of `Alt+Shift+←` and `Alt+Shift+→`, and `|` toggles the
+    // Navigator, whether or not the kitty protocol reports it with `Shift`.
+    #[test]
+    fn the_owners_key_table_of_2026_10_16() {
+        let none = KeyModifiers::NONE;
+        let alt = KeyModifiers::ALT;
+        let alt_shift = alt | KeyModifiers::SHIFT;
+        check(KeyCode::Char(' '), none, None);
+        check(KeyCode::Char('\''), none, Some(&Message::ToggleFold));
+        for code in [KeyCode::Char('l'), KeyCode::Char('h')] {
+            check(code, alt, None);
+        }
+        check(KeyCode::Char('.'), none, Some(&Message::ZoomIn));
+        check(KeyCode::Char('>'), none, Some(&Message::ZoomOut));
+        check(KeyCode::Left, alt, Some(&Message::Back));
+        check(KeyCode::Right, alt, Some(&Message::Forward));
+        check(KeyCode::Left, alt_shift, None);
+        check(KeyCode::Right, alt_shift, None);
+        check(KeyCode::Char('H'), none, Some(&Message::Back));
+        check(KeyCode::Char('L'), none, Some(&Message::Forward));
+        for modifiers in [none, KeyModifiers::SHIFT] {
+            check(
+                KeyCode::Char('|'),
+                modifiers,
+                Some(&Message::ToggleNavigator),
+            );
+        }
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.message_for(&key(KeyCode::Char('|'), none), ms(0), IN_NAVIGATOR),
+            Some(Message::Navigator(NavigatorInput::Type('|'))),
+            "the open Navigator's filter takes | as typed"
+        );
     }
 
     // FR-MODE-01
@@ -2012,17 +2053,7 @@ mod tests {
         }
         kitty.sort_unstable();
         kitty.dedup();
-        assert_eq!(
-            kitty,
-            [
-                "ctrl+'",
-                "ctrl+\\",
-                "ctrl+enter",
-                "ctrl+m",
-                "ctrl+shift+z",
-                "menu"
-            ]
-        );
+        assert_eq!(kitty, ["ctrl+'", "ctrl+\\", "ctrl+enter", "ctrl+m", "menu"]);
     }
 
     // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
@@ -2466,12 +2497,13 @@ mod tests {
         );
     }
 
-    // editing.md §7, D-42: plain characters, which both key reportings send alike.
+    // editing.md §7, D-42, D-132: a plain character, which both key reportings send alike; `mi`
+    // no longer opens it.
     #[test]
-    fn e_and_m_i_open_the_edit_node_dialog() {
+    fn e_opens_the_edit_node_dialog_and_m_i_does_nothing() {
         let open = Some(Message::NodeEditor(NodeInput::Open));
-        assert_eq!(messages("e", CONTEXT), std::slice::from_ref(&open));
-        assert_eq!(messages("mi", CONTEXT), [None, open]);
+        assert_eq!(messages("e", CONTEXT), [open]);
+        assert_eq!(messages("mi", CONTEXT), [None, None]);
     }
 
     // editing.md §7, keybindings.md §4, D-42

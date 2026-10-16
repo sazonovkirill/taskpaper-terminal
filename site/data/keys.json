@@ -452,16 +452,6 @@
      ],
      "kitty": false,
      "alt": false
-    },
-    {
-     "label": "Space",
-     "presses": [
-      [
-       "Space"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
     }
    ]
   },
@@ -596,28 +586,6 @@
      "alt": false
     },
     {
-     "label": "Alt+l",
-     "presses": [
-      [
-       "Alt",
-       "l"
-      ]
-     ],
-     "kitty": false,
-     "alt": true
-    },
-    {
-     "label": "Alt+→",
-     "presses": [
-      [
-       "Alt",
-       "→"
-      ]
-     ],
-     "kitty": false,
-     "alt": true
-    },
-    {
      "label": "gz",
      "presses": [
       [
@@ -651,28 +619,6 @@
      ],
      "kitty": false,
      "alt": false
-    },
-    {
-     "label": "Alt+h",
-     "presses": [
-      [
-       "Alt",
-       "h"
-      ]
-     ],
-     "kitty": false,
-     "alt": true
-    },
-    {
-     "label": "Alt+←",
-     "presses": [
-      [
-       "Alt",
-       "←"
-      ]
-     ],
-     "kitty": false,
-     "alt": true
     },
     {
      "label": "gu",
@@ -959,11 +905,10 @@
      "alt": false
     },
     {
-     "label": "Alt+Shift+←",
+     "label": "Alt+←",
      "presses": [
       [
        "Alt",
-       "Shift",
        "←"
       ]
      ],
@@ -993,11 +938,10 @@
      "alt": false
     },
     {
-     "label": "Alt+Shift+→",
+     "label": "Alt+→",
      "presses": [
       [
        "Alt",
-       "Shift",
        "→"
       ]
      ],
@@ -2375,18 +2319,6 @@
      "alt": false
     },
     {
-     "label": "Ctrl+Shift+Z",
-     "presses": [
-      [
-       "Ctrl",
-       "Shift",
-       "Z"
-      ]
-     ],
-     "kitty": true,
-     "alt": false
-    },
-    {
      "label": "Ctrl+Y",
      "presses": [
       [
@@ -3072,19 +3004,6 @@
      ],
      "kitty": false,
      "alt": false
-    },
-    {
-     "label": "mi",
-     "presses": [
-      [
-       "m"
-      ],
-      [
-       "i"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
     }
    ]
   },
@@ -3474,6 +3393,16 @@
       [
        "Ctrl",
        "G"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "|",
+     "presses": [
+      [
+       "|"
       ]
      ],
      "kitty": false,
@@ -4611,18 +4540,6 @@
    "panel": true,
    "menu_only": false,
    "keys": [
-    {
-     "label": "Ctrl+Shift+Z",
-     "presses": [
-      [
-       "Ctrl",
-       "Shift",
-       "Z"
-      ]
-     ],
-     "kitty": true,
-     "alt": false
-    },
     {
      "label": "Ctrl+Y",
      "presses": [
@@ -6845,16 +6762,6 @@
         ],
         "kitty": false,
         "alt": false
-       },
-       {
-        "label": "Space",
-        "presses": [
-         [
-          "Space"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
        }
       ],
       "typed": []
@@ -6966,28 +6873,6 @@
         "alt": false
        },
        {
-        "label": "Alt+l",
-        "presses": [
-         [
-          "Alt",
-          "l"
-         ]
-        ],
-        "kitty": false,
-        "alt": true
-       },
-       {
-        "label": "Alt+→",
-        "presses": [
-         [
-          "Alt",
-          "→"
-         ]
-        ],
-        "kitty": false,
-        "alt": true
-       },
-       {
         "label": "gz",
         "presses": [
          [
@@ -7016,28 +6901,6 @@
         ],
         "kitty": false,
         "alt": false
-       },
-       {
-        "label": "Alt+h",
-        "presses": [
-         [
-          "Alt",
-          "h"
-         ]
-        ],
-        "kitty": false,
-        "alt": true
-       },
-       {
-        "label": "Alt+←",
-        "presses": [
-         [
-          "Alt",
-          "←"
-         ]
-        ],
-        "kitty": false,
-        "alt": true
        },
        {
         "label": "gu",
@@ -7274,11 +7137,10 @@
         "alt": false
        },
        {
-        "label": "Alt+Shift+←",
+        "label": "Alt+←",
         "presses": [
          [
           "Alt",
-          "Shift",
           "←"
          ]
         ],
@@ -7303,11 +7165,10 @@
         "alt": false
        },
        {
-        "label": "Alt+Shift+→",
+        "label": "Alt+→",
         "presses": [
          [
           "Alt",
-          "Shift",
           "→"
          ]
         ],
@@ -8020,18 +7881,6 @@
         "alt": false
        },
        {
-        "label": "Ctrl+Shift+Z",
-        "presses": [
-         [
-          "Ctrl",
-          "Shift",
-          "Z"
-         ]
-        ],
-        "kitty": true,
-        "alt": false
-       },
-       {
         "label": "Ctrl+Y",
         "presses": [
          [
@@ -8450,19 +8299,6 @@
         ],
         "kitty": false,
         "alt": false
-       },
-       {
-        "label": "mi",
-        "presses": [
-         [
-          "m"
-         ],
-         [
-          "i"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
        }
       ],
       "typed": []
@@ -8768,6 +8604,16 @@
          [
           "Ctrl",
           "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "|",
+        "presses": [
+         [
+          "|"
          ]
         ],
         "kitty": false,
@@ -9424,18 +9270,6 @@
         "label": "Redo",
         "panel": true,
         "keys": [
-         {
-          "label": "Ctrl+Shift+Z",
-          "presses": [
-           [
-            "Ctrl",
-            "Shift",
-            "Z"
-           ]
-          ],
-          "kitty": true,
-          "alt": false
-         },
          {
           "label": "Ctrl+Y",
           "presses": [
