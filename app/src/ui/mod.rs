@@ -1418,6 +1418,7 @@ impl Tui {
         let icons = self.icons;
         let theme = self.palette();
         let (icon, mode) = match self.state.mode() {
+            Mode::Navigate if self.state.visual() => (Icon::Navigate, "VISUAL"),
             Mode::Navigate => (Icon::Navigate, "NAVIGATE"),
             Mode::Edit => (Icon::Edit, "EDIT"),
         };

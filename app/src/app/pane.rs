@@ -342,7 +342,8 @@ impl State {
     /// Keeps every pane on what still shows after a change made in any of them, from where it
     /// stood by its `landmarks`: a pane whose zoom block is gone zooms to its nearest surviving
     /// ancestor, which takes the zoom block's place in its history, a focus that no longer shows
-    /// moves (navigation.md §2), and blocks no row shows leave the selection.
+    /// moves (navigation.md §2), blocks no row shows leave the selection, and visual mode follows
+    /// the focus.
     pub(super) fn repair_panes(&mut self, landmarks: &[Landmark]) {
         self.pane = self.repaired(&self.pane, landmarks);
         self.others = self
@@ -374,6 +375,7 @@ impl State {
         let before = landmark.map(|landmark| &landmark.rows);
         self.repair_focus(&mut pane, before);
         self.keep_visible_selection(&mut pane);
+        self.follow_visual(&mut pane);
         pane
     }
 }

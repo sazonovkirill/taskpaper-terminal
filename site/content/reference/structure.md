@@ -12,6 +12,7 @@ Next to its focus, each pane has a **selection**: the blocks the next command ac
 
 - `J` / `K` (or `Shift+↓` / `Shift+↑`) extend the selection down or up a row from where the run began. Going back shrinks the run. A new run adds to what was already selected.
 - `v` adds the focused block to the selection, or takes it out. Plain motions move the focus and keep the selection, so you can pick blocks far apart one by one: `v`, `j j j`, `v`.
+- `V` starts visual mode, as in vim: the focused block is selected, and every move, such as `j`, `k`, `gg` or `G`, selects all rows from there to the focus. The status line says `VISUAL`. `V` again or `Esc` ends it and clears the selection; a command such as `x`, `Tab` or `y` acts on the selected blocks and ends it, leaving them selected.
 - `Ctrl+A` selects every row below the title, and `Esc` clears the selection.
 
 A block that leaves the view, because it was deleted, folded away or is outside the zoom, leaves the selection. Entering edit mode clears it.

@@ -1815,6 +1815,28 @@
    ]
   },
   {
+   "id": "navigate-toggle-visual-mode",
+   "name": "Toggle Visual Mode",
+   "config": "toggle_visual_mode",
+   "mode": "navigate",
+   "group": "Selection",
+   "topic": "structure",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "V",
+     "presses": [
+      [
+       "V"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
    "id": "navigate-select-all",
    "name": "Select All",
    "config": "select_all",
@@ -7385,6 +7407,23 @@
         "presses": [
          [
           "v"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Toggle Visual Mode",
+      "panel": true,
+      "keys": [
+       {
+        "label": "V",
+        "presses": [
+         [
+          "V"
          ]
         ],
         "kitty": false,

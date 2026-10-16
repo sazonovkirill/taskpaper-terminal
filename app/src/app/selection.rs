@@ -20,6 +20,8 @@ pub enum SelectionChange {
     All,
     /// Select nothing.
     Clear,
+    /// Start visual mode at the focused block, or end it and select nothing (D-135).
+    Visual,
 }
 
 /// The selected blocks and the run that extending grows.
@@ -29,6 +31,9 @@ pub(super) struct Selection {
     picked: HashSet<ItemId>,
     /// The run of rows the latest extensions selected, while the focus is still at its end.
     run: Option<Run>,
+    /// The block visual mode began at, while it is on: the selection is then every row from it
+    /// to the focus (D-135).
+    visual: Option<ItemId>,
 }
 
 /// A run of rows selected by extending from `anchor` to `head`, on top of the blocks selected
@@ -55,12 +60,17 @@ impl Selection {
     }
 
     /// This selection with each block replaced by the one `to` finds for it, or dropped when it
-    /// finds none, and no run, as when the document is replaced.
+    /// finds none, and no run or visual mode, as when the document is replaced.
     pub(super) fn mapped(&self, to: impl Fn(ItemId) -> Option<ItemId>) -> Self {
         Self {
             picked: self.picked.iter().filter_map(|&id| to(id)).collect(),
-            run: None,
+            ..Self::default()
         }
+    }
+
+    /// Ends visual mode, keeping the blocks it selected.
+    pub(super) fn end_visual(&mut self) {
+        self.visual = None;
     }
 }
 
@@ -70,10 +80,51 @@ impl State {
         match change {
             SelectionChange::ExtendDown => self.extend_selection(true),
             SelectionChange::ExtendUp => self.extend_selection(false),
-            SelectionChange::Toggle => self.toggle_selected(),
+            SelectionChange::Toggle => {
+                self.pane.selection.end_visual();
+                self.toggle_selected();
+            }
             SelectionChange::All => self.select_all(),
             SelectionChange::Clear => self.clear_selection(),
+            SelectionChange::Visual => self.toggle_visual(),
         }
+    }
+
+    /// `V`: starts visual mode with the focused block alone selected, or ends it and selects
+    /// nothing.
+    fn toggle_visual(&mut self) {
+        let start = self.pane.focus.filter(|_| !self.visual());
+        self.pane.selection = Selection {
+            picked: start.into_iter().collect(),
+            run: None,
+            visual: start,
+        };
+    }
+
+    /// Whether the focused pane is in visual mode (D-135).
+    #[must_use]
+    pub fn visual(&self) -> bool {
+        self.pane.selection.visual.is_some()
+    }
+
+    /// Selects every row of `pane` from where its visual mode began to its focus, or ends visual
+    /// mode, keeping the selection, when either no longer shows.
+    pub(super) fn follow_visual(&self, pane: &mut Pane) {
+        let Some(anchor) = pane.selection.visual else {
+            return;
+        };
+        let rows = self.rows_of(pane);
+        let at = |id| rows.iter().position(|row| row.id == id);
+        let (Some(from), Some(to)) = (at(anchor), pane.focus.and_then(at)) else {
+            pane.selection.end_visual();
+            return;
+        };
+        pane.selection.picked = rows
+            .iter_from(from.min(to))
+            .take(from.abs_diff(to) + 1)
+            .map(|row| row.id)
+            .collect();
+        pane.selection.run = None;
     }
 
     /// `J`/`K`: moves the focus a row down or up and selects every row from where the run began
@@ -105,6 +156,7 @@ impl State {
         self.pane.selection = Selection {
             picked,
             run: self.pane.focus.map(|head| Run { head, ..run }),
+            visual: self.pane.selection.visual,
         };
     }
 
@@ -126,7 +178,10 @@ impl State {
             .filter(|row| !row.title)
             .map(|row| row.id)
             .collect();
-        self.pane.selection = Selection { picked, run: None };
+        self.pane.selection = Selection {
+            picked,
+            ..Selection::default()
+        };
     }
 
     /// `Esc`: selects nothing.
@@ -425,6 +480,125 @@ mod tests {
         assert_eq!(texts(&state.roots(), &state), ["a"]);
     }
 
+    // FR-OPS-01, D-135
+    #[test]
+    fn visual_mode_selects_the_rows_from_its_anchor_to_the_focus() {
+        let mut state = open(LIST, 2);
+        send(&mut state, &[Message::Select(SelectionChange::Toggle)]);
+        send(&mut state, &[Message::FocusNext]);
+        send(&mut state, &[Message::Select(SelectionChange::Visual)]);
+        assert!(state.visual());
+        assert_eq!(selected(&state), ["c"], "it replaces the selection");
+        send(&mut state, &[Message::FocusNext]);
+        assert_eq!(selected(&state), ["c", "d"]);
+        send(&mut state, &[Message::FocusFirst]);
+        assert_eq!(selected(&state), ["P", "a", "b", "c"], "past the anchor");
+        send(&mut state, &[Message::Select(SelectionChange::ExtendDown)]);
+        assert_eq!(selected(&state), ["a", "b", "c"], "J moves as j does");
+        send(&mut state, &[Message::Select(SelectionChange::Visual)]);
+        assert!(!state.visual());
+        assert_eq!(selected(&state), Vec::<String>::new(), "V again clears");
+        send(&mut state, &[Message::FocusNext]);
+        assert_eq!(selected(&state), Vec::<String>::new());
+    }
+
+    // FR-OPS-01, D-135
+    #[test]
+    fn esc_ends_visual_mode_and_clears_the_selection() {
+        let mut state = open(LIST, 1);
+        send(
+            &mut state,
+            &[
+                Message::Select(SelectionChange::Visual),
+                Message::FocusNext,
+                Message::Select(SelectionChange::Clear),
+            ],
+        );
+        assert!(!state.visual());
+        assert_eq!(selected(&state), Vec::<String>::new());
+    }
+
+    // FR-OPS-01, D-135
+    #[test]
+    fn a_command_that_changes_the_document_or_copies_ends_visual_mode_on_the_selection() {
+        for command in [Message::Indent, Message::Copy] {
+            let mut state = open(LIST, 2);
+            send(
+                &mut state,
+                &[Message::Select(SelectionChange::Visual), Message::FocusNext],
+            );
+            send(&mut state, std::slice::from_ref(&command));
+            assert!(!state.visual(), "{command:?}");
+            assert_eq!(selected(&state), ["b", "c"], "{command:?}");
+            send(&mut state, &[Message::FocusNext]);
+            assert_eq!(
+                selected(&state),
+                ["b", "c"],
+                "{command:?}: the focus moves alone"
+            );
+        }
+    }
+
+    // FR-OPS-01, D-135
+    #[test]
+    fn v_and_select_all_end_visual_mode_keeping_its_rows() {
+        let mut state = open(LIST, 1);
+        send(
+            &mut state,
+            &[
+                Message::Select(SelectionChange::Visual),
+                Message::FocusNext,
+                Message::Select(SelectionChange::Toggle),
+            ],
+        );
+        assert!(!state.visual());
+        assert_eq!(selected(&state), ["a"]);
+        send(
+            &mut state,
+            &[
+                Message::Select(SelectionChange::Visual),
+                Message::Select(SelectionChange::All),
+            ],
+        );
+        assert!(!state.visual());
+        send(&mut state, &[Message::FocusFirst]);
+        assert_eq!(selected(&state), ["P", "a", "b", "c", "d"]);
+    }
+
+    // FR-OPS-01, D-135
+    #[test]
+    fn visual_mode_ends_when_its_anchor_no_longer_shows() {
+        let mut state = open(LIST, 2);
+        send(
+            &mut state,
+            &[
+                Message::Select(SelectionChange::Visual),
+                Message::FocusParent,
+                Message::Collapse,
+            ],
+        );
+        assert!(!state.visual());
+        assert_eq!(selected(&state), ["P"]);
+        send(&mut state, &[Message::FocusNext]);
+        assert_eq!(selected(&state), ["P"]);
+    }
+
+    // FR-OPS-01, D-135
+    #[test]
+    fn each_pane_has_its_own_visual_mode() {
+        let mut state = open(LIST, 1);
+        send(
+            &mut state,
+            &[
+                Message::Select(SelectionChange::Visual),
+                Message::Pane(crate::app::PaneChange::Open),
+            ],
+        );
+        assert!(!state.visual(), "the new pane");
+        send(&mut state, &[Message::FocusNext]);
+        assert_eq!(selected(&state), Vec::<String>::new());
+    }
+
     #[test]
     fn selection_keys_in_an_empty_document_select_nothing() {
         let mut state = State::new(crate::document::Document::default(), None);
@@ -433,9 +607,11 @@ mod tests {
             Message::Select(SelectionChange::ExtendUp),
             Message::Select(SelectionChange::Toggle),
             Message::Select(SelectionChange::All),
+            Message::Select(SelectionChange::Visual),
         ] {
             state.update(message.clone());
             assert!(!state.selecting(), "{message:?}");
+            assert!(!state.visual(), "{message:?}");
         }
         assert_eq!(state.targets(), Vec::new());
     }

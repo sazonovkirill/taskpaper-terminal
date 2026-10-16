@@ -1,11 +1,11 @@
-//! Step 3.5: selecting blocks with `J`/`K`, `Shift`+arrows, `v` and `Ctrl+A`, clearing with
+//! Step 3.5: selecting blocks with `J`/`K`, `Shift`+arrows, `v`, `V` and `Ctrl+A`, clearing with
 //! `Esc`, every command acting on the selection and `gG` grouping it.
 
 use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{Harness, focused_rows, outline_rows, selected_rows};
+use crate::support::{Harness, NAVIGATE, focused_rows, line, outline_rows, selected_rows};
 
 const ERRANDS: &str =
     "Errands:\n\t- Post office\n\t- Bank\n\t- Pharmacy\n\t- Bakery\n\t- Hardware store\nLater\n";
@@ -93,6 +93,56 @@ fn v_picks_blocks_one_by_one_ctrl_a_takes_all_and_esc_clears() {
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(selected_rows(&mut app), Vec::<String>::new());
     assert_eq!(focused_rows(&mut app), ["  - Bakery"]);
+}
+
+/// The status line's text.
+fn status_line(app: &mut Harness) -> String {
+    let buffer = app.render().buffer().clone();
+    line(&buffer, buffer.area.bottom() - 1)
+}
+
+// FR-OPS-01, FR-OPS-07, D-135
+#[test]
+fn shift_v_selects_from_where_it_began_to_the_focus_until_a_command_acts() {
+    let mut app = Harness::with_text(ERRANDS, 40, 10);
+    app.type_keys("jjjVkk");
+    assert!(status_line(&mut app).starts_with("↕ VISUAL"));
+    assert_eq!(selected_rows(&mut app), ["  - Bank", "  - Pharmacy"]);
+    assert_eq!(focused_rows(&mut app), ["  - Post office"]);
+    app.type_keys("jjj");
+    assert_eq!(selected_rows(&mut app), ["  - Pharmacy"]);
+    assert_eq!(focused_rows(&mut app), ["  - Bakery"]);
+    app.type_keys("T");
+    assert!(
+        status_line(&mut app).starts_with(NAVIGATE),
+        "the command ends it"
+    );
+    app.type_keys("j");
+    let selected = selected_rows(&mut app);
+    let texts: Vec<_> = selected
+        .iter()
+        .map(|row| row.trim_end_matches("⇥ today").trim_end())
+        .collect();
+    assert_eq!(texts, ["  - Pharmacy", "  - Bakery"], "the selection stays");
+    assert_eq!(
+        saved(&mut app),
+        ERRANDS
+            .replace("\t- Pharmacy", "\t- Pharmacy @due(2026-10-05)")
+            .replace("\t- Bakery", "\t- Bakery @due(2026-10-05)")
+    );
+    app.type_keys("ggVj");
+    assert_eq!(selected_rows(&mut app), ["Errands:"]);
+    app.type_keys("V");
+    assert!(status_line(&mut app).starts_with(NAVIGATE));
+    assert_eq!(
+        selected_rows(&mut app),
+        Vec::<String>::new(),
+        "V again clears"
+    );
+    app.type_keys("Vk");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert!(status_line(&mut app).starts_with(NAVIGATE));
+    assert_eq!(selected_rows(&mut app), Vec::<String>::new(), "so does Esc");
 }
 
 // FR-OPS-04, FR-OPS-08

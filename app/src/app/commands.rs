@@ -494,6 +494,7 @@ fn selection_name(change: SelectionChange) -> &'static str {
         SelectionChange::Toggle => "Toggle Selected",
         SelectionChange::All => "Select All",
         SelectionChange::Clear => "Clear Selection",
+        SelectionChange::Visual => "Toggle Visual Mode",
     }
 }
 

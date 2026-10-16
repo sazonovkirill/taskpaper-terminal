@@ -2778,7 +2778,7 @@ mod tests {
 
     // FR-OPS-01, D-42
     #[test]
-    fn selection_keys_extend_toggle_select_all_and_clear() {
+    fn selection_keys_extend_toggle_start_visual_mode_select_all_and_clear() {
         let none = KeyModifiers::NONE;
         let shift = KeyModifiers::SHIFT;
         let down = Some(&Message::Select(SelectionChange::ExtendDown));
@@ -2795,6 +2795,10 @@ mod tests {
             none,
             Some(&Message::Select(SelectionChange::Toggle)),
         );
+        let visual = Some(&Message::Select(SelectionChange::Visual));
+        check(KeyCode::Char('V'), none, visual);
+        check(KeyCode::Char('V'), shift, visual);
+        check(KeyCode::Char('v'), shift, visual);
         check(
             KeyCode::Char('a'),
             KeyModifiers::CONTROL,

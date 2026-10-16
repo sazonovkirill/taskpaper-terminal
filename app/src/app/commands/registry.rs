@@ -267,6 +267,11 @@ pub const REGISTRY: &[Entry] = &[
         &["v"],
     ),
     entry!(
+        Command::Select(SelectionChange::Visual),
+        Mode::Navigate,
+        &["V"],
+    ),
+    entry!(
         Command::Select(SelectionChange::All),
         Mode::Navigate,
         &["ctrl+a"],
@@ -696,6 +701,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
         &[
             Command::Select(SelectionChange::ExtendDown),
             Command::Select(SelectionChange::Toggle),
+            Command::Select(SelectionChange::Visual),
         ],
     ),
     (
@@ -865,7 +871,7 @@ mod tests {
                 ("Folding", 3),
                 ("Zoom and History", 13),
                 ("Editing and Creating", 4),
-                ("Selection", 2),
+                ("Selection", 3),
                 ("Structure", 9),
                 ("Block Metadata", 8),
                 ("View and Panels", 11),

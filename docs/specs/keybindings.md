@@ -83,6 +83,7 @@ The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for 
 |---|---|
 | Extend selection down / up | `J` / `K`, `Shift+↓` / `Shift+↑` |
 | Toggle focused block in selection | `v` |
+| Visual mode: select every row from where it began to the focus, until `V`, `Esc` or a command ends it (D-135) | `V` |
 | Select all blocks in the pane | `Ctrl+A` |
 | Clear selection | `Esc` |
 

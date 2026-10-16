@@ -622,7 +622,14 @@ impl State {
             self.stop_editing();
         }
         let landmarks = self.landmarks();
+        let stamp = self.document.stamp();
+        let copies = message == Message::Copy;
         let mut effects = self.dispatch(message);
+        // A command acted on the selection: it stays selected, but the focus moves alone again
+        // (D-135).
+        if copies || self.document.stamp() != stamp {
+            self.pane.selection.end_visual();
+        }
         self.repair_panes(&landmarks);
         self.expire_notice();
         effects.extend(self.save_if_due());
