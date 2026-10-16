@@ -1003,21 +1003,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "os",
-     "presses": [
-      [
-       "o"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-below",
@@ -1028,21 +1014,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "op",
-     "presses": [
-      [
-       "o"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-below",
@@ -1053,21 +1025,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "ot",
-     "presses": [
-      [
-       "o"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-below",
@@ -1078,21 +1036,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "on",
-     "presses": [
-      [
-       "o"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-block-above",
@@ -1125,21 +1069,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Os",
-     "presses": [
-      [
-       "O"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-above",
@@ -1150,21 +1080,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Op",
-     "presses": [
-      [
-       "O"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-above",
@@ -1175,21 +1091,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Ot",
-     "presses": [
-      [
-       "O"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-above",
@@ -1200,21 +1102,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "On",
-     "presses": [
-      [
-       "O"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-block-as-last-child",
@@ -1247,21 +1135,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "is",
-     "presses": [
-      [
-       "i"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-as-last-child",
@@ -1272,21 +1146,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "ip",
-     "presses": [
-      [
-       "i"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-as-last-child",
@@ -1297,21 +1157,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "it",
-     "presses": [
-      [
-       "i"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-as-last-child",
@@ -1322,21 +1168,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "in",
-     "presses": [
-      [
-       "i"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-block-as-first-child",
@@ -1369,21 +1201,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Is",
-     "presses": [
-      [
-       "I"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-as-first-child",
@@ -1394,21 +1212,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Ip",
-     "presses": [
-      [
-       "I"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-as-first-child",
@@ -1419,21 +1223,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "It",
-     "presses": [
-      [
-       "I"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-as-first-child",
@@ -1444,21 +1234,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "In",
-     "presses": [
-      [
-       "I"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-block-at-end",
@@ -1491,21 +1267,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "as",
-     "presses": [
-      [
-       "a"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-at-end",
@@ -1516,21 +1278,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "ap",
-     "presses": [
-      [
-       "a"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-at-end",
@@ -1541,21 +1289,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "at",
-     "presses": [
-      [
-       "a"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-at-end",
@@ -1566,21 +1300,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "an",
-     "presses": [
-      [
-       "a"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-block-at-start",
@@ -1613,21 +1333,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "As",
-     "presses": [
-      [
-       "A"
-      ],
-      [
-       "s"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-project-at-start",
@@ -1638,21 +1344,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Ap",
-     "presses": [
-      [
-       "A"
-      ],
-      [
-       "p"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-task-at-start",
@@ -1663,21 +1355,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "At",
-     "presses": [
-      [
-       "A"
-      ],
-      [
-       "t"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-new-note-at-start",
@@ -1688,21 +1366,7 @@
    "topic": "modes",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "An",
-     "presses": [
-      [
-       "A"
-      ],
-      [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-quick-add",
@@ -7260,65 +6924,6 @@
       "typed": []
      },
      {
-      "label": "…then a type letter",
-      "panel": false,
-      "keys": [],
-      "typed": [
-       {
-        "keys": {
-         "label": "s",
-         "presses": [
-          [
-           "s"
-          ]
-         ],
-         "kitty": false,
-         "alt": false
-        },
-        "label": "section"
-       },
-       {
-        "keys": {
-         "label": "p",
-         "presses": [
-          [
-           "p"
-          ]
-         ],
-         "kitty": false,
-         "alt": false
-        },
-        "label": "project"
-       },
-       {
-        "keys": {
-         "label": "t",
-         "presses": [
-          [
-           "t"
-          ]
-         ],
-         "kitty": false,
-         "alt": false
-        },
-        "label": "task"
-       },
-       {
-        "keys": {
-         "label": "n",
-         "presses": [
-          [
-           "n"
-          ]
-         ],
-         "kitty": false,
-         "alt": false
-        },
-        "label": "note"
-       }
-      ]
-     },
-     {
       "label": "Quick Add",
       "panel": true,
       "keys": [
@@ -9543,6 +9148,30 @@
   ],
   "unbound": [
    "Last Child",
+   "New Section Below",
+   "New Project Below",
+   "New Task Below",
+   "New Note Below",
+   "New Section Above",
+   "New Project Above",
+   "New Task Above",
+   "New Note Above",
+   "New Section as Last Child",
+   "New Project as Last Child",
+   "New Task as Last Child",
+   "New Note as Last Child",
+   "New Section as First Child",
+   "New Project as First Child",
+   "New Task as First Child",
+   "New Note as First Child",
+   "New Section at End",
+   "New Project at End",
+   "New Task at End",
+   "New Note at End",
+   "New Section at Start",
+   "New Project at Start",
+   "New Task at Start",
+   "New Note at Start",
    "Clear Start Date",
    "Clear Due Date",
    "Make Section",

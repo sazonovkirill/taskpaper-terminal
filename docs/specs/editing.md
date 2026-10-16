@@ -110,7 +110,7 @@ The list is a core list of the commands on one block, with their labels; the com
 | `Enter` at the end of edit mode | `new_below`, except that a block with visible children gets a new first child instead (TaskPaper's indent rule, reference §9). |
 | `new_end` / `new_start` (D-53) | New block after the last block of the focused block's list, with its subtree / before the first block of the list. "The list" is the focused block's siblings; in an empty pane it is the zoom block's children ([OQ-29](../open-questions.md#oq-29--where-do-the-bindings-displaced-by-d-26-go) default). |
 
-**Typed creation** (D-53) adds a block of a chosen type at any of these places: the place's key (`o`, `O`, `i`, `I`, `a`, `A`) followed by `s` for a section (a text block with `@section`, D-52), `p` for a project, `t` for a task or `n` for a note, opened in edit mode with empty text. The place's key alone, once the sequence times out or another key follows, adds a block of the type that fits, as below.
+**Typed creation** (D-53, D-136) adds a block of a chosen type at any of these places: the commands New Section, New Project, New Task and New Note, each with the place (such as New Task Below or New Note at Start), add a section (a text block with `@section`, D-52), project, task or note, opened in edit mode with empty text. They are in Go to Command without keys. The place's keys (`o`, `O`, `i`, `I`, `a`, `A`) add a block of the type that fits, as below, at once.
 
 On the zoom title, which stands for the view's root, every command adds the title's first child, except `new_last_child` and `new_end`, which add its last child; in a pane without blocks the new block is the first one.
 

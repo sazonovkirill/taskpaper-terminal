@@ -1,4 +1,4 @@
-# a adds a block at the end of the focused block's list and A at its start, here a task and a section.
+# a adds a block at the end of the focused block's list and A at its start, at once, so the letters typed after them are the new blocks' text.
 file <<END
 Project:
 	- Middle
@@ -6,16 +6,16 @@ Project:
 END
 see Middle
 keys j at
-type End task
+type ask
 keys <Esc> As
-type Start section
+type tart
 keys <Esc>
-see Start section
+see - start
 quit
 saved <<END
 Project:
-	Start section @section
+	- start
 	- Middle
 	Notes
-	- End task
+	task
 END

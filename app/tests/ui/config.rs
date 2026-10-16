@@ -161,3 +161,29 @@ fn the_config_file_moves_backups_to_a_folder_under_home_or_turns_them_off() {
     app.settle();
     assert!(!app.backups.exists(), "no daily copy");
 }
+
+// keybindings.md §1, §5, D-53, D-136: a configured key that also starts a longer sequence acts
+// once the sequence times out, or at once when a key follows that continues none, and that key
+// then acts where it left the app.
+#[test]
+fn a_configured_key_that_starts_a_sequence_acts_when_it_ends() {
+    let mut app = Harness::with_config(
+        OUTLINE,
+        "[keymap.navigate]\ng = \"New Block Below\"\n",
+        60,
+        8,
+    );
+    app.type_keys("gB");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.type_keys("g");
+    app.wait(Duration::from_secs(1));
+    app.type_keys("C");
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    app.wait(Duration::from_secs(2));
+    app.settle();
+    assert_eq!(
+        std::fs::read_to_string(app.path.as_ref().unwrap()).unwrap(),
+        "- Milk\n- B\n- C\n- Eggs\n",
+        "B goes into the block g added, and C into the one added once g timed out"
+    );
+}

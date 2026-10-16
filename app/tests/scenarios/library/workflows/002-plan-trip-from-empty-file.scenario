@@ -24,7 +24,7 @@ see Node type:
 type task
 keys <Enter>
 see ▌     - Exchange money
-keys <Esc> G it
+keys <Esc> G i
 type Day 1 Tokyo
 keys <Enter>
 type Day 2 Kyoto

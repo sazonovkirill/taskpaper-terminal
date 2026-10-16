@@ -411,8 +411,8 @@ impl Tui {
             self.page_anchor = self.focus_line;
         }
         self.act(action, now);
-        // The key ended a sequence that sent its own message, such as a lone `o`, and now acts
-        // where that message left the app, so typing right after `o` goes into the new block.
+        // The key ended a sequence that sent its own message, such as a configured key that also
+        // starts a longer sequence, and now acts where that message left the app.
         if replay {
             self.handle_event(event, now);
         }
@@ -449,8 +449,7 @@ impl Tui {
     }
 
     /// Lets time pass to `now` without an event: ends a key sequence that timed out, sending its
-    /// message when it is a binding of its own, such as a lone `o`, and lets the core start a save
-    /// that is due.
+    /// message when it is a binding of its own, and lets the core start a save that is due.
     pub fn tick(&mut self, now: Duration) {
         self.animator.at(now);
         let before = Before::of(&self.state);

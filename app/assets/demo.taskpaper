@@ -41,7 +41,7 @@ Weekend errands:
 	- Bakery @yellow
 	- Hardware store
 	Select several with J, K or v, then x completes them all and gG groups them.
-	Add a block with o below, O above, i or I inside, a or A at the end or start of the list, then s, p, t or n for a section, project, task or note.
+	Add a block with o below, O above, i or I inside, or a or A at the end or start of the list; for a section, project, task or note there, find New Section Below and the like with Ctrl+P.
 	Make a line of text a section with S, and plain text again with s.
 	Color a block with c1 to c6, red to violet, cycle colors with cc, pick one with mc, and remove it with C.
 	While editing, start a line with - and a space for a task or end it with : for a project, and Backspace at its start or Delete at its end makes it text again.

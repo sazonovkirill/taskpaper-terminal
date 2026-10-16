@@ -35,14 +35,9 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 | `gg` first block | `G` last block | vim |
 | `.` zoom in | `>` (Shift+`.`) zoom out | same key, Shift reverses |
 
-## 3. Creating blocks: *where* + *what*
+## 3. Creating blocks: *where*
 
-First key says **where**, optional second key says **what**.
-
-- Where: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nside (last/first child) · `a`/`A` **a**ppend to the list end/start
-- What: `s` **s**ection · `p` **p**roject · `t` **t**ask · `n` **n**ote
-
-So `ot` = task below, `ip` = project inside, `As` = section at the top. Type anything else after the first key and it lands in the new block, so `o` then `Buy milk` just works.
+The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nside (last/first child) · `a`/`A` **a**ppend to the list end/start. It adds the block at once, so `o` then `Buy milk` just works. A block of a chosen type, such as New Task Below, comes from Go to Command (D-136).
 
 ## 4. The `g` family: go and view
 

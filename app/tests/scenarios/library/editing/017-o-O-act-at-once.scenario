@@ -1,0 +1,19 @@
+# o and O add a block below and above at once: a letter right after them is the new block's first letter, so os and Ot add no section or task of their own.
+file <<END
+Project:
+	- Task one
+END
+see Task one
+keys j os
+type ec
+keys <Esc> Ot
+type sk
+keys <Esc>
+see - tsk
+quit
+saved <<END
+Project:
+	- Task one
+	- tsk
+	- sec
+END

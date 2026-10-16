@@ -1,4 +1,4 @@
-# Building structure with the typed creation keys in one go: os adds a section below, It a first-child task, An a note at the start of the list, and ap a project at the end.
+# Building structure with the typed creation commands of Go to Command: a section below, a first-child task, a note at the start of the list and a project at the end.
 file <<END
 Work:
 	- Report
@@ -10,13 +10,21 @@ Home:
 		- Milk
 		- Eggs
 END
-keys j os
+keys j <C-p>
+type New Section Below
+keys <Enter>
 type Later
-keys <Esc> It
+keys <Esc> <C-p>
+type New Task as First Child
+keys <Enter>
 type Archive old drafts
-keys <Esc> An
+keys <Esc> <C-p>
+type New Note at Start
+keys <Enter>
 type Top note
-keys <Esc> G ap
+keys <Esc> G <C-p>
+type New Project at End
+keys <Enter>
 type Bulk
 keys <Esc>
 see ▌     Bulk:

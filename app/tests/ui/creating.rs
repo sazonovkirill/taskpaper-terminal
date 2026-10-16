@@ -4,7 +4,7 @@ use std::{fs, time::Duration};
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::support::{EDIT, Harness, NAVIGATE, focused_rows, line, outline_rows};
+use crate::support::{EDIT, Harness, focused_rows, line, outline_rows};
 
 const GROCERIES: &str = "Groceries: @home\n\t- Milk\n\t- Bread\n\t\tWholegrain if they have it.\n\tDairy:\n\t\t- Cheese\nNotes about the week.\n";
 
@@ -35,18 +35,16 @@ fn assert_caret(app: &mut Harness, x: u16, y: u16) {
     app.terminal.backend_mut().assert_cursor_position((x, y));
 }
 
-// FR-MODE-04, FR-DOC-02, OQ-03
+// FR-MODE-04, FR-DOC-02, OQ-03, D-136
 #[test]
 fn a_new_list_is_written_from_scratch_with_o_enter_and_backspace() {
     let mut app = Harness::with_text("", 40, 8);
     app.settle();
     app.type_keys("o");
     assert!(
-        status_line(&mut app).starts_with(NAVIGATE),
-        "o waits for a type letter"
+        status_line(&mut app).starts_with(&format!("{EDIT} · ")),
+        "o adds the block at once (D-136)"
     );
-    app.wait(Duration::from_secs(1));
-    assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     app.type_keys("Trip:");
     press(&mut app, KeyCode::Enter, 1);
     app.type_keys("- Book flights");
@@ -73,12 +71,10 @@ fn shift_o_adds_a_block_above_i_a_last_child_and_shift_i_a_first_child() {
     app.type_keys("Eggs");
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("i");
-    app.wait(Duration::from_secs(1));
     assert_caret(&mut app, 8, 5);
     app.type_keys("Free range");
     press(&mut app, KeyCode::Esc, 1);
     app.type_keys("ggi");
-    app.wait(Duration::from_secs(1));
     assert!(status_line(&mut app).starts_with(&format!("{EDIT} · ")));
     app.type_keys("Rice");
     press(&mut app, KeyCode::Esc, 1);

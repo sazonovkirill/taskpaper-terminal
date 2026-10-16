@@ -908,8 +908,9 @@ fn key_label((modifiers, code): Key) -> String {
 }
 
 /// Turns key presses into messages, holding the keys of a multi-key sequence until it completes,
-/// fails to match or times out. Keys that are a binding of their own and start longer ones, such
-/// as `o` (D-53), send their own message only when the sequence ends without continuing.
+/// fails to match or times out. Keys that are a binding of their own and start longer ones, as a
+/// configured key can be (D-53), send their own message only when the sequence ends without
+/// continuing.
 #[derive(Debug)]
 pub struct Keymap {
     /// Each navigate-mode sequence with its command.
@@ -1261,7 +1262,7 @@ impl Keymap {
     }
 
     /// Drops the pending sequence once [`SEQUENCE_TIMEOUT`] has passed since it started, and
-    /// returns what the binding it is asks for, if any, such as a lone `o` (D-53).
+    /// returns what the binding it is asks for, if any (D-53).
     pub fn expire(&mut self, now: Duration, context: &Context) -> Option<KeyAction> {
         if self.deadline().is_none_or(|deadline| now < deadline) {
             return None;
@@ -1707,72 +1708,46 @@ mod tests {
         key(KeyCode::Char(c), shift)
     }
 
-    /// Where each creation key adds a block (D-41, D-53).
-    const PLACES: [(char, NewBlock); 6] = [
-        ('o', NewBlock::Below),
-        ('O', NewBlock::Above),
-        ('i', NewBlock::LastChild),
-        ('I', NewBlock::FirstChild),
-        ('a', NewBlock::End),
-        ('A', NewBlock::Start),
-    ];
-
-    // FR-MODE-04, FR-MODE-06, D-53
+    // FR-MODE-04, D-41, D-53, D-136
     #[test]
-    fn a_creation_key_then_a_type_letter_adds_a_block_of_that_type() {
-        for (c, at) in PLACES {
-            for (letter, typed) in [
-                ('s', Typed::Section),
-                ('p', Typed::Project),
-                ('t', Typed::Task),
-                ('n', Typed::Text),
-            ] {
-                let mut keymap = Keymap::default();
-                assert_eq!(keymap.message_for(&creation(c), ms(0), CONTEXT), None);
-                assert_eq!(keymap.pending(), c.to_string());
-                let next = key(KeyCode::Char(letter), KeyModifiers::NONE);
-                assert_eq!(
-                    keymap.message_for(&next, ms(999), CONTEXT),
-                    Some(Message::New(at, Some(typed))),
-                    "{c}{letter}"
-                );
-                assert!(!keymap.replay(), "{c}{letter}");
-                assert_eq!(keymap.pending(), "");
-            }
-        }
-    }
-
-    // FR-MODE-04, D-53
-    #[test]
-    fn a_lone_creation_key_adds_a_block_of_the_fitting_type_once_the_sequence_times_out() {
-        for (c, at) in PLACES {
+    fn a_creation_key_adds_a_block_at_once_and_the_next_key_is_its_own() {
+        for (c, at) in [
+            ('o', NewBlock::Below),
+            ('O', NewBlock::Above),
+            ('i', NewBlock::LastChild),
+            ('I', NewBlock::FirstChild),
+            ('a', NewBlock::End),
+            ('A', NewBlock::Start),
+        ] {
             let mut keymap = Keymap::default();
-            keymap.message_for(&creation(c), ms(0), CONTEXT);
-            assert_eq!(keymap.expire(ms(999), CONTEXT), None, "{c}");
-            assert_eq!(keymap.pending(), c.to_string());
             assert_eq!(
-                keymap.expire(ms(1_000), CONTEXT),
-                Some(KeyAction::Send(Message::New(at, None))),
+                keymap.message_for(&creation(c), ms(0), CONTEXT),
+                Some(Message::New(at, None)),
                 "{c}"
             );
-            assert_eq!(keymap.pending(), "");
-            assert_eq!(keymap.expire(ms(2_000), CONTEXT), None, "once");
+            assert!(!keymap.replay(), "{c}");
+            assert_eq!(keymap.pending(), "", "{c} waits for nothing");
+            assert_eq!(
+                keymap.message_for(&key(KeyCode::Char('s'), KeyModifiers::NONE), ms(1), CONTEXT),
+                Some(Message::ToggleFlag(Flag::Star)),
+                "{c}s is two keys of their own"
+            );
         }
     }
 
-    // FR-MODE-04, FR-OPS-06, D-53
+    // keybindings.md §1, §5, FR-OPS-06, D-53
     #[test]
-    fn text_pasted_after_a_lone_creation_key_adds_the_block_and_is_pasted_again() {
+    fn text_pasted_after_a_binding_that_starts_a_longer_sequence_follows_its_message() {
         let mut keymap = Keymap::default();
+        assert_eq!(keymap.bind(Mode::Navigate, &[("g", "go_home")]), []);
+        let home = Some(Message::GoTo(Location::Outline(None)));
         let pasted = Event::Paste("a".to_owned());
-        keymap.message_for(&creation('o'), ms(0), CONTEXT);
-        assert_eq!(
-            keymap.message_for(&pasted, ms(10), CONTEXT),
-            Some(Message::New(NewBlock::Below, None))
-        );
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+        assert_eq!(keymap.message_for(&g, ms(0), CONTEXT), None);
+        assert_eq!(keymap.message_for(&pasted, ms(10), CONTEXT), home);
         assert!(keymap.replay());
         keymap.message_for(
-            &key(KeyCode::Char('g'), KeyModifiers::NONE),
+            &key(KeyCode::Char('d'), KeyModifiers::NONE),
             ms(20),
             CONTEXT,
         );
@@ -1781,30 +1756,29 @@ mod tests {
         assert_eq!(keymap.pending(), "", "the paste ends any sequence");
     }
 
-    // FR-MODE-04, D-53
+    // keybindings.md §1, §5, D-53
     #[test]
-    fn a_key_that_continues_no_creation_sequence_adds_the_block_and_is_handled_again() {
+    fn a_key_that_continues_no_sequence_after_a_binding_is_handled_after_it() {
         let mut keymap = Keymap::default();
-        keymap.message_for(&creation('o'), ms(0), CONTEXT);
-        let b = key(KeyCode::Char('B'), KeyModifiers::SHIFT);
-        assert_eq!(
-            keymap.message_for(&b, ms(10), CONTEXT),
-            Some(Message::New(NewBlock::Below, None))
-        );
-        assert!(keymap.replay(), "B is still to be typed");
+        assert_eq!(keymap.bind(Mode::Navigate, &[("g", "go_home")]), []);
+        let home = Some(Message::GoTo(Location::Outline(None)));
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+        let y = key(KeyCode::Char('y'), KeyModifiers::NONE);
+        keymap.message_for(&g, ms(0), CONTEXT);
+        assert_eq!(keymap.message_for(&y, ms(10), CONTEXT), home);
+        assert!(keymap.replay(), "y is still to be handled");
         assert!(!keymap.replay(), "reading it clears it");
         assert_eq!(keymap.pending(), "");
-        keymap.message_for(&creation('i'), ms(20), CONTEXT);
-        let j = key(KeyCode::Char('j'), KeyModifiers::NONE);
+        keymap.message_for(&g, ms(20), CONTEXT);
         assert_eq!(
-            keymap.message_for(&j, ms(2_000), CONTEXT),
-            Some(Message::New(NewBlock::LastChild, None)),
+            keymap.message_for(&y, ms(2_000), CONTEXT),
+            home,
             "a sequence that timed out unnoticed"
         );
         assert!(keymap.replay());
         assert_eq!(
-            keymap.message_for(&j, ms(2_000), CONTEXT),
-            Some(Message::FocusNext)
+            keymap.message_for(&y, ms(2_000), CONTEXT),
+            Some(Message::Copy)
         );
         assert!(!keymap.replay());
     }

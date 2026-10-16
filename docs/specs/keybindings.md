@@ -19,7 +19,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else, unless the pending key is a binding of its own: then it fires first and the key acts after it (§2, D-53).
+- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else, unless the pending keys are a binding of their own, as a key bound in the configuration (§5) can be: then that binding fires first and the key acts after it (D-53).
 
 ## 2. Navigate mode
 
@@ -72,10 +72,9 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | New block below / above | `o` / `O` |
 | New last child / first child, expanding the block | `i` / `I` (`I` was `Alt+o`; D-41) |
 | New block at the end / start of the list (D-53) | `a` / `A` |
-| The same, as a section, project, task or note (D-53) | any of the six keys above, then `s`, `p`, `t` or `n`: `os`, `Ip`, `at`, `An`, … |
 | Quick Add: add a task or note to the INBOX project ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08), D-96, D-133) | `q` |
 
-The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for a type letter for the sequence timeout of §1, shown in the status line like `g`, and then add a block of the type that fits ([editing.md §3](editing.md#3-creating-blocks-fr-mode-04)). Any other key ends the wait at once: the block is added and the key goes on to it, so `o` then `B` starts a new block with `B`, while `o` then `t` adds a task. `p`/`P` and `a`/`A` no longer add projects and tasks, and `S`/`s` no longer add sections (D-52). A section is a text block with `@section`, also made with `S` (below).
+The creation keys act at once (D-136): `o`, `O`, `i`, `I`, `a` and `A` add a block of the type that fits ([editing.md §3](editing.md#3-creating-blocks-fr-mode-04)) and wait for no second key, so `o` then `t` starts a new block with `t`. The commands that add a section, project, task or note at each of these places, such as New Task Below, are in Go to Command without keys (D-136); the two-key sequences of D-53 (`os`, `Ip`, `at`, `An`, …) are gone. `p`/`P` and `a`/`A` no longer add projects and tasks, and `S`/`s` no longer add sections (D-52). A section is a text block with `@section`, also made with `S` (below).
 
 ### Selection (FR-OPS-01)
 

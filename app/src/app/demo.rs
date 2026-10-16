@@ -308,12 +308,12 @@ mod tests {
         );
     }
 
-    // FR-DOC-05, D-53
+    // FR-DOC-05, D-53, D-136
     #[test]
     fn demo_has_text_lines_that_point_to_the_creation_and_clipboard_keys() {
         let rows = State::new(format::parse(&text(TODAY)), None).rows();
         for (hint, what) in [
-            ("then s, p, t or n", "the creation sequences"),
+            ("New Section Below", "the typed creation commands"),
             ("copy it with y", "y and p"),
         ] {
             assert!(

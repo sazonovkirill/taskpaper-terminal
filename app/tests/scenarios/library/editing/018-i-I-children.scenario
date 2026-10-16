@@ -1,19 +1,19 @@
-# I adds a first child and i a last child of the focused block, with type suffixes n and p.
+# I adds a first child and i a last child of the focused block, at once, so the letters typed after them are the new blocks' text.
 file <<END
 Project:
 	- Task one
 END
 see Task one
-keys In
-type first child note
+keys I
+type first
 keys <Esc> k ip
-type last child proj
+type roj
 keys <Esc>
-see last child proj:
+see - proj
 quit
 saved <<END
 Project:
-	first child note
+	- first
 	- Task one
-	last child proj:
+	- proj
 END

@@ -12,7 +12,7 @@ Navigate-mode keys are vi-inspired. `j`/`k` move, `h`/`l` fold and unfold, `gg`/
 
 ### Key sequences
 
-Many keys are two-key sequences: `gg`, `dd`, `ms`, `c1`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else. The exception is a first key that is a command of its own, such as `o`: that command runs, then the second key acts as usual.
+Many keys are two-key sequences: `gg`, `dd`, `ms`, `c1`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.
 
 The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `c` colors, `d` deletes, and `Ctrl+W` handles panes.
 
@@ -60,7 +60,7 @@ The creation keys add a block and open it in edit mode:
 | `i` / `I` | as its last / first child, expanding it |
 | `a` / `A` | at the end / start of its list of siblings |
 
-Follow any of them with `s`, `p`, `t` or `n` to add a section, project, task or note: `os`, `Ip`, `at`, `An` and so on. Alone, the key waits a second for that letter, then adds a block of the type that fits: a task next to a task or under a project or task, otherwise text. Any other key ends the wait at once and is typed into the new block, so `o` then `B` starts a block with "B".
+Each adds a block of the type that fits at once: a task next to a task or under a project or task, otherwise text. What you type next goes into the new block, so `o` then `B` starts a block with "B". To add a section, project, task or note at one of these places, choose **New Section Below**, **New Task as First Child** and so on in Go to Command (`Ctrl+P`); they have no keys.
 
 With blocks selected, `o` and `a` go by the last selected block, `O` and `A` by the first. On a zoomed pane's title row, the keys add the zoom block's first child, except `i` and `a`, which add its last.
 

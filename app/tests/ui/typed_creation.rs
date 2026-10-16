@@ -32,21 +32,27 @@ fn esc(app: &mut Harness) {
     app.press(KeyCode::Esc, KeyModifiers::NONE);
 }
 
-// FR-MODE-06, OQ-29, FR-DOC-02, D-53
+/// Opens Go to Command with `Ctrl+P`, types `name` and gives the best match.
+fn give(app: &mut Harness, name: &str) {
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.type_keys(name);
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+}
+
+// FR-MODE-06, OQ-29, FR-DOC-02, D-53, D-136
 #[test]
-fn a_place_key_and_a_type_letter_add_a_block_of_that_type_there() {
+fn go_to_command_adds_a_block_of_a_chosen_type_at_a_place() {
     let mut app = Harness::open("groceries.taskpaper", 50, 12);
     app.settle();
     app.type_keys("jj");
-    shifted(&mut app, 'A');
-    app.type_keys("t");
+    give(&mut app, "New Task at Start");
     assert_caret(&mut app, 6, 3);
     app.type_keys("Eggs");
     esc(&mut app);
-    app.type_keys("op");
+    give(&mut app, "New Project Below");
     app.type_keys("Bakery");
     esc(&mut app);
-    app.type_keys("ot");
+    give(&mut app, "New Task Below");
     app.type_keys("Rye");
     esc(&mut app);
     assert_eq!(
@@ -54,8 +60,7 @@ fn a_place_key_and_a_type_letter_add_a_block_of_that_type_there() {
         ["Groceries:", "  - Eggs", "  Bakery:", "  - Rye", "  - Milk"]
     );
     app.type_keys("G");
-    shifted(&mut app, 'A');
-    app.type_keys("p");
+    give(&mut app, "New Project at Start");
     app.type_keys("Inbox");
     esc(&mut app);
     assert_eq!(outline_rows(&mut app)[..2], ["Inbox:", "Groceries:"]);
@@ -68,28 +73,25 @@ fn a_place_key_and_a_type_letter_add_a_block_of_that_type_there() {
     );
 }
 
-// FR-MODE-04, FR-MODE-06, D-53
+// FR-MODE-04, D-53, D-136
 #[test]
-fn a_and_shift_a_add_at_the_end_and_start_of_the_list_and_a_lone_key_waits() {
+fn a_creation_key_adds_a_block_at_once_and_what_follows_is_typed_into_it() {
     let mut app = Harness::with_text("- a\n- b\n", 40, 10);
     app.settle();
     app.type_keys("as");
-    app.type_keys("Later");
     esc(&mut app);
     app.type_keys("gg");
-    app.type_keys("In");
-    app.type_keys("Why");
+    shifted(&mut app, 'I');
+    app.type_keys("n");
     esc(&mut app);
-    app.type_keys("a");
-    app.wait(Duration::from_secs(1));
-    app.type_keys("c");
+    app.type_keys("ot");
     esc(&mut app);
     shifted(&mut app, 'A');
-    app.type_keys("Q");
+    app.type_keys("p");
     esc(&mut app);
     assert_eq!(
         saved(&mut app),
-        "- a\n\tQ\n\tWhy\n\tc\n- b\nLater @section\n",
-        "a and A act on the list of the block just added"
+        "- a\n\t- p\n\t- n\n\t- t\n- b\n- s\n",
+        "each key acts at once, and the letter after it is the new block's text"
     );
 }
