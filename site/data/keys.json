@@ -5592,6 +5592,19 @@
      "label": "Top, with the first item",
      "keys": [
       {
+       "label": "gg",
+       "presses": [
+        [
+         "g"
+        ],
+        [
+         "g"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
        "label": "Home",
        "presses": [
         [

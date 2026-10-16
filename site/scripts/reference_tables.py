@@ -151,6 +151,8 @@ CONTEXTS = {
         "|rows|{PromptKey::Scroll(rows.saturating_neg())}": "Scroll the diff up a page",
     }),
 }
+# Sequences a context's method handles before its table, by table and action.
+CONTEXT_SEQUENCES = {"SCROLL": {"ScrollBy::Top": ["g g"]}}
 # In the open Navigator the command that opens it closes it.
 NAVIGATOR_LABELS = {"Command::ToggleNavigator": "Close Navigator"}
 # Defaults the settings window takes at run time rather than from a constant.
@@ -689,6 +691,8 @@ def build_keys(sources):
             if action not in labels:
                 raise SourceError(f"{table} binds {key} to `{action}`, which CONTEXTS does not name")
             rows.setdefault(labels[action], []).append(binding(key_macro(key)))
+        for action, sequences in CONTEXT_SEQUENCES.get(table, {}).items():
+            rows[labels[action]] = [binding(keys) for keys in sequences] + rows[labels[action]]
         contexts.append({"id": f"keys-{slug(table)}", "table": table, "title": title,
                          "topic": topic, "rows": [{"label": label, "keys": keys}
                                                   for label, keys in rows.items()]})

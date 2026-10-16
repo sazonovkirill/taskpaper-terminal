@@ -14,7 +14,7 @@ Navigate-mode keys are vi-inspired. `j`/`k` move, `h`/`l` fold and unfold, `gg`/
 
 Many keys are two-key sequences: `gg`, `dd`, `ms`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.
 
-The prefixes group keys by meaning: `g` goes somewhere, and a capital after it opens a view or a list of places; `m` sets metadata through a prompt or picker, while marks that toggle at once are single keys (`s`, `b`, `!`); `d` deletes, and `Ctrl+W` handles panes.
+The prefixes group keys by meaning: `g` goes somewhere, and a capital after it opens a view or a list of places; `m` sets metadata through a prompt or picker, while marks that toggle at once are single keys (`s`, `b`, `!`); `d` cuts (`dd`), and `Ctrl+W` handles panes.
 
 ### Classic and kitty keys
 
