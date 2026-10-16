@@ -10,8 +10,8 @@ use super::{
 
 impl State {
     /// The Colors view's entries in `pane`, as [`State::matching_rows`] gives them, grouped by
-    /// color in the order red, orange, yellow, green, blue, violet, in document order within a
-    /// color (D-83).
+    /// color in the order red, yellow, green, blue, in document order within a color (D-83,
+    /// D-138).
     pub(super) fn colors_rows(&self, pane: &Pane) -> Vec<Row> {
         let mut entries: Vec<_> = self
             .matching_rows(pane, SpecialView::Colors)
@@ -40,13 +40,14 @@ mod tests {
     };
 
     /// Colored blocks at several depths, out of the colors' order, among blocks without a color,
-    /// a special node and a done project.
+    /// one whose `@violet` is no color, a special node and a done project.
     const OUTLINE: &str = "\
 Home: @blue
 \t- Water plants @red
 \t- Paint the hall
 \tErrands:
-\t\t- Post office @violet
+\t\t- Post office @violet @green
+\t\t- Library @violet
 \t\t- Bank @red
 \t\t\tC @hidden @green
 Work: @done
@@ -106,7 +107,7 @@ Work: @done
             .unwrap_or_default()
     }
 
-    // FR-TAG-10, D-83, D-80, FR-SPC-01
+    // FR-TAG-10, D-83, D-80, FR-SPC-01, D-138
     #[test]
     fn lists_colored_blocks_grouped_by_color_in_document_order_under_one_heading_each() {
         let state = colors(OUTLINE);
@@ -116,9 +117,9 @@ Work: @done
                 "[Red*] Home › Water plants",
                 "Home › Errands › Bank",
                 "[Yellow] Work › Report",
+                "[Green] Home › Errands › Post office",
                 "[Blue] Home",
                 "Plan the week",
-                "[Violet] Home › Errands › Post office",
             ]
         );
         assert_eq!(state.breadcrumbs(), Vec::<String>::new());
@@ -139,9 +140,10 @@ Work: @done
         state.update(Message::FocusNext);
         assert_eq!(focused(&state), "Report");
         state.update(Message::FocusLast);
-        assert_eq!(focused(&state), "Post office");
-        state.update(Message::FocusPrevious);
         assert_eq!(focused(&state), "Plan the week");
+        state.update(Message::FocusPrevious);
+        state.update(Message::FocusPrevious);
+        assert_eq!(focused(&state), "Post office");
     }
 
     // FR-DONE-02, D-83

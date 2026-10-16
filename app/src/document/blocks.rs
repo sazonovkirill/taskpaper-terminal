@@ -48,39 +48,26 @@ impl Attachment {
 pub enum TagColor {
     /// `@red`.
     Red,
-    /// `@orange`.
-    Orange,
     /// `@yellow`.
     Yellow,
     /// `@green`.
     Green,
     /// `@blue`.
     Blue,
-    /// `@violet`.
-    Violet,
 }
 
 impl TagColor {
     /// Every color, in the order the color command cycles through them (D-26).
-    pub const ALL: [Self; 6] = [
-        Self::Red,
-        Self::Orange,
-        Self::Yellow,
-        Self::Green,
-        Self::Blue,
-        Self::Violet,
-    ];
+    pub const ALL: [Self; 4] = [Self::Red, Self::Yellow, Self::Green, Self::Blue];
 
     /// The tag's name, without `@`.
     #[must_use]
     pub fn tag(self) -> &'static str {
         match self {
             Self::Red => "red",
-            Self::Orange => "orange",
             Self::Yellow => "yellow",
             Self::Green => "green",
             Self::Blue => "blue",
-            Self::Violet => "violet",
         }
     }
 
@@ -89,30 +76,26 @@ impl TagColor {
     pub fn name(self) -> &'static str {
         match self {
             Self::Red => "Red",
-            Self::Orange => "Orange",
             Self::Yellow => "Yellow",
             Self::Green => "Green",
             Self::Blue => "Blue",
-            Self::Violet => "Violet",
         }
     }
 
-    /// The color's number, 1 for red to 6 for violet in the order of [`Self::ALL`], by which
-    /// commands such as `c1` choose it (D-48).
+    /// The color's number, 1 for red to 4 for blue in the order of [`Self::ALL`], by which the
+    /// color picker chooses it (D-48, D-138).
     #[must_use]
     pub fn number(self) -> u32 {
         match self {
             Self::Red => 1,
-            Self::Orange => 2,
-            Self::Yellow => 3,
-            Self::Green => 4,
-            Self::Blue => 5,
-            Self::Violet => 6,
+            Self::Yellow => 2,
+            Self::Green => 3,
+            Self::Blue => 4,
         }
     }
 
-    /// The color after `current` in the cycle none, red, orange, yellow, green, blue, violet and
-    /// back to none (editing.md §5).
+    /// The color after `current` in the cycle none, red, yellow, green, blue and back to none
+    /// (editing.md §5, D-138).
     #[must_use]
     pub fn cycle(current: Option<Self>) -> Option<Self> {
         match current {
@@ -329,9 +312,9 @@ pub struct HiddenData {
 
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and the Edit Node
 /// dialog marks it unsupported, as `@section` is on a task or project (D-52).
-const SUPPORTED: [&str; 14] = [
-    "start", "due", "star", "red", "orange", "yellow", "green", "blue", "violet", "section", "url",
-    "done", "bookmark", "flag",
+const SUPPORTED: [&str; 12] = [
+    "start", "due", "star", "red", "yellow", "green", "blue", "section", "url", "done", "bookmark",
+    "flag",
 ];
 
 /// Whether the app reads the tag `name` on a block of type `kind` (FR-TAG-02, D-52).
@@ -686,16 +669,17 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11, D-88, D-91: `@today` means nothing
+    // FR-TAG-02, FR-TAG-04, FR-TAG-05, D-5, D-11, D-88, D-91, D-138: `@today` and `@orange` mean
+    // nothing
     #[test]
     fn star_bookmark_flag_and_color_come_from_their_tags() {
-        use TagColor::{Blue, Green, Orange, Red, Violet, Yellow};
+        use TagColor::{Blue, Green, Red, Yellow};
         assert_eq!(
             marks(
                 "- a @star
 - b @bookmark(x)
 P: @blue @red
-- c @violet
+- c @violet @green
 - d @orange @x
 - e @yellow
 - f @green @star @bookmark @flag
@@ -707,8 +691,8 @@ P: @blue @red
                 (true, false, false, None),
                 (false, true, false, None),
                 (false, false, false, Some(Blue)),
-                (false, false, false, Some(Violet)),
-                (false, false, false, Some(Orange)),
+                (false, false, false, Some(Green)),
+                (false, false, false, None),
                 (false, false, false, Some(Yellow)),
                 (true, true, true, Some(Green)),
                 (false, false, false, None),
@@ -723,24 +707,21 @@ P: @blue @red
     #[test]
     fn colors_are_numbered_from_one_in_their_order() {
         let numbers: Vec<u32> = TagColor::ALL.into_iter().map(TagColor::number).collect();
-        assert_eq!(numbers, [1, 2, 3, 4, 5, 6]);
+        assert_eq!(numbers, [1, 2, 3, 4]);
     }
 
     #[test]
     fn colors_are_named_for_the_app_to_show() {
         let names: Vec<&str> = TagColor::ALL.into_iter().map(TagColor::name).collect();
-        assert_eq!(
-            names,
-            ["Red", "Orange", "Yellow", "Green", "Blue", "Violet"]
-        );
+        assert_eq!(names, ["Red", "Yellow", "Green", "Blue"]);
     }
 
     // D-26, editing.md §5
     #[test]
-    fn colors_cycle_from_none_through_the_six_and_back() {
+    fn colors_cycle_from_none_through_the_four_and_back() {
         let cycle: Vec<_> =
             std::iter::successors(Some(None), |&color| Some(TagColor::cycle(color)))
-                .take(8)
+                .take(6)
                 .map(|color| color.map(TagColor::tag))
                 .collect();
         assert_eq!(
@@ -748,11 +729,9 @@ P: @blue @red
             [
                 None,
                 Some("red"),
-                Some("orange"),
                 Some("yellow"),
                 Some("green"),
                 Some("blue"),
-                Some("violet"),
                 None
             ]
         );
@@ -831,6 +810,8 @@ P: @blue @red
         }
         assert!(!supported("estimate", BlockKind::Text));
         assert!(!supported("today", BlockKind::Task), "D-88");
+        assert!(!supported("orange", BlockKind::Task), "D-138");
+        assert!(!supported("violet", BlockKind::Task), "D-138");
     }
 
     // FR-SPC-01, special-nodes.md §1

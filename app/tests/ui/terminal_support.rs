@@ -124,7 +124,7 @@ fn a_popup_over_wide_characters_hides_those_it_cuts() {
     app.type_keys("mc");
     let rows = screen(&mut app);
     assert_eq!(
-        rows[3..5],
+        rows[4..6],
         [
             "  日本語日本 ┌Color:──────┐ 本語日本語",
             "  日本語日本 │ ● 1 Red    │ 本語日本語"

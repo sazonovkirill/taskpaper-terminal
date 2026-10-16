@@ -24,7 +24,7 @@ Workflowy-style ([reference/workflowy.md §18](../reference/workflowy.md#18-sear
 | `is:done`, `is:starred`, `is:bookmarked` | metadata flags |
 | `is:task`, `is:project`, `is:text`, `is:section`, `is:divider` | block type (D-43, D-45) |
 | `due:EXPR`, `start:EXPR` | date comparison; `EXPR` is a date (§4) meaning "on that day", or `<EXPR`, `<=EXPR`, `>EXPR`, `>=EXPR`, or `EXPR..EXPR` (inclusive range). `due:` alone means "has a due date". |
-| `color:red` … `color:violet` | color tag |
+| `color:red`, `color:yellow`, `color:green`, `color:blue` | color tag (D-138) |
 
 Precedence: `-` binds tightest, then AND (adjacency), then `OR`, then `>`. Parentheses are not part of Workflowy's syntax and are not supported.
 

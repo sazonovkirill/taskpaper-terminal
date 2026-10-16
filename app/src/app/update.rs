@@ -217,7 +217,7 @@ pub enum Message {
     /// remove it when all have it (FR-TAG-04, D-11, FR-OPS-07).
     ToggleFlag(Flag),
     /// Give the selected blocks, else the focused block, the color after the focused block's own:
-    /// none, red, orange, yellow, green, blue, violet and back to none (FR-TAG-06, D-26).
+    /// none, red, yellow, green, blue and back to none (FR-TAG-06, D-26, D-138).
     CycleColor,
     /// Give the selected blocks, else the focused block, `color`, or no color when `None`
     /// (FR-TAG-05, FR-OPS-07, D-48).

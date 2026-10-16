@@ -46,10 +46,10 @@ pub struct Theme {
     pub overdue: Color,
     /// Errors, such as a failed save.
     pub error: Color,
-    /// The six color tags, red to violet (FR-TAG-05).
-    tags: [Color; 6],
-    /// The row tints of the six color tags, plain and on the focused row (D-48).
-    tints: [(Color, Color); 6],
+    /// The four color tags: red, yellow, green and blue (FR-TAG-05, D-138).
+    tags: [Color; 4],
+    /// The row tints of the four color tags, plain and on the focused row (D-48).
+    tints: [(Color, Color); 4],
 }
 
 impl Theme {
@@ -92,8 +92,8 @@ impl Theme {
         due: Color::Reset,
         overdue: Color::Reset,
         error: Color::Reset,
-        tags: [Color::Reset; 6],
-        tints: [(Color::Reset, Color::Reset); 6],
+        tags: [Color::Reset; 4],
+        tints: [(Color::Reset, Color::Reset); 4],
     };
 
     /// Terminal Dark: the terminal's 16 ANSI colors, so it follows the user's palette, and grey
@@ -105,22 +105,12 @@ impl Theme {
     /// step barely shows (D-48, D-119). Text on those and on the black band is grey 255, as the
     /// terminal's own text color is dark on a light palette (D-125).
     const fn terminal() -> Self {
-        let (red, orange, yellow, green, blue, violet) = (
-            Color::Red,
-            Color::LightRed,
-            Color::Yellow,
-            Color::Green,
-            Color::Blue,
-            Color::Magenta,
-        );
-        let tags = [red, orange, yellow, green, blue, violet];
+        let tags = [Color::Red, Color::Yellow, Color::Green, Color::Blue];
         let tints = [
             (Color::Indexed(52), Color::Indexed(88)),
-            (Color::Indexed(94), Color::Indexed(130)),
             (Color::Indexed(58), Color::Indexed(100)),
             (Color::Indexed(22), Color::Indexed(28)),
             (Color::Indexed(17), Color::Indexed(19)),
-            (Color::Indexed(53), Color::Indexed(90)),
         ];
         let primary = Color::LightBlue;
         Self {
@@ -176,16 +166,14 @@ impl Theme {
     }
 }
 
-/// What `values`, one per tag from red to violet, holds for `color`.
-fn pick<T>(values: [T; 6], color: TagColor) -> T {
-    let [red, orange, yellow, green, blue, violet] = values;
+/// What `values`, one per tag in the order red, yellow, green, blue, holds for `color`.
+fn pick<T>(values: [T; 4], color: TagColor) -> T {
+    let [red, yellow, green, blue] = values;
     match color {
         TagColor::Red => red,
-        TagColor::Orange => orange,
         TagColor::Yellow => yellow,
         TagColor::Green => green,
         TagColor::Blue => blue,
-        TagColor::Violet => violet,
     }
 }
 
@@ -198,14 +186,16 @@ const DIMMED: u32 = 25;
 
 impl Theme {
     /// The theme of a truecolor palette, `base` its background, surface, text, muted and accent
-    /// colors and `tags` its red to violet, each as `0xRRGGBB`: its accent as the primary color
-    /// (projects and focus), orange as the accent, as Textual's default accent is orange, violet
-    /// for headers, blue for links, the muted color for rules and its surface for the current
-    /// line ([reference/themes.md](../../../../docs/reference/themes.md#names-and-roles)).
-    fn from_palette(base: [u32; 5], tags: [u32; 6]) -> Self {
+    /// colors and `hues` its red, orange, yellow, green, blue and violet, each as `0xRRGGBB`: its
+    /// accent as the primary color (projects and focus), orange as the accent, as Textual's
+    /// default accent is orange, violet for headers, blue for links, the muted color for rules,
+    /// its surface for the current line and red, yellow, green and blue for the color tags
+    /// ([reference/themes.md](../../../../docs/reference/themes.md#names-and-roles)).
+    fn from_palette(base: [u32; 5], hues: [u32; 6]) -> Self {
         let rgb = Color::from_u32;
         let [background, surface, text, muted, accent] = base;
-        let [red, orange, _, green, blue, violet] = tags;
+        let [red, orange, yellow, green, blue, violet] = hues;
+        let tags = [red, yellow, green, blue];
         let tint = |tag: u32| {
             (
                 rgb(mix(background, tag, TINT.0)),
@@ -631,14 +621,14 @@ mod tests {
         );
     }
 
-    // FR-TAG-05, D-48, D-119
+    // FR-TAG-05, D-48, D-119, D-138
     #[test]
     fn terminal_dark_tints_rows_in_dark_shades_of_the_256_colors() {
         let dark = named("terminal-dark").colors(ColorSupport::Ansi, None);
         let tints = TagColor::ALL.map(|color| (dark.tint(color, false), dark.tint(color, true)));
         assert_eq!(
             tints,
-            [(52, 88), (94, 130), (58, 100), (22, 28), (17, 19), (53, 90)]
+            [(52, 88), (58, 100), (22, 28), (17, 19)]
                 .map(|(plain, focused)| (Color::Indexed(plain), Color::Indexed(focused)))
         );
     }
@@ -744,7 +734,7 @@ mod tests {
         assert_eq!(nord.start, rgb(0xa3be8c), "green");
         assert_eq!([nord.due, nord.overdue, nord.error], [rgb(0xbf616a); 3]);
         assert_eq!(nord.warning(), rgb(0xebcb8b));
-        assert_eq!(nord.tag(TagColor::Violet), rgb(0xb48ead));
+        assert_eq!(nord.tag(TagColor::Green), rgb(0xa3be8c));
         // A quarter of the way from the text to the background, rounded.
         assert_eq!(nord.dim_text, rgb(0xaeb4bf));
         // 15% and 25% of the way from the background to the tag's color.

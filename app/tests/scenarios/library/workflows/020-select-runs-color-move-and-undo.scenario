@@ -1,4 +1,4 @@
-# Selecting a run with Shift+Down, adding a second run elsewhere, coloring them all red with c1, moving them all with gm, and undoing the move keeps the colors.
+# Selecting a run with Shift+Down, adding a second run elsewhere, coloring them all red with c, moving them all with gm, and undoing the move keeps the colors.
 file <<END
 Backlog:
 	- Login page
@@ -12,7 +12,7 @@ END
 keys j <S-Down>
 keys j j J
 see ▌   - Export to CSV
-keys c1
+keys c
 keys gm
 see Move to
 type sprint

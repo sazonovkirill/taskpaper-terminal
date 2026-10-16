@@ -1,9 +1,9 @@
-# A color command on a task with two color tags leaves only the chosen one.
+# Picking a color for a task with two color tags leaves only the chosen one.
 file <<END
 Calls:
 	- Dentist @red @blue
 END
-keys j c1
+keys j mc1
 quit
 saved <<END
 Calls:

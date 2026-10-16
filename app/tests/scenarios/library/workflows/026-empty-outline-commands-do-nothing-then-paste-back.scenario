@@ -7,7 +7,7 @@ Work:
 END
 keys j y <C-a> dd
 hide Work
-keys j k x . > <Tab> <S-Tab> <A-j> <A-k> D gG s } cc h l ' = - + _
+keys j k x . > <Tab> <S-Tab> <A-j> <A-k> D gG s } c h l ' = - + _
 hide Work
 keys p
 see ▌ - Report

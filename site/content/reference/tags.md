@@ -13,7 +13,7 @@ Typing `@` at the start of a word, while editing, does nothing but say "Tags are
 | `@done(DATE)` | Done, on that day. Any `@done`, with or without a date, counts. | `x` |
 | `@start(DATE)` | Start date | `t`, `w`, `[`, `]`, `ms` |
 | `@due(DATE)` | Due date | `T`, `W`, `{`, `}`, `md` |
-| `@red` `@orange` `@yellow` `@green` `@blue` `@violet` | Color, at most one | `c1` … `c6`, `cc`, `mc`, `C` |
+| `@red` `@yellow` `@green` `@blue` | Color, at most one | `c`, `mc`, `C` |
 | `@star` | Starred | `s` |
 | `@flag` | Flagged | `!`, `mf` |
 | `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `mb` |
@@ -97,13 +97,13 @@ Since there are no times, `m` means months, not minutes as in TaskPaper. Dates r
 
 ## Colors
 
-A block can have one color, which tints its row's background with a very dim shade from its marker to the pane's right edge. Text colors stay as they are. The colors, in order, are red, orange, yellow, green, blue and violet, numbered 1 to 6.
+A block can have one color, which tints its row's background with a very dim shade from its marker to the pane's right edge. Text colors stay as they are. The colors, in order, are red, yellow, green and blue, numbered 1 to 4.
 
-- `c1` … `c6` give that color, and `C` removes it.
-- `cc` cycles the focused block's color: none, red, orange, yellow, green, blue, violet, and back to none. Selected blocks all get the same next color.
+- `c` cycles the focused block's color: none, red, yellow, green, blue, and back to none. Selected blocks all get the same next color.
+- `C` removes the color.
 - `mc` opens the color picker, with each color's number. Type a number to choose at once, or type a name to filter.
 
-Setting a color removes any other color tag. The [Colors view](@/reference/views.md#colors) lists every colored block, grouped by color.
+Setting a color removes any other color tag. `@orange` and `@violet`, colors in earlier versions, are kept in the file as ordinary tags. The [Colors view](@/reference/views.md#colors) lists every colored block, grouped by color.
 
 ## Star, flag and bookmark
 

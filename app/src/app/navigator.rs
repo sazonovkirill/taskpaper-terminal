@@ -1157,7 +1157,7 @@ Home:
                 "Home:\n\t- a @due(2026-10-04) @red\n\t- b @due(2026-10-05) @star\n\
                  \t- c @start(2026-10-07) @flag\n\tnote @due(2026-10-01) @blue\n\
                  \t- d @done(2026-10-03) @due(2026-10-01)\n\t\t- e @due(2026-10-01) @green\n\
-                 Done: @done(2026-10-05)\n\t- f @start(2026-10-06) @star @flag @orange\n\
+                 Done: @done(2026-10-05)\n\t- f @start(2026-10-06) @star @flag @yellow\n\
                  - g @due(2026-10-12) @done(2026-09-01)\n- h @due(2026-10-12)\n- i @flag",
             ),
             None,

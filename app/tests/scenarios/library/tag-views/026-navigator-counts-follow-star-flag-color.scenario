@@ -11,7 +11,7 @@ Chores:
 END
 keys <C-g>
 see 󰓎 Starred                                 1 │
-keys <Esc> j j s ! c2 <C-g>
+keys <Esc> j j s ! c <C-g>
 see 󰓎 Starred                                 2 │
 see 󰈻 Flagged                                 2 │
 see 󰸌 Colors                                  2 │
@@ -19,5 +19,5 @@ quit
 saved <<END
 Chores:
 	- Dishes @star @flag @red
-	- Laundry @star @flag @orange
+	- Laundry @star @flag @red
 END

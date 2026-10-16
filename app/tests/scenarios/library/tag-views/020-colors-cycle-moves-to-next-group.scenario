@@ -1,14 +1,14 @@
-# cc on a red Colors entry makes it orange, listed under a new Orange heading after Red's other entries.
+# c on a red Colors entry makes it yellow, listed under a new Yellow heading after Red's other entries.
 file <<END
 Sprint:
 	- Design @red
 	- Build @red
 END
-keys gC cc
-see 󰏘 Orange
+keys gC c
+see 󰏘 Yellow
 quit
 saved <<END
 Sprint:
-	- Design @orange
+	- Design @yellow
 	- Build @red
 END

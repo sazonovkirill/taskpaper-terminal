@@ -24,7 +24,7 @@ Try these on the trip:
 
 - On "Tram 28, early in the morning", press <kbd>s</kbd> to **star** it. A star icon appears after the text.
 - On "Book the hotel", press <kbd>!</kbd> to **flag** it. A red flag appears.
-- On "LX Factory on Sunday", press <kbd>c</kbd> <kbd>3</kbd> to color it yellow. The whole row is tinted yellow. <kbd>c</kbd> <kbd>1</kbd> to <kbd>c</kbd> <kbd>6</kbd> pick red, orange, yellow, green, blue and violet, and <kbd>C</kbd> removes the color.
+- On "LX Factory on Sunday", press <kbd>c</kbd> twice to color it yellow. The whole row is tinted yellow. Each <kbd>c</kbd> moves on through red, yellow, green and blue, and <kbd>C</kbd> removes the color.
 
 {{ shot(src="tutorial/tasks", alt="tpt zoomed into Trip to Lisbon, with Passports and Sunscreen checked off and struck through, a star after Tram 28, a red flag after Book the hotel and a yellow tint on LX Factory on Sunday", caption="Two packed items done, one task starred, one flagged and one colored yellow.") }}
 

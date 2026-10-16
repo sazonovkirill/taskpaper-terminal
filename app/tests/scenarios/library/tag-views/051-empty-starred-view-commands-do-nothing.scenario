@@ -3,7 +3,7 @@ file <<END
 Work:
 	- Report
 END
-keys gS s ! x dd D c1 o i a <Enter> <Esc>
+keys gS s ! x dd D c o i a <Enter> <Esc>
 hide Report
 quit
 saved <<END

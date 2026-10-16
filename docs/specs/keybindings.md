@@ -19,7 +19,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
-- Multi-key sequences (`gg`, `dd`, `ms`, `c1`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else, unless the pending keys are a binding of their own, as a key bound in the configuration (§5) can be: then that binding fires first and the key acts after it (D-53).
+- Multi-key sequences (`gg`, `dd`, `ms`, `Ctrl+W h`) time out after 1 s; the pending prefix is shown in the status line. A key that continues no sequence cancels the pending one and does nothing else, unless the pending keys are a binding of their own, as a key bound in the configuration (§5) can be: then that binding fires first and the key acts after it (D-53).
 
 ## 2. Navigate mode
 
@@ -112,9 +112,8 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Start date one day earlier / later | `[` / `]` |
 | Due date one day earlier / later | `{` / `}` |
 | Set start / due date with a prompt | `ms` / `md` |
-| Set the color red, orange, yellow, green, blue or violet (D-48) | `c1` … `c6` |
 | Remove the color (D-48) | `C` |
-| Cycle color (none, red, orange, yellow, green, blue, violet) | `cc` (was `c`, D-48) |
+| Cycle color (none, red, yellow, green, blue, D-138) | `c` (was `cc`, with `c1` … `c6` setting each of six colors, D-48) |
 | Pick a color | `mc` |
 | Toggle star (`@star`, D-88; was Toggle today, `mt`) | `s` (was `*`, D-130) |
 | Toggle bookmark | `mb` |

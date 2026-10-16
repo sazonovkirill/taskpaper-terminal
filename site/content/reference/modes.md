@@ -12,9 +12,9 @@ Navigate-mode keys are vi-inspired. `j`/`k` move, `h`/`l` fold and unfold, `gg`/
 
 ### Key sequences
 
-Many keys are two-key sequences: `gg`, `dd`, `ms`, `c1`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.
+Many keys are two-key sequences: `gg`, `dd`, `ms`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.
 
-The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `c` colors, `d` deletes, and `Ctrl+W` handles panes.
+The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `d` deletes, and `Ctrl+W` handles panes.
 
 ### Classic and kitty keys
 
@@ -103,7 +103,7 @@ Typing `/` while editing opens the **command menu** at the caret, titled "Comman
 - **Type:** Project, Task, Note, and Make Section on a text block, or Remove Section on a section
 - **Status:** Complete or Uncomplete, Toggle Star, Toggle Flag, Bookmark or Remove Bookmark
 - **Dates:** Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, Due Tomorrow, and Clear Start Date or Clear Due Date when the block has that date
-- **Color:** Color: Red … Color: Violet, and Remove Color when it has one
+- **Color:** Color: Red … Color: Blue, and Remove Color when it has one
 - **Block:** Edit Node, Open Link when the block has a link, Open Attachments while notes or comments are on, Duplicate, Delete
 
 Type to filter. Each word you type must start a word of the label, in order, so `/date` leaves the date entries and `/p` puts Project first. `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` runs the highlighted entry, and `Backspace` on an empty filter closes the menu. `Esc`, or a filter that matches nothing, closes the menu and types `/` and the filter as text, so `/home` and `a / b` stay text.

@@ -7,15 +7,13 @@ use super::{
 };
 use crate::document::{TagColor, metadata};
 
-/// Every entry of the picker with its name, in the order it lists them: the six colors, then
+/// Every entry of the picker with its name, in the order it lists them: the four colors, then
 /// none.
-const ENTRIES: [(Option<TagColor>, &str); 7] = [
+const ENTRIES: [(Option<TagColor>, &str); 5] = [
     (Some(TagColor::Red), "Red"),
-    (Some(TagColor::Orange), "Orange"),
     (Some(TagColor::Yellow), "Yellow"),
     (Some(TagColor::Green), "Green"),
     (Some(TagColor::Blue), "Blue"),
-    (Some(TagColor::Violet), "Violet"),
     (None, "None"),
 ];
 
@@ -42,7 +40,7 @@ impl State {
     }
 
     /// Applies `input` to the open color picker, and once a color or none is chosen, gives it to
-    /// the selected blocks, else the focused block. Typing a color's number, 1 to 6 in the
+    /// the selected blocks, else the focused block. Typing a color's number, 1 to 4 in the
     /// picker's order, chooses it at once (D-48).
     pub(super) fn color_picker_input(&mut self, input: MenuInput) {
         let Some(picker) = self.color_picker.as_mut() else {
@@ -112,12 +110,12 @@ mod tests {
         )
     }
 
-    // D-26, editing.md §5
+    // D-26, D-138, editing.md §5
     #[test]
     fn c_cycles_through_the_colors_and_back_to_none() {
         let mut state = State::new(format::parse("- a @x"), None);
         let mut seen = Vec::new();
-        for _ in 0..7 {
+        for _ in 0..5 {
             state.update(Message::CycleColor);
             seen.push(text(&state));
         }
@@ -125,17 +123,15 @@ mod tests {
             seen,
             [
                 "- a @x @red",
-                "- a @x @orange",
                 "- a @x @yellow",
                 "- a @x @green",
                 "- a @x @blue",
-                "- a @x @violet",
                 "- a @x",
             ]
         );
         assert_eq!(state.rows()[0].color, None);
         state.update(Message::Undo);
-        assert_eq!(state.rows()[0].color, Some(TagColor::Violet));
+        assert_eq!(state.rows()[0].color, Some(TagColor::Blue));
         let mut empty = State::new(Document::default(), None);
         empty.update(Message::CycleColor);
         assert_eq!(empty.document().revision(), 0);
@@ -148,10 +144,7 @@ mod tests {
         state.update(Message::OpenColorPicker);
         assert_eq!(
             listed(&state),
-            (
-                vec!["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "None"],
-                4
-            )
+            (vec!["Red", "Yellow", "Green", "Blue", "None"], 3)
         );
         assert_eq!(state.color_picker().unwrap().filter, "");
         pick(&mut state, MenuInput::Previous);
@@ -162,11 +155,11 @@ mod tests {
         for _ in 0..9 {
             pick(&mut state, MenuInput::Next);
         }
-        assert_eq!(listed(&state).1, 6, "the highlight stops at the last");
+        assert_eq!(listed(&state).1, 4, "the highlight stops at the last");
         pick(&mut state, MenuInput::Choose);
         assert_eq!(text(&state), "- a");
         state.update(Message::OpenColorPicker);
-        assert_eq!(listed(&state).1, 6, "none is highlighted without a color");
+        assert_eq!(listed(&state).1, 4, "none is highlighted without a color");
         for _ in 0..9 {
             pick(&mut state, MenuInput::Previous);
         }
@@ -195,14 +188,14 @@ mod tests {
     // FR-TAG-05, D-48
     #[test]
     fn a_digit_in_the_picker_chooses_its_color_at_once() {
-        for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
+        for (digit, color) in ('1'..='4').zip(TagColor::ALL) {
             let mut state = State::new(format::parse("- a @x"), None);
             state.update(Message::OpenColorPicker);
             pick(&mut state, MenuInput::Type(digit));
             assert_eq!(state.color_picker(), None, "{digit}");
             assert_eq!(text(&state), format!("- a @x @{}", color.tag()));
         }
-        for other in ['0', '7', '9'] {
+        for other in ['0', '5', '9'] {
             let mut state = State::new(format::parse("- a @red"), None);
             state.update(Message::OpenColorPicker);
             pick(&mut state, MenuInput::Type(other));
@@ -219,10 +212,7 @@ mod tests {
         pick(&mut state, MenuInput::Type('E'));
         assert_eq!(
             listed(&state),
-            (
-                vec!["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "None"],
-                0
-            )
+            (vec!["Red", "Yellow", "Green", "Blue", "None"], 0)
         );
         pick(&mut state, MenuInput::Type('n'));
         assert_eq!(listed(&state), (vec!["Green"], 0));
@@ -231,7 +221,7 @@ mod tests {
         pick(&mut state, MenuInput::Erase);
         pick(&mut state, MenuInput::Next);
         pick(&mut state, MenuInput::Type('l'));
-        assert_eq!(listed(&state), (vec!["Yellow", "Blue", "Violet"], 0));
+        assert_eq!(listed(&state), (vec!["Yellow", "Blue"], 0));
         pick(&mut state, MenuInput::Next);
         pick(&mut state, MenuInput::Erase);
         assert_eq!(listed(&state).1, 0, "erasing highlights the first");
@@ -290,21 +280,21 @@ mod tests {
     // FR-OPS-07, FR-TAG-05, D-26
     #[test]
     fn every_selected_block_takes_the_color_after_the_focused_ones_or_the_one_picked() {
-        let mut state = State::new(format::parse("- a @red\n- b @blue\n- c"), None);
+        let mut state = State::new(format::parse("- a @red\n- b @green\n- c"), None);
         state.update(Message::Select(SelectionChange::ExtendDown));
         state.update(Message::CycleColor);
         assert_eq!(
             texts(&state),
-            ["- a @violet", "- b @violet", "- c"],
-            "after the focused b's blue"
+            ["- a @blue", "- b @blue", "- c"],
+            "after the focused b's green"
         );
         state.update(Message::OpenColorPicker);
-        assert_eq!(listed(&state).1, 5, "the focused block's violet");
+        assert_eq!(listed(&state).1, 3, "the focused block's blue");
         pick(&mut state, MenuInput::Previous);
         pick(&mut state, MenuInput::Choose);
-        assert_eq!(texts(&state), ["- a @blue", "- b @blue", "- c"]);
+        assert_eq!(texts(&state), ["- a @green", "- b @green", "- c"]);
         state.update(Message::Undo);
         state.update(Message::Undo);
-        assert_eq!(texts(&state), ["- a @red", "- b @blue", "- c"]);
+        assert_eq!(texts(&state), ["- a @red", "- b @green", "- c"]);
     }
 }

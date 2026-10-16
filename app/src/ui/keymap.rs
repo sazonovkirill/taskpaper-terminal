@@ -1296,7 +1296,7 @@ mod tests {
             Location, NavigatorInput, NewBlock, PaneChange, SelectionChange, Sibling, SpecialView,
             Symbols,
         },
-        document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker},
+        document::{DateChange, DateTag, Flag, format::Typed, inline::Marker},
     };
 
     impl Keymap {
@@ -2369,21 +2369,19 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91: plain characters, which both key
-    // reportings send alike, and `C`, which the kitty protocol sends as `c` with `Shift`.
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91, D-138: plain characters,
+    // which both key reportings send alike, and `C`, which the kitty protocol sends as `c` with
+    // `Shift`. `c` cycles at once, as no sequence starts with it.
     #[test]
     fn color_star_flag_and_bookmark_keys() {
-        check(KeyCode::Char('c'), KeyModifiers::NONE, None);
-        assert_eq!(messages("cc", CONTEXT), [None, Some(Message::CycleColor)]);
-        for (digit, color) in ('1'..='6').zip(TagColor::ALL) {
-            assert_eq!(
-                messages(&format!("c{digit}"), CONTEXT),
-                [None, Some(Message::SetColor(Some(color)))]
-            );
-        }
+        check(
+            KeyCode::Char('c'),
+            KeyModifiers::NONE,
+            Some(&Message::CycleColor),
+        );
         assert_eq!(
-            messages("c7j", CONTEXT),
-            [None, None, Some(Message::FocusNext)]
+            messages("cc", CONTEXT),
+            [Some(Message::CycleColor), Some(Message::CycleColor)]
         );
         assert_eq!(
             messages("C", CONTEXT),

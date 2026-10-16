@@ -72,7 +72,7 @@ Typing `/` in edit mode opens a menu at the caret listing every command that app
 | Dates | Set Start Date, Set Due Date | `set_start` / `set_due`: the date prompt (§5) |
 | | Start Today, Start Tomorrow, Due Today, Due Tomorrow | `start_today`, `start_tomorrow`, `due_today`, `due_tomorrow` (§5) |
 | | Clear Start Date, Clear Due Date, each only when the block has that date | Remove the date, as the prompt does with an empty text |
-| Color | Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, Color: Violet; Remove Color only when the block has a color | Give the block that color, or none (FR-TAG-05) |
+| Color | Color: Red, Color: Yellow, Color: Green, Color: Blue; Remove Color only when the block has a color | Give the block that color, or none (FR-TAG-05, D-138) |
 | Block | Edit Node | the Edit Node dialog (§7) |
 | | Open Link, only when the block has a link | `open_url` (§5) |
 | | Duplicate, Delete | `duplicate`, `delete` (§4) |
@@ -152,9 +152,9 @@ Clipboard backend: the system clipboard via `arboard` when a display server is r
 | `start_today` / `start_tomorrow` / `due_today` / `due_tomorrow` (D-26) | Set `@start` or `@due` to today's or tomorrow's local date, without a prompt. |
 | `start_earlier` / `start_later` / `due_earlier` / `due_later` (D-26) | Move `@start` or `@due` one day back or forward. A block without that date gets yesterday or tomorrow, as if the missing date were today. |
 | `toggle_star` (FR-TAG-04, D-88, D-130), on `s` | Add bare `@star` to the targets without it; if every target has it, remove it. |
-| `set_color` (FR-TAG-05) | Picker of the six colors and "none", in that order, each color with its number 1 to 6, opening with the block's color (or "none") highlighted; typing a number chooses that color at once, and other typing filters it by name (D-48). Removes every other color tag; the chosen one stays where it is or is added. The chosen color goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). |
-| `color_1` … `color_6` / `remove_color` (D-48) | Give the targets red, orange, yellow, green, blue or violet, or remove their color, without the picker, as one undo step. |
-| `cycle_color` (D-26) | Step through none, red, orange, yellow, green, blue, violet and back to none, starting from the focused block's color; every selected block gets the same next color. |
+| `set_color` (FR-TAG-05) | Picker of the four colors and "none", in that order, each color with its number 1 to 4, opening with the block's color (or "none") highlighted; typing a number chooses that color at once, and other typing filters it by name (D-48). Removes every other color tag; the chosen one stays where it is or is added. The chosen color goes to the selected blocks, else the focused block, as one undo step (FR-OPS-07). |
+| `color_red` … `color_blue` / `remove_color` (D-48, D-138) | Give the targets red, yellow, green or blue, or remove their color, without the picker, as one undo step. Only `remove_color` has a key, `C`; the others are in Go to Command and the menus. |
+| `cycle_color` (D-26, D-138) | `c`: step through none, red, yellow, green, blue and back to none, starting from the focused block's color; every selected block gets the same next color. |
 | `toggle_flag` (FR-TAG-12, D-91) | Add bare `@flag` to the targets without it; if every target has it, remove it, with any value. A flagged block shows a red flag after its text ([ui.md §2](ui.md#2-blocks)). |
 | `toggle_bookmark` (D-11) | Add `@bookmark` to the targets without it; if every target has it, remove it. The status line says which; a bookmarked block shows a bookmark icon after its text (D-47). |
 | `open_url` (FR-BLK-06) | Open the focused block's link in the system browser (`open` on macOS, `xdg-open` on Linux; N-PORT-01): its `@url` address first, else the first link in its text (§2.2, D-45). It acts on the focused block also while blocks are selected. |
@@ -176,7 +176,7 @@ Quick Add adds a task or note to the INBOX project without leaving the current v
 
 ## 7. Edit Node dialog (FR-MODE-09)
 
-The Edit Node dialog shows and changes every property of one block in a modal window, as the task windows of Things 3 and 2Do do (D-103). It is the only place the app shows a block's tags and the only place any tag can be typed (FR-TAG-01): commands such as `x`, `s` or `c1` still set the tags they own.
+The Edit Node dialog shows and changes every property of one block in a modal window, as the task windows of Things 3 and 2Do do (D-103). It is the only place the app shows a block's tags and the only place any tag can be typed (FR-TAG-01): commands such as `x`, `s` or `c` still set the tags they own.
 
 - **Opening.** `e` (Edit Node in Go to Command and the context menu) opens it on the focused block, also while blocks are selected and in the special views; the zoom title counts as focused. Edit Node in edit mode's command menu (§2.3) opens it on the edited block and editing resumes when it closes, as after the date prompt. It replaces the details popup (D-3).
 - **Window.** A box centered over the panes like the pickers, its border and title `Edit Node` in the accent color, as wide as it can be up to 64 columns and as tall as its rows, scrolling to keep the focused row in view, and on the last row to its end, so the Hidden rows show. Each row is a label in a column of its own, dimmed, and a value; a value too wide ends in `…`, keeping a trailing marker such as `unsupported` or `not a date` in view, and the Parent path keeps its end, as the status line keeps the file's (ui.md §1); the focused row is marked like the outline's focused block. The last line is a dimmed hint naming the keys of the focused row, or, while a field is open, what `Enter` would do, a reason in the warning color when it would do nothing. A sketch, the focus on Due:

@@ -1,4 +1,4 @@
-# mc then 4 picks green; cc twice on an uncolored task gives orange.
+# mc then 4 picks blue; c twice on an uncolored task gives yellow.
 file <<END
 Sprint:
 	- Design
@@ -8,10 +8,10 @@ keys j mc
 see Color:
 keys 4
 hide Color:
-keys j cc cc
+keys j c c
 quit
 saved <<END
 Sprint:
-	- Design @green
-	- Build @orange
+	- Design @blue
+	- Build @yellow
 END

@@ -1,4 +1,4 @@
-# A block with two hand-written color tags is grouped by the first one, and c5 leaves only blue.
+# A block with two hand-written color tags is grouped by the first one, and picking blue with mc4 leaves only blue.
 file <<END
 Paint:
 	- Fence @blue @red
@@ -6,7 +6,7 @@ END
 keys gC
 see 󰏘 Blue
 hide 󰏘 Red
-keys c5
+keys mc4
 quit
 saved <<END
 Paint:

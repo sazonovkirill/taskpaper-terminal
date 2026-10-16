@@ -37,7 +37,7 @@ tpt only opens UTF-8 text. It refuses anything else rather than risk writing bac
 |---|---|---|
 | `@done(2026-10-11)` | Completed on that day. Any `@done` counts, with or without a date. | The same, in TaskPaper |
 | `@start(DATE)`, `@due(DATE)` | Start and due dates, as `YYYY-MM-DD` | Ordinary tags with dates, which TaskPaper can search |
-| `@red` … `@violet` | A row color | Ordinary tags |
+| `@red`, `@yellow`, `@green`, `@blue` | A row color | Ordinary tags |
 | `@star`, `@flag`, `@bookmark` | Starred, flagged, bookmarked | Ordinary tags |
 | `@section` | Makes a text block a section | An ordinary tag |
 | `@url(ADDRESS)` | Draws the block's title as a link to the address | As there |

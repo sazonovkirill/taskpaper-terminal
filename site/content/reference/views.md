@@ -38,7 +38,7 @@ The other views can be grouped. A bold heading above each group names it. Headin
 |---|---|---|---|
 | <span id="upcoming">**Upcoming**</span> | `gU` | blocks with a start or due date from tomorrow to a week from today, once each, under the earlier date | day, earliest first: `Tomorrow · Thu 8 Oct`, `Wed 14 Oct` |
 | <span id="overdue">**Overdue**</span> | `gO` | open blocks with a due date before today; done blocks and blocks inside them never | due date, oldest first: `3 days ago · Sun 4 Oct` |
-| <span id="colors">**Colors**</span> | `gC` | blocks with a [color](@/reference/tags.md#colors) | color, red to violet |
+| <span id="colors">**Colors**</span> | `gC` | blocks with a [color](@/reference/tags.md#colors) | color, red to blue |
 | <span id="logbook">**Logbook**</span> | `gL` | blocks completed from six days ago to today, also inside done blocks, whatever show completed says | day of completion, newest first: `Yesterday · Tue 6 Oct` |
 | <span id="starred">**Starred**</span> | `gS` | [starred](@/reference/tags.md#star-flag-and-bookmark) blocks | not grouped |
 | <span id="flagged">**Flagged**</span> | `gF` | [flagged](@/reference/tags.md#star-flag-and-bookmark) blocks | not grouped |

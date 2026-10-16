@@ -577,10 +577,10 @@ mod tests {
         assert_eq!(toggle_flag(&parse("- a"), &stale, Flag::Star), None);
     }
 
-    // FR-TAG-05, D-5
+    // FR-TAG-05, D-5, D-138: `@orange` and `@violet` are no colors, so they stay
     #[test]
     fn setting_a_color_replaces_every_other_color() {
-        use TagColor::{Blue, Orange, Red};
+        use TagColor::{Blue, Green, Red};
         let check = |text: &str, color, expected: Option<&str>| {
             assert_eq!(
                 edited(text, |document, block| set_color(document, block, color)).as_deref(),
@@ -589,10 +589,11 @@ mod tests {
             );
         };
         check("- a", Some(Red), Some("- a @red"));
-        check("- a @blue @x", Some(Orange), Some("- a @x @orange"));
+        check("- a @blue @x", Some(Green), Some("- a @x @green"));
         check("- a @red @x @blue", Some(Blue), Some("- a @x @blue"));
         check("- a @blue @x @red", Some(Blue), Some("- a @blue @x"));
-        check("P: @green @violet @yellow", None, Some("P:"));
+        check("P: @green @violet @yellow", None, Some("P: @violet"));
+        check("- a @orange", Some(Red), Some("- a @orange @red"));
         check("@red", None, Some(PLACEHOLDER));
         check("- a @red @x", Some(Red), None);
         check("- a @x", None, None);

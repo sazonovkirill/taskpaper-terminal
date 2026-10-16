@@ -4,12 +4,12 @@ INBOX:
 	- Call the plumber
 	- Renew passport
 END
-keys j c1 j c3 gC gg
+keys j c j c c gC gg
 see Red
-keys cc
-see Orange
+keys c
+see Yellow
 hide Red
-keys cc cc cc
+keys c c
 see Blue
 quit
 saved <<END

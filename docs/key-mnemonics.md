@@ -9,7 +9,6 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 3. **A prefix letter = a family.** The status line shows the pending prefix for 1 second.
    - `g` **go / view**: where you look, not what the file says.
    - `m` **metadata that needs a prompt or picker** (think "more…").
-   - `c` **color**.
    - `d` **delete** (`dd`).
    - `o O i I a A` **create** (see §3).
    - `Ctrl+W` **window**: panes, as in vim.
@@ -31,7 +30,7 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 | `z` undo | `Z` redo | Ctrl+Z without Ctrl, plus Shift for the other way |
 | `s` toggle **s**tar | `S` toggle **S**ection | capital = the bigger mark, a heading (D-130) |
 | `d` (`dd`) delete | `D` duplicate | "**D**ouble it" |
-| `cc` cycle color | `C` clear color | one exception to "capital = more": **C**lear |
+| `c` cycle color | `C` clear color | one exception to "capital = more": **C**lear |
 | `gg` first block | `G` last block | vim |
 | `.` zoom in | `>` (Shift+`.`) zoom out | same key, Shift reverses |
 
@@ -70,7 +69,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 
 ## 6. Colors, dates, done
 
-- `c1`…`c6`: red, orange, yellow, green, blue, violet. Rainbow order (ROYGBV), so 1 is hottest and 6 coolest.
+- `c` **c**ycles the color: none, red, yellow, green, blue, in rainbow order from hottest to coolest (D-138); `C` clears it.
 - `x` toggles done, as in a `[x]` checkbox.
 - `t` = **t**oday, `w` = **w**ait a day. Lower = start, upper = due.
 - `[`/`]` start date a day earlier/later, `{`/`}` the same for due. Left = earlier, right = later.

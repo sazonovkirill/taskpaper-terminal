@@ -2254,46 +2254,7 @@
    "topic": "tags",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "c1",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "1"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
-  },
-  {
-   "id": "navigate-color-orange",
-   "name": "Color: Orange",
-   "config": "color_orange",
-   "mode": "navigate",
-   "group": "Block Metadata",
-   "topic": "tags",
-   "panel": false,
-   "menu_only": false,
-   "keys": [
-    {
-     "label": "c2",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "2"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-color-yellow",
@@ -2304,21 +2265,7 @@
    "topic": "tags",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "c3",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "3"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-color-green",
@@ -2329,21 +2276,7 @@
    "topic": "tags",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "c4",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "4"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-color-blue",
@@ -2354,46 +2287,7 @@
    "topic": "tags",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "c5",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "5"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
-  },
-  {
-   "id": "navigate-color-violet",
-   "name": "Color: Violet",
-   "config": "color_violet",
-   "mode": "navigate",
-   "group": "Block Metadata",
-   "topic": "tags",
-   "panel": false,
-   "menu_only": false,
-   "keys": [
-    {
-     "label": "c6",
-     "presses": [
-      [
-       "c"
-      ],
-      [
-       "6"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-remove-color",
@@ -2428,11 +2322,8 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "cc",
+     "label": "c",
      "presses": [
-      [
-       "c"
-      ],
       [
        "c"
       ]
@@ -7650,26 +7541,6 @@
       "typed": []
      },
      {
-      "label": "Color 1–6: Red, Orange, Yellow, Green, Blue, Violet",
-      "panel": false,
-      "keys": [
-       {
-        "label": "c 1–6",
-        "presses": [
-         [
-          "c"
-         ],
-         [
-          "1–6"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
       "label": "Remove Color",
       "panel": false,
       "keys": [
@@ -7691,11 +7562,8 @@
       "panel": false,
       "keys": [
        {
-        "label": "cc",
+        "label": "c",
         "presses": [
-         [
-          "c"
-         ],
          [
           "c"
          ]
@@ -9194,6 +9062,10 @@
    "New Note at Start",
    "Clear Start Date",
    "Clear Due Date",
+   "Color: Red",
+   "Color: Yellow",
+   "Color: Green",
+   "Color: Blue",
    "Make Section",
    "Remove Section",
    "Animations: Full",

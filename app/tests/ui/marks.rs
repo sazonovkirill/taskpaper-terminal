@@ -1,6 +1,6 @@
-//! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with `c1` to
-//! `c6`, `cc` and the `mc` picker and go with `C` (D-48), bookmarks with `mb`, and flags with `mf`
-//! and `!` (D-91).
+//! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with `c` and
+//! the `mc` picker and go with `C` (D-48, D-138), bookmarks with `mb`, and flags with `mf` and `!`
+//! (D-91).
 
 use std::{fs, time::Duration};
 
@@ -45,14 +45,13 @@ fn screen(app: &mut Harness) -> Vec<String> {
         .collect()
 }
 
-// FR-TAG-05, FR-TAG-06, D-48, D-91, FR-OPS-08
+// FR-TAG-05, FR-TAG-06, D-48, D-91, D-138, FR-OPS-08
 #[test]
-fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() {
+fn c_tints_the_focused_row_at_once_and_cycles_and_shift_c_removes_the_color() {
     let mut app = Harness::with_text("- Milk\n- Bread\n", 30, 5);
     app.type_keys("jc");
     let status = line(app.render().buffer(), 4);
-    assert!(status.ends_with(" c"), "the pending prefix shows: {status}");
-    app.type_keys("1");
+    assert!(!status.ends_with(" c"), "no prefix is pending: {status}");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 3), "- Bread");
     assert_eq!(background(&buffer, 3, 2), Some(FOCUSED_RED_TINT));
@@ -66,30 +65,48 @@ fn c_and_a_digit_tint_the_focused_row_cc_cycles_and_shift_c_removes_the_color() 
     assert_eq!(background(&buffer, 3, 2), Some(RED_TINT));
     assert_eq!(background(&buffer, 2, 2), Some(CURRENT_LINE));
     assert_eq!(saved(&mut app), "- Milk\n- Bread @red\n");
-    app.type_keys("jcc");
-    assert_eq!(saved(&mut app), "- Milk\n- Bread @orange\n");
-    app.type_keys("c6");
-    assert_eq!(saved(&mut app), "- Milk\n- Bread @violet\n");
+    app.type_keys("jc");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread @yellow\n");
+    app.type_keys("cc");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread @blue\n");
     app.press(KeyCode::Char('c'), KeyModifiers::SHIFT);
     assert_eq!(saved(&mut app), "- Milk\n- Bread\n");
     let buffer = app.render().buffer().clone();
     assert_eq!(background(&buffer, 3, 0), Some(CURRENT_LINE));
     app.type_keys("z");
-    assert_eq!(saved(&mut app), "- Milk\n- Bread @violet\n");
+    assert_eq!(saved(&mut app), "- Milk\n- Bread @blue\n");
 }
 
-// FR-TAG-05, FR-OPS-07, D-48
+// FR-TAG-05, D-138: `@orange` and `@violet` are kept as written but are no colors.
 #[test]
-fn c_digit_and_shift_c_color_every_selected_block_in_one_step() {
-    let mut app = Harness::with_text("- Milk @blue\n- Bread\n- Eggs\n", 30, 6);
-    app.type_keys("Jc4");
-    assert_eq!(saved(&mut app), "- Milk @green\n- Bread @green\n- Eggs\n");
+fn orange_and_violet_tags_tint_nothing_and_stay_when_c_colors_the_block() {
+    let mut app = Harness::with_text("- Milk @orange\n- Bread @violet\n", 30, 5);
+    app.type_keys("j");
+    let buffer = app.render().buffer().clone();
+    assert_eq!(background(&buffer, 2, 2), Some(Color::Reset));
+    assert_eq!(background(&buffer, 3, 2), Some(CURRENT_LINE));
+    app.type_keys("kc");
+    assert_eq!(saved(&mut app), "- Milk @orange @red\n- Bread @violet\n");
+    app.type_keys("C");
+    assert_eq!(saved(&mut app), "- Milk @orange\n- Bread @violet\n");
+}
+
+// FR-TAG-05, FR-OPS-07, D-48, D-138
+#[test]
+fn c_and_shift_c_color_every_selected_block_in_one_step() {
+    let mut app = Harness::with_text("- Milk @blue\n- Bread @red\n- Eggs\n", 30, 6);
+    app.type_keys("Jc");
+    assert_eq!(
+        saved(&mut app),
+        "- Milk @yellow\n- Bread @yellow\n- Eggs\n",
+        "after the focused block's red"
+    );
     app.type_keys("C");
     assert_eq!(saved(&mut app), "- Milk\n- Bread\n- Eggs\n");
     app.type_keys("z");
-    assert_eq!(saved(&mut app), "- Milk @green\n- Bread @green\n- Eggs\n");
+    assert_eq!(saved(&mut app), "- Milk @yellow\n- Bread @yellow\n- Eggs\n");
     app.type_keys("z");
-    assert_eq!(saved(&mut app), "- Milk @blue\n- Bread\n- Eggs\n");
+    assert_eq!(saved(&mut app), "- Milk @blue\n- Bread @red\n- Eggs\n");
 }
 
 // FR-TAG-05, D-48, keybindings.md §4, ui.md §1
@@ -98,16 +115,15 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     let mut app = Harness::with_text("- Milk @yellow @x\n", 30, 14);
     app.type_keys("mc");
     assert_eq!(
-        screen(&mut app)[2..12],
+        screen(&mut app)[2..11],
         [
             "▌ - Milk",
+            "",
             "        ┌Color:──────┐",
             "        │ ● 1 Red    │",
-            "        │ ● 2 Orange │",
-            "        │ ● 3 Yellow │",
-            "        │ ● 4 Green  │",
-            "        │ ● 5 Blue   │",
-            "        │ ● 6 Violet │",
+            "        │ ● 2 Yellow │",
+            "        │ ● 3 Green  │",
+            "        │ ● 4 Blue   │",
             "        │ ●   None   │",
             "        └────────────┘",
         ]
@@ -123,11 +139,11 @@ fn m_c_opens_the_color_picker_and_enter_gives_the_highlighted_color() {
     press(&mut app, KeyCode::Enter);
     assert!(!screen(&mut app).iter().any(|row| row.contains("Color:")));
     assert_eq!(saved(&mut app), "- Milk @x @green\n");
-    app.type_keys("mc2");
+    app.type_keys("mc4");
     assert!(!screen(&mut app).iter().any(|row| row.contains("Color:")));
     assert_eq!(
         saved(&mut app),
-        "- Milk @x @orange\n",
+        "- Milk @x @blue\n",
         "a number chooses at once"
     );
 }

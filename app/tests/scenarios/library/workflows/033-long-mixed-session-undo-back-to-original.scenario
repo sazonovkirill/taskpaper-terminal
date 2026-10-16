@@ -15,7 +15,7 @@ keys gt <Enter>
 type  online
 keys <Esc> s j x gh j gm
 type home
-keys <Enter> <Tab> c2 G y gg p
+keys <Enter> <Tab> c G y gg p
 see ▌ - Review pull requests
 keys z z z z z z z z z z z z z z
 see ▌   - Renew passport

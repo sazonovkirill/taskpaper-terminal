@@ -583,7 +583,7 @@ mod tests {
             ),
             (Command::ClearDate(DateTag::Due), "Clear Due Date"),
             (Command::OpenDatePrompt(DateTag::Start), "Set Start Date"),
-            (Command::SetColor(Some(TagColor::Orange)), "Color: Orange"),
+            (Command::SetColor(Some(TagColor::Yellow)), "Color: Yellow"),
             (Command::SetColor(None), "Remove Color"),
             (Command::New(NewBlock::Below, None), "New Block Below"),
             (

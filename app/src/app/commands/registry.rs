@@ -356,38 +356,20 @@ pub const REGISTRY: &[Entry] = &[
     ),
     entry!(Command::ClearDate(DateTag::Start), Mode::Navigate, &[]),
     entry!(Command::ClearDate(DateTag::Due), Mode::Navigate, &[]),
-    entry!(
-        Command::SetColor(Some(TagColor::Red)),
-        Mode::Navigate,
-        &["c 1"],
-    ),
-    entry!(
-        Command::SetColor(Some(TagColor::Orange)),
-        Mode::Navigate,
-        &["c 2"],
-    ),
+    entry!(Command::SetColor(Some(TagColor::Red)), Mode::Navigate, &[]),
     entry!(
         Command::SetColor(Some(TagColor::Yellow)),
         Mode::Navigate,
-        &["c 3"],
+        &[]
     ),
     entry!(
         Command::SetColor(Some(TagColor::Green)),
         Mode::Navigate,
-        &["c 4"],
+        &[]
     ),
-    entry!(
-        Command::SetColor(Some(TagColor::Blue)),
-        Mode::Navigate,
-        &["c 5"],
-    ),
-    entry!(
-        Command::SetColor(Some(TagColor::Violet)),
-        Mode::Navigate,
-        &["c 6"],
-    ),
+    entry!(Command::SetColor(Some(TagColor::Blue)), Mode::Navigate, &[]),
     entry!(Command::SetColor(None), Mode::Navigate, &["C"]),
-    entry!(Command::CycleColor, Mode::Navigate, &["c c"]),
+    entry!(Command::CycleColor, Mode::Navigate, &["c"]),
     entry!(Command::OpenColorPicker, Mode::Navigate, &["m c"]),
     entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["s"]),
     entry!(

@@ -44,13 +44,11 @@ impl NodeCommand {
 const TYPES: [Typed; 3] = [Typed::Project, Typed::Task, Typed::Text];
 
 /// The colors in the order the menu lists them.
-const COLORS: [TagColor; 6] = [
+const COLORS: [TagColor; 4] = [
     TagColor::Red,
-    TagColor::Orange,
     TagColor::Yellow,
     TagColor::Green,
     TagColor::Blue,
-    TagColor::Violet,
 ];
 
 /// Every command that applies to `block` in menu order, in groups a menu sets apart: types, with
@@ -291,14 +289,7 @@ mod tests {
                     "Due Today",
                     "Due Tomorrow",
                 ],
-                vec![
-                    "Color: Red",
-                    "Color: Orange",
-                    "Color: Yellow",
-                    "Color: Green",
-                    "Color: Blue",
-                    "Color: Violet",
-                ],
+                vec!["Color: Red", "Color: Yellow", "Color: Green", "Color: Blue"],
                 vec!["Edit Node", "Open Attachments", "Duplicate", "Delete"],
             ]
         );
@@ -443,11 +434,9 @@ mod tests {
             ("Clear Start Date", Command::ClearDate(DateTag::Start)),
             ("Clear Due Date", Command::ClearDate(DateTag::Due)),
             ("Color: Red", Command::SetColor(Some(TagColor::Red))),
-            ("Color: Orange", Command::SetColor(Some(TagColor::Orange))),
             ("Color: Yellow", Command::SetColor(Some(TagColor::Yellow))),
             ("Color: Green", Command::SetColor(Some(TagColor::Green))),
             ("Color: Blue", Command::SetColor(Some(TagColor::Blue))),
-            ("Color: Violet", Command::SetColor(Some(TagColor::Violet))),
             ("Remove Color", Command::SetColor(None)),
             ("Edit Node", Command::EditNode),
             ("Open Attachments", Command::OpenAttachments),
@@ -494,8 +483,7 @@ mod tests {
                 "Complete, Toggle Star, Toggle Flag, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \
                  Due Tomorrow",
-                "Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, \
-                 Color: Violet",
+                "Color: Red, Color: Yellow, Color: Green, Color: Blue",
                 "Convert Type",
                 "Zoom In, Count Blocks and Words",
             ]
@@ -518,7 +506,7 @@ mod tests {
             "Uncomplete, Toggle Star, Toggle Flag, Remove Bookmark"
         );
         assert!(groups[3].ends_with("Due Tomorrow, Clear Start Date, Clear Due Date"));
-        assert!(groups[4].ends_with("Color: Violet, Remove Color"));
+        assert!(groups[4].ends_with("Color: Blue, Remove Color"));
         assert_eq!(groups[5], "Convert Type, Make Section");
         assert_eq!(
             groups[6],
@@ -542,8 +530,7 @@ mod tests {
                 "Complete, Toggle Star, Toggle Flag, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \
                  Due Tomorrow, Clear Due Date",
-                "Color: Red, Color: Orange, Color: Yellow, Color: Green, Color: Blue, \
-                 Color: Violet",
+                "Color: Red, Color: Yellow, Color: Green, Color: Blue",
                 "Make Section, Remove Section",
             ],
             "no group of the focused block's own commands is left empty"

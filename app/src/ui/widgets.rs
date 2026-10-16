@@ -2362,53 +2362,44 @@ mod tests {
         state.update(Message::OpenColorPicker);
         let picker = state.color_picker().unwrap();
         let popup = Popup::colors(&picker, ICONS, &THEME);
-        assert_eq!(popup.size(), (14, 9));
-        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 9));
+        assert_eq!(popup.size(), (14, 7));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 14, 7));
         popup.render(buf.area, &mut buf);
         let mut expected = Buffer::with_lines([
             "┌Color:──────┐",
             "│ ● 1 Red    │",
-            "│ ● 2 Orange │",
-            "│ ● 3 Yellow │",
-            "│ ● 4 Green  │",
-            "│ ● 5 Blue   │",
-            "│ ● 6 Violet │",
+            "│ ● 2 Yellow │",
+            "│ ● 3 Green  │",
+            "│ ● 4 Blue   │",
             "│ ●   None   │",
             "└────────────┘",
         ]);
-        for (y, color) in [
-            Color::Red,
-            Color::LightRed,
-            Color::Yellow,
-            Color::Green,
-            Color::Blue,
-            Color::Magenta,
-        ]
-        .into_iter()
-        .enumerate()
+        for (y, color) in [Color::Red, Color::Yellow, Color::Green, Color::Blue]
+            .into_iter()
+            .enumerate()
         {
             let y = u16::try_from(y).unwrap() + 1;
             expected.set_style(Rect::new(1, y, 12, 1), Style::new().fg(color));
         }
-        expected.set_style(Rect::new(1, 5, 12, 1), Style::new().reversed());
+        expected.set_style(Rect::new(1, 4, 12, 1), Style::new().reversed());
         assert_eq!(buf, expected);
         state.update(Message::Menu(
             Menu::ColorPicker,
-            crate::app::MenuInput::Type('v'),
+            crate::app::MenuInput::Type('w'),
         ));
         let picker = state.color_picker().unwrap();
         let mut buf = Buffer::empty(Rect::new(0, 0, 14, 3));
         Popup::colors(&picker, ICONS, &THEME).render(buf.area, &mut buf);
         let mut expected =
-            Buffer::with_lines(["┌Color:──────┐", "│ ● 6 Violet │", "└v───────────┘"]);
+            Buffer::with_lines(["┌Color:──────┐", "│ ● 2 Yellow │", "└w───────────┘"]);
         expected.set_style(
             Rect::new(1, 1, 12, 1),
-            Style::new().fg(Color::Magenta).reversed(),
+            Style::new().fg(Color::Yellow).reversed(),
         );
         assert_eq!(buf, expected);
     }
 
-    // FR-TAG-05, D-48
+    // FR-TAG-05, D-48, D-138: `@orange` is no color and tints nothing
     #[test]
     fn a_color_tag_tints_the_background_of_any_block_after_its_indent() {
         let tint = |color| {
@@ -2418,7 +2409,6 @@ mod tests {
         };
         let mut expected = Buffer::with_lines(["- a   ", "P:    ", "  S   ", "n     ", "✔ d   "]);
         expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Red));
-        expected.set_style(Rect::new(0, 1, 6, 1), tint(TagColor::Orange));
         expected.set_style(Rect::new(0, 1, 2, 1), Style::new().bold().fg(THEME.primary));
         expected.set_style(Rect::new(2, 2, 4, 1), tint(TagColor::Yellow));
         expected.set_style(
@@ -2439,13 +2429,13 @@ mod tests {
             expected
         );
         let mut expected = Buffer::with_lines(["u     "]);
-        expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Violet));
+        expected.set_style(Rect::new(0, 0, 6, 1), tint(TagColor::Blue));
         expected.set_style(
             Rect::new(0, 0, 1, 1),
             Style::new().underlined().fg(THEME.link),
         );
         assert_eq!(
-            render("u @url(x) @violet", 6, 1),
+            render("u @url(x) @blue", 6, 1),
             expected,
             "a link keeps the link color"
         );
