@@ -255,8 +255,8 @@
    "choices": null,
    "least": 1,
    "unit": "min",
-   "default": "3",
-   "default_text": "3",
+   "default": "30",
+   "default_text": "30",
    "topic": "animation"
   },
   {

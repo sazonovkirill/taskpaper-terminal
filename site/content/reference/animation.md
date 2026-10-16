@@ -36,7 +36,7 @@ It is `full` by default, or `reduced` over SSH (when `SSH_CONNECTION` or `SSH_TT
 
 When tpt sits idle, the season's weather starts falling over the whole screen: rain in spring (March to May), leaves in autumn (September to November) and snow in winter (December to February). Summer has none. Leaves and snow pile up slowly along the bottom, never more than a third of the screen high.
 
-- It starts after `weather_idle_minutes` without input, 3 minutes by default, whatever window or prompt is open. Saving, reloading and other things the app does by itself don't count as input.
+- It starts after `weather_idle_minutes` without input, 30 minutes by default, whatever window or prompt is open. Saving, reloading and other things the app does by itself don't count as input.
 - The next key, click, paste or resize ends it at once, and does nothing else: the key you pressed to stop it is not applied. Everything is as it was.
 - It plays only while `weather` is on and `animations` is `full`, so not over SSH unless you set `animations = "full"`.
 - **Start Weather Animation**, in Go to Command, starts it right away, whatever the settings say. In summer it says "No weather in summer".

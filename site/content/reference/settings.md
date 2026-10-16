@@ -59,7 +59,7 @@ attachments_notes = true
 attachments_comments = true
 animations = "full"
 weather = true
-weather_idle_minutes = 3
+weather_idle_minutes = 30
 autosave_delay_ms = 1000
 
 [backups]

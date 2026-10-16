@@ -16,7 +16,7 @@ use super::theme::{ColorSupport, IconSet};
 
 /// How long the app sits idle before the weather starts unless the settings file says otherwise
 /// (`weather_idle_minutes`).
-pub(super) const IDLE_MINUTES: u32 = 3;
+pub(super) const IDLE_MINUTES: u32 = 30;
 
 /// How long a frame of the weather lasts: 30 frames a second (ui.md §10.3).
 const FRAME: Duration = Duration::from_micros(33_333);
@@ -29,6 +29,9 @@ const SPLASH: Duration = FRAME.saturating_mul(3);
 
 /// How many columns rain moves right for each row it falls.
 const SLANT: f32 = 0.25;
+
+/// How fast leaves and snow sway, in radians a second.
+const SWAY: f32 = 0.75;
 
 /// How much of a cell a settling snowflake adds to its drift, in eighths of a cell.
 const FLAKE_DEPTH: u16 = 2;
@@ -300,10 +303,10 @@ impl Sky {
         let height = f32::from(self.area.height);
         let random = &mut self.random;
         let (speed, drift) = match self.season {
-            Season::Autumn => (random.between(2.5, 4.5), random.between(1.0, 3.0)),
-            Season::Winter => (random.between(2.0, 5.0), random.between(0.5, 1.5)),
+            Season::Autumn => (random.between(1.25, 2.25), random.between(1.0, 3.0)),
+            Season::Winter => (random.between(1.0, 2.5), random.between(0.5, 1.5)),
             Season::Spring => {
-                let speed = random.between(20.0, 30.0);
+                let speed = random.between(10.0, 15.0);
                 (speed, speed * SLANT)
             }
         };
@@ -358,7 +361,7 @@ impl Sky {
             particle.y += particle.speed * seconds;
             match self.season {
                 Season::Spring => particle.x += particle.drift * seconds,
-                Season::Autumn | Season::Winter => particle.phase += seconds * 1.5,
+                Season::Autumn | Season::Winter => particle.phase += seconds * SWAY,
             }
             let look = (particle.look, particle.tint);
             // Off to a side, it may sway or drift back, so it comes back once it falls past.
@@ -653,16 +656,16 @@ mod tests {
     fn the_weather_starts_once_the_app_has_sat_idle_for_the_idle_time() {
         let mut weather = weather(20, 9);
         let autumn = Some(Season::Autumn);
-        assert_eq!(weather.deadline(autumn), Some(3 * MINUTE));
+        assert_eq!(weather.deadline(autumn), Some(30 * MINUTE));
         weather.input(seconds(10));
-        assert_eq!(weather.deadline(autumn), Some(3 * MINUTE + seconds(10)));
-        weather.tick(3 * MINUTE + seconds(9), autumn);
+        assert_eq!(weather.deadline(autumn), Some(30 * MINUTE + seconds(10)));
+        weather.tick(30 * MINUTE + seconds(9), autumn);
         assert!(!weather.playing(), "a second early");
-        weather.tick(3 * MINUTE + seconds(10), autumn);
+        weather.tick(30 * MINUTE + seconds(10), autumn);
         assert!(weather.playing());
         assert_eq!(
             weather.deadline(autumn),
-            Some(3 * MINUTE + seconds(10) + FRAME),
+            Some(30 * MINUTE + seconds(10) + FRAME),
             "frames while it plays"
         );
     }
@@ -672,12 +675,12 @@ mod tests {
     fn without_a_season_or_with_the_setting_off_nothing_waits_or_starts() {
         let mut weather = weather(20, 9);
         assert_eq!(weather.deadline(None), None);
-        weather.tick(10 * MINUTE, None);
+        weather.tick(60 * MINUTE, None);
         assert!(!weather.playing());
         weather.set_on(false);
         assert!(!weather.on());
         assert_eq!(weather.deadline(Some(Season::Winter)), None);
-        weather.tick(10 * MINUTE, Some(Season::Winter));
+        weather.tick(60 * MINUTE, Some(Season::Winter));
         assert!(!weather.playing());
     }
 
@@ -702,7 +705,7 @@ mod tests {
         assert!(!weather.input(2 * MINUTE), "nothing left to end");
         assert_eq!(
             weather.deadline(Some(Season::Winter)),
-            Some(5 * MINUTE),
+            Some(32 * MINUTE),
             "the idle time counts again from the input"
         );
     }
@@ -913,7 +916,7 @@ mod tests {
             1,
         );
         assert!(close(leaf.y, 2.0 + 3.0 * seconds), "{leaf:?}");
-        assert!(close(leaf.phase, 0.5 + 1.5 * seconds), "{leaf:?}");
+        assert!(close(leaf.phase, 0.5 + 0.75 * seconds), "{leaf:?}");
         assert!(close(leaf.x, 1.0), "{leaf:?}");
     }
 
@@ -931,6 +934,41 @@ mod tests {
         assert!(drops.iter().all(|drop| (-5.0..40.0).contains(&drop.x)));
         assert!(drops.iter().any(|drop| drop.x < 0.0));
         assert!(drops.iter().all(|drop| (-20.0..=0.0).contains(&drop.y)));
+    }
+
+    // ui.md §10.2
+    #[test]
+    fn leaves_and_snow_fall_slowly_and_rain_fast() {
+        for (season, slowest, fastest) in [
+            (Season::Autumn, 1.25, 2.25),
+            (Season::Winter, 1.0, 2.5),
+            (Season::Spring, 10.0, 15.0),
+        ] {
+            let mut weather = weather(80, 40);
+            weather.start(Duration::ZERO, season);
+            let speeds: Vec<f32> = weather
+                .sky
+                .as_ref()
+                .expect("it plays")
+                .particles
+                .iter()
+                .map(|particle| particle.speed)
+                .collect();
+            assert!(
+                speeds
+                    .iter()
+                    .all(|speed| (slowest..fastest).contains(speed)),
+                "{season:?}"
+            );
+            assert!(
+                speeds.iter().any(|&speed| speed < slowest + 0.1),
+                "{season:?}"
+            );
+            assert!(
+                speeds.iter().any(|&speed| speed > fastest - 0.1),
+                "{season:?}"
+            );
+        }
     }
 
     // ui.md §10.2
