@@ -13,6 +13,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+Enter` | Toggle done | `x` |
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
   | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`; `Z` in navigate mode (legacy sends `Ctrl+Z`, which undoes) |
+  | `Ctrl+M` | Move to… | `gm` (legacy sends `Enter`, which edits; D-131) |
   | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
   | Menu key | Context menu | `\`, `Shift+F10`; `Ctrl+R` in the Navigator (D-101) |
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
@@ -94,7 +95,7 @@ The creation keys are prefixes (D-53): `o`, `O`, `i`, `I`, `a` and `A` wait for 
 | Indent / outdent | `Tab` / `Shift+Tab` (`>` now zooms out) |
 | Move up / down | `Alt+k` / `Alt+j`, `Alt+↑` / `Alt+↓`; in the Today view they reorder its entries (D-57) |
 | Group | `gG` |
-| Move to… | `gm` (was `m`) |
+| Move to… | `Ctrl+M` (kitty keyboard protocol only, §1, D-131), `gm` (was `m`) |
 | Delete | `dd`, `Delete` |
 | Duplicate | `D` (was `yd`) |
 | Copy / cut | `y`, `Ctrl+C` / `Ctrl+X` (D-53) |

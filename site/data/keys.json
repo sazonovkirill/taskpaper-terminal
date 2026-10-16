@@ -2117,6 +2117,17 @@
    "menu_only": false,
    "keys": [
     {
+     "label": "Ctrl+M",
+     "presses": [
+      [
+       "Ctrl",
+       "M"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
      "label": "gm",
      "presses": [
       [
@@ -7790,6 +7801,17 @@
       "label": "Move to…",
       "panel": false,
       "keys": [
+       {
+        "label": "Ctrl+M",
+        "presses": [
+         [
+          "Ctrl",
+          "M"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       },
        {
         "label": "gm",
         "presses": [

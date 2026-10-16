@@ -2014,7 +2014,14 @@ mod tests {
         kitty.dedup();
         assert_eq!(
             kitty,
-            ["ctrl+'", "ctrl+\\", "ctrl+enter", "ctrl+shift+z", "menu"]
+            [
+                "ctrl+'",
+                "ctrl+\\",
+                "ctrl+enter",
+                "ctrl+m",
+                "ctrl+shift+z",
+                "menu"
+            ]
         );
     }
 
@@ -4129,6 +4136,21 @@ mod tests {
             keymap.message_for(&char('g'), ms(3), moving),
             Some(Message::Menu(Menu::MoveTo, MenuInput::Type('g')))
         );
+    }
+
+    // FR-OPS-05, D-131, keybindings.md §1 and §2: the kitty protocol sends `Ctrl+M` as `m` with
+    // `Ctrl`, which opens Move To; legacy reporting sends it as `Enter`, which still edits. Edit
+    // mode leaves `Ctrl+M` unbound.
+    #[test]
+    fn ctrl_m_opens_move_to_under_the_kitty_protocol_and_enter_still_edits() {
+        let ctrl = KeyModifiers::CONTROL;
+        check(KeyCode::Char('m'), ctrl, Some(&Message::OpenMoveTo));
+        check(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            Some(&Message::EditAtEnd),
+        );
+        check_editing(KeyCode::Char('m'), ctrl, None);
     }
 
     // FR-KEY-04, ui.md §4: a menu or picker that has the keys lists the keys it takes, which

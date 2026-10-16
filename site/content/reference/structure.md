@@ -39,7 +39,7 @@ The moves go by what the pane shows. While the pane [hides completed blocks](@/r
 
 ### Move to…
 
-**Move to…** (`gm`) opens a finder over every block, as [Go to Symbol](@/reference/navigator.md#go-to-symbol) lists them, leaving out the blocks that move and what they hold. Type to filter, and `Enter` makes the selection the chosen block's last children. When every block that moves is a project, the finder also lists `⌂ Home` first, which moves them to the end of the document's top level.
+**Move to…** (`gm`, or `Ctrl+M` with the kitty protocol) opens a finder over every block, as [Go to Symbol](@/reference/navigator.md#go-to-symbol) lists them, leaving out the blocks that move and what they hold. Type to filter, and `Enter` makes the selection the chosen block's last children. When every block that moves is a project, the finder also lists `⌂ Home` first, which moves them to the end of the document's top level.
 
 The focus stays on a moved block. The destination expands, and a destination outside the pane's zoom becomes the zoom, a step in the [history](@/reference/navigation.md#history).
 

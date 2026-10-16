@@ -27,6 +27,7 @@ Every command has at least one key that works with classic reporting. A few comm
 | `Ctrl+Enter` | Toggle Done | `x` |
 | `Ctrl+'` | Go Home | `gh` |
 | `Ctrl+Shift+Z` | Redo | `Ctrl+Y`, or `Z` in navigate mode |
+| `Ctrl+M` | Move To | `gm` |
 | `Ctrl+\` | Open in New Pane | `Ctrl+W v` |
 | `Menu` | Context Menu | `\`, `Shift+F10`, or `Ctrl+R` in the Navigator |
 
