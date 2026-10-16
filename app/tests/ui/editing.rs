@@ -497,8 +497,8 @@ fn every_text_field_moves_its_caret_through_the_text_shown() {
         ("Quick Add", |app| app.type_keys("q")),
         ("Edit Node", |app| app.type_keys("e")),
         ("settings filter", |app| app.type_keys("g,/")),
-        ("note", |app| app.type_keys("ne")),
-        ("comment", |app| app.type_keys("Na")),
+        ("note", |app| app.type_keys("&e")),
+        ("comment", |app| app.type_keys("&a")),
         ("Save As", |app| {
             app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
             app.type_keys("save as");

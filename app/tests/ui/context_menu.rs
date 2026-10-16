@@ -48,8 +48,8 @@ fn backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
             "      ┌Commands:────────────────────────────────────────┐",
             "    - │  › Edit                                  Enter  │",
             "  Othe│  ✎ Edit Node                                 e  │",
-            "      │  ≡ Open Note                                 n  │",
-            "      │  ❞ Open Comments                             N  │",
+            "      │  ≡ Open Attachments                          &  │",
+            "      │  › New Block Below                           o  │",
         ],
         "anchored at the task's text, below it"
     );

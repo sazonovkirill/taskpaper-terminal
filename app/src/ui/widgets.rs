@@ -931,7 +931,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::SetAnimations(_) => plain(Icon::Animations),
         Command::StartWeather => plain(Icon::Weather),
         Command::EditNode => plain(Icon::Edit),
-        Command::OpenAttachment(kind) => plain(attachment_icon(kind)),
+        Command::OpenAttachments => plain(Icon::NoteAttachment),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
         Command::Delete => plain(Icon::Delete),
@@ -2203,17 +2203,17 @@ mod tests {
         let [complete, star, flag, bookmark] =
             [Icon::Complete, Icon::Star, Icon::Flag, Icon::Bookmark].map(|icon| icon.glyph(ICONS));
         let mut expected = Buffer::with_lines([
-            "┌Commands:───────────┐".to_owned(),
-            "│────────────────────│".to_owned(),
-            format!("│  {complete} Complete        │"),
-            format!("│  {star} Toggle Star     │"),
-            format!("│  {flag} Toggle Flag     │"),
-            format!("│  {bookmark} Bookmark        │"),
-            "└────────────────────┘".to_owned(),
+            "┌Commands:─────────────┐".to_owned(),
+            "│──────────────────────│".to_owned(),
+            format!("│  {complete} Complete          │"),
+            format!("│  {star} Toggle Star       │"),
+            format!("│  {flag} Toggle Flag       │"),
+            format!("│  {bookmark} Bookmark          │"),
+            "└──────────────────────┘".to_owned(),
         ]);
-        accent_frame(&mut expected, 22, 7);
-        expected.set_style(Rect::new(1, 1, 20, 1), Style::new().dim());
-        expected.set_style(Rect::new(1, 3, 20, 1), Style::new().reversed());
+        accent_frame(&mut expected, 24, 7);
+        expected.set_style(Rect::new(1, 1, 22, 1), Style::new().dim());
+        expected.set_style(Rect::new(1, 3, 22, 1), Style::new().reversed());
         expected.set_style(Rect::new(3, 3, 1, 1), today_style(&THEME));
         expected.set_style(Rect::new(3, 4, 1, 1), flag_style(&THEME));
         expected.set_style(Rect::new(3, 5, 1, 1), bookmark_style(&THEME));
@@ -2226,16 +2226,11 @@ mod tests {
 
     // FR-ATT-02, ui.md §7
     #[test]
-    fn open_note_and_open_comments_have_their_attachments_icons() {
-        for (kind, icon) in [
-            (Attachment::Note, Icon::NoteAttachment),
-            (Attachment::Comments, Icon::Comments),
-        ] {
-            assert_eq!(
-                command_icon(Command::OpenAttachment(kind), &THEME),
-                (icon, Style::new())
-            );
-        }
+    fn open_attachments_has_the_note_icon() {
+        assert_eq!(
+            command_icon(Command::OpenAttachments, &THEME),
+            (Icon::NoteAttachment, Style::new())
+        );
     }
 
     // D-54: every entry has its icon, a color entry in its color.

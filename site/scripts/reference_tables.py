@@ -59,7 +59,7 @@ COMMAND_TOPICS = {
     "go_to_colors": "views", "go_to_logbook": "views", "go_to_starred": "views",
     "go_to_flagged": "views", "go_to_inbox": "navigator",
     "quick_add": "quick-add",
-    "open_note": "attachments", "open_comments": "attachments",
+    "open_attachments": "attachments",
     "open_link": "blocks", "convert_type": "blocks", "make_section": "blocks", "toggle_section": "blocks",
     "remove_section": "blocks", "count_blocks_and_words": "structure",
     "show_hide_completed": "tags", "toggle_word_wrap": "appearance", "choose_theme": "appearance",

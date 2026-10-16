@@ -104,7 +104,7 @@ Typing `/` while editing opens the **command menu** at the caret, titled "Comman
 - **Status:** Complete or Uncomplete, Toggle Star, Toggle Flag, Bookmark or Remove Bookmark
 - **Dates:** Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, Due Tomorrow, and Clear Start Date or Clear Due Date when the block has that date
 - **Color:** Color: Red … Color: Violet, and Remove Color when it has one
-- **Block:** Edit Node, Open Link when the block has a link, Open Note and Open Comments when those attachments are on, Duplicate, Delete
+- **Block:** Edit Node, Open Link when the block has a link, Open Attachments while notes or comments are on, Duplicate, Delete
 
 Type to filter. Each word you type must start a word of the label, in order, so `/date` leaves the date entries and `/p` puts Project first. `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` runs the highlighted entry, and `Backspace` on an empty filter closes the menu. `Esc`, or a filter that matches nothing, closes the menu and types `/` and the filter as text, so `/home` and `a / b` stay text.
 

@@ -19,9 +19,7 @@ use super::{
     AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
     QuickAddInput, SaveAs, SelectionChange, Sibling, SpecialView, Symbols, TextEdit,
 };
-use crate::document::{
-    Attachment, DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker,
-};
+use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
 /// A command: one user intent, whatever key, menu or palette gives it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,8 +134,8 @@ pub enum Command {
     Retype(Typed),
     /// Show and change every property of the focused block in the Edit Node dialog.
     EditNode,
-    /// Open the attachments panel on the focused block's attachment of this kind (FR-ATT-03).
-    OpenAttachment(Attachment),
+    /// Open the attachments panel on the focused block (FR-ATT-03, D-134).
+    OpenAttachments,
     /// Find a block by name and go to it.
     GoToSymbol,
     /// Find a project by name and go to it (D-65).
@@ -299,8 +297,7 @@ impl Command {
             Self::Retype(Typed::Task) => "Task".into(),
             Self::Retype(Typed::Text) => "Note".into(),
             Self::EditNode => "Edit Node".into(),
-            Self::OpenAttachment(Attachment::Note) => "Open Note".into(),
-            Self::OpenAttachment(Attachment::Comments) => "Open Comments".into(),
+            Self::OpenAttachments => "Open Attachments".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
@@ -410,7 +407,7 @@ impl Command {
             | Self::ScrollShortcutsDown
             | Self::ScrollShortcutsUp => return None,
             Self::EditNode => Message::NodeEditor(NodeInput::Open),
-            Self::OpenAttachment(kind) => Message::Attachments(AttachmentsInput::Open(kind)),
+            Self::OpenAttachments => Message::Attachments(AttachmentsInput::Open),
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,

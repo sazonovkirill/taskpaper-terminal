@@ -94,11 +94,10 @@ pub enum Icon {
     /// The settings window's backup folder setting.
     Folder,
     /// A block's note: at the right of its row, on the attachments panel's note heading, on Open
-    /// Note and the settings window's setting that turns notes on (FR-ATT-02).
+    /// Attachments and the settings window's setting that turns notes on (FR-ATT-02, D-134).
     NoteAttachment,
     /// A block's comments: at the right of its row with their count, on the attachments panel's
-    /// comments heading, on Open Comments and the settings window's setting that turns comments on
-    /// (FR-ATT-02).
+    /// comments heading and on the settings window's setting that turns comments on (FR-ATT-02).
     Comments,
 }
 

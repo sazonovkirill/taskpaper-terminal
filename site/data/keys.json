@@ -2955,9 +2955,9 @@
    ]
   },
   {
-   "id": "navigate-open-note",
-   "name": "Open Note",
-   "config": "open_note",
+   "id": "navigate-open-attachments",
+   "name": "Open Attachments",
+   "config": "open_attachments",
    "mode": "navigate",
    "group": "Block Metadata",
    "topic": "attachments",
@@ -2965,32 +2965,10 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "n",
+     "label": "&",
      "presses": [
       [
-       "n"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
-  },
-  {
-   "id": "navigate-open-comments",
-   "name": "Open Comments",
-   "config": "open_comments",
-   "mode": "navigate",
-   "group": "Block Metadata",
-   "topic": "attachments",
-   "panel": true,
-   "menu_only": false,
-   "keys": [
-    {
-     "label": "N",
-     "presses": [
-      [
-       "N"
+       "&"
       ]
      ],
      "kitty": false,
@@ -6346,6 +6324,14 @@
   {
    "old": "show_details",
    "new": "edit_node"
+  },
+  {
+   "old": "open_note",
+   "new": "open_attachments"
+  },
+  {
+   "old": "open_comments",
+   "new": "open_attachments"
   }
  ],
  "sequence_timeout_ms": 1000,
@@ -8208,31 +8194,14 @@
       "typed": []
      },
      {
-      "label": "Open Note",
+      "label": "Open Attachments",
       "panel": true,
       "keys": [
        {
-        "label": "n",
+        "label": "&",
         "presses": [
          [
-          "n"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Open Comments",
-      "panel": true,
-      "keys": [
-       {
-        "label": "N",
-        "presses": [
-         [
-          "N"
+          "&"
          ]
         ],
         "kitty": false,

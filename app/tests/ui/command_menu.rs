@@ -50,14 +50,14 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
         screen(&mut app)[2..11],
         [
             "▌ - Buy milk".to_owned(),
-            "  - Call Ana┌Commands:───────────┐".to_owned(),
-            format!("            │  {PROJECT} Project         │"),
-            format!("            │  {TASK} Task            │"),
-            format!("            │  {NOTE} Note            │"),
-            "            │────────────────────│".to_owned(),
-            format!("            │  {COMPLETE} Complete        │"),
-            format!("            │  {STAR} Toggle Star     │"),
-            "            └────────────────────┘".to_owned(),
+            "  - Call A┌Commands:─────────────┐".to_owned(),
+            format!("          │  {PROJECT} Project           │"),
+            format!("          │  {TASK} Task              │"),
+            format!("          │  {NOTE} Note              │"),
+            "          │──────────────────────│".to_owned(),
+            format!("          │  {COMPLETE} Complete          │"),
+            format!("          │  {STAR} Toggle Star       │"),
+            "          └──────────────────────┘".to_owned(),
         ],
         "as tall as the room below the caret"
     );
@@ -67,12 +67,12 @@ fn slash_opens_the_commands_under_the_caret_scrolled_to_fit() {
     assert_eq!(
         screen(&mut app)[4..10],
         [
-            format!("            │  {DUE} Set Due Date    │"),
-            format!("            │  {START} Start Today     │"),
-            format!("            │  {START} Start Tomorrow  │"),
-            format!("            │  {DUE} Due Today       │"),
-            format!("            │  {DUE} Due Tomorrow    │"),
-            "            │────────────────────│".to_owned(),
+            format!("          │  {DUE} Set Due Date      │"),
+            format!("          │  {START} Start Today       │"),
+            format!("          │  {START} Start Tomorrow    │"),
+            format!("          │  {DUE} Due Today         │"),
+            format!("          │  {DUE} Due Tomorrow      │"),
+            "          │──────────────────────│".to_owned(),
         ],
         "the highlight stays in view, skipping the lines between groups"
     );

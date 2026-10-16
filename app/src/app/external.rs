@@ -1318,11 +1318,9 @@ mod tests {
     // file-io.md §3, FR-ATT-03, D-104
     #[test]
     fn a_reload_keeps_the_attachments_panel_on_its_block_or_closes_it() {
-        use crate::{app::AttachmentsInput, document::Attachment};
+        use crate::app::AttachmentsInput;
         let mut state = opened("- a\n\tNOTE @hidden\n\t\told\n");
-        state.update(Message::Attachments(AttachmentsInput::Open(
-            Attachment::Note,
-        )));
+        state.update(Message::Attachments(AttachmentsInput::Open));
         state.update(found("- z\n- a\n\tNOTE @hidden\n\t\tnew\n"));
         let view = state.attachments_panel().unwrap();
         assert_eq!((&*view.title, view.note), ("a", vec!["new".to_owned()]));
@@ -1333,17 +1331,14 @@ mod tests {
     // FR-ATT-05, attachments.md §3, D-110
     #[test]
     fn a_reload_keeps_the_selected_and_reworded_comment_on_the_same_comment() {
-        use crate::{
-            app::{AttachmentsInput, PanelItem},
-            document::Attachment,
-        };
+        use crate::app::{AttachmentsInput, PanelItem};
         const BEFORE: &str =
             "- a\n\tCOMMENTS @hidden\n\t\t[2026-10-09 09:00] x\n\t\t[2026-10-08 09:00] y\n";
         const NEWER: &str = "- a\n\tCOMMENTS @hidden\n\t\t[2026-10-09 10:00] new\n\t\t[2026-10-09 09:00] x\n\t\t[2026-10-08 09:00] y\n";
         let mut state = opened(BEFORE);
         for input in [
-            AttachmentsInput::Open(Attachment::Comments),
-            AttachmentsInput::Select(1),
+            AttachmentsInput::Open,
+            AttachmentsInput::Select(2),
             AttachmentsInput::Edit,
             AttachmentsInput::Text(TextEdit::Insert('!')),
         ] {
@@ -1369,8 +1364,8 @@ mod tests {
         );
         let mut state = opened(BEFORE);
         for input in [
-            AttachmentsInput::Open(Attachment::Comments),
-            AttachmentsInput::Select(1),
+            AttachmentsInput::Open,
+            AttachmentsInput::Select(2),
             AttachmentsInput::Edit,
         ] {
             state.update(Message::Attachments(input));

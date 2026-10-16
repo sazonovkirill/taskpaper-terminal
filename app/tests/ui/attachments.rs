@@ -33,10 +33,12 @@ const TEXT: &str = "- Milk\n\tNOTE @hidden\n\t\tFull fat\n\t\t- not skimmed\n- B
 
 // FR-ATT-03, attachments.md §3, D-109
 #[test]
-fn n_opens_the_note_then_the_comments_down_the_right_and_esc_closes() {
+fn ampersand_opens_the_note_then_the_comments_down_the_right_and_esc_closes() {
     let mut app = Harness::with_text(TEXT, 80, 12);
     let before = screen(&mut app);
-    app.type_keys("n");
+    app.type_keys("nN");
+    assert_eq!(screen(&mut app), before, "n and N open nothing (D-134)");
+    app.type_keys("&");
     assert_eq!(
         screen(&mut app)[..11],
         [
@@ -63,7 +65,7 @@ fn n_opens_the_note_then_the_comments_down_the_right_and_esc_closes() {
 
 // FR-ATT-03, attachments.md §3
 #[test]
-fn shift_n_opens_the_panel_on_any_block_but_a_divider() {
+fn ampersand_opens_the_panel_on_any_block_but_a_divider() {
     let mut app = Harness::with_text(
         "- Milk
 ---
@@ -71,23 +73,21 @@ fn shift_n_opens_the_panel_on_any_block_but_a_divider() {
         60,
         10,
     );
-    app.type_keys("N");
+    app.type_keys("&");
     let rows = screen(&mut app);
     assert!(rows[0].contains("┌ Milk ─"), "{rows:?}");
     assert!(rows[2].contains("│ No note"), "{rows:?}");
     assert!(rows[5].contains("│ No comments"), "{rows:?}");
     press(&mut app, KeyCode::Esc);
-    app.type_keys("jn");
+    app.type_keys("j&");
     assert!(!screen(&mut app)[0].contains('┌'), "a divider has none");
 }
 
 // FR-ATT-06, attachments.md §6
 #[test]
-fn a_kind_turned_off_has_no_section_or_key() {
+fn a_kind_turned_off_has_no_section_and_with_both_off_ampersand_opens_nothing() {
     let mut app = Harness::with_config(TEXT, "attachments_notes = false\n", 80, 12);
-    app.type_keys("n");
-    assert!(!screen(&mut app)[0].contains('┌'), "Open Note is off");
-    app.type_keys("N");
+    app.type_keys("&");
     let rows = screen(&mut app);
     assert!(rows[1].ends_with("    ❞ Comments │"), "{rows:?}");
     assert!(rows[2].contains("│ No comments    "), "{rows:?}");
@@ -98,7 +98,7 @@ fn a_kind_turned_off_has_no_section_or_key() {
         80,
         12,
     );
-    off.type_keys("nN");
+    off.type_keys("&");
     assert!(!screen(&mut off)[0].contains('┌'));
 }
 
@@ -106,7 +106,7 @@ fn a_kind_turned_off_has_no_section_or_key() {
 #[test]
 fn e_edits_the_note_and_esc_saves_it_as_one_step_to_undo() {
     let mut app = Harness::with_text("- Bread\n", 80, 12);
-    app.type_keys("ne# Rye");
+    app.type_keys("&e# Rye");
     press(&mut app, KeyCode::Enter);
     app.type_keys("- *seeded*");
     let rows = screen(&mut app);
@@ -147,7 +147,7 @@ fn ctrl_v_pastes_the_copied_blocks_into_the_note_as_their_text_one_line_each() {
         12,
     );
     app.press(KeyCode::Down, KeyModifiers::SHIFT);
-    app.type_keys("yGne");
+    app.type_keys("yG&e");
     app.press(KeyCode::Char('v'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Esc);
     press(&mut app, KeyCode::Esc);
@@ -169,7 +169,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
         80,
         12,
     );
-    app.type_keys("n");
+    app.type_keys("&");
     screen(&mut app);
     app.type_keys("jj");
     assert_eq!(
@@ -223,7 +223,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
 #[test]
 fn a_adds_a_stamped_comment_e_rewords_it_and_d_deletes_it_each_one_step_to_undo() {
     let mut app = Harness::with_text("- Milk\n\tCOMMENTS @hidden\n\t\tTyped by hand\n", 80, 12);
-    app.type_keys("Na");
+    app.type_keys("&a");
     app.type_keys("Bought **it**");
     let rows = screen(&mut app);
     assert_eq!(rows[5], format!("{:40}│ › Bought **it**{:22}│", "", ""));
@@ -258,7 +258,7 @@ fn a_adds_a_stamped_comment_e_rewords_it_and_d_deletes_it_each_one_step_to_undo(
         saved(&mut app),
         "- Milk\n\tCOMMENTS @hidden\n\t\t[2026-10-05 09:30] Bought **it**\n\t\tTyped by hand!\n"
     );
-    app.type_keys("Ndd");
+    app.type_keys("&jdd");
     press(&mut app, KeyCode::Esc);
     assert_eq!(
         saved(&mut app),
@@ -285,7 +285,7 @@ fn the_scroll_keys_move_the_selected_comment_and_keep_it_in_view() {
         .collect::<Vec<_>>()
         .concat();
     let mut app = Harness::with_text(&format!("- Milk\n\tCOMMENTS @hidden\n{comments}"), 80, 12);
-    app.type_keys("NG");
+    app.type_keys("&G");
     let rows = screen(&mut app);
     assert_eq!(rows[7], format!("{:40}│ c8{:35}│", "", ""), "{rows:?}");
     let buffer = app.render().buffer().clone();
@@ -317,7 +317,7 @@ fn a_read_only_file_refuses_the_note_editor_and_the_comment_input_at_once() {
     fs::write(&path, TEXT).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
     let mut app = Harness::open_path(dir, &path, 80, 12);
-    app.type_keys("n");
+    app.type_keys("&");
     let shown = screen(&mut app);
     for start in ["e", "a"] {
         app.type_keys(start);

@@ -10,7 +10,7 @@ Attachments stay out of the Navigator, the finders, Move to, the special views a
 
 ## The attachments panel
 
-`n` (**Open Note**) and `N` (**Open Comments**) open the **attachments panel** on the right side of the screen, for the focused block, with the note or the newest comment selected. They work whether or not the block has an attachment yet. They are also in Go to Command, the context menu and the edit-mode [command menu](@/reference/modes.md#the-command-menu), from which closing the panel returns you to editing.
+`&` (**Open Attachments**) opens the **attachments panel** on the right side of the screen, for the focused block, with the note selected, or the newest comment while notes are off. It works whether or not the block has an attachment yet. It is also in Go to Command, the context menu and the edit-mode [command menu](@/reference/modes.md#the-command-menu), from which closing the panel returns you to editing.
 
 The panel shows a **Note** section above a **Comments** section, under a title naming the block. It takes the keys while it is open. One item is selected at a time: the note, or one comment.
 

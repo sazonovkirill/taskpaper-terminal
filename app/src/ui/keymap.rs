@@ -805,6 +805,8 @@ const RENAMED: &[(&str, &str)] = &[
     ("toggle_sidebar", "open_navigator"),
     ("focus_sidebar", "open_navigator"),
     ("show_details", "edit_node"),
+    ("open_note", "open_attachments"),
+    ("open_comments", "open_attachments"),
 ];
 
 /// Why a key binding the config file asks for was ignored ([keybindings.md §5]).
@@ -1815,8 +1817,36 @@ mod tests {
         check(KeyCode::Char('S'), KeyModifiers::NONE, section);
         let star = Some(&Message::ToggleFlag(Flag::Star));
         check(KeyCode::Char('s'), KeyModifiers::NONE, star);
+    }
+
+    // FR-ATT-03, D-134
+    #[test]
+    fn ampersand_opens_the_attachments_panel_and_n_and_star_do_not() {
+        let open = Some(&Message::Attachments(AttachmentsInput::Open));
         for modifiers in [KeyModifiers::NONE, KeyModifiers::SHIFT] {
+            check(KeyCode::Char('&'), modifiers, open);
+            check(KeyCode::Char('N'), modifiers, None);
             check(KeyCode::Char('*'), modifiers, None);
+        }
+        check(KeyCode::Char('n'), KeyModifiers::NONE, None);
+    }
+
+    // keybindings.md §5, D-134
+    #[test]
+    fn open_note_and_open_comments_bind_open_attachments() {
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.bind(
+                Mode::Navigate,
+                &[("ctrl+e", "open_note"), ("alt+e", "Open Comments")]
+            ),
+            []
+        );
+        for modifiers in [KeyModifiers::CONTROL, KeyModifiers::ALT] {
+            assert_eq!(
+                keymap.message_for(&key(KeyCode::Char('e'), modifiers), ms(0), CONTEXT),
+                Some(Message::Attachments(AttachmentsInput::Open))
+            );
         }
     }
 

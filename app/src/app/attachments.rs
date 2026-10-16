@@ -16,9 +16,9 @@ use crate::document::{Attachment, Document, ItemId, attachments, comments, forma
 /// A key of the open panel, or opening it, as an intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttachmentsInput {
-    /// Open the panel on the focused block with its note, or its first comment, selected (Open
-    /// Note, Open Comments).
-    Open(Attachment),
+    /// Open the panel on the focused block with its note selected, or its newest comment while
+    /// notes are off (Open Attachments, D-134).
+    Open,
     /// Close the panel.
     Close,
     /// Edit the selected note, as raw Markdown, or comment (attachments.md §4, §5).
@@ -242,7 +242,7 @@ impl State {
     /// kind is turned on (attachments.md §6).
     pub(super) fn offers(&self, command: Command) -> bool {
         match command {
-            Command::OpenAttachment(kind) => self.attached.contains(&kind),
+            Command::OpenAttachments => !self.attached.is_empty(),
             _ => true,
         }
     }
@@ -325,7 +325,7 @@ impl State {
     /// open one.
     pub(super) fn attachments_input(&mut self, input: AttachmentsInput) {
         match input {
-            AttachmentsInput::Open(kind) => self.open_panel(kind),
+            AttachmentsInput::Open => self.open_panel(),
             AttachmentsInput::Close => {
                 self.save_note();
                 self.panel = None;
@@ -531,22 +531,20 @@ impl State {
         self.write_attachment(block, Attachment::Note, &editor.text());
     }
 
-    /// Opens the panel for the focused block, a divider aside, which has none, while the kind
-    /// `kind` is turned on, with its note or its first comment selected (attachments.md §3, §6).
-    fn open_panel(&mut self, kind: Attachment) {
+    /// Opens the panel for the focused block, a divider aside, which has none, while some kind is
+    /// turned on, with its first item selected: the note, or the newest comment while notes are
+    /// off (attachments.md §3, §6).
+    fn open_panel(&mut self) {
         let Some((block, _)) = self.focused() else {
             return;
         };
-        if self.attached.contains(&kind) && !block.divider() {
+        if !self.attached.is_empty() && !block.divider() {
             self.panel = Some(Panel {
                 block: block.id(),
                 editor: None,
                 selected: 0,
                 draft: None,
             });
-            if kind == Attachment::Comments {
-                self.select_newest_comment();
-            }
         }
     }
 
@@ -673,17 +671,16 @@ mod tests {
     fn the_panel_shows_the_note_then_the_comments_with_the_item_it_opened_on_selected() {
         let mut state = state();
         assert_eq!(state.attachments_panel(), None);
-        input(&mut state, AttachmentsInput::Open(Attachment::Comments));
+        input(&mut state, AttachmentsInput::Open);
         let view = state.attachments_panel().unwrap();
         assert_eq!(&*view.title, "Milk");
         assert_eq!(view.sections, Attachment::ALL);
         assert_eq!(view.note, ["Full fat"]);
         assert_eq!(view.comments, ["[2026-10-08 09:00] ok"]);
-        assert_eq!(view.selected, Some(PanelItem::Comment(0)));
+        assert_eq!(view.selected, Some(PanelItem::Note));
         input(&mut state, AttachmentsInput::Close);
         assert_eq!(state.attachments_panel(), None);
-        input(&mut state, AttachmentsInput::Open(Attachment::Note));
-        assert_eq!(sections(&state).unwrap().1, Some(PanelItem::Note));
+        input(&mut state, AttachmentsInput::Open);
         for (by, selected) in [
             (1, PanelItem::Comment(0)),
             (1, PanelItem::Comment(0)),
@@ -696,24 +693,27 @@ mod tests {
         }
     }
 
-    // FR-ATT-03, FR-ATT-06, FR-BLK-07, attachments.md §1, §3, §6
+    // FR-ATT-03, FR-ATT-06, FR-BLK-07, attachments.md §1, §3, §6, D-134
     #[test]
-    fn the_panel_opens_only_on_a_block_that_is_no_divider_for_a_kind_turned_on() {
+    fn the_panel_opens_only_on_a_block_that_is_no_divider_while_a_kind_is_turned_on() {
         let mut state = state();
         configure(&mut state, Attachment::Note, false);
-        input(&mut state, AttachmentsInput::Open(Attachment::Note));
-        assert_eq!(state.attachments_panel(), None, "notes are off");
-        input(&mut state, AttachmentsInput::Open(Attachment::Comments));
+        input(&mut state, AttachmentsInput::Open);
         assert_eq!(
             sections(&state),
-            Some((vec![Attachment::Comments], Some(PanelItem::Comment(0))))
+            Some((vec![Attachment::Comments], Some(PanelItem::Comment(0)))),
+            "notes are off, so the newest comment is selected"
         );
         input(&mut state, AttachmentsInput::Close);
+        configure(&mut state, Attachment::Comments, false);
+        input(&mut state, AttachmentsInput::Open);
+        assert_eq!(state.attachments_panel(), None, "both are off");
+        configure(&mut state, Attachment::Note, true);
         state.update(Message::FocusLast);
-        input(&mut state, AttachmentsInput::Open(Attachment::Comments));
+        input(&mut state, AttachmentsInput::Open);
         assert_eq!(state.attachments_panel(), None, "a divider");
         let mut empty = State::new(format::parse(""), None);
-        input(&mut empty, AttachmentsInput::Open(Attachment::Note));
+        input(&mut empty, AttachmentsInput::Open);
         assert_eq!(empty.attachments_panel(), None, "no block");
     }
 
@@ -721,7 +721,7 @@ mod tests {
     #[test]
     fn turning_a_kind_off_takes_its_section_away_and_both_close_the_panel() {
         let mut state = state();
-        input(&mut state, AttachmentsInput::Open(Attachment::Note));
+        input(&mut state, AttachmentsInput::Open);
         configure(&mut state, Attachment::Comments, false);
         let view = state.attachments_panel().unwrap();
         assert_eq!(
@@ -751,9 +751,9 @@ mod tests {
 
     // FR-ATT-06, FR-NAV-06, FR-KEY-04, attachments.md §6
     #[test]
-    fn a_kind_turned_off_leaves_go_to_command_and_the_shortcuts_panel() {
+    fn open_attachments_leaves_go_to_command_and_the_shortcuts_panel_with_both_kinds_off() {
         let mut state = state();
-        let open = |kind| Command::OpenAttachment(kind);
+        let open = Command::OpenAttachments;
         let listed = |state: &mut State| {
             state.update(Message::OpenGoToCommand(Vec::new()));
             let names: Vec<String> = state
@@ -776,13 +776,12 @@ mod tests {
                 .collect()
         };
         state.update(Message::ToggleShortcuts);
-        assert!(listed(&mut state).contains(&"Open Note".to_owned()));
-        assert!(shortcuts(&state).contains(&open(Attachment::Note)));
         configure(&mut state, Attachment::Note, false);
-        assert!(!listed(&mut state).contains(&"Open Note".to_owned()));
-        assert!(listed(&mut state).contains(&"Open Comments".to_owned()));
-        assert!(!shortcuts(&state).contains(&open(Attachment::Note)));
-        assert!(shortcuts(&state).contains(&open(Attachment::Comments)));
+        assert!(listed(&mut state).contains(&"Open Attachments".to_owned()));
+        assert!(shortcuts(&state).contains(&open));
+        configure(&mut state, Attachment::Comments, false);
+        assert!(!listed(&mut state).contains(&"Open Attachments".to_owned()));
+        assert!(!shortcuts(&state).contains(&open));
         assert!(state.offers(Command::EditNode));
     }
 
@@ -794,7 +793,7 @@ mod tests {
         state.update(Message::OpenCommandMenu {
             today: jiff::civil::date(2026, 10, 5),
         });
-        for c in "open note".chars() {
+        for c in "open attachments".chars() {
             state.update(Message::Menu(Menu::CommandMenu, MenuInput::Type(c)));
         }
         state.update(Message::Menu(Menu::CommandMenu, MenuInput::Choose));
@@ -834,10 +833,7 @@ mod tests {
         let mut state = state();
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         assert_eq!(edited(&state), (vec!["Full fat".to_owned()], Some((0, 8))));
         keys(
@@ -933,10 +929,7 @@ mod tests {
         let mut state = state();
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         typed(&mut state, " milk");
         keys(&mut state, &[AttachmentsInput::Break]);
@@ -953,10 +946,7 @@ mod tests {
         assert_eq!(file(&state), TEXT, "one step");
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         keys(
             &mut state,
@@ -975,7 +965,7 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Open,
                 AttachmentsInput::Edit,
                 AttachmentsInput::Save,
             ],
@@ -989,10 +979,7 @@ mod tests {
         let mut state = state();
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         state.update(Message::Pasted {
             text: "a\r\nb\nc".to_owned(),
@@ -1023,10 +1010,7 @@ mod tests {
         state.update(Message::Copy);
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         state.update(Message::Pasted {
             text: "- Milk @due(2026-10-12)\r\n\tNOTE @hidden\r\n\t\tFull fat\r\n".to_owned(),
@@ -1049,10 +1033,7 @@ mod tests {
         state.update(Message::FocusLast);
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         state.update(Message::Pasted {
             text: "- Milk\n\t- Skim\n- Eggs\n".to_owned(),
@@ -1071,7 +1052,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::Edit,
             ],
         );
@@ -1093,10 +1075,7 @@ mod tests {
         assert_eq!(state.attachments_panel(), None);
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         typed(&mut state, "!");
         input(&mut state, AttachmentsInput::Edit);
@@ -1109,10 +1088,7 @@ mod tests {
         let mut state = state();
         keys(
             &mut state,
-            &[
-                AttachmentsInput::Open(Attachment::Note),
-                AttachmentsInput::Edit,
-            ],
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
         );
         typed(&mut state, "!");
         configure(&mut state, Attachment::Note, false);
@@ -1135,10 +1111,7 @@ mod tests {
             let mut state = state();
             keys(
                 &mut state,
-                &[
-                    AttachmentsInput::Open(Attachment::Note),
-                    AttachmentsInput::Edit,
-                ],
+                &[AttachmentsInput::Open, AttachmentsInput::Edit],
             );
             typed(&mut state, "!");
             state.update(quit);
@@ -1150,7 +1123,7 @@ mod tests {
             keys(
                 &mut state,
                 &[
-                    AttachmentsInput::Open(Attachment::Note),
+                    AttachmentsInput::Open,
                     AttachmentsInput::Select(selected),
                     start,
                 ],
@@ -1210,7 +1183,10 @@ mod tests {
     #[test]
     fn the_selection_moves_within_the_comments() {
         let mut state = State::new(format::parse(COMMENTS), None);
-        input(&mut state, AttachmentsInput::Open(Attachment::Comments));
+        keys(
+            &mut state,
+            &[AttachmentsInput::Open, AttachmentsInput::Select(1)],
+        );
         assert_eq!(listed(&state).1, Some(0));
         for (by, selected) in [
             (1, Some(1)),
@@ -1232,7 +1208,7 @@ mod tests {
             ],
         );
         assert_eq!(none.attachments_panel(), None, "no panel");
-        input(&mut none, AttachmentsInput::Open(Attachment::Comments));
+        input(&mut none, AttachmentsInput::Open);
         input(&mut none, AttachmentsInput::Select(1));
         assert_eq!(
             sections(&none).unwrap().1,
@@ -1248,7 +1224,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::Select(1),
                 AttachmentsInput::AddComment,
             ],
@@ -1286,7 +1263,8 @@ mod tests {
         keys(
             &mut empty,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::AddComment,
             ],
         );
@@ -1305,7 +1283,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::Edit,
             ],
         );
@@ -1350,7 +1329,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::Select(isize::MAX),
                 AttachmentsInput::DeleteComment,
             ],
@@ -1375,7 +1355,7 @@ mod tests {
         keys(
             &mut note,
             &[
-                AttachmentsInput::Open(Attachment::Note),
+                AttachmentsInput::Open,
                 AttachmentsInput::DeleteComment,
                 AttachmentsInput::AddComment,
             ],
@@ -1394,7 +1374,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::AddComment,
             ],
         );
@@ -1429,7 +1410,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::AddComment,
             ],
         );
@@ -1456,7 +1438,8 @@ mod tests {
         keys(
             &mut state,
             &[
-                AttachmentsInput::Open(Attachment::Comments),
+                AttachmentsInput::Open,
+                AttachmentsInput::Select(1),
                 AttachmentsInput::AddComment,
             ],
         );

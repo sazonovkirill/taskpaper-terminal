@@ -223,9 +223,9 @@ mod tests {
             [
                 "Edit",
                 "Edit Node",
-                "Open Note",
-                "Open Comments",
-                "New Block Below"
+                "Open Attachments",
+                "New Block Below",
+                "New Block Above"
             ]
         );
         assert!(listed.contains(&"Clear Due Date".to_owned()));
@@ -277,7 +277,7 @@ mod tests {
         }
         assert_eq!(
             today[..5],
-            ["Edit", "Edit Node", "Open Note", "Open Comments", "Copy"]
+            ["Edit", "Edit Node", "Open Attachments", "Copy", "Cut"]
         );
         assert!(today.contains(&"Move to…".to_owned()));
         assert!(
