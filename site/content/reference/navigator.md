@@ -19,7 +19,7 @@ The Navigator opens on the entry for where the focused pane is: its view, its zo
 - `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, and `←`/`→` fold and unfold project entries. Its folds are its own, kept while it is closed, and not saved.
 - `Enter`, or a click, zooms the focused pane to the entry and closes the window.
 - `Alt+Enter`, `Ctrl+V`, `Ctrl+T` or `Alt`+click opens the entry in a [new pane](@/reference/panes.md).
-- `Esc` or `Ctrl+G` closes it and leaves the pane as it was; `|` types into its filter. A click outside it closes it too.
+- `Esc`, `Ctrl+G` or `|` closes it and leaves the pane as it was, so `|` cannot be typed into its filter. A click outside it closes it too.
 
 **Typing filters it.** Only the entries whose text holds what you typed, ignoring case, stay, with the projects around each matching project so the tree still reads. The filter looks through folds, and shows in the window's bottom border. `Backspace` erases. Closing the window drops the filter.
 

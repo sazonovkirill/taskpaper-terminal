@@ -372,7 +372,7 @@ fn the_panel_lists_the_keys_of_the_open_navigator_or_picker() {
             "│  Erase Filter Char… Backspace",
             "│  Return to Outline        Esc",
             "│  Con… Ctrl+R, Shift+F10, Menu",
-            "│  Open Navigator        Ctrl+G",
+            "│  Open Navigator     Ctrl+G, |",
             "│  Quit                  Ctrl+Q",
             "│",
         ]

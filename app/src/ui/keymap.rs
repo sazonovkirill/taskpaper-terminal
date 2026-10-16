@@ -1660,11 +1660,13 @@ mod tests {
             );
         }
         let mut keymap = Keymap::default();
-        assert_eq!(
-            keymap.message_for(&key(KeyCode::Char('|'), none), ms(0), IN_NAVIGATOR),
-            Some(Message::Navigator(NavigatorInput::Type('|'))),
-            "the open Navigator's filter takes | as typed"
-        );
+        for modifiers in [none, KeyModifiers::SHIFT] {
+            assert_eq!(
+                keymap.message_for(&key(KeyCode::Char('|'), modifiers), ms(0), IN_NAVIGATOR),
+                Some(Message::ToggleNavigator),
+                "| closes the open Navigator rather than filtering it"
+            );
+        }
     }
 
     // FR-MODE-01

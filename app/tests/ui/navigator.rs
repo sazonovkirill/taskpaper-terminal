@@ -172,14 +172,14 @@ fn ctrl_g_and_esc_close_the_window_and_the_pane_has_the_keys() {
     );
 }
 
-// D-132: `|` opens the window like `Ctrl+G`, and in the open window it filters as typed.
+// D-132: `|` toggles the window like `Ctrl+G`, so the open window's filter never takes it.
 #[test]
-fn a_bar_opens_the_window_and_the_open_window_filters_by_it() {
+fn a_bar_opens_and_closes_the_window() {
     let mut app = app(80);
     app.type_keys("|");
     assert_eq!(window(&mut app), Some(listed(Some(0))));
     app.type_keys("|");
-    assert_eq!(window(&mut app), Some(vec![" Nothing matches".to_owned()]));
+    assert_eq!(window(&mut app), None);
 }
 
 // D-68

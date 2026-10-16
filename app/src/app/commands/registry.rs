@@ -576,7 +576,7 @@ pub const NAVIGATOR: &[(Command, &[&str])] = &[
     (Command::Navigator(NavigatorInput::Erase), &["backspace"]),
     (Command::Navigator(NavigatorInput::Leave), &["esc"]),
     (Command::ContextMenu, &["ctrl+r", "shift+f10", "menu"]),
-    (Command::ToggleNavigator, &["ctrl+g"]),
+    (Command::ToggleNavigator, &["ctrl+g", "|"]),
     (Command::Quit, &["ctrl+q"]),
 ];
 

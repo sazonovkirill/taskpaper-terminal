@@ -4518,6 +4518,16 @@
      ],
      "kitty": false,
      "alt": false
+    },
+    {
+     "label": "|",
+     "presses": [
+      [
+       "|"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
     }
    ]
   },
@@ -9116,6 +9126,16 @@
          [
           "Ctrl",
           "G"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "|",
+        "presses": [
+         [
+          "|"
          ]
         ],
         "kitty": false,
