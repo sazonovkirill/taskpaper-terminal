@@ -7,7 +7,9 @@ file <<END
 - Milk
 - Eggs
 END
-keys <C-t>
+keys :
+type choose theme
+keys <Enter>
 see Theme
 type dracula
 keys <Enter> j x

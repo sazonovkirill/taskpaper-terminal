@@ -1,11 +1,11 @@
-# J extends the selection over the heading into the next day's group, and x completes both entries.
+# Shift+Down extends the selection over the heading into the next day's group, and x completes both entries.
 file <<END
 - A1 @due({today+1})
 - B2 @due({today+2})
 - C1 @due({today+1})
 - D3 @due({today+3})
 END
-keys gU j J x
+keys gU j <S-Down> x
 see ✔ C1
 see ✔ B2
 quit

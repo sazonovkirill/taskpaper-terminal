@@ -18,7 +18,7 @@ You can zoom into any line, even a single task, and everything works the same th
 
 ## Zoom out
 
-Press <kbd>></kbd> (that's <kbd>Shift+.</kbd>) to zoom out one level, back to the trip. Press <kbd>g</kbd> <kbd>h</kbd> to go all the way home, to the top of the file.
+Press <kbd>,</kbd> (the key beside <kbd>.</kbd>) to zoom out one level, back to the trip. Press <kbd>g</kbd> <kbd>h</kbd> to go all the way home, to the top of the file.
 
 ## Back and forward
 

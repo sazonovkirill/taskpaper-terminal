@@ -5,7 +5,7 @@ Work:
 	- One
 	- Two
 END
-keys j j J
+keys j j <S-Down>
 keys q
 type Three
 keys <Enter> x

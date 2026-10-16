@@ -6,7 +6,7 @@ file <<END
 END
 keys gt
 see - A
-keys J W
+keys <S-Down> W
 hide - A
 hide - B
 see - C

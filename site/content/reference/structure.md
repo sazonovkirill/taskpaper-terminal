@@ -10,7 +10,7 @@ Every block carries its children with it. Indenting, moving, copying or deleting
 
 Next to its focus, each pane has a **selection**: the blocks the next command acts on. Selected blocks get the focus bar too, dimmer, so focus and selection read as one bar. With nothing selected, commands act on the focused block.
 
-- `J` / `K` (or `Shift+↓` / `Shift+↑`) extend the selection down or up a row from where the run began. Going back shrinks the run. A new run adds to what was already selected.
+- `Shift+↓` / `Shift+↑` extend the selection down or up a row from where the run began. Going back shrinks the run. A new run adds to what was already selected.
 - `v` adds the focused block to the selection, or takes it out. Plain motions move the focus and keep the selection, so you can pick blocks far apart one by one: `v`, `j j j`, `v`.
 - `V` starts visual mode, as in vim: the focused block is selected, and every move, such as `j`, `k`, `gg` or `G`, selects all rows from there to the focus. The status line says `VISUAL`. `V` again or `Esc` ends it and clears the selection; a command such as `x`, `Tab` or `y` acts on the selected blocks and ends it, leaving them selected.
 - `Ctrl+A` selects every row below the title, and `Esc` clears the selection.
@@ -25,10 +25,10 @@ Every block command, such as [done, dates, star or color](@/reference/tags.md), 
 
 | Key | Does |
 |---|---|
-| `Tab` | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
-| `Shift+Tab` | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
-| `Alt+k` / `Alt+↑` | **Move Up:** swap with the sibling above. At the top of its list, the block moves to the end of the parent's previous sibling. |
-| `Alt+j` / `Alt+↓` | **Move Down:** swap with the sibling below, or move to the start of the parent's next sibling. |
+| `Tab`, `>` | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
+| `Shift+Tab`, `<` | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
+| `K`, `Alt+k`, `Alt+↑` | **Move Up:** swap with the sibling above. At the top of its list, the block moves to the end of the parent's previous sibling. |
+| `J`, `Alt+j`, `Alt+↓` | **Move Down:** swap with the sibling below, or move to the start of the parent's next sibling. |
 
 Selected blocks move together and keep their order. A selected block inside another selected block moves with it, not on its own. A block that cannot move stays, and so do the blocks that would have to pass it. No move takes a block out of the pane's zoom, and the zoom's title row never moves.
 
@@ -36,7 +36,7 @@ The moves go by what the pane shows. While the pane [hides completed blocks](@/r
 
 ### Group
 
-**Group** (`gG`) wraps the selection, or the focused block, in a new text block placed where the first one was, and opens the new block in edit mode so you can name it. Creating and naming it is one step to undo.
+**Group** (in Go to Command and the context menu) wraps the selection, or the focused block, in a new text block placed where the first one was, and opens the new block in edit mode so you can name it. Creating and naming it is one step to undo.
 
 ### Move to…
 
@@ -46,17 +46,17 @@ The focus stays on a moved block. The destination expands, and a destination out
 
 ## Delete and duplicate
 
-`dd` or `Delete` removes the blocks with everything under them. The focus moves to the next visible block, else the previous one. `D` duplicates each block with its subtree, right after the original, and focuses the copy of the last one.
+`Delete` removes the blocks with everything under them, and `dd` cuts them, as in vim: the same, but they go to the clipboard too. The focus moves to the next visible block, else the previous one. `D` duplicates each block with its subtree, right after the original, and focuses the copy of the last one.
 
 ## Copy, cut and paste
 
-`y` or `Ctrl+C` copies, and `Ctrl+X` cuts, the selected blocks or the focused one. `p` or `Ctrl+V` pastes below the focused block, and `P` or `Alt+v` above it. More on the clipboard, also over SSH, is in [Copy and paste](@/reference/modes.md#copy-and-paste).
+`y` or `Ctrl+C` copies, and `dd` or `Ctrl+X` cuts, the selected blocks or the focused one. `p` or `Ctrl+V` pastes below the focused block, and `P` or `Alt+v` above it. More on the clipboard, also over SSH, is in [Copy and paste](@/reference/modes.md#copy-and-paste).
 
 The clipboard gets TaskPaper text: each block's line with its tags, children and attachments, indented with tabs from the shallowest block. Pasting parses TaskPaper text into blocks at the focused block's depth, keeping their structure, so you can copy between tpt and any other TaskPaper app. One line of plain text pastes as a text block. On a zoomed pane's title row, the pasted blocks become its first children.
 
 ## Undo and redo
 
-`z` or `Ctrl+Z` undoes, and `Z` or `Ctrl+Y` redoes. Each command is one step however many blocks it changed, and so is a whole edit-mode session. Undo restores attachments and hidden lines with their blocks. When the file is reloaded after an [outside change](@/reference/files.md#when-the-file-changes-on-disk), the undo history starts over.
+`z`, `u` or `Ctrl+Z` undoes, and `Z`, `Ctrl+R` or `Ctrl+Y` redoes. Each command is one step however many blocks it changed, and so is a whole edit-mode session. Undo restores attachments and hidden lines with their blocks. When the file is reloaded after an [outside change](@/reference/files.md#when-the-file-changes-on-disk), the undo history starts over.
 
 {{ keys(topic="structure", group="Structure") }}
 

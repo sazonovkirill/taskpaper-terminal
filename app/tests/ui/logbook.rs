@@ -59,7 +59,7 @@ fn hiding_completed_blocks_leaves_the_list_as_it_is() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
     app.type_keys("gL");
     let before = outline_rows(&mut app);
-    app.press(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    app.type_keys("gc");
     assert_eq!(outline_rows(&mut app), before);
 }
 

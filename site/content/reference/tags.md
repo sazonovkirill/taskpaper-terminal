@@ -15,8 +15,8 @@ Typing `@` at the start of a word, while editing, does nothing but say "Tags are
 | `@due(DATE)` | Due date | `T`, `W`, `{`, `}`, `md` |
 | `@red` `@yellow` `@green` `@blue` | Color, at most one | `c`, `mc`, `C` |
 | `@star` | Starred | `s` |
-| `@flag` | Flagged | `!`, `mf` |
-| `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `mb` |
+| `@flag` | Flagged | `!` |
+| `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `b` |
 | `@section` | A [section](@/reference/blocks.md#sections), on text blocks | `S` |
 | `@url(ADDRESS)` | The block's [link](@/reference/blocks.md#text-formatting-and-links) | Edit Node |
 | `@hidden` | A [hidden line](@/reference/blocks.md#hidden-lines) the app keeps but never shows | never; reserved |
@@ -33,7 +33,7 @@ There is no archive. An `Archive:` project is an ordinary project.
 
 ### Showing completed blocks
 
-`Ctrl+O` or `gc` hides the completed blocks in the focused pane, each with everything inside it, and shows them again. Each pane has its own setting, which starts on showing them and is saved with the [pane layout](@/reference/files.md#pane-layout). A new pane takes the setting of the pane it opened from.
+`gc` hides the completed blocks in the focused pane, each with everything inside it, and shows them again. Each pane has its own setting, which starts on showing them and is saved with the [pane layout](@/reference/files.md#pane-layout). A new pane takes the setting of the pane it opened from.
 
 {{ keys(topic="tags", group="View and Panels") }}
 
@@ -108,8 +108,8 @@ Setting a color removes any other color tag. `@orange` and `@violet`, colors in 
 ## Star, flag and bookmark
 
 - `s` **stars** a block, shown as a star after its text. Starred blocks have their own [view](@/reference/views.md#starred), and the [Today view](@/reference/views.md#today) lists them too, unless you turn that off.
-- `!` or `mf` **flags** a block, shown as a red flag after its text. There is one flag, and it is red. Flagged blocks have their own [view](@/reference/views.md#flagged).
-- `mb` **bookmarks** a block, shown as a bookmark icon after its text, and lists it under Bookmarks in the [Navigator](@/reference/navigator.md). The status line says "Bookmarked" or "Bookmark removed".
+- `!` **flags** a block, shown as a red flag after its text. There is one flag, and it is red. Flagged blocks have their own [view](@/reference/views.md#flagged).
+- `b` **bookmarks** a block, shown as a bookmark icon after its text, and lists it under Bookmarks in the [Navigator](@/reference/navigator.md). The status line says "Bookmarked" or "Bookmark removed".
 
 The flag, star and bookmark come in that order, each a space after the text. They are hidden while the block is edited.
 

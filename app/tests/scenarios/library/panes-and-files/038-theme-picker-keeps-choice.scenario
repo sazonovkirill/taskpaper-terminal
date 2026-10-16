@@ -1,9 +1,11 @@
-# Choosing Nord in the Ctrl+T theme picker keeps it, as the settings window then shows.
+# Choosing Nord in the theme picker from Go to Command keeps it, as the settings window then shows.
 file <<END
 Errands:
 	- Post office
 END
-keys <C-t>
+keys :
+type choose theme
+keys <Enter>
 see Terminal Dark
 see Solarized Light
 type nord

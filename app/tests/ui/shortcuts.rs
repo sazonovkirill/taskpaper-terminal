@@ -46,10 +46,10 @@ const NAVIGATE: [&str; 29] = [
     "│  Collapse All               _",
     "│ Zoom and History",
     "│  Zoom In                ., gz",
-    "│  Zoom Out               >, gu",
+    "│  Zoom Out               ,, gu",
     "│  Go Home           Ctrl+', gh",
-    "│  Back                H, Alt+←",
-    "│  Forward             L, Alt+→",
+    "│  Back        H, Alt+←, Ctrl+O",
+    "│  Forward     L, Alt+→, Ctrl+I",
     "│  Go to Today           gt, gT",
     "│  Go to Upcoming            gU",
     "│  Go to Overdue             gO",
@@ -91,7 +91,8 @@ fn question_mark_opens_the_shortcuts_panel_at_the_right_and_closes_it_again() {
 #[test]
 fn esc_closes_the_panel_before_clearing_the_selection() {
     let mut app = Harness::with_text(OUTLINE, 80, 30);
-    app.type_keys("J?");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("?");
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     let rows = screen(&mut app);
     assert!(
@@ -265,7 +266,7 @@ fn parentheses_scroll_the_list_a_page_at_a_time_and_more_lines_say_what_is_hidde
             "│  Open Settings             g,",
             "│  Context … \\, Shift+F10, Menu",
             "│  Open in Ne… Ctrl+\\, Ctrl+W v",
-            "│  Close Pane          Ctrl+W c",
+            "│  Close Pa… Ctrl+W c, Ctrl+W q",
             "│  Quit                  Ctrl+Q",
         ],
         "the end stops it, with no more line below"

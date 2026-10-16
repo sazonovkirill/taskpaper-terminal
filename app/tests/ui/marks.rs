@@ -1,6 +1,6 @@
 //! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with `c` and
-//! the `mc` picker and go with `C` (D-48, D-138), bookmarks with `mb`, and flags with `mf` and `!`
-//! (D-91).
+//! the `mc` picker and go with `C` (D-48, D-138), bookmarks with `b`, and flags with
+//! `!` (D-91, D-139).
 
 use std::{fs, time::Duration};
 
@@ -95,7 +95,8 @@ fn orange_and_violet_tags_tint_nothing_and_stay_when_c_colors_the_block() {
 #[test]
 fn c_and_shift_c_color_every_selected_block_in_one_step() {
     let mut app = Harness::with_text("- Milk @blue\n- Bread @red\n- Eggs\n", 30, 6);
-    app.type_keys("Jc");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("c");
     assert_eq!(
         saved(&mut app),
         "- Milk @yellow\n- Bread @yellow\n- Eggs\n",
@@ -192,11 +193,11 @@ fn star_key_stars_the_focused_block_with_a_star_after_its_text() {
     assert_eq!(saved(&mut app), "- Milk @due(2026-10-09)\n");
 }
 
-// D-11, D-47
+// D-11, D-47, D-139
 #[test]
-fn m_b_bookmarks_the_focused_block_and_says_so() {
+fn b_bookmarks_the_focused_block_and_says_so() {
     let mut app = Harness::with_text("Plans:\n", 80, 4);
-    app.type_keys("mb");
+    app.type_keys("b");
     let status = line(app.render().buffer(), 3);
     assert!(status.ends_with("· Bookmarked"), "{status}");
     assert_eq!(
@@ -205,7 +206,7 @@ fn m_b_bookmarks_the_focused_block_and_says_so() {
         "the bookmark icon follows the text (D-47)"
     );
     assert_eq!(saved(&mut app), "Plans: @bookmark\n");
-    app.type_keys("mb");
+    app.type_keys("b");
     let status = line(app.render().buffer(), 3);
     assert!(status.ends_with("· Bookmark removed"), "{status}");
     assert_eq!(saved(&mut app), "Plans:\n");
@@ -236,11 +237,11 @@ fn the_demo_shows_today_and_colors() {
     );
 }
 
-// FR-TAG-05, D-91, ui.md §2
+// FR-TAG-05, D-91, D-139, ui.md §2
 #[test]
-fn m_f_and_bang_flag_the_focused_block_with_a_red_flag_after_its_text() {
+fn bang_flags_the_focused_block_with_a_red_flag_after_its_text() {
     let mut app = Harness::with_text("- Milk @blue\n", 30, 4);
-    app.type_keys("mf");
+    app.type_keys("!");
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 2), format!("- Milk {FLAG}"));
     assert_eq!(buffer[(9, 2)].fg, Color::Red, "a red flag on a blue row");

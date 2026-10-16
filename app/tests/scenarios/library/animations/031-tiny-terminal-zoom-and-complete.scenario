@@ -13,7 +13,7 @@ Home:
 END
 keys .
 see Errands
-keys j > x
+keys j , x
 quit
 saved <<END
 Errands: @done({today})

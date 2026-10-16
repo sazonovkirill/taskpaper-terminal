@@ -8,7 +8,9 @@ file <<END
 - Milk
 - Eggs
 END
-keys <C-t>
+keys :
+type choose theme
+keys <Enter>
 see Theme
 keys <Down> <Down> <Down> <Esc> j x
 see ✔ Eggs

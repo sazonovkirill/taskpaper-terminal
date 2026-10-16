@@ -5,7 +5,7 @@ Shop:
 	- Eggs
 	- Bread
 END
-keys j J J !
+keys j <S-Down> <S-Down> !
 saved <<END
 Shop:
 	- Milk @flag(x)

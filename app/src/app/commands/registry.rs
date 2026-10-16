@@ -71,7 +71,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ExpandAll, Mode::Navigate, &["+"]),
     entry!(Command::CollapseAll, Mode::Navigate, &["_"]),
     entry!(Command::ZoomIn, Mode::Navigate, &[".", "g z"]),
-    entry!(Command::ZoomOut, Mode::Navigate, &[">", "g u"]),
+    entry!(Command::ZoomOut, Mode::Navigate, &[",", "g u"]),
     entry!(Command::GoHome, Mode::Navigate, &["ctrl+'", "g h"]),
     entry!(
         Command::GoToView(SpecialView::Today),
@@ -113,8 +113,12 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["g i"]
     ),
-    entry!(Command::Back, Mode::Navigate, &["H", "alt+left"]),
-    entry!(Command::Forward, Mode::Navigate, &["L", "alt+right"]),
+    entry!(Command::Back, Mode::Navigate, &["H", "alt+left", "ctrl+o"]),
+    entry!(
+        Command::Forward,
+        Mode::Navigate,
+        &["L", "alt+right", "ctrl+i"]
+    ),
     entry!(Command::Edit, Mode::Navigate, &["enter"]),
     entry!(Command::New(NewBlock::Below, None), Mode::Navigate, &["o"]),
     entry!(
@@ -254,12 +258,12 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Select(SelectionChange::ExtendDown),
         Mode::Navigate,
-        &["J", "shift+down"],
+        &["shift+down"],
     ),
     entry!(
         Command::Select(SelectionChange::ExtendUp),
         Mode::Navigate,
-        &["K", "shift+up"],
+        &["shift+up"],
     ),
     entry!(
         Command::Select(SelectionChange::Toggle),
@@ -281,16 +285,20 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["esc"],
     ),
-    entry!(Command::Indent, Mode::Navigate, &["tab"]),
-    entry!(Command::Outdent, Mode::Navigate, &["shift+tab"]),
-    entry!(Command::MoveUp, Mode::Navigate, &["alt+k", "alt+up"]),
-    entry!(Command::MoveDown, Mode::Navigate, &["alt+j", "alt+down"]),
-    entry!(Command::Group, Mode::Navigate, &["g G"]),
+    entry!(Command::Indent, Mode::Navigate, &["tab", ">"]),
+    entry!(Command::Outdent, Mode::Navigate, &["shift+tab", "<"]),
+    entry!(Command::MoveUp, Mode::Navigate, &["K", "alt+k", "alt+up"]),
+    entry!(
+        Command::MoveDown,
+        Mode::Navigate,
+        &["J", "alt+j", "alt+down"]
+    ),
+    entry!(Command::Group, Mode::Navigate, &[]),
     entry!(Command::MoveTo, Mode::Navigate, &["ctrl+m", "g m"]),
-    entry!(Command::Delete, Mode::Navigate, &["d d", "delete"]),
+    entry!(Command::Delete, Mode::Navigate, &["delete"]),
     entry!(Command::Duplicate, Mode::Navigate, &["D"]),
     entry!(Command::Copy, Mode::Navigate, &["y", "ctrl+c"]),
-    entry!(Command::Cut, Mode::Navigate, &["ctrl+x"]),
+    entry!(Command::Cut, Mode::Navigate, &["d d", "ctrl+x"]),
     entry!(
         Command::Paste(Paste::Below),
         Mode::Navigate,
@@ -301,8 +309,8 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["P", "alt+v"],
     ),
-    entry!(Command::Undo, Mode::Navigate, &["z", "ctrl+z"]),
-    entry!(Command::Redo, Mode::Navigate, &["Z", "ctrl+y"],),
+    entry!(Command::Undo, Mode::Navigate, &["z", "u", "ctrl+z"]),
+    entry!(Command::Redo, Mode::Navigate, &["Z", "ctrl+y", "ctrl+r"]),
     entry!(Command::ToggleDone, Mode::Navigate, &["x", "ctrl+enter"]),
     entry!(
         Command::ChangeDate(DateTag::Start, DateChange::Today),
@@ -372,26 +380,18 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::CycleColor, Mode::Navigate, &["c"]),
     entry!(Command::OpenColorPicker, Mode::Navigate, &["m c"]),
     entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["s"]),
-    entry!(
-        Command::ToggleFlag(Flag::Bookmark),
-        Mode::Navigate,
-        &["m b"],
-    ),
-    entry!(
-        Command::ToggleFlag(Flag::Flagged),
-        Mode::Navigate,
-        &["m f", "!"],
-    ),
-    entry!(Command::OpenTypePicker, Mode::Navigate, &["m y"]),
+    entry!(Command::ToggleFlag(Flag::Bookmark), Mode::Navigate, &["b"],),
+    entry!(Command::ToggleFlag(Flag::Flagged), Mode::Navigate, &["!"],),
+    entry!(Command::OpenTypePicker, Mode::Navigate, &["m y", "ctrl+t"]),
     entry!(Command::ToggleSection, Mode::Navigate, &["S"]),
     entry!(Command::SetSection(true), Mode::Navigate, &[]),
     entry!(Command::SetSection(false), Mode::Navigate, &[]),
     entry!(Command::EditNode, Mode::Navigate, &["e"]),
     entry!(Command::OpenAttachments, Mode::Navigate, &["&"]),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
-    entry!(Command::ToggleShowDone, Mode::Navigate, &["ctrl+o", "g c"]),
+    entry!(Command::ToggleShowDone, Mode::Navigate, &["g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
-    entry!(Command::ChooseTheme, Mode::Navigate, &["ctrl+t"]),
+    entry!(Command::ChooseTheme, Mode::Navigate, &[]),
     entry!(Command::OpenSettings, Mode::Navigate, &["g ,"]),
     entry!(
         Command::SetAnimations(Animations::Full),
@@ -477,12 +477,24 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Pane(PaneChange::FocusLeft),
         Mode::Navigate,
-        &["ctrl+shift+left", "ctrl+w left", "ctrl+w h", "g l", "g p"],
+        &[
+            "ctrl+shift+left",
+            "ctrl+w left",
+            "ctrl+w h",
+            "ctrl+w W",
+            "g p"
+        ],
     ),
     entry!(
         Command::Pane(PaneChange::FocusRight),
         Mode::Navigate,
-        &["ctrl+shift+right", "ctrl+w right", "ctrl+w l", "g r", "g n"],
+        &[
+            "ctrl+shift+right",
+            "ctrl+w right",
+            "ctrl+w l",
+            "ctrl+w w",
+            "g n"
+        ],
     ),
     entry!(
         Command::Pane(PaneChange::MoveLeft),
@@ -497,7 +509,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Pane(PaneChange::Close),
         Mode::Navigate,
-        &["ctrl+w c"]
+        &["ctrl+w c", "ctrl+w q"]
     ),
     entry!(
         Command::NarrowPane,
@@ -694,7 +706,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::Outdent,
             Command::MoveUp,
             Command::MoveDown,
-            Command::Delete,
+            Command::Cut,
             Command::Copy,
             Command::Paste(Paste::Below),
             Command::Undo,

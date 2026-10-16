@@ -783,7 +783,8 @@ fn a_status_message_fades_out_when_its_time_is_up() {
 fn moving_in_the_theme_picker_crossfades_to_the_previewed_theme() {
     let (mut full, mut off) = both("- a\n", "", 0);
     for app in [&mut full, &mut off] {
-        app.press(KeyCode::Char('t'), KeyModifiers::CONTROL);
+        app.type_keys(":choose theme");
+        app.press(KeyCode::Enter, KeyModifiers::NONE);
         frame(app);
         app.press(KeyCode::Down, KeyModifiers::NONE);
     }

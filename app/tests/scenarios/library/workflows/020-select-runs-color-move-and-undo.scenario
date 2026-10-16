@@ -10,7 +10,7 @@ Sprint 12:
 	- Fix crash on start
 END
 keys j <S-Down>
-keys j j J
+keys j j <S-Down>
 see ▌   - Export to CSV
 keys c
 keys gm

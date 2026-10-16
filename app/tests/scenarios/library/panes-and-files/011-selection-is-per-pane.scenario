@@ -5,7 +5,7 @@ Errands:
 	- Buy milk
 	- Bank
 END
-keys <C-w> s j J
+keys <C-w> s j <S-Down>
 keys g1 G x
 see ✔ Bank
 quit

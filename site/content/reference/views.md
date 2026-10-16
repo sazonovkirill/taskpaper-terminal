@@ -28,7 +28,7 @@ The TODAY project is the first top-level project whose text is exactly `TODAY`, 
 
 ### Reordering Today
 
-In Today, and only there, **Move Up** and **Move Down** (`Alt+k` and `Alt+j`) reorder the list. The selected entries, or the focused one, move a step past the entry next to them. The order belongs to the app, not the file: the document doesn't change, nothing is saved to it and there is nothing to undo. Every pane showing Today shares it, and it is kept with the [pane layout](@/reference/files.md#pane-layout). Entries you never moved come after the moved ones in document order, so a block that starts matching comes last, and one that leaves the list keeps its place for when it comes back.
+In Today, and only there, **Move Up** and **Move Down** (`K` and `J`, or `Alt+k` and `Alt+j`) reorder the list. The selected entries, or the focused one, move a step past the entry next to them. The order belongs to the app, not the file: the document doesn't change, nothing is saved to it and there is nothing to undo. Every pane showing Today shares it, and it is kept with the [pane layout](@/reference/files.md#pane-layout). Entries you never moved come after the moved ones in document order, so a block that starts matching comes last, and one that leaves the list keeps its place for when it comes back.
 
 ## The other views
 

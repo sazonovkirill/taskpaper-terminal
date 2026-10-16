@@ -31,7 +31,7 @@ keys <Enter>
 see ▌   - Idea: blog about outliners
 keys gi
 see ▌ INBOX:
-keys > dd
+keys , dd
 hide INBOX
 keys gi
 status No INBOX project in the Navigator

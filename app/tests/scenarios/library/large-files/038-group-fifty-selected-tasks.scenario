@@ -82,8 +82,10 @@ List:
 	- r78
 	- r79
 END
-keys j J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J 
-keys gG
+keys j <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down>
+keys :
+type group
+keys <Enter>
 type Batch
 keys <Esc>
 see ▌   Batch

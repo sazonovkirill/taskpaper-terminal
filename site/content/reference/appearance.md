@@ -10,7 +10,7 @@ tpt has thirteen built-in themes. **Terminal Dark**, the default, uses your term
 
 ### Choosing a theme
 
-`Ctrl+T` (**Choose Theme**) opens the theme picker, with the theme in use highlighted. Each theme you highlight, by typing or with the arrows, shows at once across the whole app. `Enter` keeps it and saves it to `config.toml`; `Esc` goes back to the theme you had. The [settings window](@/reference/settings.md#the-settings-window) can change the theme too, with the same live preview. In `config.toml`, the theme's name goes in `theme`:
+**Choose Theme** in Go to Command opens the theme picker, with the theme in use highlighted. Each theme you highlight, by typing or with the arrows, shows at once across the whole app. `Enter` keeps it and saves it to `config.toml`; `Esc` goes back to the theme you had. The [settings window](@/reference/settings.md#the-settings-window) can change the theme too, with the same live preview. In `config.toml`, the theme's name goes in `theme`:
 
 ```toml
 theme = "nord"

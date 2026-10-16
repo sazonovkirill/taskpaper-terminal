@@ -611,10 +611,10 @@
    "menu_only": false,
    "keys": [
     {
-     "label": ">",
+     "label": ",",
      "presses": [
       [
-       ">"
+       ","
       ]
      ],
      "kitty": false,
@@ -914,6 +914,17 @@
      ],
      "kitty": false,
      "alt": true
+    },
+    {
+     "label": "Ctrl+O",
+     "presses": [
+      [
+       "Ctrl",
+       "O"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
     }
    ]
   },
@@ -947,6 +958,17 @@
      ],
      "kitty": false,
      "alt": true
+    },
+    {
+     "label": "Ctrl+I",
+     "presses": [
+      [
+       "Ctrl",
+       "I"
+      ]
+     ],
+     "kitty": true,
+     "alt": false
     }
    ]
   },
@@ -1401,16 +1423,6 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "J",
-     "presses": [
-      [
-       "J"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
-    {
      "label": "Shift+↓",
      "presses": [
       [
@@ -1433,16 +1445,6 @@
    "panel": false,
    "menu_only": false,
    "keys": [
-    {
-     "label": "K",
-     "presses": [
-      [
-       "K"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
     {
      "label": "Shift+↑",
      "presses": [
@@ -1564,6 +1566,16 @@
      ],
      "kitty": false,
      "alt": false
+    },
+    {
+     "label": ">",
+     "presses": [
+      [
+       ">"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
     }
    ]
   },
@@ -1587,6 +1599,16 @@
      ],
      "kitty": false,
      "alt": false
+    },
+    {
+     "label": "<",
+     "presses": [
+      [
+       "<"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
     }
    ]
   },
@@ -1600,6 +1622,16 @@
    "panel": true,
    "menu_only": false,
    "keys": [
+    {
+     "label": "K",
+     "presses": [
+      [
+       "K"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
     {
      "label": "Alt+k",
      "presses": [
@@ -1635,6 +1667,16 @@
    "menu_only": false,
    "keys": [
     {
+     "label": "J",
+     "presses": [
+      [
+       "J"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
      "label": "Alt+j",
      "presses": [
       [
@@ -1667,21 +1709,7 @@
    "topic": "structure",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "gG",
-     "presses": [
-      [
-       "g"
-      ],
-      [
-       "G"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-move-to",
@@ -1726,22 +1754,9 @@
    "mode": "navigate",
    "group": "Structure",
    "topic": "structure",
-   "panel": true,
+   "panel": false,
    "menu_only": false,
    "keys": [
-    {
-     "label": "dd",
-     "presses": [
-      [
-       "d"
-      ],
-      [
-       "d"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
     {
      "label": "Delete",
      "presses": [
@@ -1816,9 +1831,22 @@
    "mode": "navigate",
    "group": "Structure",
    "topic": "structure",
-   "panel": false,
+   "panel": true,
    "menu_only": false,
    "keys": [
+    {
+     "label": "dd",
+     "presses": [
+      [
+       "d"
+      ],
+      [
+       "d"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
     {
      "label": "Ctrl+X",
      "presses": [
@@ -1919,6 +1947,16 @@
      "alt": false
     },
     {
+     "label": "u",
+     "presses": [
+      [
+       "u"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
      "label": "Ctrl+Z",
      "presses": [
       [
@@ -1957,6 +1995,17 @@
       [
        "Ctrl",
        "Y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+R",
+     "presses": [
+      [
+       "Ctrl",
+       "R"
       ]
      ],
      "kitty": false,
@@ -2391,11 +2440,8 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "mb",
+     "label": "b",
      "presses": [
-      [
-       "m"
-      ],
       [
        "b"
       ]
@@ -2415,19 +2461,6 @@
    "panel": false,
    "menu_only": false,
    "keys": [
-    {
-     "label": "mf",
-     "presses": [
-      [
-       "m"
-      ],
-      [
-       "f"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
     {
      "label": "!",
      "presses": [
@@ -2458,6 +2491,17 @@
       ],
       [
        "y"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+T",
+     "presses": [
+      [
+       "Ctrl",
+       "T"
       ]
      ],
      "kitty": false,
@@ -2589,17 +2633,6 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "Ctrl+O",
-     "presses": [
-      [
-       "Ctrl",
-       "O"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
-    {
      "label": "gc",
      "presses": [
       [
@@ -2659,19 +2692,7 @@
    "topic": "appearance",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "Ctrl+T",
-     "presses": [
-      [
-       "Ctrl",
-       "T"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-open-settings",
@@ -3448,13 +3469,14 @@
      "alt": false
     },
     {
-     "label": "gl",
+     "label": "Ctrl+W W",
      "presses": [
       [
-       "g"
+       "Ctrl",
+       "W"
       ],
       [
-       "l"
+       "W"
       ]
      ],
      "kitty": false,
@@ -3526,13 +3548,14 @@
      "alt": false
     },
     {
-     "label": "gr",
+     "label": "Ctrl+W w",
      "presses": [
       [
-       "g"
+       "Ctrl",
+       "W"
       ],
       [
-       "r"
+       "w"
       ]
      ],
      "kitty": false,
@@ -3624,6 +3647,20 @@
       ],
       [
        "c"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+W q",
+     "presses": [
+      [
+       "Ctrl",
+       "W"
+      ],
+      [
+       "q"
       ]
      ],
      "kitty": false,
@@ -5563,16 +5600,6 @@
        ],
        "kitty": false,
        "alt": false
-      },
-      {
-       "label": "g",
-       "presses": [
-        [
-         "g"
-        ]
-       ],
-       "kitty": false,
-       "alt": false
       }
      ]
     },
@@ -6413,10 +6440,10 @@
       "panel": true,
       "keys": [
        {
-        "label": ">",
+        "label": ",",
         "presses": [
          [
-          ">"
+          ","
          ]
         ],
         "kitty": false,
@@ -6666,6 +6693,17 @@
         ],
         "kitty": false,
         "alt": true
+       },
+       {
+        "label": "Ctrl+O",
+        "presses": [
+         [
+          "Ctrl",
+          "O"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
        }
       ],
       "typed": []
@@ -6694,6 +6732,17 @@
         ],
         "kitty": false,
         "alt": true
+       },
+       {
+        "label": "Ctrl+I",
+        "presses": [
+         [
+          "Ctrl",
+          "I"
+         ]
+        ],
+        "kitty": true,
+        "alt": false
        }
       ],
       "typed": []
@@ -6853,16 +6902,6 @@
       "panel": true,
       "keys": [
        {
-        "label": "J",
-        "presses": [
-         [
-          "J"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       },
-       {
         "label": "Shift+↓",
         "presses": [
          [
@@ -6880,16 +6919,6 @@
       "label": "Extend Selection Up",
       "panel": false,
       "keys": [
-       {
-        "label": "K",
-        "presses": [
-         [
-          "K"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       },
        {
         "label": "Shift+↑",
         "presses": [
@@ -6993,6 +7022,16 @@
         ],
         "kitty": false,
         "alt": false
+       },
+       {
+        "label": ">",
+        "presses": [
+         [
+          ">"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
        }
       ],
       "typed": []
@@ -7011,6 +7050,16 @@
         ],
         "kitty": false,
         "alt": false
+       },
+       {
+        "label": "<",
+        "presses": [
+         [
+          "<"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
        }
       ],
       "typed": []
@@ -7019,6 +7068,16 @@
       "label": "Move Up",
       "panel": true,
       "keys": [
+       {
+        "label": "K",
+        "presses": [
+         [
+          "K"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
        {
         "label": "Alt+k",
         "presses": [
@@ -7049,6 +7108,16 @@
       "panel": true,
       "keys": [
        {
+        "label": "J",
+        "presses": [
+         [
+          "J"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
         "label": "Alt+j",
         "presses": [
          [
@@ -7069,26 +7138,6 @@
         ],
         "kitty": false,
         "alt": true
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Group",
-      "panel": false,
-      "keys": [
-       {
-        "label": "gG",
-        "presses": [
-         [
-          "g"
-         ],
-         [
-          "G"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
        }
       ],
       "typed": []
@@ -7126,21 +7175,8 @@
      },
      {
       "label": "Delete",
-      "panel": true,
+      "panel": false,
       "keys": [
-       {
-        "label": "dd",
-        "presses": [
-         [
-          "d"
-         ],
-         [
-          "d"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       },
        {
         "label": "Delete",
         "presses": [
@@ -7201,8 +7237,21 @@
      },
      {
       "label": "Cut",
-      "panel": false,
+      "panel": true,
       "keys": [
+       {
+        "label": "dd",
+        "presses": [
+         [
+          "d"
+         ],
+         [
+          "d"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
        {
         "label": "Ctrl+X",
         "presses": [
@@ -7288,6 +7337,16 @@
         "alt": false
        },
        {
+        "label": "u",
+        "presses": [
+         [
+          "u"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
         "label": "Ctrl+Z",
         "presses": [
          [
@@ -7321,6 +7380,17 @@
          [
           "Ctrl",
           "Y"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+R",
+        "presses": [
+         [
+          "Ctrl",
+          "R"
          ]
         ],
         "kitty": false,
@@ -7616,11 +7686,8 @@
       "panel": true,
       "keys": [
        {
-        "label": "mb",
+        "label": "b",
         "presses": [
-         [
-          "m"
-         ],
          [
           "b"
          ]
@@ -7635,19 +7702,6 @@
       "label": "Toggle Flag",
       "panel": false,
       "keys": [
-       {
-        "label": "mf",
-        "presses": [
-         [
-          "m"
-         ],
-         [
-          "f"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       },
        {
         "label": "!",
         "presses": [
@@ -7673,6 +7727,17 @@
          ],
          [
           "y"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+T",
+        "presses": [
+         [
+          "Ctrl",
+          "T"
          ]
         ],
         "kitty": false,
@@ -7782,17 +7847,6 @@
       "panel": true,
       "keys": [
        {
-        "label": "Ctrl+O",
-        "presses": [
-         [
-          "Ctrl",
-          "O"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       },
-       {
         "label": "gc",
         "presses": [
          [
@@ -7831,24 +7885,6 @@
          ],
          [
           "w"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Choose Theme",
-      "panel": false,
-      "keys": [
-       {
-        "label": "Ctrl+T",
-        "presses": [
-         [
-          "Ctrl",
-          "T"
          ]
         ],
         "kitty": false,
@@ -8212,13 +8248,14 @@
         "alt": false
        },
        {
-        "label": "gl",
+        "label": "Ctrl+W W",
         "presses": [
          [
-          "g"
+          "Ctrl",
+          "W"
          ],
          [
-          "l"
+          "W"
          ]
         ],
         "kitty": false,
@@ -8285,13 +8322,14 @@
         "alt": false
        },
        {
-        "label": "gr",
+        "label": "Ctrl+W w",
         "presses": [
          [
-          "g"
+          "Ctrl",
+          "W"
          ],
          [
-          "r"
+          "w"
          ]
         ],
         "kitty": false,
@@ -8368,6 +8406,20 @@
          ],
          [
           "c"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+W q",
+        "presses": [
+         [
+          "Ctrl",
+          "W"
+         ],
+         [
+          "q"
          ]
         ],
         "kitty": false,
@@ -9060,6 +9112,7 @@
    "New Project at Start",
    "New Task at Start",
    "New Note at Start",
+   "Group",
    "Clear Start Date",
    "Clear Due Date",
    "Color: Red",
@@ -9068,6 +9121,7 @@
    "Color: Blue",
    "Make Section",
    "Remove Section",
+   "Choose Theme",
    "Animations: Full",
    "Animations: Reduced",
    "Animations: Off",

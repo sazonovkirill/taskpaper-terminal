@@ -151,13 +151,19 @@ fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
     );
 }
 
-// FR-UI-03, D-118, D-42
+// FR-UI-03, D-118, D-139, D-42
 #[test]
-fn g_l_and_g_p_focus_the_pane_left_and_g_r_and_g_n_the_pane_right() {
+fn g_p_focuses_the_pane_left_and_g_n_the_pane_right() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     ctrl(&mut app, '\\');
     let left = |app: &mut Harness| screen(app)[2].starts_with('▌');
-    for (keys, on_left) in [("gl", true), ("gr", false), ("gp", true), ("gn", false)] {
+    for (keys, on_left) in [
+        ("gp", true),
+        ("gn", false),
+        ("gl", false),
+        ("gp", true),
+        ("gr", true),
+    ] {
         app.type_keys(keys);
         assert_eq!(left(&mut app), on_left, "{keys}");
     }
@@ -224,14 +230,14 @@ fn an_edit_in_one_pane_shows_in_every_pane_and_folds_are_shared() {
 #[test]
 fn showing_completed_blocks_is_per_pane_and_a_new_pane_starts_with_its_opener_s() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, 'o');
+    app.type_keys("gc");
     window(&mut app, "s");
     assert_eq!(
         screen(&mut app)[4],
         "  Home:                                │  Home:",
         "both hide the done Slides"
     );
-    ctrl(&mut app, 'o');
+    app.type_keys("gc");
     let screen = screen(&mut app);
     assert_eq!(
         screen[4],

@@ -4,7 +4,7 @@ file <<END
 - Two @due({today-2})
 - Three @due({today-1})
 END
-keys gO J T
+keys gO <S-Down> T
 hide One
 hide Two
 see ▌ - Three

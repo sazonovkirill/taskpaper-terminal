@@ -1,13 +1,13 @@
-# mf on a Flagged entry drops it and focuses the next entry, so a second mf unflags that one.
+# ! on a Flagged entry drops it and focuses the next entry, so a second ! unflags that one.
 file <<END
 Shop:
 	- Milk @flag
 	- Eggs @flag
 	- Bread @flag
 END
-keys gF mf
+keys gF !
 hide Milk
-keys mf
+keys !
 hide Eggs
 quit
 saved <<END

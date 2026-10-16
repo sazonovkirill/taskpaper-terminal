@@ -5,7 +5,10 @@ Trip:
 	- Tickets
 	- Charger
 END
-keys j J gG
+keys j <S-Down>
+keys :
+type group
+keys <Enter>
 type Docs
 keys <Esc>
 see Docs

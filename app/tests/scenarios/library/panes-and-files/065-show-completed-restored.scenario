@@ -4,7 +4,7 @@ Errands:
 	- Post office @done(2026-01-02)
 	- Buy milk
 END
-keys <C-o>
+keys gc
 hide Post office
 restart
 see Buy milk

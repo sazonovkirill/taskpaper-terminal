@@ -12,7 +12,7 @@ In the file, tpt adds `@done` with today's date, as TaskPaper does. Any line can
 
 ## Hide what's done
 
-Press <kbd>Ctrl+O</kbd> (or <kbd>g</kbd> <kbd>c</kbd>): the two packed items disappear. Press it again to bring them back. Nothing is deleted; you only stop seeing them.
+Press <kbd>g</kbd> <kbd>c</kbd>: the two packed items disappear. Press it again to bring them back. Nothing is deleted; you only stop seeing them.
 
 ## Tags you don't type
 

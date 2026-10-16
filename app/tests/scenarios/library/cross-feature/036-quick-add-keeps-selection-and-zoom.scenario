@@ -6,7 +6,7 @@ Work:
 	- Review PRs
 	- Plan sprint
 END
-keys gg j . J
+keys gg j . <S-Down>
 keys q
 type Call mom
 keys <Enter>

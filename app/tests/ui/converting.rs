@@ -97,7 +97,9 @@ fn a_task_becomes_a_note_keeping_its_tags_and_esc_leaves_a_block_alone() {
 #[test]
 fn shift_s_toggles_the_selected_text_blocks_sections() {
     let mut app = Harness::with_text("Fruit\n- Milk\nBread\n", 100, 14);
-    app.type_keys("JJS");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("S");
     assert_eq!(saved(&mut app), "Fruit @section\n- Milk\nBread @section\n");
     let status = screen(&mut app).last().cloned().unwrap_or_default();
     assert!(
@@ -120,7 +122,9 @@ fn shift_s_toggles_the_selected_text_blocks_sections() {
 #[test]
 fn m_y_turns_every_selected_block_into_a_task_and_z_undoes_them_at_once() {
     let mut app = Harness::with_text("Milk\nBread\nEggs\n", 30, 14);
-    app.type_keys("JJmytask");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("mytask");
     press(&mut app, KeyCode::Enter);
     assert_eq!(saved(&mut app), "- Milk\n- Bread\n- Eggs\n");
     app.type_keys("z");

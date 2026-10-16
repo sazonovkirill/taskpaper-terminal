@@ -3,7 +3,7 @@ file <<END
 Work: @area(job)  
 	- Report
 END
-keys mf
+keys !
 quit
 saved <<END
 Work: @area(job)  @flag

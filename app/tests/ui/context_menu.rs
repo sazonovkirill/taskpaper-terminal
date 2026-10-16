@@ -121,7 +121,10 @@ fn a_character_that_matches_nothing_is_not_typed() {
 #[test]
 fn on_the_selection_its_commands_act_on_every_selected_block() {
     let mut app = Harness::with_text(TEXT, 70, 16);
-    app.type_keys("jJJ\\");
+    app.type_keys("j");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("\\");
     assert!(
         !screen(&mut app).iter().any(|row| row.contains("Edit ")),
         "the focused block's own commands are left out"

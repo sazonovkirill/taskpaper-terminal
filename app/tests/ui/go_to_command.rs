@@ -42,8 +42,8 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
             "│ ≈ Animations: Full                                       │",
             "│ ≈ Animations: Off                                        │",
             "│ ≈ Animations: Reduced                                    │",
-            "│ › Back  H, Alt+←                                         │",
-            "│ ● Choose Theme  Ctrl+T                                   │",
+            "│ › Back  H, Alt+←, Ctrl+O                                 │",
+            "│ ● Choose Theme                                           │",
         ]
     );
     let buffer = app.render().buffer().clone();

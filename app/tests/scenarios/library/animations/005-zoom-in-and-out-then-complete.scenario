@@ -9,7 +9,7 @@ Errands:
 Home:
 	- Laundry
 END
-keys j . > x
+keys j . , x
 see ✔ Post office
 quit
 saved <<END

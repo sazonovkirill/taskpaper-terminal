@@ -44,18 +44,18 @@ const ALL: [&str; 7] = [
 
 // FR-DONE-02, navigation §2
 #[test]
-fn ctrl_o_hides_done_blocks_with_their_children_and_shows_them_again() {
+fn g_c_hides_done_blocks_with_their_children_and_shows_them_again() {
     let mut app = Harness::with_text(OUTLINE, 30, 10);
     assert_eq!(shown(&mut app), ALL, "completed blocks show by default");
     app.type_keys("j");
-    app.press(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    app.type_keys("gc");
     assert_eq!(shown(&mut app), ["Home:", "  - Eggs", "- Call the bank"]);
     assert_eq!(
         focused_rows(&mut app),
         ["  - Eggs"],
         "the next visible block"
     );
-    app.press(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    app.type_keys("gc");
     assert_eq!(shown(&mut app), ALL);
     assert_eq!(focused_rows(&mut app), ["  - Eggs"]);
 }

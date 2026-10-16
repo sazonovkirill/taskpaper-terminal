@@ -789,7 +789,7 @@ mod tests {
         let keymap = &config.keymap;
         assert_eq!(
             keymap.labels(Command::MoveUp, Mode::Navigate),
-            "Alt+Shift+↑, Alt+k, Alt+↑"
+            "Alt+Shift+↑, K, Alt+k, Alt+↑"
         );
         assert_eq!(
             keymap.labels(Command::ToggleDone, Mode::Navigate),

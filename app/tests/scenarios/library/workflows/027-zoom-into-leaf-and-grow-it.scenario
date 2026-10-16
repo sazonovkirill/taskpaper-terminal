@@ -14,7 +14,7 @@ type o-sub
 keys <Esc>
 see ▌   o-sub
 see     sub
-keys >
+keys ,
 see ▌   Draft due Friday
 quit
 saved <<END

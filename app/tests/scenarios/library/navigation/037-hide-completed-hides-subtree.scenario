@@ -6,7 +6,7 @@ Old project: @done(2026-09-30)
 Current:
 	- Next step
 END
-keys <C-o>
+keys gc
 see - Next step
 hide Old project
 hide Leftover task

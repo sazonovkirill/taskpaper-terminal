@@ -212,7 +212,7 @@ fn the_scroll_keys_go_through_a_long_note_and_then_select_the_comment() {
     app.type_keys("j");
     let rows = screen(&mut app);
     assert_eq!(rows[7], format!("{:40}│ c{:36}│", "", ""), "{rows:?}");
-    app.type_keys("g");
+    app.type_keys("gg");
     assert_eq!(
         screen(&mut app)[1],
         format!("{}│{:>37} │", "─".repeat(40), "≡ Note")

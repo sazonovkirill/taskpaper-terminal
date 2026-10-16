@@ -20,7 +20,7 @@ A new pane starts with the focused pane's show-completed setting and an empty hi
 ## Moving between panes
 
 - `Alt+1` … `Alt+9`, or `g1` … `g9`, focus pane 1 to 9.
-- `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `gl` or `gp` / `gr` or `gn`, and `Ctrl+Shift+←` / `Ctrl+Shift+→` focus the pane to the left or right. They stop at either end.
+- `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W W` / `Ctrl+W w`, `gp` / `gn`, and `Ctrl+Shift+←` / `Ctrl+Shift+→` focus the pane to the left or right. They stop at either end.
 - Clicking a pane focuses it.
 
 `Ctrl+W H` and `Ctrl+W L` move the focused pane one place left or right, swapping it with its neighbor. The pane keeps the keys, so its number changes.
@@ -31,7 +31,7 @@ Panes share the screen's width equally, at least 30 columns each. `Ctrl+W <` / `
 
 ## Closing
 
-`Ctrl+W c` closes the focused pane and focuses its left neighbor, or its right one when it was first. The last pane can't be closed.
+`Ctrl+W c` or `Ctrl+W q` closes the focused pane and focuses its left neighbor, or its right one when it was first. The last pane can't be closed.
 
 When a block a pane is zoomed into goes away, deleted in any pane or changed on disk, that pane zooms out to the nearest ancestor that still exists.
 

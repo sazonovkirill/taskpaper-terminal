@@ -6,7 +6,7 @@ Home:
 	- Pay rent @due({today-1}) @flag
 Later:
 END
-keys <C-w> s gt J y p
+keys <C-w> s gt <S-Down> y p
 keys g1 G p
 see - Write report
 quit

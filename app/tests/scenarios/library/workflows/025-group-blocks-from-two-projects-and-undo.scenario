@@ -10,7 +10,10 @@ Home:
 		- Milk
 		- Eggs
 END
-keys j j j v j j v gG
+keys j j j v j j v
+keys :
+type group
+keys <Enter>
 type Mixed
 keys <Esc>
 see ▌   Mixed

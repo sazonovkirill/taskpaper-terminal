@@ -1,5 +1,5 @@
-//! Step 3.5: selecting blocks with `J`/`K`, `Shift`+arrows, `v`, `V` and `Ctrl+A`, clearing with
-//! `Esc`, every command acting on the selection and `gG` grouping it.
+//! Step 3.5: selecting blocks with `Shift`+arrows, `v`, `V` and `Ctrl+A`, clearing with `Esc`,
+//! every command acting on the selection, `J`/`K` moving it and Group grouping it.
 
 use std::{fs, time::Duration};
 
@@ -24,9 +24,12 @@ fn shift(app: &mut Harness, code: KeyCode) {
 
 // FR-OPS-01, FR-OPS-07, FR-DONE-01, FR-OPS-08
 #[test]
-fn shift_j_selects_five_tasks_and_x_completes_them_at_once() {
+fn shift_down_selects_five_tasks_and_x_completes_them_at_once() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jJJJ");
+    app.type_keys("j");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
     shift(&mut app, KeyCode::Down);
     assert_eq!(
         selected_rows(&mut app),
@@ -47,25 +50,53 @@ fn shift_j_selects_five_tasks_and_x_completes_them_at_once() {
     assert_eq!(saved(&mut app), ERRANDS, "one step to undo");
 }
 
-// FR-OPS-01, D-42
+// FR-OPS-01
 #[test]
-fn k_and_shift_up_extend_upward_and_a_kitty_shifted_letter_does_too() {
+fn shift_up_extends_upward_and_shift_down_shrinks_the_run() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
     app.type_keys("G");
-    app.type_keys("K");
     shift(&mut app, KeyCode::Up);
-    app.press(KeyCode::Char('k'), KeyModifiers::SHIFT);
+    shift(&mut app, KeyCode::Up);
+    shift(&mut app, KeyCode::Up);
     assert_eq!(
         selected_rows(&mut app),
         ["  - Bakery", "  - Hardware store", "Later"]
     );
     assert_eq!(focused_rows(&mut app), ["  - Pharmacy"]);
-    app.press(KeyCode::Char('j'), KeyModifiers::SHIFT);
+    shift(&mut app, KeyCode::Down);
     assert_eq!(
         selected_rows(&mut app),
         ["  - Hardware store", "Later"],
         "back down shrinks the run"
     );
+}
+
+// FR-OPS-02, FR-OPS-07, D-42, D-139: `J`/`K` move the selection as `Alt+j`/`Alt+k` do, whether
+// a terminal sends the capital or, under the kitty protocol, the letter with `Shift`.
+#[test]
+fn shift_j_and_shift_k_move_the_selection_down_and_up() {
+    let mut app = Harness::with_text(ERRANDS, 40, 10);
+    app.type_keys("j");
+    shift(&mut app, KeyCode::Down);
+    app.type_keys("J");
+    assert_eq!(
+        outline_rows(&mut app)[1..4],
+        ["  - Pharmacy", "  - Post office", "  - Bank"]
+    );
+    app.press(KeyCode::Char('j'), KeyModifiers::SHIFT);
+    assert_eq!(
+        outline_rows(&mut app)[1..5],
+        ["  - Pharmacy", "  - Bakery", "  - Post office", "  - Bank"]
+    );
+    app.type_keys("K");
+    app.press(KeyCode::Char('k'), KeyModifiers::SHIFT);
+    assert_eq!(saved(&mut app), ERRANDS, "back where they were");
+    assert_eq!(
+        selected_rows(&mut app),
+        ["  - Post office"],
+        "the run stays"
+    );
+    assert_eq!(focused_rows(&mut app), ["  - Bank"]);
 }
 
 // FR-OPS-01
@@ -145,11 +176,14 @@ fn shift_v_selects_from_where_it_began_to_the_focus_until_a_command_acts() {
     assert_eq!(selected_rows(&mut app), Vec::<String>::new(), "so does Esc");
 }
 
-// FR-OPS-04, FR-OPS-08
+// FR-OPS-04, FR-OPS-08, D-139
 #[test]
-fn g_shift_g_groups_the_selection_under_a_new_block_to_name() {
+fn group_from_go_to_command_groups_the_selection_under_a_new_block_to_name() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jJgG");
+    app.type_keys("j");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys(":group");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         outline_rows(&mut app)[..4],
         ["Errands:", "", "    - Post office", "    - Bank"]
@@ -171,7 +205,8 @@ fn g_shift_g_groups_the_selection_under_a_new_block_to_name() {
 #[test]
 fn structure_keys_move_and_delete_the_whole_selection() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jjJ");
+    app.type_keys("jj");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
     app.press(KeyCode::Char('k'), KeyModifiers::ALT);
     assert_eq!(
         outline_rows(&mut app)[1..4],
@@ -202,9 +237,11 @@ fn structure_keys_move_and_delete_the_whole_selection() {
 #[test]
 fn metadata_keys_mark_every_selected_block() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jJc");
+    app.type_keys("j");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("c");
     app.type_keys("s");
-    app.type_keys("mb");
+    app.type_keys("b");
     assert_eq!(
         saved(&mut app),
         ERRANDS
@@ -217,7 +254,9 @@ fn metadata_keys_mark_every_selected_block() {
 #[test]
 fn m_d_dates_every_selected_block_with_the_date_typed() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
-    app.type_keys("jJmdfri");
+    app.type_keys("j");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("mdfri");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         saved(&mut app),

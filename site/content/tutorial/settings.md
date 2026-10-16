@@ -6,7 +6,7 @@ description = "Make tpt yours, and find out where to learn the rest."
 
 ## Choose a theme
 
-Press <kbd>Ctrl+T</kbd> for the **Theme** picker: Catppuccin, Tokyo Night, Nord, Gruvbox, Solarized Light and more. Move with <kbd>↓</kbd> and <kbd>↑</kbd> and the screen previews each theme. <kbd>Enter</kbd> keeps it; <kbd>Esc</kbd> goes back.
+Press <kbd>:</kbd>, type `theme` and press <kbd>Enter</kbd> for the **Theme** picker: Catppuccin, Tokyo Night, Nord, Gruvbox, Solarized Light and more. Move with <kbd>↓</kbd> and <kbd>↑</kbd> and the screen previews each theme. <kbd>Enter</kbd> keeps it; <kbd>Esc</kbd> goes back.
 
 {{ shot(src="tutorial/settings", alt="The theme picker over the sample outline, with Tokyo Night highlighted and the outline behind it drawn in Tokyo Night's colors", caption="The theme picker previews each theme on your own outline.") }}
 

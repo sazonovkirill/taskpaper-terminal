@@ -6,7 +6,7 @@ Current:
 	- Task one
 	- Task two
 END
-keys <C-o>
+keys gc
 hide Old:
 keys j <A-k>
 see ▌   - Task one

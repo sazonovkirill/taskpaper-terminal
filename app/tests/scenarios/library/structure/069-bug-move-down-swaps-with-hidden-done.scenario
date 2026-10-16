@@ -6,7 +6,7 @@ Week:
 	- Gym @done(2026-10-02)
 	- Call mom
 END
-keys <C-o>
+keys gc
 hide Gym
 keys j <A-j>
 see ▌   - Groceries

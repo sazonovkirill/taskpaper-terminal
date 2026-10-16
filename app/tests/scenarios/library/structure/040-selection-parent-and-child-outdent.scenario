@@ -5,7 +5,7 @@ A:
 		- a1x
 	- a2
 END
-keys j J <S-Tab>
+keys j <S-Down> <S-Tab>
 quit
 saved <<END
 A:

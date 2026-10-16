@@ -584,7 +584,6 @@ const SCROLL: &[(Key, ScrollBy)] = &[
     (key!(PageUp), ScrollBy::PageUp),
     (key!(ctrl 'u'), ScrollBy::PageUp),
     (key!(Home), ScrollBy::Top),
-    (key!('g'), ScrollBy::Top),
     (key!(End), ScrollBy::Bottom),
     (key!('G'), ScrollBy::Bottom),
 ];
@@ -1195,7 +1194,6 @@ impl Keymap {
             code => (key.modifiers, code),
         };
         if let Some(overlay) = context.overlay {
-            self.pending.clear();
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::QuickAdd => quick_add_message(pressed),
@@ -1215,10 +1213,11 @@ impl Keymap {
                 Overlay::ContextMenu => menu_message(pressed, Menu::ContextMenu),
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
-                Overlay::Attachments => return attachments_action(pressed),
+                Overlay::Attachments => return self.attachments_action(pressed),
                 Overlay::AttachmentsEditor => note_editor_message(pressed),
                 Overlay::AttachmentsComment => comment_message(pressed, context.now),
             };
+            self.pending.clear();
             return message.map(KeyAction::Send);
         }
         if context.navigator {
@@ -1253,6 +1252,20 @@ impl Keymap {
         self.replay = held.is_some();
         self.pending.clear();
         held
+    }
+
+    /// What `pressed` does in the attachments panel, where `gg` goes to the top as in the outline
+    /// and any other key ends a pending `g`.
+    fn attachments_action(&mut self, pressed: Key) -> Option<KeyAction> {
+        let pending = mem::take(&mut self.pending);
+        if pressed == key!('g') {
+            if pending == [key!('g')] {
+                return Some(KeyAction::ScrollAttachments(ScrollBy::Top));
+            }
+            self.pending.push(pressed);
+            return None;
+        }
+        attachments_action(pressed)
     }
 
     /// Whether the key [`Keymap::action_for`] just handled is still to be handled, in the
@@ -1448,13 +1461,11 @@ mod tests {
         );
     }
 
-    // D-118, D-42: plain characters, so both key reportings send them alike.
+    // D-118, D-139, D-42: plain characters, so both key reportings send them alike.
     #[test]
-    fn g_l_and_g_p_focus_the_pane_left_and_g_r_and_g_n_the_pane_right() {
+    fn g_p_and_g_n_focus_the_pane_left_and_right_and_g_l_and_g_r_do_nothing() {
         for (keys, change) in [
-            ("gl", PaneChange::FocusLeft),
             ("gp", PaneChange::FocusLeft),
-            ("gr", PaneChange::FocusRight),
             ("gn", PaneChange::FocusRight),
         ] {
             assert_eq!(
@@ -1462,6 +1473,9 @@ mod tests {
                 [None, Some(Message::Pane(change))],
                 "{keys}"
             );
+        }
+        for keys in ["gl", "gr"] {
+            assert_eq!(messages(keys, CONTEXT), [None, None], "{keys}");
         }
     }
 
@@ -1645,7 +1659,7 @@ mod tests {
             check(code, alt, None);
         }
         check(KeyCode::Char('.'), none, Some(&Message::ZoomIn));
-        check(KeyCode::Char('>'), none, Some(&Message::ZoomOut));
+        check(KeyCode::Char(','), none, Some(&Message::ZoomOut));
         check(KeyCode::Left, alt, Some(&Message::Back));
         check(KeyCode::Right, alt, Some(&Message::Forward));
         check(KeyCode::Left, alt_shift, None);
@@ -1696,7 +1710,8 @@ mod tests {
         assert_eq!(keymap.pending(), "d");
         assert_eq!(
             keymap.message_for(&d, ms(1), CONTEXT),
-            Some(Message::Delete)
+            Some(Message::Cut),
+            "dd cuts, as vim's dd keeps what it deletes (D-139)"
         );
     }
 
@@ -1887,13 +1902,13 @@ mod tests {
         );
     }
 
-    // FR-DONE-02
+    // FR-DONE-02, D-139: `Ctrl+O` goes back, as in vim, and `gc` alone shows completed blocks.
     #[test]
-    fn ctrl_o_and_g_c_show_or_hide_completed_blocks() {
+    fn g_c_shows_or_hides_completed_blocks() {
         check(
             KeyCode::Char('o'),
             KeyModifiers::CONTROL,
-            Some(&Message::ToggleShowDone),
+            Some(&Message::Back),
         );
         assert_eq!(
             messages("gc", CONTEXT),
@@ -2060,7 +2075,17 @@ mod tests {
         }
         kitty.sort_unstable();
         kitty.dedup();
-        assert_eq!(kitty, ["ctrl+'", "ctrl+\\", "ctrl+enter", "ctrl+m", "menu"]);
+        assert_eq!(
+            kitty,
+            [
+                "ctrl+'",
+                "ctrl+\\",
+                "ctrl+enter",
+                "ctrl+i",
+                "ctrl+m",
+                "menu"
+            ]
+        );
     }
 
     // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
@@ -2369,9 +2394,10 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91, D-138: plain characters,
-    // which both key reportings send alike, and `C`, which the kitty protocol sends as `c` with
-    // `Shift`. `c` cycles at once, as no sequence starts with it.
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91, D-138, D-139: plain
+    // characters, which both key reportings send alike, and `C`, which the kitty protocol sends as
+    // `c` with `Shift`. `c` cycles at once, as no sequence starts with it, and `b` and `!` toggle
+    // at once, leaving the `m` keys to prompts and pickers.
     #[test]
     fn color_star_flag_and_bookmark_keys() {
         check(
@@ -2393,17 +2419,18 @@ mod tests {
             KeyModifiers::SHIFT,
             Some(&Message::SetColor(None)),
         );
-        for (second, expected) in [
-            ('c', Message::OpenColorPicker),
-            ('b', Message::ToggleFlag(Flag::Bookmark)),
-            ('f', Message::ToggleFlag(Flag::Flagged)),
-        ] {
-            assert_eq!(
-                messages(&format!("m{second}"), CONTEXT),
-                [None, Some(expected)]
-            );
+        assert_eq!(
+            messages("mc", CONTEXT),
+            [None, Some(Message::OpenColorPicker)]
+        );
+        for keys in ["mb", "mf", "mx"] {
+            assert_eq!(messages(keys, CONTEXT), [None, None], "{keys}");
         }
-        assert_eq!(messages("mx", CONTEXT), [None, None]);
+        check(
+            KeyCode::Char('b'),
+            KeyModifiers::NONE,
+            Some(&Message::ToggleFlag(Flag::Bookmark)),
+        );
         let flag = Message::ToggleFlag(Flag::Flagged);
         check(KeyCode::Char('!'), KeyModifiers::NONE, Some(&flag));
         check(KeyCode::Char('!'), KeyModifiers::SHIFT, Some(&flag));
@@ -2633,7 +2660,6 @@ mod tests {
             (KeyCode::PageUp, none, ScrollBy::PageUp),
             (KeyCode::Char('u'), ctrl, ScrollBy::PageUp),
             (KeyCode::Home, none, ScrollBy::Top),
-            (KeyCode::Char('g'), none, ScrollBy::Top),
             (KeyCode::End, none, ScrollBy::Bottom),
             (KeyCode::Char('G'), shift, ScrollBy::Bottom),
             (KeyCode::Char('g'), shift, ScrollBy::Bottom),
@@ -2644,6 +2670,31 @@ mod tests {
                 "{code:?} {modifiers:?}"
             );
         }
+    }
+
+    // keybindings.md §4, D-139: `gg` goes to the top as in the outline, and a key after a lone
+    // `g` acts as itself.
+    #[test]
+    fn g_g_goes_to_the_top_of_the_attachments_panel() {
+        let context = &Context {
+            overlay: Some(Overlay::Attachments),
+            ..*CONTEXT
+        };
+        let press = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
+        let mut keymap = Keymap::default();
+        assert_eq!(keymap.action_for(&press('g'), ms(0), context), None);
+        assert_eq!(keymap.pending(), "g");
+        assert_eq!(
+            keymap.action_for(&press('g'), ms(1), context),
+            Some(KeyAction::ScrollAttachments(ScrollBy::Top))
+        );
+        assert_eq!(keymap.pending(), "");
+        assert_eq!(keymap.action_for(&press('g'), ms(2), context), None);
+        assert_eq!(
+            keymap.action_for(&press('j'), ms(3), context),
+            Some(KeyAction::ScrollAttachments(ScrollBy::Down))
+        );
+        assert_eq!(keymap.pending(), "");
     }
 
     // attachments.md §5, keybindings.md §4, D-42
@@ -2750,20 +2801,21 @@ mod tests {
         assert_eq!(keymap.pending(), "");
     }
 
-    // FR-OPS-01, D-42
+    // FR-OPS-01, D-42, D-139: `Shift+↓`/`Shift+↑` extend the selection, and `J`/`K` move blocks.
     #[test]
     fn selection_keys_extend_toggle_start_visual_mode_select_all_and_clear() {
         let none = KeyModifiers::NONE;
         let shift = KeyModifiers::SHIFT;
-        let down = Some(&Message::Select(SelectionChange::ExtendDown));
-        let up = Some(&Message::Select(SelectionChange::ExtendUp));
-        check(KeyCode::Char('J'), none, down);
-        check(KeyCode::Char('J'), shift, down);
-        check(KeyCode::Char('j'), shift, down);
-        check(KeyCode::Down, shift, down);
-        check(KeyCode::Char('K'), shift, up);
-        check(KeyCode::Char('k'), shift, up);
-        check(KeyCode::Up, shift, up);
+        check(
+            KeyCode::Down,
+            shift,
+            Some(&Message::Select(SelectionChange::ExtendDown)),
+        );
+        check(
+            KeyCode::Up,
+            shift,
+            Some(&Message::Select(SelectionChange::ExtendUp)),
+        );
         check(
             KeyCode::Char('v'),
             none,
@@ -2785,17 +2837,59 @@ mod tests {
         );
     }
 
-    // FR-OPS-04
+    // FR-OPS-04, D-139: Group is left to the command palette and the context menu, so `g` keeps
+    // to going places.
     #[test]
-    fn g_shift_g_groups() {
-        let mut keymap = Keymap::default();
-        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
-        assert_eq!(keymap.message_for(&g, ms(0), CONTEXT), None);
-        let shifted = key(KeyCode::Char('G'), KeyModifiers::SHIFT);
-        assert_eq!(
-            keymap.message_for(&shifted, ms(1), CONTEXT),
-            Some(Message::Group)
+    fn group_has_no_key() {
+        assert_eq!(Keymap::default().bindings(Command::Group, true), "");
+        assert_eq!(messages("gG", CONTEXT), [None, None]);
+    }
+
+    // FR-OPS-02, FR-OPS-03, FR-OPS-11, FR-NAV-04, D-139: vim's keys for undo, redo, cut, indent,
+    // outdent, back and forward and closing a pane, `J`/`K` to move blocks, `,` to zoom out and
+    // `Ctrl+T` to convert the type, beside the keys they had; the kitty protocol may add `Shift`
+    // to the capitals and punctuation.
+    #[test]
+    fn the_vim_keys_of_the_keymap_review() {
+        let none = KeyModifiers::NONE;
+        let shift = KeyModifiers::SHIFT;
+        let ctrl = KeyModifiers::CONTROL;
+        check(KeyCode::Char('u'), none, Some(&Message::Undo));
+        check(KeyCode::Char('r'), ctrl, Some(&Message::Redo));
+        for modifiers in [none, shift] {
+            check(KeyCode::Char('J'), modifiers, Some(&Message::MoveDown));
+            check(KeyCode::Char('K'), modifiers, Some(&Message::MoveUp));
+            check(KeyCode::Char('>'), modifiers, Some(&Message::Indent));
+            check(KeyCode::Char('<'), modifiers, Some(&Message::Outdent));
+        }
+        check(KeyCode::Char('j'), shift, Some(&Message::MoveDown));
+        check(KeyCode::Char('k'), shift, Some(&Message::MoveUp));
+        check(
+            KeyCode::Char('j'),
+            KeyModifiers::ALT,
+            Some(&Message::MoveDown),
         );
+        check(KeyCode::Char(','), none, Some(&Message::ZoomOut));
+        check(KeyCode::Char('.'), none, Some(&Message::ZoomIn));
+        check(KeyCode::Char('o'), ctrl, Some(&Message::Back));
+        check(KeyCode::Char('i'), ctrl, Some(&Message::Forward));
+        check(KeyCode::Tab, none, Some(&Message::Indent));
+        check(KeyCode::Char('t'), ctrl, Some(&Message::OpenTypePicker));
+        assert_eq!(Keymap::default().bindings(Command::ChooseTheme, true), "");
+        let w = key(KeyCode::Char('w'), ctrl);
+        for (c, expected) in [
+            ('q', Message::Pane(PaneChange::Close)),
+            ('w', Message::Pane(PaneChange::FocusRight)),
+            ('W', Message::Pane(PaneChange::FocusLeft)),
+        ] {
+            let mut keymap = Keymap::default();
+            assert_eq!(keymap.message_for(&w, ms(0), CONTEXT), None);
+            assert_eq!(
+                keymap.message_for(&key(KeyCode::Char(c), none), ms(1), CONTEXT),
+                Some(expected),
+                "Ctrl+W {c}"
+            );
+        }
     }
 
     #[test]
@@ -3224,12 +3318,16 @@ mod tests {
 
     // FR-UI-06, D-62
     #[test]
-    fn ctrl_t_chooses_a_theme_in_navigate_mode() {
+    fn choose_theme_opens_the_theme_picker_from_go_to_command_and_ctrl_t_converts_the_type() {
+        assert_eq!(
+            action(Command::ChooseTheme, CONTEXT),
+            Some(KeyAction::ChooseTheme)
+        );
         let mut keymap = Keymap::default();
         let ctrl_t = key(KeyCode::Char('t'), KeyModifiers::CONTROL);
         assert_eq!(
             keymap.action_for(&ctrl_t, ms(0), CONTEXT),
-            Some(KeyAction::ChooseTheme)
+            Some(KeyAction::Send(Message::OpenTypePicker))
         );
     }
 
@@ -3497,7 +3595,7 @@ mod tests {
         assert_eq!(keymap.labels(Command::FocusNext, Mode::Navigate), "↓");
         assert_eq!(
             keymap.labels(Command::MoveDown, Mode::Navigate),
-            "j, Alt+j, Alt+↓"
+            "j, J, Alt+j, Alt+↓"
         );
         let errors = keymap.bind(Mode::Edit, &[("ctrl+g", "INLINE CODE")]);
         assert_eq!(errors, []);
@@ -3617,7 +3715,7 @@ mod tests {
         assert_eq!(keymap.labels(Command::FocusLast, Mode::Navigate), "G, End");
         assert_eq!(
             keymap.labels(Command::Undo, Mode::Navigate),
-            "uu, z, Ctrl+Z"
+            "uu, z, u, Ctrl+Z"
         );
         let errors = keymap.bind(
             Mode::Edit,
@@ -3689,7 +3787,8 @@ mod tests {
         assert_eq!(label("fx"), None, "only a number makes a function key");
     }
 
-    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-101
+    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-101, D-139: outside the Navigator `Ctrl+R`
+    // redoes, as in vim.
     #[test]
     fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_and_ctrl_r_in_place_of_backslash_in_the_navigator()
      {
@@ -3698,7 +3797,11 @@ mod tests {
         check(KeyCode::F(10), KeyModifiers::SHIFT, open);
         check(KeyCode::Menu, KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::NONE, None);
-        check(KeyCode::Char('r'), KeyModifiers::CONTROL, None);
+        check(
+            KeyCode::Char('r'),
+            KeyModifiers::CONTROL,
+            Some(&Message::Redo),
+        );
         let mut keymap = Keymap::default();
         let navigator = &Context {
             navigator: true,
@@ -3798,7 +3901,7 @@ mod tests {
         );
         assert_eq!(
             bindings(Command::Undo, true),
-            "z, Ctrl+Z",
+            "z, u, Ctrl+Z",
             "no Navigator key"
         );
     }
@@ -3958,11 +4061,11 @@ mod tests {
         for (change, keys) in [
             (
                 PaneChange::FocusLeft,
-                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, gl, gp",
+                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, Ctrl+W W, gp",
             ),
             (
                 PaneChange::FocusRight,
-                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, gr, gn",
+                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, Ctrl+W w, gn",
             ),
         ] {
             assert_eq!(keymap.bindings(Command::Pane(change), true), keys);

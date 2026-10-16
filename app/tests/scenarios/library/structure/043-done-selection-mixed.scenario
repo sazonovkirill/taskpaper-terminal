@@ -5,7 +5,7 @@ Mixed:
 	- B
 	- C
 END
-keys j J J x
+keys j <S-Down> <S-Down> x
 quit
 saved <<END
 Mixed:

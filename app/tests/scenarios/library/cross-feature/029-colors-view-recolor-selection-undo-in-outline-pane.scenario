@@ -5,7 +5,7 @@ Work:
 	- Review PRs @blue
 	- Plan sprint
 END
-keys <C-w> s gC J mc2
+keys <C-w> s gC <S-Down> mc2
 see Yellow
 hide Red
 keys g1 z

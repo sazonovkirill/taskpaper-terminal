@@ -9,7 +9,7 @@ file <<END
 - Gamma
 - Delta
 END
-keys j J J <Tab>
+keys j <S-Down> <S-Down> <Tab>
 see ▌   - Delta
 keys z
 quit

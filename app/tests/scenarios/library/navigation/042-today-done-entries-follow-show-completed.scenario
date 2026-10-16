@@ -1,4 +1,4 @@
-# In Today a completed entry stays (dimmed with ✔) until the user hides completed blocks with Ctrl+O.
+# In Today a completed entry stays (dimmed with ✔) until the user hides completed blocks with gc.
 file <<END
 Work:
 	- Pay rent @due({today-1})
@@ -6,7 +6,7 @@ Work:
 END
 keys gt x
 see ✔ Pay rent
-keys <C-o>
+keys gc
 see - Send report
 hide Pay rent
 quit

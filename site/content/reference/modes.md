@@ -14,7 +14,7 @@ Navigate-mode keys are vi-inspired. `j`/`k` move, `h`/`l` fold and unfold, `gg`/
 
 Many keys are two-key sequences: `gg`, `dd`, `ms`, `Ctrl+W v`. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.
 
-The prefixes group keys by meaning: `g` goes somewhere, `m` sets metadata through a prompt or picker, `d` deletes, and `Ctrl+W` handles panes.
+The prefixes group keys by meaning: `g` goes somewhere, and a capital after it opens a view or a list of places; `m` sets metadata through a prompt or picker, while marks that toggle at once are single keys (`s`, `b`, `!`); `d` deletes, and `Ctrl+W` handles panes.
 
 ### Classic and kitty keys
 
@@ -27,6 +27,7 @@ Every command has at least one key that works with classic reporting. A few comm
 | `Ctrl+Enter` | Toggle Done | `x` |
 | `Ctrl+'` | Go Home | `gh` |
 | `Ctrl+M` | Move To | `gm` |
+| `Ctrl+I` | Forward | `L` |
 | `Ctrl+\` | Open in New Pane | `Ctrl+W v` |
 | `Menu` | Context Menu | `\`, `Shift+F10`, or `Ctrl+R` in the Navigator |
 
@@ -45,7 +46,7 @@ Some terminals and desktops keep certain keys for themselves. Each such key has 
 | `Alt+Enter` in the Navigator and finders | Windows Terminal, WezTerm | `Ctrl+T` |
 | `Ctrl+V` in the Navigator and finders | Windows Terminal | `Ctrl+T` |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | kitty, WezTerm | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l` |
-| `Alt` with arrows | Windows Terminal | `H` / `L`, `Alt+k` / `Alt+j` |
+| `Alt` with arrows | Windows Terminal | `H` / `L`, `K` / `J` |
 | `Alt+1` … `Alt+9` | GNOME Terminal and Ghostty on Linux | `g1` … `g9` |
 | `Shift+F10` | GNOME Terminal | `\`, or `Ctrl+R` in the Navigator |
 | `Ctrl+B` while editing | tmux | press `Ctrl+B` twice |

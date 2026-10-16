@@ -8,13 +8,13 @@ description = "Indent, move, fold and add projects."
 
 Under "Home", "Buy a new washer" is really part of "Fix the dripping kitchen tap".
 
-Move to "Buy a new washer" and press <kbd>Tab</kbd>. It becomes a subtask of the tap. <kbd>Shift+Tab</kbd> moves a line back out.
+Move to "Buy a new washer" and press <kbd>Tab</kbd>. It becomes a subtask of the tap. <kbd>Shift+Tab</kbd> moves a line back out. If you know vim, <kbd>></kbd> and <kbd><</kbd> do the same.
 
 A line always takes everything inside it along.
 
 ## Move lines up and down
 
-In "Packing", move to "Comfortable shoes" and press <kbd>Alt+k</kbd> twice. The shoes move to the top of the list. <kbd>Alt+j</kbd> moves a line down.
+In "Packing", move to "Comfortable shoes" and press <kbd>K</kbd> (that's <kbd>Shift+k</kbd>) twice. The shoes move to the top of the list. <kbd>J</kbd> moves a line down. <kbd>Alt+k</kbd> and <kbd>Alt+j</kbd> do the same.
 
 On a Mac, <kbd>Alt</kbd> is Option, and your terminal must send it: turn on "Use Option as Meta key" in Terminal, or set Option to "Esc+" in iTerm2. Move Up and Move Down are also in the command palette (last chapter).
 
@@ -38,6 +38,6 @@ The keys that add lines pick a place: <kbd>o</kbd> below, <kbd>O</kbd> above, <k
 
 ## Delete
 
-To delete a line and everything in it, press <kbd>d</kbd> <kbd>d</kbd>. Try it on "Learn to juggle", then press <kbd>z</kbd> to bring it back.
+To cut a line and everything in it, press <kbd>d</kbd> <kbd>d</kbd>, as in vim; <kbd>Delete</kbd> deletes it without copying. Try it on "Learn to juggle", then press <kbd>z</kbd> or <kbd>u</kbd> to bring it back.
 
 Copy, paste, selection and the rest are in the [Reference](@/reference/_index.md).

@@ -111,7 +111,7 @@ fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
     let mut app = app(30);
     app.type_keys("jjjj...");
     assert_eq!(header(&mut app), "⌂ › Work › Report › Draft");
-    app.type_keys(">");
+    app.type_keys(",");
     assert_eq!(header(&mut app), "⌂ › Work › Report");
     assert_focus(&mut app, "  - Draft");
     app.press(KeyCode::Char('h'), KeyModifiers::ALT);
@@ -120,7 +120,7 @@ fn every_zoom_out_key_goes_to_the_parent_and_focuses_where_you_were() {
         "⌂ › Work › Report",
         "Alt+h does not zoom out (D-132)"
     );
-    app.type_keys(">");
+    app.type_keys(",");
     assert_eq!(header(&mut app), "⌂ › Work");
     assert_focus(&mut app, "  - Report");
     app.type_keys("gu");

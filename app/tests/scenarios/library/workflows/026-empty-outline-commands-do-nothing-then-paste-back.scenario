@@ -5,9 +5,9 @@ Work:
 		Draft due Friday
 	- Slides
 END
-keys j y <C-a> dd
+keys j y <C-a> <Del>
 hide Work
-keys j k x . > <Tab> <S-Tab> <A-j> <A-k> D gG s } c h l ' = - + _
+keys j k x . , <Tab> <S-Tab> <A-j> <A-k> D s } c h l ' = - + _
 hide Work
 keys p
 see ▌ - Report

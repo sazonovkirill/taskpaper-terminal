@@ -102,7 +102,7 @@ List:
 	- r98
 	- r99
 END
-keys j J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J J 
+keys j <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down>
 keys dd
 see ▌   - r60
 quit

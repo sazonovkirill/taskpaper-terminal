@@ -62,7 +62,8 @@ fn g_x_opens_the_first_markdown_link_with_a_url_in_any_block() {
 #[test]
 fn g_x_opens_the_link_of_the_focused_block_of_a_selection() {
     let mut app = Harness::with_text("- https://a.b\n- [c](https://c.d)\n", 120, 6);
-    app.type_keys("Jgx");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("gx");
     assert_eq!(notice(&mut app), failed("https://c.d"));
 }
 

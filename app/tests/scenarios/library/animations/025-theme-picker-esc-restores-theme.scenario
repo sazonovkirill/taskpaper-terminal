@@ -6,7 +6,9 @@ END
 file <<END
 - Milk
 END
-keys <C-t>
+keys :
+type choose theme
+keys <Enter>
 see Theme
 keys <Down> <Down> <Esc> x
 see ✔ Milk

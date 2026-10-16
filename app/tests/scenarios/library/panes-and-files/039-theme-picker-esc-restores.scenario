@@ -3,7 +3,10 @@ file <<END
 Errands:
 	- Post office
 END
-keys <C-t> <Down> <Down> <Down> <Esc>
+keys :
+type choose theme
+keys <Enter>
+keys <Down> <Down> <Down> <Esc>
 hide Catppuccin Mocha
 keys g,
 see Terminal Dark

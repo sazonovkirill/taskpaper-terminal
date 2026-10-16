@@ -4,7 +4,7 @@ Work:
 	- Report @star
 	- Email @star
 END
-keys gS y j <A-j> <A-k> <Tab> <S-Tab> gG p P
+keys gS y j <A-j> <A-k> <Tab> <S-Tab> p P
 quit
 saved <<END
 Work:

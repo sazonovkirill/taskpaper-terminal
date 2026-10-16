@@ -13,7 +13,7 @@ type Lunch idea
 keys <Enter>
 keys gi
 see › INBOX
-keys J gm
+keys <S-Down> gm
 see Move to
 type work
 keys <Enter>

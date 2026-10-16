@@ -103,7 +103,7 @@ List:
 	- r99 @done(2026-10-01)
 	- last
 END
-keys <C-o>
+keys gc
 hide - r7
 keys G
 see ▌   - last

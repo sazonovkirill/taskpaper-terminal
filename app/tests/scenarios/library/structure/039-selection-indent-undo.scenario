@@ -6,7 +6,7 @@ Plan:
 	- C
 	- D
 END
-keys j j J <Tab>
+keys j j <S-Down> <Tab>
 see ▌     - C
 keys z
 see ▌   - C

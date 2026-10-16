@@ -1,4 +1,4 @@
-# Ctrl+A inside a zoomed project selects its children, and gG groups them under the zoom title.
+# Ctrl+A inside a zoomed project selects its children, and Group groups them under the zoom title.
 file <<END
 Work:
 	Q4:
@@ -9,7 +9,10 @@ Home:
 END
 keys j .
 see Q4:
-keys <C-a> gG
+keys <C-a>
+keys :
+type group
+keys <Enter>
 type Admin
 keys <Esc>
 see ▌   Admin

@@ -4,7 +4,7 @@ Mixed:
 	- A @star
 	- B
 END
-keys j J s
+keys j <S-Down> s
 quit
 saved <<END
 Mixed:

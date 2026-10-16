@@ -5,7 +5,7 @@ Launch: @due({today})
 	- Record demo
 Home:
 END
-keys gt mb
+keys gt b
 status Bookmarked
 keys <C-g>
 see Bookmarks

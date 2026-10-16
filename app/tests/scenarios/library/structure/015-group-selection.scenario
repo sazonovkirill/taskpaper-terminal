@@ -1,4 +1,4 @@
-# Selecting three tasks and pressing gG wraps them in a new parent that is typed in right away.
+# Selecting three tasks and choosing Group in Go to Command wraps them in a new parent that is typed in right away.
 file <<END
 Trip:
 	- Passport
@@ -7,7 +7,10 @@ Trip:
 Home:
 	- Water plants
 END
-keys j J J gG
+keys j <S-Down> <S-Down>
+keys :
+type group
+keys <Enter>
 type Documents
 keys <Esc>
 see ▌   Documents

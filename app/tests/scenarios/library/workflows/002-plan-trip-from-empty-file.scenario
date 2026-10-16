@@ -17,7 +17,7 @@ keys <Enter> <S-Tab>
 type Itinerary:
 keys <Esc>
 see ▌ Itinerary:
-keys k k k J J <Tab>
+keys k k k <S-Down> <S-Down> <Tab>
 see ▌     Exchange money
 keys my
 see Node type:

@@ -64,7 +64,8 @@ fn shift_d_duplicates_a_block_with_its_subtree_below_it_and_z_takes_it_back() {
 #[test]
 fn shift_d_duplicates_every_selected_block() {
     let mut app = Harness::with_text("- a\n- b\n- c\n", 50, 10);
-    app.type_keys("JD");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
+    app.type_keys("D");
     assert_eq!(
         outline_rows(&mut app)[..5],
         ["- a", "- a", "- b", "- b", "- c"]
@@ -111,7 +112,7 @@ fn ctrl_c_copies_a_project_with_its_hierarchy_and_ctrl_v_and_alt_v_paste_it() {
 #[test]
 fn ctrl_x_and_ctrl_v_move_selected_blocks() {
     let mut app = Harness::with_text("- a\n- b\n- c\n", 50, 10);
-    app.type_keys("J");
+    app.press(KeyCode::Down, KeyModifiers::SHIFT);
     ctrl(&mut app, 'x');
     assert_eq!(app.terminal_output.copied(), ["- a\n- b\n"]);
     assert_eq!(outline_rows(&mut app)[..2], ["- c", ""]);

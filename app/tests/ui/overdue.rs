@@ -79,7 +79,7 @@ fn the_header_shows_the_overdue_chips_icon_in_its_color() {
 #[test]
 fn the_list_is_the_same_whether_completed_blocks_show_or_not() {
     let mut app = overdue(OUTLINE);
-    app.press(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    app.type_keys("gc");
     assert_eq!(outline_rows(&mut app), listed());
 }
 

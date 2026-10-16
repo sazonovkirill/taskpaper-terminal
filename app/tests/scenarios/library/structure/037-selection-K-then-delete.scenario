@@ -1,11 +1,11 @@
-# K extends the selection upward and dd deletes both selected tasks.
+# Shift+Up extends the selection upward and dd cuts both selected tasks.
 file <<END
 Shopping:
 	- Milk
 	- Eggs
 	- Bread
 END
-keys G K dd
+keys G <S-Up> dd
 see ▌   - Milk
 quit
 saved <<END

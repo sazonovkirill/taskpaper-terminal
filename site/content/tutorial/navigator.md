@@ -21,7 +21,7 @@ Open it again and choose **Logbook**: what you finished this week, the passports
 
 ## Bookmarks
 
-Press <kbd>g</kbd> <kbd>h</kbd>, move to "Website redesign" under "Work" and press <kbd>m</kbd> <kbd>b</kbd>. A bookmark icon appears after its name. Open the Navigator: the project now has an entry of its own under **Bookmarks**.
+Press <kbd>g</kbd> <kbd>h</kbd>, move to "Website redesign" under "Work" and press <kbd>b</kbd>. A bookmark icon appears after its name. Open the Navigator: the project now has an entry of its own under **Bookmarks**.
 
 ## Go to Symbol
 

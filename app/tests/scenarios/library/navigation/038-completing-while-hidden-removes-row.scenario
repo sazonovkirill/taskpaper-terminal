@@ -5,7 +5,7 @@ Today:
 	- Buy stamps
 	- Pay bills
 END
-keys <C-o> j x x
+keys gc j x x
 see - Pay bills
 hide Call plumber
 hide Buy stamps

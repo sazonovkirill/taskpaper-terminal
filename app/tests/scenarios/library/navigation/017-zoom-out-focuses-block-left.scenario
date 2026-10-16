@@ -1,4 +1,4 @@
-# Zooming out with > returns to the parent and focuses the block the user was zoomed into.
+# Zooming out with , returns to the parent and focuses the block the user was zoomed into.
 file <<END
 Trip to Japan:
 	- Book flights
@@ -7,7 +7,7 @@ Trip to Japan:
 Groceries:
 	- Milk
 END
-keys j j . >
+keys j j . ,
 see - Book flights
 hide › Hotels
 keys x
