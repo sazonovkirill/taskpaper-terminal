@@ -10,7 +10,7 @@ use jiff::{
 };
 use thiserror::Error;
 
-use super::metadata::{self, DateTag};
+use super::metadata;
 
 /// Why a text is not a date. Offsets are byte offsets into the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -38,13 +38,13 @@ pub enum DateError {
     },
 }
 
-/// Resolves `text` to a date relative to `today` for the `tag` date: a month and day already
-/// past this year fall in the next year only for `@due`.
+/// Resolves `text` to a date relative to `today`: a month and day already past this year fall in
+/// the next year.
 ///
 /// # Errors
 ///
 /// A [`DateError`] saying why `text` is not a date.
-pub fn parse(text: &str, today: Date, tag: DateTag) -> Result<Date, DateError> {
+pub fn parse(text: &str, today: Date) -> Result<Date, DateError> {
     let tokens = lex(text)?;
     if tokens.is_empty() {
         return Err(DateError::Empty);
@@ -53,7 +53,6 @@ pub fn parse(text: &str, today: Date, tag: DateTag) -> Result<Date, DateError> {
         tokens: tokens.into_iter(),
         end: text.len(),
         today,
-        tag,
     }
     .expression()
 }
@@ -103,10 +102,8 @@ pub fn day_heading(date: Date, today: Date) -> String {
 /// A date named in words within a longer text, as Quick Add reads it (D-97).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Found {
-    /// The bytes of the text that name it, a due date's `due` included.
+    /// The bytes of the text that name it, a `due` before it included.
     pub span: Range<usize>,
-    /// Whether it is a start or a due date.
-    pub tag: DateTag,
     /// The date, resolved against the day given.
     pub date: Date,
 }
@@ -114,33 +111,28 @@ pub struct Found {
 /// The most words a date found in a text spans, as in `last fri +2 weeks`.
 const MOST_WORDS: usize = 4;
 
-/// The dates that count in `text`, resolved against `today`, in the order they stand: a run of
-/// whole words the grammar reads is a start date, or a due date right after the word `due`; the
-/// longest run at each word wins, a run starting with a bare number does not count, nor a start
-/// date that is only a weekday's abbreviation, an everyday word as often as a date (D-112), or
-/// one before today, which words such as `last week` in a task's text name (D-126), and of
-/// several start or due dates only the last counts (D-97).
+/// The date that counts in `text`, resolved against `today`: a run of whole words the grammar
+/// reads, with the word `due` before it if there is one; the longest run at each word wins, a run
+/// starting with a bare number does not count, nor without `due` one that is only a weekday's
+/// abbreviation, an everyday word as often as a date (D-112), or one before today, which words
+/// such as `last week` in a task's text name (D-126); of several dates the last counts (D-97,
+/// D-140).
 #[must_use]
-pub fn find(text: &str, today: Date) -> Vec<Found> {
+pub fn find(text: &str, today: Date) -> Option<Found> {
     let words = words(text);
-    let mut found = Vec::new();
+    let mut found = None;
     let mut at = 0;
     while let Some(word) = words.get(at) {
         let due = text[word.clone()].eq_ignore_ascii_case("due");
-        let (tag, first) = if due {
-            (DateTag::Due, at + 1)
-        } else {
-            (DateTag::Start, at)
-        };
-        let run = longest_run(text, words.get(first..).unwrap_or_default(), today, tag)
+        let first = if due { at + 1 } else { at };
+        let run = longest_run(text, words.get(first..).unwrap_or_default(), today)
             .filter(|&(taken, _, _)| due || taken > 1 || !abbreviation(&text[word.clone()]));
         match run {
             // Its words stay text, none of them read as a date of its own (`last weekend`).
             Some((taken, _, date)) if !due && date < today => at = first + taken,
             Some((taken, end, date)) => {
-                found.push(Found {
+                found = Some(Found {
                     span: word.start..end,
-                    tag,
                     date,
                 });
                 at = first + taken;
@@ -148,13 +140,7 @@ pub fn find(text: &str, today: Date) -> Vec<Found> {
             None => at += 1,
         }
     }
-    let mut counting: Vec<Found> = Vec::new();
-    for date in found.into_iter().rev() {
-        if !counting.iter().any(|kept| kept.tag == date.tag) {
-            counting.insert(0, date);
-        }
-    }
-    counting
+    found
 }
 
 /// The byte ranges of the words of `text`, the runs between whitespace, without the punctuation
@@ -168,14 +154,9 @@ fn words(text: &str) -> Vec<Range<usize>> {
         .collect()
 }
 
-/// How many of `words` the longest run from the first that reads as the `tag` date takes, the
-/// byte where it ends and the date; `None` when there is none or the first word is a bare number.
-fn longest_run(
-    text: &str,
-    words: &[Range<usize>],
-    today: Date,
-    tag: DateTag,
-) -> Option<(usize, usize, Date)> {
+/// How many of `words` the longest run from the first that reads as a date takes, the byte where
+/// it ends and the date; `None` when there is none or the first word is a bare number.
+fn longest_run(text: &str, words: &[Range<usize>], today: Date) -> Option<(usize, usize, Date)> {
     let first = words.first()?;
     let word = &text[first.clone()];
     let after_digits = word.trim_start_matches(|c: char| c.is_ascii_digit());
@@ -188,7 +169,7 @@ fn longest_run(
         .enumerate()
         .rev()
         .find_map(|(last, word)| {
-            let date = parse(&text[first.start..word.end], today, tag).ok()?;
+            let date = parse(&text[first.start..word.end], today).ok()?;
             Some((last + 1, word.end, date))
         })
 }
@@ -280,7 +261,6 @@ struct Parser<'a> {
     /// The text's length, reported as the offset when a token is missing.
     end: usize,
     today: Date,
-    tag: DateTag,
 }
 
 impl<'a> Parser<'a> {
@@ -444,8 +424,7 @@ impl<'a> Parser<'a> {
             .map_err(|_| DateError::OutOfRange { offset })
     }
 
-    /// The day `month`-`day` written at `offset`, in this year or, for a due date already past,
-    /// in the next.
+    /// The day `month`-`day` written at `offset`, in this year or, when it is past, in the next.
     fn month_day(&self, month: &str, day: &str, offset: usize) -> Result<Date, DateError> {
         let no_such_day = DateError::NoSuchDay { offset };
         let (Ok(month), Ok(day)) = (month.parse(), day.parse()) else {
@@ -453,7 +432,7 @@ impl<'a> Parser<'a> {
         };
         let on = |year| Date::new(year, month, day).map_err(|_| no_such_day);
         let this_year = on(self.today.year())?;
-        if self.tag == DateTag::Due && this_year < self.today {
+        if this_year < self.today {
             let next_year = self
                 .today
                 .first_of_year()
@@ -500,9 +479,7 @@ mod tests {
 
     #[track_caller]
     fn check_on(today: Date, text: &str, expected: Date) {
-        for tag in [DateTag::Start, DateTag::Due] {
-            assert_eq!(parse(text, today, tag), Ok(expected), "{text:?} as {tag:?}");
-        }
+        assert_eq!(parse(text, today), Ok(expected), "{text:?}");
     }
 
     #[track_caller]
@@ -512,13 +489,7 @@ mod tests {
 
     #[track_caller]
     fn fails_on(today: Date, text: &str, expected: DateError) {
-        for tag in [DateTag::Start, DateTag::Due] {
-            assert_eq!(
-                parse(text, today, tag),
-                Err(expected),
-                "{text:?} as {tag:?}"
-            );
-        }
+        assert_eq!(parse(text, today), Err(expected), "{text:?}");
     }
 
     #[track_caller]
@@ -556,14 +527,12 @@ mod tests {
         check("10/8", date(2026, 10, 8));
     }
 
+    // D-140
     #[test]
-    fn a_past_month_and_day_is_next_year_only_for_due() {
-        for text in ["3/7", "03-07"] {
-            assert_eq!(parse(text, TODAY, DateTag::Start), Ok(date(2026, 3, 7)));
-            assert_eq!(parse(text, TODAY, DateTag::Due), Ok(date(2027, 3, 7)));
-        }
-        assert_eq!(parse("10-06", TODAY, DateTag::Due), Ok(date(2027, 10, 6)));
-        assert_eq!(parse("10-07", TODAY, DateTag::Due), Ok(TODAY));
+    fn a_past_month_and_day_is_next_year() {
+        check("3/7", date(2027, 3, 7));
+        check("03-07", date(2027, 3, 7));
+        check("10-06", date(2027, 10, 6));
     }
 
     #[test]
@@ -576,7 +545,7 @@ mod tests {
         fails("02-29", DateError::NoSuchDay { offset: 0 });
         check_on(date(2028, 1, 10), "02-29", date(2028, 2, 29));
         assert_eq!(
-            parse("02-29", date(2028, 3, 1), DateTag::Due),
+            parse("02-29", date(2028, 3, 1)),
             Err(DateError::NoSuchDay { offset: 0 }),
             "2029 has no February 29"
         );
@@ -803,44 +772,35 @@ mod tests {
         fails_on(Date::MAX, "next week", DateError::OutOfRange { offset: 0 });
         fails_on(Date::MIN, "last month", DateError::OutOfRange { offset: 0 });
         assert_eq!(
-            parse("12-25", Date::MAX, DateTag::Due),
+            parse("12-25", Date::MAX),
             Err(DateError::OutOfRange { offset: 0 })
         );
     }
 
-    /// The text, tag and date of each date `find` finds in `text`.
-    fn found(text: &str) -> Vec<(&str, DateTag, Date)> {
-        find(text, TODAY)
-            .into_iter()
-            .map(|found| (&text[found.span], found.tag, found.date))
-            .collect()
+    /// The text and date of the date `find` finds in `text`, if any.
+    fn found(text: &str) -> Option<(&str, Date)> {
+        find(text, TODAY).map(|found| (&text[found.span], found.date))
     }
 
-    // FR-MODE-08, D-97
+    // FR-MODE-08, D-97, D-140
     #[test]
-    fn finds_a_start_date_in_words_and_a_due_date_after_due() {
+    fn finds_a_date_in_words_with_or_without_due() {
         assert_eq!(
             found("Buy milk tomorrow"),
-            [("tomorrow", DateTag::Start, date(2026, 10, 8))]
+            Some(("tomorrow", date(2026, 10, 8)))
         );
         assert_eq!(
             found("Pay rent due next Mon"),
-            [("due next Mon", DateTag::Due, date(2026, 10, 19))]
+            Some(("due next Mon", date(2026, 10, 19)))
         );
         assert_eq!(
             found("Plan trip next weekend"),
-            [("next weekend", DateTag::Start, date(2026, 10, 17))]
+            Some(("next weekend", date(2026, 10, 17)))
         );
-        assert_eq!(
-            found("DUE today: call Ann next week"),
-            [
-                ("DUE today", DateTag::Due, TODAY),
-                ("next week", DateTag::Start, date(2026, 10, 12)),
-            ]
-        );
+        assert_eq!(found("DUE today: call Ann"), Some(("DUE today", TODAY)));
         assert_eq!(
             found("Купить молоко завтра friday"),
-            [("friday", DateTag::Start, date(2026, 10, 9))]
+            Some(("friday", date(2026, 10, 9)))
         );
     }
 
@@ -849,96 +809,85 @@ mod tests {
     fn takes_the_longest_run_of_whole_words() {
         assert_eq!(
             found("fri +1 w later"),
-            [("fri +1 w", DateTag::Start, date(2026, 10, 16))]
+            Some(("fri +1 w", date(2026, 10, 16)))
         );
         assert_eq!(
             found("last fri +2 weeks"),
-            [("last fri +2 weeks", DateTag::Start, date(2026, 10, 16))]
+            Some(("last fri +2 weeks", date(2026, 10, 16)))
         );
-        assert_eq!(found("tomorrowland friday's due"), []);
+        assert_eq!(found("tomorrowland friday's due"), None);
         assert_eq!(
             found("Call Ann tomorrow."),
-            [("tomorrow", DateTag::Start, date(2026, 10, 8))]
+            Some(("tomorrow", date(2026, 10, 8)))
         );
-        assert_eq!(found("Pay the bill due"), []);
-        assert_eq!(found("due diligence"), []);
-        assert_eq!(found("  ...  "), []);
+        assert_eq!(found("Pay the bill due"), None);
+        assert_eq!(found("due diligence"), None);
+        assert_eq!(found("  ...  "), None);
     }
 
     // D-112
     #[test]
     fn a_bare_weekday_abbreviation_counts_only_after_next_this_or_due() {
-        assert_eq!(found("Buy sun screen"), []);
-        assert_eq!(found("Sat down, wed Ann, MON"), []);
+        assert_eq!(found("Buy sun screen"), None);
+        assert_eq!(found("Sat down, wed Ann, MON"), None);
         assert_eq!(
             found("Sun cream next sun"),
-            [("next sun", DateTag::Start, date(2026, 10, 18))]
+            Some(("next sun", date(2026, 10, 18)))
         );
         assert_eq!(
             found("Call this Fri"),
-            [("this Fri", DateTag::Start, date(2026, 10, 9))]
+            Some(("this Fri", date(2026, 10, 9)))
         );
-        assert_eq!(
-            found("Pay due wed"),
-            [("due wed", DateTag::Due, date(2026, 10, 14))]
-        );
-        assert_eq!(
-            found("Call sunday"),
-            [("sunday", DateTag::Start, date(2026, 10, 11))]
-        );
-        assert_eq!(found("Call today"), [("today", DateTag::Start, TODAY)]);
+        assert_eq!(found("Pay due wed"), Some(("due wed", date(2026, 10, 14))));
+        assert_eq!(found("Call sunday"), Some(("sunday", date(2026, 10, 11))));
+        assert_eq!(found("Call today"), Some(("today", TODAY)));
         assert_eq!(
             found("Ship fri +1w"),
-            [("fri +1w", DateTag::Start, date(2026, 10, 16))],
+            Some(("fri +1w", date(2026, 10, 16))),
             "more than the abbreviation"
         );
     }
 
     // D-126
     #[test]
-    fn a_start_date_before_today_stays_text_and_a_due_date_before_today_counts() {
-        assert_eq!(found("Review last week sales numbers"), []);
-        assert_eq!(found("Write up yesterday meeting notes"), []);
-        assert_eq!(found("Plan last weekend trip"), []);
-        assert_eq!(found("File 2026-10-06 receipts"), []);
+    fn a_date_before_today_stays_text_unless_after_due() {
+        assert_eq!(found("Review last week sales numbers"), None);
+        assert_eq!(found("Write up yesterday meeting notes"), None);
+        assert_eq!(found("Plan last weekend trip"), None);
+        assert_eq!(found("File 2026-10-06 receipts"), None);
         assert_eq!(
             found("Report due yesterday"),
-            [("due yesterday", DateTag::Due, date(2026, 10, 6))]
+            Some(("due yesterday", date(2026, 10, 6)))
         );
         assert_eq!(
             found("yesterday due last fri"),
-            [("due last fri", DateTag::Due, date(2026, 10, 2))]
+            Some(("due last fri", date(2026, 10, 2)))
         );
     }
 
     // D-97
     #[test]
     fn a_run_starting_with_a_bare_number_does_not_count() {
-        assert_eq!(found("Read 3 days of notes"), []);
-        assert_eq!(found("Print 3d models"), []);
-        assert_eq!(
-            found("Ship +3d"),
-            [("+3d", DateTag::Start, date(2026, 10, 10))]
-        );
+        assert_eq!(found("Read 3 days of notes"), None);
+        assert_eq!(found("Print 3d models"), None);
+        assert_eq!(found("Ship +3d"), Some(("+3d", date(2026, 10, 10))));
         assert_eq!(
             found("Ship 2026-10-20"),
-            [("2026-10-20", DateTag::Start, date(2026, 10, 20))]
+            Some(("2026-10-20", date(2026, 10, 20)))
         );
-        assert_eq!(
-            found("Renew due 3/7"),
-            [("due 3/7", DateTag::Due, date(2027, 3, 7))]
-        );
+        assert_eq!(found("Renew 3/7"), Some(("3/7", date(2027, 3, 7))));
     }
 
-    // D-97
+    // D-97, D-140
     #[test]
-    fn of_several_start_or_due_dates_the_last_counts() {
+    fn of_several_dates_the_last_counts() {
         assert_eq!(
             found("today call tomorrow due fri due mon"),
-            [
-                ("tomorrow", DateTag::Start, date(2026, 10, 8)),
-                ("due mon", DateTag::Due, date(2026, 10, 12)),
-            ]
+            Some(("due mon", date(2026, 10, 12)))
+        );
+        assert_eq!(
+            found("due mon then tomorrow"),
+            Some(("tomorrow", date(2026, 10, 8)))
         );
     }
 

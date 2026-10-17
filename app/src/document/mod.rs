@@ -14,7 +14,7 @@ pub mod structure;
 
 pub use blocks::{Attachment, Block, BlockKind, HiddenData, TagColor};
 pub use format::DecodeError;
-pub use metadata::{DateChange, DateTag, Flag};
+pub use metadata::{DateChange, Flag};
 pub use model::{
     Document, EditError, FileFormat, IndentUnit, Item, ItemId, ItemKind, LineEnding, Op, Snapshot,
     Stamp, Transaction,

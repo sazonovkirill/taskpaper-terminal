@@ -127,8 +127,7 @@ pub(super) struct Facts {
     kind: BlockKind,
     done: bool,
     done_date: Option<Date>,
-    start: Option<Date>,
-    due: Option<Date>,
+    date: Option<Date>,
     starred: bool,
     bookmark: bool,
     flag: bool,
@@ -149,8 +148,7 @@ impl Facts {
             kind,
             done: has("done"),
             done_date: date_tag(tags, "done"),
-            start: date_tag(tags, "start"),
-            due: date_tag(tags, "due"),
+            date: date_tag(tags, DATE),
             starred: has("star"),
             bookmark: has("bookmark"),
             flag: has("flag"),
@@ -195,16 +193,11 @@ impl Block {
         self.facts.done_date
     }
 
-    /// The date of its `@start`, or `None` without one or when its value is not a date.
+    /// Its Date, the one date a block has (D-140): that of its [`DATE`] tag, or `None` without
+    /// one or when its value is not a date.
     #[must_use]
-    pub fn start(&self) -> Option<Date> {
-        self.facts.start
-    }
-
-    /// The date of its `@due`, or `None` without one or when its value is not a date.
-    #[must_use]
-    pub fn due(&self) -> Option<Date> {
-        self.facts.due
+    pub fn date(&self) -> Option<Date> {
+        self.facts.date
     }
 
     /// Whether its line carries `@star`, with or without a value (FR-TAG-04, D-88).
@@ -310,10 +303,14 @@ pub struct HiddenData {
     pub lines: usize,
 }
 
+/// The tag that holds a block's Date (D-140): `@due`, the date TaskPaper's own tools read, so a
+/// file's due dates stay its Dates. `@start` is an ordinary tag like any the app does not read.
+pub const DATE: &str = "due";
+
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and the Edit Node
 /// dialog marks it unsupported, as `@section` is on a task or project (D-52).
-const SUPPORTED: [&str; 12] = [
-    "start", "due", "star", "red", "yellow", "green", "blue", "section", "url", "done", "bookmark",
+const SUPPORTED: [&str; 11] = [
+    DATE, "star", "red", "yellow", "green", "blue", "section", "url", "done", "bookmark",
     "flag",
 ];
 
@@ -593,30 +590,26 @@ mod tests {
         );
     }
 
-    /// The start and due dates of each top-level block of `text`.
-    fn dates(text: &str) -> Vec<(Option<Date>, Option<Date>)> {
+    /// The Date of each top-level block of `text`.
+    fn dates(text: &str) -> Vec<Option<Date>> {
         let document = parse(text);
         children(&document, document.root())
             .iter()
-            .map(|block| (block.start(), block.due()))
+            .map(Block::date)
             .collect()
     }
 
-    // FR-TAG-02, FR-TAG-03
+    // FR-TAG-02, FR-TAG-03, D-140
     #[test]
-    fn start_and_due_come_from_their_tags_when_they_hold_dates() {
+    fn the_date_comes_from_the_due_tag_and_start_is_no_date() {
         let day = |d| Some(jiff::civil::date(2026, 10, d));
         assert_eq!(
             dates(
                 "- a @start(2026-10-05) @due(2026-10-06)\n- b @due(2026-10-07)\nP: @start(2026-10-08)\n- c"
             ),
-            [
-                (day(5), day(6)),
-                (None, day(7)),
-                (day(8), None),
-                (None, None)
-            ]
+            [day(6), day(7), None, None]
         );
+        assert!(!supported("start", BlockKind::Task), "D-140");
     }
 
     // FR-TAG-03, D-6
@@ -626,7 +619,7 @@ mod tests {
             dates(
                 "- a @due\n- b @due()\n- c @due(soon)\n- d @due(2026-13-01)\n- e @Due(2026-10-05)\n- f @due(2026-02-30)"
             ),
-            [(None, None); 6]
+            [None; 6]
         );
     }
 
@@ -648,7 +641,7 @@ mod tests {
     fn the_first_date_tag_of_a_name_counts() {
         assert_eq!(
             dates("- a @due(2026-10-05) @due(2026-10-09)"),
-            [(None, Some(jiff::civil::date(2026, 10, 5)))]
+            [Some(jiff::civil::date(2026, 10, 5))]
         );
     }
 

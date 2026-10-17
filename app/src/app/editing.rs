@@ -6,7 +6,7 @@ use jiff::civil::Date;
 
 use super::{Access, History, Mode, Notice, Restore, State};
 use crate::document::{
-    Block, DateChange, DateTag, Document, EditError, Flag, ItemId, Op, Transaction,
+    Block, DateChange, Document, EditError, Flag, ItemId, Op, Transaction,
     format::canonical, metadata,
 };
 
@@ -18,24 +18,24 @@ impl State {
         self.commit_any(ops);
     }
 
-    /// Sets or moves the `tag` date of the selected blocks, else the focused block, as `change`
-    /// says (FR-TAG-06, FR-OPS-07).
-    pub(super) fn change_date(&mut self, tag: DateTag, change: DateChange, today: Date) {
+    /// Sets or moves the Date of the selected blocks, else the focused block, as `change` says
+    /// (FR-TAG-06, FR-OPS-07, D-140).
+    pub(super) fn change_date(&mut self, change: DateChange, today: Date) {
         let ops = self
             .targets()
             .iter()
-            .filter_map(|block| metadata::change_date(self.document(), block, tag, change, today))
+            .filter_map(|block| metadata::change_date(self.document(), block, change, today))
             .collect();
         self.commit_any(ops);
     }
 
-    /// Removes the `tag` date of the selected blocks, else the focused block (FR-TAG-03,
-    /// FR-OPS-07).
-    pub(super) fn clear_date(&mut self, tag: DateTag) {
+    /// Removes the Date of the selected blocks, else the focused block (FR-TAG-03, FR-OPS-07,
+    /// D-140).
+    pub(super) fn clear_date(&mut self) {
         let ops = self
             .targets()
             .iter()
-            .filter_map(|block| metadata::set_date(self.document(), block, tag, None))
+            .filter_map(|block| metadata::set_date(self.document(), block, None))
             .collect();
         self.commit_any(ops);
     }

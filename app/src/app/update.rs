@@ -15,7 +15,7 @@ use super::{
     structure::NewBlock,
 };
 use crate::document::{
-    Attachment, Block, DateChange, DateTag, Flag, Item, ItemId, TagColor, blocks, format::Typed,
+    Attachment, Block, DateChange, Flag, Item, ItemId, TagColor, blocks, format::Typed,
     structure::Shift,
 };
 
@@ -203,11 +203,9 @@ pub enum Message {
         /// The frontend's local date.
         today: Date,
     },
-    /// Set or move the `tag` date of the selected blocks, else the focused block, as `change`
-    /// says, `today` being the frontend's local date (FR-TAG-06, FR-OPS-07).
+    /// Set or move the Date of the selected blocks, else the focused block, as `change` says,
+    /// `today` being the frontend's local date (FR-TAG-06, FR-OPS-07, D-140).
     ChangeDate {
-        /// The date to change.
-        tag: DateTag,
         /// How it changes.
         change: DateChange,
         /// The frontend's local date.
@@ -229,11 +227,9 @@ pub enum Message {
     /// a section and sections otherwise; a task or project is left as it is, with a notice
     /// (FR-BLK-04, FR-OPS-07, D-52, D-130).
     SetSection(Option<bool>),
-    /// Open the prompt for the focused block's `tag` date, resolving what is typed against
-    /// `today`, the frontend's local date (FR-TAG-03).
+    /// Open the prompt for the focused block's Date, resolving what is typed against `today`, the
+    /// frontend's local date (FR-TAG-03, D-140).
     OpenDatePrompt {
-        /// The date to set.
-        tag: DateTag,
         /// The frontend's local date.
         today: Date,
     },
@@ -241,8 +237,8 @@ pub enum Message {
     DatePrompt(DateInput),
     /// Open Quick Add, or a key of its open panel (`q`, D-96, D-133).
     QuickAdd(QuickAddInput),
-    /// Remove the `tag` date of the selected blocks, else the focused block (FR-TAG-03, D-50).
-    ClearDate(DateTag),
+    /// Remove the Date of the selected blocks, else the focused block (FR-TAG-03, D-50, D-140).
+    ClearDate,
     /// Open the type picker on the focused block (FR-BLK-08).
     OpenTypePicker,
     /// Open the Edit Node dialog on the focused block, or a key of the open dialog
