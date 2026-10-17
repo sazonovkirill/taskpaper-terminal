@@ -6,9 +6,9 @@ use std::{collections::HashSet, path::PathBuf, time::Duration};
 use jiff::civil::Date;
 
 use super::{
-    AttachmentsInput, Command, DateInput, Location, MenuInput, NavigatorInput, NodeInput, Notice,
-    PaneChange, Paste, QuickAddInput, Row, SaveAs, SelectionChange, SettingValue, SettingsInput,
-    SpecialView, State, Symbols, TextEdit, Version,
+    AttachmentsInput, Command, ConflictInput, DateInput, Location, MenuInput, NavigatorInput,
+    NodeInput, Notice, PaneChange, Paste, QuickAddInput, Row, SaveAs, SelectionChange,
+    SettingValue, SettingsInput, SpecialView, State, Symbols, TextEdit, Version,
     pane::{Pane, landing},
     rows::Rows,
     saving::{DocumentText, Ending},
@@ -92,12 +92,8 @@ pub enum Message {
         /// The file's bytes, or `None` when there is no file.
         contents: Option<Vec<u8>>,
     },
-    /// Resolve the conflict by overwriting the file on disk with the local version.
-    KeepMine,
-    /// Resolve the conflict by reloading the file on disk, discarding the local version.
-    TakeTheirs,
-    /// Show or hide the diff between the file on disk and the local version.
-    ToggleDiff,
+    /// A key of the conflict prompt (file-io.md §3).
+    Conflict(ConflictInput),
     /// The [`Disk::ConflictCopy`] under way was written.
     ConflictCopied {
         /// Where the copy is.
@@ -407,9 +403,7 @@ impl Message {
             | Self::SaveRefused { .. }
             | Self::CheckFile
             | Self::FileChecked { .. }
-            | Self::KeepMine
-            | Self::TakeTheirs
-            | Self::ToggleDiff
+            | Self::Conflict(_)
             | Self::ConflictCopied { .. }
             | Self::ConflictCopyFailed { .. }
             | Self::BackupFailed { .. }
@@ -671,9 +665,7 @@ impl State {
             Message::SaveRefused { contents } => self.save_refused(contents),
             Message::CheckFile => effects = self.check_file(),
             Message::FileChecked { contents } => self.found(contents),
-            Message::KeepMine => effects = self.keep_mine(),
-            Message::TakeTheirs => effects = self.take_theirs(),
-            Message::ToggleDiff => self.toggle_diff(),
+            Message::Conflict(input) => effects = self.conflict_input(input),
             Message::ConflictCopied { copy } => self.conflict_copied(copy),
             Message::ConflictCopyFailed { folder, reason } => self.copy_failed(folder, reason),
             Message::BackupFailed { reason } => self.backup_failed(reason),

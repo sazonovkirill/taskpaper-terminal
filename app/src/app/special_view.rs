@@ -246,9 +246,7 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::SaveRefused { .. }
         | Message::CheckFile
         | Message::FileChecked { .. }
-        | Message::KeepMine
-        | Message::TakeTheirs
-        | Message::ToggleDiff
+        | Message::Conflict(_)
         | Message::ConflictCopied { .. }
         | Message::ConflictCopyFailed { .. }
         | Message::BackupFailed { .. }

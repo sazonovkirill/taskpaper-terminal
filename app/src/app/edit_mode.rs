@@ -767,7 +767,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{DateInput, Disk, DocumentText, Effect, Menu, MenuRow, Message, Motion, Version},
+        app::{
+            ConflictInput, DateInput, Disk, DocumentText, Effect, Menu, MenuRow, Message, Motion,
+            Version,
+        },
         document::format,
     };
 
@@ -1303,13 +1306,13 @@ mod tests {
         typed(&mut state, "x");
         state.update(theirs());
         assert!(state.in_conflict());
-        state.update(Message::ToggleDiff);
+        state.update(Message::Conflict(ConflictInput::ToggleDiff));
         assert_eq!(
             state.mode(),
             Mode::Edit,
             "the prompt's diff leaves the session"
         );
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         assert_eq!(state.mode(), Mode::Edit, "until the copy is written");
         state.update(Message::ConflictCopied {
             copy: PathBuf::from("/backups/copy.taskpaper"),

@@ -28,8 +28,9 @@ use ratatui::{
 
 use crate::{
     app::{
-        Animations, AttachmentsInput, Configuration, Disk, Editor, Effect, Location, Message, Mode,
-        Origin, PaneId, PaneView, PanelItem, Row, SaveAs, SaveState, SettingsInput, State,
+        Animations, AttachmentsInput, Configuration, ConflictInput, Disk, Editor, Effect, Location,
+        Message, Mode, Origin, PaneId, PaneView, PanelItem, Row, SaveAs, SaveState, SettingsInput,
+        State,
         commands::{Command, REGISTRY},
     },
     document::ItemId,
@@ -442,7 +443,7 @@ impl Tui {
     fn handle_prompt_key(&mut self, event: &Event, now: Duration) {
         match keymap::prompt_key(event, self.diff_rows) {
             Some(PromptKey::Send(message)) => {
-                if message == Message::ToggleDiff {
+                if message == Message::Conflict(ConflictInput::ToggleDiff) {
                     self.diff_scroll = 0;
                 }
                 self.send(message, now);

@@ -144,9 +144,9 @@ CONTEXTS = {
     "CLOSE_KEYMAP": ("Keymap dialog", "modes", {"": "Close the Keymap dialog"}),
     "PROMPT": ("Conflict prompt", "files", {
         "|_|PromptKey::Send(Message::Quit)": "Quit",
-        "|_|PromptKey::Send(Message::KeepMine)": "Keep mine",
-        "|_|PromptKey::Send(Message::TakeTheirs)": "Take theirs",
-        "|_|PromptKey::Send(Message::ToggleDiff)": "Show or hide the diff",
+        "|_|{PromptKey::Send(Message::Conflict(ConflictInput::KeepMine))}": "Keep mine",
+        "|_|{PromptKey::Send(Message::Conflict(ConflictInput::TakeTheirs))}": "Take theirs",
+        "|_|{PromptKey::Send(Message::Conflict(ConflictInput::ToggleDiff))}": "Show or hide the diff",
         "|_|PromptKey::Scroll(1)": "Scroll the diff down a line",
         "|_|PromptKey::Scroll(-1)": "Scroll the diff up a line",
         "PromptKey::Scroll": "Scroll the diff down a page",

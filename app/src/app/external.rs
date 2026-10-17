@@ -17,6 +17,17 @@ use super::{
 };
 use crate::document::{Block, Document, ItemId, format};
 
+/// A key of the conflict prompt ([file-io.md §3](../../../docs/specs/file-io.md#3-external-changes)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConflictInput {
+    /// Resolve the conflict by overwriting the file on disk with the local version.
+    KeepMine,
+    /// Resolve the conflict by reloading the file on disk, discarding the local version.
+    TakeTheirs,
+    /// Show or hide the diff between the file on disk and the local version.
+    ToggleDiff,
+}
+
 /// Unchanged lines the diff shows around each change.
 const CONTEXT: usize = 3;
 
@@ -191,9 +202,21 @@ impl State {
         }
     }
 
+    /// Applies `input` to the conflict prompt and returns the effects that asks for.
+    pub(super) fn conflict_input(&mut self, input: ConflictInput) -> Vec<Effect> {
+        match input {
+            ConflictInput::KeepMine => self.keep_mine(),
+            ConflictInput::TakeTheirs => self.take_theirs(),
+            ConflictInput::ToggleDiff => {
+                self.toggle_diff();
+                Vec::new()
+            }
+        }
+    }
+
     /// Keeps the local version: once the file on disk is written to a conflict copy, the local
     /// version overwrites it.
-    pub(super) fn keep_mine(&mut self) -> Vec<Effect> {
+    fn keep_mine(&mut self) -> Vec<Effect> {
         let theirs = self
             .external
             .conflict
@@ -205,7 +228,7 @@ impl State {
 
     /// Takes the file on disk: once the local version is written to a conflict copy, the file is
     /// reloaded. A file that is not UTF-8 cannot be taken.
-    pub(super) fn take_theirs(&mut self) -> Vec<Effect> {
+    fn take_theirs(&mut self) -> Vec<Effect> {
         let Some(conflict) = &self.external.conflict else {
             return Vec::new();
         };
@@ -253,7 +276,7 @@ impl State {
     }
 
     /// Shows or hides the diff between the file on disk and the local version.
-    pub(super) fn toggle_diff(&mut self) {
+    fn toggle_diff(&mut self) {
         if let Some(conflict) = &mut self.external.conflict {
             conflict.diff = !conflict.diff;
         }
@@ -880,9 +903,19 @@ mod tests {
     #[test]
     fn keeping_mine_copies_theirs_then_overwrites_the_file_at_once() {
         let mut state = conflicted("theirs\n");
-        assert_eq!(state.update(Message::KeepMine), copy("theirs\n"));
-        assert_eq!(state.update(Message::KeepMine), [], "one choice at a time");
-        assert_eq!(state.update(Message::TakeTheirs), []);
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            copy("theirs\n")
+        );
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            [],
+            "one choice at a time"
+        );
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::TakeTheirs)),
+            []
+        );
         assert!(state.in_conflict(), "until the copy is written");
         assert_eq!(
             state.update(copied()),
@@ -903,7 +936,10 @@ mod tests {
     #[test]
     fn taking_theirs_copies_mine_then_reloads() {
         let mut state = conflicted("- theirs\n");
-        assert_eq!(state.update(Message::TakeTheirs), copy("mine\n"));
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::TakeTheirs)),
+            copy("mine\n")
+        );
         assert_eq!(texts(&state), ["mine"]);
         assert_eq!(state.update(copied()), []);
         assert!(!state.in_conflict());
@@ -985,7 +1021,7 @@ mod tests {
         }));
         state.update(found("- theirs\n"));
         assert!(state.in_conflict());
-        state.update(Message::KeepMine);
+        state.update(Message::Conflict(ConflictInput::KeepMine));
         state.update(copied());
         assert!(!state.in_conflict());
         assert_eq!(state.mode(), crate::app::Mode::Edit);
@@ -1008,7 +1044,7 @@ mod tests {
         let caret = shown(&state);
         state.update(found("- a\n- bc @x\n- d\n"));
         assert!(state.in_conflict());
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         assert_eq!(
             state.mode(),
             crate::app::Mode::Edit,
@@ -1032,7 +1068,7 @@ mod tests {
         autosaved(&mut state, "A:\n\t- x mine\n\t- y\n", ms(1000));
         typed(&mut state, "s");
         state.update(found("A:\n\t- x mine\n\t- y\n\t- from phone\n"));
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         state.update(copied());
         assert_eq!(state.mode(), crate::app::Mode::Edit);
         assert_eq!(shown(&state), "x mine|");
@@ -1051,7 +1087,7 @@ mod tests {
         edit(&mut state, "- b", ms(0));
         state.update(Message::FocusNext);
         state.update(found("- a\n- a\n- c\n"));
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         state.update(copied());
         assert_eq!(state.focus(), state.rows().get(1).map(|row| row.id));
         // `Q2:` is whole only locally: on disk its path breaks off at `R:`.
@@ -1060,7 +1096,7 @@ mod tests {
         state.update(Message::EditAtEnd);
         typed(&mut state, "2");
         state.update(found("R:\n\tQ2:\n\t\t- x\n- new\n"));
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         state.update(copied());
         assert_eq!(state.mode(), crate::app::Mode::Edit);
         assert_eq!(text_of(&state, state.focus()).as_deref(), Some("Q2"));
@@ -1438,7 +1474,7 @@ mod tests {
             }
         );
         state.update(found("theirs\n"));
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         state.update(copied());
         assert_eq!(state.save_state(), SaveState::Saved);
     }
@@ -1452,7 +1488,7 @@ mod tests {
             reason: "stray".to_owned(),
         });
         assert_eq!(state.notice(), None, "no choice was under way");
-        state.update(Message::TakeTheirs);
+        state.update(Message::Conflict(ConflictInput::TakeTheirs));
         state.update(Message::ConflictCopyFailed {
             folder: None,
             reason: "disk full".to_owned(),
@@ -1468,22 +1504,31 @@ mod tests {
         assert_eq!(texts(&state), ["mine"]);
         assert_eq!(state.update(copied()), [], "a late copy chooses nothing");
         assert!(state.in_conflict());
-        assert_eq!(state.update(Message::KeepMine), copy("theirs\n"));
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            copy("theirs\n")
+        );
     }
 
     #[test]
     fn a_newer_change_on_disk_cancels_a_choice_under_way() {
         let mut state = conflicted("theirs\n");
-        state.update(Message::KeepMine);
+        state.update(Message::Conflict(ConflictInput::KeepMine));
         state.update(found("newer\n"));
         assert_eq!(state.update(copied()), []);
         assert!(state.in_conflict());
-        assert_eq!(state.update(Message::KeepMine), copy("newer\n"));
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            copy("newer\n")
+        );
         state.update(Message::FileChecked { contents: None });
         assert!(state.gone_from_disk());
         assert_eq!(state.update(copied()), []);
         assert!(state.in_conflict(), "the prompt stays for a deleted file");
-        assert_eq!(state.update(Message::KeepMine), copy("newer\n"));
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            copy("newer\n")
+        );
         assert_eq!(state.update(copied()), save_over("mine\n", None));
     }
 
@@ -1496,13 +1541,16 @@ mod tests {
         });
         assert!(state.in_conflict(), "even without unsaved changes");
         assert_eq!(texts(&state), ["a"]);
-        assert_eq!(state.update(Message::TakeTheirs), []);
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::TakeTheirs)),
+            []
+        );
         assert!(matches!(
             state.notice(),
             Some(Notice::CannotTakeTheirs { reason }) if reason.contains("not valid UTF-8")
         ));
         assert_eq!(
-            state.update(Message::KeepMine),
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
             [Effect::Disk(Disk::ConflictCopy {
                 path: PathBuf::from(FILE),
                 contents: b"caf\xe9\n".to_vec(),
@@ -1564,7 +1612,10 @@ mod tests {
             contents: Some(b"mine\n".to_vec()),
         });
         assert!(state.in_conflict());
-        assert_eq!(state.update(Message::KeepMine), copy("mine\n"));
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            copy("mine\n")
+        );
     }
 
     // F-FILE-05, file-io.md §3
@@ -1584,7 +1635,11 @@ mod tests {
         let mut state = conflicted("theirs\n");
         assert_eq!(state.update(Message::Quit), ending_copy("mine\n"));
         assert_eq!(state.update(Message::Quit), [], "one copy");
-        assert_eq!(state.update(Message::KeepMine), [], "the quit goes ahead");
+        assert_eq!(
+            state.update(Message::Conflict(ConflictInput::KeepMine)),
+            [],
+            "the quit goes ahead"
+        );
         assert_eq!(state.update(found("newer\n")), [], "whatever is on disk");
         assert!(state.in_conflict());
         assert_eq!(state.left_in(), None, "until the copy is written");
@@ -1626,7 +1681,7 @@ mod tests {
     fn the_diff_is_shown_on_request() {
         let mut state = conflicted("theirs\n");
         assert_eq!(state.diff(), None);
-        state.update(Message::ToggleDiff);
+        state.update(Message::Conflict(ConflictInput::ToggleDiff));
         assert_eq!(
             state.diff(),
             Some(vec![
@@ -1634,7 +1689,7 @@ mod tests {
                 DiffLine::Mine("mine".to_owned()),
             ])
         );
-        state.update(Message::ToggleDiff);
+        state.update(Message::Conflict(ConflictInput::ToggleDiff));
         assert_eq!(state.diff(), None);
     }
 
@@ -1667,9 +1722,9 @@ mod tests {
     fn prompt_messages_without_a_conflict_change_nothing() {
         let mut state = opened("a\n");
         for message in [
-            Message::KeepMine,
-            Message::TakeTheirs,
-            Message::ToggleDiff,
+            Message::Conflict(ConflictInput::KeepMine),
+            Message::Conflict(ConflictInput::TakeTheirs),
+            Message::Conflict(ConflictInput::ToggleDiff),
             copied(),
             Message::ConflictCopyFailed {
                 folder: None,

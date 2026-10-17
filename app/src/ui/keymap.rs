@@ -9,9 +9,9 @@ use thiserror::Error;
 
 use super::widgets::{SheetGroup, ShortcutGroup};
 use crate::app::{
-    Animations, AttachmentsInput, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode,
-    Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput,
-    TextEdit,
+    Animations, AttachmentsInput, Command, ConflictInput, DateInput, Inputs, Menu, MenuInput,
+    Message, Mode, Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput, SaveAs,
+    SettingsInput, TextEdit,
     commands::{self, Entry, Group, NAVIGATOR, REGISTRY},
 };
 
@@ -252,9 +252,15 @@ type PromptBinding = (Key, fn(isize) -> PromptKey);
 /// its own, maybe while the user types, so its choices take `Ctrl` keys no typing sends (D-115).
 const PROMPT: &[PromptBinding] = &[
     (key!(ctrl 'q'), |_| PromptKey::Send(Message::Quit)),
-    (key!(ctrl 'k'), |_| PromptKey::Send(Message::KeepMine)),
-    (key!(ctrl 'r'), |_| PromptKey::Send(Message::TakeTheirs)),
-    (key!(ctrl 'l'), |_| PromptKey::Send(Message::ToggleDiff)),
+    (key!(ctrl 'k'), |_| {
+        PromptKey::Send(Message::Conflict(ConflictInput::KeepMine))
+    }),
+    (key!(ctrl 'r'), |_| {
+        PromptKey::Send(Message::Conflict(ConflictInput::TakeTheirs))
+    }),
+    (key!(ctrl 'l'), |_| {
+        PromptKey::Send(Message::Conflict(ConflictInput::ToggleDiff))
+    }),
     (key!('j'), |_| PromptKey::Scroll(1)),
     (key!(Down), |_| PromptKey::Scroll(1)),
     (key!('k'), |_| PromptKey::Scroll(-1)),
@@ -545,9 +551,18 @@ fn window_sheet() -> Vec<SheetGroup> {
     let conflict = listed(
         &prompt,
         &[
-            (PromptKey::Send(Message::KeepMine), "Keep Mine"),
-            (PromptKey::Send(Message::TakeTheirs), "Take Theirs"),
-            (PromptKey::Send(Message::ToggleDiff), "Show/Hide Diff"),
+            (
+                PromptKey::Send(Message::Conflict(ConflictInput::KeepMine)),
+                "Keep Mine",
+            ),
+            (
+                PromptKey::Send(Message::Conflict(ConflictInput::TakeTheirs)),
+                "Take Theirs",
+            ),
+            (
+                PromptKey::Send(Message::Conflict(ConflictInput::ToggleDiff)),
+                "Show/Hide Diff",
+            ),
             (PromptKey::Scroll(1), "Scroll Down"),
             (PromptKey::Scroll(-1), "Scroll Up"),
             (PromptKey::Scroll(2), "Page Down"),
@@ -3401,9 +3416,18 @@ mod tests {
         let none = KeyModifiers::NONE;
         let ctrl = KeyModifiers::CONTROL;
         let send = |message| Some(PromptKey::Send(message));
-        assert_eq!(prompt(KeyCode::Char('k'), ctrl), send(Message::KeepMine));
-        assert_eq!(prompt(KeyCode::Char('r'), ctrl), send(Message::TakeTheirs));
-        assert_eq!(prompt(KeyCode::Char('l'), ctrl), send(Message::ToggleDiff));
+        assert_eq!(
+            prompt(KeyCode::Char('k'), ctrl),
+            send(Message::Conflict(ConflictInput::KeepMine))
+        );
+        assert_eq!(
+            prompt(KeyCode::Char('r'), ctrl),
+            send(Message::Conflict(ConflictInput::TakeTheirs))
+        );
+        assert_eq!(
+            prompt(KeyCode::Char('l'), ctrl),
+            send(Message::Conflict(ConflictInput::ToggleDiff))
+        );
         for letter in ['m', 't', 'd', 'r', 'l'] {
             assert_eq!(
                 prompt(KeyCode::Char(letter), none),
