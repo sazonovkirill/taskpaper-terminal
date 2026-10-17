@@ -298,7 +298,7 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
     ctrl_g(&mut app);
     press(&mut app, KeyCode::Enter);
-    assert_eq!(pane(&mut app)[0], format!("  {SUN} Today"));
+    assert_eq!(pane(&mut app)[0], format!("  {SUN} Today, Oct 5, 2026"));
     ctrl_g(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(0))), "on its entry");
 }

@@ -958,7 +958,9 @@ impl Tui {
             Location::Outline(_) => {
                 widgets::breadcrumbs(&pane.breadcrumbs, usize::from(crumbs.width), self.icons)
             }
-            Location::View(view) => widgets::view_header(view, self.icons, &theme),
+            Location::View(view) => {
+                widgets::view_header(view, (self.clock)().date(), self.icons, &theme)
+            }
         };
         let crumb = on_screen.then(|| last_crumb(pane, &line, crumbs, self.icons));
         line.render(crumbs, buf);

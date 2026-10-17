@@ -20,6 +20,11 @@ Home:
 - Plan the week @start(2026-10-06)
 ";
 
+/// The Today view's header on `day` of 2026 (D-142).
+fn today_header(day: &str) -> String {
+    format!("{SUN} Today, {day}, 2026")
+}
+
 /// Opens `text` on an 80×10 screen and chooses Today, the Navigator's first entry without an
 /// inbox.
 fn today(text: &str) -> Harness {
@@ -49,7 +54,7 @@ fn row(text: &str, chips: &str) -> String {
 fn choosing_today_in_the_navigator_lists_the_blocks_for_today_with_their_paths() {
     let mut app = today(OUTLINE);
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
+    assert_eq!(outline_line(&buffer, 0), today_header("Oct 5"));
     assert!(
         buffer[(4, 0)].modifier.contains(Modifier::BOLD),
         "the header is bold"
@@ -84,7 +89,7 @@ fn g_shift_t_shows_the_today_view_with_and_without_the_kitty_protocol() {
             let buffer = app.render().buffer().clone();
             assert_eq!(
                 outline_line(&buffer, 0),
-                format!("{SUN} Today"),
+                today_header("Oct 5"),
                 "kitty {kitty}, {shift:?}"
             );
             assert_eq!(shown(&mut app).len(), 3);
@@ -99,7 +104,7 @@ fn g_t_shows_the_today_view_and_back_returns() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     app.type_keys("gt");
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
+    assert_eq!(outline_line(&buffer, 0), today_header("Oct 5"));
     assert_eq!(shown(&mut app).len(), 3);
     assert_eq!(
         focused_rows(&mut app),
@@ -107,7 +112,7 @@ fn g_t_shows_the_today_view_and_back_returns() {
     );
     app.type_keys("H");
     let buffer = app.render().buffer().clone();
-    assert_ne!(outline_line(&buffer, 0), format!("{SUN} Today"));
+    assert_ne!(outline_line(&buffer, 0), today_header("Oct 5"));
     assert_eq!(
         focused_rows(&mut app),
         [format!("  - Water plants {STAR}")],
@@ -131,7 +136,7 @@ fn go_to_command_lists_go_to_today_with_its_key_and_gives_it() {
     );
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     let buffer = app.render().buffer().clone();
-    assert_eq!(outline_line(&buffer, 0), format!("{SUN} Today"));
+    assert_eq!(outline_line(&buffer, 0), today_header("Oct 5"));
 }
 
 // D-7, FR-DONE-01, FR-TAG-04, FR-TAG-06
@@ -206,7 +211,7 @@ fn dot_and_gz_go_from_an_entry_to_it_in_the_outline_and_back_returns() {
         app.type_keys("H");
         assert_eq!(
             outline_line(app.render().buffer(), 0),
-            format!("{SUN} Today")
+            today_header("Oct 5")
         );
         app.type_keys("L");
         assert_eq!(outline_line(app.render().buffer(), 0), "⌂ › Home › Errands");
@@ -271,6 +276,44 @@ fn the_order_of_the_entries_comes_back_on_the_next_launch() {
     assert_eq!(shown(&mut app), expected, "the Today view");
     let path = app.path.clone().expect("a file");
     assert_eq!(std::fs::read_to_string(&path).expect("the file"), OUTLINE);
+}
+
+// D-142: the view's name is bold, the date after it is not.
+#[test]
+fn the_header_names_the_view_in_bold_and_the_date_plain() {
+    let mut app = today(OUTLINE);
+    let buffer = app.render().buffer().clone();
+    let text = outline_line(&buffer, 0);
+    assert_eq!(text, today_header("Oct 5"));
+    let column = |part: &str| {
+        let before = text.split(part).next().expect("the text before it");
+        2 + u16::try_from(before.chars().count()).expect("a narrow screen")
+    };
+    let (name, comma) = (column("Today"), column(","));
+    for x in name..name + 5 {
+        assert!(
+            buffer[(x, 0)].modifier.contains(Modifier::BOLD),
+            "column {x}"
+        );
+    }
+    for x in comma..comma + 13 {
+        assert!(
+            !buffer[(x, 0)].modifier.contains(Modifier::BOLD),
+            "column {x}"
+        );
+    }
+}
+
+// D-142, D-7: the header's date follows the local date, as the list does.
+#[test]
+fn the_header_date_changes_at_local_midnight() {
+    let mut app = today("- a @star\n");
+    let deadline = app.tui.deadline().expect("a redraw at midnight");
+    app.wait(deadline);
+    assert_eq!(
+        outline_line(app.render().buffer(), 0),
+        today_header("Oct 6")
+    );
 }
 
 // D-7, FR-TAG-04

@@ -296,7 +296,7 @@ fn the_today_view_shows_wide_entries_and_paths_whole() {
     assert_eq!(
         screen(&mut app)[..5],
         [
-            format!("  {SUN} Today").as_str(),
+            format!("  {SUN} Today, Oct 5, 2026").as_str(),
             "────────────────────────────────────────",
             format!("▌ - 買い物 👨‍👩‍👧                    {DUE} today").as_str(),
             "▌   とても長い仕事の名前です",

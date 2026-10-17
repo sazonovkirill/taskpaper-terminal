@@ -420,10 +420,20 @@ fn shown_crumbs(
 }
 
 /// The header of the special view `view` in place of breadcrumbs: its icon, as in the Navigator,
-/// and its name, bold as the focused pane's header (navigation.md §7, ui.md §1).
+/// and its name, bold as the focused pane's header, then for Today the local date `today`, not
+/// bold, as `, Oct 18, 2026` (navigation.md §7, ui.md §1, D-142).
 #[must_use]
-pub fn view_header(view: SpecialView, icons: IconSet, theme: &Theme) -> Line<'static> {
-    view_title(view, icons, theme).bold()
+pub fn view_header(view: SpecialView, today: Date, icons: IconSet, theme: &Theme) -> Line<'static> {
+    let mut header = Line::from_iter(
+        view_title(view, icons, theme)
+            .spans
+            .into_iter()
+            .map(Stylize::bold),
+    );
+    if view == SpecialView::Today {
+        header.push_span(today.strftime(", %b %-d, %Y").to_string());
+    }
+    header
 }
 
 /// The icon of the special view `view`, as its Navigator entry, header, Go to command and Navigator
@@ -2810,38 +2820,58 @@ mod tests {
         );
     }
 
-    // D-7, navigation §7
+    // D-7, D-142, navigation §7
     #[test]
-    fn the_today_header_names_the_view_after_its_icon_in_bold() {
-        let header = view_header(SpecialView::Today, ICONS, &THEME);
+    fn the_today_header_names_the_view_after_its_icon_in_bold_then_the_date_plain() {
+        let header = view_header(
+            SpecialView::Today,
+            jiff::civil::date(2026, 10, 18),
+            ICONS,
+            &THEME,
+        );
         assert_eq!(
             header.to_string(),
-            format!("{} Today", Icon::Today.glyph(ICONS))
+            format!("{} Today, Oct 18, 2026", Icon::Today.glyph(ICONS))
         );
-        assert_eq!(header.style, Style::new().bold());
-        assert_eq!(header.spans[0].style, today_style(&THEME));
+        assert_eq!(header.spans[0].style, today_style(&THEME).bold());
+        assert_eq!(header.spans[1].style, Style::new().bold());
+        assert_eq!(header.spans[2].style, Style::new());
+        assert_eq!(header.style, Style::new());
+    }
+
+    // D-142: a single-digit day has no leading zero.
+    #[test]
+    fn the_today_header_writes_the_day_without_a_leading_zero() {
+        let header = view_header(
+            SpecialView::Today,
+            jiff::civil::date(2027, 1, 3),
+            ICONS,
+            &THEME,
+        );
+        assert!(header.to_string().ends_with(" Today, Jan 3, 2027"));
     }
 
     // D-92: Starred's icon is the star that marks a starred block.
     #[test]
     fn the_starred_header_names_the_view_after_the_star() {
-        let header = view_header(SpecialView::Starred, ICONS, &THEME);
+        let header = view_header(SpecialView::Starred, TODAY, ICONS, &THEME);
         assert_eq!(
             header.to_string(),
             format!("{} Starred", Icon::Star.glyph(ICONS))
         );
-        assert_eq!(header.spans[0].style, today_style(&THEME));
+        assert_eq!(header.spans[0].style, today_style(&THEME).bold());
+        assert_eq!(header.spans[1].style, Style::new().bold());
     }
 
     // FR-TAG-14, D-93
     #[test]
     fn the_flagged_header_names_the_view_after_a_red_flag() {
-        let header = view_header(SpecialView::Flagged, ICONS, &THEME);
+        let header = view_header(SpecialView::Flagged, TODAY, ICONS, &THEME);
         assert_eq!(
             header.to_string(),
             format!("{} Flagged", Icon::Flag.glyph(ICONS))
         );
-        assert_eq!(header.spans[0].style, flag_style(&THEME));
+        assert_eq!(header.spans[0].style, flag_style(&THEME).bold());
     }
 
     // D-7, ui.md §2
@@ -4139,8 +4169,8 @@ mod tests {
             "~ › Work"
         );
         assert_eq!(
-            view_header(SpecialView::Today, IconSet::Ascii, &THEME).to_string(),
-            "O Today"
+            view_header(SpecialView::Today, TODAY, IconSet::Ascii, &THEME).to_string(),
+            "O Today, Oct 5, 2026"
         );
         let unsaved = |icons| {
             file_status(
