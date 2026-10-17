@@ -42,14 +42,16 @@ fn left_out(rows: &Rows, excluded: &[Block]) -> HashSet<ItemId> {
 }
 
 /// How a block ranks in Go to Symbol, by its row: bookmarks, then projects and sections, then the
-/// rest.
-fn tier(row: &Row) -> u8 {
-    if row.bookmark {
+/// rest; in Go to Project an inbox project first of all (D-141).
+fn tier(row: &Row, listed: Symbols) -> u8 {
+    if listed == Symbols::Projects && row.inbox {
         0
-    } else if row.kind == BlockKind::Project || row.section {
+    } else if row.bookmark {
         1
-    } else {
+    } else if row.kind == BlockKind::Project || row.section {
         2
+    } else {
+        3
     }
 }
 
@@ -133,7 +135,7 @@ impl State {
                         value: row.id,
                         text: self.shared_shown_text(row.id),
                         detail: Detail::path(above.path(self)),
-                        tier: tier(row),
+                        tier: tier(row, listed),
                     });
                 }
                 above.enter(row.id);

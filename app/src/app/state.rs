@@ -49,10 +49,6 @@ pub const NOTICE_TIME: Duration = Duration::from_secs(10);
 /// the focused pane's focused block, the collapsed blocks, the Navigator and the status-line
 /// notice.
 #[derive(Debug, Clone)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent settings and open panels, not states of one machine"
-)]
 pub struct State {
     pub(super) document: Document,
     /// The edits to undo and redo (FR-OPS-08).
@@ -85,8 +81,6 @@ pub struct State {
     pub(super) date_prompt: Option<DatePrompt>,
     /// Quick Add, while it is open (FR-MODE-07).
     pub(super) quick_add: Option<QuickAdd>,
-    /// Whether the Today view lists the `TODAY` project's tasks (`special_today`, D-98, D-102).
-    pub(super) special_today: bool,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// The Edit Node dialog, while it is open (FR-MODE-09).
@@ -100,6 +94,8 @@ pub struct State {
     pub(super) symbols: Option<(Symbols, Finder<ItemId>)>,
     /// Move to, while it is open (FR-OPS-05).
     pub(super) destinations: Option<Finder<ItemId>>,
+    /// Select Inbox Project, while it is open (D-141).
+    pub(super) inbox_picker: Option<Finder<ItemId>>,
     /// Go to Command, while it is open (FR-NAV-06).
     pub(super) commands: Option<Finder<Command>>,
     /// The theme picker over the frontend's themes, each by its position, while it is open
@@ -149,9 +145,9 @@ struct RowsKey {
     location: Location,
     show_done: bool,
     selection: Selection,
-    /// The day, order, starred setting and TODAY project setting of the Today view; `None`
-    /// elsewhere, which does not depend on them.
-    today: Option<(Date, TodayOrder, bool, bool)>,
+    /// The day, order and starred setting of the Today view; `None` elsewhere, which does not
+    /// depend on them.
+    today: Option<(Date, TodayOrder, bool)>,
     /// The day of a view whose entries depend on it, Upcoming, Overdue or Logbook; `None` elsewhere.
     day: Option<Date>,
     /// The kinds of attachment turned on, whose icons rows show (attachments.md §2).
@@ -274,9 +270,16 @@ pub enum Notice {
         /// Whether the block is bookmarked now.
         added: bool,
     },
-    /// `gi` or Quick Add found no inbox: no top-level `INBOX` project is shown, or the setting
-    /// that lists it apart is off (D-78, D-133).
+    /// `gi` or Reset Inbox Project found no inbox: no shown project has `@inbox` (D-78, D-141).
     NoInbox,
+    /// Select Inbox Project found no project to choose (D-141).
+    NoProjects,
+    /// The project with this text became the inbox project, or with `None` there is none any
+    /// more (D-141).
+    Inbox {
+        /// The project's text.
+        project: Option<String>,
+    },
     /// The frontend was asked to start the weather in summer, which has none (FR-UI-12).
     NoWeather,
     /// Quick Add added a block to the project with this text (D-96).
@@ -321,6 +324,8 @@ impl Notice {
             | Self::WhitespaceTrimmed
             | Self::NotSections { .. }
             | Self::NoInbox
+            | Self::NoProjects
+            | Self::Inbox { .. }
             | Self::NoWeather
             | Self::QuickAdded { .. }
             | Self::Bookmark { .. }
@@ -370,6 +375,8 @@ pub struct Row {
     pub starred: bool,
     /// Whether it carries `@bookmark` (D-11).
     pub bookmark: bool,
+    /// Whether it is a project carrying `@inbox` (D-141).
+    pub inbox: bool,
     /// Whether it carries `@flag` (D-91).
     pub flag: bool,
     /// Whether it has a note shown by its icon, while notes are on (attachments.md §2).
@@ -430,13 +437,13 @@ impl State {
             color_picker: None,
             date_prompt: None,
             quick_add: None,
-            special_today: true,
             type_picker: None,
             node_editor: None,
             attached: Attachment::ALL.to_vec(),
             panel: None,
             symbols: None,
             destinations: None,
+            inbox_picker: None,
             commands: None,
             themes: None,
             settings: None,
@@ -653,14 +660,8 @@ impl State {
             location: pane.location,
             show_done: pane.show_done,
             selection: pane.selection.clone(),
-            today: (pane.location == Location::View(SpecialView::Today)).then(|| {
-                (
-                    self.today,
-                    self.today_order.clone(),
-                    self.today_starred,
-                    self.special_today,
-                )
-            }),
+            today: (pane.location == Location::View(SpecialView::Today))
+                .then(|| (self.today, self.today_order.clone(), self.today_starred)),
             day: matches!(
                 pane.location,
                 Location::View(SpecialView::Upcoming | SpecialView::Overdue | SpecialView::Logbook)
@@ -910,6 +911,7 @@ impl State {
             done_date: block.done_date(),
             starred: block.starred(),
             bookmark: block.bookmark(),
+            inbox: block.inbox(),
             flag: block.flag(),
             note: self.attached.contains(&Attachment::Note)
                 && attachments::node(&self.document, block.id(), Attachment::Note).is_some(),

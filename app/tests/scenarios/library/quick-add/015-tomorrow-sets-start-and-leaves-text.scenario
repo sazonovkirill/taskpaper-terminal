@@ -1,6 +1,6 @@
 # "Buy milk tomorrow" adds "Buy milk" with a start date of tomorrow, the panel previewing "Start".
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Buy milk tomorrow
@@ -9,6 +9,6 @@ keys <Enter>
 see 󱙭 tomorrow
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Buy milk @start({today+1})
 END

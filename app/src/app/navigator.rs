@@ -10,22 +10,13 @@ use super::{
     commands::{Command, NodeCommand},
     folds::Folds,
     memo::Memo,
-    pane::Pane,
 };
-use crate::document::{Block, BlockKind, ItemId, Stamp, blocks};
-
-/// The text of the project the Navigator lists apart, above Today (D-75).
-const INBOX: &str = "INBOX";
-
-/// The text of the project whose tasks the Today view lists (D-98, D-102).
-const TODAY: &str = "TODAY";
+use crate::document::{BlockKind, ItemId, Stamp, blocks};
 
 /// The Navigator's focused entry while it is open, its folded project entries, which are its own
-/// and not the outline's, whether it lists the `INBOX` project apart and which special views it
-/// leaves out.
+/// and not the outline's, and which special views it leaves out.
 #[derive(Debug, Clone)]
 pub(super) struct Navigator {
-    special_inbox: bool,
     unlisted: HashSet<SpecialView>,
     /// The index of the focused entry, while the Navigator is open, which it is only while it has
     /// the keys (D-79).
@@ -45,11 +36,10 @@ struct EntriesKey {
     /// The folded entries, none while a filter is typed.
     folds: Folds,
     show_done: bool,
-    special_inbox: bool,
     unlisted: HashSet<SpecialView>,
-    /// The local date, whether Today lists starred blocks and whether it lists the TODAY
-    /// project's tasks, which the special views' counts follow (D-85, D-102).
-    today: (Date, bool, bool),
+    /// The local date and whether Today lists starred blocks, which the special views' counts
+    /// follow (D-85).
+    today: (Date, bool),
 }
 
 /// Everything the entries a filter leaves are computed from: the entries without folds and the
@@ -70,12 +60,6 @@ struct CurrentKey {
 }
 
 impl Navigator {
-    /// Lists the `INBOX` project above Today rather than among the projects, or not when `on` is
-    /// false (navigation.md §6).
-    pub(super) fn set_special_inbox(&mut self, on: bool) {
-        self.special_inbox = on;
-    }
-
     /// Lists `view`, or not when `on` is false, except Today, which it always lists (navigation.md
     /// §6, D-102).
     pub(super) fn set_listed(&mut self, view: SpecialView, on: bool) {
@@ -94,10 +78,9 @@ impl Navigator {
 }
 
 impl Default for Navigator {
-    /// Closed, every project entry expanded, the `INBOX` project apart, every special view listed.
+    /// Closed, every project entry expanded, every special view listed.
     fn default() -> Self {
         Self {
-            special_inbox: true,
             unlisted: HashSet::new(),
             focus: None,
             filter: String::new(),
@@ -140,7 +123,7 @@ pub enum NavigatorInput {
 /// projects (D-68, D-75, D-80).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NavigatorEntry {
-    /// The top-level project `INBOX`, apart from the other projects (D-75).
+    /// The inbox project, apart from the other projects (D-75, D-141).
     Inbox {
         /// The block.
         id: ItemId,
@@ -254,13 +237,6 @@ impl State {
             current,
             filter: self.navigator.filter.clone(),
         })
-    }
-
-    /// Whether the Navigator lists the `INBOX` project above Today rather than among the projects
-    /// (`special_inbox`, D-75).
-    #[must_use]
-    pub fn special_inbox(&self) -> bool {
-        self.navigator.special_inbox
     }
 
     /// Whether the Navigator lists `view` (`sidebar_upcoming` and so on, D-80), always Today
@@ -487,12 +463,11 @@ impl State {
             document: self.document().stamp(),
             folds: folds.clone(),
             show_done: self.pane.show_done,
-            special_inbox: self.navigator.special_inbox,
             unlisted: self.navigator.unlisted.clone(),
-            today: (self.today, self.today_starred, self.special_today),
+            today: (self.today, self.today_starred),
         };
         self.navigator.entries.get(key, || {
-            let inbox = self.navigator.special_inbox.then(|| self.inbox()).flatten();
+            let inbox = self.inbox();
             let apart = inbox.as_ref().and_then(|inbox| inbox.location().zoom());
             // Every block that shows, from the outline's rows with nothing collapsed, which a
             // change builds again only where it changed.
@@ -518,64 +493,33 @@ impl State {
     /// block a view could list as an open task.
     fn views_open_tasks(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
         let mut counts = [0; SpecialView::ALL.len()];
-        let today_project = self.today_project(&self.pane);
-        // The top-level block of the rows from here on, which the rows go through in order.
-        let mut top = None;
-        for row in rows {
-            if row.depth == 0 {
-                top = Some(row.id);
-            }
-            if !row.open_task() {
-                continue;
-            }
-            // A top-level task is its own top, never the TODAY project.
-            let in_today_project = today_project.is_some_and(|id| top == Some(id));
+        for row in rows.iter().filter(|row| row.open_task()) {
             for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
-                *count += usize::from(self.lists(view, row, in_today_project));
+                *count += usize::from(self.lists(view, row));
             }
         }
         counts
     }
 
-    /// The entry of the first shown top-level project whose text is `INBOX`, if any (D-75).
+    /// The entry of the inbox project, if there is one (D-75, D-141).
     fn inbox(&self) -> Option<NavigatorEntry> {
-        self.top_project(INBOX).map(|block| NavigatorEntry::Inbox {
+        let block = self
+            .inbox_project()
+            .and_then(|id| blocks::block(self.document(), id))?;
+        Some(NavigatorEntry::Inbox {
             id: block.id(),
-            text: INBOX.to_owned(),
+            text: self.shown_text(block.id()),
             open_tasks: self.open_tasks(&block, false),
         })
     }
 
-    /// The project the Navigator lists apart as the inbox, which Quick Add adds to (D-75, D-133).
+    /// The inbox project: the first project with `@inbox` the focused pane shows, at any depth,
+    /// which the Navigator lists apart and Quick Add adds to by default (D-75, D-141).
     pub(super) fn inbox_project(&self) -> Option<ItemId> {
-        self.navigator
-            .special_inbox
-            .then(|| self.top_project(INBOX))
-            .flatten()
-            .map(|block| block.id())
-    }
-
-    /// The TODAY project while `special_today` is on, among the blocks `pane` shows, whose tasks
-    /// the Today view lists (D-98, D-102).
-    pub(super) fn today_project(&self, pane: &Pane) -> Option<ItemId> {
-        self.special_today
-            .then(|| self.top_project_in(TODAY, pane))
-            .flatten()
-            .map(|block| block.id())
-    }
-
-    /// The first top-level project shown in the focused pane whose text is `text`, maybe after
-    /// emoji and a space, if any (D-75, D-98, D-102).
-    pub(super) fn top_project(&self, text: &str) -> Option<Block> {
-        self.top_project_in(text, &self.pane)
-    }
-
-    /// The first top-level project `pane` shows whose text is `text`, maybe after emoji and a
-    /// space, if any.
-    fn top_project_in(&self, text: &str, pane: &Pane) -> Option<Block> {
-        blocks::each_child(self.document(), self.document().root())
-            .filter(|block| block.kind() == BlockKind::Project && pane.shows(block))
-            .find(|block| without_emoji(&self.shown_text(block.id())) == text)
+        self.unfolded_rows(Location::Outline(None), self.pane.show_done)
+            .iter()
+            .find(|row| row.inbox)
+            .map(|row| row.id)
     }
 
     /// The bookmark entries of `rows` in document order, each with the open tasks it holds.
@@ -682,17 +626,6 @@ impl State {
             end_project(&mut above, &mut out, open);
         }
         out
-    }
-}
-
-/// `text` without the emoji and the space it may start with, as `📥 INBOX` names the INBOX
-/// project as `INBOX` does (D-102): emoji are the characters outside ASCII that are neither
-/// letters nor digits, so flags and emoji joined into one stay whole.
-fn without_emoji(text: &str) -> &str {
-    let rest = text.trim_start_matches(|c: char| !c.is_ascii() && !c.is_alphanumeric());
-    match rest.strip_prefix(' ') {
-        Some(name) if rest.len() < text.len() => name,
-        _ => text,
     }
 }
 
@@ -850,79 +783,56 @@ Home: @bookmark
         );
     }
 
-    /// An inbox holding a project and a bookmark, beside a project with an inbox of its own.
+    /// An inbox holding a project and a bookmark, beside a project holding a project named Inbox.
     const INBOXED: &str = "\
 Work:
-\tINBOX:
-INBOX: @bookmark
+\tInbox:
+Capture: @inbox @bookmark
 \t- call @bookmark
 \tLater:
 \t\t- soon
 Home:
 ";
 
-    // D-75
+    // D-75, D-141
     #[test]
-    fn the_top_level_inbox_comes_first_and_leaves_the_project_tree_with_its_projects() {
+    fn the_inbox_comes_first_under_its_own_name_and_leaves_the_tree_with_its_projects() {
+        let state = open(INBOXED);
         assert_eq!(
-            listed(&open(INBOXED)),
+            listed(&state),
             [
-                "inbox INBOX",
+                "inbox Capture",
                 "today",
-                "bookmark INBOX",
+                "bookmark Capture",
                 "bookmark call",
                 "Expanded Work",
-                "  Leaf INBOX",
+                "  Leaf Inbox",
                 "Leaf Home",
             ]
         );
+        assert_eq!(
+            counts(&state)[0],
+            ("Capture".to_owned(), 2),
+            "its open tasks"
+        );
     }
 
-    // D-75
+    // D-141
     #[test]
-    fn only_the_first_shown_project_written_inbox_in_capitals_is_apart() {
+    fn the_inbox_is_the_first_shown_project_with_the_inbox_tag_at_any_depth() {
         assert_eq!(
-            listed(&open(
-                "Inbox:
-INBOX
-- INBOX"
-            ))[0],
-            "today"
+            listed(&open("INBOX:\n- t @inbox\nnote @inbox"))[0],
+            "today",
+            "a name is no inbox, nor a tag on a task or note"
         );
-        let both = listed(&open(
-            "INBOX:
-	A:
-INBOX:
-	B:",
-        ));
-        assert_eq!(both, ["inbox INBOX", "today", "Expanded INBOX", "  Leaf B"]);
-        let mut state = open(
-            "INBOX: @done
-INBOX:",
+        assert_eq!(
+            listed(&open("A:\n\tB: @inbox\n\t\tC:\nD: @inbox")),
+            ["inbox B", "today", "Leaf A", "Leaf D"]
         );
-        assert_eq!(listed(&state), ["inbox INBOX", "today", "Leaf INBOX"]);
+        let mut state = open("A: @inbox @done\nB: @inbox");
+        assert_eq!(listed(&state), ["inbox A", "today", "Leaf B"]);
         state.update(Message::ToggleShowDone);
-        assert_eq!(listed(&state), ["inbox INBOX", "today"], "the open one");
-    }
-
-    // D-75
-    #[test]
-    fn with_the_setting_off_the_inbox_is_a_project_like_any_other() {
-        let mut state = open(INBOXED);
-        assert!(state.special_inbox(), "on by default");
-        state.update(Message::Configure(Configuration::SpecialInbox(false)));
-        assert!(!state.special_inbox());
-        assert_eq!(
-            listed(&state)[..3],
-            ["today", "bookmark INBOX", "bookmark call"]
-        );
-        assert_eq!(
-            listed(&state)[5..],
-            ["Expanded INBOX", "  Leaf Later", "Leaf Home"]
-        );
-        state.update(Message::Configure(Configuration::SpecialInbox(true)));
-        assert_eq!(listed(&state), listed(&open(INBOXED)));
-        assert_eq!(counts(&state)[0], ("INBOX".to_owned(), 2), "its open tasks");
+        assert_eq!(listed(&state), ["inbox B", "today"], "the open one");
     }
 
     // D-102
@@ -935,39 +845,6 @@ INBOX:",
         )));
         assert!(state.navigator_lists(SpecialView::Today));
         assert_eq!(listed(&state), listed(&open(INBOXED)));
-    }
-
-    // D-102
-    #[test]
-    fn only_emoji_and_one_space_come_off() {
-        assert_eq!(without_emoji("📥 INBOX"), "INBOX");
-        assert_eq!(without_emoji(" INBOX"), " INBOX", "a space alone stays");
-        assert_eq!(without_emoji("INBOX"), "INBOX");
-    }
-
-    // D-75, D-102
-    #[test]
-    fn emoji_and_a_space_before_inbox_still_name_the_inbox() {
-        for text in ["📥 INBOX:", "📥📤 INBOX:", "🏳️‍🌈 INBOX:", "🇬🇧 INBOX:"] {
-            let state = open(&format!("{text}\n\t- a\nHome:"));
-            assert_eq!(listed(&state)[..2], ["inbox INBOX", "today"], "{text}");
-            assert_eq!(counts(&state)[0], ("INBOX".to_owned(), 1));
-        }
-        for text in [
-            "📥INBOX:",
-            "📥  INBOX:",
-            "- INBOX:",
-            "a📥 INBOX:",
-            "📥 Inbox:",
-            "→ INBOX x:",
-        ] {
-            let state = open(&format!("{text}\nHome:"));
-            assert_eq!(
-                listed(&state)[0],
-                "today",
-                "{text} is a project like any other"
-            );
-        }
     }
 
     // D-75, D-68
@@ -987,25 +864,25 @@ INBOX:",
             &mut state,
             &[NavigatorInput::Collapse, NavigatorInput::Choose],
         );
-        assert_eq!(state.breadcrumbs(), ["INBOX"]);
+        assert_eq!(state.breadcrumbs(), ["Capture"]);
         assert_eq!(current(&state), Some(0));
         let call = entry_block(&state, 3);
         state.update(Message::GoTo(Location::Outline(Some(call))));
-        assert_eq!(state.breadcrumbs(), ["INBOX", "call"]);
+        assert_eq!(state.breadcrumbs(), ["Capture", "call"]);
         assert_eq!(current(&state), Some(3), "call's own bookmark");
         state.update(Message::Back);
         state.update(Message::FocusLast);
         state.update(Message::ZoomIn);
-        assert_eq!(state.breadcrumbs(), ["INBOX", "Later", "soon"]);
+        assert_eq!(state.breadcrumbs(), ["Capture", "Later", "soon"]);
         assert_eq!(current(&state), Some(0), "inside the inbox");
     }
 
-    // D-78
+    // D-78, D-141
     #[test]
     fn go_to_inbox_zooms_to_the_inbox_entrys_project_or_says_there_is_none() {
         let mut state = open(INBOXED);
         input(&mut state, &[NavigatorInput::GoToInbox]);
-        assert_eq!(state.breadcrumbs(), ["INBOX"]);
+        assert_eq!(state.breadcrumbs(), ["Capture"]);
         assert_eq!(state.notice(), None);
         state.update(Message::Back);
         assert_eq!(
@@ -1013,17 +890,14 @@ INBOX:",
             Vec::<String>::new(),
             "a step of the history"
         );
-        state.update(Message::Configure(Configuration::SpecialInbox(false)));
-        input(&mut state, &[NavigatorInput::GoToInbox]);
-        assert_eq!(
-            state.breadcrumbs(),
-            Vec::<String>::new(),
-            "the setting is off"
-        );
-        assert_eq!(state.notice(), Some(&Notice::NoInbox));
         let mut state = open("Work:\n\tINBOX:");
         input(&mut state, &[NavigatorInput::GoToInbox]);
-        assert_eq!(state.notice(), Some(&Notice::NoInbox), "not top-level");
+        assert_eq!(state.breadcrumbs(), Vec::<String>::new());
+        assert_eq!(
+            state.notice(),
+            Some(&Notice::NoInbox),
+            "no project has the tag"
+        );
     }
 
     // FR-UI-01, FR-DONE-02
@@ -1126,10 +1000,10 @@ INBOX:",
         assert_eq!(counts(&state)[0], 0, "and Today's starred setting");
     }
 
-    // D-67, D-102
+    // D-67, D-141
     #[test]
-    fn today_counts_the_open_tasks_of_the_today_project() {
-        let mut state = open(
+    fn today_counts_no_project_s_tasks_by_its_name() {
+        let state = open(
             "- a
 TODAY:
 	- b
@@ -1144,9 +1018,7 @@ Home:
         );
         let today = |state: &State| view(state).entries[0].open_tasks();
         assert_eq!(listed(&state)[0], "today");
-        assert_eq!(today(&state), 2, "b and d");
-        state.update(Message::Configure(Configuration::SpecialToday(false)));
-        assert_eq!(today(&state), 0, "the count follows the setting");
+        assert_eq!(today(&state), 0);
     }
 
     // D-67, D-80
@@ -1324,7 +1196,7 @@ Home:
     // choosing it shows it.
     #[test]
     fn starred_follows_the_other_views_unless_its_setting_is_off() {
-        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        let mut state = State::new(format::parse("INBOX: @inbox\nA: @bookmark\n"), None);
         assert!(state.navigator_lists(SpecialView::Starred), "on by default");
         assert_eq!(
             listed(&state),
@@ -1382,7 +1254,7 @@ Home:
     // unless its setting leaves it out, and choosing one shows it.
     #[test]
     fn the_special_views_follow_the_inbox_each_unless_its_setting_is_off() {
-        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        let mut state = State::new(format::parse("INBOX: @inbox\nA: @bookmark\n"), None);
         assert_eq!(
             listed(&state),
             [
@@ -1432,7 +1304,7 @@ Home:
     // choosing it shows it.
     #[test]
     fn flagged_comes_after_the_other_views_unless_its_setting_is_off() {
-        let mut state = State::new(format::parse("INBOX:\nA: @bookmark\n"), None);
+        let mut state = State::new(format::parse("INBOX: @inbox\nA: @bookmark\n"), None);
         assert!(state.navigator_lists(SpecialView::Flagged), "on by default");
         state.update(Message::ToggleNavigator);
         input(&mut state, &[NavigatorInput::Next; 7]);

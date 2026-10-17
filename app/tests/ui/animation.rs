@@ -388,7 +388,7 @@ fn a_jump_in_a_special_view_flashes_the_block_focus_lands_on_but_not_its_heading
 // UI-ANIM-02, FR-MODE-07
 #[test]
 fn quick_add_highlights_the_block_it_adds() {
-    let text = "INBOX:\n\t- old\n- loose\n";
+    let text = "INBOX: @inbox\n\t- old\n- loose\n";
     let (full, off) = full_and_off(text, |app| {
         app.type_keys("GqIdea");
         app.press(KeyCode::Enter, KeyModifiers::NONE);
@@ -738,14 +738,14 @@ fn a_status_message_fades_out_when_its_time_is_up() {
     let mut app = wide("full", ColorSupport::TrueColor);
     app.type_keys("gi");
     assert!(
-        status(&mut app).ends_with("· No INBOX project in the Navigator"),
+        status(&mut app).ends_with("· No inbox project: use Select Inbox Project"),
         "{}",
         status(&mut app)
     );
     let shown = app.render().buffer().clone();
     wait(&mut app, 10_000);
     assert!(
-        status(&mut app).ends_with("· No INBOX project in the Navigator"),
+        status(&mut app).ends_with("· No inbox project: use Select Inbox Project"),
         "kept while it fades"
     );
     assert_eq!(

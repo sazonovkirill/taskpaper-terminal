@@ -1,6 +1,6 @@
 # With two panes, Quick Add from the right pane adds to INBOX and the left pane shows it, the right pane unchanged.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 Work:
 	- Email boss
@@ -14,7 +14,7 @@ see     - From the right
 see 󰋜 › Work
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- From the right
 Work:

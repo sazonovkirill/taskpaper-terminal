@@ -1,0 +1,32 @@
+# When another program renames the inbox project while the panel is open, the panel no longer finds its destination and asks for a project; Tab picks it again under its new name.
+file <<END
+INBOX: @inbox
+	- Old item
+Work:
+END
+keys q
+type Keep me
+see Quick Add → INBOX
+outside <<END
+Inbox: @inbox
+	- Old item
+Work:
+END
+status Reloaded
+see Choose a project with Tab
+see - Keep me
+keys <Enter>
+see Choose a project with Tab
+keys <Tab>
+see ┌Project
+keys <Enter>
+see Quick Add → Inbox
+keys <Enter>
+status Added to Inbox
+quit
+saved <<END
+Inbox: @inbox
+	- Old item
+	- Keep me
+Work:
+END

@@ -1413,6 +1413,28 @@
    ]
   },
   {
+   "id": "navigate-select-inbox-project",
+   "name": "Select Inbox Project",
+   "config": "select_inbox_project",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
+   "id": "navigate-reset-inbox-project",
+   "name": "Reset Inbox Project",
+   "config": "reset_inbox_project",
+   "mode": "navigate",
+   "group": "Editing and Creating",
+   "topic": "navigator",
+   "panel": false,
+   "menu_only": false,
+   "keys": []
+  },
+  {
    "id": "navigate-extend-selection-down",
    "name": "Extend Selection Down",
    "config": "extend_selection_down",
@@ -5298,6 +5320,21 @@
        "presses": [
         [
          "Enter"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    },
+    {
+     "label": "Choose the project to add to",
+     "keys": [
+      {
+       "label": "Tab",
+       "presses": [
+        [
+         "Tab"
         ]
        ],
        "kitty": false,
@@ -9233,6 +9270,8 @@
    "New Project at Start",
    "New Task at Start",
    "New Note at Start",
+   "Select Inbox Project",
+   "Reset Inbox Project",
    "Group",
    "Clear Start Date",
    "Clear Due Date",

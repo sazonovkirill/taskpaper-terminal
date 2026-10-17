@@ -1,6 +1,6 @@
 # Going from an Overdue entry to the outline, quitting and reopening, then Back still returns to the Overdue view, whose entries work as before.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})
@@ -14,7 +14,7 @@ see 󰨱 Overdue
 keys G }
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-1})

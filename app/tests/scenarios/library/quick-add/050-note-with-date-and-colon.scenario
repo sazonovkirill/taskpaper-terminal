@@ -1,6 +1,6 @@
 # A note "Agenda: tomorrow" is added as the note "Agenda" with tomorrow's start date, not as a project.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q <BS>
 type Agenda: tomorrow
@@ -8,6 +8,6 @@ see Start
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	Agenda @start({today+1})
 END

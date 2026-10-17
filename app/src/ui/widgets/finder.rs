@@ -47,6 +47,9 @@ impl<T> std::fmt::Debug for FinderPopup<'_, T> {
 }
 
 impl<'a, T> FinderPopup<'a, T> {
+    /// The fewest rows that show the border, the query and one entry.
+    pub const LEAST_HEIGHT: u16 = 4;
+
     /// The overlay of `view` titled `title`, in `theme`, each entry after the icon `icon` gives
     /// its value, drawn from `icons` in the style it gives.
     #[must_use]

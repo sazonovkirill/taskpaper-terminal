@@ -1,6 +1,6 @@
 # Quick Add from the Upcoming view with a due date in three days adds to INBOX and the task shows in the view.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- Report @due({today+1})
 END
@@ -12,7 +12,7 @@ keys <Enter>
 see - Renew lease
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew lease @due({today+3})
 Work:
 	- Report @due({today+1})

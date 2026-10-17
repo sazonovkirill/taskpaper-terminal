@@ -1,9 +1,9 @@
-# gi in a file without an INBOX project leaves the view as it is and says so.
+# gi in a file without a project tagged @inbox leaves the view as it is and says so, whatever a project is called.
 file <<END
 Inbox stuff:
 	- Not the inbox
 END
 keys gi
-status No INBOX project in the Navigator
+status No inbox project: use Select Inbox Project
 see Inbox stuff:
 quit

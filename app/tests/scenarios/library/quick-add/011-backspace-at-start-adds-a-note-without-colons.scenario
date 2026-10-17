@@ -1,6 +1,6 @@
 # Backspace at the start deletes the dash, so a note is added; colons ending it are dropped so it stays a note.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q <BS>
@@ -9,7 +9,7 @@ keys <Enter>
 status Added to INBOX
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	Questions for Ana
 END

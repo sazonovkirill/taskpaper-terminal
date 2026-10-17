@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn the_inbox_comes_above_today_behind_its_icon() {
         assert_eq!(
-            rows(&draw("INBOX:\n\t- a\nA:"))[..5],
+            rows(&draw("INBOX: @inbox\n\t- a\nA:"))[..5],
             [
                 format!("▌ {} INBOX         1", Icon::Inbox.glyph(IconSet::Unicode)),
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
@@ -437,7 +437,7 @@ mod tests {
                 "  A".to_owned(),
             ]
         );
-        let view = view(&opened("INBOX:\n\tA:"));
+        let view = view(&opened("INBOX: @inbox\n\tA:"));
         let panel = NavigatorPanel::new(&view, IconSet::Unicode, &THEME);
         assert_eq!(panel.entry_at(0, 1), Some((0, None)), "no fold marker");
     }
@@ -495,7 +495,7 @@ mod tests {
         );
         assert_eq!(filtered('q', "Q:"), ["  Projects", "▌ Q", "", "", ""]);
         assert_eq!(
-            filtered('x', "INBOX:\nX:"),
+            filtered('x', "INBOX: @inbox\nX:"),
             [
                 format!("▌ {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
                 String::new(),

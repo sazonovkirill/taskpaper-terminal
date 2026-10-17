@@ -1,6 +1,6 @@
 # A task added with Quick Add and opened in its own pane is taken away by undo, and that pane zooms out to the inbox.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 END
 keys q
@@ -13,6 +13,6 @@ see │  󰋜 › INBOX
 hide Buy milk
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 END

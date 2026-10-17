@@ -1,6 +1,6 @@
 # Move to from the Overdue view files the focused entry under another project and leaves the pane on the view, the entry now under its new project.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})
@@ -15,7 +15,7 @@ see ▌ - Pay rent  Work
 see 󰨱 Overdue
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})

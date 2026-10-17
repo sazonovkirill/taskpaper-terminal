@@ -1,6 +1,6 @@
 # A bookmarked project inside the INBOX is listed under Bookmarks though not under Projects, and choosing it zooms there.
 file <<END
-INBOX:
+INBOX: @inbox
 	Sorted: @bookmark
 		- a
 	- b

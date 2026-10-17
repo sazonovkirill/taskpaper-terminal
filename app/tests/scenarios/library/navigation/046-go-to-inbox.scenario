@@ -1,8 +1,8 @@
-# gi zooms to the INBOX project from anywhere in the outline.
+# gi zooms to the project tagged @inbox from anywhere in the outline.
 file <<END
 Work:
 	- Report
-INBOX:
+INBOX: @inbox
 	- Call mom
 	- Buy milk
 END
@@ -15,7 +15,7 @@ quit
 saved <<END
 Work:
 	- Report
-INBOX:
+INBOX: @inbox
 	- Call mom @done({today})
 	- Buy milk
 END

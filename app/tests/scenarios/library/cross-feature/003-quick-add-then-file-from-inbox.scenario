@@ -1,6 +1,6 @@
 # Capture two things with Quick Add, then go to the inbox and file one into a project with Move to; the moved task keeps its due date.
 file <<END
-INBOX:
+INBOX: @inbox
 Home:
 	- Fix the shelf
 END
@@ -20,7 +20,7 @@ keys <Enter>
 see › Home
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf

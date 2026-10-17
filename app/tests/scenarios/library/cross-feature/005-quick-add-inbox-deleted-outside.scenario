@@ -1,8 +1,8 @@
-# When another program deletes the INBOX project while Quick Add is open, Enter adds nothing and the panel says there is no INBOX.
+# When another program deletes the inbox project while Quick Add is open, Enter adds nothing and the panel asks for a project.
 file <<END
 Work:
 	- Write report
-INBOX:
+INBOX: @inbox
 	- Rake leaves
 END
 keys q
@@ -14,7 +14,7 @@ Work:
 END
 hide Rake leaves
 keys <Enter>
-see No INBOX project in the Navigator
+see Choose a project with Tab
 keys <Esc>
 quit
 saved <<END

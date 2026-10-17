@@ -4,7 +4,7 @@ Work:
 	- Email Sarah
 Personal:
 	- Gym
-INBOX:
+INBOX: @inbox
 	- Buy printer paper
 	- Book dentist
 	- Idea: blog about outliners
@@ -34,7 +34,7 @@ see ▌ INBOX:
 keys , dd
 hide INBOX
 keys gi
-status No INBOX project in the Navigator
+status No inbox project: use Select Inbox Project
 quit
 saved <<END
 Work:

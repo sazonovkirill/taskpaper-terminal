@@ -1,6 +1,6 @@
 # Text pasted into the terminal while Quick Add is open goes into its text, as it does in the date prompt.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 paste <<END
@@ -10,6 +10,6 @@ see - Renew passport
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport
 END

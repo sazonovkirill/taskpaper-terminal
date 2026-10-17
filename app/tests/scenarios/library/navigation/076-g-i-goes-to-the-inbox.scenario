@@ -1,8 +1,8 @@
-# gi zooms to the INBOX project from anywhere, and | opens the Navigator, which lists it.
+# gi zooms to the project tagged @inbox from anywhere, and | opens the Navigator, which lists it.
 file <<END
 Work:
 	- Report
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 END
 keys j gi

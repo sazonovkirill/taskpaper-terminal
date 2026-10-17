@@ -97,10 +97,6 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │     Nerd Font icons; choose none if they show as b…│",
             "│               │   ↩ Word wrap                                 off  │",
             "│               │     Wrap long text, or end it in … on one line     │",
-            "│               │   ⊔ Special handling of INBOX project          on  │",
-            "│               │     Show INBOX: above Today, not under Projects    │",
-            "│               │   ☼ Special handling of TODAY project          on  │",
-            "│               │     Today lists its tasks                          │",
             "│               │   ★ Display starred items in Today view        on  │",
             "│               │     List starred blocks too, not only dated ones   │",
             "│               │   » Show Upcoming in Navigator                 on  │",
@@ -116,6 +112,10 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
             "│               │   ⚐ Show Flagged in Navigator                  on  │",
             "│               │     List the Flagged view in the Navigator         │",
             "│               │   ≡ Use Notes Attachments                      on  │",
+            "│               │     Give blocks a Markdown note, shown by an icon  │",
+            "│               │   ❞ Use Comments Attachments                   on  │",
+            "│               │     Give blocks dated comments, shown by an icon   │",
+            "│               │   ≈ Animations                                off  │",
         ]
     );
     assert!(
@@ -129,7 +129,7 @@ fn g_comma_opens_the_window_with_the_appearance_settings_and_esc_closes_it() {
         rows[28]
     );
     assert_eq!(rows.len(), 30, "as tall as the window gets");
-    app.type_keys(&"j".repeat(14));
+    app.type_keys(&"j".repeat(12));
     let rows = window(&mut app);
     assert_eq!(
         rows[22..25],
@@ -570,10 +570,10 @@ fn a_narrow_window_cuts_names_short_of_their_values_and_keeps_the_end_of_the_pat
             "│               │     Nerd Font icons; choose none if they…│",
             "│               │   ↩ Word wrap                       off  │",
             "│               │     Wrap long text, or end it in … on on…│",
-            "│               │   ⊔ Special handling of INBOX proje… on  │",
-            "│               │     Show INBOX: above Today, not under P…│",
-            "│               │   ☼ Special handling of TODAY proje… on  │",
-            "│               │     Today lists its tasks                │",
+            "│               │   ★ Display starred items in Today … on  │",
+            "│               │     List starred blocks too, not only da…│",
+            "│               │   » Show Upcoming in Navigator       on  │",
+            "│               │     List the Upcoming view in the Naviga…│",
             "│──────────────────────────────────────────────────────────│",
             "│ Tab: groups/settings · Enter: change · h/l: cycle · r: r…│",
         ]

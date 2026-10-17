@@ -1,6 +1,6 @@
 # The Move to picker stays open when another program changes an unrelated line, so the project typed next is where the task goes.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -8,7 +8,7 @@ END
 keys j gm
 see Move to
 outside <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the big shelf
@@ -18,7 +18,7 @@ type home
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 Home:
 	- Fix the big shelf
 	- Call the plumber

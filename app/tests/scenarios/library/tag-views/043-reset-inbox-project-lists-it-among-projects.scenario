@@ -1,0 +1,25 @@
+# Reset Inbox Project takes the tag away: the Navigator lists the project among the projects at once, focused while the pane is zoomed into it, and gi says there is no inbox.
+size 100 30
+file <<END
+INBOX: @inbox
+	- Call mom
+Work:
+	- Report
+END
+keys gi :
+type reset inbox project
+keys <Enter>
+status No inbox project now
+keys <C-g>
+see Projects
+see │▌ INBOX                                     1 │
+hide 󰚇
+keys <Esc> gi
+status No inbox project: use Select Inbox Project
+quit
+saved <<END
+INBOX:
+	- Call mom
+Work:
+	- Report
+END

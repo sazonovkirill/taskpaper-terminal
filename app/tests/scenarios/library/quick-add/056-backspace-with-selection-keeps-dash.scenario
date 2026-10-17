@@ -1,6 +1,6 @@
 # Backspace at the start deletes the dash only with nothing selected: with text selected it deletes that text.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Draft memo
@@ -11,6 +11,6 @@ see - emo
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- emo
 END

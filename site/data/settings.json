@@ -60,34 +60,6 @@
    "topic": "appearance"
   },
   {
-   "id": "setting-special-inbox",
-   "key": "special_inbox",
-   "group": "Appearance",
-   "name": "Special handling of INBOX project",
-   "description": "Show INBOX: above Today, not under Projects",
-   "kind": "switch",
-   "choices": null,
-   "least": null,
-   "unit": null,
-   "default": "true",
-   "default_text": "on",
-   "topic": "navigator"
-  },
-  {
-   "id": "setting-special-today",
-   "key": "special_today",
-   "group": "Appearance",
-   "name": "Special handling of TODAY project",
-   "description": "Today lists its tasks",
-   "kind": "switch",
-   "choices": null,
-   "least": null,
-   "unit": null,
-   "default": "true",
-   "default_text": "on",
-   "topic": "views"
-  },
-  {
    "id": "setting-today-starred",
    "key": "today_starred",
    "group": "Appearance",

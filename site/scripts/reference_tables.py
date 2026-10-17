@@ -58,6 +58,7 @@ COMMAND_TOPICS = {
     "go_to_today": "views", "go_to_upcoming": "views", "go_to_overdue": "views",
     "go_to_colors": "views", "go_to_logbook": "views", "go_to_starred": "views",
     "go_to_flagged": "views", "go_to_inbox": "navigator",
+    "select_inbox_project": "navigator", "reset_inbox_project": "navigator",
     "quick_add": "quick-add",
     "open_attachments": "attachments",
     "open_link": "blocks", "convert_type": "blocks", "make_section": "blocks", "toggle_section": "blocks",
@@ -115,6 +116,7 @@ CONTEXTS = {
     }),
     "QUICK_ADD": ("Quick Add panel", "quick-add", {
         "QuickAddInput::Add": "Add the block", "QuickAddInput::Cancel": "Close, adding nothing",
+        "QuickAddInput::ChooseProject": "Choose the project to add to",
     }),
     "NODE_EDITOR": ("Edit Node dialog", "tags", {
         "NodeInput::Accept": "Save every change and close", "NodeInput::Cancel": "Close, changing nothing",
@@ -162,7 +164,7 @@ RUNTIME_DEFAULTS = {"self.default_animations": ("full", "full, or reduced over S
 # Settings listed on another page besides the Settings page, by key.
 SETTING_TOPICS = {
     "theme": "appearance", "icons": "appearance", "word_wrap": "appearance",
-    "special_inbox": "navigator", "special_today": "views", "today_starred": "views",
+    "today_starred": "views",
     "sidebar_upcoming": "views", "sidebar_overdue": "views", "sidebar_colors": "views",
     "sidebar_logbook": "views", "sidebar_starred": "views", "sidebar_flagged": "views",
     "attachments_notes": "attachments", "attachments_comments": "attachments",

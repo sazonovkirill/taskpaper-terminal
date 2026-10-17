@@ -18,6 +18,7 @@ Typing `@` at the start of a word, while editing, does nothing but say "Tags are
 | `@flag` | Flagged | `!` |
 | `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `b` |
 | `@section` | A [section](@/reference/blocks.md#sections), on text blocks | `S` |
+| `@inbox` | The [inbox](@/reference/navigator.md#the-inbox), on a project | Select Inbox Project |
 | `@url(ADDRESS)` | The block's [link](@/reference/blocks.md#text-formatting-and-links) | Edit Node |
 | `@hidden` | A [hidden line](@/reference/blocks.md#hidden-lines) the app keeps but never shows | never; reserved |
 

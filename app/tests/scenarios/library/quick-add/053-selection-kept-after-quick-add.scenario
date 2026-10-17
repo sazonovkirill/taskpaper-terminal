@@ -1,6 +1,6 @@
 # A block selection survives a quick add, so x afterwards completes the selected blocks, not the new one.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- One
 	- Two
@@ -11,7 +11,7 @@ type Three
 keys <Enter> x
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Three
 Work:
 	- One @done({today})

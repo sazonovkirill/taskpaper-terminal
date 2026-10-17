@@ -8,7 +8,7 @@ description = "Jump anywhere in the file, and move lines across it."
 
 Press <kbd>Ctrl+G</kbd> to open the **Navigator**, the list of places to go:
 
-- **INBOX**, for things you haven't sorted yet: a top-level project named exactly `INBOX` is listed apart.
+- **INBOX**, for things you haven't sorted yet. The sample's `INBOX` project is tagged `@inbox`, which makes it the inbox; **Select Inbox Project** in Go to Command makes any project the inbox.
 - The special views: **Today**, **Upcoming**, **Overdue**, **Colors**, **Logbook**, **Starred** and **Flagged**.
 - **Bookmarks**, once you have some.
 - **Projects**, as a tree, each with its number of open tasks.

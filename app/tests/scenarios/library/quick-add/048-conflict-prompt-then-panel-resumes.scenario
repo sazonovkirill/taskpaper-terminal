@@ -3,7 +3,7 @@ config <<END
 autosave_delay_ms = 60000
 END
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q
@@ -11,7 +11,7 @@ type First
 keys <Enter> q
 type Second
 outside <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- From outside
 END
@@ -21,7 +21,7 @@ see - Second
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- First
 	- Second

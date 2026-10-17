@@ -1,7 +1,7 @@
 # In a 20x6 terminal the Overdue view still works, and Quick Add to the inbox adds the task there.
 size 20 6
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Home:
 	- Pay rent @due({today-7})
@@ -15,7 +15,7 @@ type Buy milk
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-2})
 	- Buy milk
 Home:

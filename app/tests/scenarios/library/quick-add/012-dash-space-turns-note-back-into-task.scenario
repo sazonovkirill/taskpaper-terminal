@@ -1,6 +1,6 @@
 # After Backspace makes a note, typing "- " at the start of its text makes it a task again.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q <BS>
 type Pay bills
@@ -9,6 +9,6 @@ keys - <Space>
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Pay bills
 END

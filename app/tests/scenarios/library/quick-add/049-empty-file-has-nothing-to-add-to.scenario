@@ -1,5 +1,5 @@
-# In an empty file q says there is no INBOX project and opens nothing.
+# In an empty file q says there are no projects and opens nothing.
 keys q
-status No INBOX project in the Navigator
+status No projects
 hide Quick Add
 quit

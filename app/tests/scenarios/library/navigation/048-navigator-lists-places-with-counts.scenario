@@ -1,6 +1,6 @@
 # Ctrl+G opens the Navigator listing the inbox, Today, bookmarks and projects, each with its open-task count.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call mom
 Work:
 	- Send report @due({today})

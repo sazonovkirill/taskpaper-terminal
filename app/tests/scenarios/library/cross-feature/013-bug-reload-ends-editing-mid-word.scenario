@@ -1,6 +1,6 @@
 # Typing in a block when a sync tool changes another line of the file keeps the block in edit mode, so the rest of the words land in the text.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -8,13 +8,13 @@ END
 keys j <Enter>
 type  now
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber now
 Home:
 	- Fix the shelf
 END
 outside <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber now
 Home:
 	- Fix the big shelf
@@ -24,7 +24,7 @@ type  please
 keys <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber now please
 Home:
 	- Fix the big shelf

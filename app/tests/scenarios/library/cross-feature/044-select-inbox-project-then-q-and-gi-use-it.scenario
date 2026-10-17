@@ -1,0 +1,25 @@
+# Select Inbox Project from Go to Command tags the chosen project @inbox, q and gi then use it, and it holds after a restart.
+file <<END
+INBOX:
+	- Call the plumber
+Work:
+END
+keys :
+type select inbox project
+keys <Enter>
+see Inbox Project
+type work
+keys <Enter>
+status Inbox: Work
+keys q
+see Quick Add → Work
+keys <Esc>
+restart
+keys gi
+see 󰋜 › Work
+quit
+saved <<END
+INBOX:
+	- Call the plumber
+Work: @inbox
+END

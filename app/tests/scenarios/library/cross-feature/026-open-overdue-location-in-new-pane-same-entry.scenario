@@ -1,6 +1,6 @@
 # Ctrl+W s on the Overdue view opens it again in a new pane on the same entry, and completing the entry there takes it out of both panes.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})
@@ -11,7 +11,7 @@ keys x
 hide Write report
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2}) @done({today})

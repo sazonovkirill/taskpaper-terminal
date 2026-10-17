@@ -1,6 +1,6 @@
-# q opens Quick Add on the INBOX project; Enter adds the task as its last child and names it.
+# q opens Quick Add on the project tagged @inbox; Enter adds the task as its last child and names it.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 Work:
 	- Email boss
@@ -12,7 +12,7 @@ keys <Enter>
 status Added to INBOX
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- Call mom
 Work:

@@ -1,7 +1,7 @@
 # In a 20x6 terminal Quick Add still opens, scrolls its text to the caret, and adds to INBOX.
 size 20 6
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- a
 END
@@ -12,7 +12,7 @@ see things
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Buy a long list of things
 Work:
 	- a

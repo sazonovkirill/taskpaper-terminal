@@ -1,6 +1,6 @@
 # Editing down and up through the Today list with the arrow keys keeps the caret column, each change lands in its own project, and a creation key in Today adds nothing while x after it still marks the entry done.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:
@@ -23,7 +23,7 @@ keys o x
 see ▌ ✔ Renew pas#sport  INBOX
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew pas#sport @due({today-3}) @done({today})
 Work:

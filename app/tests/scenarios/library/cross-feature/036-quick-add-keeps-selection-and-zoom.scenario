@@ -1,6 +1,6 @@
 # Quick Add from a zoomed pane with two tasks selected adds to the inbox without changing the pane, and the selection still takes the next command.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- Write report
 	- Review PRs
@@ -14,7 +14,7 @@ see 󰋜 › Work
 keys x
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call mom
 Work:
 	- Write report @done({today})

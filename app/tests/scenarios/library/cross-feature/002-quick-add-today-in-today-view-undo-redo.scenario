@@ -1,6 +1,6 @@
 # Quick Add to the inbox from the Today view adds a task dated today that shows in the view at once; undo takes it out and redo brings it back.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})
@@ -15,7 +15,7 @@ keys Z
 see - Call mom  INBOX
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 	- Call mom @start({today})
 Work:

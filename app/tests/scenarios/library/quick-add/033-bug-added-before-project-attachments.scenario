@@ -1,6 +1,6 @@
 # A quick add goes after the destination's NOTE and COMMENTS attachments, as the last child.
 file <<END
-INBOX:
+INBOX: @inbox
 	NOTE @hidden
 		Inbox rules
 	COMMENTS @hidden
@@ -11,7 +11,7 @@ type Sort mail
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	NOTE @hidden
 		Inbox rules
 	COMMENTS @hidden

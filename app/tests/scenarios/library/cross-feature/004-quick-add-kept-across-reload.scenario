@@ -2,7 +2,7 @@
 file <<END
 Work:
 	- Write report
-INBOX:
+INBOX: @inbox
 	- Fix the shelf
 END
 keys q
@@ -13,7 +13,7 @@ Garden:
 	- Rake leaves
 Work:
 	- Write report
-INBOX:
+INBOX: @inbox
 	- Fix the shelf
 END
 see Garden:
@@ -25,7 +25,7 @@ Garden:
 	- Rake leaves
 Work:
 	- Write report
-INBOX:
+INBOX: @inbox
 	- Fix the shelf
 	- Fix sink
 END

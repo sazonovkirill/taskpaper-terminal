@@ -1,6 +1,6 @@
 # Coloring two tasks in the outline, then cycling one in the Colors view moves it from group to group with the focus, and the file keeps one color tag each.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport
 END
@@ -13,7 +13,7 @@ keys c c
 see Blue
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber @blue
 	- Renew passport @yellow
 END

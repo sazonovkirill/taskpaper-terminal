@@ -1,6 +1,6 @@
 # Cutting an Overdue entry in one pane and pasting it under another project in the outline pane moves the task, which stays in the Overdue view.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Personal:
 	- Book dentist
@@ -11,7 +11,7 @@ keys g1 G p
 see - Renew passport  Personal
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 Personal:
 	- Book dentist
 	- Renew passport @due({today-3})

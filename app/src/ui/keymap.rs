@@ -119,6 +119,8 @@ pub enum Overlay {
     DatePrompt,
     /// The Quick Add panel (D-96).
     QuickAdd,
+    /// Quick Add's project picker (D-141).
+    QuickAddPicker,
     /// The type picker (FR-BLK-08).
     TypePicker,
     /// The Edit Node dialog (FR-MODE-09).
@@ -129,6 +131,8 @@ pub enum Overlay {
     GoToSymbol,
     /// Move to (FR-OPS-05).
     MoveTo,
+    /// Select Inbox Project (D-141).
+    InboxPicker,
     /// Go to Command (FR-NAV-06).
     GoToCommand,
     /// The theme picker (FR-UI-06).
@@ -161,6 +165,8 @@ impl Overlay {
     fn menu(self) -> Option<Menu> {
         match self {
             Self::ColorPicker => Some(Menu::ColorPicker),
+            Self::QuickAddPicker => Some(Menu::QuickAdd),
+            Self::InboxPicker => Some(Menu::InboxPicker),
             Self::TypePicker => Some(Menu::TypePicker),
             Self::NodeEditorFinder => Some(Menu::NodeEditor),
             Self::GoToSymbol => Some(Menu::GoToSymbol),
@@ -604,6 +610,7 @@ fn dialog_shortcuts(overlay: Overlay) -> Option<ShortcutGroup> {
                 QUICK_ADD,
                 &[
                     (QuickAddInput::Add, "Add"),
+                    (QuickAddInput::ChooseProject, "Choose Project"),
                     (QuickAddInput::Cancel, "Cancel"),
                 ],
             ),
@@ -651,6 +658,7 @@ fn date_prompt_message(key: Key) -> Option<Message> {
 /// [keybindings.md §4]: ../../../docs/specs/keybindings.md#4-other-contexts
 const QUICK_ADD: &[(Key, QuickAddInput)] = &[
     (key!(Enter), QuickAddInput::Add),
+    (key!(Tab), QuickAddInput::ChooseProject),
     (key!(Esc), QuickAddInput::Cancel),
 ];
 
@@ -1383,6 +1391,8 @@ impl Keymap {
                 }
                 Overlay::GoToSymbol => menu_message(pressed, Menu::GoToSymbol),
                 Overlay::MoveTo => menu_message(pressed, Menu::MoveTo),
+                Overlay::QuickAddPicker => menu_message(pressed, Menu::QuickAdd),
+                Overlay::InboxPicker => menu_message(pressed, Menu::InboxPicker),
                 Overlay::GoToCommand => menu_message(pressed, Menu::GoToCommand),
                 Overlay::ThemePicker => menu_message(pressed, Menu::ThemePicker),
                 Overlay::Settings => settings_message(pressed),
@@ -4709,6 +4719,8 @@ mod tests {
             Overlay::AttachmentsComment,
             Overlay::GoToSymbol,
             Overlay::MoveTo,
+            Overlay::QuickAddPicker,
+            Overlay::InboxPicker,
             Overlay::GoToCommand,
             Overlay::ThemePicker,
             Overlay::Settings,
@@ -4809,6 +4821,7 @@ mod tests {
                 "Quick Add",
                 vec![
                     "Add: Enter".to_owned(),
+                    "Choose Project: Tab".to_owned(),
                     "Cancel: Esc".to_owned(),
                     "Paste: Ctrl+V".to_owned(),
                     "Quit: Ctrl+Q".to_owned(),

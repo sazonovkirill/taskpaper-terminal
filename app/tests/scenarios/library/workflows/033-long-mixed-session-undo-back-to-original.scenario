@@ -1,6 +1,6 @@
 # A long mixed session (editing in Today, star, done, move to another project, indent, color, copy and paste) is undone step by step back to the exact original file.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:
@@ -22,7 +22,7 @@ see ▌   - Renew passport
 hide online
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:

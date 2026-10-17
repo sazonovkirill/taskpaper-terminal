@@ -40,11 +40,6 @@ impl Above {
         });
     }
 
-    /// The top-level block above the row reached, if it is not at the top level.
-    pub(super) fn top(&self) -> Option<ItemId> {
-        self.lines.first().map(|line| line.id)
-    }
-
     /// The blocks above the row reached with the text of each, which names in a path of
     /// them would show.
     pub(super) fn signature(&self, state: &State) -> Signature {

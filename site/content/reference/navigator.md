@@ -29,13 +29,16 @@ The Navigator keeps the keys while it is open: keys that are not its own do noth
 
 ### The inbox
 
-The **inbox** is the first top-level project whose text is exactly `INBOX`, in capitals: `INBOX:` in the file, maybe after emoji and a space, as in `📥 INBOX:`. The Navigator lists it above Today, behind a tray icon, and leaves it and the projects inside it out of the Projects tree.
+The **inbox** is the project you tag `@inbox`, whatever its name and wherever it is: `Errands: @inbox` in the file. If several carry the tag, the first counts. The Navigator lists it above Today by its own text, behind a tray icon, and leaves it and the projects inside it out of the Projects tree. [Go to Project](#go-to-project) lists it first.
 
-`gi` (**Go to Inbox**) zooms the focused pane to it from anywhere. When there is no inbox, the status line says "No INBOX project in the Navigator". [Quick Add](@/reference/quick-add.md) adds tasks to it.
+You don't need to type the tag:
 
-Turn off **Special handling of INBOX project** to list it among the other projects instead:
+- **Select Inbox Project** in Go to Command lists the projects, filtered as you type, with the current inbox highlighted. Choosing one tags it `@inbox` and takes the tag off every other project, as one step to undo. With no projects, it says "No projects".
+- **Reset Inbox Project** takes `@inbox` off every project, so there is no inbox.
 
-{{ settings(topic="navigator") }}
+`gi` (**Go to Inbox**) zooms the focused pane to the inbox from anywhere. When there is none, the status line says "No inbox project: use Select Inbox Project". [Quick Add](@/reference/quick-add.md) adds tasks to it unless you choose another project.
+
+`@inbox` on a task or a note means nothing.
 
 ## Finders
 
@@ -51,7 +54,7 @@ The same keys drive the other pickers: [Move to…](@/reference/structure.md#mov
 
 ### Go to Project
 
-**Go to Project** (`gP`) is Go to Symbol over the projects alone, bookmarked ones first.
+**Go to Project** (`gP`) is Go to Symbol over the projects alone, the [inbox](#the-inbox) first, then bookmarked ones.
 
 In both, a block can open in a [new pane](@/reference/panes.md) instead:
 

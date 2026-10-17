@@ -1,6 +1,6 @@
 # Dates count only as whole words: "today's", "a-tomorrow" and "tomorrow/friday" stay text, while "tomorrow." counts.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Read today's paper
@@ -13,7 +13,7 @@ type Call mom tomorrow.
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Read today's paper
 	- Fix a-tomorrow bug
 	- Pick tomorrow/friday

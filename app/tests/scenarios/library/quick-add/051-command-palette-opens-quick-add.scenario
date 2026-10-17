@@ -1,6 +1,6 @@
 # Go to Command lists Quick Add with its key q; choosing it opens the panel on INBOX.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys :
@@ -13,7 +13,7 @@ type From the palette
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- From the palette
 END

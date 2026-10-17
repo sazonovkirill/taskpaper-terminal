@@ -1,6 +1,6 @@
 # Ctrl+V in Quick Add pastes the text copied last, as it does in the date prompt and edit mode.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- Renew passport
 END
@@ -9,7 +9,7 @@ see Enter adds it
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport
 Work:
 	- Renew passport

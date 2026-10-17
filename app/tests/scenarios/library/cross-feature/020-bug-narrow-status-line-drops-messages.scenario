@@ -1,9 +1,9 @@
-# In a 40-column terminal the status line still shows a message such as Quick Add's "No INBOX project in the Navigator".
+# In a 40-column terminal the status line still shows a message such as gi's "No inbox project: use Select Inbox Project".
 size 40 10
 file <<END
 Work:
 	- Write report
 END
-keys q
-status No INBOX project
+keys gi
+status No inbox project
 quit

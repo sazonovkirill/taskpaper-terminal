@@ -507,8 +507,8 @@ fn every_text_field_moves_its_caret_through_the_text_shown() {
         }),
     ];
     for (field, open) in open {
-        // Quick Add opens only with an INBOX project to add to.
-        let mut app = Harness::with_text("- Milk\nINBOX:\n", 50, 14);
+        // Quick Add opens on the inbox project, without its project picker.
+        let mut app = Harness::with_text("- Milk\nINBOX: @inbox\n", 50, 14);
         open(&mut app);
         app.type_keys(long);
         app.render();

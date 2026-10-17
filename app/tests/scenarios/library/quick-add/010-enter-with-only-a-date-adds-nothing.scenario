@@ -1,6 +1,6 @@
 # Text that is only a date ("due tomorrow") is not text to add: Enter does nothing and says "Type the text".
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q
@@ -11,6 +11,6 @@ see - due tomorrow
 keys <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END

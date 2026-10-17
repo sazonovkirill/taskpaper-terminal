@@ -12,9 +12,7 @@ use super::{
     weather, widgets,
 };
 use crate::{
-    app::{
-        Animations, Configuration, Message, Setting, SettingKind, SettingValue, SpecialView, saving,
-    },
+    app::{Animations, Configuration, Message, Setting, SettingKind, SettingValue, saving},
     document::Attachment,
 };
 
@@ -24,13 +22,10 @@ enum Listed {
     Theme,
     Icons,
     Wrap,
-    SpecialInbox,
     /// Whether the Navigator lists this special view (D-80).
     NavigatorView(OptionalView),
     /// Whether the Today view lists starred blocks (D-88).
     TodayStarred,
-    /// Whether the Today view lists the `TODAY` project's tasks (D-98, D-102).
-    SpecialToday,
     /// Whether this kind of attachment is turned on (attachments.md §6).
     Attachments(Attachment),
     Animations,
@@ -45,12 +40,10 @@ enum Listed {
 }
 
 /// The settings the window lists, in order.
-const LISTED: [Listed; 21] = [
+const LISTED: [Listed; 19] = [
     Listed::Theme,
     Listed::Icons,
     Listed::Wrap,
-    Listed::SpecialInbox,
-    Listed::SpecialToday,
     Listed::TodayStarred,
     Listed::NavigatorView(OptionalView::Upcoming),
     Listed::NavigatorView(OptionalView::Overdue),
@@ -79,10 +72,8 @@ impl Listed {
             Self::Theme => "theme",
             Self::Icons => "icons",
             Self::Wrap => "word_wrap",
-            Self::SpecialInbox => "special_inbox",
             Self::NavigatorView(view) => view.key(),
             Self::TodayStarred => "today_starred",
-            Self::SpecialToday => "special_today",
             Self::Attachments(kind) => config::attachments_key(kind),
             Self::Animations => "animations",
             Self::Weather => "weather",
@@ -100,10 +91,8 @@ impl Listed {
             Self::Theme => Icon::Color,
             Self::Icons => Icon::Glyphs,
             Self::Wrap => Icon::Wrap,
-            Self::SpecialInbox => Icon::Inbox,
             Self::NavigatorView(view) => widgets::view_icon(view.view()),
             Self::TodayStarred => Icon::Star,
-            Self::SpecialToday => widgets::view_icon(SpecialView::Today),
             Self::Attachments(kind) => widgets::attachment_icon(kind),
             Self::Animations => Icon::Animations,
             Self::Weather | Self::WeatherIdle => Icon::Weather,
@@ -223,12 +212,6 @@ impl Tui {
                 SettingValue::Switch(self.wrap),
                 SettingValue::Switch(false),
             ),
-            Listed::SpecialInbox => switch_on_by_default(
-                "Appearance",
-                "Special handling of INBOX project",
-                "Show INBOX: above Today, not under Projects",
-                self.state.special_inbox(),
-            ),
             Listed::NavigatorView(view) => {
                 let (name, description) = navigator_setting(view);
                 switch_on_by_default(
@@ -238,12 +221,6 @@ impl Tui {
                     self.state.navigator_lists(view.view()),
                 )
             }
-            Listed::SpecialToday => switch_on_by_default(
-                "Appearance",
-                "Special handling of TODAY project",
-                "Today lists its tasks",
-                self.state.special_today(),
-            ),
             Listed::TodayStarred => switch_on_by_default(
                 "Appearance",
                 "Display starred items in Today view",
@@ -407,19 +384,11 @@ impl Tui {
                 self.wrap = on;
                 Some(on.into())
             }
-            (Listed::SpecialInbox, SettingValue::Switch(on)) => {
-                self.send(Message::Configure(Configuration::SpecialInbox(on)), now);
-                Some(on.into())
-            }
             (Listed::NavigatorView(view), SettingValue::Switch(on)) => {
                 self.send(
                     Message::Configure(Configuration::NavigatorView(view.view(), on)),
                     now,
                 );
-                Some(on.into())
-            }
-            (Listed::SpecialToday, SettingValue::Switch(on)) => {
-                self.send(Message::Configure(Configuration::SpecialToday(on)), now);
                 Some(on.into())
             }
             (Listed::Attachments(kind), SettingValue::Switch(on)) => {
@@ -541,16 +510,16 @@ mod tests {
             (0, SettingValue::Switch(false)),
             (0, SettingValue::Choice(99)),
             (1, SettingValue::Choice(9)),
-            (14, SettingValue::Choice(3)),
+            (12, SettingValue::Choice(3)),
             (LISTED.len(), SettingValue::Switch(false)),
         ] {
             tui.change_setting(at, value, Duration::ZERO);
         }
         assert_eq!(tui.listed_settings(), before);
         assert_eq!(tui.state.notice(), None, "nothing was kept");
-        assert_eq!(icon(14), Icon::Animations);
-        assert_eq!(icon(15), Icon::Weather);
-        assert_eq!(icon(16), Icon::Weather);
+        assert_eq!(icon(12), Icon::Animations);
+        assert_eq!(icon(13), Icon::Weather);
+        assert_eq!(icon(14), Icon::Weather);
         assert_eq!(icon(LISTED.len()), Icon::Command);
     }
 
@@ -561,8 +530,6 @@ mod tests {
         let values = [
             SettingValue::Choice(1),
             SettingValue::Choice(1),
-            SettingValue::Switch(false),
-            SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
             SettingValue::Switch(false),
@@ -586,9 +553,9 @@ mod tests {
         }
         let taken: Vec<_> = tui.listed_settings().into_iter().map(|s| s.value).collect();
         assert_eq!(taken, values);
-        tui.change_setting(19, SettingValue::Text(String::new()), Duration::ZERO);
+        tui.change_setting(17, SettingValue::Text(String::new()), Duration::ZERO);
         assert_eq!(
-            tui.listed_settings()[19].value,
+            tui.listed_settings()[17].value,
             SettingValue::Text(String::new())
         );
         assert!(

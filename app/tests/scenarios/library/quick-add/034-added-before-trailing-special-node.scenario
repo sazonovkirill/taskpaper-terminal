@@ -1,6 +1,6 @@
 # A quick add goes after the project's last child but before a trailing special node, which stays last.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	LOG @hidden @log
 		[2026-10-04 12:09] Started
@@ -11,7 +11,7 @@ type New item
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 	- New item
 	LOG @hidden @log

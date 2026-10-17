@@ -137,17 +137,11 @@ pub struct Config {
     pub(super) theme: Option<BuiltIn>,
     /// Whether text wraps, when the file says (`word_wrap`, FR-UI-05).
     pub(super) wrap: Option<bool>,
-    /// Whether the Navigator lists the `INBOX` project apart, when the file says
-    /// (`special_inbox`, D-75).
-    pub(super) special_inbox: Option<bool>,
     /// Whether the Navigator lists each special view the file says about (`sidebar_upcoming` and
     /// so on, D-80).
     pub(super) navigator_views: Vec<(SpecialView, bool)>,
     /// Whether the Today view lists starred blocks, when the file says (`today_starred`, D-88).
     pub(super) today_starred: Option<bool>,
-    /// Whether the Today view lists the `TODAY` project's tasks, when the file says
-    /// (`special_today`, D-98, D-102).
-    pub(super) special_today: Option<bool>,
     /// Whether each kind of attachment the file says about is turned on (`attachments_notes`,
     /// `attachments_comments`, attachments.md §6).
     pub(super) attachments: Vec<(Attachment, bool)>,
@@ -220,17 +214,6 @@ impl Config {
         }
     }
 
-    /// Takes `special_inbox` from `item`: `true` or `false`.
-    fn read_special_inbox(&mut self, item: &Item) {
-        match item.as_bool() {
-            Some(on) => self.special_inbox = Some(on),
-            None => self.problems.push(Problem::InvalidValue {
-                key: "special_inbox".to_owned(),
-                expected: "true or false",
-            }),
-        }
-    }
-
     /// Takes `today_starred` from `item`: `true` or `false`.
     fn read_today_starred(&mut self, item: &Item) {
         match item.as_bool() {
@@ -259,17 +242,6 @@ impl Config {
             Some(on) => self.navigator_views.push((view.view(), on)),
             None => self.problems.push(Problem::InvalidValue {
                 key: view.key().to_owned(),
-                expected: "true or false",
-            }),
-        }
-    }
-
-    /// Takes `special_today` from `item`: `true` or `false`.
-    fn read_special_today(&mut self, item: &Item) {
-        match item.as_bool() {
-            Some(on) => self.special_today = Some(on),
-            None => self.problems.push(Problem::InvalidValue {
-                key: "special_today".to_owned(),
                 expected: "true or false",
             }),
         }
@@ -466,8 +438,6 @@ fn read(text: &str, home: Option<&Path>) -> Config {
             "icons" => config.read_icons(item),
             "theme" => config.read_theme(item),
             "word_wrap" => config.read_wrap(item),
-            "special_inbox" => config.read_special_inbox(item),
-            "special_today" => config.read_special_today(item),
             "today_starred" => config.read_today_starred(item),
             "weather" => config.read_weather(item),
             "weather_idle_minutes" => config.read_weather_idle_minutes(item),
@@ -938,22 +908,16 @@ mod tests {
         );
     }
 
-    // D-75, FR-SET-04
+    // D-141: the inbox is the project tagged `@inbox`, and the Today view lists no project's
+    // tasks.
     #[test]
-    fn special_inbox_is_true_or_false_and_anything_else_is_reported() {
-        assert_eq!(read("", None).special_inbox, None);
-        assert_eq!(
-            read("special_inbox = false\n", None).special_inbox,
-            Some(false)
-        );
-        let config = read("special_inbox = 1\n", None);
-        assert_eq!(config.special_inbox, None);
+    fn special_inbox_and_special_today_are_no_settings() {
+        let config = read("special_inbox = false\nspecial_today = true\n", None);
         assert_eq!(
             config.problems(),
-            [Problem::InvalidValue {
-                key: "special_inbox".to_owned(),
-                expected: "true or false",
-            }]
+            ["special_inbox", "special_today"].map(|key| Problem::UnknownSetting {
+                key: key.to_owned()
+            })
         );
     }
 
@@ -1041,25 +1005,6 @@ mod tests {
             read("sidebar_starred = 1\n", None).problems(),
             [Problem::InvalidValue {
                 key: "sidebar_starred".to_owned(),
-                expected: "true or false",
-            }]
-        );
-    }
-
-    // D-98, FR-SET-04
-    #[test]
-    fn special_today_is_true_or_false_and_anything_else_is_reported() {
-        assert_eq!(read("", None).special_today, None);
-        assert_eq!(
-            read("special_today = false\n", None).special_today,
-            Some(false)
-        );
-        let config = read("special_today = 1\n", None);
-        assert_eq!(config.special_today, None);
-        assert_eq!(
-            config.problems(),
-            [Problem::InvalidValue {
-                key: "special_today".to_owned(),
                 expected: "true or false",
             }]
         );

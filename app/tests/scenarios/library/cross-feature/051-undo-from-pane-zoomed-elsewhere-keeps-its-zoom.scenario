@@ -1,6 +1,6 @@
 # Undoing, in a pane zoomed into Home, an edit made in the outline pane takes the edit back without moving that pane, and redo there puts it back.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -11,7 +11,7 @@ keys g1 gg j <Enter>
 type  now
 keys <Esc> g2 z
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -20,7 +20,7 @@ see 󰋜 › Home
 keys Z
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber now
 Home:
 	- Fix the shelf

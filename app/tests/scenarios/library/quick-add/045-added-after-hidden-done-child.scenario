@@ -1,6 +1,6 @@
 # With completed hidden, the new task still goes last, after the project's hidden done child, and shows.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Open item
 	- Done item @done(2026-10-01)
 END
@@ -13,7 +13,7 @@ see - Next item
 hide Done item
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Open item
 	- Done item @done(2026-10-01)
 	- Next item

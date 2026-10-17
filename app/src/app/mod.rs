@@ -20,6 +20,7 @@ mod folds;
 mod go_to_command;
 mod go_to_symbol;
 pub mod history;
+mod inbox;
 mod links;
 mod logbook;
 mod memo;

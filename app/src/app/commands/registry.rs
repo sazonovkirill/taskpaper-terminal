@@ -255,6 +255,8 @@ pub const REGISTRY: &[Entry] = &[
         &[],
     ),
     entry!(Command::QuickAdd, Mode::Navigate, &["q"]),
+    entry!(Command::SelectInbox, Mode::Navigate, &[]),
+    entry!(Command::ResetInbox, Mode::Navigate, &[]),
     entry!(
         Command::Select(SelectionChange::ExtendDown),
         Mode::Navigate,

@@ -1,4 +1,4 @@
-INBOX:
+INBOX: @inbox
 	- Call the bike shop about the brakes
 	- Read "The Pragmatic Programmer" chapter 4
 Launch tpt 1.0:

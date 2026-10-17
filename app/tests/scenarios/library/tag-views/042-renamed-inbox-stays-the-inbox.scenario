@@ -1,0 +1,16 @@
+# Renaming the inbox project keeps it the inbox: its tag stays, the Navigator lists it apart under its new name and gi still goes to it.
+file <<END
+INBOX: @inbox
+	- Call mom
+END
+keys <Enter> <BS> <BS> <BS> <BS>
+type nbox
+keys <Esc> <C-g>
+see │▌ 󰚇 Inbox
+keys <Esc> gi
+see 󰋜 › Inbox
+quit
+saved <<END
+Inbox: @inbox
+	- Call mom
+END

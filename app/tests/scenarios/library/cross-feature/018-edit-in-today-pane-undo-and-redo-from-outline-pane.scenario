@@ -1,6 +1,6 @@
 # An edit and a reschedule made in a Today pane are undone from the outline pane next to it and redone back in the Today pane.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write report @due({today-2})
@@ -16,7 +16,7 @@ see - Renew passport  INBOX
 keys g2 Z Z
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport soon @due({today+1})
 Work:
 	- Write report @due({today-2})

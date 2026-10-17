@@ -406,49 +406,70 @@ fn a_projects_count_of_open_tasks_follows_completing_them() {
 
 const INBOXED: &str = "\
 Work:
-INBOX:
+Capture: @inbox
 \t- Call the bank
 ";
 
-// D-75
+/// The Navigator's window over [`INBOXED`] before Projects, without its inbox entry.
+fn views() -> Vec<String> {
+    vec![
+        format!("  {SUN} Today"),
+        format!("  {ARROW} Upcoming"),
+        format!("  {OVERDUE} Overdue"),
+        format!("  {PALETTE} Colors"),
+        format!("  {BOOK} Logbook"),
+        format!("  {STAR} Starred"),
+        format!("  {FLAG} Flagged"),
+        String::new(),
+        "  Projects".to_owned(),
+    ]
+}
+
+// D-75, D-141
 #[test]
-fn the_inbox_project_is_listed_above_today_unless_the_setting_is_off() {
+fn the_project_tagged_inbox_is_listed_above_today_under_its_own_name() {
     let mut app = Harness::with_text(INBOXED, 80, 16);
     ctrl_g(&mut app);
-    assert_eq!(
-        window(&mut app).expect("open"),
-        [
-            format!("{:44}1", "▌ ⊔ INBOX"),
-            format!("  {SUN} Today"),
-            format!("  {ARROW} Upcoming"),
-            format!("  {OVERDUE} Overdue"),
-            format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
-            format!("  {STAR} Starred"),
-            format!("  {FLAG} Flagged"),
-            String::new(),
-            "  Projects".to_owned(),
-            "  Work".to_owned(),
-        ]
-    );
-    let mut app = Harness::with_config(INBOXED, "special_inbox = false\n", 80, 16);
+    let mut expected = vec![format!("{:44}1", "▌ ⊔ Capture")];
+    expected.extend(views());
+    expected.push("  Work".to_owned());
+    assert_eq!(window(&mut app).expect("open"), expected);
+    let mut app = Harness::with_text("Work:\nINBOX:\n\t- Call the bank\n", 80, 16);
     ctrl_g(&mut app);
+    let mut expected = views();
+    expected[0] = format!("▌ {SUN} Today");
+    expected.extend(["  Work".to_owned(), format!("{:44}1", "  INBOX")]);
     assert_eq!(
         window(&mut app).expect("open"),
-        [
-            format!("▌ {SUN} Today"),
-            format!("  {ARROW} Upcoming"),
-            format!("  {OVERDUE} Overdue"),
-            format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
-            format!("  {STAR} Starred"),
-            format!("  {FLAG} Flagged"),
-            String::new(),
-            "  Projects".to_owned(),
-            "  Work".to_owned(),
-            format!("{:44}1", "  INBOX"),
-        ]
+        expected,
+        "a name alone makes no inbox"
     );
+}
+
+// D-141
+#[test]
+fn select_inbox_project_tags_the_chosen_project_and_reset_takes_the_tag_away() {
+    let mut app = Harness::with_text(INBOXED, 80, 16);
+    app.type_keys(":select inbox");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("work");
+    let buffer = app.render().buffer().clone();
+    assert!(
+        (0..16).any(|y| line(&buffer, y).contains("Inbox Project")),
+        "the picker is drawn under its title"
+    );
+    press(&mut app, KeyCode::Enter);
+    let status = line(app.render().buffer(), 15);
+    assert!(status.ends_with("· Inbox: Work"), "{status}");
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app).expect("open")[0], "▌ ⊔ Work");
+    press(&mut app, KeyCode::Esc);
+    app.type_keys(":reset inbox");
+    press(&mut app, KeyCode::Enter);
+    let status = line(app.render().buffer(), 15);
+    assert!(status.ends_with("· No inbox project now"), "{status}");
+    ctrl_g(&mut app);
+    assert_eq!(window(&mut app).expect("open")[0], format!("▌ {SUN} Today"));
 }
 
 // D-102
@@ -461,17 +482,17 @@ fn the_window_always_lists_today_and_an_old_setting_to_leave_it_out_is_reported(
     assert_eq!(window(&mut app).expect("open")[1], format!("  {SUN} Today"));
 }
 
-// D-78
+// D-78, D-141
 #[test]
 fn g_i_zooms_to_the_inbox_and_says_so_when_there_is_none() {
     let mut app = Harness::with_text(INBOXED, 80, 10);
     app.type_keys("gi");
-    assert_eq!(pane(&mut app)[0], "  ⌂ › INBOX", "the breadcrumbs");
+    assert_eq!(pane(&mut app)[0], "  ⌂ › Capture", "the breadcrumbs");
     let mut app = Harness::with_text(OUTLINE, 100, 10);
     app.type_keys("gi");
     let status = line(app.render().buffer(), 9);
     assert!(
-        status.ends_with("· No INBOX project in the Navigator"),
+        status.ends_with("· No inbox project: use Select Inbox Project"),
         "{status}"
     );
 }

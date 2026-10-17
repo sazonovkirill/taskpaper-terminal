@@ -1,6 +1,6 @@
 # Adding to a collapsed project expands nothing: the project stays folded and its count grows.
 file <<END
-INBOX:
+INBOX: @inbox
 	- One
 	- Two
 Work:
@@ -15,7 +15,7 @@ see INBOX: ▸ 3
 hide - Three
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- One
 	- Two
 	- Three

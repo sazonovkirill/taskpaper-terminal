@@ -1,6 +1,6 @@
 # Inbox zero: capture three tasks with q, move two of them to Work together, delete the third, then undo the delete.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- Write report
 END
@@ -24,7 +24,7 @@ keys z
 see - Lunch idea
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Lunch idea
 Work:
 	- Write report

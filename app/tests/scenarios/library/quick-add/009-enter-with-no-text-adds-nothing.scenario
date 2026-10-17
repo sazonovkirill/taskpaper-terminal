@@ -1,6 +1,6 @@
 # Enter with only the dash, or only spaces, adds nothing and the panel stays open saying "Type the text".
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q <Enter>
@@ -12,6 +12,6 @@ see Quick Add → INBOX
 keys <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END

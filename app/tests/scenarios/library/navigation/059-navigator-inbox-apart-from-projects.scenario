@@ -1,8 +1,8 @@
-# The INBOX project is listed above Today in the Navigator and not again under Projects.
+# The project tagged @inbox is listed above Today in the Navigator and not again under Projects.
 file <<END
 Work:
 	- Report
-INBOX:
+INBOX: @inbox
 	- Call mom
 END
 keys <C-g>

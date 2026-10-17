@@ -1,4 +1,4 @@
-# With every special view but Today and the inbox turned off, the Navigator lists Today above the Bookmarks heading, and gS still opens the Starred view.
+# With every special view but Today turned off and no inbox project, the Navigator lists Today above the Bookmarks heading, and gS still opens the Starred view.
 config <<END
 sidebar_upcoming = false
 sidebar_overdue = false
@@ -6,7 +6,6 @@ sidebar_colors = false
 sidebar_logbook = false
 sidebar_starred = false
 sidebar_flagged = false
-special_inbox = false
 END
 file <<END
 INBOX:

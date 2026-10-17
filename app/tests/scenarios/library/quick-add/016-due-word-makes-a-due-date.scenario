@@ -1,6 +1,6 @@
 # "due" right before a date makes it a due date; "due" alone, or before a non-date, stays text; case does not matter.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Pay rent DUE Tomorrow
@@ -12,7 +12,7 @@ type Overdue report today
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Pay rent @due({today+1})
 	- Pay what is due
 	- Overdue report @start({today})

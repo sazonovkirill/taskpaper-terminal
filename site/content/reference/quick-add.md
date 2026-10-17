@@ -1,21 +1,22 @@
 +++
 title = "Quick Add"
 weight = 100
-description = "Adding a task or note to the inbox, with dates typed in plain words, without leaving the view you are in."
+description = "Adding a task or note to the inbox or another project, with dates typed in plain words, without leaving the view you are in."
 +++
 
-**Quick Add** adds a task or a note to the [inbox](@/reference/navigator.md#the-inbox), the INBOX project, without moving the panes. `q` opens it from anywhere in navigate mode, the special views included.
+**Quick Add** adds a task or a note to a project, the [inbox](@/reference/navigator.md#the-inbox) unless you choose another, without moving the panes. `q` opens it from anywhere in navigate mode, the special views included.
 
-When there is no inbox, or its setting is off, `q` changes nothing, and the status line says "No INBOX project in the Navigator". A read-only file refuses Quick Add.
+When there is no inbox, `q` opens Quick Add with the project picker already open. When the file has no projects at all, `q` changes nothing, and the status line says "No projects". A read-only file refuses Quick Add.
 
 {{ keys(topic="quick-add") }}
 
 ## The panel
 
-Quick Add is a panel above the status line, titled `Quick Add → INBOX`. The first line holds the text, and the second what `Enter` would do: the dates found, such as `Start Thu 8 Oct · Due Mon 12 Oct`, or what is missing: "Type the text", or "No INBOX project in the Navigator" when the inbox is gone.
+Quick Add is a panel above the status line, titled `Quick Add →` and the path of the project it adds to. The first line holds the text, and the second what `Enter` would do: the dates found, such as `Start Thu 8 Oct · Due Mon 12 Oct`, or what is missing: "Type the text", or "Choose a project with Tab" when there is no project to add to.
 
 - **Task or note.** The text starts as a task, with its dash in front. `Backspace` at the start deletes the dash and makes it a note, and `- ` typed at the start makes it a task again. Colons ending a note's text are dropped, so it doesn't become a project.
 - **Text.** The [text keys](@/reference/modes.md#text-keys) edit it. Nothing breaks the line: a paste's line breaks become spaces. An `@` that would start a tag is not typed.
+- **Project.** `Tab` opens a picker of the projects just above the panel, listed as [Go to Project](@/reference/navigator.md#go-to-project) lists them and filtered as you type, with the current one highlighted. `Enter` makes the highlighted project the one to add to, and `Esc` closes the picker and keeps the project you had. `/` is typed as text.
 
 {{ context_keys(table="QUICK_ADD") }}
 
@@ -42,8 +43,8 @@ The dates that count are highlighted as you type, a start date in the start chip
 
 ## Adding
 
-`Enter` adds the block, once there is some text besides the dates. The dates that count and the spaces around them leave the text and become `@start` and `@due` tags. The block goes in as the inbox's last child, without expanding anything, as one step to undo. The panel closes, and the status line says where the block went: "Added to INBOX". `Esc` closes the panel and adds nothing.
+`Enter` adds the block, once there is some text besides the dates. The dates that count and the spaces around them leave the text and become `@start` and `@due` tags. The block goes in as the project's last child, without expanding anything, as one step to undo. The panel closes, and the status line says where the block went, such as "Added to Errands". `Esc` closes the panel and adds nothing.
 
-If the file is [reloaded from disk](@/reference/files.md#when-the-file-changes-on-disk) while Quick Add is open, the panel stays and adds to the reloaded file's inbox.
+If the file is [reloaded from disk](@/reference/files.md#when-the-file-changes-on-disk) while Quick Add is open, the panel stays and adds to the same project in the reloaded file, and the picker closes. If that project was deleted, choose another with `Tab`.
 
-The inbox's setting is with the [Navigator](@/reference/navigator.md#the-inbox).
+To choose which project is the inbox, use **Select Inbox Project**, with the [Navigator](@/reference/navigator.md#the-inbox).

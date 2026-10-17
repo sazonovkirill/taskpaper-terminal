@@ -49,7 +49,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 | `gz` / `gu` / `gh` | **z**oom in / **u**p a level / **h**ome |
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
 | `gT` `gU` `gO` `gC` `gL` `gS` `gF` | capital = a special view: **T**oday, **U**pcoming, **O**verdue, **C**olors, **L**ogbook, **S**tarred, **F**lagged |
-| `gi` | **i**nbox, the INBOX project (`i` alone adds a last child; after `g` it goes there) |
+| `gi` | **i**nbox, the project tagged `@inbox` (`i` alone adds a last child; after `g` it goes there) |
 | `gs` | **s**ymbol (= `Ctrl+K`) |
 | `gP` | **P**roject: Go to Symbol over projects only, a list of places, so a capital |
 | `gm` | **m**ove block to… |

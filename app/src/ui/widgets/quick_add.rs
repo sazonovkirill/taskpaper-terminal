@@ -1,7 +1,7 @@
 //! The Quick Add panel ([ui.md §1](../../../../docs/specs/ui.md#1-layout),
 //! [editing.md §6](../../../../docs/specs/editing.md#6-quick-add-fr-mode-07-fr-mode-08)): a
 //! panel across the bottom of the screen, placed as the date prompt's, titled with the
-//! INBOX project's path, holding the text behind a task's marker with the dates that count
+//! destination's path, holding the text behind a task's marker with the dates that count
 //! highlighted and, below it, what `Enter` does.
 
 use std::ops::Range;
@@ -102,7 +102,7 @@ impl<'a> QuickAddPanel<'a> {
         let dim = |text: &str| Line::styled(format!(" {text}"), Style::new().dim());
         match self.view.missing {
             Some(Missing::Text) => return dim("Type the text"),
-            Some(Missing::Inbox) => return dim("No INBOX project in the Navigator"),
+            Some(Missing::Project) => return dim("Choose a project with Tab"),
             None => {}
         }
         if self.view.dates.is_empty() {
@@ -290,13 +290,13 @@ mod tests {
         let note = QuickAddView {
             task: false,
             destination: None,
-            missing: Some(Missing::Inbox),
+            missing: Some(Missing::Project),
             ..view("Idea")
         };
         let buf = render(&note);
         assert_eq!(row(&buf, 0), "┌ Quick Add ───────────────────────────┐");
         assert_eq!(row(&buf, 1), "│ Idea                                 │");
-        assert_eq!(row(&buf, 2), "│ No INBOX project in the Navigator    │");
+        assert_eq!(row(&buf, 2), "│ Choose a project with Tab            │");
     }
 
     // ui.md §1: a text wider than the panel scrolls to keep the caret in view, and its dates

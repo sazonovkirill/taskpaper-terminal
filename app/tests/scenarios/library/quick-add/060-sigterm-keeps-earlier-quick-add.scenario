@@ -3,7 +3,7 @@ config <<END
 autosave_delay_ms = 60000
 END
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Saved one
@@ -12,6 +12,6 @@ type Lost one
 see - Lost one
 signal TERM
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Saved one
 END

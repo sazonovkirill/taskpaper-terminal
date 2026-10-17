@@ -5,7 +5,7 @@
 use jiff::civil::Date;
 
 use super::{
-    blocks::{Block, BlockKind, TagColor},
+    blocks::{self, Block, BlockKind, TagColor},
     format::{self, LineParts, Typed, canonical::PLACEHOLDER, tags},
     model::{Document, ItemKind, Op},
 };
@@ -182,6 +182,41 @@ fn flagged(block: &Block, flag: Flag) -> bool {
     }
 }
 
+/// The ops that make `to` the inbox project, or with `None` leave none: `@inbox` goes, with any
+/// value, from every other project of `document` that has it, and comes to `to` when it lacks it
+/// (D-141). Lines inside special nodes are no projects and stay as they are (FR-SPC-01). Empty
+/// when nothing changes.
+#[must_use]
+pub fn set_inbox(document: &Document, to: Option<&Block>) -> Vec<Op> {
+    let keep = to.map(Block::id);
+    let mut ops = Vec::new();
+    // The blocks still to visit at each depth on the way down to the current one.
+    let mut levels = vec![blocks::each_child(document, document.root())];
+    while let Some(level) = levels.last_mut() {
+        let Some(block) = level.next() else {
+            levels.pop();
+            continue;
+        };
+        levels.push(blocks::each_child(document, block.id()));
+        if block.inbox()
+            && Some(block.id()) != keep
+            && let Some(item) = document.get(block.id())
+        {
+            ops.extend(changed(
+                item.text(),
+                kept(tags::remove(item.text(), INBOX)),
+                &block,
+            ));
+        }
+    }
+    if let Some(to) = to.filter(|to| !to.inbox())
+        && let Some(item) = document.get(to.id())
+    {
+        ops.extend(changed(item.text(), tagged(item.text(), INBOX, ""), to));
+    }
+    ops
+}
+
 /// The op that gives `block` the color `color`, or none: every other color tag goes and the
 /// color's own tag stays where it is or is added (FR-TAG-05, D-5). `None` when the line stays as
 /// it is or the block is not in `document`.
@@ -247,6 +282,9 @@ fn changed(before: &str, after: String, block: &Block) -> Option<Op> {
 
 /// The tag that marks a block completed.
 const DONE: &str = "done";
+
+/// The tag that makes a project the inbox (D-141).
+const INBOX: &str = "inbox";
 
 /// The tag that makes a text block a section (D-52).
 const SECTION: &str = "section";
@@ -604,6 +642,60 @@ mod tests {
         let other = parse("- x\n- y");
         let stale = blocks::children(&other, other.root())[1].clone();
         assert_eq!(set_color(&parse("- a"), &stale, Some(TagColor::Red)), None);
+    }
+
+    /// Every line of `text` after the ops of `set_inbox` for its line numbered `to`, and how many
+    /// ops there were.
+    #[track_caller]
+    fn inboxed(text: &str, to: Option<usize>) -> (Vec<String>, usize) {
+        let mut document = parse(text);
+        let ids: Vec<_> = document
+            .descendants(document.root())
+            .map(|(id, _)| id)
+            .collect();
+        let to = to.and_then(|line| blocks::block(&document, ids[line]));
+        let ops = set_inbox(&document, to.as_ref());
+        let count = ops.len();
+        let mut transaction = crate::document::Transaction::new(ops, (), ());
+        document.apply(&mut transaction).unwrap();
+        let lines = document
+            .descendants(document.root())
+            .map(|(id, _)| document.get(id).unwrap().text().to_owned())
+            .collect();
+        (lines, count)
+    }
+
+    // D-141
+    #[test]
+    fn setting_the_inbox_tags_one_project_and_untags_every_other() {
+        let text = "A: @inbox\n\tB:\n\t\tC: @inbox(x) @star\n- d @inbox";
+        assert_eq!(
+            inboxed(text, Some(1)),
+            (
+                ["A:", "B: @inbox", "C: @star", "- d @inbox"]
+                    .map(str::to_owned)
+                    .to_vec(),
+                3
+            ),
+            "a task keeps its tag, which means nothing there"
+        );
+        assert_eq!(inboxed(text, Some(0)).1, 1, "A keeps its tag");
+        assert_eq!(
+            inboxed(text, None).0,
+            ["A:", "B:", "C: @star", "- d @inbox"]
+        );
+        assert_eq!(inboxed("A: @inbox", Some(0)).1, 0);
+        assert_eq!(inboxed("- a @inbox", None).1, 0);
+    }
+
+    // D-141, FR-SPC-01
+    #[test]
+    fn a_project_line_inside_a_special_node_keeps_its_inbox_tag() {
+        let text = "A: @inbox\n\tARCHIVE @hidden\n\t\tOld: @inbox";
+        assert_eq!(
+            inboxed(text, None).0,
+            ["A:", "ARCHIVE @hidden", "Old: @inbox"]
+        );
     }
 
     /// The first line of `text` given the type `to`, or `None` when it stays as it is.

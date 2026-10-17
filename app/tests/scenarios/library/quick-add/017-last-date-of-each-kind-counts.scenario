@@ -1,12 +1,12 @@
 # With several start or due dates typed, the last of each counts and the earlier ones stay in the text.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Report tomorrow then today due +3d or due +5d
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Report tomorrow then due +3d or @start({today}) @due({today+5})
 END

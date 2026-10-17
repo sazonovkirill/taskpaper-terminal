@@ -1,14 +1,14 @@
-# An INBOX project carrying tags is still the inbox, listed apart, and its star lists it in the Starred view.
+# A project tagged @inbox and carrying other tags is still the inbox, listed apart, and its star lists it in the Starred view.
 file <<END
-INBOX: @red @star
+Capture: @inbox @red @star
 	- Call mom
 Work:
 	- Report
 END
 keys <C-g>
-see 󰚇 INBOX                                   1 │
+see 󰚇 Capture                                 1 │
 see Projects
-hide   INBOX
+hide   Capture
 keys <Esc> gS
-see INBOX: 󰓎
+see Capture: 󰓎
 quit

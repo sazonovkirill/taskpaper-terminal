@@ -348,10 +348,10 @@ impl State {
     /// what is open over the outline carry on with the blocks they were on (D-104): editing goes
     /// on with the reloaded block's text, the caret at the same column, as does an edit a command
     /// of the command menu would resume (D-50), and the date prompt stays on its blocks;
-    /// each ends or closes once none of its blocks is found. Go to Symbol and Move to list the
-    /// reloaded blocks with their query kept, and the context menu its commands for them. Quick
-    /// Add stays open, its destination kept on the same project. The Edit Node dialog, a draft of
-    /// the block as it was, closes.
+    /// each ends or closes once none of its blocks is found. Go to Symbol, Move to and Select
+    /// Inbox Project list the reloaded blocks with their query kept, and the context menu its
+    /// commands for them. Quick Add stays open, its destination kept on the same project and its
+    /// project picker closed. The Edit Node dialog, a draft of the block as it was, closes.
     fn reload(&mut self, document: Document) {
         let menu = self.set_editing_aside();
         self.node_editor = None;
@@ -388,6 +388,9 @@ impl State {
         self.folds = self.folds.iter().filter_map(|&id| exact(id)).collect();
         self.navigator.rematch_folds(exact);
         self.today_order.rematch(exact);
+        if let Some(quick_add) = &mut self.quick_add {
+            quick_add.rematch(exact);
+        }
         self.resume = self
             .resume
             .take()
@@ -396,6 +399,9 @@ impl State {
         self.rematch_panel(&old, exact);
         let symbol = (self.symbols.as_ref())
             .and_then(|(_, finder)| finder.highlighted())
+            .and_then(|&id| exact(id));
+        let inbox = (self.inbox_picker.as_ref())
+            .and_then(Finder::highlighted)
             .and_then(|&id| exact(id));
         // Home, when listed and matched, always ranks first, where the highlight falls back to.
         let destination = (self.destinations.as_ref())
@@ -414,6 +420,7 @@ impl State {
                 .take_if(|(on, _)| on_blocks && *on == MenuOn::Focus);
         }
         self.relist_symbols(symbol);
+        self.relist_inbox_picker(inbox);
         self.relist_destinations(destination);
         self.relist_context_menu();
         self.resume_after_reload(menu);
@@ -735,25 +742,44 @@ mod tests {
         );
     }
 
-    // F-FILE-06, D-133
+    // F-FILE-06, D-141
     #[test]
-    fn a_reload_keeps_quick_add_open_on_the_reloaded_inbox_project() {
-        let mut state = opened("INBOX:\nB:\n");
+    fn a_reload_keeps_quick_adds_destination_on_its_project_and_closes_the_picker() {
+        let mut state = opened("A: @inbox\nB:\n");
         let quick_add = |state: &mut State, input| state.update(Message::QuickAdd(input));
         quick_add(&mut state, QuickAddInput::Open);
         quick_add(&mut state, QuickAddInput::Edit(TextEdit::Insert('x')));
-        state.update(found("New:\nINBOX:\nB:\n"));
+        quick_add(&mut state, QuickAddInput::ChooseProject);
+        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Next));
+        state.update(Message::Menu(Menu::QuickAdd, MenuInput::Choose));
+        quick_add(&mut state, QuickAddInput::ChooseProject);
+        assert!(state.quick_add_picker().is_some());
+        state.update(found("New: @inbox\nA:\nB:\n"));
+        assert_eq!(state.quick_add_picker(), None);
         let destination = |state: &State| state.quick_add().unwrap().destination;
-        assert_eq!(destination(&state), Some(vec!["INBOX".to_owned()]));
+        assert_eq!(destination(&state), Some(vec!["B".to_owned()]));
         quick_add(&mut state, QuickAddInput::Add);
         assert_eq!(
             format::serialize(state.document()),
-            "New:\nINBOX:\n\t- x\nB:\n"
+            "New: @inbox\nA:\nB:\n\t- x\n"
         );
-        let mut state = opened("INBOX:\n");
+        let mut state = opened("A: @inbox\n");
         quick_add(&mut state, QuickAddInput::Open);
         state.update(found("B:\n"));
-        assert_eq!(destination(&state), None, "INBOX is gone");
+        assert_eq!(destination(&state), None, "A is gone");
+    }
+
+    // F-FILE-06, D-104, D-141
+    #[test]
+    fn a_reload_lists_the_reloaded_projects_in_select_inbox_project() {
+        let mut state = opened("A:\nB:\n");
+        state.update(Message::OpenInboxPicker);
+        state.update(Message::Menu(Menu::InboxPicker, MenuInput::Next));
+        state.update(found("New:\nA:\nB:\n"));
+        let view = state.inbox_picker().expect("open");
+        assert_eq!(view.entries.len(), 3, "New is listed");
+        state.update(Message::Menu(Menu::InboxPicker, MenuInput::Choose));
+        assert_eq!(format::serialize(state.document()), "New:\nA:\nB: @inbox\n");
     }
 
     // F-FILE-06, D-7

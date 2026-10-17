@@ -1,6 +1,6 @@
-# CJK, accented and emoji text, in an INBOX named after an emoji, are added and saved as typed.
+# CJK, accented and emoji text, in an inbox project named after an emoji, are added and saved as typed.
 file <<END
-📥 INBOX:
+📥 INBOX: @inbox
 	- 既存
 END
 keys q
@@ -10,7 +10,7 @@ keys <Enter>
 see - 牛乳を買う café
 quit
 saved <<END
-📥 INBOX:
+📥 INBOX: @inbox
 	- 既存
 	- 牛乳を買う café 👍🏽 @start({today+1})
 END

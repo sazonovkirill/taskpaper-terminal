@@ -1,6 +1,6 @@
 # Weekly review: select every Overdue entry, give them all a due date three days out with the prompt, and find them together under one day in Upcoming.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Home:
 	- Pay rent @due({today-7})
@@ -16,7 +16,7 @@ see - Renew passport  INBOX
 see - Pay rent  Home
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today+3})
 Home:
 	- Pay rent @due({today+3})

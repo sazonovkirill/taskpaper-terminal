@@ -131,6 +131,7 @@ pub(super) struct Facts {
     due: Option<Date>,
     starred: bool,
     bookmark: bool,
+    inbox: bool,
     flag: bool,
     color: Option<TagColor>,
     url: bool,
@@ -143,6 +144,7 @@ impl Facts {
     pub(super) fn of(item: &Item) -> Self {
         let kind = BlockKind::from(item.kind());
         let text = kind == BlockKind::Text;
+        let project = kind == BlockKind::Project;
         let tags = item.tags();
         let has = |name| tags.iter().any(|tag| tag.name == name);
         Self {
@@ -153,6 +155,7 @@ impl Facts {
             due: date_tag(tags, "due"),
             starred: has("star"),
             bookmark: has("bookmark"),
+            inbox: project && has("inbox"),
             flag: has("flag"),
             color: color(tags),
             url: has("url"),
@@ -217,6 +220,13 @@ impl Block {
     #[must_use]
     pub fn bookmark(&self) -> bool {
         self.facts.bookmark
+    }
+
+    /// Whether it is a project whose line carries `@inbox`, with or without a value, which
+    /// makes it the inbox when it is the first (D-141).
+    #[must_use]
+    pub fn inbox(&self) -> bool {
+        self.facts.inbox
     }
 
     /// Whether its line carries `@flag`, with or without a value (D-91).
@@ -311,16 +321,19 @@ pub struct HiddenData {
 }
 
 /// The tags the app reads (FR-TAG-02); any other tag is preserved and hidden, and the Edit Node
-/// dialog marks it unsupported, as `@section` is on a task or project (D-52).
-const SUPPORTED: [&str; 12] = [
+/// dialog marks it unsupported, as `@section` is on a task or project (D-52) and `@inbox` on a
+/// task or text block (D-141).
+const SUPPORTED: [&str; 13] = [
     "start", "due", "star", "red", "yellow", "green", "blue", "section", "url", "done", "bookmark",
-    "flag",
+    "flag", "inbox",
 ];
 
-/// Whether the app reads the tag `name` on a block of type `kind` (FR-TAG-02, D-52).
+/// Whether the app reads the tag `name` on a block of type `kind` (FR-TAG-02, D-52, D-141).
 #[must_use]
 pub fn supported(name: &str, kind: BlockKind) -> bool {
-    SUPPORTED.contains(&name) && (kind == BlockKind::Text || name != "section")
+    SUPPORTED.contains(&name)
+        && (kind == BlockKind::Text || name != "section")
+        && (kind == BlockKind::Project || name != "inbox")
 }
 
 /// The special nodes among the children of the block `id` that no feature of the app shows, or
@@ -703,6 +716,23 @@ P: @blue @red
         assert_eq!(marks("- a @red(x)"), [(false, false, false, Some(Red))]);
     }
 
+    // D-141
+    #[test]
+    fn only_a_project_with_the_inbox_tag_is_an_inbox() {
+        let document = parse(
+            "A: @inbox
+B: @inbox(x)
+- c @inbox
+d @inbox
+E: @inboxes",
+        );
+        let inboxes: Vec<bool> = children(&document, document.root())
+            .iter()
+            .map(Block::inbox)
+            .collect();
+        assert_eq!(inboxes, [true, true, false, false, false]);
+    }
+
     // D-48
     #[test]
     fn colors_are_numbered_from_one_in_their_order() {
@@ -798,16 +828,18 @@ P: @blue @red
         );
     }
 
-    // FR-TAG-02, D-52
+    // FR-TAG-02, D-52, D-141
     #[test]
-    fn the_supported_tags_are_read_and_a_section_only_on_text() {
+    fn the_supported_tags_are_read_a_section_only_on_text_and_an_inbox_only_on_a_project() {
         for name in SUPPORTED {
-            assert!(supported(name, BlockKind::Text), "{name}");
+            assert_eq!(supported(name, BlockKind::Text), name != "inbox", "{name}");
         }
         for kind in [BlockKind::Task, BlockKind::Project] {
             assert!(supported("due", kind));
             assert!(!supported("section", kind));
         }
+        assert!(supported("inbox", BlockKind::Project));
+        assert!(!supported("inbox", BlockKind::Task));
         assert!(!supported("estimate", BlockKind::Text));
         assert!(!supported("today", BlockKind::Task), "D-88");
         assert!(!supported("orange", BlockKind::Task), "D-138");

@@ -1,0 +1,19 @@
+# The first project tagged @inbox, nested or not, is listed apart under its own name; an untagged INBOX and a second tagged project stay under Projects.
+file <<END
+Work:
+	Capture: @inbox
+		- nested
+		- more
+INBOX:
+	- untagged
+Later: @inbox
+	- second
+END
+keys <C-g>
+see │▌ 󰚇 Capture                                 2 │
+see   INBOX                                     1 │
+see   Later                                     1 │
+keys <Enter>
+see - more
+hide - second
+quit

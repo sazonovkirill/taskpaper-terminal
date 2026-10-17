@@ -328,12 +328,6 @@ impl Tui {
                 Duration::ZERO,
             );
         }
-        if let Some(on) = config.special_inbox {
-            self.send(
-                Message::Configure(Configuration::SpecialInbox(on)),
-                Duration::ZERO,
-            );
-        }
         if let Some(on) = config.today_starred {
             self.send(
                 Message::Configure(Configuration::TodayStarred(on)),
@@ -343,12 +337,6 @@ impl Tui {
         for &(view, on) in &config.navigator_views {
             self.send(
                 Message::Configure(Configuration::NavigatorView(view, on)),
-                Duration::ZERO,
-            );
-        }
-        if let Some(on) = config.special_today {
-            self.send(
-                Message::Configure(Configuration::SpecialToday(on)),
                 Duration::ZERO,
             );
         }
@@ -829,7 +817,7 @@ impl Tui {
             }
         }
         let date = self.draw_date_prompt(frame, panel);
-        let quick_add = self.draw_quick_add(frame, panel, &theme);
+        let quick_add = self.draw_quick_add(frame, panel, screen_body, &theme);
         self.field_scroll = quick_add.or(date).or(typed).unwrap_or_default();
         self.draw_keymap(frame, screen, &theme);
         if self.state.in_conflict() {
@@ -1222,7 +1210,12 @@ impl Tui {
                     .go_to_project()
                     .map(|view| ("Go to Project", view))
             })
-            .or_else(|| self.state.move_to().map(|view| ("Move to", view)));
+            .or_else(|| self.state.move_to().map(|view| ("Move to", view)))
+            .or_else(|| {
+                self.state
+                    .inbox_picker()
+                    .map(|view| ("Inbox Project", view))
+            });
         if let Some((title, view)) = finder {
             let document = self.state.document();
             let icon = |id: &ItemId| widgets::block_icon(document, *id);
@@ -1432,9 +1425,17 @@ impl Tui {
         Some(scroll)
     }
 
-    /// Quick Add's panel over `panel` with its caret, while it is open (D-96); returns how far its
-    /// text is scrolled. The conflict prompt covers it.
-    fn draw_quick_add(&self, frame: &mut Frame, panel: Rect, theme: &Theme) -> Option<usize> {
+    /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
+    /// `body`, just above the panel, or over the panel too when `body` is too short to show one of
+    /// its entries, while they are open (D-96, D-141); returns how far its text is scrolled. The
+    /// conflict prompt covers them.
+    fn draw_quick_add(
+        &self,
+        frame: &mut Frame,
+        panel: Rect,
+        body: Rect,
+        theme: &Theme,
+    ) -> Option<usize> {
         let view = self
             .state
             .quick_add()
@@ -1443,6 +1444,25 @@ impl Tui {
         let (caret, scroll) = widget.caret(panel);
         frame.set_cursor_position(caret);
         frame.render_widget(widget, panel);
+        if let Some(picker) = self.state.quick_add_picker() {
+            let document = self.state.document();
+            let icon = |id: &ItemId| widgets::block_icon(document, *id);
+            let text = |id: &ItemId| widgets::block_text_style(document, *id, theme);
+            let finder =
+                FinderPopup::new("Project", &picker, self.icons, &icon, theme).text_style(&text);
+            let room = if body.height < FinderPopup::<ItemId>::LEAST_HEIGHT {
+                body.union(panel)
+            } else {
+                body
+            };
+            let height = finder.area(room).height;
+            let above = Rect {
+                y: room.bottom().saturating_sub(height),
+                height,
+                ..room
+            };
+            draw_finder(frame, finder, above);
+        }
         Some(scroll)
     }
 
@@ -1544,6 +1564,8 @@ impl Tui {
             Some(Overlay::Keymap)
         } else if self.state.date_prompt().is_some() {
             Some(Overlay::DatePrompt)
+        } else if self.state.quick_add_picker().is_some() {
+            Some(Overlay::QuickAddPicker)
         } else if self.state.quick_add().is_some() {
             Some(Overlay::QuickAdd)
         } else if self.state.color_picker().is_some() {
@@ -1554,6 +1576,8 @@ impl Tui {
             Some(Overlay::GoToSymbol)
         } else if self.state.move_to().is_some() {
             Some(Overlay::MoveTo)
+        } else if self.state.inbox_picker().is_some() {
+            Some(Overlay::InboxPicker)
         } else if self.state.go_to_command().is_some() {
             Some(Overlay::GoToCommand)
         } else if self.state.theme_picker().is_some() {

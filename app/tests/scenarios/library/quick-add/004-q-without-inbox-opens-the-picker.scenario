@@ -1,0 +1,18 @@
+# q with no project tagged @inbox opens Quick Add with the project picker, whatever a project is called; Esc twice closes both and adds nothing.
+file <<END
+Inbox:
+	- Old item
+END
+keys q
+see ┌Project
+keys <Esc>
+hide ┌Project
+type x
+see Choose a project with Tab
+keys <Esc>
+hide Quick Add
+quit
+saved <<END
+Inbox:
+	- Old item
+END

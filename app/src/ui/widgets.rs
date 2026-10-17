@@ -582,7 +582,12 @@ pub fn notice_span(
         ),
         Notice::Bookmark { added: true } => Span::raw("Bookmarked"),
         Notice::Bookmark { added: false } => Span::raw("Bookmark removed"),
-        Notice::NoInbox => Span::raw("No INBOX project in the Navigator"),
+        Notice::NoInbox => Span::raw("No inbox project: use Select Inbox Project"),
+        Notice::NoProjects => Span::raw("No projects"),
+        Notice::Inbox {
+            project: Some(project),
+        } => Span::raw(format!("Inbox: {project}")),
+        Notice::Inbox { project: None } => Span::raw("No inbox project now"),
         Notice::NoWeather => Span::raw("No weather in summer"),
         Notice::QuickAdded { project } => Span::raw(format!("Added to {project}")),
         Notice::OpenUrlFailed { url, reason } => {
@@ -928,7 +933,9 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::SetColor(Some(color)) => (Icon::Color, Style::new().fg(theme.tag(color))),
         Command::SetColor(None) | Command::ChooseTheme => plain(Icon::Color),
         Command::OpenSettings => plain(Icon::Settings),
-        Command::Navigator(NavigatorInput::GoToInbox) => plain(Icon::Inbox),
+        Command::Navigator(NavigatorInput::GoToInbox)
+        | Command::SelectInbox
+        | Command::ResetInbox => plain(Icon::Inbox),
         Command::QuickAdd => plain(Icon::QuickAdd),
         Command::SetAnimations(_) => plain(Icon::Animations),
         Command::StartWeather => plain(Icon::Weather),
@@ -3791,7 +3798,6 @@ mod tests {
             ),
             (Notice::Bookmark { added: true }, plain("Bookmarked")),
             (Notice::Bookmark { added: false }, plain("Bookmark removed")),
-            (Notice::NoInbox, plain("No INBOX project in the Navigator")),
             (Notice::NoWeather, plain("No weather in summer")),
             (
                 Notice::QuickAdded {
@@ -3851,6 +3857,30 @@ mod tests {
             assert_eq!(
                 status(SaveState::Saved, rw, false, Some(&notice)),
                 [plain(" · "), expected]
+            );
+        }
+    }
+
+    // D-141
+    #[test]
+    fn the_inbox_notices_name_the_inbox_project_or_how_to_choose_one() {
+        for (notice, expected) in [
+            (
+                Notice::NoInbox,
+                "No inbox project: use Select Inbox Project",
+            ),
+            (Notice::NoProjects, "No projects"),
+            (
+                Notice::Inbox {
+                    project: Some("Errands".to_owned()),
+                },
+                "Inbox: Errands",
+            ),
+            (Notice::Inbox { project: None }, "No inbox project now"),
+        ] {
+            assert_eq!(
+                status(SaveState::Saved, Access::ReadWrite, false, Some(&notice)),
+                [plain(" · "), plain(expected)]
             );
         }
     }

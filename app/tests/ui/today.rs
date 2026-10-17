@@ -6,7 +6,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::Modifier;
 
 use crate::support::{
-    DUE, Harness, OVERDUE, STAR, START, SUN, focused_rows, outline_line, outline_rows,
+    DUE, Harness, OVERDUE, STAR, START, SUN, focused_rows, line, outline_line, outline_rows,
 };
 
 /// Blocks for today, 5 October 2026, at several depths, among blocks that are not.
@@ -296,7 +296,7 @@ fn turning_off_starred_items_in_today_leaves_only_dated_blocks_and_is_kept() {
         shown(&mut app),
         [format!("- a {STAR}"), row("- b", &format!("{DUE} today"))]
     );
-    app.type_keys("g,jjjjj");
+    app.type_keys("g,jjj");
     app.press(KeyCode::Char('l'), KeyModifiers::NONE);
     app.settle();
     let config = std::fs::read_to_string(app.config_file()).expect("the settings file");
@@ -312,16 +312,14 @@ fn turning_off_starred_items_in_today_leaves_only_dated_blocks_and_is_kept() {
     );
 }
 
-// FR-TAG-04, D-102, ui.md §8: `special_today` in the settings file decides whether Today lists
-// the TODAY project's tasks.
+// FR-TAG-04, D-141, ui.md §8: Today lists no project's tasks by its name, and `special_today`
+// is no setting.
 #[test]
-fn special_today_off_in_the_settings_file_leaves_the_today_projects_tasks_out() {
+fn a_today_project_s_tasks_are_not_listed_and_special_today_is_reported() {
     let text = "TODAY:\n\t- call\n- b @due(2026-10-05)\n";
-    let mut app = Harness::with_config(text, "", 80, 24);
+    let mut app = Harness::with_config(text, "special_today = true\n", 80, 24);
+    let status = line(app.render().buffer(), 23);
+    assert!(status.contains("special_today"), "{status}");
     app.type_keys("gt");
-    let due = row("- b", &format!("{DUE} today"));
-    assert_eq!(shown(&mut app), ["- call  TODAY".to_owned(), due.clone()]);
-    let mut app = Harness::with_config(text, "special_today = false\n", 80, 24);
-    app.type_keys("gt");
-    assert_eq!(shown(&mut app), [due]);
+    assert_eq!(shown(&mut app), [row("- b", &format!("{DUE} today"))]);
 }

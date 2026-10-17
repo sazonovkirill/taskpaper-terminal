@@ -1,6 +1,6 @@
 # Esc closes Quick Add with its typed text and destination, adding nothing; the next q starts empty.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q
@@ -13,6 +13,6 @@ hide Half typed
 keys <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END

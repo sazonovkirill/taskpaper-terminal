@@ -1,6 +1,6 @@
 # A note of only colons has no text once they are dropped, so Enter adds nothing and the panel says "Type the text".
 file <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END
 keys q <BS>
@@ -9,6 +9,6 @@ see Type the text
 keys <Enter> <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Old item
 END

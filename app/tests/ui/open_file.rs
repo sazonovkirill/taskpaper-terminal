@@ -112,18 +112,18 @@ fn the_status_line_reads_the_home_folder_as_a_tilde() {
 // ui.md §1
 #[test]
 fn a_path_too_long_for_the_status_line_gives_its_room_to_a_message() {
-    let mut app = Harness::with_text("- a\n", 60, 3);
-    app.type_keys("q");
+    let mut app = Harness::with_text("- a\n", 69, 3);
+    app.type_keys("gi");
     let buffer = app.render().buffer().clone();
     assert_eq!(
         line(&buffer, 2),
-        format!("{NAVIGATE} · ….taskpaper · No INBOX project in the Navigator")
+        format!("{NAVIGATE} · ….taskpaper · No inbox project: use Select Inbox Project")
     );
     app.terminal.backend_mut().resize(40, 3);
     let buffer = app.render().buffer().clone();
     assert_eq!(
         line(&buffer, 2),
-        format!("{NAVIGATE} · … · No INBOX project in th…"),
+        format!("{NAVIGATE} · … · No inbox project: use …"),
         "the path keeps only its ellipsis, and the cut message ends in one"
     );
 }

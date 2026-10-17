@@ -25,18 +25,12 @@ use crate::document::{
 pub enum Configuration {
     /// Save this long after the last change from now on (`autosave_delay_ms`, file-io.md §2).
     AutosaveDelay(Duration),
-    /// List the `INBOX` project above Today in the Navigator, or among the projects when `false`
-    /// (`special_inbox`, navigation.md §6).
-    SpecialInbox(bool),
     /// List this special view in the Navigator, or not when `false` (`sidebar_upcoming` and so
     /// on, navigation.md §6, D-80); Today is always listed (D-102).
     NavigatorView(SpecialView, bool),
     /// List starred blocks in the Today view besides dated ones, or only dated ones when `false`
     /// (`today_starred`, navigation.md §7, D-88).
     TodayStarred(bool),
-    /// Let the Today view list the `TODAY` project's tasks, or not when `false`
-    /// (`special_today`, D-98, D-102).
-    SpecialToday(bool),
     /// Turn this kind of attachment on, or off when `false` (`attachments_notes`,
     /// `attachments_comments`, attachments.md §6).
     Attachments(Attachment, bool),
@@ -251,6 +245,10 @@ pub enum Message {
     OpenGoToSymbol(Symbols),
     /// Open Move to over the selected blocks, else the focused block (FR-OPS-05).
     OpenMoveTo,
+    /// Open Select Inbox Project over the projects (D-141).
+    OpenInboxPicker,
+    /// Take `@inbox` from every project (D-141).
+    ResetInbox,
     /// Open Go to Command over the commands of navigate mode, each shown with its bindings as
     /// the frontend writes them, for the commands it binds (FR-NAV-06).
     OpenGoToCommand(Vec<(Command, String)>),
@@ -377,6 +375,10 @@ pub enum Menu {
     GoToSymbol,
     /// Move to (FR-OPS-05).
     MoveTo,
+    /// Select Inbox Project (D-141).
+    InboxPicker,
+    /// Quick Add's project picker (D-141).
+    QuickAdd,
     /// Go to Command (FR-NAV-06).
     GoToCommand,
     /// The command menu of edit mode (D-50).
@@ -475,6 +477,8 @@ impl Message {
             | Self::Attachments(_)
             | Self::OpenGoToSymbol(_)
             | Self::OpenMoveTo
+            | Self::OpenInboxPicker
+            | Self::ResetInbox
             | Self::OpenGoToCommand(_)
             | Self::OpenThemePicker { .. }
             | Self::Settings(_)
@@ -506,6 +510,8 @@ impl Menu {
             | Self::TypePicker
             | Self::GoToSymbol
             | Self::MoveTo
+            | Self::InboxPicker
+            | Self::QuickAdd
             | Self::GoToCommand
             | Self::ContextMenu
             | Self::ThemePicker
@@ -646,10 +652,8 @@ impl State {
     fn configure(&mut self, setting: Configuration) {
         match setting {
             Configuration::AutosaveDelay(delay) => self.set_autosave_delay(delay),
-            Configuration::SpecialInbox(on) => self.navigator.set_special_inbox(on),
             Configuration::NavigatorView(view, on) => self.navigator.set_listed(view, on),
             Configuration::TodayStarred(on) => self.today_starred = on,
-            Configuration::SpecialToday(on) => self.special_today = on,
             Configuration::Attachments(kind, on) => self.show_attachments(kind, on),
         }
     }
@@ -717,6 +721,8 @@ impl State {
             Message::Attachments(input) => self.attachments_input(input),
             Message::OpenGoToSymbol(listed) => self.open_go_to_symbol(listed),
             Message::OpenMoveTo => self.open_move_to(),
+            Message::OpenInboxPicker => self.open_inbox_picker(),
+            Message::ResetInbox => self.reset_inbox(),
             Message::OpenGoToCommand(bindings) => self.open_go_to_command(&bindings),
             Message::OpenThemePicker { names, current } => self.open_theme_picker(names, current),
             Message::Settings(input) => effects.extend(self.settings_input(input)),
@@ -770,6 +776,8 @@ impl State {
             Menu::TypePicker => self.type_picker_input(input),
             Menu::GoToSymbol => self.go_to_symbol_input(input),
             Menu::MoveTo => self.move_to_input(input),
+            Menu::InboxPicker => self.inbox_picker_input(input),
+            Menu::QuickAdd => self.quick_add_picker_input(input),
             Menu::GoToCommand => return self.go_to_command_input(input).into_iter().collect(),
             Menu::CommandMenu => return self.command_menu_input(input),
             Menu::ContextMenu => return self.context_menu_input(input).into_iter().collect(),

@@ -1,7 +1,7 @@
 # In a narrow terminal a long Quick Add text scrolls to the caret; Home and word moves edit its start.
 size 30 8
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type The quick brown fox jumps over the lazy dog
@@ -13,6 +13,6 @@ type er
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- The quicker brown fox jumps over the lazy dog
 END

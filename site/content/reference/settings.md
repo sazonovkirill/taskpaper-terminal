@@ -18,7 +18,7 @@ tpt keeps its settings in one file, `config.toml`, in `$XDG_CONFIG_HOME/taskpape
 
 {{ context_keys(table="SETTINGS") }}
 
-Every change applies at once and is written to `config.toml` straight away. Theme, icons, word wrap and the INBOX setting repaint the app behind the window, and the theme previews live as you move through the picker. A write that fails shows an error and keeps the value for the session.
+Every change applies at once and is written to `config.toml` straight away. Theme, icons and word wrap repaint the app behind the window, and the theme previews live as you move through the picker. A write that fails shows an error and keeps the value for the session.
 
 Numbers and the backups folder are typed on the window's bottom line. A number opens selected, so typing replaces it. A number below its least, or above 4294967295, is refused with the reason, and the prompt stays open. An empty folder means the default one. The filter is typed there too:
 
@@ -46,8 +46,6 @@ A complete `config.toml` that sets everything to its default:
 theme = "terminal-dark"
 icons = "nerd"
 word_wrap = false
-special_inbox = true
-special_today = true
 today_starred = true
 sidebar_upcoming = true
 sidebar_overdue = true

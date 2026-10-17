@@ -1,0 +1,19 @@
+# special_inbox is no setting any more: it is reported, and q still adds to the project tagged @inbox.
+config <<END
+special_inbox = false
+END
+file <<END
+INBOX: @inbox
+	- Old item
+END
+status unknown setting `special_inbox`
+keys q
+type New item
+keys <Enter>
+status Added to INBOX
+quit
+saved <<END
+INBOX: @inbox
+	- Old item
+	- New item
+END

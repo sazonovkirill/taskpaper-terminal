@@ -1,12 +1,12 @@
 # A task typed as "Questions:" keeps its colon, as edit mode keeps it; only a note's ending colons are dropped.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Questions for Ana:
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Questions for Ana:
 END

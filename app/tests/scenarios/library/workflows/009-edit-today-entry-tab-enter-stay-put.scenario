@@ -1,6 +1,6 @@
 # Editing an entry in the Today view: Tab and Shift+Tab do nothing there, Enter only ends editing, and the text change lands in the right project.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:
@@ -24,7 +24,7 @@ keys gh
 see Home: 
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:

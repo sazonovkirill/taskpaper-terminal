@@ -1,8 +1,8 @@
-# With completed hidden, a done INBOX is not the inbox: q adds to the first INBOX still shown.
+# With completed hidden, a done @inbox project is not the inbox: q adds to the first project tagged @inbox still shown.
 file <<END
-INBOX: @done(2026-10-01)
+INBOX: @inbox @done(2026-10-01)
 	- Old
-INBOX:
+INBOX: @inbox
 	- Live
 END
 keys gc
@@ -13,9 +13,9 @@ type To the shown inbox
 keys <Enter>
 quit
 saved <<END
-INBOX: @done(2026-10-01)
+INBOX: @inbox @done(2026-10-01)
 	- Old
-INBOX:
+INBOX: @inbox
 	- Live
 	- To the shown inbox
 END

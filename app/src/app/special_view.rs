@@ -10,7 +10,7 @@ use super::{
     Location, Message, Row, State, logbook::in_logbook, pane::Pane, selection::Selection,
     today::for_today, upcoming::upcoming_day,
 };
-use crate::document::{Block, ItemId, TagColor, blocks};
+use crate::document::{Block, TagColor, blocks};
 
 /// Everything the entries of a special view are worked out from but the outline's rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +20,6 @@ pub(super) struct EntriesKey {
     selection: Selection,
     today: Date,
     today_starred: bool,
-    today_project: Option<ItemId>,
 }
 
 /// A special view, in the order the Navigator lists them (D-80).
@@ -120,13 +119,12 @@ impl State {
         }
     }
 
-    /// Whether `view` lists the block of `row`, by what its line says and, for Today, whether
-    /// it is `in_today_project`, inside the TODAY project (D-102); the Overdue view also leaves
-    /// out done blocks and what is inside them (D-82). The Navigator counts the open tasks it
-    /// lists by this.
-    pub(super) fn lists(&self, view: SpecialView, row: &Row, in_today_project: bool) -> bool {
+    /// Whether `view` lists the block of `row`, by what its line says; the Overdue view also
+    /// leaves out done blocks and what is inside them (D-82). The Navigator counts the open tasks
+    /// it lists by this.
+    pub(super) fn lists(&self, view: SpecialView, row: &Row) -> bool {
         match view {
-            SpecialView::Today => for_today(row, self.today, self.today_starred, in_today_project),
+            SpecialView::Today => for_today(row, self.today, self.today_starred),
             SpecialView::Upcoming => upcoming_day(row.start, row.due, self.today).is_some(),
             SpecialView::Overdue => row.due.is_some_and(|due| due < self.today),
             SpecialView::Colors => row.color.is_some(),
@@ -153,24 +151,18 @@ impl State {
     /// collapsed, completed blocks shown when `show_done` says so: the rows a change builds
     /// again only where it changed, gone through rather than the document's tree.
     fn matching(&self, pane: &Pane, show_done: bool, view: SpecialView) -> Vec<Row> {
-        let today_project = self.today_project(pane);
         let key = EntriesKey {
             view,
             show_done,
             selection: pane.selection.clone(),
             today: self.today,
             today_starred: self.today_starred,
-            today_project,
         };
         let rows = self.unfolded_rows(Location::Outline(None), show_done);
         self.entries_walks
             .list(key, &rows, self, |above, row, entries| {
                 above.reach(row.depth);
-                if self.lists(
-                    view,
-                    row,
-                    today_project.is_some() && above.top() == today_project,
-                ) {
+                if self.lists(view, row) {
                     entries.push(Row {
                         depth: 0,
                         selected: pane.selection.contains(row.id),
@@ -289,6 +281,8 @@ fn needs_the_tree(message: &Message) -> bool {
         | Message::Attachments(_)
         | Message::OpenGoToSymbol(_)
         | Message::OpenMoveTo
+        | Message::OpenInboxPicker
+        | Message::ResetInbox
         | Message::OpenGoToCommand(_)
         | Message::OpenThemePicker { .. }
         | Message::Settings(_)

@@ -1,6 +1,6 @@
 # Weekly review: mark rent done, push slides out, star Home, move the inbox call to Home, then reschedule in Today and undo/redo there.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 	- Renew passport @due({today-3})
 Work:
@@ -35,7 +35,7 @@ keys H
 see Today
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write quarterly report @due({today+1})

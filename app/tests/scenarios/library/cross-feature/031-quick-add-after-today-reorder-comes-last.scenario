@@ -1,6 +1,6 @@
 # After the Today view was reordered, a task Quick Add dates today joins the list at the end even though the inbox comes first in the file.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 	- Write report @due({today})
 	- Review PRs @due({today})
@@ -14,7 +14,7 @@ see - Call mom  INBOX
 keys G x
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call mom @start({today}) @done({today})
 Work:
 	- Write report @due({today})

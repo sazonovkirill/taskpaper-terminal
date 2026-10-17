@@ -145,8 +145,13 @@ pub enum Command {
     GoToProject,
     /// Find a block by name and move the selection under it.
     MoveTo,
-    /// Add a task or note to the INBOX project without leaving the view (D-96, D-133).
+    /// Add a task or note to a project, the inbox project unless another is chosen, without
+    /// leaving the view (D-96, D-141).
     QuickAdd,
+    /// Choose the inbox project (D-141).
+    SelectInbox,
+    /// Leave no inbox project (D-141).
+    ResetInbox,
     /// Find a command by name and give it, which the frontend opens with the bindings it shows
     /// (FR-NAV-06).
     GoToCommand,
@@ -306,6 +311,8 @@ impl Command {
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
             Self::QuickAdd => "Quick Add".into(),
+            Self::SelectInbox => "Select Inbox Project".into(),
+            Self::ResetInbox => "Reset Inbox Project".into(),
             Self::GoToCommand => "Go to Command".into(),
             Self::Count => "Count Blocks and Words".into(),
             Self::SaveAs => "Save As".into(),
@@ -417,6 +424,8 @@ impl Command {
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,
             Self::QuickAdd => Message::QuickAdd(QuickAddInput::Open),
+            Self::SelectInbox => Message::OpenInboxPicker,
+            Self::ResetInbox => Message::ResetInbox,
             Self::Count => Message::Count,
             Self::SaveAs => Message::SaveAs(SaveAs::Open),
             Self::ContextMenu => Message::OpenContextMenu,

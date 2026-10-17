@@ -3,7 +3,7 @@ config <<END
 autosave_delay_ms = 5000
 END
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 END
 keys j x q
@@ -11,6 +11,6 @@ type Half typed
 see - Half typed
 signal TERM
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber @done({today})
 END

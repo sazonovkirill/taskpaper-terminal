@@ -1,4 +1,4 @@
-# Planning the day: tasks in the TODAY project join Today with the dated ones, a dated one put first in Today, and the same list after reopening.
+# Planning the day: a project named TODAY gives Today nothing of its own, only dated blocks join it; a dated one put first in Today stays first after reopening.
 file <<END
 TODAY:
 	- Call the bank @due({today})
@@ -8,9 +8,10 @@ Work:
 	- Write report @due({today})
 END
 keys gt
-see - Water plants
+see - Call the bank
+hide Water plants
 hide Review PRs
-keys G <A-k> <A-k>
+keys G <A-k>
 restart
 see 󰖙 Today
 keys gg x

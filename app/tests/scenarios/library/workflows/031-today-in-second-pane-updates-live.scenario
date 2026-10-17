@@ -1,6 +1,6 @@
 # With Today open in a second pane, giving a project a due date in the first pane adds it to the second pane's list at once, and closing the second pane leaves the outline.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work:
 	- Write quarterly report @due({today-2})
@@ -17,7 +17,7 @@ see ▌ Work:
 hide │
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Renew passport @due({today-3})
 Work: @due({today})
 	- Write quarterly report @due({today-2})

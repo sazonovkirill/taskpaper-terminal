@@ -1,6 +1,6 @@
 # "/" is typed as text, inside a word and at a word start alike; no project picker opens.
 file <<END
-INBOX:
+INBOX: @inbox
 Work:
 END
 keys q /
@@ -10,7 +10,7 @@ hide Project
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- /and/or /wor
 Work:
 END

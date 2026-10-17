@@ -1,6 +1,6 @@
 # The due-date prompt stays open when another program changes an unrelated line, so the date typed next is set on the block.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -8,7 +8,7 @@ END
 keys j md
 see Due date
 outside <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the big shelf
@@ -18,7 +18,7 @@ type tomorrow
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber @due({today+1})
 Home:
 	- Fix the big shelf

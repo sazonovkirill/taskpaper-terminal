@@ -3,7 +3,7 @@ config <<END
 autosave_delay_ms = 5000
 END
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the shelf
@@ -12,7 +12,7 @@ keys j x q
 type Buy milk
 see - Buy milk
 outside <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber
 Home:
 	- Fix the big shelf
@@ -24,7 +24,7 @@ type  now
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call the plumber @done({today})
 	- Buy milk now
 Home:

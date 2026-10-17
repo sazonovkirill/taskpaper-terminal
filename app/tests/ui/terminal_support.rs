@@ -17,10 +17,10 @@ const WIDE: &str = "日本語の仕事:
 \t- 한국어 텍스트가 아주 길어서 줄바꿈이 필요합니다 @due(2026-10-07)
 ";
 
-/// Wide text, an emoji sequence and combining marks in every special view, with an INBOX and a
-/// TODAY project: an overdue block, a colored and a flagged one and one done yesterday, on
+/// Wide text, an emoji sequence and combining marks in every special view, with an inbox project
+/// and a project named TODAY: an overdue block, a colored and a flagged one and one done yesterday, on
 /// [`crate::support::TODAY`].
-const VIEWS: &str = "INBOX:
+const VIEWS: &str = "INBOX: @inbox
 \t- 受信箱 🎉 の仕事
 日本語の仕事:
 \t- 買い物 👨‍👩‍👧 family @star @flag

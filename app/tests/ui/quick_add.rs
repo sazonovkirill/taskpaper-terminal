@@ -9,7 +9,7 @@ use taskpaper_terminal::ui::Input;
 
 use crate::support::{Harness, line};
 
-const OUTLINE: &str = "INBOX:\n\t- old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n";
+const OUTLINE: &str = "INBOX: @inbox\n\t- old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n";
 
 fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
@@ -114,7 +114,7 @@ fn q_adds_a_task_with_its_dates_to_the_inbox() {
     );
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\t- call Bob/Ann @start(2026-10-06) @due(2026-10-09)\nWork:\n\tLaunch:\
+        "INBOX: @inbox\n\t- old\n\t- call Bob/Ann @start(2026-10-06) @due(2026-10-09)\nWork:\n\tLaunch:\
          \n\t\t- plan\nTODAY:\n- loose\n"
     );
     app.type_keys("z");
@@ -130,7 +130,7 @@ fn words_naming_a_past_day_stay_in_the_text_unless_due_comes_before_them() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\t- Review last week sales @due(2026-10-04)\nWork:\n\tLaunch:\n\t\t- \
+        "INBOX: @inbox\n\t- old\n\t- Review last week sales @due(2026-10-04)\nWork:\n\tLaunch:\n\t\t- \
          plan\nTODAY:\n- loose\n"
     );
 }
@@ -150,26 +150,46 @@ fn backspace_at_the_start_makes_a_note_and_esc_adds_nothing() {
     assert_eq!(screen(&mut app)[12], "", "Esc closed the panel");
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\tIdea\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
+        "INBOX: @inbox\n\t- old\n\tIdea\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
     );
 }
 
-// FR-MODE-07, D-78, D-133
+// FR-MODE-07, editing.md §6, D-141
 #[test]
-fn q_says_when_there_is_no_inbox_or_it_is_turned_off() {
-    for (outline, config) in [
-        (OUTLINE, "special_inbox = false\n"),
-        ("TODAY:\n- loose\n", ""),
-    ] {
-        let mut app = Harness::with_config(outline, config, WIDTH, 14);
-        app.type_keys("q");
-        assert_eq!(screen(&mut app)[9], "", "{outline:?}: nothing opened");
-        let said = status(&mut app);
-        assert!(
-            said.ends_with("· No INBOX project in the Navigator"),
-            "{said}"
-        );
-    }
+fn tab_picks_the_project_and_without_an_inbox_q_starts_in_the_picker() {
+    let mut app = Harness::with_text("Work:\n\tLaunch:\n\t\t- plan\n- loose\n", WIDTH, 14);
+    app.type_keys("q");
+    assert_eq!(
+        screen(&mut app)[4..13],
+        [
+            top("Project"),
+            inside("›"),
+            inside(" ▸ Work"),
+            inside(" ▸ Launch  Work"),
+            bottom_border(),
+            top(" Quick Add "),
+            inside(" -"),
+            inside(" Type the text"),
+            bottom_border(),
+        ]
+    );
+    app.type_keys("la");
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(screen(&mut app)[9], top(" Quick Add → Work › Launch "));
+    app.type_keys("x");
+    press(&mut app, KeyCode::Tab);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        screen(&mut app)[9..11],
+        [top(" Quick Add → Work › Launch "), inside(" - x")],
+        "Esc closes the picker only"
+    );
+    press(&mut app, KeyCode::Enter);
+    assert!(status(&mut app).ends_with("· Added to Launch"));
+    let mut app = Harness::with_text("- loose\n", WIDTH, 14);
+    app.type_keys("q");
+    assert_eq!(screen(&mut app)[9], "", "nothing opened");
+    assert!(status(&mut app).ends_with("· No projects"));
 }
 
 // editing.md §6, keybindings.md §4: the panel takes the standard text keys, pasting included.
@@ -191,6 +211,34 @@ fn text_pasted_into_the_terminal_or_with_ctrl_v_is_typed_into_the_panel() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(
         saved(&mut app),
-        "INBOX:\n\t- old\n\t- Renew passport old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
+        "INBOX: @inbox\n\t- old\n\t- Renew passport old\nWork:\n\tLaunch:\n\t\t- plan\nTODAY:\n- loose\n"
+    );
+}
+
+// editing.md §6, D-141: the picker sits above the panel, or covers it on a screen too short
+// for that.
+#[test]
+fn the_project_picker_covers_the_panel_only_with_no_room_above_it() {
+    let mut app = Harness::with_text("Work:\n\tLaunch:\n\t\t- plan\n", WIDTH, 7);
+    app.type_keys("q");
+    assert_eq!(
+        screen(&mut app)[1..6],
+        [
+            top("Project"),
+            inside("›"),
+            inside(" ▸ Work"),
+            inside(" ▸ Launch  Work"),
+            bottom_border(),
+        ]
+    );
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(screen(&mut app)[2], top(" Quick Add → Work "));
+    let mut app = Harness::with_text("Work:\n\tLaunch:\n\t\t- plan\n", WIDTH, 9);
+    app.type_keys("q");
+    let rows = screen(&mut app);
+    assert_eq!(
+        [&rows[0], &rows[4]],
+        [&top("Project"), &top(" Quick Add ")],
+        "with four rows above the panel the picker fits there"
     );
 }

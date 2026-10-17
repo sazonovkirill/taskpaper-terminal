@@ -21,10 +21,9 @@ Completed blocks follow the pane's [show completed](@/reference/tags.md#showing-
 **Today** (`gt` or `gT`) lists, in document order:
 
 - every block with a start or due date on or before today,
-- every starred block, while **Display starred items in Today view** is on,
-- every task inside the TODAY project, at any depth and with or without a date, while **Special handling of TODAY project** is on.
+- every starred block, while **Display starred items in Today view** is on, as it is by default.
 
-The TODAY project is the first top-level project whose text is exactly `TODAY`, in capitals, maybe after emoji and a space, as in `☀️ TODAY:`. Both settings are on by default. The list changes at midnight, and whenever the document or either setting changes. The Navigator always lists Today.
+The list changes at midnight, and whenever the document or the setting changes. The Navigator always lists Today.
 
 ### Reordering Today
 

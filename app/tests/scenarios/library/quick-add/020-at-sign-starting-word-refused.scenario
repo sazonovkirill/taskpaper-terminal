@@ -1,6 +1,6 @@
 # "@" starting a word is not typed in Quick Add and the status line says why; an "@" inside an address is kept.
 file <<END
-INBOX:
+INBOX: @inbox
 END
 keys q
 type Mail ann@example.com about @launch
@@ -9,6 +9,6 @@ see - Mail ann@example.com about launch
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Mail ann@example.com about launch
 END

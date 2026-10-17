@@ -1,12 +1,15 @@
-# Tab, Shift+Tab and Ctrl+J type nothing and break nothing in Quick Add; the text stays one line.
+# Shift+Tab and Ctrl+J type nothing and break nothing in Quick Add, and Tab opens the project picker, which Esc closes; the text stays one line.
 file <<END
-INBOX:
+INBOX: @inbox
 END
-keys q a <Tab> b <S-Tab> c <C-j> d
+keys q a <Tab>
+see ┌Project
+keys <Esc> b <S-Tab> c <C-j> d
+hide ┌Project
 see - abcd
 keys <Enter>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- abcd
 END

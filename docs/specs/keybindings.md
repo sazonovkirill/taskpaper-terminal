@@ -62,7 +62,9 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Go to Upcoming / Overdue / Colors / Logbook: show that special view, as choosing it in the Navigator does (D-80, D-95) | `gU` / `gO` / `gC` / `gL` |
 | Go to Starred: show the Starred view, as choosing it in the Navigator does (D-92, D-95) | `gS` |
 | Go to Flagged: show the Flagged view, as choosing it in the Navigator does (D-93, D-95) | `gF` |
-| Go to Inbox: zoom to the INBOX project the Navigator lists apart, as choosing its entry does; with none, or the setting off, a status notice says so (D-78) | `gi` |
+| Go to Inbox: zoom to the inbox project, the project tagged `@inbox` ([navigation.md §6](navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79)), as choosing its entry does; with none, a status notice says so (D-78, D-141) | `gi` |
+| Select Inbox Project: choose the project to tag `@inbox` in a finder (D-141) | command palette |
+| Reset Inbox Project: remove `@inbox` from every project (D-141) | command palette |
 | Back / forward | `H` / `L`, `Alt+←` / `Alt+→` (were `Alt+Shift+←` / `Alt+Shift+→`, D-132), `Ctrl+O` / `Ctrl+I` (vim's jump list; `Ctrl+I` kitty keyboard protocol only, §1; D-139) |
 
 ### Editing and creating (FR-MODE)
@@ -73,7 +75,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | New block below / above | `o` / `O` |
 | New last child / first child, expanding the block | `i` / `I` (`I` was `Alt+o`; D-41) |
 | New block at the end / start of the list (D-53) | `a` / `A` |
-| Quick Add: add a task or note to the INBOX project ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08), D-96, D-133) | `q` |
+| Quick Add: add a task or note to a project, the inbox project by default ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08), D-96, D-133, D-141) | `q` |
 
 The creation keys act at once (D-136): `o`, `O`, `i`, `I`, `a` and `A` add a block of the type that fits ([editing.md §3](editing.md#3-creating-blocks-fr-mode-04)) and wait for no second key, so `o` then `t` starts a new block with `t`. The commands that add a section, project, task or note at each of these places, such as New Task Below, are in Go to Command without keys (D-136); the two-key sequences of D-53 (`os`, `Ip`, `at`, `An`, …) are gone. `p`/`P` and `a`/`A` no longer add projects and tasks, and `S`/`s` no longer add sections (D-52). A section is a text block with `@section`, also made with `S` (below).
 
@@ -186,7 +188,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Ctrl+R`, `Shift+F10` or the Menu key opens the context menu (`\` is typed; D-101), `Esc`, `Ctrl+G` or `|` closes it (so `|` cannot be typed into the filter; D-132), `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
-- **Quick Add** ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)): standard text keys, `Enter` adds, `Esc` cancels, `Backspace` at the start of the text deletes the task's dash. Every key is a plain key (D-42).
+- **Quick Add** ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)): standard text keys, `Enter` adds, `Esc` cancels, `Backspace` at the start of the text deletes the task's dash, `Tab` opens the project picker (Choose Project, shown in the `?` panel's Quick Add group as "Choose Project: Tab", D-141), which takes the keys of pickers: `Enter` chooses the destination and `Esc` closes it, keeping the destination. Every key is a plain key, `Tab` included (D-42).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.
 - **External-change conflict prompt** ([file-io.md §3](file-io.md#3-external-changes)): `Ctrl+K` keeps mine, `Ctrl+R` takes theirs, `Ctrl+L` shows or hides the diff (D-115: the prompt can open while the user types, so no plain letter answers it), `j`/`k`/arrows scroll the diff a line and `Ctrl+D`/`Ctrl+U`/`PageDown`/`PageUp` a page, `Ctrl+Q` quits. Other keys do nothing; the prompt has no `Esc`, because saving stays paused until a choice is made.
 

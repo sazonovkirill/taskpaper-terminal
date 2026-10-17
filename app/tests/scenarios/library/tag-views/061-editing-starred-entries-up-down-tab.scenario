@@ -1,6 +1,6 @@
 # While editing a Starred entry, Tab does nothing and Down moves editing to the next entry at the same column.
 file <<END
-INBOX:
+INBOX: @inbox
 	- Call mom @star
 Work:
 	- Report @star
@@ -14,7 +14,7 @@ type Y
 keys <Esc>
 quit
 saved <<END
-INBOX:
+INBOX: @inbox
 	- Call mom @star
 Work:
 	- ReportX @star
