@@ -156,14 +156,16 @@ fn a_text_that_is_no_date_says_why_and_enter_keeps_the_prompt() {
     let mut app = Harness::with_text("- Milk\n", 50, 10);
     app.type_keys("md9999-12-31 +1d");
     assert_eq!(prompt_box(&mut app)[2], drawn("", "", "Out of range")[2]);
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     app.type_keys("0000-01-01 -1d");
     assert_eq!(
         prompt_box(&mut app)[2],
         drawn("", "", "Out of range")[2],
         "YYYY-MM-DD has no earlier day (D-6)"
     );
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     app.type_keys("next");
     assert_eq!(
         prompt_box(&mut app)[2],

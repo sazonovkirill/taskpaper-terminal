@@ -30,6 +30,10 @@ pub enum TextEdit {
     DeleteForward,
     /// Delete the selection, or back to the start of the word before the caret.
     DeleteWordBackward,
+    /// Delete the selection, or on to the end of the word after the caret.
+    DeleteWordForward,
+    /// Delete the selection, or back to the start of the text.
+    DeleteToStart,
     /// Select the whole text.
     SelectAll,
     /// Put the marker around the selection, or the word at the caret, or take it off when it is
@@ -137,6 +141,8 @@ impl TextField {
             TextEdit::DeleteBackward => self.replaced(self.selection_or(self.left()), ""),
             TextEdit::DeleteForward => self.replaced(self.selection_or(self.right()), ""),
             TextEdit::DeleteWordBackward => self.replaced(self.selection_or(self.word_left()), ""),
+            TextEdit::DeleteWordForward => self.replaced(self.selection_or(self.word_right()), ""),
+            TextEdit::DeleteToStart => self.replaced(self.selection_or(0), ""),
             TextEdit::SelectAll => Self {
                 text: self.text.clone(),
                 caret: self.text.len(),
@@ -476,6 +482,23 @@ mod tests {
         check("one two  |x", TextEdit::DeleteWordBackward, "one |x");
         check("|one", TextEdit::DeleteWordBackward, "|one");
         check("on[e tw|o", TextEdit::DeleteWordBackward, "on|o");
+    }
+
+    // FR-MODE-03, D-144
+    #[test]
+    fn deletes_on_to_the_end_of_a_word() {
+        check("one |two three", TextEdit::DeleteWordForward, "one | three");
+        check("x|  one two", TextEdit::DeleteWordForward, "x| two");
+        check("one|", TextEdit::DeleteWordForward, "one|");
+        check("on[e tw|o", TextEdit::DeleteWordForward, "on|o");
+    }
+
+    // FR-MODE-03, D-144
+    #[test]
+    fn deletes_back_to_the_start_of_the_text() {
+        check("one tw|o", TextEdit::DeleteToStart, "|o");
+        check("|one", TextEdit::DeleteToStart, "|one");
+        check("on[e tw|o", TextEdit::DeleteToStart, "on|o");
     }
 
     // FR-FMT-02

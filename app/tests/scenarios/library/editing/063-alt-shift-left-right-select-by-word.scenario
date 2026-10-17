@@ -1,0 +1,18 @@
+# Alt+Shift+Left and Alt+Shift+Right extend the selection by word, so typing replaces the selected words; Alt+Left and Alt+Right move by word.
+file <<END
+- Buy fresh milk today
+END
+see Buy fresh milk today
+keys <Enter> <A-S-Left> <A-S-Left>
+type bread
+keys <Home> <A-S-Right>
+type Get
+keys <A-Right> <A-Left>
+type very
+keys <Space>
+keys <Esc>
+see - Get very fresh bread
+quit
+saved <<END
+- Get very fresh bread
+END

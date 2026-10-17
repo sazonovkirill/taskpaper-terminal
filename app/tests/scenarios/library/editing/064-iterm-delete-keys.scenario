@@ -1,0 +1,16 @@
+# iTerm2's Natural Text Editing delete keys work: Alt+Delete (Esc d) deletes the next word, Delete (Ctrl+D) the next character, and Cmd+Backspace (Ctrl+U) back to the start.
+file <<END
+- alpha beta gamma delta
+END
+see alpha beta gamma delta
+keys <Enter> <Home> <A-d> <C-d> <A-Del>
+see -  gamma delta
+keys <C-e> <A-b> <C-u>
+type x
+keys <Space>
+keys <Esc>
+see - x delta
+quit
+saved <<END
+- x delta
+END

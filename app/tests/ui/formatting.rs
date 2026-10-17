@@ -71,16 +71,16 @@ fn ctrl_b_bolds_the_word_at_the_caret_and_again_takes_it_off() {
 
 // FR-FMT-02
 #[test]
-fn alt_backtick_and_ctrl_e_make_the_selection_inline_code() {
+fn alt_backtick_and_ctrl_g_make_the_selection_inline_code() {
     let mut app = Harness::with_text("run make all\n", 40, 5);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.press(KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     app.press(KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     app.press(KeyCode::Char('`'), KeyModifiers::ALT);
     assert_eq!(outline_rows(&mut app)[0], "run `make all`");
-    app.press(KeyCode::Char('e'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     assert_eq!(outline_rows(&mut app)[0], "run make all");
-    app.press(KeyCode::Char('e'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
     app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(outline_rows(&mut app)[0], "run make all");
     assert_eq!(saved(&mut app), "run `make all`\n");

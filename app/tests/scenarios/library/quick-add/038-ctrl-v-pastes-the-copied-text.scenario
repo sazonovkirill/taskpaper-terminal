@@ -4,7 +4,7 @@ INBOX: @inbox
 Work:
 	- Renew passport
 END
-keys j j <Enter> <C-a> <C-c> <Esc> q <C-v>
+keys j j <Enter> <Home> <S-End> <C-c> <Esc> q <C-v>
 see Enter adds it
 keys <Enter>
 quit

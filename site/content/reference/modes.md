@@ -89,7 +89,7 @@ A block is always one line: no key breaks it. Pasting text of several lines ends
 | `Tab` / `Shift+Tab` | Indent / outdent the block and keep editing |
 | `Backspace` in an empty block | Delete it and edit the previous block, unless it has children or is the first row |
 
-`Ctrl+B` wraps the selection, or the word at the caret, in `**`, or removes them when the caret is inside bold text. `` Alt+` `` and `Ctrl+E` do the same with backticks. Undo and redo inside a session work on the text; characters typed in a row undo together.
+`Ctrl+B` wraps the selection, or the word at the caret, in `**`, or removes them when the caret is inside bold text. `` Alt+` `` and `Ctrl+G` do the same with backticks. Undo and redo inside a session work on the text; characters typed in a row undo together.
 
 ### Text keys
 

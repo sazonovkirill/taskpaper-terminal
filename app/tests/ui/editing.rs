@@ -88,7 +88,8 @@ fn text_keys_move_select_and_delete_by_grapheme_and_word() {
     app.press(KeyCode::Char('f'), KeyModifiers::ALT);
     app.press(KeyCode::Backspace, KeyModifiers::ALT);
     assert_eq!(outline_rows(&mut app)[0], "-  three");
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     app.type_keys("é😀");
     press(&mut app, KeyCode::Left, 1);
     press(&mut app, KeyCode::Backspace, 1);
@@ -144,7 +145,8 @@ fn the_marker_follows_the_type_the_text_gives() {
         buffer[(2, 2)].style().fg,
         Some(ratatui::style::Color::LightBlue)
     );
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     app.type_keys("- Call");
     assert_eq!(outline_rows(&mut app)[0], "- Call");
     assert_caret(&mut app, 8, 2);
@@ -222,7 +224,8 @@ fn an_emptied_parent_is_not_saved_until_leaving_gives_it_the_placeholder() {
     let mut app = Harness::with_text("Notes\n\t- a\n", 40, 5);
     app.settle();
     press(&mut app, KeyCode::Enter, 1);
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     press(&mut app, KeyCode::Backspace, 1);
     assert_eq!(outline_rows(&mut app)[0], "");
     assert_eq!(saved(&mut app), "Notes\n\t- a\n", "saving waits");

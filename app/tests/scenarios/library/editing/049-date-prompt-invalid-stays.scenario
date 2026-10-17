@@ -9,7 +9,7 @@ type blah
 see Not a date from “blah”
 keys <Enter>
 see Start date
-keys <C-a> <BS>
+keys <Home> <S-End> <BS>
 type +3d
 keys <Enter>
 hide Start date

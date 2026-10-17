@@ -541,7 +541,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::ToggleMarker(Marker::Code),
         Mode::Edit,
-        &["alt+`", "ctrl+e"],
+        &["alt+`", "ctrl+g"],
     ),
     entry!(Command::Undo, Mode::Edit, &["ctrl+z"]),
     entry!(Command::Redo, Mode::Edit, &["ctrl+y"]),

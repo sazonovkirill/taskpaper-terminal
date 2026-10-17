@@ -734,7 +734,7 @@ mod tests {
              \"g g g\" = \"Go Home\"\n\
              \"hyper+x\" = \"move_up\"\n\
              [keymap.edit]\n\
-             \"ctrl+g\" = \"inline_code\"\n\
+             \"ctrl+o\" = \"inline_code\"\n\
              \"ctrl+e\" = \"zoom_in\"\n",
             None,
         );
@@ -774,7 +774,7 @@ mod tests {
                 Command::ToggleMarker(crate::document::inline::Marker::Code),
                 Mode::Edit
             ),
-            "Ctrl+G, Alt+`, Ctrl+E"
+            "Ctrl+O, Alt+`, Ctrl+G"
         );
     }
 

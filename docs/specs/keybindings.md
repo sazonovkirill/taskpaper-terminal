@@ -17,6 +17,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+\` | Open focused block in a new pane | `Ctrl+W v` (legacy sends what crossterm reports as `Ctrl+4`) |
   | Menu key | Context menu | `\`, `Shift+F10`; `Ctrl+R` in the Navigator (D-101) |
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
+- **iTerm2's Natural Text Editing** preset turns the Mac's text keys into readline keys, which the text keys take (D-144): `Option+←/→` sends `Alt+B`/`Alt+F`, `Cmd+←/→` `Ctrl+A`/`Ctrl+E`, `Option+Backspace` `Alt+Backspace`, `Cmd+Backspace` `Ctrl+U`, `Delete` `Ctrl+D` and `Option+Delete` `Alt+D`. `Shift+Option+←/→` arrive as `Alt+Shift+←/→`. `Shift+Cmd+←/→` are iTerm2's Move Tab Left/Right and never reach the app; a profile key mapping that sends the escape sequences `[1;2H` and `[1;2F` (`Shift+Home`/`Shift+End`) makes them select to the ends. The mappings send the same bytes with and without the kitty protocol.
 - **`Alt+[`** is ambiguous with the CSI prefix in legacy mode and is not used.
 - Raw mode disables `ISIG` and `IXON`, so `Ctrl+Z`, `Ctrl+S`, `Ctrl+Q` and `Ctrl+C` arrive as keys.
 - `Ctrl+H` is `Backspace` in legacy mode and is not used.
@@ -171,7 +172,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 | Cycle the block's type: project, section, task, note (D-50, [editing.md §2.4](editing.md#24-cycling-the-type)) | `Ctrl+T` |
 | Make a task text again / a project text again (OQ-27, [editing.md §2](editing.md#2-edit-mode)) | `Backspace` at the start of the text / delete its `:` like any character (`End`, `Backspace`) |
 | Indent / outdent block | `Tab` / `Shift+Tab` |
-| Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+E` (the non-`Alt` route of §1) |
+| Bold / inline code (FR-FMT-02) | `Ctrl+B` / `` Alt+` ``, `Ctrl+G` (the non-`Alt` route of §1; `Ctrl+E` goes to the end of the text, D-144) |
 | Insert link (Later, FR-OPS-10) | typing `[[` (`Ctrl+K` is Go to Symbol) |
 | Undo / redo (text, within the session; characters typed in a row undo together) | `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` is gone, D-132) |
 | Copy / cut the selected text, paste ([editing.md §2](editing.md#2-edit-mode)) | `Ctrl+C` / `Ctrl+X`, `Ctrl+V` |
@@ -200,7 +201,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 "x" = "none"              # unbind
 
 [keymap.edit]
-"ctrl+g" = "inline_code"
+"ctrl+o" = "inline_code"
 ```
 
 - The file is `config.toml` in `$XDG_CONFIG_HOME/taskpaper-terminal/`, or `~/.config/taskpaper-terminal/` when that is unset, also on macOS (FR-SET-01). The contexts are `navigate` and `edit`.

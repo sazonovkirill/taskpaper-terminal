@@ -1,0 +1,13 @@
+# Ctrl+G wraps the selected words in backticks as inline code, shown raw while editing and as code in navigate mode.
+file <<END
+- Run npm install first
+END
+see Run npm install
+keys <Enter> <C-Left> <Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <S-Left> <C-g>
+see - Run `npm install` first
+keys <Esc>
+see - Run npm install first
+quit
+saved <<END
+- Run `npm install` first
+END

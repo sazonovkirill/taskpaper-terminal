@@ -119,12 +119,12 @@ impl NoteEditor {
         let (start, end) = (field.caret() == 0, field.caret() == field.text().len());
         let nothing_selected = field.selection().is_none();
         match edit {
-            TextEdit::DeleteBackward | TextEdit::DeleteWordBackward
+            TextEdit::DeleteBackward | TextEdit::DeleteWordBackward | TextEdit::DeleteToStart
                 if start && nothing_selected && self.row > 0 =>
             {
                 self.join(self.row - 1);
             }
-            TextEdit::DeleteForward
+            TextEdit::DeleteForward | TextEdit::DeleteWordForward
                 if end && nothing_selected && self.row + 1 < self.lines.len() =>
             {
                 self.join(self.row);
@@ -921,6 +921,67 @@ mod tests {
             AttachmentsInput::Text(TextEdit::DeleteWordBackward),
         );
         assert_eq!(edited(&state), (vec![String::new()], Some((0, 0))));
+    }
+
+    // FR-ATT-04, attachments.md §4, D-144
+    #[test]
+    fn the_note_editor_joins_lines_on_deleting_to_the_start_or_a_word_on() {
+        let mut state = state();
+        keys(
+            &mut state,
+            &[AttachmentsInput::Open, AttachmentsInput::Edit],
+        );
+        let end = TextEdit::Move {
+            motion: Motion::End,
+            select: false,
+        };
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(TextEdit::Move {
+                    motion: Motion::Start,
+                    select: true,
+                }),
+                AttachmentsInput::Text(TextEdit::DeleteForward),
+            ],
+        );
+        typed(&mut state, "ab");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        typed(&mut state, "cd");
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(TextEdit::Move {
+                    motion: Motion::Start,
+                    select: false,
+                }),
+                AttachmentsInput::Text(TextEdit::DeleteToStart),
+            ],
+        );
+        assert_eq!(
+            edited(&state),
+            (vec!["abcd".to_owned()], Some((0, 2))),
+            "Cmd+Backspace at the start joins as Backspace does (D-144)"
+        );
+        keys(&mut state, &[AttachmentsInput::Break]);
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::LineUp,
+                AttachmentsInput::Text(end),
+                AttachmentsInput::Text(TextEdit::DeleteWordForward),
+            ],
+        );
+        assert_eq!(
+            edited(&state),
+            (vec!["abcd".to_owned()], Some((0, 2))),
+            "Alt+Delete at the end joins as Delete does (D-144)"
+        );
+        input(
+            &mut state,
+            AttachmentsInput::Text(TextEdit::DeleteWordForward),
+        );
+        assert_eq!(edited(&state), (vec!["ab".to_owned()], Some((0, 2))));
     }
 
     // FR-ATT-04, FR-OPS-08, attachments.md §3, §4

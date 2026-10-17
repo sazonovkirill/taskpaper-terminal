@@ -5,7 +5,7 @@ END
 see Plan party
 keys o <Esc> T
 see today
-keys <Enter> <C-a>
+keys <Enter> <Home> <S-End>
 type Buy gifts
 keys <Esc>
 see - Buy gifts

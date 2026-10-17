@@ -4091,11 +4091,11 @@
      "alt": true
     },
     {
-     "label": "Ctrl+E",
+     "label": "Ctrl+G",
      "presses": [
       [
        "Ctrl",
-       "E"
+       "G"
       ]
      ],
      "kitty": false,
@@ -4601,6 +4601,17 @@
        ],
        "kitty": false,
        "alt": true
+      },
+      {
+       "label": "Alt+←",
+       "presses": [
+        [
+         "Alt",
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
       }
      ]
     },
@@ -4628,6 +4639,17 @@
        ],
        "kitty": false,
        "alt": true
+      },
+      {
+       "label": "Alt+→",
+       "presses": [
+        [
+         "Alt",
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
       }
      ]
     },
@@ -4643,6 +4665,17 @@
        ],
        "kitty": false,
        "alt": false
+      },
+      {
+       "label": "Ctrl+A",
+       "presses": [
+        [
+         "Ctrl",
+         "A"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
       }
      ]
     },
@@ -4654,6 +4687,17 @@
        "presses": [
         [
          "End"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "Ctrl+E",
+       "presses": [
+        [
+         "Ctrl",
+         "E"
         ]
        ],
        "kitty": false,
@@ -4707,6 +4751,18 @@
        ],
        "kitty": false,
        "alt": false
+      },
+      {
+       "label": "Alt+Shift+←",
+       "presses": [
+        [
+         "Alt",
+         "Shift",
+         "←"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
       }
      ]
     },
@@ -4724,6 +4780,18 @@
        ],
        "kitty": false,
        "alt": false
+      },
+      {
+       "label": "Alt+Shift+→",
+       "presses": [
+        [
+         "Alt",
+         "Shift",
+         "→"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
       }
      ]
     },
@@ -4808,6 +4876,17 @@
        ],
        "kitty": false,
        "alt": false
+      },
+      {
+       "label": "Ctrl+D",
+       "presses": [
+        [
+         "Ctrl",
+         "D"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
       }
      ]
     },
@@ -4839,14 +4918,41 @@
      ]
     },
     {
-     "label": "Select all",
+     "label": "Delete the word after the caret",
      "keys": [
       {
-       "label": "Ctrl+A",
+       "label": "Alt+d",
+       "presses": [
+        [
+         "Alt",
+         "d"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      },
+      {
+       "label": "Alt+Delete",
+       "presses": [
+        [
+         "Alt",
+         "Delete"
+        ]
+       ],
+       "kitty": false,
+       "alt": true
+      }
+     ]
+    },
+    {
+     "label": "Delete to the start",
+     "keys": [
+      {
+       "label": "Ctrl+U",
        "presses": [
         [
          "Ctrl",
-         "A"
+         "U"
         ]
        ],
        "kitty": false,
@@ -8800,11 +8906,11 @@
           "alt": true
          },
          {
-          "label": "Ctrl+E",
+          "label": "Ctrl+G",
           "presses": [
            [
             "Ctrl",
-            "E"
+            "G"
            ]
           ],
           "kitty": false,

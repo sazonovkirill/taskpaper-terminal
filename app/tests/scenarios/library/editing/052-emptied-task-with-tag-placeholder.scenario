@@ -4,7 +4,7 @@ file <<END
 - Next
 END
 see Call plumber
-keys <Enter> <C-a> <BS> <Esc>
+keys <Enter> <Home> <S-End> <BS> <Esc>
 see - …
 quit
 saved <<END

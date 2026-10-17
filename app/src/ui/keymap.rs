@@ -305,7 +305,9 @@ macro_rules! go {
 }
 
 /// The standard text keys of every text field: caret motions, selection and deletion
-/// ([editing.md §2]).
+/// ([editing.md §2]). They include the readline keys iTerm2's Natural Text Editing preset sends
+/// for the Mac's: `Ctrl+A`/`Ctrl+E` for `Cmd+←`/`→`, `Ctrl+U` for `Cmd+Backspace`, `Ctrl+D` for
+/// `Delete` and `Alt+D` for `Alt+Delete` (D-144).
 ///
 /// [editing.md §2]: ../../../docs/specs/editing.md#2-edit-mode
 const TEXT: &[(Key, TextEdit)] = &[
@@ -315,21 +317,30 @@ const TEXT: &[(Key, TextEdit)] = &[
     (key!(ctrl Right), go!(WordRight, false)),
     (key!(alt 'b'), go!(WordLeft, false)),
     (key!(alt 'f'), go!(WordRight, false)),
+    (key!(alt Left), go!(WordLeft, false)),
+    (key!(alt Right), go!(WordRight, false)),
     (key!(Home), go!(Start, false)),
     (key!(End), go!(End, false)),
+    (key!(ctrl 'a'), go!(Start, false)),
+    (key!(ctrl 'e'), go!(End, false)),
     (key!(shift Left), go!(Left, true)),
     (key!(shift Right), go!(Right, true)),
     (key!(ctrl shift Left), go!(WordLeft, true)),
     (key!(ctrl shift Right), go!(WordRight, true)),
+    (key!(alt shift Left), go!(WordLeft, true)),
+    (key!(alt shift Right), go!(WordRight, true)),
     (key!(shift Home), go!(Start, true)),
     (key!(shift End), go!(End, true)),
     (key!(shift Up), go!(Start, true)),
     (key!(shift Down), go!(End, true)),
     (key!(Backspace), TextEdit::DeleteBackward),
     (key!(Delete), TextEdit::DeleteForward),
+    (key!(ctrl 'd'), TextEdit::DeleteForward),
     (key!(ctrl 'w'), TextEdit::DeleteWordBackward),
     (key!(alt Backspace), TextEdit::DeleteWordBackward),
-    (key!(ctrl 'a'), TextEdit::SelectAll),
+    (key!(alt 'd'), TextEdit::DeleteWordForward),
+    (key!(alt Delete), TextEdit::DeleteWordForward),
+    (key!(ctrl 'u'), TextEdit::DeleteToStart),
 ];
 
 /// Bindings of the open command menu and pickers ([keybindings.md §3–4], [editing.md §2.3]);
@@ -2505,12 +2516,16 @@ mod tests {
             (KeyCode::Right, ctrl, to(Motion::WordRight, false)),
             (KeyCode::Char('b'), alt, to(Motion::WordLeft, false)),
             (KeyCode::Char('f'), alt, to(Motion::WordRight, false)),
+            (KeyCode::Left, alt, to(Motion::WordLeft, false)),
+            (KeyCode::Right, alt, to(Motion::WordRight, false)),
             (KeyCode::Home, none, to(Motion::Start, false)),
             (KeyCode::End, none, to(Motion::End, false)),
             (KeyCode::Left, shift, to(Motion::Left, true)),
             (KeyCode::Right, shift, to(Motion::Right, true)),
             (KeyCode::Left, ctrl | shift, to(Motion::WordLeft, true)),
             (KeyCode::Right, ctrl | shift, to(Motion::WordRight, true)),
+            (KeyCode::Left, alt | shift, to(Motion::WordLeft, true)),
+            (KeyCode::Right, alt | shift, to(Motion::WordRight, true)),
             (KeyCode::Home, shift, to(Motion::Start, true)),
             (KeyCode::End, shift, to(Motion::End, true)),
             (KeyCode::Up, none, Message::EditPrevious),
@@ -2521,7 +2536,12 @@ mod tests {
             (KeyCode::Delete, none, text(TextEdit::DeleteForward)),
             (KeyCode::Char('w'), ctrl, text(TextEdit::DeleteWordBackward)),
             (KeyCode::Backspace, alt, text(TextEdit::DeleteWordBackward)),
-            (KeyCode::Char('a'), ctrl, text(TextEdit::SelectAll)),
+            (KeyCode::Char('d'), ctrl, text(TextEdit::DeleteForward)),
+            (KeyCode::Char('d'), alt, text(TextEdit::DeleteWordForward)),
+            (KeyCode::Delete, alt, text(TextEdit::DeleteWordForward)),
+            (KeyCode::Char('u'), ctrl, text(TextEdit::DeleteToStart)),
+            (KeyCode::Char('a'), ctrl, to(Motion::Start, false)),
+            (KeyCode::Char('e'), ctrl, to(Motion::End, false)),
             (KeyCode::Char('z'), ctrl, Message::Undo),
             (KeyCode::Char('y'), ctrl, Message::Redo),
         ] {
@@ -2536,7 +2556,7 @@ mod tests {
         let code = text(TextEdit::Toggle(Marker::Code));
         check_editing(KeyCode::Char('b'), KeyModifiers::CONTROL, Some(&bold));
         check_editing(KeyCode::Char('`'), KeyModifiers::ALT, Some(&code));
-        check_editing(KeyCode::Char('e'), KeyModifiers::CONTROL, Some(&code));
+        check_editing(KeyCode::Char('g'), KeyModifiers::CONTROL, Some(&code));
         check(KeyCode::Char('b'), KeyModifiers::CONTROL, None);
         check(KeyCode::Char('`'), KeyModifiers::ALT, None);
     }
@@ -4019,10 +4039,10 @@ mod tests {
             keymap.labels(Command::MoveDown, Mode::Navigate),
             "j, J, Alt+j, Alt+↓"
         );
-        let errors = keymap.bind(Mode::Edit, &[("ctrl+g", "INLINE CODE")]);
+        let errors = keymap.bind(Mode::Edit, &[("ctrl+o", "INLINE CODE")]);
         assert_eq!(errors, []);
         assert_eq!(
-            keymap.message_for(&press('g', KeyModifiers::CONTROL), ms(3), EDITING),
+            keymap.message_for(&press('o', KeyModifiers::CONTROL), ms(3), EDITING),
             Some(Message::Text(TextEdit::Toggle(Marker::Code)))
         );
     }

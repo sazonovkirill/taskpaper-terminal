@@ -311,7 +311,8 @@ fn renaming_a_tag_renames_it_in_place_and_keeps_a_duplicate_the_dialog_does_not_
         press(&mut app, KeyCode::Tab);
     }
     app.type_keys(" ");
-    app.press(KeyCode::Char('a'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Home, KeyModifiers::NONE);
+    app.press(KeyCode::End, KeyModifiers::SHIFT);
     app.type_keys("place(home)");
     press(&mut app, KeyCode::Enter);
     press(&mut app, KeyCode::Enter);

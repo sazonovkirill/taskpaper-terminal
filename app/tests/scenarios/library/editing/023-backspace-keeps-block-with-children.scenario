@@ -5,7 +5,7 @@ Parent
 	Child
 END
 see Parent
-keys j <Enter> <C-a> <BS> <BS> <Esc>
+keys j <Enter> <Home> <S-End> <BS> <BS> <Esc>
 see …
 quit
 saved <<END

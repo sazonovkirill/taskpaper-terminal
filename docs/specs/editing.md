@@ -21,9 +21,9 @@ The block's editor opens where the block is drawn, keeping its indentation, mark
 
 Edits are applied to the document as the user types (one undo step per edit session) and written back as: type syntax + edited text + the line's tags appended after the text in their original order (OQ-24 default A). A line whose text and type are as they were is written as it was, so its mid-line tags stay where they are.
 
-**Text keys** are standard (FR-MODE-03): `←`/`→`, `Home`/`End` to the ends of the text, `Ctrl+←/→` and `Alt+B/F` by word, `Backspace`/`Delete`, `Ctrl+W`/`Alt+Backspace` delete word, `Shift`+motion selects (`Shift+↑`/`Shift+↓` select to the start and end of the text), `Ctrl+A` selects all, `Ctrl+C`/`Ctrl+X`/`Ctrl+V` clipboard. Motion is by grapheme (`unicode-segmentation`). Characters the parser splits lines on ([file-format.md §1](file-format.md#1-input-decoding)) are never typed into a line, and no key breaks a line (D-43).
+**Text keys** are standard (FR-MODE-03): `←`/`→`, `Home`/`End` to the ends of the text, `Ctrl+A`/`Ctrl+E` to the ends of the text too, `Ctrl+←/→`, `Alt+←/→` and `Alt+B/F` by word, `Backspace`/`Delete` (`Ctrl+D` too), `Ctrl+W`/`Alt+Backspace` delete the word before the caret, `Alt+D`/`Alt+Delete` the word after it, `Ctrl+U` deletes back to the start of the text, `Shift`+motion selects (`Ctrl+Shift+←/→` and `Alt+Shift+←/→` by word, `Shift+↑`/`Shift+↓` to the start and end of the text), `Ctrl+C`/`Ctrl+X`/`Ctrl+V` clipboard. Motion is by grapheme (`unicode-segmentation`). These include what iTerm2's Natural Text Editing preset sends for the Mac's text keys, such as `Ctrl+A`/`Ctrl+E` for `Cmd+←/→` (D-144). Characters the parser splits lines on ([file-format.md §1](file-format.md#1-input-decoding)) are never typed into a line, and no key breaks a line (D-43).
 
-**Formatting** (FR-FMT-02): `Ctrl+B` wraps the selection (or the word at the caret, or nothing at the caret) in `**`, or removes them when the selection or caret is inside bold text or between the markers; `` Alt+` `` and `Ctrl+E` do the same with backticks.
+**Formatting** (FR-FMT-02): `Ctrl+B` wraps the selection (or the word at the caret, or nothing at the caret) in `**`, or removes them when the selection or caret is inside bold text or between the markers; `` Alt+` `` and `Ctrl+G` do the same with backticks.
 
 **Enter, arrows and leaving** (OQ-23, D-43):
 

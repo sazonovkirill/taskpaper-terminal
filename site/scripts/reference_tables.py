@@ -89,7 +89,8 @@ CONTEXTS = {
         "TextEdit::DeleteBackward": "Delete before the caret",
         "TextEdit::DeleteForward": "Delete after the caret",
         "TextEdit::DeleteWordBackward": "Delete the word before the caret",
-        "TextEdit::SelectAll": "Select all",
+        "TextEdit::DeleteWordForward": "Delete the word after the caret",
+        "TextEdit::DeleteToStart": "Delete to the start",
     }),
     "MENU": ("Pickers, palettes and menus", "navigator", {
         "MenuInput::Dismiss": "Close", "MenuInput::Choose": "Choose the highlighted entry",

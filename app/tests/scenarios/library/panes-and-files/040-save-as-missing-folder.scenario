@@ -5,7 +5,7 @@ Errands:
 END
 keys :
 type save as
-keys <Enter> <C-a>
+keys <Enter> <Home> <S-End>
 type /no/such/dir/x.taskpaper
 keys <Enter>
 see Cannot save: the folder /no/such/dir does not exist

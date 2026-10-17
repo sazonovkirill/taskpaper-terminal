@@ -123,7 +123,7 @@ fn the_panel_lists_edit_modes_bindings_while_editing() {
             "│  Command Menu               /",
             "│  Cycle Type            Ctrl+T",
             "│  Bold                  Ctrl+B",
-            "│  Inline Code    Alt+`, Ctrl+E",
+            "│  Inline Code    Alt+`, Ctrl+G",
             "│ Structure",
             "│  Indent                   Tab",
             "│  Outdent            Shift+Tab",
