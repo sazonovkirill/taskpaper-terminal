@@ -36,7 +36,8 @@ const TITLE: &str = "Navigator";
 /// top-level project stands in the gutter. The focused entry is marked in a gutter like the
 /// outline's focused block and gets the current-line band; any other entry of where the focused
 /// pane is gets a selected block's marker (D-68). An entry with open tasks has their count dimmed
-/// at the right, its text cut off a space before it (D-73, D-85).
+/// at the right, its text cut off a space before it, and the Projects heading has the number of
+/// projects there (D-73, D-85, D-143).
 #[derive(Debug)]
 pub struct NavigatorPanel<'a> {
     view: &'a NavigatorView,
@@ -121,7 +122,10 @@ impl<'a> NavigatorPanel<'a> {
     fn lines(&self) -> impl Iterator<Item = (NavigatorLine<'a>, Mark)> {
         let entries = &self.view.entries[..];
         let NavigatorView {
-            focused, current, ..
+            focused,
+            current,
+            projects,
+            ..
         } = *self.view;
         entries.iter().enumerate().flat_map(move |(index, entry)| {
             let previous = index.checked_sub(1).and_then(|at| entries.get(at));
@@ -129,14 +133,18 @@ impl<'a> NavigatorPanel<'a> {
                 (NavigatorEntry::Bookmark { .. }, Some(NavigatorEntry::Bookmark { .. }))
                 | (NavigatorEntry::Project { .. }, Some(NavigatorEntry::Project { .. }))
                 | (NavigatorEntry::Inbox { .. } | NavigatorEntry::View { .. }, _) => None,
-                (NavigatorEntry::Bookmark { .. }, _) => Some("Bookmarks"),
-                (NavigatorEntry::Project { .. }, _) => Some("Projects"),
+                (NavigatorEntry::Bookmark { .. }, _) => {
+                    Some(NavigatorLine::Heading("Bookmarks", 0))
+                }
+                (NavigatorEntry::Project { .. }, _) => {
+                    Some(NavigatorLine::Heading("Projects", projects))
+                }
             };
             // The Navigator's first line is never blank (D-77).
             let blank = previous.map(|_| NavigatorLine::Blank);
             heading
                 .into_iter()
-                .flat_map(move |heading| blank.into_iter().chain([NavigatorLine::Heading(heading)]))
+                .flat_map(move |heading| blank.into_iter().chain([heading]))
                 .map(|line| (line, Mark::None))
                 .chain([(
                     NavigatorLine::Entry(entry),
@@ -175,8 +183,8 @@ impl Mark {
 enum NavigatorLine<'a> {
     /// The blank line above a heading.
     Blank,
-    /// A section heading.
-    Heading(&'static str),
+    /// A section heading with the count it shows, none when 0.
+    Heading(&'static str, usize),
     /// An entry.
     Entry(&'a NavigatorEntry),
 }
@@ -186,7 +194,7 @@ impl<'a> NavigatorLine<'a> {
     fn line(self, icons: IconSet, theme: &Theme) -> Line<'a> {
         match self {
             Self::Blank => Line::default(),
-            Self::Heading(heading) => Line::styled(heading, heading_style()),
+            Self::Heading(heading, _) => Line::styled(heading, heading_style()),
             Self::Entry(entry) => entry_line(entry, icons, theme),
         }
     }
@@ -275,13 +283,15 @@ impl Widget for NavigatorPanel<'_> {
             } else {
                 line_area
             };
-            let line_area = match line {
-                NavigatorLine::Entry(entry) if entry.open_tasks() > 0 => {
-                    render_count(entry.open_tasks(), Style::new().dim(), line_area, buf)
-                }
-                NavigatorLine::Blank | NavigatorLine::Heading(_) | NavigatorLine::Entry(_) => {
-                    line_area
-                }
+            let count = match line {
+                NavigatorLine::Entry(entry) => entry.count(),
+                NavigatorLine::Heading(_, count) => count,
+                NavigatorLine::Blank => 0,
+            };
+            let line_area = if count > 0 {
+                render_count(count, Style::new().dim(), line_area, buf)
+            } else {
+                line_area
             };
             line.line(self.icons, self.theme).render(line_area, buf);
         }
@@ -412,7 +422,7 @@ mod tests {
                 "  A".to_owned(),
                 "  B".to_owned(),
                 String::new(),
-                "  Projects".to_owned(),
+                "  Projects        2".to_owned(),
                 "  A".to_owned(),
             ],
             "bookmarks without an icon, headings in line with the entries"
@@ -433,7 +443,7 @@ mod tests {
                 format!("▌ {} INBOX         1", Icon::Inbox.glyph(IconSet::Unicode)),
                 format!("  {} Today", Icon::Today.glyph(IconSet::Unicode)),
                 String::new(),
-                "  Projects".to_owned(),
+                "  Projects        1".to_owned(),
                 "  A".to_owned(),
             ]
         );
@@ -447,7 +457,7 @@ mod tests {
     fn a_tab_in_a_bookmarks_or_projects_text_is_drawn_as_a_space() {
         assert_eq!(
             rows(&draw("a\tb @bookmark\nc\td:"))[2..7],
-            ["  Bookmarks", "  a b", "", "  Projects", "  c d"]
+            ["  Bookmarks", "  a b", "", "  Projects        1", "  c d"]
         );
     }
 
@@ -481,7 +491,7 @@ mod tests {
                 format!("  {} Starred", Icon::Star.glyph(IconSet::Unicode)),
                 format!("  {} Flagged", Icon::Flag.glyph(IconSet::Unicode)),
                 String::new(),
-                "  Projects".to_owned(),
+                "  Projects        1".to_owned(),
             ]
         );
         assert_eq!(
@@ -491,15 +501,18 @@ mod tests {
         );
         assert_eq!(
             filtered('q', "Q: @bookmark"),
-            ["  Bookmarks", "▌ Q", "", "  Projects", "  Q"]
+            ["  Bookmarks", "▌ Q", "", "  Projects        1", "  Q"]
         );
-        assert_eq!(filtered('q', "Q:"), ["  Projects", "▌ Q", "", "", ""]);
+        assert_eq!(
+            filtered('q', "Q:"),
+            ["  Projects        1", "▌ Q", "", "", ""]
+        );
         assert_eq!(
             filtered('x', "INBOX: @inbox\nX:"),
             [
                 format!("▌ {} INBOX", Icon::Inbox.glyph(IconSet::Unicode)),
                 String::new(),
-                "  Projects".to_owned(),
+                "  Projects        1".to_owned(),
                 "  X".to_owned(),
                 String::new(),
             ]
@@ -535,7 +548,7 @@ mod tests {
         assert_eq!(
             rows(&draw("ABCDEFGHIJKLMNOPQ:\n\tB:"))[2..5],
             [
-                "  Projects".to_owned(),
+                "  Projects        2".to_owned(),
                 " ▾ABCDEFGHIJKLMNOPQ".to_owned(),
                 "    B".to_owned(),
             ]
@@ -605,7 +618,7 @@ mod tests {
         assert_eq!(
             rows(&buf)[2..7],
             [
-                "  Projects",
+                "  Projects        4",
                 " ▾Work            2",
                 "    Sub           1",
                 "  ABCDEFGHIJKLMNO 1",
@@ -620,6 +633,31 @@ mod tests {
             "a column clear of the border"
         );
         assert!(cell(&buf, 2, 3).modifier.is_empty(), "the text is plain");
+    }
+
+    // D-143
+    #[test]
+    fn the_projects_heading_shows_how_many_projects_there_are_dim_at_the_right() {
+        let buf = render(&view(&opened("A: @bookmark\nWork:\n\tSub:\n\t\t- a")), 9);
+        assert_eq!(
+            rows(&buf)[2..9],
+            [
+                "  Bookmarks",
+                "  A",
+                "",
+                "  Projects        3",
+                "  A",
+                " ▾Work            1",
+                "    Sub           1",
+            ],
+            "the bookmarks' heading shows none"
+        );
+        assert_eq!(cell(&buf, 18, 5).modifier, Modifier::DIM, "not bold");
+        assert!(
+            cell(&buf, 2, 5)
+                .modifier
+                .contains(Modifier::BOLD | Modifier::DIM)
+        );
     }
 
     // D-73, D-68
@@ -639,7 +677,7 @@ mod tests {
     fn headings_are_bold_and_dim() {
         let buf = draw("A: @bookmark");
         for y in [2, 5] {
-            let modifier = cell(&buf, 18, y).modifier;
+            let modifier = cell(&buf, 2, y).modifier;
             assert!(modifier.contains(Modifier::BOLD | Modifier::DIM), "row {y}");
         }
         assert!(cell(&buf, 2, 3).modifier.is_empty(), "entries are plain");

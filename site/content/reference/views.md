@@ -4,7 +4,7 @@ weight = 70
 description = "Today, Upcoming, Overdue, Colors, Logbook, Starred and Flagged: flat lists of blocks gathered from the whole outline."
 +++
 
-A **special view** shows a list of blocks from all over the document in a pane, in place of the outline: everything due today, everything flagged, everything done this week. Each view has its own icon, a Go to key starting with `g`, and an entry in the [Navigator](@/reference/navigator.md), each after Today, with how many open tasks it lists.
+A **special view** shows a list of blocks from all over the document in a pane, in place of the outline: everything due today, everything flagged, everything done this week. Each view has its own icon, a Go to key starting with `g`, and an entry in the [Navigator](@/reference/navigator.md), each after Today, with how many open tasks it lists, or for the Logbook how many completed tasks.
 
 Opening a view is a step in the pane's [history](@/reference/navigation.md#history), so `H` comes back. The pane's header shows the view's icon and name in place of the breadcrumbs.
 

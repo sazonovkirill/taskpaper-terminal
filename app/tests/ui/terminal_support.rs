@@ -270,7 +270,7 @@ fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {
             "  日本 │  ★ Starred                                   │",
             "  日本 │  ⚐ Flagged                                   │",
             "    -  │                                              │",
-            "       │  Projects                                    │",
+            "       │  Projects                                  1 │",
             "       │  日本語のとても長いプロジェクト名前ですね  1 │",
             "       └──────────────────────────────────────────────┘",
         ]

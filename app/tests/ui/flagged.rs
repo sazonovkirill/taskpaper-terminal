@@ -85,7 +85,7 @@ fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
             format!("  {ARROW} Upcoming"),
             format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
+            format!("{:44}1", format!("  {BOOK} Logbook")),
             format!("  {STAR} Starred"),
             format!("{:44}2", format!("  {FLAG} Flagged")),
             String::new(),
@@ -115,7 +115,7 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_sti
             format!("  {ARROW} Upcoming"),
             format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
+            format!("{:44}1", format!("  {BOOK} Logbook")),
             format!("  {STAR} Starred"),
             String::new()
         ]
@@ -148,7 +148,7 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_sti
             format!("  {ARROW} Upcoming"),
             format!("  {OVERDUE} Overdue"),
             format!("  {PALETTE} Colors"),
-            format!("  {BOOK} Logbook"),
+            format!("{:44}1", format!("  {BOOK} Logbook")),
             format!("  {STAR} Starred"),
             format!("{:44}2", format!("▌ {FLAG} Flagged"))
         ],

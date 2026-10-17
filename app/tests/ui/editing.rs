@@ -451,7 +451,7 @@ fn a_tab_inside_the_text_shows_as_a_space_in_the_finders_the_navigator_and_a_div
     assert_eq!(
         rows(&mut app)[6..8],
         [
-            "│  Projects                            │",
+            "│  Projects                          1 │",
             "│▌ Work Home                         1 │",
         ]
     );

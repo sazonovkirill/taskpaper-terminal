@@ -77,7 +77,8 @@ fn ctrl_g(app: &mut Harness) {
 }
 
 /// The window's lines as it opens before any key, `▌` marking the focused or current one, each
-/// project's count of open tasks at the right (D-73).
+/// project's count of open tasks at the right (D-73) and the number of projects at the Projects
+/// heading's (D-143).
 fn listed(focused: Option<usize>) -> Vec<String> {
     [
         (format!("{SUN} Today"), None),
@@ -91,7 +92,7 @@ fn listed(focused: Option<usize>) -> Vec<String> {
         ("Bookmarks".to_owned(), None),
         ("Launch plan".to_owned(), None),
         (String::new(), None),
-        ("Projects".to_owned(), None),
+        ("Projects".to_owned(), Some(3)),
         ("▾Work".to_owned(), Some(2)),
         ("  Reports".to_owned(), Some(1)),
         ("Home".to_owned(), Some(1)),
@@ -394,11 +395,13 @@ fn a_projects_count_of_open_tasks_follows_completing_them() {
     app.type_keys("jx");
     ctrl_g(&mut app);
     let mut listed = listed(Some(0));
+    listed[4] = format!("{:44}1", format!("  {BOOK} Logbook"));
     listed[12] = format!("{:44}1", " ▾Work");
     assert_eq!(window(&mut app), Some(listed.clone()), "Launch plan done");
     press(&mut app, KeyCode::Esc);
     app.type_keys("jjx");
     ctrl_g(&mut app);
+    listed[4] = format!("{:44}2", format!("  {BOOK} Logbook"));
     listed[12] = " ▾Work".to_owned();
     listed[13] = "    Reports".to_owned();
     assert_eq!(window(&mut app), Some(listed), "no open tasks, no count");
@@ -410,8 +413,9 @@ Capture: @inbox
 \t- Call the bank
 ";
 
-/// The Navigator's window over [`INBOXED`] before Projects, without its inbox entry.
-fn views() -> Vec<String> {
+/// The Navigator's window before Projects, without its inbox entry, with `projects` at its
+/// Projects heading.
+fn views(projects: usize) -> Vec<String> {
     vec![
         format!("  {SUN} Today"),
         format!("  {ARROW} Upcoming"),
@@ -421,7 +425,7 @@ fn views() -> Vec<String> {
         format!("  {STAR} Starred"),
         format!("  {FLAG} Flagged"),
         String::new(),
-        "  Projects".to_owned(),
+        format!("{:44}{projects}", "  Projects"),
     ]
 }
 
@@ -431,12 +435,12 @@ fn the_project_tagged_inbox_is_listed_above_today_under_its_own_name() {
     let mut app = Harness::with_text(INBOXED, 80, 16);
     ctrl_g(&mut app);
     let mut expected = vec![format!("{:44}1", "▌ ⊔ Capture")];
-    expected.extend(views());
+    expected.extend(views(1));
     expected.push("  Work".to_owned());
     assert_eq!(window(&mut app).expect("open"), expected);
     let mut app = Harness::with_text("Work:\nINBOX:\n\t- Call the bank\n", 80, 16);
     ctrl_g(&mut app);
-    let mut expected = views();
+    let mut expected = views(2);
     expected[0] = format!("▌ {SUN} Today");
     expected.extend(["  Work".to_owned(), format!("{:44}1", "  INBOX")]);
     assert_eq!(
@@ -506,7 +510,7 @@ fn typing_filters_the_window_shown_in_its_bottom_border_and_enter_goes_to_the_ma
     assert_eq!(
         window(&mut app),
         Some(vec![
-            "  Projects".to_owned(),
+            format!("{:44}3", "  Projects"),
             format!("{:44}2", "  Work"),
             format!("{:44}1", "▌   Reports"),
         ]),

@@ -12,7 +12,7 @@ description = "The Navigator window of places to go, the inbox, the Go to Symbol
 2. **Bookmarks:** every block you [bookmarked](@/reference/tags.md#star-flag-and-bookmark), in document order.
 3. **Projects:** every project as a tree, nested by the projects they are in. Blocks between them that are not projects are skipped.
 
-Each entry shows how many open tasks it holds at any depth, or, for a view, how many it lists. A section with no entries has no heading.
+Each entry shows how many open tasks it holds at any depth, or, for a view, how many it lists; the Logbook counts the completed tasks it lists. The Projects heading shows how many projects there are. A section with no entries has no heading.
 
 The Navigator opens on the entry for where the focused pane is: its view, its zoom block, or else the closest block above the zoom that has an entry, such as the project around a zoomed task. That entry keeps a dim marker while you move to others, like a file tree following the open file.
 

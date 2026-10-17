@@ -24,7 +24,8 @@ pub(super) struct Navigator {
     /// What was typed to filter the entries while it is open (D-86).
     filter: String,
     folds: Folds,
-    entries: Memo<EntriesKey, Rc<[NavigatorEntry]>>,
+    /// The entries before a filter and how many projects the tree holds.
+    entries: Memo<EntriesKey, (Rc<[NavigatorEntry]>, usize)>,
     filtered: Memo<FilteredKey, Rc<[NavigatorEntry]>>,
     current: Memo<CurrentKey, Option<usize>>,
 }
@@ -141,12 +142,13 @@ pub enum NavigatorEntry {
         /// How many open tasks it holds, as a project entry counts them (D-85).
         open_tasks: usize,
     },
-    /// A special view, such as Today, with how many open tasks it lists (D-7, D-80, D-85).
+    /// A special view, such as Today, with how many open tasks it lists, or the Logbook how many
+    /// tasks (D-7, D-80, D-85, D-143).
     View {
         /// The view.
         view: SpecialView,
-        /// How many open tasks it lists (D-85).
-        open_tasks: usize,
+        /// How many open tasks it lists, or the Logbook how many tasks (D-85, D-143).
+        count: usize,
     },
     /// A project, nested under the closest project above it.
     Project {
@@ -186,13 +188,16 @@ impl NavigatorEntry {
         text.to_lowercase().contains(filter)
     }
 
-    /// How many open tasks the entry holds or lists (D-73, D-85).
+    /// The count the entry shows: how many open tasks it holds or lists, or the Logbook how many
+    /// tasks (D-73, D-85, D-143).
     #[must_use]
-    pub fn open_tasks(&self) -> usize {
+    pub fn count(&self) -> usize {
         match *self {
             Self::Inbox { open_tasks, .. }
             | Self::Bookmark { open_tasks, .. }
-            | Self::View { open_tasks, .. }
+            | Self::View {
+                count: open_tasks, ..
+            }
             | Self::Project { open_tasks, .. } => open_tasks,
         }
     }
@@ -220,6 +225,8 @@ pub struct NavigatorView {
     pub current: Option<usize>,
     /// What was typed to filter the entries (D-86).
     pub filter: String,
+    /// How many projects the Projects tree holds, folded or filtered out ones too (D-143).
+    pub projects: usize,
 }
 
 impl State {
@@ -231,11 +238,13 @@ impl State {
         let focused = self.navigator_focus(&entries)?;
         let focused = (focused < entries.len()).then_some(focused);
         let current = self.navigator_current(&entries);
+        let (_, projects) = self.unfiltered_entries(&self.navigator.folds);
         Some(NavigatorView {
             entries,
             focused,
             current,
             filter: self.navigator.filter.clone(),
+            projects,
         })
     }
 
@@ -444,10 +453,10 @@ impl State {
     fn navigator_entries(&self) -> Rc<[NavigatorEntry]> {
         let filter = self.navigator.filter.to_lowercase();
         if filter.is_empty() {
-            return self.unfiltered_entries(&self.navigator.folds);
+            return self.unfiltered_entries(&self.navigator.folds).0;
         }
         // A filter looks through folded entries.
-        let entries = self.unfiltered_entries(&Folds::default());
+        let (entries, _) = self.unfiltered_entries(&Folds::default());
         let key = FilteredKey {
             entries: Rc::clone(&entries),
             filter: filter.clone(),
@@ -457,8 +466,9 @@ impl State {
             .get(key, || filtered(entries.to_vec(), &filter).into())
     }
 
-    /// The entries with the project entries `folds` folded, before any filter.
-    fn unfiltered_entries(&self, folds: &Folds) -> Rc<[NavigatorEntry]> {
+    /// The entries with the project entries `folds` folded, before any filter, and how many
+    /// projects the tree holds, folded ones too.
+    fn unfiltered_entries(&self, folds: &Folds) -> (Rc<[NavigatorEntry]>, usize) {
         let key = EntriesKey {
             document: self.document().stamp(),
             folds: folds.clone(),
@@ -472,30 +482,42 @@ impl State {
             // Every block that shows, from the outline's rows with nothing collapsed, which a
             // change builds again only where it changed.
             let rows = self.unfolded_rows(Location::Outline(None), self.pane.show_done);
-            let views = self.views_open_tasks(&rows);
-            inbox
+            let views = self.views_counts(&rows);
+            let (projects, count) = self.projects(&rows, apart, folds);
+            let entries = inbox
                 .into_iter()
                 .chain(
                     SpecialView::ALL
                         .into_iter()
                         .zip(views)
                         .filter(|&(view, _)| self.navigator_lists(view))
-                        .map(|(view, open_tasks)| NavigatorEntry::View { view, open_tasks }),
+                        .map(|(view, count)| NavigatorEntry::View { view, count }),
                 )
                 .chain(self.bookmarks(&rows))
-                .chain(self.projects(&rows, apart, folds))
-                .collect()
+                .chain(projects)
+                .collect();
+            (entries, count)
         })
     }
 
     /// How many open tasks (D-67) each special view lists, in the order of [`SpecialView::ALL`],
     /// from `rows`, the outline's rows with nothing collapsed: every block that shows, so every
-    /// block a view could list as an open task.
-    fn views_open_tasks(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
+    /// block a view could list as an open task; and for the Logbook, which lists done blocks
+    /// whatever the show-completed setting, how many tasks it lists (D-143).
+    fn views_counts(&self, rows: &Rows) -> [usize; SpecialView::ALL.len()] {
         let mut counts = [0; SpecialView::ALL.len()];
         for row in rows.iter().filter(|row| row.open_task()) {
             for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
                 *count += usize::from(self.lists(view, row));
+            }
+        }
+        for (count, view) in counts.iter_mut().zip(SpecialView::ALL) {
+            if view == SpecialView::Logbook && self.navigator_lists(view) {
+                *count = self
+                    .unfolded_rows(Location::Outline(None), true)
+                    .iter()
+                    .filter(|row| row.kind == BlockKind::Task && self.lists(view, row))
+                    .count();
             }
         }
         counts
@@ -557,14 +579,16 @@ impl State {
     }
 
     /// The project entries of `rows`, each nested under the closest project above it, without
-    /// the projects inside folded entries or the block `apart` with what it holds.
+    /// the projects inside folded entries or the block `apart` with what it holds, and how many
+    /// projects there are without `apart`'s, folded ones too.
     fn projects(
         &self,
         rows: &Rows,
         apart: Option<ItemId>,
         folds: &HashSet<ItemId>,
-    ) -> Vec<NavigatorEntry> {
+    ) -> (Vec<NavigatorEntry>, usize) {
         let mut out = Vec::new();
+        let mut count = 0;
         // The projects above the current row.
         let mut above: Vec<Above> = Vec::new();
         // How many open tasks (D-67) the rows so far hold: tasks neither done nor inside a done
@@ -590,6 +614,7 @@ impl State {
             if row.kind != BlockKind::Project {
                 continue;
             }
+            count += 1;
             let parent = above.last().copied();
             if let Some(Above {
                 entry: Some(entry),
@@ -625,7 +650,7 @@ impl State {
         while !above.is_empty() {
             end_project(&mut above, &mut out, open);
         }
-        out
+        (out, count)
     }
 }
 
@@ -978,7 +1003,7 @@ Home:
             view(state)
                 .entries
                 .iter()
-                .map(NavigatorEntry::open_tasks)
+                .map(NavigatorEntry::count)
                 .collect()
         };
         assert_eq!(
@@ -1016,14 +1041,14 @@ Home:
 	- f
 ",
         );
-        let today = |state: &State| view(state).entries[0].open_tasks();
+        let today = |state: &State| view(state).entries[0].count();
         assert_eq!(listed(&state)[0], "today");
         assert_eq!(today(&state), 0);
     }
 
-    // D-67, D-80
+    // D-67, D-80, D-143
     #[test]
-    fn each_view_counts_the_open_tasks_it_lists() {
+    fn each_view_counts_the_open_tasks_it_lists_and_the_logbook_its_tasks() {
         let mut state = State::new(
             format::parse(
                 "Home:\n\t- a @due(2026-10-04) @red\n\t- b @due(2026-10-05) @star\n\
@@ -1048,7 +1073,7 @@ Home:
                 .entries
                 .iter()
                 .filter_map(|entry| match entry {
-                    NavigatorEntry::View { open_tasks, .. } => Some(*open_tasks),
+                    NavigatorEntry::View { count, .. } => Some(*count),
                     _ => None,
                 })
                 .collect();
@@ -1056,12 +1081,66 @@ Home:
                 .into_iter()
                 .map(|view| {
                     let rows = state.view_rows(&every, view);
-                    rows.iter().filter(|row| row.open_task()).count()
+                    rows.iter()
+                        .filter(|row| {
+                            if view == SpecialView::Logbook {
+                                row.kind == BlockKind::Task
+                            } else {
+                                row.open_task()
+                            }
+                        })
+                        .count()
                 })
                 .collect();
             assert_eq!(counts, listed, "show_done {show_done}");
-            assert_eq!(counts, [2, 2, 1, 1, 0, 1, 2], "show_done {show_done}");
+            assert_eq!(
+                counts,
+                [2, 2, 1, 1, 1, 1, 2],
+                "show_done {show_done}: the Logbook counts done d, not project Done"
+            );
         }
+        state.update(Message::Tick {
+            now: std::time::Duration::from_secs(1),
+            today: Date::constant(2026, 10, 10),
+        });
+        assert_eq!(
+            view(&state).entries[4],
+            NavigatorEntry::View {
+                view: SpecialView::Logbook,
+                count: 0
+            },
+            "d's day has left the Logbook"
+        );
+    }
+
+    // D-143
+    #[test]
+    fn the_projects_heading_counts_every_project_of_the_tree() {
+        let mut state = open(OUTLINE);
+        assert_eq!(
+            view(&state).projects,
+            5,
+            "at any depth, none inside a special node"
+        );
+        state.update(Message::ToggleNavigator);
+        input(
+            &mut state,
+            &[NavigatorInput::Focus(3), NavigatorInput::Collapse],
+        );
+        assert_eq!(listed(&state).len(), 5, "Work folded");
+        assert_eq!(view(&state).projects, 5, "folded ones too");
+        typed(&mut state, "old");
+        assert_eq!(view(&state).projects, 5, "whatever the filter");
+        assert_eq!(view(&open(INBOXED)).projects, 3, "none in the inbox");
+        let mut state = open(
+            "A:
+B: @done
+	C:",
+        );
+        assert_eq!(view(&state).projects, 3);
+        state.update(Message::ToggleShowDone);
+        assert_eq!(view(&state).projects, 1, "nor hidden done ones");
+        assert_eq!(view(&open("- task")).projects, 0);
     }
 
     fn typed(state: &mut State, text: &str) {
