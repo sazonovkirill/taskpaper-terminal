@@ -66,6 +66,7 @@ COMMAND_TOPICS = {
     "open_settings": "settings", "animations_full": "animation", "animations_reduced": "animation",
     "animations_off": "animation", "start_weather_animation": "animation",
     "shortcuts": "modes", "scroll_shortcuts_down": "modes", "scroll_shortcuts_up": "modes",
+    "keymap": "modes",
     "save_as": "files", "quit": "files",
     "narrow_pane": "panes", "widen_pane": "panes",
 }
@@ -140,6 +141,7 @@ CONTEXTS = {
         "SaveAs::Accept": "Save there", "SaveAs::Cancel": "Cancel",
         "SaveAs::Complete": "Complete the folder being typed",
     }),
+    "CLOSE_KEYMAP": ("Keymap dialog", "modes", {"": "Close the Keymap dialog"}),
     "PROMPT": ("Conflict prompt", "files", {
         "|_|PromptKey::Send(Message::Quit)": "Quit",
         "|_|PromptKey::Send(Message::KeepMine)": "Keep mine",
@@ -587,7 +589,7 @@ KEY_NAMES = {"Esc": "esc", "Enter": "enter", "Tab": "tab", "BackTab": "tab", "Ba
 
 def key_macro(text):
     """A `key!(...)` of ui/keymap.rs in the config notation."""
-    m = re.fullmatch(r"key!\(\s*((?:(?:ctrl|alt|shift)\s+)*)('(?:\\.|[^\\'])'|\w+)\s*\)", text.strip())
+    m = re.fullmatch(r"key!\(\s*((?:(?:ctrl|alt|shift)\s+)*)('(?:\\.|[^\\'])'|F\s+\d+|\w+)\s*\)", text.strip())
     if not m:
         raise SourceError(f"cannot read the key `{text}`")
     mods = m.group(1).split()
@@ -595,6 +597,8 @@ def key_macro(text):
     if name.startswith("'"):
         name = unescape(name)
         name = "space" if name == " " else name
+    elif re.fullmatch(r"F\s+\d+", name):
+        name = "f" + name.split()[1]
     elif name in KEY_NAMES:
         name = KEY_NAMES[name]
         if m.group(2) == "BackTab" and "shift" not in mods:
@@ -682,7 +686,7 @@ def build_keys(sources):
     contexts = []
     for table, (title, topic, labels) in CONTEXTS.items():
         body = const_body(keymap_src, table)
-        if table == "OPEN_IN_NEW_PANE":
+        if table in ("OPEN_IN_NEW_PANE", "CLOSE_KEYMAP"):
             pairs = [(k, "") for k in split_top(body, ",")]
         else:
             pairs = [(key, norm(action)) for key, action in tuples(body)]

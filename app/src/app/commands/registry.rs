@@ -410,6 +410,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
+    entry!(Command::ShowKeymap, Mode::Navigate, &["g ?", "f1"]),
     entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+g", "|"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+p", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
@@ -737,6 +738,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::GoToSymbol,
             Command::GoToProject,
             Command::GoToCommand,
+            Command::ShowKeymap,
             Command::OpenSettings,
             Command::ContextMenu,
             Command::Pane(PaneChange::Open),
@@ -772,6 +774,32 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
     ),
     (Mode::Edit, Group::View, &[Command::Quit]),
 ];
+
+/// What the Keymap dialog lists of `mode` (D-140): every command of the mode in the registry,
+/// bound or not, under the groups of the shortcuts panel, in their order. A command the panel
+/// lists is in its group; any other is in the group of the command before it in the registry,
+/// which keeps the order of [keybindings.md], as the site's cheat sheet groups them.
+///
+/// [keybindings.md]: ../../../../docs/specs/keybindings.md
+#[must_use]
+pub fn keymap(mode: Mode) -> Vec<(Group, Vec<&'static Entry>)> {
+    let mut groups: Vec<(Group, Vec<&'static Entry>)> = SHORTCUTS
+        .iter()
+        .filter(|(listed, ..)| *listed == mode)
+        .map(|&(_, group, _)| (group, Vec::new()))
+        .collect();
+    let mut current = None;
+    for entry in REGISTRY.iter().filter(|entry| entry.mode == mode) {
+        let listed = SHORTCUTS
+            .iter()
+            .find(|(listed, _, commands)| *listed == mode && commands.contains(&entry.command));
+        current = listed.map(|&(_, group, _)| group).or(current);
+        if let Some((_, entries)) = groups.iter_mut().find(|(group, _)| Some(*group) == current) {
+            entries.push(entry);
+        }
+    }
+    groups
+}
 
 /// What the shortcuts panel lists in `mode`: each group with the registry entries of its
 /// commands, which hold their keys (FR-KEY-04).
@@ -868,7 +896,7 @@ mod tests {
                 ("Selection", 3),
                 ("Structure", 9),
                 ("Block Metadata", 8),
-                ("View and Panels", 11),
+                ("View and Panels", 12),
             ]
         );
         assert_eq!(
@@ -882,7 +910,88 @@ mod tests {
         assert_eq!(zoom[2].keys, ["ctrl+'", "g h"], "Go Home");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
         assert_eq!(view[2].keys, ["ctrl+g", "|"], "Open Navigator");
-        assert_eq!(view[10].keys, ["ctrl+q"]);
+        assert_eq!(view[6].keys, ["g ?", "f1"], "Keymap");
+        assert_eq!(view[11].keys, ["ctrl+q"]);
+    }
+
+    // FR-KEY-07, D-140
+    #[test]
+    fn the_keymap_lists_every_command_of_a_mode_once_in_the_groups_of_the_shortcuts_panel() {
+        for mode in [Mode::Navigate, Mode::Edit] {
+            let groups = keymap(mode);
+            let order = |groups: Vec<(Group, Vec<&Entry>)>| -> Vec<Group> {
+                groups.into_iter().map(|(group, _)| group).collect()
+            };
+            assert_eq!(order(keymap(mode)), order(shortcuts(mode)), "{mode:?}");
+            let listed: Vec<_> = groups.iter().flat_map(|(_, entries)| entries).collect();
+            let registered: Vec<_> = REGISTRY.iter().filter(|entry| entry.mode == mode).collect();
+            assert_eq!(listed.len(), registered.len(), "{mode:?}");
+            assert!(
+                registered.iter().all(|entry| listed.contains(&entry)),
+                "{mode:?}"
+            );
+            for (group, entries) in shortcuts(mode) {
+                let (_, all) = groups.iter().find(|(of, _)| *of == group).unwrap();
+                assert!(
+                    entries.iter().all(|entry| all.contains(entry)),
+                    "{group:?} keeps the panel's commands"
+                );
+            }
+        }
+    }
+
+    // FR-KEY-07, D-140
+    #[test]
+    fn the_keymap_puts_a_command_the_panel_leaves_out_in_the_group_of_the_one_before_it() {
+        let names = |mode, at: usize| -> (&str, Vec<String>) {
+            let (group, entries) = &keymap(mode)[at];
+            (
+                group.name(),
+                entries
+                    .iter()
+                    .map(|entry| entry.command.name().into_owned())
+                    .collect(),
+            )
+        };
+        let (group, moving) = names(Mode::Navigate, 0);
+        assert_eq!(group, "Moving");
+        assert_eq!(
+            moving[..6],
+            [
+                "Next Block",
+                "Previous Block",
+                "Collapse",
+                "Expand",
+                "Next Sibling",
+                "Previous Sibling"
+            ],
+            "in the order of the registry"
+        );
+        assert!(
+            !moving.contains(&"Quit".to_owned()),
+            "Quit is in its own group"
+        );
+        let (group, folding) = names(Mode::Navigate, 1);
+        assert_eq!(group, "Folding");
+        assert_eq!(
+            folding,
+            [
+                "Toggle Fold",
+                "Toggle Subtree Fold",
+                "Expand One Level",
+                "Collapse One Level",
+                "Expand All",
+                "Collapse All"
+            ]
+        );
+        let (group, view) = names(Mode::Navigate, 7);
+        assert_eq!(group, "View and Panels");
+        assert_eq!(view[0], "Quit", "the first command of the registry");
+        assert!(view.contains(&"Keymap".to_owned()));
+        assert!(view.contains(&"Save As".to_owned()));
+        let (group, editing) = names(Mode::Edit, 0);
+        assert_eq!(group, "Editing");
+        assert!(editing.contains(&"Project".to_owned()), "a retype");
     }
 
     // FR-UI-01, FR-KEY-06, keybindings.md §4

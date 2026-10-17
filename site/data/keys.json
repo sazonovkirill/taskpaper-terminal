@@ -2901,6 +2901,41 @@
    ]
   },
   {
+   "id": "navigate-keymap",
+   "name": "Keymap",
+   "config": "keymap",
+   "mode": "navigate",
+   "group": "View and Panels",
+   "topic": "modes",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "g?",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "?"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "F1",
+     "presses": [
+      [
+       "F1"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
    "id": "navigate-open-navigator",
    "name": "Open Navigator",
    "config": "open_navigator",
@@ -5765,6 +5800,49 @@
    ]
   },
   {
+   "id": "keys-close-keymap",
+   "table": "CLOSE_KEYMAP",
+   "title": "Keymap dialog",
+   "topic": "modes",
+   "rows": [
+    {
+     "label": "Close the Keymap dialog",
+     "keys": [
+      {
+       "label": "Esc",
+       "presses": [
+        [
+         "Esc"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "q",
+       "presses": [
+        [
+         "q"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "F1",
+       "presses": [
+        [
+         "F1"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": "keys-prompt",
    "table": "PROMPT",
    "title": "Conflict prompt",
@@ -8030,6 +8108,36 @@
         "presses": [
          [
           "("
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Keymap",
+      "panel": true,
+      "keys": [
+       {
+        "label": "g?",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "?"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "F1",
+        "presses": [
+         [
+          "F1"
          ]
         ],
         "kitty": false,

@@ -42,6 +42,7 @@ use crate::{
 };
 
 mod attachments;
+mod keymap;
 mod navigator;
 mod node_editor;
 mod quick_add;
@@ -49,6 +50,7 @@ mod save_as;
 mod settings;
 
 pub use attachments::AttachmentsPanel;
+pub use keymap::{KeymapDialog, SheetGroup};
 pub use navigator::NavigatorPanel;
 pub use node_editor::NodeEditorWindow;
 pub use quick_add::QuickAddPanel;

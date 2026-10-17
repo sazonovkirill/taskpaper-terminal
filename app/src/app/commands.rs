@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use jiff::civil::Date;
 
 pub(super) use node::{Focused, NodeCommand, context_commands, node_commands};
-pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, shortcuts};
+pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, keymap, shortcuts};
 
 use super::{
     AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
@@ -90,6 +90,9 @@ pub enum Command {
     ScrollShortcutsDown,
     /// Scroll the shortcuts panel up a page, which the frontend carries out.
     ScrollShortcutsUp,
+    /// Open the Keymap dialog of every binding, which the frontend shows, since the bindings it
+    /// lists are the frontend's (D-140).
+    ShowKeymap,
     /// Zoom into the focused block.
     ZoomIn,
     /// Zoom out to the parent.
@@ -274,6 +277,7 @@ impl Command {
             Self::ToggleShortcuts => "Shortcuts".into(),
             Self::ScrollShortcutsDown => "Scroll Shortcuts Down".into(),
             Self::ScrollShortcutsUp => "Scroll Shortcuts Up".into(),
+            Self::ShowKeymap => "Keymap".into(),
             Self::ZoomIn => "Zoom In".into(),
             Self::ZoomOut => "Zoom Out".into(),
             Self::GoHome => "Go Home".into(),
@@ -341,8 +345,8 @@ impl Command {
     /// [`Command::Retype`], which changes an edit session rather than sending a message, for
     /// [`Command::ToggleWrap`], [`Command::SetAnimations`], [`Command::StartWeather`],
     /// [`Command::NarrowPane`],
-    /// [`Command::WidenPane`] and the scrolling of the shortcuts panel, which the frontend carries
-    /// out, and for [`Command::GoToCommand`],
+    /// [`Command::WidenPane`], the scrolling of the shortcuts panel and [`Command::ShowKeymap`],
+    /// which the frontend carries out, and for [`Command::GoToCommand`],
     /// [`Command::ChooseTheme`] and [`Command::OpenSettings`], whose messages carry the bindings,
     /// the themes and the settings the frontend shows.
     #[must_use]
@@ -405,7 +409,8 @@ impl Command {
             | Self::NarrowPane
             | Self::WidenPane
             | Self::ScrollShortcutsDown
-            | Self::ScrollShortcutsUp => return None,
+            | Self::ScrollShortcutsUp
+            | Self::ShowKeymap => return None,
             Self::EditNode => Message::NodeEditor(NodeInput::Open),
             Self::OpenAttachments => Message::Attachments(AttachmentsInput::Open),
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
@@ -610,6 +615,7 @@ mod tests {
             (Command::ToggleShortcuts, "Shortcuts"),
             (Command::ScrollShortcutsDown, "Scroll Shortcuts Down"),
             (Command::ScrollShortcutsUp, "Scroll Shortcuts Up"),
+            (Command::ShowKeymap, "Keymap"),
             (Command::ContextMenu, "Context Menu"),
             (Command::Navigator(NavigatorInput::Next), "Next Entry"),
             (
@@ -757,6 +763,7 @@ mod tests {
         assert_eq!(Command::WidenPane.message(&INPUTS), None);
         assert_eq!(Command::ScrollShortcutsDown.message(&INPUTS), None);
         assert_eq!(Command::ScrollShortcutsUp.message(&INPUTS), None);
+        assert_eq!(Command::ShowKeymap.message(&INPUTS), None);
     }
 
     #[test]
@@ -775,6 +782,7 @@ mod tests {
                     | Command::WidenPane
                     | Command::ScrollShortcutsDown
                     | Command::ScrollShortcutsUp
+                    | Command::ShowKeymap
             );
             assert_eq!(entry.command.message(&INPUTS).is_none(), none, "{entry:?}");
         }

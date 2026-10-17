@@ -47,8 +47,8 @@ use theme::{BuiltIn, Icon, IconSet, IconSetting, TerminalColors, Theme};
 use weather::{Season, Weather};
 use widgets::{
     AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
-    NavigatorPanel, NodeEditorWindow, OutlineView, Popup, QuickAddPanel, SaveAsPrompt,
-    SettingsWindow, ShortcutsPanel,
+    KeymapDialog, NavigatorPanel, NodeEditorWindow, OutlineView, Popup, QuickAddPanel,
+    SaveAsPrompt, SettingsWindow, ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -137,6 +137,10 @@ pub struct Tui {
     shortcuts_mode: Mode,
     /// How many lines a page of the shortcuts panel was at the last draw, which its keys scroll.
     shortcuts_page: usize,
+    /// The first line of the Keymap dialog's sheet on screen while the dialog is open (D-140).
+    keymap_scroll: Option<usize>,
+    /// How many lines a page of the Keymap dialog was at the last draw, which its keys scroll.
+    keymap_page: usize,
     /// The first line of the attachments panel's content on screen, back at the top when the
     /// panel opens (D-107).
     attachments_scroll: usize,
@@ -217,6 +221,8 @@ impl Tui {
             shortcuts_scroll: 0,
             shortcuts_mode: Mode::Navigate,
             shortcuts_page: 0,
+            keymap_scroll: None,
+            keymap_page: 0,
             attachments_scroll: 0,
             attachments_selected: None,
             attachments_current: None,
@@ -557,6 +563,18 @@ impl Tui {
                 self.shortcuts_scroll = self.shortcuts_scroll.saturating_sub(self.shortcuts_page);
             }
             KeyAction::ScrollAttachments(by) => self.scroll_attachments(by, now),
+            KeyAction::ShowKeymap => self.keymap_scroll = Some(0),
+            KeyAction::CloseKeymap => self.keymap_scroll = None,
+            KeyAction::ScrollKeymap(by) => {
+                self.keymap_scroll = self.keymap_scroll.map(|scroll| match by {
+                    ScrollBy::Up => scroll.saturating_sub(1),
+                    ScrollBy::Down => scroll.saturating_add(1),
+                    ScrollBy::PageUp => scroll.saturating_sub(self.keymap_page),
+                    ScrollBy::PageDown => scroll.saturating_add(self.keymap_page),
+                    ScrollBy::Top => 0,
+                    ScrollBy::Bottom => usize::MAX,
+                });
+            }
             KeyAction::GoToCommand => {
                 let bindings = REGISTRY
                     .iter()
@@ -812,6 +830,7 @@ impl Tui {
         let date = self.draw_date_prompt(frame, panel);
         let quick_add = self.draw_quick_add(frame, panel, &theme);
         self.field_scroll = quick_add.or(date).or(typed).unwrap_or_default();
+        self.draw_keymap(frame, screen, &theme);
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
         }
@@ -977,6 +996,21 @@ impl Tui {
             ConflictPrompt::new(diff.as_deref(), self.diff_scroll, unsaved, &theme),
             area,
         );
+    }
+
+    /// The Keymap dialog over the `screen`, while it is open, its sheet scrolled no further than
+    /// its last line (D-140).
+    fn draw_keymap(&mut self, frame: &mut Frame, screen: Rect, theme: &Theme) {
+        let Some(scroll) = self.keymap_scroll else {
+            return;
+        };
+        let sheet = self.keymap.sheet();
+        let dialog = KeymapDialog::new(&sheet, theme);
+        let (last, page) = dialog.scroll_range(screen);
+        let scroll = scroll.min(last);
+        self.keymap_scroll = Some(scroll);
+        self.keymap_page = page;
+        frame.render_widget(dialog.scrolled(scroll), screen);
     }
 
     /// The shortcuts panel in the secondary sidebar's `area`, while it is open and has room
@@ -1505,7 +1539,9 @@ impl Tui {
 
     /// The popup over the outline that takes the keys of navigate mode, if one is open.
     fn overlay(&self) -> Option<Overlay> {
-        if self.state.date_prompt().is_some() {
+        if self.keymap_scroll.is_some() {
+            Some(Overlay::Keymap)
+        } else if self.state.date_prompt().is_some() {
             Some(Overlay::DatePrompt)
         } else if self.state.quick_add().is_some() {
             Some(Overlay::QuickAdd)

@@ -131,6 +131,12 @@ tpt uses the system clipboard when a display server is reachable. Otherwise, as 
 
 {{ keys(topic="modes", mode="navigate", group="View and Panels") }}
 
+## The Keymap
+
+`g?` or `F1` opens the Keymap: every key tpt has, on one sheet over most of the screen, grouped like a cheat sheet. It lists navigate mode, edit mode, the Navigator, pickers, the date prompt, Quick Add and the Edit Node dialog, with the keys you rebound as you set them. When the sheet is taller than the screen, `j`/`k`, `Ctrl+D`/`Ctrl+U`, `gg` and `G` scroll it as they move in the outline.
+
+{{ context_keys(table="CLOSE_KEYMAP") }}
+
 ## Mouse
 
 The mouse is optional; everything has a key.

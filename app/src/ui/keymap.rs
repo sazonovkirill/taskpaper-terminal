@@ -7,12 +7,12 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use jiff::civil::DateTime;
 use thiserror::Error;
 
-use super::widgets::ShortcutGroup;
+use super::widgets::{SheetGroup, ShortcutGroup};
 use crate::app::{
     Animations, AttachmentsInput, Command, DateInput, Inputs, Menu, MenuInput, Message, Mode,
     Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput, SaveAs, SettingsInput,
     TextEdit,
-    commands::{Group, NAVIGATOR, REGISTRY},
+    commands::{self, Entry, Group, NAVIGATOR, REGISTRY},
 };
 
 /// How long a started multi-key sequence waits for its next key ([keybindings.md §1]).
@@ -85,6 +85,12 @@ pub enum KeyAction {
     /// Scrolls the attachments panel or moves its selection, as scrolling is the frontend's (D-55,
     /// D-109).
     ScrollAttachments(ScrollBy),
+    /// Opens the Keymap dialog over the frontend's bindings (D-140).
+    ShowKeymap,
+    /// Scrolls the open Keymap dialog, as scrolling is the frontend's.
+    ScrollKeymap(ScrollBy),
+    /// Closes the Keymap dialog.
+    CloseKeymap,
 }
 
 /// How far a key scrolls.
@@ -143,6 +149,8 @@ pub enum Overlay {
     AttachmentsEditor,
     /// The attachments panel while a comment is typed (FR-ATT-05).
     AttachmentsComment,
+    /// The Keymap dialog (D-140).
+    Keymap,
 }
 
 impl Overlay {
@@ -169,7 +177,8 @@ impl Overlay {
             | Self::Settings
             | Self::SettingsText
             | Self::SettingsPicker
-            | Self::SaveAs => None,
+            | Self::SaveAs
+            | Self::Keymap => None,
         }
     }
 
@@ -189,9 +198,12 @@ impl Overlay {
 }
 
 /// A [`Key`]: `key!('j')` for a character, `key!(ctrl 'q')` with `Ctrl`, `key!(Down)` for a
-/// named key, `key!(ctrl Down)` for a named key with `Ctrl`, and likewise with `alt`, `shift`,
-/// `alt shift` and `ctrl shift`.
+/// named key, `key!(F 1)` for a function key, `key!(ctrl Down)` for a named key with `Ctrl`, and
+/// likewise with `alt`, `shift`, `alt shift` and `ctrl shift`.
 macro_rules! key {
+    (F $n:literal) => {
+        (KeyModifiers::NONE, KeyCode::F($n))
+    };
     (ctrl $c:literal) => {
         (KeyModifiers::CONTROL, KeyCode::Char($c))
     };
@@ -422,28 +434,144 @@ const DATE_PROMPT: &[(Key, DateInput)] = &[
     (key!(Esc), DateInput::Cancel),
 ];
 
+/// What the shortcuts panel lists while `menu` has the keys: the keys of pickers with what each
+/// does, opening the choice in a new pane where `menu` is Go to Symbol, then quitting.
+fn picker_shortcuts(menu: Menu) -> ShortcutGroup {
+    let mut entries: Vec<_> = [
+        MenuInput::Next,
+        MenuInput::Previous,
+        MenuInput::Choose,
+        MenuInput::Dismiss,
+        MenuInput::Erase,
+    ]
+    .into_iter()
+    .map(|input| {
+        let keys = MENU
+            .iter()
+            .filter(|&&(_, bound)| bound == input)
+            .map(|&(key, _)| key);
+        (input.name(), keys_label(keys))
+    })
+    .collect();
+    if menu == Menu::GoToSymbol {
+        entries.insert(
+            3,
+            (
+                Command::Pane(PaneChange::Open).name(),
+                keys_label(OPEN_IN_NEW_PANE),
+            ),
+        );
+    }
+    entries.push((Command::Quit.name(), key_label(key!(ctrl 'q'))));
+    (Group::Picker, entries)
+}
+
+/// Each of `names` with how the keys `table` binds to its input read.
+fn listed<I: PartialEq>(
+    table: &[(Key, I)],
+    names: &[(I, &'static str)],
+) -> Vec<(Cow<'static, str>, String)> {
+    names
+        .iter()
+        .map(|(input, name)| {
+            let keys = table
+                .iter()
+                .filter(|(_, bound)| bound == input)
+                .map(|&(key, _)| key);
+            (Cow::from(*name), keys_label(keys))
+        })
+        .collect()
+}
+
+/// What the Keymap dialog lists of the windows and prompts with keys of their own that the
+/// shortcuts panel does not list: the attachments panel, the settings window, Save As, the
+/// conflict prompt and the Keymap dialog itself, which says that `Ctrl+Q` quits in any window
+/// (D-140).
+fn window_sheet() -> Vec<SheetGroup> {
+    let scrolling = |top: &'static str, bottom: &'static str| {
+        let mut entries = listed(
+            SCROLL,
+            &[
+                (ScrollBy::Down, "Scroll Down"),
+                (ScrollBy::Up, "Scroll Up"),
+                (ScrollBy::PageDown, "Page Down"),
+                (ScrollBy::PageUp, "Page Up"),
+                (ScrollBy::Top, top),
+                (ScrollBy::Bottom, bottom),
+            ],
+        );
+        for (name, keys) in &mut entries {
+            if name == top {
+                *keys = format!("gg, {keys}");
+            }
+        }
+        entries
+    };
+    let mut attachments = listed(
+        ATTACHMENTS,
+        &[
+            (AttachmentsInput::Edit, "Edit Note or Comment"),
+            (AttachmentsInput::AddComment, "Add Comment"),
+            (AttachmentsInput::DeleteComment, "Delete Comment"),
+            (AttachmentsInput::Close, "Close"),
+        ],
+    );
+    attachments.extend(scrolling("First Item", "Last Item"));
+    let settings = listed(
+        SETTINGS,
+        &[
+            (SettingsInput::Next, "Next"),
+            (SettingsInput::Previous, "Previous"),
+            (SettingsInput::SwitchColumn, "Switch Column"),
+            (SettingsInput::Change, "Change"),
+            (SettingsInput::Cycle(false), "Previous Choice"),
+            (SettingsInput::Cycle(true), "Next Choice"),
+            (SettingsInput::Reset, "Reset"),
+            (SettingsInput::Filter, "Filter"),
+            (SettingsInput::Close, "Close"),
+        ],
+    );
+    let mut save_as = listed(
+        SAVE_AS,
+        &[
+            (SaveAs::Accept, "Save"),
+            (SaveAs::Cancel, "Cancel"),
+            (SaveAs::Complete, "Complete Folder"),
+        ],
+    );
+    save_as.push(("Paste".into(), key_label(key!(ctrl 'v'))));
+    // A page of two lines tells the page keys from the line keys.
+    let prompt: Vec<_> = PROMPT.iter().map(|&(key, act)| (key, act(2))).collect();
+    let conflict = listed(
+        &prompt,
+        &[
+            (PromptKey::Send(Message::KeepMine), "Keep Mine"),
+            (PromptKey::Send(Message::TakeTheirs), "Take Theirs"),
+            (PromptKey::Send(Message::ToggleDiff), "Show/Hide Diff"),
+            (PromptKey::Scroll(1), "Scroll Down"),
+            (PromptKey::Scroll(-1), "Scroll Up"),
+            (PromptKey::Scroll(2), "Page Down"),
+            (PromptKey::Scroll(-2), "Page Up"),
+        ],
+    );
+    let mut keymap = vec![("Close".into(), format!("{}, g?", keys_label(CLOSE_KEYMAP)))];
+    keymap.extend(scrolling("Top", "Bottom"));
+    keymap.push(("Quit, in Any Window".into(), key_label(key!(ctrl 'q'))));
+    vec![
+        ("Attachments Panel".into(), attachments),
+        ("Settings Window".into(), settings),
+        ("Save As".into(), save_as),
+        ("Conflict Prompt".into(), conflict),
+        ("Keymap".into(), keymap),
+    ]
+}
+
 /// What the shortcuts panel lists where `overlay` has the keys, if it is the date prompt, Quick
 /// Add or the Edit Node dialog: its bindings with what each does, then pasting and quitting,
 /// since the outline's keys type text there ([ui.md §4]).
 ///
 /// [ui.md §4]: ../../../docs/specs/ui.md#4-shortcuts-panel-fr-key-04
 fn dialog_shortcuts(overlay: Overlay) -> Option<ShortcutGroup> {
-    /// Each of `names` with the keys `table` binds to its input.
-    fn listed<I: Copy + PartialEq>(
-        table: &[(Key, I)],
-        names: &[(I, &'static str)],
-    ) -> Vec<(Cow<'static, str>, String)> {
-        names
-            .iter()
-            .map(|&(input, name)| {
-                let keys = table
-                    .iter()
-                    .filter(|&&(_, bound)| bound == input)
-                    .map(|&(key, _)| key);
-                (name.into(), keys_label(keys))
-            })
-            .collect()
-    }
     let (group, mut entries) = match overlay {
         Overlay::DatePrompt => (
             Group::DatePrompt,
@@ -587,6 +715,24 @@ const SCROLL: &[(Key, ScrollBy)] = &[
     (key!(End), ScrollBy::Bottom),
     (key!('G'), ScrollBy::Bottom),
 ];
+
+/// The keys that close the Keymap dialog besides `g?`, which opens it (D-140).
+const CLOSE_KEYMAP: [Key; 3] = [key!(Esc), key!('q'), key!(F 1)];
+
+/// The Keymap dialog's action for `key`: `Ctrl+Q` quits, else closing or scrolling it, if
+/// `key` does either (D-140).
+fn keymap_action(key: Key) -> Option<KeyAction> {
+    if key == key!(ctrl 'q') {
+        return Some(KeyAction::Send(Message::Quit));
+    }
+    if CLOSE_KEYMAP.contains(&key) {
+        return Some(KeyAction::CloseKeymap);
+    }
+    SCROLL
+        .iter()
+        .find(|(bound, _)| *bound == key)
+        .map(|&(_, scroll)| KeyAction::ScrollKeymap(scroll))
+}
 
 /// The attachments panel's action for `key`: `Ctrl+Q` quits, else its binding or scroll, if any.
 fn attachments_action(key: Key) -> Option<KeyAction> {
@@ -856,6 +1002,7 @@ pub fn action(command: Command, context: &Context) -> Option<KeyAction> {
         Command::WidenPane => Some(KeyAction::WidenPane),
         Command::ScrollShortcutsDown => Some(KeyAction::ScrollShortcutsDown),
         Command::ScrollShortcutsUp => Some(KeyAction::ScrollShortcutsUp),
+        Command::ShowKeymap => Some(KeyAction::ShowKeymap),
         command => command.message(&context.inputs()).map(KeyAction::Send),
     }
 }
@@ -1080,41 +1227,58 @@ impl Keymap {
             let Some(menu) = overlay.menu() else {
                 return dialog_shortcuts(overlay);
             };
-            let mut entries: Vec<_> = [
-                MenuInput::Next,
-                MenuInput::Previous,
-                MenuInput::Choose,
-                MenuInput::Dismiss,
-                MenuInput::Erase,
-            ]
-            .into_iter()
-            .map(|input| {
-                let keys = MENU
-                    .iter()
-                    .filter(|&&(_, bound)| bound == input)
-                    .map(|&(key, _)| key);
-                (input.name(), keys_label(keys))
-            })
-            .collect();
-            if menu == Menu::GoToSymbol {
-                entries.insert(
-                    3,
-                    (
-                        Command::Pane(PaneChange::Open).name(),
-                        keys_label(OPEN_IN_NEW_PANE),
-                    ),
-                );
-            }
-            entries.push((Command::Quit.name(), key_label(key!(ctrl 'q'))));
-            return Some((Group::Picker, entries));
+            return Some(picker_shortcuts(menu));
         }
-        context.navigator.then(|| {
-            let entries = NAVIGATOR
-                .iter()
-                .map(|&(command, _)| (command.name(), self.bindings(command, true)))
-                .collect();
-            (Group::Navigator, entries)
-        })
+        context.navigator.then(|| self.navigator_shortcuts())
+    }
+
+    /// The keys of the open Navigator, each intent's name with how its keys read.
+    fn navigator_shortcuts(&self) -> ShortcutGroup {
+        let entries = NAVIGATOR
+            .iter()
+            .map(|&(command, _)| (command.name(), self.bindings(command, true)))
+            .collect();
+        (Group::Navigator, entries)
+    }
+
+    /// What the Keymap dialog lists (D-140): every bound command of navigate mode under the
+    /// groups of the shortcuts panel, edit mode's together, then the keys of the Navigator, of
+    /// pickers, of the dialogs the shortcuts panel lists and of the other windows and prompts with
+    /// keys of their own, each command's name with how its keys read here, so with the config
+    /// file's bindings.
+    #[must_use]
+    pub fn sheet(&self) -> Vec<SheetGroup> {
+        let bound = |mode, entries: Vec<&Entry>| -> Vec<(Cow<'static, str>, String)> {
+            entries
+                .into_iter()
+                .map(|entry| (entry.command.name(), self.labels(entry.command, mode)))
+                .filter(|(_, keys)| !keys.is_empty())
+                .collect()
+        };
+        // `Ctrl+Q` quits in every window, which the Keymap's own group says once.
+        let named = |(group, mut entries): ShortcutGroup| {
+            entries.retain(|(name, _)| *name != Command::Quit.name());
+            (Cow::from(group.name()), entries)
+        };
+        let mut sheet: Vec<SheetGroup> = commands::keymap(Mode::Navigate)
+            .into_iter()
+            .map(|(group, entries)| (group.name().into(), bound(Mode::Navigate, entries)))
+            .collect();
+        let edit = commands::keymap(Mode::Edit)
+            .into_iter()
+            .flat_map(|(_, entries)| entries)
+            .collect();
+        sheet.push(("Edit Mode".into(), bound(Mode::Edit, edit)));
+        sheet.push(named(self.navigator_shortcuts()));
+        sheet.push(named(picker_shortcuts(Menu::GoToSymbol)));
+        sheet.extend(
+            [Overlay::DatePrompt, Overlay::QuickAdd, Overlay::NodeEditor]
+                .into_iter()
+                .filter_map(dialog_shortcuts)
+                .map(named),
+        );
+        sheet.extend(window_sheet());
+        sheet
     }
 
     /// What the navigate-mode binding whose keys are `keys` asks for, if any.
@@ -1214,6 +1378,7 @@ impl Keymap {
                 Overlay::NodeEditor => node_editor_message(pressed),
                 Overlay::NodeEditorFinder => menu_message(pressed, Menu::NodeEditor),
                 Overlay::Attachments => return self.attachments_action(pressed),
+                Overlay::Keymap => return self.keymap_action(pressed),
                 Overlay::AttachmentsEditor => note_editor_message(pressed),
                 Overlay::AttachmentsComment => comment_message(pressed, context.now),
             };
@@ -1266,6 +1431,23 @@ impl Keymap {
             return None;
         }
         attachments_action(pressed)
+    }
+
+    /// What `pressed` does in the Keymap dialog, where `gg` goes to the top as in the outline,
+    /// `g?` closes it as it opened it, and any other key after a lone `g` acts as itself (D-140).
+    fn keymap_action(&mut self, pressed: Key) -> Option<KeyAction> {
+        let pending = mem::take(&mut self.pending);
+        if pending == [key!('g')] {
+            match pressed {
+                key!('g') => return Some(KeyAction::ScrollKeymap(ScrollBy::Top)),
+                key!('?') => return Some(KeyAction::CloseKeymap),
+                _ => {}
+            }
+        } else if pressed == key!('g') {
+            self.pending.push(pressed);
+            return None;
+        }
+        keymap_action(pressed)
     }
 
     /// Whether the key [`Keymap::action_for`] just handled is still to be handled, in the
@@ -1333,7 +1515,10 @@ mod tests {
                     | KeyAction::WidenPane
                     | KeyAction::ScrollShortcutsDown
                     | KeyAction::ScrollShortcutsUp
-                    | KeyAction::ScrollAttachments(_) => None,
+                    | KeyAction::ScrollAttachments(_)
+                    | KeyAction::ShowKeymap
+                    | KeyAction::ScrollKeymap(_)
+                    | KeyAction::CloseKeymap => None,
                 })
         }
     }
@@ -2695,6 +2880,209 @@ mod tests {
             Some(KeyAction::ScrollAttachments(ScrollBy::Down))
         );
         assert_eq!(keymap.pending(), "");
+    }
+
+    // FR-KEY-07, D-140, keybindings.md §4
+    #[test]
+    fn g_question_mark_and_f1_open_the_keymap_and_it_takes_its_keys_and_ignores_others() {
+        let (none, shift, ctrl) = (
+            KeyModifiers::NONE,
+            KeyModifiers::SHIFT,
+            KeyModifiers::CONTROL,
+        );
+        let mut keymap = Keymap::default();
+        assert_eq!(
+            keymap.action_for(&key(KeyCode::Char('g'), none), ms(0), CONTEXT),
+            None
+        );
+        assert_eq!(
+            keymap.action_for(&key(KeyCode::Char('?'), shift), ms(1), CONTEXT),
+            Some(KeyAction::ShowKeymap)
+        );
+        assert_eq!(
+            keymap.action_for(&key(KeyCode::F(1), none), ms(2), CONTEXT),
+            Some(KeyAction::ShowKeymap)
+        );
+        let context = &Context {
+            overlay: Some(Overlay::Keymap),
+            ..*CONTEXT
+        };
+        let action =
+            |code, modifiers| Keymap::default().action_for(&key(code, modifiers), ms(0), context);
+        for (code, modifiers, expected) in [
+            (KeyCode::Esc, none, Some(KeyAction::CloseKeymap)),
+            (KeyCode::Char('q'), none, Some(KeyAction::CloseKeymap)),
+            (KeyCode::F(1), none, Some(KeyAction::CloseKeymap)),
+            (
+                KeyCode::Char('q'),
+                ctrl,
+                Some(KeyAction::Send(Message::Quit)),
+            ),
+            (KeyCode::Char('x'), none, None),
+            (KeyCode::Char('?'), none, None),
+            (KeyCode::Enter, none, None),
+            (KeyCode::F(2), none, None),
+        ] {
+            assert_eq!(action(code, modifiers), expected, "{code:?}");
+        }
+        for (code, modifiers, by) in [
+            (KeyCode::Char('j'), none, ScrollBy::Down),
+            (KeyCode::Down, none, ScrollBy::Down),
+            (KeyCode::Char('k'), none, ScrollBy::Up),
+            (KeyCode::Up, none, ScrollBy::Up),
+            (KeyCode::PageDown, none, ScrollBy::PageDown),
+            (KeyCode::Char('d'), ctrl, ScrollBy::PageDown),
+            (KeyCode::PageUp, none, ScrollBy::PageUp),
+            (KeyCode::Char('u'), ctrl, ScrollBy::PageUp),
+            (KeyCode::Home, none, ScrollBy::Top),
+            (KeyCode::End, none, ScrollBy::Bottom),
+            (KeyCode::Char('G'), shift, ScrollBy::Bottom),
+        ] {
+            assert_eq!(
+                action(code, modifiers),
+                Some(KeyAction::ScrollKeymap(by)),
+                "{code:?} {modifiers:?}"
+            );
+        }
+        let press = |c| key(KeyCode::Char(c), none);
+        let mut keymap = Keymap::default();
+        for (c, expected, pending) in [
+            ('g', None, "g"),
+            ('g', Some(KeyAction::ScrollKeymap(ScrollBy::Top)), ""),
+            ('g', None, "g"),
+            ('?', Some(KeyAction::CloseKeymap), ""),
+            ('g', None, "g"),
+            ('j', Some(KeyAction::ScrollKeymap(ScrollBy::Down)), ""),
+        ] {
+            assert_eq!(
+                keymap.action_for(&press(c), ms(0), context),
+                expected,
+                "{c}"
+            );
+            assert_eq!(keymap.pending(), pending, "{c}");
+        }
+    }
+
+    // FR-KEY-07, D-140
+    #[test]
+    fn the_keymap_lists_every_bound_key_of_both_modes_and_every_window() {
+        let keymap = Keymap::default();
+        let sheet = keymap.sheet();
+        let headings: Vec<_> = sheet.iter().map(|(heading, _)| heading.as_ref()).collect();
+        assert_eq!(
+            headings,
+            [
+                "Moving",
+                "Folding",
+                "Zoom and History",
+                "Editing and Creating",
+                "Selection",
+                "Structure",
+                "Block Metadata",
+                "View and Panels",
+                "Edit Mode",
+                "Navigator",
+                "Pickers and Palettes",
+                "Date Prompt",
+                "Quick Add",
+                "Edit Node",
+                "Attachments Panel",
+                "Settings Window",
+                "Save As",
+                "Conflict Prompt",
+                "Keymap",
+            ]
+        );
+        for mode in [Mode::Navigate, Mode::Edit] {
+            let bound = REGISTRY
+                .iter()
+                .filter(|entry| {
+                    entry.mode == mode && !keymap.labels(entry.command, mode).is_empty()
+                })
+                .count();
+            let listed: usize = commands::keymap(mode)
+                .iter()
+                .flat_map(|(_, entries)| entries)
+                .filter(|entry| !keymap.labels(entry.command, mode).is_empty())
+                .count();
+            assert_eq!(listed, bound, "{mode:?}");
+        }
+        let navigate: usize = sheet[..8].iter().map(|(_, entries)| entries.len()).sum();
+        let edit = sheet[8].1.len();
+        let all_bound = |mode| {
+            REGISTRY
+                .iter()
+                .filter(|entry| entry.mode == mode && !entry.keys.is_empty())
+                .count()
+        };
+        assert_eq!(navigate, all_bound(Mode::Navigate));
+        assert_eq!(edit, all_bound(Mode::Edit));
+        assert!(sheet[7].1.contains(&("Keymap".into(), "g?, F1".to_owned())));
+        let (_, mut navigator) = keymap.popup_shortcuts(IN_NAVIGATOR).unwrap();
+        assert_eq!(navigator.pop(), Some(("Quit".into(), "Ctrl+Q".to_owned())));
+        assert_eq!(
+            sheet[9].1, navigator,
+            "Quit is said once, in the last group"
+        );
+        assert!(
+            sheet[9..18]
+                .iter()
+                .all(|(_, entries)| entries.iter().all(|(_, keys)| keys != "Ctrl+Q"))
+        );
+    }
+
+    // FR-KEY-07, D-140
+    #[test]
+    fn the_keymap_lists_the_windows_with_keys_of_their_own_and_says_once_that_ctrl_q_quits() {
+        let sheet = Keymap::default().sheet();
+        assert_eq!(
+            sheet[18].1.last(),
+            Some(&("Quit, in Any Window".into(), "Ctrl+Q".to_owned()))
+        );
+        assert_eq!(
+            sheet[18].1[0],
+            ("Close".into(), "Esc, q, F1, g?".to_owned())
+        );
+        assert_eq!(
+            sheet[17].1,
+            [
+                ("Keep Mine".into(), "Ctrl+K".to_owned()),
+                ("Take Theirs".into(), "Ctrl+R".to_owned()),
+                ("Show/Hide Diff".into(), "Ctrl+L".to_owned()),
+                ("Scroll Down".into(), "j, ↓".to_owned()),
+                ("Scroll Up".into(), "k, ↑".to_owned()),
+                ("Page Down".into(), "Ctrl+D, PgDn".to_owned()),
+                ("Page Up".into(), "Ctrl+U, PgUp".to_owned())
+            ],
+            "the conflict prompt's keys"
+        );
+        assert_eq!(
+            sheet[14].1[4..],
+            [
+                ("Scroll Down".into(), "j, ↓".to_owned()),
+                ("Scroll Up".into(), "k, ↑".to_owned()),
+                ("Page Down".into(), "PgDn, Ctrl+D".to_owned()),
+                ("Page Up".into(), "PgUp, Ctrl+U".to_owned()),
+                ("First Item".into(), "gg, Home".to_owned()),
+                ("Last Item".into(), "End, G".to_owned()),
+            ],
+            "the attachments panel's keys"
+        );
+        assert_eq!(sheet[15].1.len(), 9, "the settings window's keys");
+        assert_eq!(
+            sheet[16].1,
+            [
+                ("Save".into(), "Enter".to_owned()),
+                ("Cancel".into(), "Esc".to_owned()),
+                ("Complete Folder".into(), "Tab".to_owned()),
+                ("Paste".into(), "Ctrl+V".to_owned()),
+            ]
+        );
+        assert!(sheet[10].1.contains(&(
+            "Open in New Pane".into(),
+            "Alt+Enter, Ctrl+V, Ctrl+T".to_owned()
+        )));
+        assert_eq!(sheet[13].1[0], ("Next Row".into(), "Tab, ↓".to_owned()));
     }
 
     // attachments.md §5, keybindings.md §4, D-42
