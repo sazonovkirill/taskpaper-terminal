@@ -70,7 +70,8 @@ fn the_shortcuts_panel_go_to_command_and_the_context_menu_show_the_config_files_
         "{rows:#?}"
     );
     app.press(KeyCode::Esc, KeyModifiers::NONE);
-    app.type_keys("\\comp");
+    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.type_keys("comp");
     let buffer = app.render().buffer().clone();
     let rows: Vec<String> = (0..60).map(|y| line(&buffer, y)).collect();
     assert!(

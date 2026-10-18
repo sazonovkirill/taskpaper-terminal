@@ -53,6 +53,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 | `gs` | **s**ymbol (= `Ctrl+K`) |
 | `gP` | **P**roject: Go to Symbol over projects only, a list of places, so a capital |
 | `gm` | **m**ove block to… |
+| `g\|` | new pane: the bar is the split it makes (= `Ctrl+W v`) |
 | `gx` | open link (vim's `gx`) |
 | `gc` / `gw` | show **c**ompleted / word **w**rap |
 | `g1`…`g9` | pane N (numbers = places, like `Alt+1` tabs) |
@@ -81,7 +82,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 
 ## 8. Panes: `Ctrl+W` then a vim letter
 
-`v` open this block in a new pane (**v**ertical split) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right, `W`/`w` the same, as vim cycles windows (`Ctrl+Shift+←/→` and `gp`/`gn` too) · `H`/`L` (Shift) move the pane itself left/right, as vim moves a window · `c` or `q` **c**lose / **q**uit the pane · `<`/`>` narrower/wider.
+`v` open this block in a new pane (**v**ertical split; `g|` too) · `s` open this location again (**s**plit) · `h`/`l` or `←`/`→` focus left/right, `W`/`w` the same, as vim cycles windows (`Ctrl+Shift+←/→` and `gp`/`gn` too) · `H`/`L` (Shift) move the pane itself left/right, as vim moves a window · `c` or `q` **c**lose / **q**uit the pane · `<`/`>` narrower/wider.
 
 In the Navigator, Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane: **v**ertical split and **t**ab, as in fzf and Telescope. `Ctrl+T` is there for Windows Terminal, which takes the other two.
 
@@ -93,18 +94,18 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 |---|---|
 | `Ctrl+Enter` done | `x` |
 | `Ctrl+'` home | `gh` |
-| `Ctrl+\` block in new pane | `Ctrl+W v` |
-| Menu key | `\`, `Shift+F10`; in the Navigator, `Ctrl+R` |
+| Menu key | `Ctrl+\`, `Shift+F10` |
 | `Ctrl+I` forward | `L` |
 
 ## 10. Odds and ends
 
 - `'` folds, `"` folds the subtree.
-- `\` is the "right-click": context menu.
+- `Ctrl+\` is the "right-click": context menu, in the Navigator too (`Ctrl+\` reaches the app from any terminal).
+- `\` (or `&`) opens the attachments panel, the note and comments of the block.
 - `?` shortcuts panel; `(`/`)` page it.
 - `Enter` edits; `Esc` clears the selection.
 - `Tab`/`Shift+Tab` indent/outdent, in both modes; `>`/`<` too in navigate mode.
-- The **Navigator** (`Ctrl+G` or `|`, a side bar) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+R` (**r**ight-click, as `\` is outside it), `Shift+F10` or the Menu key opens the context menu, `Esc`, `Ctrl+G` or `|` closes, `Ctrl+Q` quits.
+- The **Navigator** (`Ctrl+G` or `|`, a side bar) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+\`, `Shift+F10` or the Menu key opens the context menu, `Esc`, `Ctrl+G` or `|` closes, `Ctrl+Q` quits.
 - **Edit mode** uses normal text-editor keys, plus `/` command menu, `Ctrl+T` cycle **t**ype, `Ctrl+B` **b**old, `Ctrl+G` inline code (or `` Alt+` ``; `Ctrl+A`/`Ctrl+E` go to the ends of the text as in readline), `↑`/`↓` edit the neighbor block.
 
 ## Where the logic breaks

@@ -23,7 +23,7 @@ The Navigator opens on the entry for where the focused pane is: its view, its zo
 
 **Typing filters it.** Only the entries whose text holds what you typed, ignoring case, stay, with the projects around each matching project so the tree still reads. The filter looks through folds, and shows in the window's bottom border. `Backspace` erases. Closing the window drops the filter.
 
-The Navigator keeps the keys while it is open: keys that are not its own do nothing, so letters go to the filter. That is why its context menu is on `Ctrl+R` and not `\`. `Ctrl+Q` still quits.
+The Navigator keeps the keys while it is open: keys that are not its own do nothing, so letters go to the filter. `Ctrl+Q` still quits.
 
 {{ keys(topic="navigator", mode="navigator") }}
 
@@ -66,7 +66,7 @@ In both, a block can open in a [new pane](@/reference/panes.md) instead:
 
 ## Context menu
 
-`\` or `Shift+F10` (with the kitty protocol also the `Menu` key) opens the **context menu**: every command for the focused block, or for the selection, grouped and each with its keys. A right-click opens it at the pointer, on whatever is under it. Type to filter it, `↑`/`↓` move, `Enter` runs and `Esc` closes. Commands that don't apply are left out.
+`Ctrl+\` or `Shift+F10` (with the kitty protocol also the `Menu` key) opens the **context menu**, in the Navigator too: every command for the focused block, or for the selection, grouped and each with its keys. A right-click opens it at the pointer, on whatever is under it. Type to filter it, `↑`/`↓` move, `Enter` runs and `Esc` closes. Commands that don't apply are left out.
 
 - **On a block:** Edit, Edit Node, Open Attachments, New Block Below, Above and as Last Child, Copy, Cut, Paste Below and Above, Duplicate and Delete; then Indent, Outdent, Move Up, Move Down, Group and Move to…; status (Complete or Uncomplete, Toggle Star, Toggle Flag, Bookmark or Remove Bookmark); dates; colors; Convert Type, with Make Section on a text block and Remove Section on a section; Zoom In, Toggle Fold for a block with children, Count Blocks and Words, and Open Link for a block with a link; then Open in New Pane, Open Location in New Pane and, while there are other panes, Close Pane.
 - **On the selection:** the same, without what acts on one block alone, labeled for all of them: Uncomplete only when all are done, Clear Due Date when any has a due date.

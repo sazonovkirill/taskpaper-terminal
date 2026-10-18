@@ -29,7 +29,7 @@ You don't need to remember every key.
 
 - **Press <kbd>?</kbd>** to open the shortcuts panel on the right. It lists the most useful keys for where you are. <kbd>?</kbd> again closes it.
 - **Press <kbd>Ctrl+P</kbd> or <kbd>:</kbd>** to open the command palette, **Go to Command**. It lists every command with its keys, including the few that have none. Type `wrap` and press <kbd>Enter</kbd> to run one.
-- **Press <kbd>\\</kbd>** for the context menu of the focused line.
+- **Press <kbd>Ctrl+\\</kbd>** for the context menu of the focused line.
 - **Read the [Reference](@/reference/_index.md).** It covers every feature, key and setting, including what this tutorial skipped, such as selection, copy and paste and Quick Add.
 
 When you're ready, start your own: `tpt ~/notes.taskpaper` creates the file when you first add something.

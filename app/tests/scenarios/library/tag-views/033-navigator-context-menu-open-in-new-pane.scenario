@@ -1,4 +1,4 @@
-# Ctrl+R on the Starred entry opens its context menu, whose Open in New Pane shows the Starred view in a new pane.
+# Ctrl+\ on the Starred entry opens its context menu, whose Open in New Pane shows the Starred view in a new pane.
 size 100 30
 file <<END
 Ideas:
@@ -6,7 +6,7 @@ Ideas:
 END
 keys <C-g>
 type starred
-keys <C-r>
+keys <C-\>
 see Go to Entry
 see Return to Outline
 type open

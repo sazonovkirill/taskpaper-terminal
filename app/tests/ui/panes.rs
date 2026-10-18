@@ -63,9 +63,9 @@ const WORK_BESIDE: [&str; 9] = [
 
 // FR-UI-02, navigation.md §5, keybindings.md "View, panes and panels"
 #[test]
-fn ctrl_backslash_opens_the_focused_block_zoomed_in_a_new_pane_to_the_right() {
+fn g_bar_opens_the_focused_block_zoomed_in_a_new_pane_to_the_right() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(
         screen(&mut app)[..9],
         WORK_BESIDE,
@@ -112,7 +112,7 @@ fn ctrl_w_s_opens_the_current_location_in_a_new_pane_with_the_same_focus() {
 fn a_leaf_opens_in_a_new_pane_zoomed_into_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     app.type_keys("j");
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     let screen = screen(&mut app);
     assert_eq!(
         screen[0],
@@ -128,7 +128,7 @@ fn a_leaf_opens_in_a_new_pane_zoomed_into_it() {
 #[test]
 fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     let focused = |app: &mut Harness| {
         let screen = screen(app);
         (screen[2].starts_with('▌'), screen[3].contains("│▌"))
@@ -155,7 +155,7 @@ fn alt_digits_g_digits_and_ctrl_w_h_l_focus_panes_by_number_and_side() {
 #[test]
 fn g_p_focuses_the_pane_left_and_g_n_the_pane_right() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     let left = |app: &mut Harness| screen(app)[2].starts_with('▌');
     for (keys, on_left) in [
         ("gp", true),
@@ -250,7 +250,7 @@ fn showing_completed_blocks_is_per_pane_and_a_new_pane_starts_with_its_opener_s(
 fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     app.type_keys("j");
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     alt(&mut app, '1');
     app.type_keys("dd");
     let screen = screen(&mut app);
@@ -274,7 +274,7 @@ fn deleting_a_block_another_pane_is_zoomed_into_moves_that_pane_to_its_parent() 
 #[test]
 fn ctrl_w_c_closes_the_focused_pane_focusing_its_neighbor_but_not_the_last() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     window(&mut app, "c");
     let screen = screen(&mut app);
     assert_eq!(screen[0], "  ⌂");
@@ -287,8 +287,9 @@ fn ctrl_w_c_closes_the_focused_pane_focusing_its_neighbor_but_not_the_last() {
 #[test]
 fn the_context_menu_closes_a_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
+    app.type_keys("g|");
     ctrl(&mut app, '\\');
-    app.type_keys("\\close");
+    app.type_keys("close");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(screen(&mut app)[0], "  ⌂");
 }
@@ -370,7 +371,7 @@ fn each_pane_keeps_how_far_it_is_scrolled() {
 #[test]
 fn a_screen_40_by_11_still_shows_more_than_one_pane() {
     let mut app = Harness::with_text(OUTLINE, 40, 11);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(dividers(&mut app), [9]);
 }
 
@@ -430,7 +431,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_navigator_entry_in_a_new_pane() 
 #[test]
 fn a_screen_smaller_than_40_by_10_shows_only_the_focused_pane() {
     let mut app = Harness::with_text(OUTLINE, 39, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(
         screen(&mut app)[..5],
         [
@@ -475,7 +476,7 @@ fn a_pane_is_never_wider_than_the_room_left_by_the_shortcuts_panel() {
 #[test]
 fn quitting_and_reopening_the_file_brings_its_panes_back() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(screen(&mut app)[..9], WORK_BESIDE);
     let mut app = app.reopen(80, 10);
     assert_eq!(
@@ -491,7 +492,7 @@ fn quitting_and_reopening_the_file_brings_its_panes_back() {
 #[test]
 fn each_save_keeps_the_layout() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     app.type_keys("x");
     assert!(!app.views.exists(), "nothing kept before the save");
     app.wait(std::time::Duration::from_secs(1));
@@ -504,7 +505,7 @@ fn each_save_keeps_the_layout() {
 #[test]
 fn the_temporary_file_keeps_no_layout() {
     let mut app = Harness::demo(80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     ctrl(&mut app, 'q');
     app.settle();
     assert!(app.tui.should_quit());
@@ -537,7 +538,7 @@ fn reopening_focuses_the_today_entry_that_was_focused() {
 fn each_pane_shows_its_number_dimmed_at_the_top_right_while_there_is_more_than_one() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
     assert_eq!(screen(&mut app)[0], "  ⌂", "one pane shows no number");
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(
         screen(&mut app)[0],
         "  ⌂                                  1 │  ⌂ › Work                            2"
@@ -567,7 +568,7 @@ fn the_breadcrumbs_end_a_space_short_of_the_number() {
         10,
     );
     app.type_keys("jj");
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     assert_eq!(
         screen(&mut app)[0],
         "  ⌂                                  1 │  … › Draft                           2",
@@ -579,7 +580,7 @@ fn the_breadcrumbs_end_a_space_short_of_the_number() {
 #[test]
 fn ctrl_w_capital_l_moves_the_focused_pane_right_and_the_numbers_follow() {
     let mut app = Harness::with_text(OUTLINE, 80, 10);
-    ctrl(&mut app, '\\');
+    app.type_keys("g|");
     alt(&mut app, '1');
     window(&mut app, "L");
     assert_eq!(

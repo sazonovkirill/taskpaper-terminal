@@ -1,4 +1,4 @@
-# Ctrl+R on a project entry with child projects offers Collapse Entry, which folds it in the Navigator.
+# Ctrl+\ on a project entry with child projects offers Collapse Entry, which folds it in the Navigator.
 size 100 30
 file <<END
 Work:
@@ -9,7 +9,7 @@ Home:
 END
 keys . <C-g>
 see │▌▾Work
-keys <C-r>
+keys <C-\>
 see Collapse Entry
 type collapse
 keys <Enter>

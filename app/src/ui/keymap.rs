@@ -3,7 +3,7 @@
 
 use std::{borrow::Cow, mem, time::Duration};
 
-use crossterm::event::{Event, KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use jiff::civil::DateTime;
 use thiserror::Error;
 
@@ -853,6 +853,27 @@ fn save_as_message(key: Key) -> Option<Message> {
     Some(Message::SaveAs(event))
 }
 
+/// The key `key` is, as both key reportings send it (D-42): the kitty protocol sends `Alt+Shift+Z`
+/// and `Ctrl+Shift+Z` as `z` with `Shift`, where other reportings send `Z`, and both become `Z`;
+/// legacy reporting sends `Ctrl+\` as the byte `0x1c`, which reads as `Ctrl+4`, and it becomes
+/// `Ctrl+\` again (D-145).
+fn normalized(key: KeyEvent) -> Key {
+    match key.code {
+        KeyCode::Char('4') if key.modifiers == KeyModifiers::CONTROL => {
+            (key.modifiers, KeyCode::Char('\\'))
+        }
+        KeyCode::Char(c) => (
+            key.modifiers.difference(KeyModifiers::SHIFT),
+            KeyCode::Char(if key.modifiers.contains(KeyModifiers::SHIFT) {
+                c.to_ascii_uppercase()
+            } else {
+                c
+            }),
+        ),
+        code => (key.modifiers, code),
+    }
+}
+
 /// The character `key` types: a character without modifiers, or with `Ctrl+Alt`, which some
 /// terminals report for `AltGr`.
 fn typed_char((modifiers, code): Key) -> Option<char> {
@@ -1378,19 +1399,7 @@ impl Keymap {
         if self.pending.is_empty() {
             self.started = now;
         }
-        // The kitty protocol sends `Alt+Shift+Z` and `Ctrl+Shift+Z` as `z` with `Shift`, where
-        // other reportings send `Z` (D-42); both become `Z`.
-        let pressed = match key.code {
-            KeyCode::Char(c) => (
-                key.modifiers.difference(KeyModifiers::SHIFT),
-                KeyCode::Char(if key.modifiers.contains(KeyModifiers::SHIFT) {
-                    c.to_ascii_uppercase()
-                } else {
-                    c
-                }),
-            ),
-            code => (key.modifiers, code),
-        };
+        let pressed = normalized(key);
         if let Some(overlay) = context.overlay {
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
@@ -2246,7 +2255,8 @@ mod tests {
     /// ([keybindings.md §1](../../../docs/specs/keybindings.md#1-terminal-constraints)): legacy
     /// reporting sends `Ctrl+Enter` and `Shift+Enter` as `Enter`, `Ctrl+Shift+<letter>` as
     /// `Ctrl+<letter>`, `Ctrl+H`, `Ctrl+I`, `Ctrl+M` and `Ctrl+[` as `Backspace`, `Tab`, `Enter` and
-    /// `Esc`, `Ctrl` with other characters as other keys or not at all, and no Menu key.
+    /// `Esc`, `Ctrl+\` as `Ctrl+4` (which the keymap reads as `Ctrl+\`), `Ctrl` with other
+    /// characters as other keys or not at all, and no Menu key.
     fn kitty_only((modifiers, code): Key) -> bool {
         match code {
             KeyCode::Menu => true,
@@ -2254,7 +2264,7 @@ mod tests {
                 modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SHIFT)
             }
             KeyCode::Char(c) if modifiers.contains(KeyModifiers::CONTROL) => {
-                !c.is_ascii_lowercase() || matches!(c, 'h' | 'i' | 'm')
+                !(c.is_ascii_lowercase() || c == '\\') || matches!(c, 'h' | 'i' | 'm')
             }
             _ => false,
         }
@@ -2296,17 +2306,7 @@ mod tests {
         }
         kitty.sort_unstable();
         kitty.dedup();
-        assert_eq!(
-            kitty,
-            [
-                "ctrl+'",
-                "ctrl+\\",
-                "ctrl+enter",
-                "ctrl+i",
-                "ctrl+m",
-                "menu"
-            ]
-        );
+        assert_eq!(kitty, ["ctrl+'", "ctrl+enter", "ctrl+i", "ctrl+m", "menu"]);
     }
 
     // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
@@ -4229,13 +4229,19 @@ mod tests {
         assert_eq!(label("fx"), None, "only a number makes a function key");
     }
 
-    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-101, D-139: outside the Navigator `Ctrl+R`
-    // redoes, as in vim.
+    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-139, D-145: in the Navigator too, where
+    // `\` is typed into the filter; `Ctrl+R` redoes, as in vim, and legacy reporting's `Ctrl+4` is
+    // `Ctrl+\`.
     #[test]
-    fn backslash_shift_f10_and_the_menu_key_open_the_context_menu_and_ctrl_r_in_place_of_backslash_in_the_navigator()
-     {
+    fn ctrl_backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_navigator_too() {
         let open = Some(&Message::OpenContextMenu);
-        check(KeyCode::Char('\\'), KeyModifiers::NONE, open);
+        check(KeyCode::Char('\\'), KeyModifiers::CONTROL, open);
+        check(KeyCode::Char('4'), KeyModifiers::CONTROL, open);
+        check(
+            KeyCode::Char('\\'),
+            KeyModifiers::NONE,
+            Some(&Message::Attachments(AttachmentsInput::Open)),
+        );
         check(KeyCode::F(10), KeyModifiers::SHIFT, open);
         check(KeyCode::Menu, KeyModifiers::NONE, open);
         check(KeyCode::F(10), KeyModifiers::NONE, None);
@@ -4250,7 +4256,8 @@ mod tests {
             ..*CONTEXT
         };
         for (at, (code, modifiers)) in [
-            (KeyCode::Char('r'), KeyModifiers::CONTROL),
+            (KeyCode::Char('\\'), KeyModifiers::CONTROL),
+            (KeyCode::Char('4'), KeyModifiers::CONTROL),
             (KeyCode::F(10), KeyModifiers::SHIFT),
             (KeyCode::Menu, KeyModifiers::NONE),
         ]
@@ -4315,10 +4322,13 @@ mod tests {
     fn a_commands_bindings_are_its_navigate_keys_or_its_navigator_keys() {
         let keymap = Keymap::default();
         let bindings = |command, navigator| keymap.bindings(command, navigator);
-        assert_eq!(bindings(Command::ContextMenu, false), "\\, Shift+F10, Menu");
+        assert_eq!(
+            bindings(Command::ContextMenu, false),
+            "Ctrl+\\, Shift+F10, Menu"
+        );
         assert_eq!(
             bindings(Command::ContextMenu, true),
-            "Ctrl+R, Shift+F10, Menu"
+            "Ctrl+\\, Shift+F10, Menu"
         );
         assert_eq!(bindings(Command::Count, false), "");
         assert_eq!(
@@ -4335,7 +4345,7 @@ mod tests {
             "↓, Ctrl+N"
         );
         let open = Command::Pane(PaneChange::Open);
-        assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v");
+        assert_eq!(bindings(open, false), "Ctrl+W v, g|");
         assert_eq!(
             bindings(open, true),
             "Alt+Enter, Ctrl+V, Ctrl+T",
@@ -4423,18 +4433,24 @@ mod tests {
             .collect()
     }
 
-    // FR-UI-03, keybindings.md §1–2, D-42: `Ctrl+\` has the classic variant `Ctrl+W v`, and
-    // legacy reporting's `Ctrl+4` is not bound.
+    // FR-UI-03, keybindings.md §2, D-145: `g |` opens a pane beside `Ctrl+W v`, and `Ctrl+\`, the
+    // context menu now, does not.
     #[test]
-    fn ctrl_backslash_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
+    fn g_bar_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
         let ctrl = KeyModifiers::CONTROL;
         let none = KeyModifiers::NONE;
         let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
         assert_eq!(
-            actions(&[(KeyCode::Char('\\'), ctrl)], CONTEXT),
-            [pane(PaneChange::Open)]
+            actions(
+                &[(KeyCode::Char('g'), none), (KeyCode::Char('|'), none)],
+                CONTEXT
+            ),
+            [None, pane(PaneChange::Open)]
         );
-        assert_eq!(actions(&[(KeyCode::Char('4'), ctrl)], CONTEXT), [None]);
+        assert_eq!(
+            actions(&[(KeyCode::Char('\\'), ctrl)], CONTEXT),
+            [Some(KeyAction::Send(Message::OpenContextMenu))]
+        );
         for (c, expected) in [
             ('v', pane(PaneChange::Open)),
             ('s', pane(PaneChange::OpenLocation)),

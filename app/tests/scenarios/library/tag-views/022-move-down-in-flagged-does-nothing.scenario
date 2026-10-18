@@ -5,7 +5,7 @@ Shop:
 	- Milk @flag
 	- Eggs @flag
 END
-keys gF <A-j> \
+keys gF <A-j> <C-\>
 see Commands:
 hide Move Down
 keys <Esc>

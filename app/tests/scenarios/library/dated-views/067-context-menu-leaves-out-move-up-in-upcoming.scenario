@@ -3,7 +3,7 @@ file <<END
 - Alpha @due({today+1})
 - Beta @due({today+2})
 END
-keys gU \
+keys gU <C-\>
 see Commands:
 see Complete
 hide Move Up

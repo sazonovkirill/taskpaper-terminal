@@ -5,7 +5,7 @@ Errands:
 Work:
 	- Report
 END
-keys G \
+keys G <C-\>
 see Commands:
 type pane
 see Open in New Pane

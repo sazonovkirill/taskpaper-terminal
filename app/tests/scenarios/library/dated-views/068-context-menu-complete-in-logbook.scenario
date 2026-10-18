@@ -3,7 +3,7 @@ file <<END
 - Shipped @done({today})
 - Earlier @done({today-1})
 END
-keys gL \
+keys gL <C-\>
 see Commands:
 type uncomplete
 keys <Enter>

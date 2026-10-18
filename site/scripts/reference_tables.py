@@ -563,7 +563,7 @@ def kitty_only(text):
     if key in ("Enter", "Tab", "Backspace", "Esc") and not is_char:
         return bool(held & {"ctrl", "shift"})
     if is_char and "ctrl" in held:
-        return not (key.isascii() and key.islower()) or key in "him"
+        return not ((key.isascii() and key.islower()) or key == "\\") or key in "him"
     return False
 
 

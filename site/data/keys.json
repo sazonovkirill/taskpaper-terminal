@@ -2608,6 +2608,16 @@
    "menu_only": false,
    "keys": [
     {
+     "label": "\\",
+     "presses": [
+      [
+       "\\"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
      "label": "&",
      "presses": [
       [
@@ -3056,9 +3066,10 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "\\",
+     "label": "Ctrl+\\",
      "presses": [
       [
+       "Ctrl",
        "\\"
       ]
      ],
@@ -3099,17 +3110,6 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "Ctrl+\\",
-     "presses": [
-      [
-       "Ctrl",
-       "\\"
-      ]
-     ],
-     "kitty": true,
-     "alt": false
-    },
-    {
      "label": "Ctrl+W v",
      "presses": [
       [
@@ -3118,6 +3118,19 @@
       ],
       [
        "v"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "g|",
+     "presses": [
+      [
+       "g"
+      ],
+      [
+       "|"
       ]
      ],
      "kitty": false,
@@ -4450,11 +4463,11 @@
    "menu_only": false,
    "keys": [
     {
-     "label": "Ctrl+R",
+     "label": "Ctrl+\\",
      "presses": [
       [
        "Ctrl",
-       "R"
+       "\\"
       ]
      ],
      "kitty": false,
@@ -8019,6 +8032,16 @@
       "panel": true,
       "keys": [
        {
+        "label": "\\",
+        "presses": [
+         [
+          "\\"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
         "label": "&",
         "presses": [
          [
@@ -8350,9 +8373,10 @@
       "panel": true,
       "keys": [
        {
-        "label": "\\",
+        "label": "Ctrl+\\",
         "presses": [
          [
+          "Ctrl",
           "\\"
          ]
         ],
@@ -8388,17 +8412,6 @@
       "panel": true,
       "keys": [
        {
-        "label": "Ctrl+\\",
-        "presses": [
-         [
-          "Ctrl",
-          "\\"
-         ]
-        ],
-        "kitty": true,
-        "alt": false
-       },
-       {
         "label": "Ctrl+W v",
         "presses": [
          [
@@ -8407,6 +8420,19 @@
          ],
          [
           "v"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "g|",
+        "presses": [
+         [
+          "g"
+         ],
+         [
+          "|"
          ]
         ],
         "kitty": false,
@@ -9266,11 +9292,11 @@
       "panel": false,
       "keys": [
        {
-        "label": "Ctrl+R",
+        "label": "Ctrl+\\",
         "presses": [
          [
           "Ctrl",
-          "R"
+          "\\"
          ]
         ],
         "kitty": false,

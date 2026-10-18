@@ -61,7 +61,7 @@ fn the_dialog_is_90_percent_of_the_screen_centered() {
 #[test]
 fn g_question_mark_opens_the_keymap_over_every_pane_with_all_bindings_in_columns() {
     let mut app = Harness::with_text(OUTLINE, 260, 80);
-    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.type_keys("g|");
     app.type_keys("g?");
     let dialog = cut(&mut app, KeymapDialog::area(Rect::new(0, 0, 260, 80)));
     assert!(dialog[0].starts_with("┌ Keymap ───"), "{}", dialog[0]);

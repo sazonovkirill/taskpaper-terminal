@@ -389,7 +389,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetSection(true), Mode::Navigate, &[]),
     entry!(Command::SetSection(false), Mode::Navigate, &[]),
     entry!(Command::EditNode, Mode::Navigate, &["e"]),
-    entry!(Command::OpenAttachments, Mode::Navigate, &["&"]),
+    entry!(Command::OpenAttachments, Mode::Navigate, &["\\", "&"]),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
     entry!(Command::ToggleShowDone, Mode::Navigate, &["g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
@@ -420,12 +420,12 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::ContextMenu,
         Mode::Navigate,
-        &["\\", "shift+f10", "menu"],
+        &["ctrl+\\", "shift+f10", "menu"],
     ),
     entry!(
         Command::Pane(PaneChange::Open),
         Mode::Navigate,
-        &["ctrl+\\", "ctrl+w v"],
+        &["ctrl+w v", "g |"],
     ),
     entry!(
         Command::Pane(PaneChange::OpenLocation),
@@ -572,7 +572,7 @@ pub const NAVIGATOR: &[(Command, &[&str])] = &[
     ),
     (Command::Navigator(NavigatorInput::Erase), &["backspace"]),
     (Command::Navigator(NavigatorInput::Leave), &["esc"]),
-    (Command::ContextMenu, &["ctrl+r", "shift+f10", "menu"]),
+    (Command::ContextMenu, &["ctrl+\\", "shift+f10", "menu"]),
     (Command::ToggleNavigator, &["ctrl+g", "|"]),
     (Command::Quit, &["ctrl+q"]),
 ];
@@ -1016,11 +1016,8 @@ mod tests {
                 .iter()
                 .find(|(command, _)| *command == Command::ContextMenu)
                 .map(|&(_, keys)| keys),
-            context_menu
-                .map(|keys| [&["ctrl+r"][..], &keys[1..]].concat())
-                .as_deref(),
-            "the context menu opens with the same keys everywhere, but for Ctrl+R in place of the \\ \
-             the Navigator's filter takes (D-86, D-101)"
+            context_menu,
+            "the context menu opens with the same keys everywhere (D-145)"
         );
     }
 

@@ -10,7 +10,7 @@ Only the focused pane shows its focus marker, and the others' breadcrumbs are di
 
 ## Opening panes
 
-- **Open in New Pane** (`Ctrl+W v`, or `Ctrl+\` with the kitty protocol) opens the focused block, zoomed in, in a new pane right of the focused one, and focuses it.
+- **Open in New Pane** (`Ctrl+W v` or `g|`) opens the focused block, zoomed in, in a new pane right of the focused one, and focuses it.
 - **Open Location in New Pane** (`Ctrl+W s`) opens the place the focused pane shows, its zoom or a special view, in a new pane, on the same block.
 - From the [Navigator](@/reference/navigator.md#the-navigator), Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the chosen entry in a new pane.
 - `Alt`+click opens a block or a breadcrumb in a new pane.

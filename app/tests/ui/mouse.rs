@@ -216,7 +216,7 @@ fn alt_click_opens_a_block_or_a_crumb_in_a_new_pane() {
 #[test]
 fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.type_keys("g|");
     let dimmed = |app: &mut Harness, x| {
         app.render().buffer()[(x, 0)]
             .modifier
@@ -337,7 +337,7 @@ fn a_right_click_on_a_block_opens_its_menu_at_the_pointer() {
     assert!(rows.iter().any(|row| row.contains("Edit")));
     press(&mut app, KeyCode::Esc);
     assert_eq!(menu(&mut app), Vec::<String>::new());
-    press(&mut app, KeyCode::Char('\\'));
+    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
     assert_eq!(
         corner(&menu(&mut app)),
         Some(6),
@@ -472,7 +472,7 @@ fn the_wheel_scrolls_the_shortcuts_panel_under_the_pointer() {
 #[test]
 fn the_mouse_does_nothing_while_a_popup_takes_the_keys() {
     let mut app = pane();
-    press(&mut app, KeyCode::Char('\\'));
+    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
     let before = screen(&mut app);
     app.click(8, 6);
     right_click(&mut app, 8, 6);

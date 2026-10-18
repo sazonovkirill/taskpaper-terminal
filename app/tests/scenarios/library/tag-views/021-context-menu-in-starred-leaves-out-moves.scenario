@@ -5,7 +5,7 @@ Work:
 	- Report @star
 	- Email @star
 END
-keys gS \
+keys gS <C-\>
 see Toggle Star
 hide Move Down
 hide Move Up
