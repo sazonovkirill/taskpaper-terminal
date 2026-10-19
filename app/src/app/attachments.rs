@@ -21,6 +21,9 @@ pub enum AttachmentsInput {
     Open,
     /// Close the panel.
     Close,
+    /// Widen the panel from half its pane to the whole pane, or close it once it is that wide
+    /// (D-146).
+    Cycle,
     /// Edit the selected note, as raw Markdown, or comment (attachments.md §4, §5).
     Edit,
     /// Change the line with the caret: the note's, or the comment being typed.
@@ -46,12 +49,13 @@ pub enum AttachmentsInput {
     Cancel,
 }
 
-/// The open panel: the block it is on, the note being edited, if any, the selected item, the
-/// note while notes are on and then each comment, which may be past the last after they change,
-/// and the comment being typed, if any.
+/// The open panel: the block it is on, whether it covers the whole of its pane rather than half,
+/// the note being edited, if any, the selected item, the note while notes are on and then each
+/// comment, which may be past the last after they change, and the comment being typed, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Panel {
     block: ItemId,
+    full: bool,
     editor: Option<NoteEditor>,
     selected: usize,
     draft: Option<Draft>,
@@ -194,6 +198,9 @@ pub struct NoteCaret {
 pub struct AttachmentsView<'a> {
     /// The block's text without its formatting, which the panel's title names.
     pub title: Arc<str>,
+    /// Whether it covers the whole of the pane it is open in, rather than its right half
+    /// (D-146).
+    pub full: bool,
     /// Its sections, one per kind turned on, in order: the note, then the comments.
     pub sections: &'a [Attachment],
     /// The note's lines, as the user wrote them, or as the editor has them while editing.
@@ -271,6 +278,7 @@ impl State {
         };
         Some(AttachmentsView {
             title: self.document.get(panel.block)?.shared_plain_text(),
+            full: panel.full,
             sections: &self.attached,
             note: panel
                 .editor
@@ -326,11 +334,11 @@ impl State {
     pub(super) fn attachments_input(&mut self, input: AttachmentsInput) {
         match input {
             AttachmentsInput::Open => self.open_panel(),
-            AttachmentsInput::Close => {
-                self.save_note();
-                self.panel = None;
-                self.resume_editing();
-            }
+            AttachmentsInput::Close => self.close_panel(),
+            AttachmentsInput::Cycle => match &mut self.panel {
+                Some(panel) if !panel.full => panel.full = true,
+                _ => self.close_panel(),
+            },
             AttachmentsInput::Edit => {
                 self.edit_note();
                 self.edit_comment();
@@ -372,6 +380,14 @@ impl State {
                 }
             }
         }
+    }
+
+    /// Closes the panel, saving the note it edits, and goes back to editing if it was opened
+    /// from there.
+    fn close_panel(&mut self) {
+        self.save_note();
+        self.panel = None;
+        self.resume_editing();
     }
 
     /// The comment being typed, if one is.
@@ -541,6 +557,7 @@ impl State {
         if !self.attached.is_empty() && !block.divider() {
             self.panel = Some(Panel {
                 block: block.id(),
+                full: false,
                 editor: None,
                 selected: 0,
                 draft: None,
@@ -691,6 +708,27 @@ mod tests {
             input(&mut state, AttachmentsInput::Select(by));
             assert_eq!(sections(&state).unwrap().1, Some(selected), "{by}");
         }
+    }
+
+    // FR-ATT-03, attachments.md §3, D-146
+    #[test]
+    fn cycling_widens_the_panel_to_its_whole_pane_then_closes_it_saving_the_note() {
+        let mut state = state();
+        input(&mut state, AttachmentsInput::Open);
+        let full = |state: &State| state.attachments_panel().map(|view| view.full);
+        assert_eq!(full(&state), Some(false), "it opens over half its pane");
+        input(&mut state, AttachmentsInput::Cycle);
+        assert_eq!(full(&state), Some(true));
+        input(&mut state, AttachmentsInput::Edit);
+        input(&mut state, AttachmentsInput::Text(TextEdit::Insert('!')));
+        input(&mut state, AttachmentsInput::Cycle);
+        assert_eq!(full(&state), None);
+        input(&mut state, AttachmentsInput::Open);
+        let view = state.attachments_panel().unwrap();
+        assert_eq!(
+            (view.full, view.note),
+            (false, vec!["Full fat!".to_owned()])
+        );
     }
 
     // FR-ATT-03, FR-ATT-06, FR-BLK-07, attachments.md §1, §3, §6, D-134

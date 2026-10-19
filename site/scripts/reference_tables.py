@@ -128,6 +128,7 @@ CONTEXTS = {
         "AttachmentsInput::Close": "Close", "AttachmentsInput::Edit": "Edit the selected note or comment",
         "AttachmentsInput::AddComment": "Add a comment",
         "AttachmentsInput::DeleteComment": "Delete the selected comment",
+        "AttachmentsInput::Cycle": "Widen to the whole pane, then close",
     }),
     "SCROLL": ("Attachments panel: scrolling and selection", "attachments", {
         "ScrollBy::Down": "Down a line, or the next item", "ScrollBy::Up": "Up a line, or the previous item",

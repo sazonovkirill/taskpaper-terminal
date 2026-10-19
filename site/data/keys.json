@@ -5668,6 +5668,31 @@
        "alt": false
       }
      ]
+    },
+    {
+     "label": "Widen to the whole pane, then close",
+     "keys": [
+      {
+       "label": "\\",
+       "presses": [
+        [
+         "\\"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      },
+      {
+       "label": "&",
+       "presses": [
+        [
+         "&"
+        ]
+       ],
+       "kitty": false,
+       "alt": false
+      }
+     ]
     }
    ]
   },

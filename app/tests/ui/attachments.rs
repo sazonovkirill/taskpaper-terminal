@@ -1,8 +1,8 @@
-//! The attachments panel: `n` and `N` open the focused block's note and, below it, its comments
-//! on a panel down the right side of the screen, and `Esc` closes it; each kind has a setting that
-//! turns it off; the note shows rendered and `e` edits it (FR-ATT-03, FR-ATT-04, FR-ATT-06); the
-//! comments are added, edited and deleted (FR-ATT-05); the scroll keys go through the selected
-//! item and then select the next (D-109).
+//! The attachments panel: `&` or `\` open the focused block's note and, below it, its comments on
+//! a panel over the right half of its pane, which `\` widens to the whole pane and then closes,
+//! as `Esc` does; each kind has a setting that turns it off; the note shows rendered and `e` edits
+//! it (FR-ATT-03, FR-ATT-04, FR-ATT-06, D-146); the comments are added, edited and deleted
+//! (FR-ATT-05); the scroll keys go through the selected item and then select the next (D-109).
 
 use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
@@ -329,4 +329,42 @@ fn a_read_only_file_refuses_the_note_editor_and_the_comment_input_at_once() {
         );
         assert_eq!(rows[..11], shown[..11], "{start}: x was not typed");
     }
+}
+
+// FR-ATT-03, attachments.md §3, D-146
+#[test]
+fn backslash_opens_the_panel_over_half_its_pane_then_the_whole_pane_then_closes() {
+    let mut app = Harness::with_text("- Milk\n\t- Oat\n- Bread\n", 80, 10);
+    app.type_keys("g|");
+    let before = screen(&mut app);
+    app.type_keys("\\");
+    let half = screen(&mut app);
+    assert_eq!(
+        half[..3],
+        [
+            "  ⌂                                  1 │  ⌂ › Milk          ┌ Oat ─────────────┐",
+            "───────────────────────────────────────│────────────────────│           ≡ Note │",
+            "  - Milk                               │  - Milk            │ No note          │",
+        ],
+        "the panel takes the right half of the pane with the keys, the other pane uncovered"
+    );
+    assert_eq!(half[8], format!("{:39}│{:20}└──────────────────┘", "", ""));
+    app.type_keys("\\");
+    assert_eq!(
+        screen(&mut app)[..3],
+        [
+            "  ⌂                                  1 │┌ Oat ─────────────────────────────────┐",
+            "───────────────────────────────────────││                               ≡ Note │",
+            "  - Milk                               ││ No note                              │",
+        ],
+        "then the whole of it"
+    );
+    app.type_keys("&&");
+    assert_eq!(
+        screen(&mut app)[0],
+        half[0],
+        "& opens it and goes round as \\ does"
+    );
+    app.type_keys("&&");
+    assert_eq!(screen(&mut app), before);
 }

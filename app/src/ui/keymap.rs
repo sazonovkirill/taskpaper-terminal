@@ -536,6 +536,7 @@ fn window_sheet() -> Vec<SheetGroup> {
             (AttachmentsInput::Edit, "Edit Note or Comment"),
             (AttachmentsInput::AddComment, "Add Comment"),
             (AttachmentsInput::DeleteComment, "Delete Comment"),
+            (AttachmentsInput::Cycle, "Full Width, Then Close"),
             (AttachmentsInput::Close, "Close"),
         ],
     );
@@ -733,6 +734,8 @@ const ATTACHMENTS: &[(Key, AttachmentsInput)] = &[
     (key!('a'), AttachmentsInput::AddComment),
     (key!('d'), AttachmentsInput::DeleteComment),
     (key!(Delete), AttachmentsInput::DeleteComment),
+    (key!('\\'), AttachmentsInput::Cycle),
+    (key!('&'), AttachmentsInput::Cycle),
 ];
 
 /// The keys that scroll the attachments panel and move its selection (D-107, D-109).
@@ -2869,6 +2872,9 @@ mod tests {
                 send(AttachmentsInput::DeleteComment),
             ),
             (KeyCode::Delete, none, send(AttachmentsInput::DeleteComment)),
+            (KeyCode::Char('\\'), none, send(AttachmentsInput::Cycle)),
+            (KeyCode::Char('&'), none, send(AttachmentsInput::Cycle)),
+            (KeyCode::Char('&'), shift, send(AttachmentsInput::Cycle)),
             (KeyCode::Tab, none, None),
             (
                 KeyCode::Char('q'),
@@ -3102,8 +3108,10 @@ mod tests {
             "the conflict prompt's keys"
         );
         assert_eq!(
-            sheet[14].1[4..],
+            sheet[14].1[3..],
             [
+                ("Full Width, Then Close".into(), "\\, &".to_owned()),
+                ("Close".into(), "Esc".to_owned()),
                 ("Scroll Down".into(), "j, ↓".to_owned()),
                 ("Scroll Up".into(), "k, ↑".to_owned()),
                 ("Page Down".into(), "PgDn, Ctrl+D".to_owned()),

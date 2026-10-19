@@ -101,7 +101,7 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 
 - `'` folds, `"` folds the subtree.
 - `Ctrl+\` is the "right-click": context menu, in the Navigator too (`Ctrl+\` reaches the app from any terminal).
-- `\` (or `&`) opens the attachments panel, the note and comments of the block.
+- `\` (or `&`) opens the attachments panel, the note and comments of the block, in its pane at half width; pressed again in the panel it takes the whole pane, then closes.
 - `?` shortcuts panel; `(`/`)` page it.
 - `Enter` edits; `Esc` clears the selection.
 - `Tab`/`Shift+Tab` indent/outdent, in both modes; `>`/`<` too in navigate mode.

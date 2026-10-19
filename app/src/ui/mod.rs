@@ -796,7 +796,7 @@ impl Tui {
         // How far the text whose caret a dialog places is scrolled; the last placed wins.
         let mut typed = None;
         if !self.state.in_conflict() {
-            typed = self.draw_dialogs(frame, outline, screen_body, &theme);
+            typed = self.draw_dialogs(frame, [outline, screen_body, focused.area], &theme);
             if self.state.context_menu().is_none() {
                 self.menu_anchor = None;
             }
@@ -972,7 +972,10 @@ impl Tui {
             widgets::rule_style(&theme),
         )
         .render(separator, buf);
-        self.draw_outline(buf, outline, pane, crumb)
+        FocusedPane {
+            area,
+            ..self.draw_outline(buf, outline, pane, crumb)
+        }
     }
 
     /// The conflict prompt over `area`, its diff scrolled no further than its last page.
@@ -1168,7 +1171,11 @@ impl Tui {
                 area.y.saturating_add(line),
             )
         });
-        FocusedPane { caret, block }
+        FocusedPane {
+            caret,
+            block,
+            ..FocusedPane::default()
+        }
     }
 
     /// The caret's cell while `editor` edits `row`, drawn on screen line `line` of a pane's
@@ -1273,20 +1280,19 @@ impl Tui {
     }
 
     /// The dialogs that take the keys, whichever is open: the finders, the Edit Node dialog and
-    /// Save As over `outline`, the panes below their headers, and the settings window and the
-    /// attachments panel over `body`, the screen above the status line; returns how far the text
-    /// whose caret they place is scrolled.
+    /// Save As over `outline`, the panes below their headers, the settings window over `body`,
+    /// the screen above the status line, and the attachments panel in `pane`, the pane with the
+    /// keys; returns how far the text whose caret they place is scrolled.
     fn draw_dialogs(
         &mut self,
         frame: &mut Frame,
-        outline: Rect,
-        body: Rect,
+        [outline, body, pane]: [Rect; 3],
         theme: &Theme,
     ) -> Option<usize> {
         self.draw_finders(frame, outline, theme);
         let settings = self.draw_settings(frame, body, theme);
         let node = self.draw_node_editor(frame, outline, theme);
-        let attachments = self.draw_attachments(frame, body, theme);
+        let attachments = self.draw_attachments(frame, pane, theme);
         let save_as = self.state.save_as().map(|view| {
             let prompt = SaveAsPrompt::new(&view, theme).text_scroll(self.field_scroll);
             let (caret, scroll) = prompt.caret(outline);
@@ -1297,18 +1303,18 @@ impl Tui {
         save_as.or(attachments).or(node).or(settings)
     }
 
-    /// The attachments panel over the right of `body`, while it is open, scrolled no further
-    /// than its end, to the selected item when the selection moved and to the caret while text
-    /// is typed, with the caret (attachments.md §3, §4); returns how far the typed text is
-    /// scrolled.
-    fn draw_attachments(&mut self, frame: &mut Frame, body: Rect, theme: &Theme) -> Option<usize> {
+    /// The attachments panel over the right half or the whole of `pane`, the pane it is open in,
+    /// while it is open, scrolled no further than its end, to the selected item when the
+    /// selection moved and to the caret while text is typed, with the caret (attachments.md §3,
+    /// §4, D-146); returns how far the typed text is scrolled.
+    fn draw_attachments(&mut self, frame: &mut Frame, pane: Rect, theme: &Theme) -> Option<usize> {
         let Some(view) = self.state.attachments_panel() else {
             (self.attachments_scroll, self.attachments_selected) = (0, None);
             return None;
         };
         let follow = self.attachments_selected != view.selected;
         self.attachments_selected = view.selected;
-        let area = AttachmentsPanel::area(body);
+        let area = AttachmentsPanel::area(pane, view.full);
         let panel = AttachmentsPanel::new(&view, self.icons, theme);
         let scrolled = panel.scroll(self.attachments_scroll, area, follow);
         (
@@ -1622,10 +1628,11 @@ impl Tui {
     }
 }
 
-/// What overlays need of the pane with the keys, as drawn: where the caret is while editing, and
-/// where the focused block's text starts.
+/// What overlays need of the pane with the keys, as drawn: its area inside its rule, where the
+/// caret is while editing, and where the focused block's text starts.
 #[derive(Debug, Default)]
 struct FocusedPane {
+    area: Rect,
     caret: Option<(u16, u16)>,
     block: Option<(u16, u16)>,
 }

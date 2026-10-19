@@ -24,9 +24,6 @@ use crate::{
     ui::theme::{IconSet, Theme},
 };
 
-/// The narrowest and widest the panel is drawn, screen width allowing.
-const WIDTH: (u16, u16) = (40, 72);
-
 /// The panel's content laid out in lines: the lines; those of the selected item, the caret's line
 /// or the comment being typed, which scrolling keeps in view; those on the focused block's band;
 /// and the caret's line and where it is on it, while text is typed.
@@ -89,16 +86,20 @@ impl<'a> AttachmentsPanel<'a> {
         }
     }
 
-    /// Where the panel goes over `body`, the screen above the status line: at its right, half
-    /// as wide within 40 to 72 columns, its whole height.
+    /// Where the panel goes over `pane`, the pane it is open in: the whole pane when `full`,
+    /// else its right half, the odd column included (D-146).
     #[must_use]
-    pub fn area(body: Rect) -> Rect {
-        let width = (body.width / 2).clamp(WIDTH.0, WIDTH.1).min(body.width);
+    pub fn area(pane: Rect, full: bool) -> Rect {
+        let width = if full {
+            pane.width
+        } else {
+            pane.width.div_ceil(2)
+        };
         Rect::new(
-            body.right().saturating_sub(width),
-            body.y,
+            pane.right().saturating_sub(width),
+            pane.y,
             width,
-            body.height,
+            pane.height,
         )
     }
 
@@ -490,6 +491,7 @@ mod tests {
         let owned = |lines: &[&str]| lines.iter().map(|&line| line.to_owned()).collect();
         AttachmentsView {
             title: Arc::from("Milk"),
+            full: false,
             sections: &Attachment::ALL,
             note: owned(note),
             comments: owned(comments),
@@ -898,24 +900,14 @@ mod tests {
         );
     }
 
-    // FR-ATT-03, attachments.md §3
+    // FR-ATT-03, attachments.md §3, D-146
     #[test]
-    fn the_panel_takes_the_right_of_the_screen_from_top_to_bottom() {
+    fn the_panel_takes_the_right_half_of_its_pane_or_the_whole_of_it() {
+        let pane = Rect::new(30, 2, 61, 20);
         assert_eq!(
-            AttachmentsPanel::area(Rect::new(0, 0, 120, 30)),
-            Rect::new(60, 0, 60, 30)
+            AttachmentsPanel::area(pane, false),
+            Rect::new(60, 2, 31, 20)
         );
-        assert_eq!(
-            AttachmentsPanel::area(Rect::new(0, 0, 200, 30)),
-            Rect::new(128, 0, 72, 30)
-        );
-        assert_eq!(
-            AttachmentsPanel::area(Rect::new(0, 0, 60, 30)),
-            Rect::new(20, 0, 40, 30)
-        );
-        assert_eq!(
-            AttachmentsPanel::area(Rect::new(0, 0, 30, 30)),
-            Rect::new(0, 0, 30, 30)
-        );
+        assert_eq!(AttachmentsPanel::area(pane, true), pane);
     }
 }
