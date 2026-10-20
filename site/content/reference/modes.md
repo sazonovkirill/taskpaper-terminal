@@ -28,6 +28,7 @@ Every command has at least one key that works with classic reporting. A few comm
 | `Ctrl+'` | Go Home | `gh` |
 | `Ctrl+M` | Move To | `gm` |
 | `Ctrl+I` | Forward | `L` |
+| `Ctrl+,` / `Ctrl+.` | Focus Pane Left / Right | `Ctrl+W ←` / `Ctrl+W →` |
 | `Menu` | Context Menu | `Ctrl+\`, `Shift+F10` |
 
 ### Alt on macOS
