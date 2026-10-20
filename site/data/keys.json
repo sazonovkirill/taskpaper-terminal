@@ -3511,6 +3511,17 @@
      "alt": false
     },
     {
+     "label": "Ctrl+,",
+     "presses": [
+      [
+       "Ctrl",
+       ","
+      ]
+     ],
+     "kitty": true,
+     "alt": false
+    },
+    {
      "label": "Ctrl+W ←",
      "presses": [
       [
@@ -3587,6 +3598,17 @@
       ]
      ],
      "kitty": false,
+     "alt": false
+    },
+    {
+     "label": "Ctrl+.",
+     "presses": [
+      [
+       "Ctrl",
+       "."
+      ]
+     ],
+     "kitty": true,
      "alt": false
     },
     {
@@ -8535,6 +8557,17 @@
         "alt": false
        },
        {
+        "label": "Ctrl+,",
+        "presses": [
+         [
+          "Ctrl",
+          ","
+         ]
+        ],
+        "kitty": true,
+        "alt": false
+       },
+       {
         "label": "Ctrl+W ←",
         "presses": [
          [
@@ -8606,6 +8639,17 @@
          ]
         ],
         "kitty": false,
+        "alt": false
+       },
+       {
+        "label": "Ctrl+.",
+        "presses": [
+         [
+          "Ctrl",
+          "."
+         ]
+        ],
+        "kitty": true,
         "alt": false
        },
        {

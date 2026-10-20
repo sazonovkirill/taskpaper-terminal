@@ -20,7 +20,7 @@ A new pane starts with the focused pane's show-completed setting and an empty hi
 ## Moving between panes
 
 - `Alt+1` … `Alt+9`, or `g1` … `g9`, focus pane 1 to 9.
-- `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W W` / `Ctrl+W w`, `gp` / `gn`, and `Ctrl+Shift+←` / `Ctrl+Shift+→` focus the pane to the left or right. They stop at either end.
+- `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W W` / `Ctrl+W w`, `gp` / `gn`, `Ctrl+Shift+←` / `Ctrl+Shift+→`, and `Ctrl+,` / `Ctrl+.` with the [kitty protocol](@/reference/modes.md#classic-and-kitty-keys) focus the pane to the left or right. They stop at either end.
 - Clicking a pane focuses it.
 
 `Ctrl+W H` and `Ctrl+W L` move the focused pane one place left or right, swapping it with its neighbor. The pane keeps the keys, so its number changes.

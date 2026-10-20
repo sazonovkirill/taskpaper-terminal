@@ -482,6 +482,7 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &[
             "ctrl+shift+left",
+            "ctrl+,",
             "ctrl+w left",
             "ctrl+w h",
             "ctrl+w W",
@@ -493,6 +494,7 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &[
             "ctrl+shift+right",
+            "ctrl+.",
             "ctrl+w right",
             "ctrl+w l",
             "ctrl+w w",

@@ -169,6 +169,24 @@ fn g_p_focuses_the_pane_left_and_g_n_the_pane_right() {
     }
 }
 
+// FR-UI-03, D-147, D-42: `Ctrl+,` and `Ctrl+.`, which only the kitty protocol reports, focus the
+// pane left and right in navigate mode; edit mode leaves them alone.
+#[test]
+fn ctrl_comma_focuses_the_pane_left_and_ctrl_period_the_pane_right() {
+    let mut app = Harness::with_text(OUTLINE, 80, 10);
+    app.type_keys("g|");
+    let left = |app: &mut Harness| screen(app)[2].starts_with('▌');
+    for (c, on_left) in [(',', true), (',', true), ('.', false), ('.', false)] {
+        ctrl(&mut app, c);
+        assert_eq!(left(&mut app), on_left, "Ctrl+{c}");
+    }
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    ctrl(&mut app, ',');
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
+    assert!(!left(&mut app), "edit mode keeps the pane");
+    assert_eq!(screen(&mut app)[3], WORK_BESIDE[3]);
+}
+
 // FR-UI-02, navigation.md §5
 #[test]
 fn each_pane_keeps_its_own_zoom_focus_and_history() {

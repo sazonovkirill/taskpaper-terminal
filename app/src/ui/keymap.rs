@@ -2309,7 +2309,18 @@ mod tests {
         }
         kitty.sort_unstable();
         kitty.dedup();
-        assert_eq!(kitty, ["ctrl+'", "ctrl+enter", "ctrl+i", "ctrl+m", "menu"]);
+        assert_eq!(
+            kitty,
+            [
+                "ctrl+'",
+                "ctrl+,",
+                "ctrl+.",
+                "ctrl+enter",
+                "ctrl+i",
+                "ctrl+m",
+                "menu"
+            ]
+        );
     }
 
     // D-42, keybindings.md §1 and §4: the keys of text fields, menus, pickers, the settings
@@ -4502,21 +4513,23 @@ mod tests {
         }
     }
 
-    // D-71, D-42: `Ctrl+Shift+←`/`→`, which both key reportings send, and their classic variants
+    // D-71, D-42, D-147: `Ctrl+Shift+←`/`→`, `Ctrl+,`/`Ctrl+.` and their classic variants
     // `Ctrl+W ←`/`→` move to the pane on the left or right; edit mode keeps `Ctrl+Shift+←`/`→` for selecting words.
     #[test]
     fn ctrl_shift_and_ctrl_w_with_an_arrow_move_to_the_pane_on_that_side() {
         let ctrl = KeyModifiers::CONTROL;
         let ctrl_w = (KeyCode::Char('w'), ctrl);
         let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
-        for (code, change) in [
-            (KeyCode::Left, PaneChange::FocusLeft),
-            (KeyCode::Right, PaneChange::FocusRight),
+        for (code, punctuation, change) in [
+            (KeyCode::Left, ',', PaneChange::FocusLeft),
+            (KeyCode::Right, '.', PaneChange::FocusRight),
         ] {
             let shifted = (code, ctrl | KeyModifiers::SHIFT);
             assert_eq!(actions(&[shifted], CONTEXT), [pane(change)]);
             let arrow = (code, KeyModifiers::NONE);
             assert_eq!(actions(&[ctrl_w, arrow], CONTEXT), [None, pane(change)]);
+            let punctuation = (KeyCode::Char(punctuation), ctrl);
+            assert_eq!(actions(&[punctuation], CONTEXT), [pane(change)]);
         }
         assert_eq!(
             actions(&[ctrl_w, (KeyCode::Char('l'), KeyModifiers::NONE)], CONTEXT),
@@ -4527,11 +4540,11 @@ mod tests {
         for (change, keys) in [
             (
                 PaneChange::FocusLeft,
-                "Ctrl+Shift+←, Ctrl+W ←, Ctrl+W h, Ctrl+W W, gp",
+                "Ctrl+Shift+←, Ctrl+,, Ctrl+W ←, Ctrl+W h, Ctrl+W W, gp",
             ),
             (
                 PaneChange::FocusRight,
-                "Ctrl+Shift+→, Ctrl+W →, Ctrl+W l, Ctrl+W w, gn",
+                "Ctrl+Shift+→, Ctrl+., Ctrl+W →, Ctrl+W l, Ctrl+W w, gn",
             ),
         ] {
             assert_eq!(keymap.bindings(Command::Pane(change), true), keys);

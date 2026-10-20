@@ -14,6 +14,7 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
   | `Ctrl+M` | Move to… | `gm` (legacy sends `Enter`, which edits; D-131) |
   | `Ctrl+I` | Forward | `L` (legacy sends `Tab`, which indents; D-139) |
+  | `Ctrl+,` / `Ctrl+.` | Focus the pane left / right | `Ctrl+W ←` / `Ctrl+W →` (legacy sends a plain `,` or `.`, which zoom out and in, or nothing; D-147) |
   | Menu key | Context menu | `Ctrl+\`, `Shift+F10` |
 - **`Ctrl+\`** reaches the app with both reportings (D-145): legacy reporting sends it as the byte `0x1c`, which crossterm reports as `Ctrl+4`, and the keymap reads `Ctrl+4` as `Ctrl+\`, so `Ctrl+4` under the kitty protocol does the same.
 - **`Alt` on macOS** requires "Use Option as Meta" (Terminal.app) or "Option sends Esc+" (iTerm2); Ghostty, kitty and WezTerm have equivalents. The `?` panel says so when no `Alt` key has been seen. Every `Alt` binding also has a non-`Alt` route (a vi-style key, or the command palette).
@@ -146,7 +147,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Open focused block in a new pane (FR-UI-03) | `Ctrl+W v`, `g\|` (was `Ctrl+\`, D-145) |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9`, `g1` … `g9` (the non-`Alt` route of §1) |
-| Focus the pane left / right (D-71, D-118) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W W` / `Ctrl+W w` (as in vim), `gp` / `gn` (`gl` and `gr` are gone, D-139) |
+| Focus the pane left / right (D-71, D-118, D-147) | `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+,` / `Ctrl+.` (kitty keyboard protocol only, §1), `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W W` / `Ctrl+W w` (as in vim), `gp` / `gn` (`gl` and `gr` are gone, D-139) |
 | Move the focused pane left / right, keeping the keys (D-120) | `Ctrl+W H` / `Ctrl+W L` |
 | Close pane | `Ctrl+W c`, `Ctrl+W q` (as in vim, D-139) |
 | Narrow / widen pane | `Ctrl+W <` / `Ctrl+W >`, `Alt+Shift+h` / `Alt+Shift+l` |
