@@ -1,8 +1,9 @@
 //! The attachments panel: `&` or `\` open the focused block's note and, below it, its comments on
 //! a panel over the right half of its pane, which `\` widens to the whole pane and then closes,
 //! as `Esc` does; each kind has a setting that turns it off; the note shows rendered and `e` edits
-//! it (FR-ATT-03, FR-ATT-04, FR-ATT-06, D-146); the comments are added, edited and deleted
-//! (FR-ATT-05); the scroll keys go through the selected item and then select the next (D-109).
+//! it, `Enter` continuing a bullet list (FR-ATT-03, FR-ATT-04, FR-ATT-06, D-146, D-148); the
+//! comments are added, edited and deleted (FR-ATT-05); the scroll keys go through the selected
+//! item and then select the next (D-109).
 
 use std::{fs, os::unix::fs::PermissionsExt as _, time::Duration};
 
@@ -136,6 +137,31 @@ fn e_edits_the_note_and_esc_saves_it_as_one_step_to_undo() {
     );
     app.type_keys("z");
     assert_eq!(saved(&mut app), "- Bread\n");
+}
+
+// FR-ATT-04, attachments.md §4, D-148
+#[test]
+fn enter_in_the_note_continues_a_bullet_list_until_an_empty_item() {
+    let mut app = Harness::with_text("- Bread\n", 80, 12);
+    app.type_keys("&e- Rye");
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("Spelt");
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Enter);
+    let rows = screen(&mut app);
+    assert_eq!(
+        rows[4],
+        format!("{:40}│{:38}│", "", ""),
+        "the empty item is gone"
+    );
+    press(&mut app, KeyCode::Enter);
+    app.type_keys("Both");
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(
+        saved(&mut app),
+        "- Bread\n\tNOTE @hidden\n\t\t\u{200B}- Rye\n\t\t\u{200B}- Spelt\n\t\t\n\t\tBoth\n"
+    );
 }
 
 // FR-ATT-04, FR-OPS-06, attachments.md §4

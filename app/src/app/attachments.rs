@@ -151,15 +151,16 @@ impl NoteEditor {
         self.field = TextField::with_caret(line + &next, caret);
     }
 
-    /// Breaks the line at the caret, taking out the selection, the caret at the start of the
-    /// new line.
+    /// Deletes the selected text, if any, so that a break does not keep it.
+    fn take_selection(&mut self) {
+        if self.field.selection().is_some() {
+            self.field = self.field.edited(TextEdit::DeleteBackward);
+        }
+    }
+
+    /// Breaks the line at the caret, the caret at the start of the new line.
     fn break_line(&mut self) {
-        let field = if self.field.selection().is_some() {
-            self.field.edited(TextEdit::DeleteBackward)
-        } else {
-            self.field.clone()
-        };
-        let (before, after) = field.text().split_at(field.caret());
+        let (before, after) = self.field.text().split_at(self.field.caret());
         let after = after.to_owned();
         if let Some(line) = self.lines.get_mut(self.row) {
             before.clone_into(line);
@@ -169,8 +170,29 @@ impl NoteEditor {
         self.field = TextField::with_caret(after, 0);
     }
 
+    /// Breaks the line at the caret as `Enter` does, taking out the selection: a bullet list item,
+    /// a line whose indentation and `- ` or `* ` marker end at or before the caret, carries them to
+    /// the new line, and one with nothing after its marker ends the list instead, losing them
+    /// (D-148).
+    fn enter(&mut self) {
+        self.take_selection();
+        let text = self.field.text();
+        let Some(bullet) = bullet(text).filter(|bullet| bullet.len() <= self.field.caret()) else {
+            self.break_line();
+            return;
+        };
+        if text[bullet.len()..].trim().is_empty() {
+            self.field = TextField::new(String::new());
+            return;
+        }
+        let bullet = bullet.to_owned();
+        self.break_line();
+        self.field = TextField::with_caret(bullet.clone() + self.field.text(), bullet.len());
+    }
+
     /// Pastes `text`, each line break in it breaking the line.
     fn paste(&mut self, text: &str) {
+        self.take_selection();
         let text = text.replace("\r\n", "\n");
         for (at, piece) in text.split(breaks_line).enumerate() {
             if at > 0 {
@@ -179,6 +201,14 @@ impl NoteEditor {
             self.field = self.field.pasted(piece);
         }
     }
+}
+
+/// The start of `line` that makes it a bullet list item, its indentation and a `- ` or `* `
+/// marker, if it is one.
+fn bullet(line: &str) -> Option<&str> {
+    let indent = line.len() - line.trim_start_matches([' ', '\t']).len();
+    let marker = line.get(indent..indent + 2)?;
+    matches!(marker, "- " | "* ").then(|| &line[..indent + 2])
 }
 
 /// The note being edited as a frontend shows it: the line with the caret and where on it the
@@ -350,7 +380,7 @@ impl State {
                     draft.field = draft.field.edited(edit);
                 }
             }
-            AttachmentsInput::Break => self.note_editor(NoteEditor::break_line),
+            AttachmentsInput::Break => self.note_editor(NoteEditor::enter),
             AttachmentsInput::LineUp => self.note_editor(|editor| {
                 if let Some(row) = editor.row.checked_sub(1) {
                     editor.go_to(row);
@@ -1072,6 +1102,105 @@ mod tests {
         assert_eq!(state.document().revision(), revision, "nothing to save");
     }
 
+    // FR-ATT-04, attachments.md §4, D-148
+    #[test]
+    fn enter_continues_a_bullet_list_in_the_note() {
+        let mut state = state();
+        let left = |select| {
+            AttachmentsInput::Text(TextEdit::Move {
+                motion: Motion::Left,
+                select,
+            })
+        };
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Open,
+                AttachmentsInput::Edit,
+                AttachmentsInput::Break,
+            ],
+        );
+        typed(&mut state, "- a");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        assert_eq!(
+            edited(&state),
+            (
+                vec!["Full fat".into(), "- a".into(), "- ".into()],
+                Some((2, 2))
+            ),
+            "the marker carries on"
+        );
+        keys(&mut state, &[AttachmentsInput::Break]);
+        assert_eq!(
+            edited(&state),
+            (
+                vec!["Full fat".into(), "- a".into(), String::new()],
+                Some((2, 0))
+            ),
+            "an item with nothing after its marker ends the list"
+        );
+        typed(&mut state, "\t* bc");
+        keys(&mut state, &[left(false), AttachmentsInput::Break]);
+        assert_eq!(
+            edited(&state),
+            (
+                vec![
+                    "Full fat".into(),
+                    "- a".into(),
+                    "\t* b".into(),
+                    "\t* c".into()
+                ],
+                Some((3, 3))
+            ),
+            "the indentation carries on too, and the text after the caret moves"
+        );
+        keys(
+            &mut state,
+            &[
+                AttachmentsInput::Text(TextEdit::Move {
+                    motion: Motion::Start,
+                    select: false,
+                }),
+                AttachmentsInput::Break,
+                AttachmentsInput::LineUp,
+            ],
+        );
+        typed(&mut state, "-x");
+        keys(&mut state, &[AttachmentsInput::Break]);
+        assert_eq!(
+            edited(&state).0[2..],
+            ["\t* b", "-x", "", "\t* c"],
+            "a break before the marker or on a line without one adds none"
+        );
+        typed(&mut state, "* ab");
+        keys(&mut state, &[left(true), AttachmentsInput::Break]);
+        assert_eq!(
+            edited(&state),
+            (
+                vec![
+                    "Full fat".into(),
+                    "- a".into(),
+                    "\t* b".into(),
+                    "-x".into(),
+                    "* a".into(),
+                    "* ".into(),
+                    "\t* c".into()
+                ],
+                Some((5, 2))
+            ),
+            "the selection goes"
+        );
+        state.update(Message::Pasted {
+            text: "y\nz".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            edited(&state).0[5..],
+            ["* y", "z", "\t* c"],
+            "a paste's line breaks add no marker"
+        );
+    }
+
     // FR-ATT-04, FR-OPS-06, attachments.md §4
     #[test]
     fn a_paste_breaks_the_note_where_the_text_does() {
@@ -1090,6 +1219,30 @@ mod tests {
                 vec!["Full fata".to_owned(), "b".to_owned(), "c".to_owned()],
                 Some((2, 1))
             )
+        );
+        keys(
+            &mut state,
+            &[AttachmentsInput::Text(TextEdit::Move {
+                motion: Motion::Start,
+                select: true,
+            })],
+        );
+        state.update(Message::Pasted {
+            text: "\nX".to_owned(),
+            at: Paste::Below,
+        });
+        assert_eq!(
+            edited(&state),
+            (
+                vec![
+                    "Full fata".to_owned(),
+                    "b".to_owned(),
+                    String::new(),
+                    "X".to_owned()
+                ],
+                Some((3, 1))
+            ),
+            "a paste replaces the selection"
         );
         input(&mut state, AttachmentsInput::Save);
         state.update(Message::Pasted {

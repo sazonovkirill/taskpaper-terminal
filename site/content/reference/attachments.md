@@ -30,7 +30,7 @@ If the file is [reloaded from disk](@/reference/files.md#when-the-file-changes-o
 
 The note shows rendered as Markdown, wrapped to the panel: headings, emphasis, inline code, links, lists, block quotes and fenced code blocks, without syntax highlighting. A block without one shows "No note".
 
-`e` or `Enter` turns the note into a plain-text editor over its Markdown. The [text keys](@/reference/modes.md#text-keys) work as in edit mode. `Backspace` at the start of a line and `Delete` at its end join it to its neighbor, and `Ctrl+V` pastes. The whole editing session is one step to undo. Emptying the note deletes it. Closing the panel or quitting saves the note too.
+`e` or `Enter` turns the note into a plain-text editor over its Markdown. The [text keys](@/reference/modes.md#text-keys) work as in edit mode. `Enter` on a `- ` or `* ` list item starts the next item with the same marker and indentation, and `Enter` on an empty item ends the list. `Backspace` at the start of a line and `Delete` at its end join it to its neighbor, and `Ctrl+V` pastes. The whole editing session is one step to undo. Emptying the note deletes it. Closing the panel or quitting saves the note too.
 
 {{ context_keys(table="NOTE_EDITOR") }}
 
