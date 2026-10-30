@@ -121,6 +121,7 @@ pub(in crate::app) fn context_commands(
     let editing = alone(&[Command::Edit, Command::EditNode])
         .into_iter()
         .chain(focused.and_then(|_| attachment_command(blocks, attached)))
+        .chain(focused.and_then(|_| comment_command(blocks, attached)))
         .chain(alone(&[
             Command::New(NewBlock::Below, None),
             Command::New(NewBlock::Above, None),
@@ -190,6 +191,13 @@ pub(in crate::app) fn context_commands(
 /// none, while `attached` turns some kind on (attachments.md §1, §3).
 fn attachment_command(blocks: &[Block], attached: &[Attachment]) -> Option<Command> {
     (!attached.is_empty() && !blocks.iter().any(Block::divider)).then_some(Command::OpenAttachments)
+}
+
+/// The command adding a comment to `blocks`, one block that is no divider, while `attached`
+/// turns comments on (attachments.md §5, FR-ATT-07).
+fn comment_command(blocks: &[Block], attached: &[Attachment]) -> Option<Command> {
+    (attached.contains(&Attachment::Comments) && !blocks.iter().any(Block::divider))
+        .then_some(Command::QuickComment)
 }
 
 /// Completing, Today, the flag and the bookmark, labelled for what they do to `blocks`:
@@ -388,6 +396,10 @@ mod tests {
             ["Edit", "Edit Node", "Open Attachments", "New Block Below"]
         );
         assert_eq!(
+            editing(&tops[..1], &[Attachment::Comments]),
+            ["Edit", "Edit Node", "Open Attachments", "Add Comment"]
+        );
+        assert_eq!(
             editing(&tops[1..], &Attachment::ALL),
             ["Edit", "Edit Node", "New Block Below", "New Block Above"]
         );
@@ -477,8 +489,9 @@ mod tests {
         assert_eq!(
             context("- a\n", Some(ALONE)),
             [
-                "Edit, Edit Node, Open Attachments, New Block Below, New Block Above, \
-                 New Block as Last Child, Copy, Cut, Paste Below, Paste Above, Duplicate, Delete",
+                "Edit, Edit Node, Open Attachments, Add Comment, New Block Below, \
+                 New Block Above, New Block as Last Child, Copy, Cut, Paste Below, Paste Above, \
+                 Duplicate, Delete",
                 "Indent, Outdent, Move Up, Move Down, Group, Move to…",
                 "Complete, Toggle Star, Toggle Flag, Bookmark",
                 "Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, \

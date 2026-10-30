@@ -1,6 +1,6 @@
-//! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with `c` and
-//! the `mc` picker and go with `C` (D-48, D-138), bookmarks with `b`, and flags with
-//! `!` (D-91, D-139).
+//! Step 3.4: `@star` with its marker chip, color tags that tint the row's background with Cycle
+//! Color, keyless in Go to Command, and the `mc` picker and go with `C` (D-48, D-138, D-149),
+//! bookmarks with `b`, and flags with `!` (D-91, D-139).
 
 use std::{fs, time::Duration};
 
@@ -37,6 +37,13 @@ fn background(buffer: &Buffer, y: u16, from: u16) -> Option<Color> {
         .then_some(first)
 }
 
+/// Gives Cycle Color from Go to Command, as it has no key (D-149).
+fn cycle_color(app: &mut Harness) {
+    app.press(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    app.type_keys("cycle color");
+    press(app, KeyCode::Enter);
+}
+
 /// Every screen row, without trailing blanks.
 fn screen(app: &mut Harness) -> Vec<String> {
     let buffer = app.render().buffer().clone();
@@ -47,11 +54,10 @@ fn screen(app: &mut Harness) -> Vec<String> {
 
 // FR-TAG-05, FR-TAG-06, D-48, D-91, D-138, FR-OPS-08
 #[test]
-fn c_tints_the_focused_row_at_once_and_cycles_and_shift_c_removes_the_color() {
+fn cycle_color_tints_the_focused_row_at_once_and_cycles_and_shift_c_removes_the_color() {
     let mut app = Harness::with_text("- Milk\n- Bread\n", 30, 5);
-    app.type_keys("jc");
-    let status = line(app.render().buffer(), 4);
-    assert!(!status.ends_with(" c"), "no prefix is pending: {status}");
+    app.type_keys("j");
+    cycle_color(&mut app);
     let buffer = app.render().buffer().clone();
     assert_eq!(outline_line(&buffer, 3), "- Bread");
     assert_eq!(background(&buffer, 3, 2), Some(FOCUSED_RED_TINT));
@@ -65,9 +71,11 @@ fn c_tints_the_focused_row_at_once_and_cycles_and_shift_c_removes_the_color() {
     assert_eq!(background(&buffer, 3, 2), Some(RED_TINT));
     assert_eq!(background(&buffer, 2, 2), Some(CURRENT_LINE));
     assert_eq!(saved(&mut app), "- Milk\n- Bread @red\n");
-    app.type_keys("jc");
+    app.type_keys("j");
+    cycle_color(&mut app);
     assert_eq!(saved(&mut app), "- Milk\n- Bread @yellow\n");
-    app.type_keys("cc");
+    cycle_color(&mut app);
+    cycle_color(&mut app);
     assert_eq!(saved(&mut app), "- Milk\n- Bread @blue\n");
     app.press(KeyCode::Char('c'), KeyModifiers::SHIFT);
     assert_eq!(saved(&mut app), "- Milk\n- Bread\n");
@@ -79,13 +87,14 @@ fn c_tints_the_focused_row_at_once_and_cycles_and_shift_c_removes_the_color() {
 
 // FR-TAG-05, D-138: `@orange` and `@violet` are kept as written but are no colors.
 #[test]
-fn orange_and_violet_tags_tint_nothing_and_stay_when_c_colors_the_block() {
+fn orange_and_violet_tags_tint_nothing_and_stay_when_a_color_is_given() {
     let mut app = Harness::with_text("- Milk @orange\n- Bread @violet\n", 30, 5);
     app.type_keys("j");
     let buffer = app.render().buffer().clone();
     assert_eq!(background(&buffer, 2, 2), Some(Color::Reset));
     assert_eq!(background(&buffer, 3, 2), Some(CURRENT_LINE));
-    app.type_keys("kc");
+    app.type_keys("k");
+    cycle_color(&mut app);
     assert_eq!(saved(&mut app), "- Milk @orange @red\n- Bread @violet\n");
     app.type_keys("C");
     assert_eq!(saved(&mut app), "- Milk @orange\n- Bread @violet\n");
@@ -93,10 +102,10 @@ fn orange_and_violet_tags_tint_nothing_and_stay_when_c_colors_the_block() {
 
 // FR-TAG-05, FR-OPS-07, D-48, D-138
 #[test]
-fn c_and_shift_c_color_every_selected_block_in_one_step() {
+fn cycle_color_and_shift_c_color_every_selected_block_in_one_step() {
     let mut app = Harness::with_text("- Milk @blue\n- Bread @red\n- Eggs\n", 30, 6);
     app.press(KeyCode::Down, KeyModifiers::SHIFT);
-    app.type_keys("c");
+    cycle_color(&mut app);
     assert_eq!(
         saved(&mut app),
         "- Milk @yellow\n- Bread @yellow\n- Eggs\n",

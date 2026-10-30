@@ -1,10 +1,10 @@
-# c on a red Colors entry makes it yellow, listed under a new Yellow heading after Red's other entries.
+# mc 2 on a red Colors entry makes it yellow, listed under a new Yellow heading after Red's other entries.
 file <<END
 Sprint:
 	- Design @red
 	- Build @red
 END
-keys gC c
+keys gC mc 2
 see 󰏘 Yellow
 quit
 saved <<END

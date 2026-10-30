@@ -8,7 +8,7 @@ use std::{ops::Range, sync::Arc};
 use jiff::civil::DateTime;
 
 use super::{
-    Access, Command, Notice, State,
+    Access, Command, Notice, QuickCommentInput, State,
     text_field::{TextEdit, TextField},
 };
 use crate::document::{Attachment, Document, ItemId, attachments, comments, format::breaks_line};
@@ -47,6 +47,9 @@ pub enum AttachmentsInput {
     Accept(DateTime),
     /// Drop the comment being typed.
     Cancel,
+    /// Open Quick Comment, or a key of its open prompt, which adds a comment without the panel
+    /// (FR-ATT-07).
+    QuickComment(QuickCommentInput),
 }
 
 /// The open panel: the block it is on, whether it covers the whole of its pane rather than half,
@@ -280,6 +283,7 @@ impl State {
     pub(super) fn offers(&self, command: Command) -> bool {
         match command {
             Command::OpenAttachments => !self.attached.is_empty(),
+            Command::QuickComment => self.attached.contains(&Attachment::Comments),
             _ => true,
         }
     }
@@ -409,6 +413,7 @@ impl State {
                     panel.draft = None;
                 }
             }
+            AttachmentsInput::QuickComment(input) => self.quick_comment_input(input),
         }
     }
 
@@ -474,23 +479,33 @@ impl State {
             return;
         };
         let text = draft.field.text();
+        let block = panel.block;
+        let Some(comment) = draft.comment else {
+            if self.add_comment(block, at, text) {
+                self.select_newest_comment();
+            }
+            return;
+        };
         if text.trim().is_empty() {
             return;
         }
-        let block = panel.block;
         let mut lines = attachments::content(&self.document, block, Attachment::Comments);
-        match draft.comment {
-            None => {
-                lines.insert(0, comments::stamped(at, text));
-                self.select_newest_comment();
-            }
-            Some(comment) => {
-                if let Some(line) = lines.get_mut(comment) {
-                    *line = comments::reworded(line, text);
-                }
-            }
+        if let Some(line) = lines.get_mut(comment) {
+            *line = comments::reworded(line, text);
         }
         self.write_attachment(block, Attachment::Comments, &lines);
+    }
+
+    /// Adds `text` as the block `block`'s newest comment, stamped `at`, as one step to undo;
+    /// returns whether it did, which text of only spaces does not (attachments.md §5, D-108).
+    pub(super) fn add_comment(&mut self, block: ItemId, at: DateTime, text: &str) -> bool {
+        if text.trim().is_empty() {
+            return false;
+        }
+        let mut lines = attachments::content(&self.document, block, Attachment::Comments);
+        lines.insert(0, comments::stamped(at, text));
+        self.write_attachment(block, Attachment::Comments, &lines);
+        true
     }
 
     /// Deletes the selected comment as one step to undo, and with the last one its node
@@ -609,6 +624,9 @@ impl State {
                 }
             })
             .collect();
+        if kind == Attachment::Comments && !on {
+            self.quick_comment = None;
+        }
         if on || self.panel.is_none() {
             return;
         }
@@ -817,7 +835,8 @@ mod tests {
         assert_eq!(state.attachments_shown(), Attachment::ALL, "in order");
     }
 
-    // FR-ATT-06, FR-NAV-06, FR-KEY-04, attachments.md §6
+    // FR-ATT-06, FR-ATT-07, FR-NAV-06, FR-KEY-04, attachments.md §6: Add Comment leaves them
+    // with comments off.
     #[test]
     fn open_attachments_leaves_go_to_command_and_the_shortcuts_panel_with_both_kinds_off() {
         let mut state = state();
@@ -846,10 +865,17 @@ mod tests {
         state.update(Message::ToggleShortcuts);
         configure(&mut state, Attachment::Note, false);
         assert!(listed(&mut state).contains(&"Open Attachments".to_owned()));
+        assert!(listed(&mut state).contains(&"Add Comment".to_owned()));
         assert!(shortcuts(&state).contains(&open));
+        assert!(shortcuts(&state).contains(&Command::QuickComment));
         configure(&mut state, Attachment::Comments, false);
         assert!(!listed(&mut state).contains(&"Open Attachments".to_owned()));
+        assert!(!listed(&mut state).contains(&"Add Comment".to_owned()));
         assert!(!shortcuts(&state).contains(&open));
+        assert!(!shortcuts(&state).contains(&Command::QuickComment));
+        configure(&mut state, Attachment::Note, true);
+        assert!(listed(&mut state).contains(&"Open Attachments".to_owned()));
+        assert!(!listed(&mut state).contains(&"Add Comment".to_owned()));
         assert!(state.offers(Command::EditNode));
     }
 

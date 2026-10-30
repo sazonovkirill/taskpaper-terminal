@@ -1,4 +1,4 @@
-# mc then 4 picks blue; c twice on an uncolored task gives yellow.
+# mc then 4 picks blue; Cycle Color, keyless, twice from Go to Command on an uncolored task gives yellow.
 file <<END
 Sprint:
 	- Design
@@ -8,7 +8,11 @@ keys j mc
 see Color:
 keys 4
 hide Color:
-keys j c c
+keys j <C-p>
+type cycle color
+keys <Enter> <C-p>
+type cycle color
+keys <Enter>
 quit
 saved <<END
 Sprint:

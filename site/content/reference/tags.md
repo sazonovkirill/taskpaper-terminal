@@ -100,9 +100,10 @@ Since there are no times, `m` means months, not minutes as in TaskPaper. Dates r
 
 A block can have one color, which tints its row's background with a very dim shade from its marker to the pane's right edge. Text colors stay as they are. The colors, in order, are red, yellow, green and blue, numbered 1 to 4.
 
-- `c` cycles the focused block's color: none, red, yellow, green, blue, and back to none. Selected blocks all get the same next color.
 - `C` removes the color.
 - `mc` opens the color picker, with each color's number. Type a number to choose at once, or type a name to filter.
+
+Cycle Color, in Go to Command, steps the focused block's color through none, red, yellow, green, blue, and back to none; selected blocks all get the same next color.
 
 Setting a color removes any other color tag. `@orange` and `@violet`, colors in earlier versions, are kept in the file as ordinary tags. The [Colors view](@/reference/views.md#colors) lists every colored block, grouped by color.
 

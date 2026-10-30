@@ -49,7 +49,7 @@ use weather::{Season, Weather};
 use widgets::{
     AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
     KeymapDialog, NavigatorPanel, NodeEditorWindow, OutlineView, Popup, QuickAddPanel,
-    SaveAsPrompt, SettingsWindow, ShortcutsPanel,
+    QuickCommentPanel, SaveAsPrompt, SettingsWindow, ShortcutsPanel,
 };
 
 /// What the event loop waits for.
@@ -729,18 +729,9 @@ impl Tui {
             Constraint::Fill(1),
             Constraint::Length(1),
         ]));
-        // The outline gives up the panel's rows rather than lying under it, so the focus scrolls
-        // into view above it; the panel spans the screen (D-54).
-        let panel_height = if self.state.date_prompt().is_some() {
-            DatePromptPanel::HEIGHT
-        } else if self.state.quick_add().is_some() {
-            QuickAddPanel::HEIGHT
-        } else {
-            0
-        };
         let [body, panel] = main.layout(&Layout::vertical([
             Constraint::Fill(1),
-            Constraint::Length(panel_height),
+            Constraint::Length(self.panel_height()),
         ]));
         let screen_body = body;
         let (strip, sidebar) = match self.state.shortcuts() {
@@ -818,7 +809,8 @@ impl Tui {
         }
         let date = self.draw_date_prompt(frame, panel);
         let quick_add = self.draw_quick_add(frame, panel, screen_body, &theme);
-        self.field_scroll = quick_add.or(date).or(typed).unwrap_or_default();
+        let comment = self.draw_quick_comment(frame, panel, &theme);
+        self.field_scroll = (quick_add.or(comment).or(date).or(typed)).unwrap_or_default();
         self.draw_keymap(frame, screen, &theme);
         if self.state.in_conflict() {
             self.draw_conflict(frame, main);
@@ -1433,6 +1425,36 @@ impl Tui {
         Some(scroll)
     }
 
+    /// The height of the panel across the bottom of the screen: the date prompt's, Quick Add's
+    /// or Quick Comment's while one is open, else none. The outline gives up the panel's rows
+    /// rather than lying under it, so the focus scrolls into view above it; the panel spans the
+    /// screen (D-54).
+    fn panel_height(&self) -> u16 {
+        if self.state.date_prompt().is_some() {
+            DatePromptPanel::HEIGHT
+        } else if self.state.quick_add().is_some() {
+            QuickAddPanel::HEIGHT
+        } else if self.state.quick_comment().is_some() {
+            QuickCommentPanel::HEIGHT
+        } else {
+            0
+        }
+    }
+
+    /// Quick Comment's prompt over `panel` with its caret, while it is open (FR-ATT-07); returns
+    /// how far its text is scrolled. The conflict prompt covers it.
+    fn draw_quick_comment(&self, frame: &mut Frame, panel: Rect, theme: &Theme) -> Option<usize> {
+        let view = self
+            .state
+            .quick_comment()
+            .filter(|_| !self.state.in_conflict())?;
+        let widget = QuickCommentPanel::new(&view, theme).text_scroll(self.field_scroll);
+        let (caret, scroll) = widget.caret(panel);
+        frame.set_cursor_position(caret);
+        frame.render_widget(widget, panel);
+        Some(scroll)
+    }
+
     /// Quick Add's panel over `panel` with its caret, and its project picker at the bottom of
     /// `body`, just above the panel, or over the panel too when `body` is too short to show one of
     /// its entries, while they are open (D-96, D-141); returns how far its text is scrolled. The
@@ -1576,6 +1598,8 @@ impl Tui {
             Some(Overlay::QuickAddPicker)
         } else if self.state.quick_add().is_some() {
             Some(Overlay::QuickAdd)
+        } else if self.state.quick_comment().is_some() {
+            Some(Overlay::QuickComment)
         } else if self.state.color_picker().is_some() {
             Some(Overlay::ColorPicker)
         } else if self.state.type_picker().is_some() {

@@ -46,6 +46,7 @@ mod keymap;
 mod navigator;
 mod node_editor;
 mod quick_add;
+mod quick_comment;
 mod save_as;
 mod settings;
 
@@ -54,6 +55,7 @@ pub use keymap::{KeymapDialog, SheetGroup};
 pub use navigator::NavigatorPanel;
 pub use node_editor::NodeEditorWindow;
 pub use quick_add::QuickAddPanel;
+pub use quick_comment::QuickCommentPanel;
 pub use save_as::SaveAsPrompt;
 pub use settings::SettingsWindow;
 
@@ -600,6 +602,7 @@ pub fn notice_span(
         Notice::Inbox { project: None } => Span::raw("No inbox project now"),
         Notice::NoWeather => Span::raw("No weather in summer"),
         Notice::QuickAdded { project } => Span::raw(format!("Added to {project}")),
+        Notice::CommentAdded => Span::raw("Comment added"),
         Notice::OpenUrlFailed { url, reason } => {
             Span::styled(format!("cannot open {url}: {reason}"), error_style)
         }
@@ -951,6 +954,7 @@ pub fn command_icon(command: Command, theme: &Theme) -> (Icon, Style) {
         Command::StartWeather => plain(Icon::Weather),
         Command::EditNode => plain(Icon::Edit),
         Command::OpenAttachments => plain(Icon::NoteAttachment),
+        Command::QuickComment => plain(Icon::Comments),
         Command::OpenUrl => plain(Icon::Link),
         Command::Duplicate => plain(Icon::Duplicate),
         Command::Delete => plain(Icon::Delete),
@@ -2327,6 +2331,7 @@ mod tests {
             ),
             (Command::StartWeather, Icon::Weather, Style::new()),
             (Command::EditNode, Icon::Edit, Style::new()),
+            (Command::QuickComment, Icon::Comments, Style::new()),
             (Command::OpenUrl, Icon::Link, Style::new()),
             (Command::Duplicate, Icon::Duplicate, Style::new()),
             (Command::Delete, Icon::Delete, Style::new()),
@@ -3197,6 +3202,15 @@ mod tests {
         assert_eq!(view.hit(11, 2, 3), Some((1, false)), "a wrapped line");
         assert_eq!(view.hit(11, 3, 3), None, "below the outline");
         assert_eq!(view.offset(1).hit(11, 0, 3), Some((1, false)));
+        assert_eq!(view.offset(1).hit(11, usize::MAX, 3), None, "far below");
+        assert_eq!(view.hit(2, 0, 2), Some((0, false)), "no room for any text");
+        let mut colors = State::new(format::parse("- a @red"), None);
+        colors.update(Message::GoTo(crate::app::Location::View(
+            SpecialView::Colors,
+        )));
+        let grouped = colors.rows().to_vec();
+        assert_eq!(outline(&grouped).hit(11, 0, 3), None, "a group's heading");
+        assert_eq!(outline(&grouped).hit(11, 1, 3), Some((0, false)));
         assert_eq!(
             outline(&rows).hit(7, 0, 5),
             Some((0, false)),
@@ -3835,6 +3849,7 @@ mod tests {
                 },
                 plain("Added to INBOX"),
             ),
+            (Notice::CommentAdded, plain("Comment added")),
             (
                 Notice::Count {
                     blocks: 1,

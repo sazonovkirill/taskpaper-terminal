@@ -70,13 +70,14 @@ Markdown backslash escapes (`\-`, `\:`) were rejected: they show literally insid
 
 - Every comment is one line starting with its local 24-hour timestamp, `[YYYY-MM-DD HH:MM] text`. The Comments section lists them newest first, or a dimmed "No comments", as the file stores them, each with its timestamp dimmed and its text rendering inline Markdown (bold, inline code, links) as a text block does.
 - Add Comment (`a`), whatever is selected, opens a one-line input at the top of the list; `Enter` adds the comment there stamped with the current local time and selects it, and `Esc` cancels. A comment cannot hold a line break: a paste's line breaks become spaces, leaving out those that end it, and the blocks the app copied last paste as Quick Add takes them ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)). Text of only spaces adds nothing (D-108).
+- Quick Comment (`c` in navigate mode, Add Comment in Go to Command and the context menu, FR-ATT-07, D-149) adds a comment to the focused block without the panel: a bordered one-line prompt across the screen just above the status line, where Quick Add opens and dimming the screen as it does, titled `Comment on` and the block's text. It takes the same text keys and pastes the same way as the panel's input; `Enter` adds the comment as the block's newest, stamped with the current local time, as one undo step, closes the prompt and says "Comment added" in the status line, and `Esc`, or `Enter` with only spaces typed, closes it adding nothing. It opens on any block but a divider, in the outline or a special view, while comments are turned on (§6), and a read-only file refuses it with its notice. A reload keeps it on its block, found again, and closes it once the block is gone.
 - The selected comment can be edited (`e` or `Enter`), in the same input in its place, keeping its timestamp, and deleted (`d` or `Delete`); each is one undo step. Deleting the last one deletes the `COMMENTS` node.
 - A line under `COMMENTS` without a valid timestamp, typed by hand or by another app, is shown as a comment without a date and kept as is; the app never reorders existing comments.
 
 ## 6. Settings (FR-ATT-06)
 
 - **Use Notes Attachments** (`attachments_notes`) and **Use Comments Attachments** (`attachments_comments`), booleans, both on by default, in the settings window's Appearance group and in `config.toml` ([ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03)).
-- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon and no panel section; the Edit Node dialog lists it like any hidden data. With both off Open Attachments is not offered and the panel cannot open.
+- With a setting off, that kind of node is an unknown special node again: hidden and preserved, with no icon and no panel section; the Edit Node dialog lists it like any hidden data. With both off Open Attachments is not offered and the panel cannot open; with comments off Add Comment is not offered, Quick Comment does not open and turning them off closes it.
 
 ## 7. Tests
 

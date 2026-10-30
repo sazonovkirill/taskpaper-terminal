@@ -39,6 +39,7 @@ mod open_url;
 mod overdue;
 mod panes;
 mod quick_add;
+mod quick_comment;
 mod quick_dates;
 mod save_as;
 mod saving;

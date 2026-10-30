@@ -102,7 +102,7 @@ mod tests {
             .map(|entry| entry.command)
             .collect();
         assert_eq!(listed.len(), navigate.len() - 1);
-        assert_eq!(listed[0], ("Animations: Full".to_owned(), String::new()));
+        assert_eq!(listed[0], ("Add Comment".to_owned(), String::new()));
         assert!(listed.is_sorted(), "by name");
         assert!(listed.contains(&("Quit".to_owned(), "Ctrl+Q".to_owned())));
         assert!(listed.iter().all(|(name, _)| name != "Go to Command"));

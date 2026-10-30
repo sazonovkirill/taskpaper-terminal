@@ -44,6 +44,10 @@ Comments are listed newest first, each with its timestamp dimmed and its text re
 
 A comment is one line: a paste's line breaks become spaces. Text of only spaces adds nothing.
 
+### Quick Comment
+
+`c` (**Add Comment**) adds a comment to the focused block without opening the panel. A one-line prompt opens at the bottom of the screen, titled with the block. Type the comment and press `Enter` to add it, stamped with the current local time, as the newest comment, or `Esc` to cancel. It is also in Go to Command and the context menu. `z` undoes the comment like any change.
+
 ## In the file
 
 Attachments are child lines of their block, so any TaskPaper app shows them as plain text:

@@ -30,7 +30,7 @@ The logic behind the default key bindings, as an aid to memorizing them. [keybin
 | `z` undo | `Z` redo | Ctrl+Z without Ctrl, plus Shift for the other way (vim's `u`/`Ctrl+R` work too) |
 | `s` toggle **s**tar | `S` toggle **S**ection | capital = the bigger mark, a heading (D-130) |
 | `d` (`dd`) cut | `D` duplicate | "**D**ouble it" |
-| `c` cycle color | `C` clear color | one exception to "capital = more": **C**lear |
+| `c` add a **c**omment | `C` clear color | `C` **C**lears the color; the cycle has no key since D-149 |
 | `gg` first block | `G` last block | vim |
 | `,` zoom out | `<` (Shift+`,`) outdent | the `,<` key goes out or left (D-139) |
 | `.` zoom in | `>` (Shift+`.`) indent | the `.>` key goes in or right, `>` as vim indents |
@@ -70,7 +70,8 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 
 ## 6. Colors, dates, done
 
-- `c` **c**ycles the color: none, red, yellow, green, blue, in rainbow order from hottest to coolest (D-138); `C` clears it.
+- `mc` picks a **c**olor, `C` **C**lears it; Cycle Color (none, red, yellow, green, blue) is in Go to Command (D-138, D-149).
+- `c` adds a **c**omment from a prompt at the bottom, as `a` adds one in the attachments panel (D-149).
 - `x` toggles done, as in a `[x]` checkbox.
 - `t` = **t**oday, `w` = **w**ait a day. Lower = start, upper = due.
 - `[`/`]` start date a day earlier/later, `{`/`}` the same for due. Left = earlier, right = later.

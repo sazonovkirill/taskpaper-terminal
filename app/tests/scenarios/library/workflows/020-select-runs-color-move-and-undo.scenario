@@ -1,4 +1,4 @@
-# Selecting a run with Shift+Down, adding a second run elsewhere, coloring them all red with c, moving them all with gm, and undoing the move keeps the colors.
+# Selecting a run with Shift+Down, adding a second run elsewhere, coloring them all red with Cycle Color from Go to Command, moving them all with gm, and undoing the move keeps the colors.
 file <<END
 Backlog:
 	- Login page
@@ -12,7 +12,10 @@ END
 keys j <S-Down>
 keys j j <S-Down>
 see ▌   - Export to CSV
-keys c
+keys <C-p>
+type cycle color
+keys <Enter>
+see ▌   - Export to CSV
 keys gm
 see Move to
 type sprint

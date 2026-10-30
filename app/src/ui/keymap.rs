@@ -10,8 +10,8 @@ use thiserror::Error;
 use super::widgets::{SheetGroup, ShortcutGroup};
 use crate::app::{
     Animations, AttachmentsInput, Command, ConflictInput, DateInput, Inputs, Menu, MenuInput,
-    Message, Mode, Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput, SaveAs,
-    SettingsInput, TextEdit,
+    Message, Mode, Motion, NavigatorInput, NodeInput, PaneChange, Paste, QuickAddInput,
+    QuickCommentInput, SaveAs, SettingsInput, TextEdit,
     commands::{self, Entry, Group, NAVIGATOR, REGISTRY},
 };
 
@@ -121,6 +121,8 @@ pub enum Overlay {
     QuickAdd,
     /// Quick Add's project picker (D-141).
     QuickAddPicker,
+    /// The Quick Comment prompt (FR-ATT-07).
+    QuickComment,
     /// The type picker (FR-BLK-08).
     TypePicker,
     /// The Edit Node dialog (FR-MODE-09).
@@ -176,6 +178,7 @@ impl Overlay {
             Self::ContextMenu => Some(Menu::ContextMenu),
             Self::DatePrompt
             | Self::QuickAdd
+            | Self::QuickComment
             | Self::NodeEditor
             | Self::Attachments
             | Self::AttachmentsEditor
@@ -194,6 +197,7 @@ impl Overlay {
             self,
             Self::DatePrompt
                 | Self::QuickAdd
+                | Self::QuickComment
                 | Self::SaveAs
                 | Self::SettingsText
                 | Self::NodeEditor
@@ -627,6 +631,13 @@ fn dialog_shortcuts(overlay: Overlay) -> Option<ShortcutGroup> {
                 ],
             ),
         ),
+        Overlay::QuickComment => (
+            Group::QuickComment,
+            vec![
+                ("Add Comment".into(), key_label(key!(Enter))),
+                ("Cancel".into(), key_label(key!(Esc))),
+            ],
+        ),
         Overlay::NodeEditor => (
             Group::NodeEditor,
             listed(
@@ -689,6 +700,19 @@ fn quick_add_message(key: Key) -> Option<Message> {
         .map(|&(_, input)| input)
         .or_else(|| text_edit(key).map(QuickAddInput::Edit))?;
     Some(Message::QuickAdd(input))
+}
+
+/// The Quick Comment message for `key` at local time `now`: `Ctrl+Q` quits, `Ctrl+V` pastes into
+/// the text, `Enter` adds the comment stamped `now`, `Esc` cancels, else the text key it is.
+fn quick_comment_message(key: Key, now: DateTime) -> Option<Message> {
+    let input = match key {
+        key!(ctrl 'q') => return Some(Message::Quit),
+        key!(ctrl 'v') => return Some(Message::Paste(Paste::Below)),
+        key!(Enter) => QuickCommentInput::Add(now),
+        key!(Esc) => QuickCommentInput::Cancel,
+        _ => QuickCommentInput::Edit(text_edit(key)?),
+    };
+    Some(Message::Attachments(AttachmentsInput::QuickComment(input)))
 }
 
 /// Bindings of the Edit Node dialog ([keybindings.md §4]) besides the [`TEXT`] keys, which
@@ -1330,10 +1354,15 @@ impl Keymap {
         sheet.push(named(self.navigator_shortcuts()));
         sheet.push(named(picker_shortcuts(Menu::GoToSymbol)));
         sheet.extend(
-            [Overlay::DatePrompt, Overlay::QuickAdd, Overlay::NodeEditor]
-                .into_iter()
-                .filter_map(dialog_shortcuts)
-                .map(named),
+            [
+                Overlay::DatePrompt,
+                Overlay::QuickAdd,
+                Overlay::QuickComment,
+                Overlay::NodeEditor,
+            ]
+            .into_iter()
+            .filter_map(dialog_shortcuts)
+            .map(named),
         );
         sheet.extend(window_sheet());
         sheet
@@ -1407,6 +1436,7 @@ impl Keymap {
             let message = match overlay {
                 Overlay::DatePrompt => date_prompt_message(pressed),
                 Overlay::QuickAdd => quick_add_message(pressed),
+                Overlay::QuickComment => quick_comment_message(pressed, context.now),
                 Overlay::ColorPicker => menu_message(pressed, Menu::ColorPicker),
                 Overlay::TypePicker => menu_message(pressed, Menu::TypePicker),
                 Overlay::GoToSymbol if OPEN_IN_NEW_PANE.contains(&pressed) => {
@@ -2638,20 +2668,24 @@ mod tests {
             .collect()
     }
 
-    // FR-TAG-04, FR-TAG-05, FR-TAG-06, D-11, D-26, D-42, D-48, D-91, D-138, D-139: plain
-    // characters, which both key reportings send alike, and `C`, which the kitty protocol sends as
-    // `c` with `Shift`. `c` cycles at once, as no sequence starts with it, and `b` and `!` toggle
-    // at once, leaving the `m` keys to prompts and pickers.
+    // FR-TAG-04, FR-TAG-05, FR-TAG-06, FR-ATT-07, D-11, D-26, D-42, D-48, D-91, D-138, D-139,
+    // D-149: plain characters, which both key reportings send alike, and `C`, which the kitty
+    // protocol sends as `c` with `Shift`. `c` opens Quick Comment at once, as no sequence starts
+    // with it, Cycle Color has no key, and `b` and `!` toggle at once, leaving the `m` keys to
+    // prompts and pickers.
     #[test]
     fn color_star_flag_and_bookmark_keys() {
         check(
             KeyCode::Char('c'),
             KeyModifiers::NONE,
-            Some(&Message::CycleColor),
+            Some(&Message::Attachments(AttachmentsInput::QuickComment(
+                QuickCommentInput::Open,
+            ))),
         );
-        assert_eq!(
-            messages("cc", CONTEXT),
-            [Some(Message::CycleColor), Some(Message::CycleColor)]
+        assert!(
+            REGISTRY
+                .iter()
+                .any(|entry| entry.command == Command::CycleColor && entry.keys.is_empty())
         );
         assert_eq!(
             messages("C", CONTEXT),
@@ -3047,6 +3081,7 @@ mod tests {
                 "Pickers and Palettes",
                 "Date Prompt",
                 "Quick Add",
+                "Quick Comment",
                 "Edit Node",
                 "Attachments Panel",
                 "Settings Window",
@@ -3086,8 +3121,19 @@ mod tests {
             sheet[9].1, navigator,
             "Quit is said once, in the last group"
         );
+        assert_eq!(
+            sheet[13],
+            (
+                "Quick Comment".into(),
+                vec![
+                    ("Add Comment".into(), "Enter".to_owned()),
+                    ("Cancel".into(), "Esc".to_owned()),
+                    ("Paste".into(), "Ctrl+V".to_owned()),
+                ]
+            )
+        );
         assert!(
-            sheet[9..18]
+            sheet[9..19]
                 .iter()
                 .all(|(_, entries)| entries.iter().all(|(_, keys)| keys != "Ctrl+Q"))
         );
@@ -3098,15 +3144,15 @@ mod tests {
     fn the_keymap_lists_the_windows_with_keys_of_their_own_and_says_once_that_ctrl_q_quits() {
         let sheet = Keymap::default().sheet();
         assert_eq!(
-            sheet[18].1.last(),
+            sheet[19].1.last(),
             Some(&("Quit, in Any Window".into(), "Ctrl+Q".to_owned()))
         );
         assert_eq!(
-            sheet[18].1[0],
+            sheet[19].1[0],
             ("Close".into(), "Esc, q, F1, g?".to_owned())
         );
         assert_eq!(
-            sheet[17].1,
+            sheet[18].1,
             [
                 ("Keep Mine".into(), "Ctrl+K".to_owned()),
                 ("Take Theirs".into(), "Ctrl+R".to_owned()),
@@ -3119,7 +3165,7 @@ mod tests {
             "the conflict prompt's keys"
         );
         assert_eq!(
-            sheet[14].1[3..],
+            sheet[15].1[3..],
             [
                 ("Full Width, Then Close".into(), "\\, &".to_owned()),
                 ("Close".into(), "Esc".to_owned()),
@@ -3132,9 +3178,9 @@ mod tests {
             ],
             "the attachments panel's keys"
         );
-        assert_eq!(sheet[15].1.len(), 9, "the settings window's keys");
+        assert_eq!(sheet[16].1.len(), 9, "the settings window's keys");
         assert_eq!(
-            sheet[16].1,
+            sheet[17].1,
             [
                 ("Save".into(), "Enter".to_owned()),
                 ("Cancel".into(), "Esc".to_owned()),
@@ -3146,7 +3192,49 @@ mod tests {
             "Open in New Pane".into(),
             "Alt+Enter, Ctrl+V, Ctrl+T".to_owned()
         )));
-        assert_eq!(sheet[13].1[0], ("Next Row".into(), "Tab, ↓".to_owned()));
+        assert_eq!(sheet[14].1[0], ("Next Row".into(), "Tab, ↓".to_owned()));
+    }
+
+    // FR-ATT-07, keybindings.md §4, D-42
+    #[test]
+    fn quick_comment_takes_text_keys_and_enter_stamps_the_comment_now() {
+        let none = KeyModifiers::NONE;
+        let prompt = |code, modifiers| overlay_message(Overlay::QuickComment, code, modifiers);
+        for (code, input) in [
+            (KeyCode::Enter, QuickCommentInput::Add(NOW)),
+            (KeyCode::Esc, QuickCommentInput::Cancel),
+            (
+                KeyCode::Char('c'),
+                QuickCommentInput::Edit(TextEdit::Insert('c')),
+            ),
+            (
+                KeyCode::Backspace,
+                QuickCommentInput::Edit(TextEdit::DeleteBackward),
+            ),
+        ] {
+            assert_eq!(
+                prompt(code, none),
+                Some(Message::Attachments(AttachmentsInput::QuickComment(input))),
+                "{code:?}"
+            );
+        }
+        assert_eq!(
+            prompt(KeyCode::Char('q'), KeyModifiers::CONTROL),
+            Some(Message::Quit)
+        );
+        assert_eq!(
+            prompt(KeyCode::Char('v'), KeyModifiers::CONTROL),
+            Some(Message::Paste(Paste::Below))
+        );
+        assert_eq!(prompt(KeyCode::F(5), none), None);
+        let context = &Context {
+            overlay: Some(Overlay::QuickComment),
+            ..*CONTEXT
+        };
+        assert!(matches!(
+            Keymap::default().action_for(&Event::Paste("a".to_owned()), ms(0), context),
+            Some(KeyAction::Send(Message::Pasted { .. }))
+        ));
     }
 
     // attachments.md §5, keybindings.md §4, D-42
@@ -4768,6 +4856,7 @@ mod tests {
             Overlay::ColorPicker,
             Overlay::DatePrompt,
             Overlay::QuickAdd,
+            Overlay::QuickComment,
             Overlay::TypePicker,
             Overlay::NodeEditor,
             Overlay::NodeEditorFinder,
@@ -4794,7 +4883,10 @@ mod tests {
             let Some(menu) = overlay.menu() else {
                 if !matches!(
                     overlay,
-                    Overlay::DatePrompt | Overlay::QuickAdd | Overlay::NodeEditor
+                    Overlay::DatePrompt
+                        | Overlay::QuickAdd
+                        | Overlay::QuickComment
+                        | Overlay::NodeEditor
                 ) {
                     assert_eq!(listed, None, "{overlay:?} has keys of its own");
                 }
@@ -4866,6 +4958,18 @@ mod tests {
                     "Previous Row: Shift+Tab, ↑".to_owned(),
                     "Cycle Type: Ctrl+T".to_owned(),
                     "Save: Enter".to_owned(),
+                    "Cancel: Esc".to_owned(),
+                    "Paste: Ctrl+V".to_owned(),
+                    "Quit: Ctrl+Q".to_owned(),
+                ]
+            )
+        );
+        assert_eq!(
+            listed(Overlay::QuickComment),
+            (
+                "Quick Comment",
+                vec![
+                    "Add Comment: Enter".to_owned(),
                     "Cancel: Esc".to_owned(),
                     "Paste: Ctrl+V".to_owned(),
                     "Quit: Ctrl+Q".to_owned(),

@@ -1,0 +1,24 @@
+# c opens a one-line prompt titled with the focused task at the bottom; Enter adds the comment, which the attachments panel lists, and Esc on a second prompt adds nothing.
+file <<END
+Errands:
+	- Call the bank
+END
+keys j c
+see ┌ Comment on Call the bank
+type Called back
+keys <Enter>
+hide ┌ Comment on
+see Comment added
+keys c
+type Ignored
+keys <Esc>
+hide ┌ Comment on
+keys \
+see Called back
+hide Ignored
+keys <Esc> z
+quit
+saved <<END
+Errands:
+	- Call the bank
+END

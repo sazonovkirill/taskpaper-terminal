@@ -2391,18 +2391,7 @@
    "topic": "tags",
    "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "c",
-     "presses": [
-      [
-       "c"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-pick-color",
@@ -2622,6 +2611,28 @@
      "presses": [
       [
        "&"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    }
+   ]
+  },
+  {
+   "id": "navigate-add-comment",
+   "name": "Add Comment",
+   "config": "add_comment",
+   "mode": "navigate",
+   "group": "Block Metadata",
+   "topic": "tags",
+   "panel": true,
+   "menu_only": false,
+   "keys": [
+    {
+     "label": "c",
+     "presses": [
+      [
+       "c"
       ]
      ],
      "kitty": false,
@@ -7922,23 +7933,6 @@
       "typed": []
      },
      {
-      "label": "Cycle Color",
-      "panel": false,
-      "keys": [
-       {
-        "label": "c",
-        "presses": [
-         [
-          "c"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
       "label": "Pick Color",
       "panel": true,
       "keys": [
@@ -8093,6 +8087,23 @@
         "presses": [
          [
           "&"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       }
+      ],
+      "typed": []
+     },
+     {
+      "label": "Add Comment",
+      "panel": true,
+      "keys": [
+       {
+        "label": "c",
+        "presses": [
+         [
+          "c"
          ]
         ],
         "kitty": false,
@@ -9480,6 +9491,7 @@
    "Color: Yellow",
    "Color: Green",
    "Color: Blue",
+   "Cycle Color",
    "Make Section",
    "Remove Section",
    "Choose Theme",

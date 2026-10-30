@@ -239,7 +239,7 @@ fn metadata_keys_mark_every_selected_block() {
     let mut app = Harness::with_text(ERRANDS, 40, 10);
     app.type_keys("j");
     app.press(KeyCode::Down, KeyModifiers::SHIFT);
-    app.type_keys("c");
+    app.type_keys("mc1");
     app.type_keys("s");
     app.type_keys("b");
     assert_eq!(

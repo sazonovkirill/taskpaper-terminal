@@ -118,7 +118,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Due date one day earlier / later | `{` / `}` |
 | Set start / due date with a prompt | `ms` / `md` |
 | Remove the color (D-48) | `C` |
-| Cycle color (none, red, yellow, green, blue, D-138) | `c` (was `cc`, with `c1` … `c6` setting each of six colors, D-48) |
+| Cycle color (none, red, yellow, green, blue, D-138) | none, in Go to Command (was `c` until D-149, and `cc`, with `c1` … `c6` setting each of six colors, D-48) |
 | Pick a color | `mc` |
 | Toggle star (`@star`, D-88; was Toggle today, `mt`) | `s` (was `*`, D-130) |
 | Toggle bookmark | `b` (was `mb`, D-139) |
@@ -127,6 +127,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Toggle section: make the selected text blocks sections, or plain text when every one is (D-52, D-130) | `S` (was Make Section, with `s` Remove Section; both now in Go to Command only) |
 | Edit Node: every property and tag of the focused block ([editing.md §7](editing.md#7-edit-node-dialog-fr-mode-09), D-103) | `e` (`mi` is gone, D-132) |
 | Open Attachments: the attachments panel on the focused block, its note selected ([attachments.md §3](attachments.md#3-attachments-panel-fr-att-03), D-106, D-134) | `\`, `&` (was Open Note `n` and Open Comments `N`; `\` since D-145) |
+| Add Comment: a comment on the focused block from a one-line prompt at the bottom, without the attachments panel ([attachments.md §5](attachments.md#5-comments-fr-att-05), D-149) | `c` (was Cycle color, D-138) |
 | Open the focused block's link: its `@url` address, else the first link in its text (FR-BLK-06, D-45) | `gx` |
 
 ### View, panes and panels
@@ -190,6 +191,7 @@ Standard text keys as listed in [editing.md §2](editing.md#2-edit-mode), plus:
 - **Navigator** (D-79, D-86): typing filters its entries and `Backspace` erases the filter, so its keys are arrows and control keys, as in the finders: `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` zooms the focused pane to the entry and closes the window, `Alt+Enter`, `Ctrl+V` (the non-`Alt` route of §1, as in fzf and Telescope) or `Ctrl+T` (as fzf and Telescope open a tab, for terminals that take the other two, §6, D-90) opens it in a new pane, `←`/`→` fold project entries, `Ctrl+\`, `Shift+F10` or the Menu key opens the context menu (D-145), `Esc`, `Ctrl+G` or `|` closes it (so `|` cannot be typed into the filter; D-132), `Ctrl+Q` quits. It keeps the keys until it closes: other keys, those that focus a pane included, do nothing.
 - **Pickers and palettes:** type to filter, `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, `Enter` chooses, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the choice in a new pane where that applies (Go to Symbol, Go to Project), `Esc` cancels. The theme picker previews the highlighted theme as it moves ([ui.md §3](ui.md#3-themes-fr-ui-0608)).
 - **Settings window:** keys as in [ui.md §8](ui.md#8-settings-window-fr-set-02-fr-set-03): `j`/`k`/arrows move, `Tab` switches column, `Enter`/`Space` change, `h`/`l`/`←`/`→` cycle, `r` resets, `/` filters, `Esc` closes; its value picker takes the keys of pickers, and its prompt and filter the standard text keys with `Enter` and `Esc`. `Ctrl+Q` still quits. Every key is a plain key, so both key reportings send it (D-42).
+- **Quick Comment** (`c`, [attachments.md §5](attachments.md#5-comments-fr-att-05), D-149): standard text keys, `Enter` adds the comment, `Esc` cancels, `Ctrl+V` pastes, `Ctrl+Q` quits; other keys do nothing. Every key is a plain key (D-42).
 - **Quick Add** ([editing.md §6](editing.md#6-quick-add-fr-mode-07-fr-mode-08)): standard text keys, `Enter` adds, `Esc` cancels, `Backspace` at the start of the text deletes the task's dash, `Tab` opens the project picker (Choose Project, shown in the `?` panel's Quick Add group as "Choose Project: Tab", D-141), which takes the keys of pickers: `Enter` chooses the destination and `Esc` closes it, keeping the destination. Every key is a plain key, `Tab` included (D-42).
 - **Prompts** (dates, Save As path): standard text keys, `Enter` accepts, `Esc` cancels. In the Save As prompt `Tab` completes the folder being typed, and when the file exists `Enter` replaces it and `Esc` goes back to the path.
 - **External-change conflict prompt** ([file-io.md §3](file-io.md#3-external-changes)): `Ctrl+K` keeps mine, `Ctrl+R` takes theirs, `Ctrl+L` shows or hides the diff (D-115: the prompt can open while the user types, so no plain letter answers it), `j`/`k`/arrows scroll the diff a line and `Ctrl+D`/`Ctrl+U`/`PageDown`/`PageUp` a page, `Ctrl+Q` quits. Other keys do nothing; the prompt has no `Esc`, because saving stays paused until a choice is made.

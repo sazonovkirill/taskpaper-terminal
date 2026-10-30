@@ -27,6 +27,7 @@ use super::{
     pane::Pane,
     picker::Picker,
     quick_add::QuickAdd,
+    quick_comment::QuickComment,
     rows::{Builder, OldSiblings, Opened, Rows, Unfolded},
     save_as,
     saving::Autosave,
@@ -81,6 +82,8 @@ pub struct State {
     pub(super) date_prompt: Option<DatePrompt>,
     /// Quick Add, while it is open (FR-MODE-07).
     pub(super) quick_add: Option<QuickAdd>,
+    /// Quick Comment, while it is open (FR-ATT-07).
+    pub(super) quick_comment: Option<QuickComment>,
     /// The type picker over the focused block, while it is open (FR-BLK-08).
     pub(super) type_picker: Option<Picker<Conversion>>,
     /// The Edit Node dialog, while it is open (FR-MODE-09).
@@ -287,6 +290,8 @@ pub enum Notice {
         /// The project's text.
         project: String,
     },
+    /// Quick Comment added a comment to its block (FR-ATT-07).
+    CommentAdded,
     /// How many blocks are under the focused block and how many words they hold (FR-OPS-09).
     Count {
         /// The blocks.
@@ -328,6 +333,7 @@ impl Notice {
             | Self::Inbox { .. }
             | Self::NoWeather
             | Self::QuickAdded { .. }
+            | Self::CommentAdded
             | Self::Bookmark { .. }
             | Self::Count { .. }
             | Self::OpenUrlFailed { .. } => false,
@@ -437,6 +443,7 @@ impl State {
             color_picker: None,
             date_prompt: None,
             quick_add: None,
+            quick_comment: None,
             type_picker: None,
             node_editor: None,
             attached: Attachment::ALL.to_vec(),

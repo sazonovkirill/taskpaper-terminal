@@ -391,6 +391,7 @@ impl State {
         if let Some(quick_add) = &mut self.quick_add {
             quick_add.rematch(exact);
         }
+        self.rematch_quick_comment(exact);
         self.resume = self
             .resume
             .take()
@@ -512,8 +513,9 @@ mod tests {
     use super::*;
     use crate::{
         app::{
-            DateInput, DocumentText, Menu, MenuInput, MenuRow, Message, QuickAddInput,
-            SelectionChange, SpecialView, Symbols, TextEdit, state::NOTICE_TIME, walks::Walks,
+            AttachmentsInput, DateInput, DocumentText, Menu, MenuInput, MenuRow, Message,
+            QuickAddInput, QuickCommentInput, SelectionChange, SpecialView, Symbols, TextEdit,
+            state::NOTICE_TIME, walks::Walks,
         },
         document::{Op, Transaction},
     };
@@ -767,6 +769,31 @@ mod tests {
         quick_add(&mut state, QuickAddInput::Open);
         state.update(found("B:\n"));
         assert_eq!(destination(&state), None, "A is gone");
+    }
+
+    // F-FILE-06, FR-ATT-07
+    #[test]
+    fn a_reload_keeps_quick_comment_on_its_block_and_closes_it_once_the_block_is_gone() {
+        let mut state = opened("- a\n- b\n");
+        let comment = |state: &mut State, input| {
+            state.update(Message::Attachments(AttachmentsInput::QuickComment(input)))
+        };
+        state.update(Message::FocusNext);
+        comment(&mut state, QuickCommentInput::Open);
+        comment(&mut state, QuickCommentInput::Edit(TextEdit::Insert('x')));
+        state.update(found("- new\n- a\n- b\n"));
+        assert_eq!(state.quick_comment().unwrap().text, "x");
+        let at = jiff::civil::date(2026, 10, 30).at(9, 0, 0, 0);
+        comment(&mut state, QuickCommentInput::Add(at));
+        assert_eq!(
+            format::serialize(state.document()),
+            "- new\n- a\n- b\n\tCOMMENTS @hidden\n\t\t[2026-10-30 09:00] x\n"
+        );
+        let mut state = opened("- a\n- b\n");
+        state.update(Message::FocusNext);
+        comment(&mut state, QuickCommentInput::Open);
+        state.update(found("- a\n"));
+        assert_eq!(state.quick_comment(), None, "b is gone");
     }
 
     // F-FILE-06, D-104, D-141

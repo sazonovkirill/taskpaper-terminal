@@ -379,7 +379,7 @@ pub const REGISTRY: &[Entry] = &[
     ),
     entry!(Command::SetColor(Some(TagColor::Blue)), Mode::Navigate, &[]),
     entry!(Command::SetColor(None), Mode::Navigate, &["C"]),
-    entry!(Command::CycleColor, Mode::Navigate, &["c"]),
+    entry!(Command::CycleColor, Mode::Navigate, &[]),
     entry!(Command::OpenColorPicker, Mode::Navigate, &["m c"]),
     entry!(Command::ToggleFlag(Flag::Star), Mode::Navigate, &["s"]),
     entry!(Command::ToggleFlag(Flag::Bookmark), Mode::Navigate, &["b"],),
@@ -390,6 +390,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(Command::SetSection(false), Mode::Navigate, &[]),
     entry!(Command::EditNode, Mode::Navigate, &["e"]),
     entry!(Command::OpenAttachments, Mode::Navigate, &["\\", "&"]),
+    entry!(Command::QuickComment, Mode::Navigate, &["c"]),
     entry!(Command::OpenUrl, Mode::Navigate, &["g x"]),
     entry!(Command::ToggleShowDone, Mode::Navigate, &["g c"]),
     entry!(Command::ToggleWrap, Mode::Navigate, &["alt+z", "g w"]),
@@ -611,6 +612,8 @@ pub enum Group {
     DatePrompt,
     /// The keys of the open Quick Add panel.
     QuickAdd,
+    /// The keys of the open Quick Comment prompt.
+    QuickComment,
     /// The keys of the open Edit Node dialog.
     NodeEditor,
 }
@@ -633,6 +636,7 @@ impl Group {
             Self::Picker => "Pickers and Palettes",
             Self::DatePrompt => "Date Prompt",
             Self::QuickAdd => "Quick Add",
+            Self::QuickComment => "Quick Comment",
             Self::NodeEditor => "Edit Node",
         }
     }
@@ -730,6 +734,7 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
             Command::ToggleFlag(Flag::Bookmark),
             Command::EditNode,
             Command::OpenAttachments,
+            Command::QuickComment,
         ],
     ),
     (
@@ -899,7 +904,7 @@ mod tests {
                 ("Editing and Creating", 4),
                 ("Selection", 3),
                 ("Structure", 9),
-                ("Block Metadata", 8),
+                ("Block Metadata", 9),
                 ("View and Panels", 12),
             ]
         );

@@ -31,6 +31,7 @@ mod overdue;
 mod pane;
 mod picker;
 mod quick_add;
+mod quick_comment;
 mod rows;
 mod save_as;
 pub mod saving;
@@ -68,6 +69,7 @@ pub use node_editor::{
 pub use pane::{PaneChange, PaneId, PaneView};
 pub use picker::PickerView;
 pub use quick_add::{Missing, QuickAddInput, QuickAddView};
+pub use quick_comment::{QuickCommentInput, QuickCommentView};
 pub use rows::Rows;
 pub use save_as::{SaveAs, SaveAsStatus, SaveAsView};
 pub use saving::{DocumentText, SaveState};

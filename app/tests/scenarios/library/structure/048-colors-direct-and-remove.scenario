@@ -1,10 +1,10 @@
-# c gives a task red, c again replaces it with yellow, and C removes the color.
+# mc 1 gives a task red, mc 2 replaces it with yellow, and C removes the color.
 file <<END
 Sprint:
 	- Design
 	- Build @blue
 END
-keys j c c j C
+keys j mc 1 mc 2 j C
 quit
 saved <<END
 Sprint:

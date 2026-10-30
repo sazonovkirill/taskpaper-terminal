@@ -191,6 +191,7 @@ impl State {
                 if self.edit.is_none()
                     && self.date_prompt.is_none()
                     && self.quick_add.is_none()
+                    && self.quick_comment.is_none()
                     && self.save_as.is_none()
                     && self.settings.is_none()
                     && self.node_editor.is_none() =>

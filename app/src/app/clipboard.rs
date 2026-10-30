@@ -81,6 +81,7 @@ impl State {
             return;
         }
         if self.quick_add_paste(text)
+            || self.quick_comment_paste(text)
             || self.save_as_paste(text)
             || self.settings_paste(text)
             || self.node_editor_paste(text)

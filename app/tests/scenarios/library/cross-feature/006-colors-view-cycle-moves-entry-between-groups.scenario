@@ -1,15 +1,15 @@
-# Coloring two tasks in the outline, then cycling one in the Colors view moves it from group to group with the focus, and the file keeps one color tag each.
+# Coloring two tasks in the outline, then recoloring one in the Colors view moves it from group to group with the focus, and the file keeps one color tag each.
 file <<END
 INBOX: @inbox
 	- Call the plumber
 	- Renew passport
 END
-keys j c j c c gC gg
+keys j mc 1 j mc 2 gC gg
 see Red
-keys c
+keys mc 2
 see Yellow
 hide Red
-keys c c
+keys mc 4
 see Blue
 quit
 saved <<END

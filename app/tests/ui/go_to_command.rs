@@ -39,11 +39,11 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│›                                                         │",
+            "│ ❞ Add Comment  c                                         │",
             "│ ≈ Animations: Full                                       │",
             "│ ≈ Animations: Off                                        │",
             "│ ≈ Animations: Reduced                                    │",
             "│ › Back  H, Alt+←, Ctrl+O                                 │",
-            "│ ● Choose Theme                                           │",
         ]
     );
     let buffer = app.render().buffer().clone();
@@ -52,7 +52,7 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
         "the first entry is highlighted"
     );
     assert!(
-        buffer[(10, 7)].modifier.contains(Modifier::DIM),
+        buffer[(10, 8)].modifier.contains(Modifier::DIM),
         "keys are dim"
     );
     app.terminal.backend_mut().assert_cursor_position((3, 3));

@@ -17,7 +17,8 @@ pub use registry::{Entry, Group, NAVIGATOR, REGISTRY, keymap, shortcuts};
 
 use super::{
     AttachmentsInput, Location, Message, NavigatorInput, NewBlock, NodeInput, PaneChange, Paste,
-    QuickAddInput, SaveAs, SelectionChange, Sibling, SpecialView, Symbols, TextEdit,
+    QuickAddInput, QuickCommentInput, SaveAs, SelectionChange, Sibling, SpecialView, Symbols,
+    TextEdit,
 };
 use crate::document::{DateChange, DateTag, Flag, TagColor, format::Typed, inline::Marker};
 
@@ -139,6 +140,8 @@ pub enum Command {
     EditNode,
     /// Open the attachments panel on the focused block (FR-ATT-03, D-134).
     OpenAttachments,
+    /// Add a comment to the focused block without opening the attachments panel (FR-ATT-07).
+    QuickComment,
     /// Find a block by name and go to it.
     GoToSymbol,
     /// Find a project by name and go to it (D-65).
@@ -292,9 +295,7 @@ impl Command {
             Self::Forward => "Forward".into(),
             Self::ToggleNavigator => "Open Navigator".into(),
             Self::ToggleDone => "Toggle Done".into(),
-            Self::ToggleFlag(Flag::Star) => "Toggle Star".into(),
-            Self::ToggleFlag(Flag::Bookmark) => "Toggle Bookmark".into(),
-            Self::ToggleFlag(Flag::Flagged) => "Toggle Flag".into(),
+            Self::ToggleFlag(flag) => flag_name(flag).into(),
             Self::CycleColor => "Cycle Color".into(),
             Self::SetColor(None) => "Remove Color".into(),
             Self::OpenColorPicker => "Pick Color".into(),
@@ -307,6 +308,7 @@ impl Command {
             Self::Retype(Typed::Text) => "Note".into(),
             Self::EditNode => "Edit Node".into(),
             Self::OpenAttachments => "Open Attachments".into(),
+            Self::QuickComment => "Add Comment".into(),
             Self::GoToSymbol => "Go to Symbol".into(),
             Self::GoToProject => "Go to Project".into(),
             Self::MoveTo => "Move to…".into(),
@@ -420,6 +422,9 @@ impl Command {
             | Self::ShowKeymap => return None,
             Self::EditNode => Message::NodeEditor(NodeInput::Open),
             Self::OpenAttachments => Message::Attachments(AttachmentsInput::Open),
+            Self::QuickComment => {
+                Message::Attachments(AttachmentsInput::QuickComment(QuickCommentInput::Open))
+            }
             Self::GoToSymbol => Message::OpenGoToSymbol(Symbols::All),
             Self::GoToProject => Message::OpenGoToSymbol(Symbols::Projects),
             Self::MoveTo => Message::OpenMoveTo,
@@ -455,6 +460,15 @@ impl Command {
             Self::ToggleMarker(marker) => Message::Text(TextEdit::Toggle(marker)),
             Self::Pane(change) => Message::Pane(change),
         })
+    }
+}
+
+/// The name of [`Command::ToggleFlag`] toggling `flag`.
+fn flag_name(flag: Flag) -> &'static str {
+    match flag {
+        Flag::Star => "Toggle Star",
+        Flag::Bookmark => "Toggle Bookmark",
+        Flag::Flagged => "Toggle Flag",
     }
 }
 
