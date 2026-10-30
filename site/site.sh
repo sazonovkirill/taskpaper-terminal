@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Builds, previews, checks and screenshots the tpt product website (docs/website.md).
 #
-# Usage: bash site/site.sh build | serve | check | reference | shoot [scene,...]
+# Usage: bash site/site.sh build | serve | check | reference | shoot [scene,...] | deploy
 #
 #   build      render the site into site/public/
 #   serve      preview it at http://127.0.0.1:1111 with live reload
 #   check      build, then fail on a broken internal link, missing file or missing anchor, on
 #              Reference data older than the app's source, or on a command or setting the
 #              Reference does not render
+#   deploy     check, then push site/public/ as the only commit of origin's gh-pages branch,
+#              which GitHub Pages serves at base_url
 #   reference  regenerate the Reference's key and settings data in site/data/ from app/src
 #   shoot      build the release tpt and regenerate site/static/screenshots/ (needs tmux, Node
 #              Playwright and Chromium); name scenes to regenerate only those
@@ -54,11 +56,22 @@ case "${1:-}" in
     python3 "$site/scripts/check_links.py" "$site/public"
     python3 "$site/scripts/reference_tables.py" --check "$site/public"
     ;;
+  deploy)
+    bash "$site/site.sh" check
+    touch "$site/public/.nojekyll"
+    rev="$(git -C "$site" rev-parse --short HEAD)"
+    git -C "$site/public" init -q -b gh-pages
+    git -C "$site/public" add -A
+    git -C "$site/public" -c user.name="$(git -C "$site" config user.name)" \
+      -c user.email="$(git -C "$site" config user.email)" commit -q -m "Publish the site from $rev"
+    git -C "$site/public" push -f "$(git -C "$site" remote get-url origin)" gh-pages
+    rm -rf "$site/public/.git"
+    ;;
   reference) python3 "$site/scripts/reference_tables.py" ;;
   shoot)
     cargo build --release --manifest-path "$site/../app/Cargo.toml"
     python3 "$site/screenshots/shoot.py" "$site/../app/target/release/tpt" \
       "$site/static/screenshots" ${2:+--only "$2"}
     ;;
-  *) sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

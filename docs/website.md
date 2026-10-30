@@ -92,7 +92,7 @@ Priorities use the scale of the functional requirements. IDs are stable; referen
 
 ## Milestones
 
-Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` work stops for the owner's review. For the website the owner waived that stop (2026-10-11): W1 to W5 are built straight through and reported together, and W5 builds the site without deploying it. Site changes need no independent review and no mutation testing ([agent workflow](quality/agent-workflow.md#the-product-website)).
+Built one milestone at a time, as the app was ([implementation plan](implementation-plan.md#milestones-and-acceptance)): each milestone is one Todoist task naming the previous one as a dependency, its steps run in parallel where they can, and when they are on `main` work stops for the owner's review. For the website the owner waived that stop (2026-10-11): W1 to W5 are built straight through and reported together, and W5 builds the site without deploying it. The owner made the repository public on 2026-10-30, and the site is published to GitHub Pages at https://sazonovkirill.github.io/taskpaper-terminal by `bash site/site.sh deploy`, which pushes the built site to the `gh-pages` branch. Site changes need no independent review and no mutation testing ([agent workflow](quality/agent-workflow.md#the-product-website)).
 
 | # | Milestone | Covers | After |
 |---|---|---|---|
