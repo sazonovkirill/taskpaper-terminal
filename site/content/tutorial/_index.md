@@ -15,4 +15,4 @@ You need `tpt` installed:
 cargo install --git https://github.com/sazonovkirill/taskpaper-terminal
 ```
 
-Then download the sample file, [tutorial.taskpaper](/tutorial/tutorial.taskpaper), and put it somewhere you can find it. It holds a short trip plan, some chores and a work project, and every chapter uses it.
+Then download the sample file, {{ static_link(path="tutorial/tutorial.taskpaper", text="tutorial.taskpaper") }}, and put it somewhere you can find it. It holds a short trip plan, some chores and a work project, and every chapter uses it.

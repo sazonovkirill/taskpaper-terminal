@@ -4,7 +4,8 @@
 Usage: python3 check_links.py site/public
 
 Checks every href and src in every HTML file under the folder. Links that start with the
-site's base URL or with / are resolved against the folder; external links are not fetched.
+site's base URL are resolved against the folder; external links are not fetched. A link that
+starts with a single / fails, since it would leave the site when base_url has a sub-path.
 """
 
 import re
@@ -61,6 +62,9 @@ def main():
     for file, page in pages.items():
         for link in page.links:
             if link.startswith(("mailto:", "data:", "javascript:")):
+                continue
+            if link.startswith("/") and not link.startswith("//"):
+                problems.append(f"{file.relative_to(public)}: {link} is root-relative; use get_url")
                 continue
             found = target(public, base, file, link)
             if found is None:

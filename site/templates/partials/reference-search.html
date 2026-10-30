@@ -11,6 +11,7 @@
     '<ol class="ref-results" hidden></ol>';
   nav.querySelector(".docs-home").after(form);
   const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("{{ get_url(path='@/reference/_index.md') }}").pathname;
   let index = null, loading = null;
   const load = (src) => new Promise((done, fail) => {
     const s = document.createElement("script");
@@ -37,7 +38,7 @@
     const words = q.toLowerCase().split(/\s+/);
     const hits = index.search(q, { bool: "AND", expand: true,
       fields: { title: { boost: 3 }, body: { boost: 1 } } })
-      .filter((h) => new URL(h.ref).pathname.startsWith("/reference/")).slice(0, 8);
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
     if (hits.length === 0) {
       const li = document.createElement("li");
       li.className = "ref-noresult";
