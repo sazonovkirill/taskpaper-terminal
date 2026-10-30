@@ -35,6 +35,8 @@ Every command has at least one key that works with classic reporting. A few comm
 
 `Alt` keys need your terminal to send Option as Meta: "Use Option as Meta key" in Terminal.app, "Option sends Esc+" in iTerm2, with equivalents in Ghostty, kitty and WezTerm. The `?` panel reminds you until it has seen an `Alt` key. Every `Alt` key also has a route without `Alt`.
 
+In text fields, tpt also takes the keys of iTerm2's **Natural Text Editing** preset: `Option+←`/`→` move by word, `Cmd+←`/`→` go to the start and end, and `Option+Backspace`, `Cmd+Backspace` and `Option+Delete` delete a word or to the start, as on the Mac.
+
 ### Keys some terminals take
 
 Some terminals and desktops keep certain keys for themselves. Each such key has an alternative next to it:

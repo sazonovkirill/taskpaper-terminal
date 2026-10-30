@@ -26,7 +26,7 @@ The prompt reads words like `tomorrow`, `fri` or `next mon`, offsets like `+3d` 
 
 Now press <kbd>g</kbd> <kbd>t</kbd>. The pane switches to **Today**: a flat list of everything that starts or is due today or earlier, from anywhere in the file. You should see "Reply to Sam about Saturday" and "Look up tram pass prices", and also "Tram 28, early in the morning", because starred lines show up in Today too. Each line shows the path to where it lives.
 
-{{ shot(src="tutorial/dates", alt="The Today view listing Reply to Sam about Saturday, due today, and Look up tram pass prices, starting today, each followed by INBOX as its location", caption="The Today view gathers what's due or starting today from the whole file.") }}
+{{ shot(src="tutorial/dates", alt="The Today view listing Reply to Sam about Saturday, due today, and Look up tram pass prices, starting today, each followed by INBOX as its location, and the starred Tram 28, early in the morning", caption="The Today view gathers what's due or starting today from the whole file.") }}
 
 These aren't copies: <kbd>x</kbd> here checks the task off in the outline too, and <kbd>.</kbd> jumps to a line's place in the outline.
 

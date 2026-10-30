@@ -13,7 +13,7 @@ Typing `@` at the start of a word, while editing, does nothing but say "Tags are
 | `@done(DATE)` | Done, on that day. Any `@done`, with or without a date, counts. | `x` |
 | `@start(DATE)` | Start date | `t`, `w`, `[`, `]`, `ms` |
 | `@due(DATE)` | Due date | `T`, `W`, `{`, `}`, `md` |
-| `@red` `@yellow` `@green` `@blue` | Color, at most one | `c`, `mc`, `C` |
+| `@red` `@yellow` `@green` `@blue` | Color, at most one | `mc`, `C`, Cycle Color |
 | `@star` | Starred | `s` |
 | `@flag` | Flagged | `!` |
 | `@bookmark` | Listed under Bookmarks in the [Navigator](@/reference/navigator.md) | `b` |

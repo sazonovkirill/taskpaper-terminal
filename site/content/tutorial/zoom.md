@@ -22,7 +22,7 @@ Press <kbd>,</kbd> (the key beside <kbd>.</kbd>) to zoom out one level, back to 
 
 ## Back and forward
 
-Like a web browser, tpt remembers where you've been. Press <kbd>H</kbd> to go back, and <kbd>L</kbd> to go forward. Try it: <kbd>H</kbd> takes you back into the trip.
+Like a web browser, tpt remembers where you've been. Press <kbd>H</kbd> to go back, and <kbd>L</kbd> to go forward. <kbd>Alt+←</kbd> and <kbd>Alt+→</kbd> do the same. Try it: <kbd>H</kbd> takes you back into the trip.
 
 With a mouse, you can also click a crumb to zoom there.
 

@@ -77,14 +77,14 @@ Two tables in `config.toml` rebind keys: `[keymap.navigate]` for navigate mode a
 "x" = "none"              # unbind x
 
 [keymap.edit]
-"ctrl+g" = "inline_code"
+"ctrl+o" = "inline_code"
 ```
 
 - **Keys** are written in lower case, modifiers first and joined by `+`: `ctrl`, `alt` and `shift`, as in `ctrl+d` or `alt+shift+h`. A capital letter is the same as `shift+` with the letter, so `"G"` and `"shift+g"` are one key. A sequence is its keys separated by spaces: `"g g"`, `"ctrl+w v"`. Edit mode binds single keys only, not sequences.
 - **Key names** besides characters: `enter`, `esc`, `tab`, `space`, `backspace`, `delete`, `up`, `down`, `left`, `right`, `home`, `end`, `pageup`, `pagedown`, `menu` and `f1` to `f12`.
 - **Commands** are named as Go to Command shows them. Case, spaces and punctuation don't matter: `Move Up`, `move up` and `move_up` are one name. Every key table in this Reference has a `config.toml` column with the name. `"none"` unbinds the key.
 - A binding takes the key from whatever had it and puts it first among the command's keys. The command's other keys stay bound. The `?` panel, Go to Command and the context menu show your keys.
-- Old names keep working: `toggle_sidebar` and `focus_sidebar` name `open_navigator`, and `show_details` names `edit_node`.
+- Old names keep working: `toggle_sidebar` and `focus_sidebar` name `open_navigator`, `show_details` names `edit_node`, and `open_note` and `open_comments` name `open_attachments`.
 
 The Navigator, the finders, the dialogs and the prompts keep their own keys; only navigate and edit mode can be rebound. Each command's default keys are on the page for its topic, and all of them on the [cheat sheet](@/reference/cheatsheet.md).
 

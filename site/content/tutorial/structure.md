@@ -30,11 +30,11 @@ Press <kbd>_</kbd> to fold everything and <kbd>+</kbd> to unfold it all. A file 
 
 ## Add a project
 
-Press <kbd>G</kbd> to go to the last line, then <kbd>#</kbd> to go to its parent, "Reading list". Now press <kbd>o</kbd> and then <kbd>p</kbd>. That adds a new **project** below the reading list. Type "Ideas" and press <kbd>Esc</kbd>. The colon is already there.
+Press <kbd>G</kbd> to go to the last line, then <kbd>#</kbd> to go to its parent, "Reading list". Now press <kbd>o</kbd> to add a line below the reading list. Next to a project, a new line starts as plain text. Type "Ideas:" and press <kbd>Esc</kbd>: the colon at the end makes it a **project**.
 
-Now press <kbd>i</kbd> and then <kbd>t</kbd> to add a **task** inside the project. Type "Learn to juggle" and press <kbd>Esc</kbd>.
+Now press <kbd>i</kbd> to add a line inside the project, as its last child. Inside a project, a new line is a **task**, with its dash already there. Type "Learn to juggle" and press <kbd>Esc</kbd>.
 
-The keys that add lines pick a place: <kbd>o</kbd> below, <kbd>O</kbd> above, <kbd>i</kbd> as the last child and <kbd>I</kbd> as the first. Follow one with <kbd>p</kbd> for a project, <kbd>t</kbd> for a task, <kbd>n</kbd> for a text line or <kbd>s</kbd> for a section, or just start typing and tpt picks the type that fits. Typing changes the type too: end a line with a colon to make a project, start it with "- " to make a task.
+The keys that add lines pick a place: <kbd>o</kbd> below, <kbd>O</kbd> above, <kbd>i</kbd> as the last child and <kbd>I</kbd> as the first, <kbd>a</kbd> at the end of the list and <kbd>A</kbd> at its start. The new line is a task next to a task or inside a project or task, and text anywhere else. Typing changes the type: end a line with a colon to make a project, start it with "- " to make a task, or press <kbd>Backspace</kbd> at the start of a task to delete its dash.
 
 ## Delete
 
