@@ -1,0 +1,81 @@
+/* The Reference section: generated key and settings tables, theme gallery, cheat sheet and search. */
+
+kbd { display: inline-block; font: 0.85em/1.4 var(--mono); color: var(--text); background: var(--panel-hi);
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.ref-seq { display: inline-flex; gap: 3px; align-items: baseline; flex-wrap: nowrap; }
+.ref-or { color: var(--faint); }
+.ref-none { color: var(--faint); font-size: 14px; }
+.ref-k { color: var(--yellow); font: 700 10px var(--sans); margin-left: 1px; }
+
+.prose .ref-table { margin: 20px 0; overflow-x: auto; }
+.prose .ref-table table { display: table; margin: 0; min-width: 100%; }
+.ref-table caption { text-align: left; font-weight: 600; color: var(--dim); padding-bottom: 6px; }
+.prose .ref-table th[scope="row"] { color: var(--text); font-weight: 600; min-width: 9em; }
+.ref-table td { line-height: 2; }
+.ref-table td code { white-space: nowrap; }
+.ref-anchor { color: inherit; text-decoration: none; }
+.ref-anchor:hover { color: var(--blue); text-decoration: underline; }
+.ref-desc { display: block; color: var(--dim); font-weight: 400; font-size: 14px; line-height: 1.45; margin-top: 2px; }
+.ref-table tr:target > *, .ref-table:target caption { background: var(--panel-hi); }
+.ref-table tr, .ref-table { scroll-margin-top: 24px; }
+
+.ref-panel { display: inline-block; font: 700 11px/16px var(--mono); width: 16px; text-align: center; border-radius: 50%;
+  color: var(--bg); background: var(--blue); vertical-align: 1px; cursor: help; }
+
+.ref-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin: 24px 0; }
+.ref-theme { margin: 0; scroll-margin-top: 24px; }
+.ref-theme img { display: block; width: 100%; }
+.ref-theme figcaption { font-size: 14px; color: var(--dim); margin-top: 4px; }
+.ref-theme figcaption strong { color: var(--text); }
+
+/* The cheat sheet: cards that flow into columns on screen and onto one or two printed pages. */
+.cheatsheet { columns: 2 300px; column-gap: 24px; margin: 24px 0; }
+.cs-card { break-inside: avoid-column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px 12px; margin: 0 0 20px; }
+.prose .cs-title { font-size: 16px; margin: 0 0 6px; }
+.cs-title small { color: var(--faint); font-weight: 400; font-size: 13px; margin-left: 4px; }
+.prose .cs-sub { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; margin: 10px 0 2px; }
+.cs-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; line-height: 1.5;
+  padding: 2px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+.cs-row:last-child { border-bottom: 0; }
+.cs-keys { text-align: right; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 4px; }
+.cs-typed { white-space: nowrap; color: var(--dim); }
+.cs-foot { color: var(--dim); font-size: 14px; }
+
+/* Search, injected into the Reference sidebar by partials/reference-search.html. */
+.ref-search { position: relative; margin: 0 0 12px; }
+.ref-search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.ref-search input { box-sizing: border-box; width: 100%; font: 15px var(--sans); color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.ref-search input:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.ref-results { list-style: none; margin: 6px 0 0; padding: 4px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; max-height: 60vh; overflow-y: auto; position: absolute; z-index: 2; left: 0; width: min(420px, 90vw);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); }
+.ref-results a { display: block; padding: 6px 8px; border-radius: 6px; text-decoration: none; color: var(--text); }
+.ref-results a:hover, .ref-results a:focus { background: var(--panel-hi); }
+.ref-results strong { display: block; font-size: 14px; }
+.ref-results span { display: block; font-size: 13px; color: var(--dim); line-height: 1.4; }
+.ref-noresult { padding: 6px 8px; color: var(--faint); font-size: 14px; }
+
+@media (max-width: 760px) {
+  .ref-results { position: static; width: auto; box-shadow: none; }
+}
+
+@media print {
+  .site-header, .site-footer, .docs-nav, .toc, .pager, .zola-anchor, .ref-search { display: none !important; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  main { padding: 0; max-width: none; }
+  .docs { display: block; }
+  .docs .prose { max-width: none; }
+  .prose h1 { font-size: 20pt; margin-bottom: 8pt; }
+  .prose p, .prose li, .prose th[scope="row"], .ref-theme figcaption strong { color: #000; }
+  a { color: #000; text-decoration: none; }
+  .cheatsheet { columns: 3; column-gap: 12pt; }
+  .cs-card { background: none; border-color: #999; padding: 4pt 6pt; margin-bottom: 8pt; }
+  .cs-row { font-size: 8pt; border-color: #ddd; padding: 0; }
+  .prose .cs-title { font-size: 10pt; }
+  .prose .cs-sub { font-size: 7pt; color: #444; margin-top: 4pt; }
+  kbd { background: none; color: #000; border-color: #999; font-size: 7.5pt; padding: 0 2px; }
+  .ref-k { color: #000; }
+  .ref-panel { background: none; color: #000; border: 1px solid #999; }
+}

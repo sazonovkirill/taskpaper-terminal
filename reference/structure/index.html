@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Selection and structure · tpt</title>
+<meta name="description" content="Selecting several blocks, then indenting, moving, grouping, copying, deleting and undoing them.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Selection and structure · tpt">
+<meta property="og:description" content="Selecting several blocks, then indenting, moving, grouping, copying, deleting and undoing them.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/reference.css?h=8b6db26510b2d5ab1724">
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/" aria-current="page">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Reference">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;">Reference</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;files&#x2F;">Files and saving</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;">Blocks and their types</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;">Navigate and edit mode</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;">Navigation and zoom</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;" aria-current="page" class="current">Selection and structure</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;">Tags, dates and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;views&#x2F;">Special views</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;attachments&#x2F;">Attachments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;quick-add&#x2F;">Quick Add</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;appearance&#x2F;">Appearance and themes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;animation&#x2F;">Animation and weather</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;">Settings</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;">Command line</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;">Compatibility with other TaskPaper apps</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;">Cheat sheet</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Selection and structure</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#selection">Selection</a></li><li><a href="#moving-blocks">Moving blocks</a></li><li><a href="#delete-and-duplicate">Delete and duplicate</a></li><li><a href="#copy-cut-and-paste">Copy, cut and paste</a></li><li><a href="#undo-and-redo">Undo and redo</a></li><li><a href="#count">Count</a></li>
+      </ul>
+    </nav>
+    
+    <p>Every block carries its children with it. Indenting, moving, copying or deleting a block does the same to everything under it, its <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/attachments/">attachments</a> and hidden lines included. A block is always one line, so nothing ever splits or merges blocks.</p>
+<h2 id="selection">Selection<a class="zola-anchor" href="#selection" aria-label="Anchor link for: selection">🔗</a></h2>
+<p>Next to its focus, each pane has a <strong>selection</strong>: the blocks the next command acts on. Selected blocks get the focus bar too, dimmer, so focus and selection read as one bar. With nothing selected, commands act on the focused block.</p>
+<ul>
+<li><code>Shift+↓</code> / <code>Shift+↑</code> extend the selection down or up a row from where the run began. Going back shrinks the run. A new run adds to what was already selected.</li>
+<li><code>v</code> adds the focused block to the selection, or takes it out. Plain motions move the focus and keep the selection, so you can pick blocks far apart one by one: <code>v</code>, <code>j j j</code>, <code>v</code>.</li>
+<li><code>V</code> starts visual mode, as in vim: the focused block is selected, and every move, such as <code>j</code>, <code>k</code>, <code>gg</code> or <code>G</code>, selects all rows from there to the focus. The status line says <code>VISUAL</code>. <code>V</code> again or <code>Esc</code> ends it and clears the selection; a command such as <code>x</code>, <code>Tab</code> or <code>y</code> acts on the selected blocks and ends it, leaving them selected.</li>
+<li><code>Ctrl+A</code> selects every row below the title, and <code>Esc</code> clears the selection.</li>
+</ul>
+<p>A block that leaves the view, because it was deleted, folded away or is outside the zoom, leaves the selection. Entering edit mode clears it.</p>
+<p>Every block command, such as <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/tags/">done, dates, star or color</a>, goes to all selected blocks as one step to undo. A few act on the focused block alone, even with blocks selected: Edit Node, Open Link and the attachments.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-extend-selection-down"><th scope="row"><a class="ref-anchor" href="#navigate-extend-selection-down">Extend Selection Down</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Shift+↓</kbd></span></td>
+<td></td>
+<td><code>extend_selection_down</code></td></tr>
+
+<tr id="navigate-extend-selection-up"><th scope="row"><a class="ref-anchor" href="#navigate-extend-selection-up">Extend Selection Up</a></th>
+<td><span class="ref-seq"><kbd>Shift+↑</kbd></span></td>
+<td></td>
+<td><code>extend_selection_up</code></td></tr>
+
+<tr id="navigate-toggle-selected"><th scope="row"><a class="ref-anchor" href="#navigate-toggle-selected">Toggle Selected</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>v</kbd></span></td>
+<td></td>
+<td><code>toggle_selected</code></td></tr>
+
+<tr id="navigate-toggle-visual-mode"><th scope="row"><a class="ref-anchor" href="#navigate-toggle-visual-mode">Toggle Visual Mode</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>V</kbd></span></td>
+<td></td>
+<td><code>toggle_visual_mode</code></td></tr>
+
+<tr id="navigate-select-all"><th scope="row"><a class="ref-anchor" href="#navigate-select-all">Select All</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+A</kbd></span></td>
+<td></td>
+<td><code>select_all</code></td></tr>
+
+<tr id="navigate-clear-selection"><th scope="row"><a class="ref-anchor" href="#navigate-clear-selection">Clear Selection</a></th>
+<td><span class="ref-seq"><kbd>Esc</kbd></span></td>
+<td></td>
+<td><code>clear_selection</code></td></tr>
+
+</tbody></table></div>
+<h2 id="moving-blocks">Moving blocks<a class="zola-anchor" href="#moving-blocks" aria-label="Anchor link for: moving-blocks">🔗</a></h2>
+<table><thead><tr><th>Key</th><th>Does</th></tr></thead><tbody>
+<tr><td><code>Tab</code>, <code>&gt;</code></td><td><strong>Indent:</strong> the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling.</td></tr>
+<tr><td><code>Shift+Tab</code>, <code>&lt;</code></td><td><strong>Outdent:</strong> the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane.</td></tr>
+<tr><td><code>K</code>, <code>Alt+k</code>, <code>Alt+↑</code></td><td><strong>Move Up:</strong> swap with the sibling above. At the top of its list, the block moves to the end of the parent’s previous sibling.</td></tr>
+<tr><td><code>J</code>, <code>Alt+j</code>, <code>Alt+↓</code></td><td><strong>Move Down:</strong> swap with the sibling below, or move to the start of the parent’s next sibling.</td></tr>
+</tbody></table>
+<p>Selected blocks move together and keep their order. A selected block inside another selected block moves with it, not on its own. A block that cannot move stays, and so do the blocks that would have to pass it. No move takes a block out of the pane’s zoom, and the zoom’s title row never moves.</p>
+<p>The moves go by what the pane shows. While the pane <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/tags/#showing-completed-blocks">hides completed blocks</a>, a hidden done block is passed over and stays where it is. No move or indent puts a block under an empty line, which would then need placeholder text: the block looks past empty lines for a place, or stays.</p>
+<h3 id="group">Group<a class="zola-anchor" href="#group" aria-label="Anchor link for: group">🔗</a></h3>
+<p><strong>Group</strong> (in Go to Command and the context menu) wraps the selection, or the focused block, in a new text block placed where the first one was, and opens the new block in edit mode so you can name it. Creating and naming it is one step to undo.</p>
+<h3 id="move-to">Move to…<a class="zola-anchor" href="#move-to" aria-label="Anchor link for: move-to">🔗</a></h3>
+<p><strong>Move to…</strong> (<code>gm</code>, or <code>Ctrl+M</code> with the kitty protocol) opens a finder over every block, as <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigator/#go-to-symbol">Go to Symbol</a> lists them, leaving out the blocks that move and what they hold. Type to filter, and <code>Enter</code> makes the selection the chosen block’s last children. When every block that moves is a project, the finder also lists <code>⌂ Home</code> first, which moves them to the end of the document’s top level.</p>
+<p>The focus stays on a moved block. The destination expands, and a destination outside the pane’s zoom becomes the zoom, a step in the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigation/#history">history</a>.</p>
+<h2 id="delete-and-duplicate">Delete and duplicate<a class="zola-anchor" href="#delete-and-duplicate" aria-label="Anchor link for: delete-and-duplicate">🔗</a></h2>
+<p><code>Delete</code> removes the blocks with everything under them, and <code>dd</code> cuts them, as in vim: the same, but they go to the clipboard too. The focus moves to the next visible block, else the previous one. <code>D</code> duplicates each block with its subtree, right after the original, and focuses the copy of the last one.</p>
+<h2 id="copy-cut-and-paste">Copy, cut and paste<a class="zola-anchor" href="#copy-cut-and-paste" aria-label="Anchor link for: copy-cut-and-paste">🔗</a></h2>
+<p><code>y</code> or <code>Ctrl+C</code> copies, and <code>dd</code> or <code>Ctrl+X</code> cuts, the selected blocks or the focused one. <code>p</code> or <code>Ctrl+V</code> pastes below the focused block, and <code>P</code> or <code>Alt+v</code> above it. More on the clipboard, also over SSH, is in <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/modes/#copy-and-paste">Copy and paste</a>.</p>
+<p>The clipboard gets TaskPaper text: each block’s line with its tags, children and attachments, indented with tabs from the shallowest block. Pasting parses TaskPaper text into blocks at the focused block’s depth, keeping their structure, so you can copy between tpt and any other TaskPaper app. One line of plain text pastes as a text block. On a zoomed pane’s title row, the pasted blocks become its first children.</p>
+<h2 id="undo-and-redo">Undo and redo<a class="zola-anchor" href="#undo-and-redo" aria-label="Anchor link for: undo-and-redo">🔗</a></h2>
+<p><code>z</code>, <code>u</code> or <code>Ctrl+Z</code> undoes, and <code>Z</code>, <code>Ctrl+R</code> or <code>Ctrl+Y</code> redoes. Each command is one step however many blocks it changed, and so is a whole edit-mode session. Undo restores attachments and hidden lines with their blocks. When the file is reloaded after an <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#when-the-file-changes-on-disk">outside change</a>, the undo history starts over.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-indent"><th scope="row"><a class="ref-anchor" href="#navigate-indent">Indent</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Tab</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>&gt;</kbd></span></td>
+<td></td>
+<td><code>indent</code></td></tr>
+
+<tr id="navigate-outdent"><th scope="row"><a class="ref-anchor" href="#navigate-outdent">Outdent</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Shift+Tab</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>&lt;</kbd></span></td>
+<td></td>
+<td><code>outdent</code></td></tr>
+
+<tr id="navigate-move-up"><th scope="row"><a class="ref-anchor" href="#navigate-move-up">Move Up</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>K</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+k</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+↑</kbd></span></td>
+<td></td>
+<td><code>move_up</code></td></tr>
+
+<tr id="navigate-move-down"><th scope="row"><a class="ref-anchor" href="#navigate-move-down">Move Down</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>J</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+j</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+↓</kbd></span></td>
+<td></td>
+<td><code>move_down</code></td></tr>
+
+<tr id="navigate-group"><th scope="row"><a class="ref-anchor" href="#navigate-group">Group</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>group</code></td></tr>
+
+<tr id="navigate-move-to"><th scope="row"><a class="ref-anchor" href="#navigate-move-to">Move to…</a></th>
+<td><span class="ref-seq"><kbd>g</kbd><kbd>m</kbd></span></td>
+<td><span class="ref-seq"><kbd>Ctrl+M</kbd></span></td>
+<td><code>move_to</code></td></tr>
+
+<tr id="navigate-delete"><th scope="row"><a class="ref-anchor" href="#navigate-delete">Delete</a></th>
+<td><span class="ref-seq"><kbd>Delete</kbd></span></td>
+<td></td>
+<td><code>delete</code></td></tr>
+
+<tr id="navigate-duplicate"><th scope="row"><a class="ref-anchor" href="#navigate-duplicate">Duplicate</a></th>
+<td><span class="ref-seq"><kbd>D</kbd></span></td>
+<td></td>
+<td><code>duplicate</code></td></tr>
+
+<tr id="navigate-copy"><th scope="row"><a class="ref-anchor" href="#navigate-copy">Copy</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>y</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+C</kbd></span></td>
+<td></td>
+<td><code>copy</code></td></tr>
+
+<tr id="navigate-cut"><th scope="row"><a class="ref-anchor" href="#navigate-cut">Cut</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>d</kbd><kbd>d</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+X</kbd></span></td>
+<td></td>
+<td><code>cut</code></td></tr>
+
+<tr id="navigate-paste-below"><th scope="row"><a class="ref-anchor" href="#navigate-paste-below">Paste Below</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>p</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+V</kbd></span></td>
+<td></td>
+<td><code>paste_below</code></td></tr>
+
+<tr id="navigate-paste-above"><th scope="row"><a class="ref-anchor" href="#navigate-paste-above">Paste Above</a></th>
+<td><span class="ref-seq"><kbd>P</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+v</kbd></span></td>
+<td></td>
+<td><code>paste_above</code></td></tr>
+
+<tr id="navigate-undo"><th scope="row"><a class="ref-anchor" href="#navigate-undo">Undo</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>z</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>u</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+Z</kbd></span></td>
+<td></td>
+<td><code>undo</code></td></tr>
+
+<tr id="navigate-redo"><th scope="row"><a class="ref-anchor" href="#navigate-redo">Redo</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Z</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+Y</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+R</kbd></span></td>
+<td></td>
+<td><code>redo</code></td></tr>
+
+</tbody></table></div>
+<h2 id="count">Count<a class="zola-anchor" href="#count" aria-label="Anchor link for: count">🔗</a></h2>
+<p><strong>Count Blocks and Words</strong>, in <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigator/#go-to-command">Go to Command</a>, says in the status line how many blocks and words are under the focused block, such as <code>12 blocks, 87 words</code>. On the title row it counts the whole zoom, and in the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/views/#today">Today view</a> the focused entry. A divider’s title words count, its dashes don’t. Attachments and hidden lines are left out.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-count-blocks-and-words"><th scope="row"><a class="ref-anchor" href="#navigate-count-blocks-and-words">Count Blocks and Words</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>count_blocks_and_words</code></td></tr>
+
+</tbody></table></div>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;"><span>Previous</span>Navigation and zoom</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;"><span>Next</span>Tags, dates and done</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("https://sazonovkirill.github.io/taskpaper-terminal/reference/").pathname;
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("https://sazonovkirill.github.io/taskpaper-terminal/elasticlunr.min.js")
+    .then(() => load("https://sazonovkirill.github.io/taskpaper-terminal/search_index.en.js"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
+
+</body>
+</html>

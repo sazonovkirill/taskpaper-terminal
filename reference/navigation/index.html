@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Navigation and zoom · tpt</title>
+<meta name="description" content="Moving the focus, folding blocks, zooming into a block and walking back through where you have been.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Navigation and zoom · tpt">
+<meta property="og:description" content="Moving the focus, folding blocks, zooming into a block and walking back through where you have been.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/reference.css?h=8b6db26510b2d5ab1724">
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/" aria-current="page">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Reference">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;">Reference</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;files&#x2F;">Files and saving</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;">Blocks and their types</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;">Navigate and edit mode</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;" aria-current="page" class="current">Navigation and zoom</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;">Selection and structure</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;">Tags, dates and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;views&#x2F;">Special views</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;attachments&#x2F;">Attachments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;quick-add&#x2F;">Quick Add</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;appearance&#x2F;">Appearance and themes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;animation&#x2F;">Animation and weather</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;">Settings</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;">Command line</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;">Compatibility with other TaskPaper apps</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;">Cheat sheet</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Navigation and zoom</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#moving">Moving</a></li><li><a href="#folding">Folding</a></li><li><a href="#zoom">Zoom</a></li><li><a href="#history">History</a></li>
+      </ul>
+    </nav>
+    
+    <p>In navigate mode each pane has one <strong>focused block</strong>, marked by a bar in the gutter on its left and a brighter band across the pane. Every navigate-mode command acts on it, or on the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/structure/#selection">selection</a> when there is one.</p>
+<h2 id="moving">Moving<a class="zola-anchor" href="#moving" aria-label="Anchor link for: moving">🔗</a></h2>
+<p><code>j</code> and <code>k</code> (or <code>↓</code> and <code>↑</code>) move to the next and previous visible row, whatever its depth. The other motions follow the outline’s structure:</p>
+<ul>
+<li><code>h</code> collapses the focused block. On a block that is already collapsed, or has no children, it moves to the parent instead. <code>l</code> expands the block, and on an expanded block it moves to its first child. So <code>h</code> and <code>l</code> walk up and down the tree as well as folding it.</li>
+<li><code>Ctrl+↓</code> / <code>Ctrl+↑</code>, or <code>gj</code> / <code>gk</code>, jump to the next and previous sibling, skipping the children between.</li>
+<li><code>^</code> and <code>$</code> go to the first and last sibling, and <code>#</code> to the parent.</li>
+<li><code>gg</code> / <code>Home</code> and <code>G</code> / <code>End</code> go to the first and last visible row.</li>
+<li><code>Ctrl+D</code> / <code>PgDn</code> and <code>Ctrl+U</code> / <code>PgUp</code> move a page, as many rows as fill the pane. With word wrap on, a page never skips a line the pane did not show.</li>
+</ul>
+<p>When the focused block disappears, because it was folded away, hidden as done, deleted or changed in another pane, the focus moves to the next visible block, else the previous one, else the parent. The pane scrolls to keep the focus in view, with 2 rows of margin when there is room.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-next-block"><th scope="row"><a class="ref-anchor" href="#navigate-next-block">Next Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>j</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>↓</kbd></span></td>
+<td></td>
+<td><code>next_block</code></td></tr>
+
+<tr id="navigate-previous-block"><th scope="row"><a class="ref-anchor" href="#navigate-previous-block">Previous Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>k</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>↑</kbd></span></td>
+<td></td>
+<td><code>previous_block</code></td></tr>
+
+<tr id="navigate-collapse"><th scope="row"><a class="ref-anchor" href="#navigate-collapse">Collapse</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>h</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>←</kbd></span></td>
+<td></td>
+<td><code>collapse</code></td></tr>
+
+<tr id="navigate-expand"><th scope="row"><a class="ref-anchor" href="#navigate-expand">Expand</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>l</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>→</kbd></span></td>
+<td></td>
+<td><code>expand</code></td></tr>
+
+<tr id="navigate-next-sibling"><th scope="row"><a class="ref-anchor" href="#navigate-next-sibling">Next Sibling</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+↓</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>g</kbd><kbd>j</kbd></span></td>
+<td></td>
+<td><code>next_sibling</code></td></tr>
+
+<tr id="navigate-previous-sibling"><th scope="row"><a class="ref-anchor" href="#navigate-previous-sibling">Previous Sibling</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+↑</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>g</kbd><kbd>k</kbd></span></td>
+<td></td>
+<td><code>previous_sibling</code></td></tr>
+
+<tr id="navigate-first-sibling"><th scope="row"><a class="ref-anchor" href="#navigate-first-sibling">First Sibling</a></th>
+<td><span class="ref-seq"><kbd>^</kbd></span></td>
+<td></td>
+<td><code>first_sibling</code></td></tr>
+
+<tr id="navigate-last-sibling"><th scope="row"><a class="ref-anchor" href="#navigate-last-sibling">Last Sibling</a></th>
+<td><span class="ref-seq"><kbd>$</kbd></span></td>
+<td></td>
+<td><code>last_sibling</code></td></tr>
+
+<tr id="navigate-parent"><th scope="row"><a class="ref-anchor" href="#navigate-parent">Parent</a></th>
+<td><span class="ref-seq"><kbd>#</kbd></span></td>
+<td></td>
+<td><code>parent</code></td></tr>
+
+<tr id="navigate-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-last-child">Last Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>last_child</code></td></tr>
+
+<tr id="navigate-first-block"><th scope="row"><a class="ref-anchor" href="#navigate-first-block">First Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>g</kbd><kbd>g</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Home</kbd></span></td>
+<td></td>
+<td><code>first_block</code></td></tr>
+
+<tr id="navigate-last-block"><th scope="row"><a class="ref-anchor" href="#navigate-last-block">Last Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>G</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>End</kbd></span></td>
+<td></td>
+<td><code>last_block</code></td></tr>
+
+<tr id="navigate-page-down"><th scope="row"><a class="ref-anchor" href="#navigate-page-down">Page Down</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+D</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>PgDn</kbd></span></td>
+<td></td>
+<td><code>page_down</code></td></tr>
+
+<tr id="navigate-page-up"><th scope="row"><a class="ref-anchor" href="#navigate-page-up">Page Up</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+U</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>PgUp</kbd></span></td>
+<td></td>
+<td><code>page_up</code></td></tr>
+
+</tbody></table></div>
+<h2 id="folding">Folding<a class="zola-anchor" href="#folding" aria-label="Anchor link for: folding">🔗</a></h2>
+<p>Any block with children can be folded, not only projects. Expanded blocks show no marker. A collapsed block shows <code>▸</code> after its text, with the number of <strong>open tasks</strong> it hides: every task below it, at any depth, that is neither done nor inside a done block. Projects, notes, sections and dividers don’t count. With no open tasks inside, it shows <code>▸</code> alone. A block whose only children are <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/attachments/">attachments</a> or other hidden lines has no fold at all.</p>
+<table><thead><tr><th>Key</th><th>Folds</th></tr></thead><tbody>
+<tr><td><code>'</code></td><td>the focused block: open it if it is collapsed, close it otherwise</td></tr>
+<tr><td><code>"</code></td><td>the focused block’s whole subtree: collapses it if anything in it is expanded, otherwise expands all of it</td></tr>
+<tr><td><code>=</code> / <code>-</code></td><td>the pane, one level at a time: expands every collapsed block at the shallowest level that has one, or collapses every expanded block at the deepest level</td></tr>
+<tr><td><code>+</code> / <code>_</code></td><td>everything under the pane’s zoom block</td></tr>
+</tbody></table>
+<p>Folds belong to the document, not the pane: a block folded in one pane is folded in every pane. They are not saved, so a file always opens fully expanded.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-toggle-fold"><th scope="row"><a class="ref-anchor" href="#navigate-toggle-fold">Toggle Fold</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>&#x27;</kbd></span></td>
+<td></td>
+<td><code>toggle_fold</code></td></tr>
+
+<tr id="navigate-toggle-subtree-fold"><th scope="row"><a class="ref-anchor" href="#navigate-toggle-subtree-fold">Toggle Subtree Fold</a></th>
+<td><span class="ref-seq"><kbd>&quot;</kbd></span></td>
+<td></td>
+<td><code>toggle_subtree_fold</code></td></tr>
+
+<tr id="navigate-expand-one-level"><th scope="row"><a class="ref-anchor" href="#navigate-expand-one-level">Expand One Level</a></th>
+<td><span class="ref-seq"><kbd>=</kbd></span></td>
+<td></td>
+<td><code>expand_one_level</code></td></tr>
+
+<tr id="navigate-collapse-one-level"><th scope="row"><a class="ref-anchor" href="#navigate-collapse-one-level">Collapse One Level</a></th>
+<td><span class="ref-seq"><kbd>-</kbd></span></td>
+<td></td>
+<td><code>collapse_one_level</code></td></tr>
+
+<tr id="navigate-expand-all"><th scope="row"><a class="ref-anchor" href="#navigate-expand-all">Expand All</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>+</kbd></span></td>
+<td></td>
+<td><code>expand_all</code></td></tr>
+
+<tr id="navigate-collapse-all"><th scope="row"><a class="ref-anchor" href="#navigate-collapse-all">Collapse All</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>_</kbd></span></td>
+<td></td>
+<td><code>collapse_all</code></td></tr>
+
+</tbody></table></div>
+<h2 id="zoom">Zoom<a class="zola-anchor" href="#zoom" aria-label="Anchor link for: zoom">🔗</a></h2>
+<p><strong>Zoom In</strong> (<code>.</code> or <code>gz</code>) makes the focused block the pane’s root. The pane shows it as a bold <strong>title row</strong> at the top, in its type’s style, with its children one level in below it. The title row is a block like any other: you can focus it, edit it and run commands on it. Zooming into a block without children shows its title and nothing else. New blocks you add on the title row become its children (see <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/modes/#creating-blocks">Creating blocks</a>).</p>
+<p><strong>Zoom Out</strong> (<code>,</code> or <code>gu</code>) zooms to the parent and focuses the block you were zoomed into. <strong>Go Home</strong> (<code>gh</code>, or <code>Ctrl+'</code> with the kitty protocol) zooms back to the whole document.</p>
+<p>When a block that a pane is zoomed into goes away, deleted in any pane or changed on disk, that pane zooms out to its nearest ancestor that still exists.</p>
+<h3 id="breadcrumbs">Breadcrumbs<a class="zola-anchor" href="#breadcrumbs" aria-label="Anchor link for: breadcrumbs">🔗</a></h3>
+<p>The first row of each pane is its <strong>breadcrumb bar</strong>: a house icon <code>⌂</code> for the whole document, then the path from the top of the document to the zoom block, joined by <code>›</code>. When the path is wider than the pane, its start gives way to <code>…</code>. Click a crumb to zoom there, <code>Alt</code>+click one to open it in a new pane, and right-click it for a <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigator/#context-menu">context menu</a> with Zoom Here and Open in New Pane. In a <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/views/">special view</a> the bar shows the view’s icon and name instead.</p>
+<h2 id="history">History<a class="zola-anchor" href="#history" aria-label="Anchor link for: history">🔗</a></h2>
+<p>Every change of a pane’s root, by zooming, going home, a <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigator/">Navigator</a> entry, a finder or a <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/views/">special view</a>, is a step in that pane’s history. <strong>Back</strong> (<code>H</code>, <code>Alt+←</code>, <code>Ctrl+O</code>) and <strong>Forward</strong> (<code>L</code>, <code>Alt+→</code>, or <code>Ctrl+I</code> with the kitty protocol) walk it, like a browser. Steps to blocks that no longer exist are skipped, and so is a step to the place already shown, so every press goes somewhere. Each pane has a history of its own, and the history is saved with the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#pane-layout">pane layout</a>.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-zoom-in"><th scope="row"><a class="ref-anchor" href="#navigate-zoom-in">Zoom In</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>.</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>g</kbd><kbd>z</kbd></span></td>
+<td></td>
+<td><code>zoom_in</code></td></tr>
+
+<tr id="navigate-zoom-out"><th scope="row"><a class="ref-anchor" href="#navigate-zoom-out">Zoom Out</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>,</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>g</kbd><kbd>u</kbd></span></td>
+<td></td>
+<td><code>zoom_out</code></td></tr>
+
+<tr id="navigate-go-home"><th scope="row"><a class="ref-anchor" href="#navigate-go-home">Go Home</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>g</kbd><kbd>h</kbd></span></td>
+<td><span class="ref-seq"><kbd>Ctrl+&#x27;</kbd></span></td>
+<td><code>go_home</code></td></tr>
+
+<tr id="navigate-back"><th scope="row"><a class="ref-anchor" href="#navigate-back">Back</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>H</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+←</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+O</kbd></span></td>
+<td></td>
+<td><code>back</code></td></tr>
+
+<tr id="navigate-forward"><th scope="row"><a class="ref-anchor" href="#navigate-forward">Forward</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>L</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+→</kbd></span></td>
+<td><span class="ref-seq"><kbd>Ctrl+I</kbd></span></td>
+<td><code>forward</code></td></tr>
+
+</tbody></table></div>
+<p>The Go to keys for the special views are on <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/views/#keys">Special views</a>, and Go to Inbox is with the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigator/#the-inbox">Navigator</a>.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;"><span>Previous</span>Navigate and edit mode</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;"><span>Next</span>Selection and structure</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("https://sazonovkirill.github.io/taskpaper-terminal/reference/").pathname;
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("https://sazonovkirill.github.io/taskpaper-terminal/elasticlunr.min.js")
+    .then(() => load("https://sazonovkirill.github.io/taskpaper-terminal/search_index.en.js"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Navigator and finders · tpt</title>
+<meta name="description" content="Jump anywhere in the file, and move lines across it.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Navigator and finders · tpt">
+<meta property="og:description" content="Jump anywhere in the file, and move lines across it.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/" aria-current="page">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Tutorial">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;">Tutorial</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;why&#x2F;">Why plain text and outlines</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;first-steps&#x2F;">Open, move and edit</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;">Shape the outline</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;zoom&#x2F;">Zoom and breadcrumbs</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;tasks&#x2F;">Tasks and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;dates&#x2F;">Dates and Today</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;navigator&#x2F;" aria-current="page" class="current">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;notes&#x2F;">Notes and comments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;settings&#x2F;">Settings, themes and next steps</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Navigator and finders</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#the-navigator">The Navigator</a></li><li><a href="#bookmarks">Bookmarks</a></li><li><a href="#go-to-symbol">Go to Symbol</a></li><li><a href="#move-to">Move to</a></li>
+      </ul>
+    </nav>
+    
+    <h2 id="the-navigator">The Navigator<a class="zola-anchor" href="#the-navigator" aria-label="Anchor link for: the-navigator">🔗</a></h2>
+<p>Press <kbd>Ctrl+G</kbd> or <kbd>|</kbd> to open the <strong>Navigator</strong>, the list of places to go:</p>
+<ul>
+<li><strong>INBOX</strong>, for things you haven’t sorted yet. The sample’s <code>INBOX</code> project is tagged <code>@inbox</code>, which makes it the inbox; <strong>Select Inbox Project</strong> in Go to Command makes any project the inbox.</li>
+<li>The special views: <strong>Today</strong>, <strong>Upcoming</strong>, <strong>Overdue</strong>, <strong>Colors</strong>, <strong>Logbook</strong>, <strong>Starred</strong> and <strong>Flagged</strong>.</li>
+<li><strong>Bookmarks</strong>, once you have some.</li>
+<li><strong>Projects</strong>, as a tree, each with its number of open tasks.</li>
+</ul>
+
+<figure class="shot-figure">
+  <img src="https://sazonovkirill.github.io/taskpaper-terminal/screenshots/tutorial/navigator.png" alt="The Navigator window over the outline, listing INBOX, the special views from Today to Flagged, and the projects as a tree with their open task counts" loading="lazy" width="1070" height="691">
+  <figcaption>The Navigator: the inbox, the special views and every project.</figcaption>
+</figure>
+<p>Use <kbd>↓</kbd> and <kbd>↑</kbd> to move and <kbd>Enter</kbd> to go there, or type to filter. Type <code>gard</code>, press <kbd>Enter</kbd>, and the pane zooms into the garden. <kbd>Esc</kbd> closes the Navigator.</p>
+<p>Open it again and choose <strong>Logbook</strong>: what you finished this week, the passports and the sunscreen. Since letters go into the filter, use the arrows here, not <kbd>j</kbd> and <kbd>k</kbd>.</p>
+<h2 id="bookmarks">Bookmarks<a class="zola-anchor" href="#bookmarks" aria-label="Anchor link for: bookmarks">🔗</a></h2>
+<p>Press <kbd>g</kbd> <kbd>h</kbd>, move to “Website redesign” under “Work” and press <kbd>b</kbd>. A bookmark icon appears after its name. Open the Navigator: the project now has an entry of its own under <strong>Bookmarks</strong>.</p>
+<h2 id="go-to-symbol">Go to Symbol<a class="zola-anchor" href="#go-to-symbol" aria-label="Anchor link for: go-to-symbol">🔗</a></h2>
+<p>To find any line at all, press <kbd>Ctrl+K</kbd> (or <kbd>/</kbd>) for <strong>Go to Symbol</strong> and type a few letters, such as <code>trm</code>: the match is loose. <kbd>Enter</kbd> takes you to the line.</p>
+<p><kbd>g</kbd> <kbd>P</kbd> does the same over projects alone.</p>
+<h2 id="move-to">Move to<a class="zola-anchor" href="#move-to" aria-label="Anchor link for: move-to">🔗</a></h2>
+<p>“Look up tram pass prices” is still in the INBOX, but it belongs with the trip.</p>
+<p>Go to it, press <kbd>g</kbd> <kbd>m</kbd> for <strong>Move to</strong>, and type <code>before</code>. “Before we go” is at the top of the list. Press <kbd>Enter</kbd>. The task moves to the end of that list, and the pane follows it there.</p>
+<p>That’s the inbox habit: jot things down in the INBOX, then send each where it belongs.</p>
+<p>Press <kbd>g</kbd> <kbd>h</kbd> to go home. The <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a> has the rest of the Navigator’s keys.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;dates&#x2F;"><span>Previous</span>Dates and Today</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;notes&#x2F;"><span>Next</span>Notes and comments</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Compatibility with other TaskPaper apps · tpt</title>
+<meta name="description" content="How tpt reads and writes the TaskPaper format, what it keeps untouched, and what its own tags look like in other apps.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Compatibility with other TaskPaper apps · tpt">
+<meta property="og:description" content="How tpt reads and writes the TaskPaper format, what it keeps untouched, and what its own tags look like in other apps.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/reference.css?h=8b6db26510b2d5ab1724">
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/" aria-current="page">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Reference">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;">Reference</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;files&#x2F;">Files and saving</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;">Blocks and their types</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;">Navigate and edit mode</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;">Navigation and zoom</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;">Selection and structure</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;">Tags, dates and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;views&#x2F;">Special views</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;attachments&#x2F;">Attachments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;quick-add&#x2F;">Quick Add</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;appearance&#x2F;">Appearance and themes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;animation&#x2F;">Animation and weather</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;">Settings</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;">Command line</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;" aria-current="page" class="current">Compatibility with other TaskPaper apps</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;">Cheat sheet</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Compatibility with other TaskPaper apps</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#what-tpt-keeps-exactly">What tpt keeps exactly</a></li><li><a href="#how-lines-are-read">How lines are read</a></li><li><a href="#tags-tpt-uses">Tags tpt uses</a></li><li><a href="#what-tpt-treats-differently">What tpt treats differently</a></li><li><a href="#editing-in-another-app-at-the-same-time">Editing in another app at the same time</a></li>
+      </ul>
+    </nav>
+    
+    <p>tpt reads and writes plain TaskPaper files, the format of <a rel="external" href="https://www.taskpaper.com/">TaskPaper</a> and many other apps and editor plugins. It follows the TaskPaper 3 parser’s rules, so a file means the same thing in tpt as there, and you can switch between apps, or sync the file, freely.</p>
+<h2 id="what-tpt-keeps-exactly">What tpt keeps exactly<a class="zola-anchor" href="#what-tpt-keeps-exactly" aria-label="Anchor link for: what-tpt-keeps-exactly">🔗</a></h2>
+<p>tpt never rewrites your file to its own taste:</p>
+<ul>
+<li><strong>Unchanged lines are written back byte for byte.</strong> Opening and saving a file you didn’t edit gives the same bytes, even with mixed line endings or stray spaces.</li>
+<li><strong>Indentation:</strong> tabs stay tabs, and a space-indented file stays space-indented, at its own width. New files use tabs.</li>
+<li><strong>Line endings, a byte-order mark and the final newline</strong> stay as the file had them. New files get <code>\n</code>, no BOM and a final newline.</li>
+<li><strong>Tags tpt doesn’t use</strong> stay on their lines, hidden, and the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/tags/#edit-node">Edit Node</a> dialog lists them, marked “unsupported”.</li>
+<li><strong>Lines marked <code>@hidden</code></strong>, with everything under them, are kept as they are and never shown. See <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/blocks/#hidden-lines">Hidden lines</a>.</li>
+</ul>
+<p>tpt only opens UTF-8 text. It refuses anything else rather than risk writing back a damaged copy.</p>
+<h2 id="how-lines-are-read">How lines are read<a class="zola-anchor" href="#how-lines-are-read" aria-label="Anchor link for: how-lines-are-read">🔗</a></h2>
+<table><thead><tr><th>A line</th><th>Is</th></tr></thead><tbody>
+<tr><td>starting with <code>- </code></td><td>a task, also <code>- Ask: why?</code></td></tr>
+<tr><td>ending in <code>:</code>, before any tags</td><td>a project</td></tr>
+<tr><td>anything else</td><td>a note, which tpt calls a text block, also lines starting with <code>* </code> or <code>+ </code></td></tr>
+<tr><td>empty</td><td>an empty text block, at the depth of the line after it</td></tr>
+</tbody></table>
+<ul>
+<li>Indentation makes the outline: a deeper line is a child of the line above. A line indented several levels deeper than its parent keeps its extra tabs.</li>
+<li>In a space-indented file, one level is the smallest run of leading spaces in the file, as in TaskPaper. One stray line with fewer spaces skews every depth; tpt reproduces that, and warns in the status line when only one line has the smallest run.</li>
+<li>A tag is <code>@name</code> or <code>@name(value)</code>, after a space or at the start, and followed by a space or the end of the line. <code>me@example.com</code> holds no tag. Within a value, <code>\(</code> and <code>\)</code> are parentheses. Only the first of two tags with one name counts. <code>@id</code>, <code>@text</code> and <code>@type</code> are reserved by TaskPaper and read as plain text.</li>
+</ul>
+<h2 id="tags-tpt-uses">Tags tpt uses<a class="zola-anchor" href="#tags-tpt-uses" aria-label="Anchor link for: tags-tpt-uses">🔗</a></h2>
+<table><thead><tr><th>Tag</th><th>In tpt</th><th>In other apps</th></tr></thead><tbody>
+<tr><td><code>@done(2026-10-11)</code></td><td>Completed on that day. Any <code>@done</code> counts, with or without a date.</td><td>The same, in TaskPaper</td></tr>
+<tr><td><code>@start(DATE)</code>, <code>@due(DATE)</code></td><td>Start and due dates, as <code>YYYY-MM-DD</code></td><td>Ordinary tags with dates, which TaskPaper can search</td></tr>
+<tr><td><code>@red</code>, <code>@yellow</code>, <code>@green</code>, <code>@blue</code></td><td>A row color</td><td>Ordinary tags</td></tr>
+<tr><td><code>@star</code>, <code>@flag</code>, <code>@bookmark</code></td><td>Starred, flagged, bookmarked</td><td>Ordinary tags</td></tr>
+<tr><td><code>@section</code></td><td>Makes a text block a section</td><td>An ordinary tag</td></tr>
+<tr><td><code>@url(ADDRESS)</code></td><td>Draws the block’s title as a link to the address</td><td>As there</td></tr>
+<tr><td><code>@hidden</code></td><td>A hidden line, such as a note or comments</td><td>An ordinary tag on a line that shows like any other</td></tr>
+</tbody></table>
+<p>Other apps show tpt’s <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/attachments/">attachments</a> as plain lines: a <code>NOTE @hidden</code> or <code>COMMENTS @hidden</code> line with the note’s lines or the comments under it. Their content is written so it never reads as a task or a project there.</p>
+<p>tpt’s view settings, the pane layout and the order of the Today view live outside the file, so the file holds only your outline.</p>
+<h2 id="what-tpt-treats-differently">What tpt treats differently<a class="zola-anchor" href="#what-tpt-treats-differently" aria-label="Anchor link for: what-tpt-treats-differently">🔗</a></h2>
+<ul>
+<li><strong>No archive.</strong> An <code>Archive:</code> project is an ordinary project, and there is no archive command. Completed blocks stay where they are, and the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/views/#logbook">Logbook</a> lists the recent ones.</li>
+<li><strong>Tags are never typed.</strong> tpt hides every tag from the text and sets them through commands. In another app, you see and type them as text.</li>
+<li><strong>No searches yet.</strong> TaskPaper’s saved searches (<code>@search(…)</code>) are kept, hidden, and listed in Edit Node as unsupported.</li>
+<li><strong><code>@today</code></strong> means nothing to tpt: it is kept like any tag it doesn’t read. Star a block, or give it a date, to put it in Today.</li>
+<li><strong>The outline stays well formed.</strong> A block under an empty line would make that line read back differently, so tpt fills it with <code>…</code> and says so. Spaces typed at the start of a line, and empty lines at the end of a file indented under a project, are tidied the same way, each with a status message.</li>
+</ul>
+<h2 id="editing-in-another-app-at-the-same-time">Editing in another app at the same time<a class="zola-anchor" href="#editing-in-another-app-at-the-same-time" aria-label="Anchor link for: editing-in-another-app-at-the-same-time">🔗</a></h2>
+<p>tpt watches the file. When another app or a sync tool changes it, tpt reloads it, keeping your place, if you have nothing unsaved; otherwise it asks whose version to keep and saves the other as a conflict copy. A save never overwrites a change it hasn’t seen. See <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#when-the-file-changes-on-disk">When the file changes on disk</a>.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;"><span>Previous</span>Command line</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;"><span>Next</span>Cheat sheet</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("https://sazonovkirill.github.io/taskpaper-terminal/reference/").pathname;
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("https://sazonovkirill.github.io/taskpaper-terminal/elasticlunr.min.js")
+    .then(() => load("https://sazonovkirill.github.io/taskpaper-terminal/search_index.en.js"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
+
+</body>
+</html>

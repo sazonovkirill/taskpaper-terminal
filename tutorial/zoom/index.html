@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Zoom and breadcrumbs · tpt</title>
+<meta name="description" content="Make any branch the whole screen, and find your way back.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Zoom and breadcrumbs · tpt">
+<meta property="og:description" content="Make any branch the whole screen, and find your way back.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/" aria-current="page">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Tutorial">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;">Tutorial</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;why&#x2F;">Why plain text and outlines</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;first-steps&#x2F;">Open, move and edit</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;">Shape the outline</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;zoom&#x2F;" aria-current="page" class="current">Zoom and breadcrumbs</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;tasks&#x2F;">Tasks and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;dates&#x2F;">Dates and Today</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;notes&#x2F;">Notes and comments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;settings&#x2F;">Settings, themes and next steps</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Zoom and breadcrumbs</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#zoom-in">Zoom in</a></li><li><a href="#zoom-out">Zoom out</a></li><li><a href="#back-and-forward">Back and forward</a></li><li><a href="#why-it-matters">Why it matters</a></li>
+      </ul>
+    </nav>
+    
+    <h2 id="zoom-in">Zoom in<a class="zola-anchor" href="#zoom-in" aria-label="Anchor link for: zoom-in">🔗</a></h2>
+<p>Move to “Trip to Lisbon” and press <kbd>.</kbd> (period). The screen now shows only the trip, with its name as a title.</p>
+<p>The breadcrumb bar at the top now reads <code>⌂ › Trip to Lisbon</code>, with a house icon for <code>⌂</code>: the path from the top of the file to here.</p>
+<p>Go one level deeper. Move to “Things to see” and press <kbd>.</kbd> again. The breadcrumbs grow to <code>⌂ › Trip to Lisbon › Things to see</code>, and you see three tasks and nothing else.</p>
+
+<figure class="shot-figure">
+  <img src="https://sazonovkirill.github.io/taskpaper-terminal/screenshots/tutorial/zoom.png" alt="tpt zoomed into Things to see, with the breadcrumb bar reading Trip to Lisbon then Things to see, and three tasks below the title" loading="lazy" width="1070" height="691">
+  <figcaption>Zoomed into Things to see. The breadcrumbs show the way back.</figcaption>
+</figure>
+<p>You can zoom into any line, even a single task, and everything works the same there. You’re still editing the real outline, just one part of it.</p>
+<h2 id="zoom-out">Zoom out<a class="zola-anchor" href="#zoom-out" aria-label="Anchor link for: zoom-out">🔗</a></h2>
+<p>Press <kbd>,</kbd> (the key beside <kbd>.</kbd>) to zoom out one level, back to the trip. Press <kbd>g</kbd> <kbd>h</kbd> to go all the way home, to the top of the file.</p>
+<h2 id="back-and-forward">Back and forward<a class="zola-anchor" href="#back-and-forward" aria-label="Anchor link for: back-and-forward">🔗</a></h2>
+<p>Like a web browser, tpt remembers where you’ve been. Press <kbd>H</kbd> to go back, and <kbd>L</kbd> to go forward. <kbd>Alt+←</kbd> and <kbd>Alt+→</kbd> do the same. Try it: <kbd>H</kbd> takes you back into the trip.</p>
+<p>With a mouse, you can also click a crumb to zoom there.</p>
+<h2 id="why-it-matters">Why it matters<a class="zola-anchor" href="#why-it-matters" aria-label="Anchor link for: why-it-matters">🔗</a></h2>
+<p>Zooming lets one file hold everything without feeling crowded. The trip doesn’t need a list of its own: zoom into it while you plan, and out when you’re done.</p>
+<p>Press <kbd>g</kbd> <kbd>h</kbd> to go home before the next chapter. The other zoom keys are listed in the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;"><span>Previous</span>Shape the outline</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;tasks&#x2F;"><span>Next</span>Tasks and done</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Open, move and edit · tpt</title>
+<meta name="description" content="Open the sample file, move around and type your first tasks.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Open, move and edit · tpt">
+<meta property="og:description" content="Open the sample file, move around and type your first tasks.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/" aria-current="page">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Tutorial">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;">Tutorial</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;why&#x2F;">Why plain text and outlines</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;first-steps&#x2F;" aria-current="page" class="current">Open, move and edit</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;">Shape the outline</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;zoom&#x2F;">Zoom and breadcrumbs</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;tasks&#x2F;">Tasks and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;dates&#x2F;">Dates and Today</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;notes&#x2F;">Notes and comments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;settings&#x2F;">Settings, themes and next steps</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Open, move and edit</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#open-the-file">Open the file</a></li><li><a href="#two-modes">Two modes</a></li><li><a href="#move-around">Move around</a></li><li><a href="#add-a-task">Add a task</a></li><li><a href="#change-a-line">Change a line</a></li><li><a href="#undo-and-saving">Undo, and saving</a></li>
+      </ul>
+    </nav>
+    
+    <h2 id="open-the-file">Open the file<a class="zola-anchor" href="#open-the-file" aria-label="Anchor link for: open-the-file">🔗</a></h2>
+<p>In a terminal, go to the folder that holds the sample file and run:</p>
+<pre><code data-lang="sh">tpt tutorial.taskpaper
+</code></pre>
+<p>You see the outline. At the top is the breadcrumb bar, with a house icon for the top of the file. At the bottom is the status line: it says <code>NAVIGATE</code> and shows the file’s path.</p>
+<p>The <code>▌</code> bar on the left marks the <strong>focused</strong> line. Most keys act on that line.</p>
+<p>Run <code>tpt</code> on its own to try a demo outline in a temporary file.</p>
+<h2 id="two-modes">Two modes<a class="zola-anchor" href="#two-modes" aria-label="Anchor link for: two-modes">🔗</a></h2>
+<p>tpt has two modes, a little like vi:</p>
+<ul>
+<li>In <strong>navigate mode</strong> every key is a command. <kbd>j</kbd> moves down, it doesn’t type a “j”.</li>
+<li>In <strong>edit mode</strong> you type text into one line, as in any editor.</li>
+</ul>
+<p>You start in navigate mode, and the status line always shows the mode.</p>
+<h2 id="move-around">Move around<a class="zola-anchor" href="#move-around" aria-label="Anchor link for: move-around">🔗</a></h2>
+<p>Press <kbd>j</kbd> to move down and <kbd>k</kbd> to move up, or use the arrow keys.</p>
+<p>Press <kbd>G</kbd> to jump to the last line, then <kbd>g</kbd> <kbd>g</kbd> to jump back to the first. Keys written side by side like that are pressed one after the other, not together.</p>
+<p><kbd>Ctrl+D</kbd> and <kbd>Ctrl+U</kbd> move a page down and up.</p>
+<h2 id="add-a-task">Add a task<a class="zola-anchor" href="#add-a-task" aria-label="Anchor link for: add-a-task">🔗</a></h2>
+<p>Move to “Buy a birthday card for Mum” in the INBOX. Press <kbd>o</kbd> to open a new line below it, and type:</p>
+<pre><code>Water the plants
+</code></pre>
+<p>Added next to a task, the new line is a task too, with its dash already there. The status line now says <code>EDIT</code>.</p>
+<p>Press <kbd>Enter</kbd> to finish this line and start the next one. Type “Take out the recycling”, then press <kbd>Esc</kbd> to go back to navigate mode.</p>
+
+<figure class="shot-figure">
+  <img src="https://sazonovkirill.github.io/taskpaper-terminal/screenshots/tutorial/first-steps.png" alt="tpt showing the sample outline, with a new task, Water the plants, being typed in the INBOX project" loading="lazy" width="1070" height="691">
+  <figcaption>Typing a new task in edit mode. The status line says EDIT.</figcaption>
+</figure>
+<h2 id="change-a-line">Change a line<a class="zola-anchor" href="#change-a-line" aria-label="Anchor link for: change-a-line">🔗</a></h2>
+<p>To edit a line that’s already there, move to it and press <kbd>Enter</kbd>. The caret goes to the end. Go back to “Water the plants”, press <kbd>Enter</kbd>, type “ on the balcony“ and press <kbd>Esc</kbd>.</p>
+<h2 id="undo-and-saving">Undo, and saving<a class="zola-anchor" href="#undo-and-saving" aria-label="Anchor link for: undo-and-saving">🔗</a></h2>
+<p>Made a mess? Press <kbd>z</kbd> in navigate mode to undo, and <kbd>Z</kbd> to redo.</p>
+<p>You never need to save. tpt writes the file about a second after your last change, and keeps a daily backup copy too.</p>
+<p>To quit, press <kbd>Ctrl+Q</kbd>. But stay for now: the next chapter carries on in the same file.</p>
+<p>More on editing and files is in the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;why&#x2F;"><span>Previous</span>Why plain text and outlines</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;"><span>Next</span>Shape the outline</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Why plain text and outlines · tpt</title>
+<meta name="description" content="What a plain TaskPaper file and an infinite outline give you.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Why plain text and outlines · tpt">
+<meta property="og:description" content="What a plain TaskPaper file and an infinite outline give you.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/" aria-current="page">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Tutorial">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;">Tutorial</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;why&#x2F;" aria-current="page" class="current">Why plain text and outlines</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;first-steps&#x2F;">Open, move and edit</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;structure&#x2F;">Shape the outline</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;zoom&#x2F;">Zoom and breadcrumbs</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;tasks&#x2F;">Tasks and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;dates&#x2F;">Dates and Today</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;notes&#x2F;">Notes and comments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;settings&#x2F;">Settings, themes and next steps</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Why plain text and outlines</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#your-outline-is-a-plain-text-file">Your outline is a plain text file</a></li><li><a href="#one-outline-for-everything">One outline for everything</a></li>
+      </ul>
+    </nav>
+    
+    <h2 id="your-outline-is-a-plain-text-file">Your outline is a plain text file<a class="zola-anchor" href="#your-outline-is-a-plain-text-file" aria-label="Anchor link for: your-outline-is-a-plain-text-file">🔗</a></h2>
+<p>tpt saves everything in a <code>.taskpaper</code> file. That is plain text, with a few simple rules. A line that ends in a colon is a project. A line that starts with a dash is a task. Anything else is a note. Tabs make the structure, and tags like <code>@done</code> or <code>@due(2026-05-02)</code> hold the details:</p>
+<pre><code>Trip to Lisbon:
+	Before we go:
+		- Book the hotel @due(2026-05-02)
+		- Renew the travel insurance @done(2026-04-20)
+</code></pre>
+<p>That buys you a lot:</p>
+<ul>
+<li><strong>You can read and edit it anywhere.</strong> Any text editor opens it, on any computer. Nothing is hidden in a database.</li>
+<li><strong>It syncs and diffs like code.</strong> Put it in Git and every change is a readable diff, or keep it in Dropbox or Syncthing. tpt reloads the file when another device changes it.</li>
+<li><strong>There is no lock-in.</strong> No account, no server, no export step. If you stop using tpt, your file stays exactly where it was.</li>
+<li><strong>Other apps open the same file.</strong> TaskPaper on the Mac and other TaskPaper-compatible editors read it too, so you can switch tools without converting anything.</li>
+</ul>
+<p>tpt is careful with that file: it writes it atomically, so a crash can’t leave half a file, and keeps lines it doesn’t understand as they were.</p>
+<h2 id="one-outline-for-everything">One outline for everything<a class="zola-anchor" href="#one-outline-for-everything" aria-label="Anchor link for: one-outline-for-everything">🔗</a></h2>
+<p>tpt is an infinite outliner, in the spirit of Workflowy. Instead of many separate lists, you keep one tree. Every line can have lines inside it, as deep as you like.</p>
+<ul>
+<li><strong>One tree holds it all.</strong> Work, home, a trip, a reading list: they all live side by side, so nothing gets lost in a forgotten app or a stray file.</li>
+<li><strong>Any branch can become the whole screen.</strong> You can zoom into a single project, or a single task, and see only that. The rest of the outline is still there, one key away.</li>
+<li><strong>Structure grows as your thinking does.</strong> Start with a flat list. When an item turns out to have parts, indent a few lines under it. When a project gets big, split it. Moving a line moves everything inside it.</li>
+</ul>
+<p>Next, you’ll see how that feels in practice.</p>
+
+    <nav class="pager" aria-label="Pages">
+      
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;tutorial&#x2F;first-steps&#x2F;"><span>Next</span>Open, move and edit</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+</body>
+</html>

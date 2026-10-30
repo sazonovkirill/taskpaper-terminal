@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Command line · tpt</title>
+<meta name="description" content="Starting tpt, its options, the messages it prints and the environment variables it reads.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Command line · tpt">
+<meta property="og:description" content="Starting tpt, its options, the messages it prints and the environment variables it reads.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/reference.css?h=8b6db26510b2d5ab1724">
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/" aria-current="page">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Reference">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;">Reference</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;files&#x2F;">Files and saving</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;">Blocks and their types</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;">Navigate and edit mode</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;">Navigation and zoom</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;">Selection and structure</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;">Tags, dates and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;views&#x2F;">Special views</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;attachments&#x2F;">Attachments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;quick-add&#x2F;">Quick Add</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;appearance&#x2F;">Appearance and themes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;animation&#x2F;">Animation and weather</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;">Settings</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;" aria-current="page" class="current">Command line</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;">Compatibility with other TaskPaper apps</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;">Cheat sheet</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Command line</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#usage">Usage</a></li><li><a href="#before-the-app-starts">Before the app starts</a></li><li><a href="#exiting">Exiting</a></li><li><a href="#environment">Environment</a></li><li><a href="#terminals">Terminals</a></li>
+      </ul>
+    </nav>
+    
+    <h2 id="usage">Usage<a class="zola-anchor" href="#usage" aria-label="Anchor link for: usage">🔗</a></h2>
+<pre><code>usage: tpt [path]
+       tpt --help | --version
+</code></pre>
+<table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody>
+<tr><td><code>tpt notes.taskpaper</code></td><td>Opens the file. If it doesn’t exist yet, tpt starts with an empty outline and creates the file on the first save. Its folder must exist.</td></tr>
+<tr><td><code>tpt</code></td><td>Creates a new file in <code>/tmp</code>, named like <code>taskpaper-20261011-093000.taskpaper</code>, holding a demo outline that shows off every feature. The status line marks it as temporary until you keep it with <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#save-as">Save As</a>.</td></tr>
+<tr><td><code>tpt --help</code></td><td>Prints the usage and exits.</td></tr>
+<tr><td><code>tpt --version</code></td><td>Prints the version, such as <code>tpt 0.1.0</code>, and exits.</td></tr>
+</tbody></table>
+<p>tpt edits one file at a time. To work on two files, run two tpt.</p>
+<p>Any other argument starting with <code>-</code> is refused, so a mistyped option never becomes a file name. To open a file whose name starts with <code>-</code>, write it as a path: <code>tpt ./-notes.taskpaper</code>. More than one path is refused too. Both print the reason and the usage, and exit with status 1:</p>
+<pre><code>$ tpt -x
+Error: unknown option -x; open a file named like it as ./-x
+usage: tpt [path]
+...
+</code></pre>
+<p>A file tpt can’t read, one that isn’t UTF-8 text, or a folder it may not enter is reported before the app starts, and tpt exits with a non-zero status. A file you may not write opens <strong>read-only</strong>: the status line says <code>read-only</code>, and every edit says “cannot edit a read-only file”.</p>
+<h2 id="before-the-app-starts">Before the app starts<a class="zola-anchor" href="#before-the-app-starts" aria-label="Anchor link for: before-the-app-starts">🔗</a></h2>
+<p>If tpt crashed with changes it hadn’t saved, it wrote them to a recovery file. The next time you open that file, tpt names the recovery file and asks:</p>
+<pre><code>Open the file with these changes? [y/N]
+</code></pre>
+<p><code>y</code> opens the file with the recovered changes as unsaved changes, after keeping the file as it is on disk as a conflict copy. Any other answer opens the file as it is. See <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#crash-recovery">Crash recovery</a>.</p>
+<h2 id="exiting">Exiting<a class="zola-anchor" href="#exiting" aria-label="Anchor link for: exiting">🔗</a></h2>
+<p><code>Ctrl+Q</code> quits from anywhere, after saving. tpt also saves when the terminal closes or it is told to end (<code>SIGTERM</code>, <code>SIGHUP</code>). See <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#quitting">Quitting</a>.</p>
+<h2 id="environment">Environment<a class="zola-anchor" href="#environment" aria-label="Anchor link for: environment">🔗</a></h2>
+<table><thead><tr><th>Variable</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>XDG_CONFIG_HOME</code></td><td>Where <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/settings/"><code>config.toml</code></a> lives: <code>$XDG_CONFIG_HOME/taskpaper-terminal/</code>, else <code>~/.config/taskpaper-terminal/</code></td></tr>
+<tr><td><code>XDG_DATA_HOME</code></td><td>Where <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#daily-backups">daily backups</a> go: <code>$XDG_DATA_HOME/taskpaper-terminal/backups/</code>, else <code>~/.local/share/taskpaper-terminal/backups/</code>, unless <code>backups.dir</code> says otherwise</td></tr>
+<tr><td><code>XDG_STATE_HOME</code></td><td>Where the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/files/#pane-layout">pane layouts</a> (<code>views.json</code>) and recovery files go: under <code>$XDG_STATE_HOME/taskpaper-terminal/</code>, else <code>~/.local/state/taskpaper-terminal/</code></td></tr>
+<tr><td><code>COLORTERM</code></td><td><code>truecolor</code> or <code>24bit</code> enables the truecolor <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/appearance/#color-depth">themes</a></td></tr>
+<tr><td><code>NO_COLOR</code></td><td>When set and not empty, tpt draws no colors</td></tr>
+<tr><td><code>LC_ALL</code>, <code>LC_CTYPE</code>, <code>LANG</code></td><td>The first one set decides whether the locale is UTF-8. Without UTF-8, tpt draws <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/appearance/#icons">ASCII</a> symbols.</td></tr>
+<tr><td><code>SSH_CONNECTION</code>, <code>SSH_TTY</code></td><td>Either one makes <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/animation/#full-reduced-or-off">animations</a> default to <code>reduced</code></td></tr>
+</tbody></table>
+<p>The XDG folders are used on macOS too.</p>
+<h2 id="terminals">Terminals<a class="zola-anchor" href="#terminals" aria-label="Anchor link for: terminals">🔗</a></h2>
+<p>tpt runs in any terminal on macOS and Linux, and over SSH. It asks for the <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/modes/#classic-and-kitty-keys">kitty keyboard protocol</a> when it starts and gives it back when it quits, uses the mouse when the terminal reports it, and draws each frame with synchronized output where the terminal supports it. For <code>Alt</code> keys on macOS, see <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/modes/#alt-on-macos">Alt on macOS</a>. Copying over SSH needs a terminal with OSC 52; see <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/modes/#copy-and-paste">Copy and paste</a>.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;"><span>Previous</span>Settings</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;"><span>Next</span>Compatibility with other TaskPaper apps</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("https://sazonovkirill.github.io/taskpaper-terminal/reference/").pathname;
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("https://sazonovkirill.github.io/taskpaper-terminal/elasticlunr.min.js")
+    .then(() => load("https://sazonovkirill.github.io/taskpaper-terminal/search_index.en.js"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
+
+</body>
+</html>

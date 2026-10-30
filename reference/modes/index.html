@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Navigate and edit mode · tpt</title>
+<meta name="description" content="Keys act on blocks, or they type text: how the two modes, key sequences and the shortcuts panel work.">
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/site.css?h=168b74ab8a88d9e52683">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tpt">
+<meta property="og:title" content="Navigate and edit mode · tpt">
+<meta property="og:description" content="Keys act on blocks, or they type text: how the two modes, key sequences and the shortcuts panel work.">
+<meta property="og:image" content="https://sazonovkirill.github.io/taskpaper-terminal/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://sazonovkirill.github.io/taskpaper-terminal/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add("js")</script>
+<link rel="stylesheet" href="https://sazonovkirill.github.io/taskpaper-terminal/css/reference.css?h=8b6db26510b2d5ab1724">
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <a class="logo" href="https://sazonovkirill.github.io/taskpaper-terminal/"><span aria-hidden="true">&gt;</span> tpt</a>
+  <nav aria-label="Main">
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/">Home</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/tutorial/">Tutorial</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/" aria-current="page">Reference</a>
+    <a href="https://sazonovkirill.github.io/taskpaper-terminal/pricing/">Pricing</a>
+    <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a>
+  </nav>
+</header>
+<main id="main">
+
+
+<div class="docs">
+  
+<nav class="docs-nav" aria-label="Reference">
+  <a class="docs-home" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;">Reference</a>
+  <ol>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;files&#x2F;">Files and saving</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;">Blocks and their types</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;modes&#x2F;" aria-current="page" class="current">Navigate and edit mode</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;">Navigation and zoom</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;structure&#x2F;">Selection and structure</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;tags&#x2F;">Tags, dates and done</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;views&#x2F;">Special views</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigator&#x2F;">Navigator and finders</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;attachments&#x2F;">Attachments</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;quick-add&#x2F;">Quick Add</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;panes&#x2F;">Panes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;appearance&#x2F;">Appearance and themes</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;animation&#x2F;">Animation and weather</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;settings&#x2F;">Settings</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;command-line&#x2F;">Command line</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;compatibility&#x2F;">Compatibility with other TaskPaper apps</a></li>
+    
+    <li><a href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;cheatsheet&#x2F;">Cheat sheet</a></li>
+    
+  </ol>
+</nav>
+
+  <article class="prose">
+    <h1>Navigate and edit mode</h1>
+    
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        <li><a href="#keys-in-navigate-mode">Keys in navigate mode</a></li><li><a href="#creating-blocks">Creating blocks</a></li><li><a href="#edit-mode">Edit mode</a></li><li><a href="#copy-and-paste">Copy and paste</a></li><li><a href="#the-shortcuts-panel">The shortcuts panel</a></li><li><a href="#the-keymap">The Keymap</a></li><li><a href="#mouse">Mouse</a></li>
+      </ul>
+    </nav>
+    
+    <p>tpt is a block editor. In <strong>navigate mode</strong>, the default, keys move between blocks, select them and run commands on them. In <strong>edit mode</strong>, keys type into one block’s text, right where it sits in the outline. The status line shows the mode, and so does the focus marker in the gutter: the primary color while navigating, the accent color while editing.</p>
+<h2 id="keys-in-navigate-mode">Keys in navigate mode<a class="zola-anchor" href="#keys-in-navigate-mode" aria-label="Anchor link for: keys-in-navigate-mode">🔗</a></h2>
+<p>Navigate-mode keys are vi-inspired. <code>j</code>/<code>k</code> move, <code>h</code>/<code>l</code> fold and unfold, <code>gg</code>/<code>G</code> jump to the ends. Arrow keys work everywhere too. The full list of navigate keys is spread over the pages for each topic: <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/navigation/">Navigation and zoom</a>, <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/structure/">Selection and structure</a>, <a href="https://sazonovkirill.github.io/taskpaper-terminal/reference/tags/">Tags, dates and done</a>, and so on.</p>
+<h3 id="key-sequences">Key sequences<a class="zola-anchor" href="#key-sequences" aria-label="Anchor link for: key-sequences">🔗</a></h3>
+<p>Many keys are two-key sequences: <code>gg</code>, <code>dd</code>, <code>ms</code>, <code>Ctrl+W v</code>. Press the keys one after the other, within one second. While tpt waits for the second key, the first one shows at the right end of the status line. A key that continues no sequence cancels it and does nothing else.</p>
+<p>The prefixes group keys by meaning: <code>g</code> goes somewhere, and a capital after it opens a view or a list of places; <code>m</code> sets metadata through a prompt or picker, while marks that toggle at once are single keys (<code>s</code>, <code>b</code>, <code>!</code>); <code>d</code> cuts (<code>dd</code>), and <code>Ctrl+W</code> handles panes.</p>
+<h3 id="classic-and-kitty-keys">Classic and kitty keys<a class="zola-anchor" href="#classic-and-kitty-keys" aria-label="Anchor link for: classic-and-kitty-keys">🔗</a></h3>
+<p>Terminals report keys in two ways. Classic (“legacy”) reporting can’t tell some keys apart, for example <code>Ctrl+Enter</code> from <code>Enter</code>, or <code>Ctrl+I</code> from <code>Tab</code>. The kitty keyboard protocol can. tpt asks for the kitty protocol when it starts and hands it back when it quits. Terminals without it carry on with classic reporting.</p>
+<p>Every command has at least one key that works with classic reporting. A few commands also have a key that only the kitty protocol can send. The key tables list those in the <strong>Kitty protocol only</strong> column:</p>
+<table><thead><tr><th>Kitty protocol only</th><th>Command</th><th>Works everywhere</th></tr></thead><tbody>
+<tr><td><code>Ctrl+Enter</code></td><td>Toggle Done</td><td><code>x</code></td></tr>
+<tr><td><code>Ctrl+'</code></td><td>Go Home</td><td><code>gh</code></td></tr>
+<tr><td><code>Ctrl+M</code></td><td>Move To</td><td><code>gm</code></td></tr>
+<tr><td><code>Ctrl+I</code></td><td>Forward</td><td><code>L</code></td></tr>
+<tr><td><code>Ctrl+,</code> / <code>Ctrl+.</code></td><td>Focus Pane Left / Right</td><td><code>Ctrl+W ←</code> / <code>Ctrl+W →</code></td></tr>
+<tr><td><code>Menu</code></td><td>Context Menu</td><td><code>Ctrl+\</code>, <code>Shift+F10</code></td></tr>
+</tbody></table>
+<h3 id="alt-on-macos">Alt on macOS<a class="zola-anchor" href="#alt-on-macos" aria-label="Anchor link for: alt-on-macos">🔗</a></h3>
+<p><code>Alt</code> keys need your terminal to send Option as Meta: “Use Option as Meta key” in Terminal.app, “Option sends Esc+” in iTerm2, with equivalents in Ghostty, kitty and WezTerm. The <code>?</code> panel reminds you until it has seen an <code>Alt</code> key. Every <code>Alt</code> key also has a route without <code>Alt</code>.</p>
+<p>In text fields, tpt also takes the keys of iTerm2’s <strong>Natural Text Editing</strong> preset: <code>Option+←</code>/<code>→</code> move by word, <code>Cmd+←</code>/<code>→</code> go to the start and end, and <code>Option+Backspace</code>, <code>Cmd+Backspace</code> and <code>Option+Delete</code> delete a word or to the start, as on the Mac.</p>
+<h3 id="keys-some-terminals-take">Keys some terminals take<a class="zola-anchor" href="#keys-some-terminals-take" aria-label="Anchor link for: keys-some-terminals-take">🔗</a></h3>
+<p>Some terminals and desktops keep certain keys for themselves. Each such key has an alternative next to it:</p>
+<table><thead><tr><th>Key</th><th>Taken by</th><th>Use instead</th></tr></thead><tbody>
+<tr><td><code>Ctrl+↓</code> / <code>Ctrl+↑</code></td><td>macOS Mission Control</td><td><code>gj</code> / <code>gk</code></td></tr>
+<tr><td><code>Ctrl+←</code> / <code>Ctrl+→</code> while editing</td><td>macOS Spaces</td><td><code>Alt+b</code> / <code>Alt+f</code></td></tr>
+<tr><td><code>Alt+Enter</code> in the Navigator and finders</td><td>Windows Terminal, WezTerm</td><td><code>Ctrl+T</code></td></tr>
+<tr><td><code>Ctrl+V</code> in the Navigator and finders</td><td>Windows Terminal</td><td><code>Ctrl+T</code></td></tr>
+<tr><td><code>Ctrl+Shift+←</code> / <code>Ctrl+Shift+→</code></td><td>kitty, WezTerm</td><td><code>Ctrl+W ←</code> / <code>Ctrl+W →</code>, <code>Ctrl+W h</code> / <code>Ctrl+W l</code></td></tr>
+<tr><td><code>Alt</code> with arrows</td><td>Windows Terminal</td><td><code>H</code> / <code>L</code>, <code>K</code> / <code>J</code></td></tr>
+<tr><td><code>Alt+1</code> … <code>Alt+9</code></td><td>GNOME Terminal and Ghostty on Linux</td><td><code>g1</code> … <code>g9</code></td></tr>
+<tr><td><code>Shift+F10</code></td><td>GNOME Terminal</td><td><code>Ctrl+\</code></td></tr>
+<tr><td><code>Ctrl+B</code> while editing</td><td>tmux</td><td>press <code>Ctrl+B</code> twice</td></tr>
+</tbody></table>
+<h2 id="creating-blocks">Creating blocks<a class="zola-anchor" href="#creating-blocks" aria-label="Anchor link for: creating-blocks">🔗</a></h2>
+<p>The creation keys add a block and open it in edit mode:</p>
+<table><thead><tr><th>Key</th><th>Adds a block</th></tr></thead><tbody>
+<tr><td><code>o</code> / <code>O</code></td><td>below / above the focused block</td></tr>
+<tr><td><code>i</code> / <code>I</code></td><td>as its last / first child, expanding it</td></tr>
+<tr><td><code>a</code> / <code>A</code></td><td>at the end / start of its list of siblings</td></tr>
+</tbody></table>
+<p>Each adds a block of the type that fits at once: a task next to a task or under a project or task, otherwise text. What you type next goes into the new block, so <code>o</code> then <code>B</code> starts a block with “B”. To add a section, project, task or note at one of these places, choose <strong>New Section Below</strong>, <strong>New Task as First Child</strong> and so on in Go to Command (<code>Ctrl+P</code>); they have no keys.</p>
+<p>With blocks selected, <code>o</code> and <code>a</code> go by the last selected block, <code>O</code> and <code>A</code> by the first. On a zoomed pane’s title row, the keys add the zoom block’s first child, except <code>i</code> and <code>a</code>, which add its last.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-edit"><th scope="row"><a class="ref-anchor" href="#navigate-edit">Edit</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Enter</kbd></span></td>
+<td></td>
+<td><code>edit</code></td></tr>
+
+<tr id="navigate-new-block-below"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-below">New Block Below</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>o</kbd></span></td>
+<td></td>
+<td><code>new_block_below</code></td></tr>
+
+<tr id="navigate-new-section-below"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-below">New Section Below</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_below</code></td></tr>
+
+<tr id="navigate-new-project-below"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-below">New Project Below</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_below</code></td></tr>
+
+<tr id="navigate-new-task-below"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-below">New Task Below</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_below</code></td></tr>
+
+<tr id="navigate-new-note-below"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-below">New Note Below</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_below</code></td></tr>
+
+<tr id="navigate-new-block-above"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-above">New Block Above</a></th>
+<td><span class="ref-seq"><kbd>O</kbd></span></td>
+<td></td>
+<td><code>new_block_above</code></td></tr>
+
+<tr id="navigate-new-section-above"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-above">New Section Above</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_above</code></td></tr>
+
+<tr id="navigate-new-project-above"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-above">New Project Above</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_above</code></td></tr>
+
+<tr id="navigate-new-task-above"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-above">New Task Above</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_above</code></td></tr>
+
+<tr id="navigate-new-note-above"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-above">New Note Above</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_above</code></td></tr>
+
+<tr id="navigate-new-block-as-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-as-last-child">New Block as Last Child</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>i</kbd></span></td>
+<td></td>
+<td><code>new_block_as_last_child</code></td></tr>
+
+<tr id="navigate-new-section-as-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-as-last-child">New Section as Last Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_as_last_child</code></td></tr>
+
+<tr id="navigate-new-project-as-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-as-last-child">New Project as Last Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_as_last_child</code></td></tr>
+
+<tr id="navigate-new-task-as-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-as-last-child">New Task as Last Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_as_last_child</code></td></tr>
+
+<tr id="navigate-new-note-as-last-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-as-last-child">New Note as Last Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_as_last_child</code></td></tr>
+
+<tr id="navigate-new-block-as-first-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-as-first-child">New Block as First Child</a></th>
+<td><span class="ref-seq"><kbd>I</kbd></span></td>
+<td></td>
+<td><code>new_block_as_first_child</code></td></tr>
+
+<tr id="navigate-new-section-as-first-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-as-first-child">New Section as First Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_as_first_child</code></td></tr>
+
+<tr id="navigate-new-project-as-first-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-as-first-child">New Project as First Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_as_first_child</code></td></tr>
+
+<tr id="navigate-new-task-as-first-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-as-first-child">New Task as First Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_as_first_child</code></td></tr>
+
+<tr id="navigate-new-note-as-first-child"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-as-first-child">New Note as First Child</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_as_first_child</code></td></tr>
+
+<tr id="navigate-new-block-at-end"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-at-end">New Block at End</a></th>
+<td><span class="ref-seq"><kbd>a</kbd></span></td>
+<td></td>
+<td><code>new_block_at_end</code></td></tr>
+
+<tr id="navigate-new-section-at-end"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-at-end">New Section at End</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_at_end</code></td></tr>
+
+<tr id="navigate-new-project-at-end"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-at-end">New Project at End</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_at_end</code></td></tr>
+
+<tr id="navigate-new-task-at-end"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-at-end">New Task at End</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_at_end</code></td></tr>
+
+<tr id="navigate-new-note-at-end"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-at-end">New Note at End</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_at_end</code></td></tr>
+
+<tr id="navigate-new-block-at-start"><th scope="row"><a class="ref-anchor" href="#navigate-new-block-at-start">New Block at Start</a></th>
+<td><span class="ref-seq"><kbd>A</kbd></span></td>
+<td></td>
+<td><code>new_block_at_start</code></td></tr>
+
+<tr id="navigate-new-section-at-start"><th scope="row"><a class="ref-anchor" href="#navigate-new-section-at-start">New Section at Start</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_section_at_start</code></td></tr>
+
+<tr id="navigate-new-project-at-start"><th scope="row"><a class="ref-anchor" href="#navigate-new-project-at-start">New Project at Start</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_project_at_start</code></td></tr>
+
+<tr id="navigate-new-task-at-start"><th scope="row"><a class="ref-anchor" href="#navigate-new-task-at-start">New Task at Start</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_task_at_start</code></td></tr>
+
+<tr id="navigate-new-note-at-start"><th scope="row"><a class="ref-anchor" href="#navigate-new-note-at-start">New Note at Start</a></th>
+<td><span class="ref-none">none; Go to Command</span></td>
+<td></td>
+<td><code>new_note_at_start</code></td></tr>
+
+</tbody></table></div>
+<h2 id="edit-mode">Edit mode<a class="zola-anchor" href="#edit-mode" aria-label="Anchor link for: edit-mode">🔗</a></h2>
+<p><code>Enter</code> edits the focused block, with the caret at the end of its text. It is the only key that does. <code>Esc</code> goes back to navigate mode. Editing happens in place: the block keeps its indentation, its neighbors and the scroll position. Only the focused pane can be in edit mode, and moving to another pane ends it.</p>
+<p>You edit the block’s visible text:</p>
+<ul>
+<li><strong>without a task’s dash.</strong> The <code>-</code> marker shows the type. <code>Backspace</code> at the start of a task’s text deletes the dash and makes the block text.</li>
+<li><strong>with a project’s colon.</strong> The <code>:</code> is part of the text, and the caret starts just before it. Deleting it makes the block text.</li>
+<li><strong>without its tags,</strong> which stay on the line, hidden.</li>
+<li><strong>with Markdown markers visible,</strong> such as <code>**</code>, <code>`</code>, <code>#</code> and link syntax.</li>
+</ul>
+<p>A block is always one line: no key breaks it. Pasting text of several lines ends editing and adds the lines as blocks below. A whole editing session is one undo step.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="edit-quit"><th scope="row"><a class="ref-anchor" href="#edit-quit">Quit</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+Q</kbd></span></td>
+<td></td>
+<td><code>quit</code></td></tr>
+
+<tr id="edit-stop-editing"><th scope="row"><a class="ref-anchor" href="#edit-stop-editing">Stop Editing</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Esc</kbd></span></td>
+<td></td>
+<td><code>stop_editing</code></td></tr>
+
+<tr id="edit-stop-editing-and-add-next-block"><th scope="row"><a class="ref-anchor" href="#edit-stop-editing-and-add-next-block">Stop Editing and Add Next Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Enter</kbd></span></td>
+<td></td>
+<td><code>stop_editing_and_add_next_block</code></td></tr>
+
+<tr id="edit-edit-previous-block"><th scope="row"><a class="ref-anchor" href="#edit-edit-previous-block">Edit Previous Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>↑</kbd></span></td>
+<td></td>
+<td><code>edit_previous_block</code></td></tr>
+
+<tr id="edit-edit-next-block"><th scope="row"><a class="ref-anchor" href="#edit-edit-next-block">Edit Next Block</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>↓</kbd></span></td>
+<td></td>
+<td><code>edit_next_block</code></td></tr>
+
+<tr id="edit-command-menu"><th scope="row"><a class="ref-anchor" href="#edit-command-menu">Command Menu</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>&#x2F;</kbd></span></td>
+<td></td>
+<td><code>command_menu</code></td></tr>
+
+<tr id="edit-cycle-type"><th scope="row"><a class="ref-anchor" href="#edit-cycle-type">Cycle Type</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+T</kbd></span></td>
+<td></td>
+<td><code>cycle_type</code></td></tr>
+
+<tr id="edit-project"><th scope="row"><a class="ref-anchor" href="#edit-project">Project</a></th>
+<td><span class="ref-none">command menu only</span></td>
+<td></td>
+<td><span class="ref-none">—</span></td></tr>
+
+<tr id="edit-task"><th scope="row"><a class="ref-anchor" href="#edit-task">Task</a></th>
+<td><span class="ref-none">command menu only</span></td>
+<td></td>
+<td><span class="ref-none">—</span></td></tr>
+
+<tr id="edit-note"><th scope="row"><a class="ref-anchor" href="#edit-note">Note</a></th>
+<td><span class="ref-none">command menu only</span></td>
+<td></td>
+<td><span class="ref-none">—</span></td></tr>
+
+<tr id="edit-make-section"><th scope="row"><a class="ref-anchor" href="#edit-make-section">Make Section</a></th>
+<td><span class="ref-none">command menu only</span></td>
+<td></td>
+<td><span class="ref-none">—</span></td></tr>
+
+<tr id="edit-indent"><th scope="row"><a class="ref-anchor" href="#edit-indent">Indent</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Tab</kbd></span></td>
+<td></td>
+<td><code>indent</code></td></tr>
+
+<tr id="edit-outdent"><th scope="row"><a class="ref-anchor" href="#edit-outdent">Outdent</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Shift+Tab</kbd></span></td>
+<td></td>
+<td><code>outdent</code></td></tr>
+
+<tr id="edit-bold"><th scope="row"><a class="ref-anchor" href="#edit-bold">Bold</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+B</kbd></span></td>
+<td></td>
+<td><code>bold</code></td></tr>
+
+<tr id="edit-inline-code"><th scope="row"><a class="ref-anchor" href="#edit-inline-code">Inline Code</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Alt+`</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+G</kbd></span></td>
+<td></td>
+<td><code>inline_code</code></td></tr>
+
+<tr id="edit-undo"><th scope="row"><a class="ref-anchor" href="#edit-undo">Undo</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+Z</kbd></span></td>
+<td></td>
+<td><code>undo</code></td></tr>
+
+<tr id="edit-redo"><th scope="row"><a class="ref-anchor" href="#edit-redo">Redo</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+Y</kbd></span></td>
+<td></td>
+<td><code>redo</code></td></tr>
+
+<tr id="edit-copy"><th scope="row"><a class="ref-anchor" href="#edit-copy">Copy</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+C</kbd></span></td>
+<td></td>
+<td><code>copy</code></td></tr>
+
+<tr id="edit-cut"><th scope="row"><a class="ref-anchor" href="#edit-cut">Cut</a></th>
+<td><span class="ref-seq"><kbd>Ctrl+X</kbd></span></td>
+<td></td>
+<td><code>cut</code></td></tr>
+
+<tr id="edit-paste-below"><th scope="row"><a class="ref-anchor" href="#edit-paste-below">Paste Below</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>Ctrl+V</kbd></span></td>
+<td></td>
+<td><code>paste_below</code></td></tr>
+
+</tbody></table></div>
+<table><thead><tr><th>Key</th><th>While editing</th></tr></thead><tbody>
+<tr><td><code>Enter</code></td><td>Stop editing and add the next block, as a first child when the block has visible children</td></tr>
+<tr><td><code>↑</code> / <code>↓</code></td><td>Stop editing and edit the previous / next visible block, at the same column</td></tr>
+<tr><td><code>Tab</code> / <code>Shift+Tab</code></td><td>Indent / outdent the block and keep editing</td></tr>
+<tr><td><code>Backspace</code> in an empty block</td><td>Delete it and edit the previous block, unless it has children or is the first row</td></tr>
+</tbody></table>
+<p><code>Ctrl+B</code> wraps the selection, or the word at the caret, in <code>**</code>, or removes them when the caret is inside bold text. <code>Alt+`</code> and <code>Ctrl+G</code> do the same with backticks. Undo and redo inside a session work on the text; characters typed in a row undo together.</p>
+<h3 id="text-keys">Text keys<a class="zola-anchor" href="#text-keys" aria-label="Anchor link for: text-keys">🔗</a></h3>
+<p>These keys work in every text field: the block being edited, prompts, Quick Add, the Edit Node dialog and the note editor.</p>
+
+
+
+
+<div class="ref-table" id="keys-text"><table class="ref-keys ref-context">
+<caption>Text fields</caption>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+<tr><th scope="row">Caret left</th><td><span class="ref-seq"><kbd>←</kbd></span></td></tr>
+<tr><th scope="row">Caret right</th><td><span class="ref-seq"><kbd>→</kbd></span></td></tr>
+<tr><th scope="row">Word left</th><td><span class="ref-seq"><kbd>Ctrl+←</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+b</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+←</kbd></span></td></tr>
+<tr><th scope="row">Word right</th><td><span class="ref-seq"><kbd>Ctrl+→</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+f</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+→</kbd></span></td></tr>
+<tr><th scope="row">To the start</th><td><span class="ref-seq"><kbd>Home</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+A</kbd></span></td></tr>
+<tr><th scope="row">To the end</th><td><span class="ref-seq"><kbd>End</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+E</kbd></span></td></tr>
+<tr><th scope="row">Select left</th><td><span class="ref-seq"><kbd>Shift+←</kbd></span></td></tr>
+<tr><th scope="row">Select right</th><td><span class="ref-seq"><kbd>Shift+→</kbd></span></td></tr>
+<tr><th scope="row">Select a word left</th><td><span class="ref-seq"><kbd>Ctrl+Shift+←</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+Shift+←</kbd></span></td></tr>
+<tr><th scope="row">Select a word right</th><td><span class="ref-seq"><kbd>Ctrl+Shift+→</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+Shift+→</kbd></span></td></tr>
+<tr><th scope="row">Select to the start</th><td><span class="ref-seq"><kbd>Shift+Home</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Shift+↑</kbd></span></td></tr>
+<tr><th scope="row">Select to the end</th><td><span class="ref-seq"><kbd>Shift+End</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Shift+↓</kbd></span></td></tr>
+<tr><th scope="row">Delete before the caret</th><td><span class="ref-seq"><kbd>Backspace</kbd></span></td></tr>
+<tr><th scope="row">Delete after the caret</th><td><span class="ref-seq"><kbd>Delete</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Ctrl+D</kbd></span></td></tr>
+<tr><th scope="row">Delete the word before the caret</th><td><span class="ref-seq"><kbd>Ctrl+W</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+Backspace</kbd></span></td></tr>
+<tr><th scope="row">Delete the word after the caret</th><td><span class="ref-seq"><kbd>Alt+d</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>Alt+Delete</kbd></span></td></tr>
+<tr><th scope="row">Delete to the start</th><td><span class="ref-seq"><kbd>Ctrl+U</kbd></span></td></tr>
+
+</tbody></table></div>
+<h3 id="the-command-menu">The command menu<a class="zola-anchor" href="#the-command-menu" aria-label="Anchor link for: the-command-menu">🔗</a></h3>
+<p>Typing <code>/</code> while editing opens the <strong>command menu</strong> at the caret, titled “Commands:”. It lists every command for the block, in five groups:</p>
+<ul>
+<li><strong>Type:</strong> Project, Task, Note, and Make Section on a text block, or Remove Section on a section</li>
+<li><strong>Status:</strong> Complete or Uncomplete, Toggle Star, Toggle Flag, Bookmark or Remove Bookmark</li>
+<li><strong>Dates:</strong> Set Start Date, Set Due Date, Start Today, Start Tomorrow, Due Today, Due Tomorrow, and Clear Start Date or Clear Due Date when the block has that date</li>
+<li><strong>Color:</strong> Color: Red … Color: Blue, and Remove Color when it has one</li>
+<li><strong>Block:</strong> Edit Node, Open Link when the block has a link, Open Attachments while notes or comments are on, Duplicate, Delete</li>
+</ul>
+<p>Type to filter. Each word you type must start a word of the label, in order, so <code>/date</code> leaves the date entries and <code>/p</code> puts Project first. <code>↑</code>/<code>↓</code> or <code>Ctrl+P</code>/<code>Ctrl+N</code> move, <code>Enter</code> runs the highlighted entry, and <code>Backspace</code> on an empty filter closes the menu. <code>Esc</code>, or a filter that matches nothing, closes the menu and types <code>/</code> and the filter as text, so <code>/home</code> and <code>a / b</code> stay text.</p>
+<p>A type change is part of the editing session. Any other entry runs its command, and editing resumes where the caret was, also after a date prompt or dialog it opened. A block the command takes out of view, such as one completed while completed blocks are hidden, stays put until you stop editing.</p>
+<h3 id="changing-the-type-while-editing">Changing the type while editing<a class="zola-anchor" href="#changing-the-type-while-editing" aria-label="Anchor link for: changing-the-type-while-editing">🔗</a></h3>
+<ul>
+<li>Typing <code>- </code> at the start makes a task. A <code>:</code> at the end makes a project, and so does a typed one. Deleting the dash or the colon makes the block text again.</li>
+<li><code>Ctrl+T</code> cycles the block through project, section, task and note, keeping the text and caret.</li>
+<li>The command menu’s Type group sets one directly.</li>
+</ul>
+<p>Changing the type keeps every tag but <code>@section</code>.</p>
+<h2 id="copy-and-paste">Copy and paste<a class="zola-anchor" href="#copy-and-paste" aria-label="Anchor link for: copy-and-paste">🔗</a></h2>
+<p><code>y</code> or <code>Ctrl+C</code> copies the selected blocks, else the focused one, as TaskPaper text with their children, tags and attachments. <code>p</code> or <code>Ctrl+V</code> pastes below, and <code>P</code> or <code>Alt+v</code> above, keeping the structure. Text of one line pastes as a text block. While you edit, <code>Ctrl+C</code>, <code>Ctrl+X</code> and <code>Ctrl+V</code> work on the selected text. If you paste the one block tpt copied last, you get just its words.</p>
+<p>tpt uses the system clipboard when a display server is reachable. Otherwise, as over SSH, copying uses the terminal’s OSC 52 (in tmux, enable <code>set-clipboard on</code>), and the terminal’s own paste goes below the focused block or into the text you are editing.</p>
+<h2 id="the-shortcuts-panel">The shortcuts panel<a class="zola-anchor" href="#the-shortcuts-panel" aria-label="Anchor link for: the-shortcuts-panel">🔗</a></h2>
+<p><code>?</code> opens a panel on the right listing the most useful keys for where you are: navigate or edit mode, the Navigator, a picker, the date prompt, Quick Add or the Edit Node dialog. Keys you rebound show as you set them. The panel doesn’t take keys, so you keep working while it is open. When its list is longer than the screen, <code>)</code> and <code>(</code> scroll it a page down and up. The panel also says whether the kitty keyboard protocol is active, and whether it has seen an <code>Alt</code> key yet.</p>
+
+
+
+
+
+<div class="ref-table"><table class="ref-keys">
+<thead><tr><th scope="col">Command</th><th scope="col">Keys</th><th scope="col">Kitty protocol only</th><th scope="col"><code>config.toml</code> name</th></tr></thead>
+<tbody>
+
+<tr id="navigate-shortcuts"><th scope="row"><a class="ref-anchor" href="#navigate-shortcuts">Shortcuts</a></th>
+<td><span class="ref-seq"><kbd>?</kbd></span></td>
+<td></td>
+<td><code>shortcuts</code></td></tr>
+
+<tr id="navigate-scroll-shortcuts-down"><th scope="row"><a class="ref-anchor" href="#navigate-scroll-shortcuts-down">Scroll Shortcuts Down</a></th>
+<td><span class="ref-seq"><kbd>)</kbd></span></td>
+<td></td>
+<td><code>scroll_shortcuts_down</code></td></tr>
+
+<tr id="navigate-scroll-shortcuts-up"><th scope="row"><a class="ref-anchor" href="#navigate-scroll-shortcuts-up">Scroll Shortcuts Up</a></th>
+<td><span class="ref-seq"><kbd>(</kbd></span></td>
+<td></td>
+<td><code>scroll_shortcuts_up</code></td></tr>
+
+<tr id="navigate-keymap"><th scope="row"><a class="ref-anchor" href="#navigate-keymap">Keymap</a> <span class="ref-panel" title="Listed in the ? shortcuts panel">?</span></th>
+<td><span class="ref-seq"><kbd>g</kbd><kbd>?</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>F1</kbd></span></td>
+<td></td>
+<td><code>keymap</code></td></tr>
+
+</tbody></table></div>
+<h2 id="the-keymap">The Keymap<a class="zola-anchor" href="#the-keymap" aria-label="Anchor link for: the-keymap">🔗</a></h2>
+<p><code>g?</code> or <code>F1</code> opens the Keymap: every key tpt has, on one sheet over most of the screen, grouped like a cheat sheet. It lists navigate mode, edit mode, the Navigator, pickers, the date prompt, Quick Add and the Edit Node dialog, with the keys you rebound as you set them. When the sheet is taller than the screen, <code>j</code>/<code>k</code>, <code>Ctrl+D</code>/<code>Ctrl+U</code>, <code>gg</code> and <code>G</code> scroll it as they move in the outline.</p>
+
+
+
+
+<div class="ref-table" id="keys-close-keymap"><table class="ref-keys ref-context">
+<caption>Keymap dialog</caption>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+<tr><th scope="row">Close the Keymap dialog</th><td><span class="ref-seq"><kbd>Esc</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>q</kbd></span><span class="ref-or">, </span><span class="ref-seq"><kbd>F1</kbd></span></td></tr>
+
+</tbody></table></div>
+<h2 id="mouse">Mouse<a class="zola-anchor" href="#mouse" aria-label="Anchor link for: mouse">🔗</a></h2>
+<p>The mouse is optional; everything has a key.</p>
+<ul>
+<li>Click a block to focus it. While editing, click in its text to place the caret.</li>
+<li>Click a fold marker to fold, a breadcrumb to zoom there, a Navigator entry to go there, a pane header to focus that pane.</li>
+<li><code>Alt</code>+click a block or a breadcrumb to open it in a new pane.</li>
+<li>Right-click a block, the selection, a Navigator entry, a breadcrumb or a pane header to open its context menu.</li>
+<li>The wheel scrolls the pane under the pointer, 3 lines at a time, without moving the focus. Over the <code>?</code> panel it scrolls the panel.</li>
+</ul>
+<p>While a dialog or prompt is open, the mouse does nothing, except that a click outside the open Navigator closes it.</p>
+
+    <nav class="pager" aria-label="Pages">
+      <a class="prev" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;blocks&#x2F;"><span>Previous</span>Blocks and their types</a>
+      <a class="next" href="https:&#x2F;&#x2F;sazonovkirill.github.io&#x2F;taskpaper-terminal&#x2F;reference&#x2F;navigation&#x2F;"><span>Next</span>Navigation and zoom</a>
+    </nav>
+  </article>
+</div>
+
+</main>
+<footer class="site-footer">
+  <p>tpt is free and open source under the MIT license · <a href="https://github.com/sazonovkirill/taskpaper-terminal">GitHub</a></p>
+</footer>
+
+<script>
+(() => {
+  const nav = document.querySelector(".docs-nav");
+  if (!nav) return;
+  const form = document.createElement("form");
+  form.className = "ref-search";
+  form.setAttribute("role", "search");
+  form.innerHTML = '<label class="ref-search-label" for="ref-q">Search the Reference</label>' +
+    '<input id="ref-q" type="search" placeholder="Search the Reference" autocomplete="off">' +
+    '<ol class="ref-results" hidden></ol>';
+  nav.querySelector(".docs-home").after(form);
+  const input = form.querySelector("input"), list = form.querySelector("ol");
+  const root = new URL("https://sazonovkirill.github.io/taskpaper-terminal/reference/").pathname;
+  let index = null, loading = null;
+  const load = (src) => new Promise((done, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = done; s.onerror = fail;
+    document.head.append(s);
+  });
+  const ready = () => loading ??= load("https://sazonovkirill.github.io/taskpaper-terminal/elasticlunr.min.js")
+    .then(() => load("https://sazonovkirill.github.io/taskpaper-terminal/search_index.en.js"))
+    .then(() => { index = elasticlunr.Index.load(window.searchIndex); });
+  const decode = document.createElement("textarea");
+  const snippet = (html, words) => {
+    decode.innerHTML = html;
+    const body = decode.value.replace(/\s+/g, " ");
+    const lower = body.toLowerCase();
+    const at = Math.max(0, ...words.map((w) => lower.indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    return (start > 0 ? "…" : "") + body.slice(start, start + 140).trim() + "…";
+  };
+  const show = () => {
+    const q = input.value.trim();
+    list.replaceChildren();
+    list.hidden = q === "" || !index;
+    if (list.hidden) return;
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = index.search(q, { bool: "AND", expand: true,
+      fields: { title: { boost: 3 }, body: { boost: 1 } } })
+      .filter((h) => new URL(h.ref).pathname.startsWith(root)).slice(0, 8);
+    if (hits.length === 0) {
+      const li = document.createElement("li");
+      li.className = "ref-noresult";
+      li.textContent = "Nothing found";
+      list.append(li);
+    }
+    for (const h of hits) {
+      const doc = index.documentStore.getDoc(h.ref), li = document.createElement("li"), a = document.createElement("a");
+      a.href = new URL(h.ref).pathname;
+      a.innerHTML = "<strong></strong><span></span>";
+      a.firstChild.textContent = doc.title;
+      a.lastChild.textContent = snippet(doc.body || "", words);
+      li.append(a);
+      list.append(li);
+    }
+  };
+  input.addEventListener("focus", () => ready().then(show), { once: true });
+  input.addEventListener("input", () => ready().then(show));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; show(); }
+    if (e.key === "Enter") { e.preventDefault(); list.querySelector("a")?.click(); }
+  });
+})();
+</script>
+
+</body>
+</html>
