@@ -52,6 +52,7 @@ impl Clipboard {
         if self.system.as_mut().is_some_and(|system| system.set(text)) {
             return;
         }
+        self.system = None;
         // The terminal is the screen: when it cannot be written, there is nowhere to say so.
         let _ = execute!(self.terminal, CopyToClipboard::to_clipboard_from(text));
     }
@@ -156,6 +157,25 @@ mod tests {
         let mut clipboard = Clipboard::new(Some(Box::new(system)), output.clone());
         clipboard.copy("x");
         assert_eq!(output.text(), "\x1b]52;c;eA==\x1b\\");
-        assert!(format!("{clipboard:?}").contains("system: true"));
+        assert!(format!("{clipboard:?}").contains("system: false"));
+    }
+
+    // FR-OPS-06
+    #[test]
+    fn pasting_after_a_failed_system_copy_uses_the_local_copy_instead_of_stale_system_text() {
+        let output = Output::default();
+        let system = Fake {
+            text: Rc::new(RefCell::new(Some("old text".to_owned()))),
+            broken: true,
+        };
+        let mut clipboard = Clipboard::new(Some(Box::new(system)), output.clone());
+        clipboard.copy("new text");
+        assert_eq!(clipboard.paste().as_deref(), Some("new text"));
+        clipboard.copy("next text");
+        assert_eq!(clipboard.paste().as_deref(), Some("next text"));
+        assert_eq!(
+            output.text(),
+            "\x1b]52;c;bmV3IHRleHQ=\x1b\\\x1b]52;c;bmV4dCB0ZXh0\x1b\\"
+        );
     }
 }

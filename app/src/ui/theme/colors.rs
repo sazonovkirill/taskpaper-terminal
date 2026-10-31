@@ -293,9 +293,9 @@ pub struct BuiltIn(usize);
     reason = "colors are written as the palettes write them, `#rrggbb`"
 )]
 /// Each built-in theme's name in `config.toml`, its name on screen and its colors: the
-/// terminal theme, then the twelve truecolor ones of
+/// terminal theme, then the thirteen truecolor ones of
 /// [reference/themes.md](../../../../docs/reference/themes.md) in its order.
-const THEMES: [(&str, &str, Source); 13] = [
+const THEMES: [(&str, &str, Source); 14] = [
     ("terminal-dark", "Terminal Dark", Source::Terminal),
     (
         "catppuccin-mocha",
@@ -391,6 +391,14 @@ const THEMES: [(&str, &str, Source); 13] = [
         Source::Palette(
             [0xfdf6e3, 0xeee8d5, 0x657b83, 0x93a1a1, 0x2aa198],
             [0xdc322f, 0xcb4b16, 0xb58900, 0x859900, 0x268bd2, 0x6c71c4],
+        ),
+    ),
+    (
+        "star-trek-tng",
+        "Star Trek TNG",
+        Source::Palette(
+            [0x000000, 0x1a121a, 0xffcc99, 0x664466, 0xcc99cc],
+            [0xcc6666, 0xffcc66, 0xffff99, 0x99cc99, 0x99ccff, 0x9999cc],
         ),
     ),
 ];
@@ -539,7 +547,7 @@ mod tests {
 
     // FR-UI-08
     #[test]
-    fn the_twelve_themes_and_the_terminal_one_are_built_in() {
+    fn the_thirteen_themes_and_the_terminal_one_are_built_in() {
         let names: Vec<&str> = BuiltIn::all().map(BuiltIn::name).collect();
         assert_eq!(
             names,
@@ -557,6 +565,7 @@ mod tests {
                 "Everforest Dark",
                 "One Dark",
                 "Solarized Light",
+                "Star Trek TNG",
             ]
         );
         for (position, theme) in BuiltIn::all().enumerate() {
@@ -570,7 +579,7 @@ mod tests {
                 .replace('é', "e");
             assert_eq!(theme.id(), id);
         }
-        assert_eq!(BuiltIn::nth(13), None);
+        assert_eq!(BuiltIn::nth(14), None);
         assert_eq!(BuiltIn::named("Nord"), None, "names in the file are ids");
         assert_eq!(BuiltIn::named("terminal-light"), None, "removed (D-63)");
         assert_eq!(BuiltIn::DEFAULT, named("terminal-dark"));
@@ -758,5 +767,22 @@ mod tests {
                 assert_ne!(plain, focused, "{id} {color:?}");
             }
         }
+    }
+
+    // FR-UI-08, reference/themes.md
+    #[test]
+    fn star_trek_tng_uses_lcars_violet_and_gold_on_black() {
+        let theme = named("star-trek-tng").colors(ColorSupport::TrueColor, None);
+        assert_eq!(theme.background, Color::Rgb(0, 0, 0));
+        assert_eq!(theme.text, Color::Rgb(0xff, 0xcc, 0x99));
+        assert_eq!(theme.primary, Color::Rgb(0xcc, 0x99, 0xcc));
+        assert_eq!(theme.accent, Color::Rgb(0xff, 0xcc, 0x66));
+        assert_eq!(theme.headers, Color::Rgb(0x99, 0x99, 0xcc));
+        assert_eq!(theme.current_line, Color::Rgb(0x1a, 0x12, 0x1a));
+        assert_eq!(theme.rule, Color::Rgb(0x66, 0x44, 0x66));
+        assert_eq!(theme.error, Color::Rgb(0xcc, 0x66, 0x66));
+        assert_eq!(theme.warning(), Color::Rgb(0xff, 0xff, 0x99));
+        assert_eq!(theme.start, Color::Rgb(0x99, 0xcc, 0x99));
+        assert_eq!(theme.link, Color::Rgb(0x99, 0xcc, 0xff));
     }
 }

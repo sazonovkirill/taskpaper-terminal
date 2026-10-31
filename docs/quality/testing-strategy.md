@@ -99,6 +99,13 @@ Every test must pass when run in parallel with every other test, in any order, a
 - Tests are deterministic: no randomness without a fixed seed (proptest's own seeds and regression files excepted), and no dependence on terminal size, locale or timezone of the machine running them.
 - `serial_test` is a last resort for a resource that truly cannot be isolated, and needs a comment explaining why.
 
+On macOS, clearing a child process's environment does not isolate its home folder: `std::env::home_dir` can still find the OS account's home. PTY tests give the child a temporary `HOME`, as the scenario runner does. The desktop pasteboard is also shared even when the environment is empty. Run local validation in a headless OS sandbox so parallel scenarios exercise the OSC 52/local-copy fallback without touching or racing the desktop clipboard. A short temporary path keeps path-display fixtures within their terminal widths:
+
+```sh
+TMPDIR=/tmp sandbox-exec -p '(version 1) (allow default) (deny mach-lookup (global-name "com.apple.pasteboard.1"))' bash app/scripts/validate.sh all
+TMPDIR=/tmp sandbox-exec -p '(version 1) (allow default) (deny mach-lookup (global-name "com.apple.pasteboard.1"))' bash app/scripts/validate.sh mutants
+```
+
 ## Snapshots
 
 - Snapshot files (`.snap`) are committed and reviewed like code. Keep each snapshot small and named after the interaction it shows.

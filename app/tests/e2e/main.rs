@@ -167,7 +167,11 @@ fn temporary_file(screen: &termlens::Screen) -> Result<PathBuf, String> {
 fn writes_the_demo_to_a_new_file_in_tmp_and_quits_with_ctrl_q() -> TestResult {
     let dir = tempfile::tempdir()?;
     let data = dir.path().join("data");
-    let mut terminal = termlens::bin!("tpt", env("XDG_DATA_HOME", &data))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        env("HOME", dir.path().join("home")),
+        env("XDG_DATA_HOME", &data)
+    )?;
     terminal.wait_until(|screen| {
         screen.contains("Trip to Lisbon")
             && screen.alternate_screen()
@@ -193,6 +197,7 @@ fn shows_the_file_given_on_the_command_line() -> TestResult {
     let data = dir.path().join("data");
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", &data),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -215,6 +220,7 @@ fn a_click_focuses_a_block_and_the_mouse_is_released_on_quit() -> TestResult {
     std::fs::write(&path, "- First\n- Second\n")?;
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", dir.path().join("data")),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -238,7 +244,11 @@ fn a_click_focuses_a_block_and_the_mouse_is_released_on_quit() -> TestResult {
 #[test]
 fn a_pending_key_prefix_times_out_without_further_input() -> TestResult {
     let dir = tempfile::tempdir()?;
-    let mut terminal = termlens::bin!("tpt", env("XDG_DATA_HOME", dir.path()))?;
+    let mut terminal = termlens::bin!(
+        "tpt",
+        env("HOME", dir.path().join("home")),
+        env("XDG_DATA_HOME", dir.path())
+    )?;
     terminal.wait_until(|screen| status(screen).ends_with("temporary"))?;
     let path = temporary_file(&terminal.screen())?;
     terminal.send(termlens::Key::Char('g'))?;
@@ -262,6 +272,7 @@ fn a_completed_key_sequence_acts_at_once() -> TestResult {
     let data = dir.path().join("data");
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", &data),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -306,6 +317,7 @@ fn quitting_and_reopening_a_file_brings_its_panes_back() -> TestResult {
     let open = || {
         termlens::bin!(
             "tpt",
+            env("HOME", dir.path().join("home")),
             arg(&path),
             env("XDG_DATA_HOME", dir.path().join("data")),
             env("XDG_STATE_HOME", &state),
@@ -338,6 +350,7 @@ fn opening_a_file_backs_it_up_under_xdg_data_home() -> TestResult {
     let data = dir.path().join("data");
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", &data),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -359,6 +372,7 @@ fn sigterm_and_sighup_end_the_session_and_restore_the_terminal() -> TestResult {
         let data = dir.path().join("data");
         let mut terminal = termlens::bin!(
             "tpt",
+            env("HOME", dir.path().join("home")),
             arg(&path),
             env("XDG_DATA_HOME", &data),
             env("XDG_STATE_HOME", dir.path().join("state"))
@@ -394,6 +408,7 @@ fn start_after_a_crash(
         .expect("the recovery folder is writable");
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.join("home")),
         arg(&path),
         env("XDG_STATE_HOME", &state),
         env("XDG_DATA_HOME", dir.join("data"))
@@ -432,6 +447,7 @@ fn recovered_changes_keep_the_file_they_replace_in_a_copy() -> TestResult {
     std::fs::write(&path, "- Opened earlier today\n")?;
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", dir.path().join("data")),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -475,6 +491,7 @@ fn completing_a_task_saves_it_and_undo_saves_the_file_back() -> TestResult {
     let dir = tempfile::tempdir()?;
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         env("XDG_DATA_HOME", dir.path().join("data")),
         env("XDG_STATE_HOME", dir.path().join("state"))
     )?;
@@ -508,6 +525,7 @@ fn asks_for_the_kitty_keyboard_protocol_and_gives_it_back_on_quit() -> TestResul
     let data = dir.path().join("data");
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("XDG_DATA_HOME", &data),
         env("XDG_STATE_HOME", dir.path().join("state"))
@@ -531,6 +549,7 @@ fn outline_background(colorterm: &str) -> Result<termlens::Color, Box<dyn std::e
     std::fs::write(&path, "- Milk\n")?;
     let mut terminal = termlens::bin!(
         "tpt",
+        env("HOME", dir.path().join("home")),
         arg(&path),
         env("COLORTERM", colorterm),
         env("XDG_DATA_HOME", dir.path().join("data")),

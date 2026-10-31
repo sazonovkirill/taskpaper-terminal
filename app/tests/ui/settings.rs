@@ -267,7 +267,7 @@ fn l_and_h_cycle_a_choice_and_r_resets_it_each_written_at_once() {
     app.settle();
     assert_eq!(
         config(&app),
-        format!("{SETTINGS}theme = \"solarized-light\"\n")
+        format!("{SETTINGS}theme = \"star-trek-tng\"\n")
     );
     press(&mut app, KeyCode::Char('r'));
     app.settle();

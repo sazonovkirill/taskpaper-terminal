@@ -186,8 +186,19 @@ mod tests {
         );
         let (asked, _main) = terminal.join().unwrap();
         assert_eq!(asked, questions());
+        // Restoring canonical mode sets macOS's transient PENDIN bit; asking for queued
+        // input lets the kernel reprocess it before comparing the saved settings.
+        assert_eq!(rustix::io::ioctl_fionread(&side).unwrap(), 0);
         let after = termios::tcgetattr(&side).unwrap();
         assert_eq!(after.local_modes, before.local_modes, "set back");
+        assert_eq!(after.input_modes, before.input_modes);
+        assert_eq!(after.output_modes, before.output_modes);
+        assert_eq!(after.control_modes, before.control_modes);
+        for code in [SpecialCodeIndex::VMIN, SpecialCodeIndex::VTIME] {
+            assert_eq!(after.special_codes[code], before.special_codes[code]);
+        }
+        assert_eq!(after.input_speed(), before.input_speed());
+        assert_eq!(after.output_speed(), before.output_speed());
     }
 
     #[test]

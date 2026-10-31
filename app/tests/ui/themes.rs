@@ -56,7 +56,7 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
     );
     choose_theme(&mut app);
     let buffer = app.render().buffer().clone();
-    let rows: Vec<String> = screen(&buffer)[5..21]
+    let rows: Vec<String> = screen(&buffer)[4..21]
         .iter()
         .map(|row| row.trim_end().to_owned())
         .collect();
@@ -74,6 +74,7 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
         "Everforest Dark",
         "One Dark",
         "Solarized Light",
+        "Star Trek TNG",
     ];
     let mut expected = vec![
         "┌Theme─────────────────────────────────────────────────────┐".to_owned(),
@@ -83,7 +84,7 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
     expected.push("└──────────────────────────────────────────────────────────┘".to_owned());
     assert_eq!(rows, expected);
     assert!(
-        buffer[(3, 7)].modifier.contains(Modifier::REVERSED),
+        buffer[(3, 6)].modifier.contains(Modifier::REVERSED),
         "Terminal Dark is highlighted"
     );
 }
@@ -125,6 +126,38 @@ fn highlighting_previews_a_theme_esc_goes_back_and_enter_keeps_and_saves_it() {
         fs::read_to_string(app.config_file()).unwrap(),
         format!("{SETTINGS}theme = \"dracula\"\n"),
         "written to the settings file, which keeps its comments"
+    );
+}
+
+// FR-UI-06, FR-UI-08, FR-SET-04
+#[test]
+fn star_trek_tng_previews_cancels_saves_and_reloads_its_lcars_colors() {
+    let mut app =
+        Harness::with_config(OUTLINE, SETTINGS, 60, 24).with_colors(ColorSupport::TrueColor);
+    choose_theme(&mut app);
+    app.type_keys("star trek");
+    assert_eq!(background(&mut app), Color::Rgb(0, 0, 0));
+    assert!(
+        screen(app.render().buffer())
+            .iter()
+            .any(|row| row.contains("Star Trek TNG"))
+    );
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(background(&mut app), Color::Reset);
+    assert_eq!(fs::read_to_string(app.config_file()).unwrap(), SETTINGS);
+
+    choose_theme(&mut app);
+    app.type_keys("star trek");
+    press(&mut app, KeyCode::Enter);
+    app.settle();
+    let settings = fs::read_to_string(app.config_file()).unwrap();
+    assert_eq!(settings, format!("{SETTINGS}theme = \"star-trek-tng\"\n"));
+    let mut reopened =
+        Harness::with_config(OUTLINE, &settings, 60, 8).with_colors(ColorSupport::TrueColor);
+    assert_eq!(background(&mut reopened), Color::Rgb(0, 0, 0));
+    assert_eq!(
+        reopened.render().buffer()[(2, 2)].fg,
+        Color::Rgb(0xcc, 0x99, 0xcc)
     );
 }
 

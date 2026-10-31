@@ -86,23 +86,23 @@ pub fn watch(path: &Path, inputs: Sender<Input>) -> notify::Result<Watcher> {
 /// which may hide a change, needs telling apart.
 fn ask_for_checks(inputs: Sender<Input>) -> impl FnMut(DebounceEventResult) + Send + 'static {
     move |result| {
-        if may_change(&result) {
+        if result.as_ref().map_or(true, |events| {
+            events.iter().any(|event| may_change(event.kind))
+        }) {
             // A closed channel means the event loop has ended, and nobody is left to tell.
             let _ = inputs.send(Input::Core(Message::CheckFile));
         }
     }
 }
 
-/// Whether a burst may have changed a file: anything but files opened, read or closed
+/// Whether an event may have changed a file: anything but files opened, read or closed
 /// unwritten, such as the check's own read of the file, which would otherwise ask for the next
 /// check and keep reading the file for as long as the app runs.
-fn may_change(result: &DebounceEventResult) -> bool {
-    result.as_ref().map_or(true, |events| {
-        events.iter().any(|event| match event.kind {
-            EventKind::Access(access) => access == AccessKind::Close(AccessMode::Write),
-            _ => true,
-        })
-    })
+fn may_change(kind: EventKind) -> bool {
+    match kind {
+        EventKind::Access(access) => access == AccessKind::Close(AccessMode::Write),
+        _ => true,
+    }
 }
 
 #[cfg(test)]
@@ -112,6 +112,38 @@ mod tests {
     use super::*;
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    // F-FILE-06, N-PERF-03
+    #[test]
+    fn only_written_access_events_can_change_the_file() {
+        for access in [
+            AccessKind::Any,
+            AccessKind::Other,
+            AccessKind::Read,
+            AccessKind::Open(AccessMode::Read),
+            AccessKind::Close(AccessMode::Read),
+        ] {
+            assert!(!may_change(EventKind::Access(access)), "{access:?}");
+        }
+        assert!(may_change(EventKind::Access(AccessKind::Close(
+            AccessMode::Write
+        ))));
+        assert!(may_change(EventKind::Any));
+        assert!(may_change(EventKind::Modify(
+            notify::event::ModifyKind::Any
+        )));
+    }
+
+    // F-FILE-06
+    #[test]
+    fn a_watcher_error_asks_for_a_check_but_an_empty_burst_does_not() {
+        let (inputs, received) = mpsc::channel();
+        let mut report = ask_for_checks(inputs);
+        report(Ok(Vec::new()));
+        assert_eq!(received.try_recv(), Err(mpsc::TryRecvError::Empty));
+        report(Err(vec![notify::Error::generic("events were lost")]));
+        assert_eq!(received.try_recv(), Ok(Input::Core(Message::CheckFile)));
+    }
 
     // F-FILE-06
     #[test]
@@ -134,9 +166,14 @@ mod tests {
     fn reading_the_file_asks_for_no_check() -> TestResult {
         let dir = tempfile::tempdir()?;
         let path = dir.path().join("todo.taskpaper");
-        fs::write(&path, "- a\n")?;
         let (inputs, received) = mpsc::channel();
         let _watcher = watch(&path, inputs)?;
+        // Consume the creation notification before testing reads; FSEvents can deliver it late.
+        fs::write(&path, "- a\n")?;
+        assert_eq!(
+            received.recv_timeout(Duration::from_secs(10))?,
+            Input::Core(Message::CheckFile)
+        );
         fs::read_to_string(&path)?;
         assert!(
             received.recv_timeout(Duration::from_millis(600)).is_err(),

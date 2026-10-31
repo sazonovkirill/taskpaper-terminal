@@ -1,9 +1,9 @@
 # Built-in Themes
 
 - Status: Accepted
-- Last updated: 2026-10-07
+- Last updated: 2026-10-30
 
-The twelve color themes the app ships built in ([FR-UI-08](../functional-requirements.md#fr-ui--layout-and-appearance)). Each is a popular, well-maintained terminal and editor theme under a permissive license, so its palette can be compiled into the binary with attribution. Nine are dark and three are light.
+The thirteen truecolor themes the app ships built in, alongside Terminal Dark ([FR-UI-08](../functional-requirements.md#fr-ui--layout-and-appearance)). Twelve come from permissively licensed terminal and editor themes; Star Trek TNG is an original LCARS-inspired adaptation (D-150). Ten are dark and three are light.
 
 ## Selection
 
@@ -21,12 +21,13 @@ The twelve color themes the app ships built in ([FR-UI-08](../functional-require
 | 10 | Everforest Dark | Dark | [sainnhe/everforest](https://github.com/sainnhe/everforest) (medium contrast) | MIT, © 2019 sainnhe |
 | 11 | One Dark | Dark | Atom's [one-dark-syntax](https://github.com/atom/atom/tree/master/packages/one-dark-syntax) | MIT, © 2016 GitHub Inc. |
 | 12 | Solarized Light | Light | [altercation/solarized](https://github.com/altercation/solarized) | MIT, © 2011 Ethan Schoonover |
+| 13 | Star Trek TNG | Dark | Original adaptation of the TNG LCARS colors; research below | Project MIT license; no third-party code or artwork included |
 
-Candidates left out: Monokai Pro is commercial; Synthwave '84, Ayu, Night Owl and Solarized Dark were dropped to keep the list at twelve with visibly different moods. Gruvbox Light, Everforest Light and Tokyo Night Day are natural additions if more light themes are wanted.
+Candidates left out of the original twelve: Monokai Pro is commercial; Synthwave '84, Ayu, Night Owl and Solarized Dark were dropped to keep visibly different moods. Gruvbox Light, Everforest Light and Tokyo Night Day are natural additions if more light themes are wanted.
 
 ## Palettes
 
-Each palette is mapped to the roles the UI needs. Values were copied from the origin's own palette files on 2026-10-04 (One Dark's are computed from the HSL values in Atom's `colors.less`).
+Each palette is mapped to the roles the UI needs. The original twelve palettes were copied from the origin's own palette files on 2026-10-04 (One Dark's are computed from the HSL values in Atom's `colors.less`). Star Trek TNG was researched on 2026-10-30 as described below.
 
 - **Background**: the screen.
 - **Surface**: the selected block, sidebar and popups.
@@ -51,6 +52,7 @@ The remaining roles in [the UI spec](../specs/ui.md#3-themes-fr-ui-0608), such a
 | Everforest Dark | `#2d353b` | `#3d484d` | `#d3c6aa` | `#859289` | `#83c092` | `#e67e80` | `#e69875` | `#dbbc7f` | `#a7c080` | `#7fbbb3` | `#d699b6` |
 | One Dark | `#282c34` | `#3e4451` | `#abb2bf` | `#5c6370` | `#56b6c2` | `#e06c75` | `#d19a66` | `#e5c07b` | `#98c379` | `#61afef` | `#c678dd` |
 | Solarized Light | `#fdf6e3` | `#eee8d5` | `#657b83` | `#93a1a1` | `#2aa198` | `#dc322f` | `#cb4b16` | `#b58900` | `#859900` | `#268bd2` | `#6c71c4` |
+| Star Trek TNG | `#000000` | `#1a121a` | `#ffcc99` | `#664466` | `#cc99cc` | `#cc6666` | `#ffcc66` | `#ffff99` | `#99cc99` | `#99ccff` | `#9999cc` |
 
 Palette names behind the less obvious cells:
 
@@ -61,9 +63,15 @@ Palette names behind the less obvious cells:
 - **Nord**: Muted is *nord3*, which is low-contrast for text; the implementation may lighten it for readability.
 - **One Dark**: Surface is the selection color, `lighten(background, 10%)`.
 
+### Star Trek TNG research and adaptation
+
+[StarTrek.com credits Michael Okuda](https://www.startrek.com/news/collectible-usable-okudagrams-now-a-reality) with the LCARS computer graphics. The numerical starting point here is the published [trekcolors LCARS color reference](https://leonawicz.github.io/trekcolors/reference/lcars_colors.html): lilac `#cc99cc`, golden-tanoi `#ffcc66`, tanoi `#ffcc99`, pale-canary `#ffff99`, eggplant `#664466`, blue-bell `#9999cc`, chestnut-rose `#cc6666` and anakiwa `#99ccff`. These are a digital interpretation, not a claim of exact screen-matched production colors. [TheLCARS.com's current color guide](https://www.thelcars.com/colors.php) explicitly revises its Classic colors, so those newer values were not used as the TNG palette.
+
+The adaptation uses black behind peach text, lilac for project headings and focus, gold for editing focus and popup borders, blue-violet section headings, pale-yellow warnings and pale-blue links. The current-line surface is a dark eggplant-derived `#1a121a`, keeping the active row visible without overwhelming the text. Green `#99cc99` is an added companion hue for the app's green tags and start dates; red, yellow, green and blue retain their existing semantic roles. Row tints and dim text use the same mixing rules as every other truecolor theme. The original adaptation includes no LCARS artwork, fonts or code.
+
 ## Names and roles
 
-`config.toml` names each theme in lower case with hyphens and without accents: `terminal-dark`, `catppuccin-mocha`, `catppuccin-latte`, `tokyo-night`, `dracula`, `nord`, `gruvbox-dark`, `rose-pine`, `rose-pine-dawn`, `kanagawa-wave`, `everforest-dark`, `one-dark` and `solarized-light`. The theme picker lists them in that order.
+`config.toml` names each theme in lower case with hyphens and without accents: `terminal-dark`, `catppuccin-mocha`, `catppuccin-latte`, `tokyo-night`, `dracula`, `nord`, `gruvbox-dark`, `rose-pine`, `rose-pine-dawn`, `kanagawa-wave`, `everforest-dark`, `one-dark`, `solarized-light` and `star-trek-tng`. The theme picker lists them in that order.
 
 The roles of [the UI spec](../specs/ui.md#3-themes-fr-ui-0608) come from a palette's columns as follows: text and background as named; the palette's Accent is the primary color (projects, the focus and selection markers, keys in menus); Orange is the accent (the focus marker while editing, finder and prompt borders), as Textual's default accent is orange; Violet the headers; Blue the links; Muted the rule lines; Surface the current line; Green the start chips and Red the due and overdue chips and errors; Yellow the `@today` star and warnings; Red, Yellow, Green and Blue the four color tags (D-138). Dim text (notes) is the text color mixed with 25% of the background; text on the current line and on row tints is the text color; a tag's row tint is the background mixed with 15% of the tag's color, 25% on the focused row.
 
