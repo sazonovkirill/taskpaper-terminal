@@ -1,16 +1,16 @@
 +++
 title = "Appearance and themes"
 weight = 120
-description = "The thirteen built-in themes, color depth and NO_COLOR, Nerd Font icons and their fallbacks, and word wrap."
+description = "The thirty-seven built-in themes, dark and light, color depth and NO_COLOR, Nerd Font icons and their fallbacks, and word wrap."
 +++
 
 ## Themes
 
-tpt has thirteen built-in themes. **Terminal Dark**, the default, uses your terminal's own 16 colors, so it follows whatever palette you set there. The twelve others are truecolor themes, light and dark, that bring their own colors and background.
+tpt has thirty-seven built-in themes. **Terminal Dark**, the default, uses your terminal's own 16 colors, so it follows whatever palette you set there. The thirty-six others are truecolor themes that bring their own colors and background: twenty-four dark and twelve light.
 
 ### Choosing a theme
 
-**Choose Theme** in Go to Command opens the theme picker, with the theme in use highlighted. Each theme you highlight, by typing or with the arrows, shows at once across the whole app. `Enter` keeps it and saves it to `config.toml`; `Esc` goes back to the theme you had. The [settings window](@/reference/settings.md#the-settings-window) can change the theme too, with the same live preview. In `config.toml`, the theme's name goes in `theme`:
+**Choose Theme** in Go to Command opens the theme picker, with the theme in use highlighted. It lists the themes in two sections, **Dark Themes** and **Light Themes**, and keeps them apart as you type a filter. Each theme you highlight, by typing or with the arrows, shows at once across the whole app. `Enter` keeps it and saves it to `config.toml`; `Esc` goes back to the theme you had. The [settings window](@/reference/settings.md#the-settings-window) can change the theme too, with the same live preview. In `config.toml`, the theme's name goes in `theme`:
 
 ```toml
 theme = "nord"

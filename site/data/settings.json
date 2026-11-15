@@ -10,18 +10,41 @@
    "choices": [
     "terminal-dark",
     "catppuccin-mocha",
-    "catppuccin-latte",
+    "catppuccin-macchiato",
     "tokyo-night",
     "dracula",
     "nord",
     "gruvbox-dark",
     "rose-pine",
-    "rose-pine-dawn",
     "kanagawa-wave",
+    "kanagawa-dragon",
     "everforest-dark",
     "one-dark",
+    "solarized-dark",
+    "monokai",
+    "github-dark",
+    "flexoki-dark",
+    "melange-dark",
+    "moonfly",
+    "nightfly",
+    "cyberdream",
+    "synthwave-84",
+    "ayu-mirage",
+    "material-palenight",
+    "poimandres",
+    "star-trek-tng",
+    "catppuccin-latte",
+    "tokyo-night-day",
+    "rose-pine-dawn",
+    "everforest-light",
+    "one-light",
     "solarized-light",
-    "star-trek-tng"
+    "gruvbox-light",
+    "github-light",
+    "flexoki-light",
+    "melange-light",
+    "dayfox",
+    "ayu-light"
    ],
    "least": null,
    "unit": null,
@@ -293,71 +316,223 @@
   {
    "id": "terminal-dark",
    "name": "Terminal Dark",
+   "group": "Dark Themes",
    "truecolor": false
   },
   {
    "id": "catppuccin-mocha",
    "name": "Catppuccin Mocha",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
-   "id": "catppuccin-latte",
-   "name": "Catppuccin Latte",
+   "id": "catppuccin-macchiato",
+   "name": "Catppuccin Macchiato",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "tokyo-night",
    "name": "Tokyo Night",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "dracula",
    "name": "Dracula",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "nord",
    "name": "Nord",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "gruvbox-dark",
    "name": "Gruvbox Dark",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "rose-pine",
    "name": "Rosé Pine",
-   "truecolor": true
-  },
-  {
-   "id": "rose-pine-dawn",
-   "name": "Rosé Pine Dawn",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "kanagawa-wave",
    "name": "Kanagawa Wave",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "kanagawa-dragon",
+   "name": "Kanagawa Dragon",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "everforest-dark",
    "name": "Everforest Dark",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "one-dark",
    "name": "One Dark",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
-   "id": "solarized-light",
-   "name": "Solarized Light",
+   "id": "solarized-dark",
+   "name": "Solarized Dark",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "monokai",
+   "name": "Monokai",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "github-dark",
+   "name": "GitHub Dark",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "flexoki-dark",
+   "name": "Flexoki Dark",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "melange-dark",
+   "name": "Melange Dark",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "moonfly",
+   "name": "Moonfly",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "nightfly",
+   "name": "Nightfly",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "cyberdream",
+   "name": "Cyberdream",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "synthwave-84",
+   "name": "Synthwave '84",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "ayu-mirage",
+   "name": "Ayu Mirage",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "material-palenight",
+   "name": "Material Palenight",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "poimandres",
+   "name": "Poimandres",
+   "group": "Dark Themes",
    "truecolor": true
   },
   {
    "id": "star-trek-tng",
    "name": "Star Trek TNG",
+   "group": "Dark Themes",
+   "truecolor": true
+  },
+  {
+   "id": "catppuccin-latte",
+   "name": "Catppuccin Latte",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "tokyo-night-day",
+   "name": "Tokyo Night Day",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "rose-pine-dawn",
+   "name": "Rosé Pine Dawn",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "everforest-light",
+   "name": "Everforest Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "one-light",
+   "name": "One Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "solarized-light",
+   "name": "Solarized Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "gruvbox-light",
+   "name": "Gruvbox Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "github-light",
+   "name": "GitHub Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "flexoki-light",
+   "name": "Flexoki Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "melange-light",
+   "name": "Melange Light",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "dayfox",
+   "name": "Dayfox",
+   "group": "Light Themes",
+   "truecolor": true
+  },
+  {
+   "id": "ayu-light",
+   "name": "Ayu Light",
+   "group": "Light Themes",
    "truecolor": true
   }
  ],

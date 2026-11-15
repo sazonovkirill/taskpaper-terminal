@@ -16,7 +16,7 @@ Reads, from the Rust source under app/src:
   ui/settings.rs            LISTED and the settings window's group, name, description, kind and
                             default of each setting
   ui/config.rs              every key config.toml reads
-  ui/theme/colors.rs        THEMES, the built-in themes' ids and names
+  ui/theme/colors.rs        THEMES and HEADINGS, the built-in themes' ids, names and sections
 
 The Rust readers and the key notation come from the printable cheat sheet's build script; the
 cheat sheet itself is rendered from keys.json by templates/shortcodes/cheatsheet.html.
@@ -810,7 +810,11 @@ def build_settings(sources):
     src = sources["ui/settings.rs"]
     config_src = sources["ui/config.rs"]
     colors_src = sources["ui/theme/colors.rs"]
-    themes = [{"id": unescape(t[0]), "name": unescape(t[1]), "truecolor": "Source::Terminal" not in t[2]}
+    headings = [unescape(h) for h in re.findall(r'"(?:[^"\\]|\\.)*"',
+                                                 const_body(colors_src, "HEADINGS"))]
+    themes = [{"id": unescape(t[0]), "name": unescape(t[1]),
+               "group": headings[["ThemeGroup::Dark", "ThemeGroup::Light"].index(t[2].strip())],
+               "truecolor": "Source::Terminal" not in t[3]}
               for t in tuples(const_body(colors_src, "THEMES"))]
     choice_lists = {
         "ICONS": [unescape(t[1]) for t in tuples(const_body(src, "ICONS"))],

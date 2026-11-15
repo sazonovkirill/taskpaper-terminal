@@ -221,8 +221,7 @@
     "j",
     "j"
    ]
-  }
-,
+  },
   {
    "name": "theme-star-trek-tng",
    "title": "tpt in the Star Trek TNG theme",
@@ -230,6 +229,397 @@
    "rows": 22,
    "config": {
     "theme": "star-trek-tng"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-catppuccin-macchiato",
+   "title": "tpt in the Catppuccin Macchiato theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "catppuccin-macchiato"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-kanagawa-dragon",
+   "title": "tpt in the Kanagawa Dragon theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "kanagawa-dragon"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-solarized-dark",
+   "title": "tpt in the Solarized Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "solarized-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-monokai",
+   "title": "tpt in the Monokai theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "monokai"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-github-dark",
+   "title": "tpt in the GitHub Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "github-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-flexoki-dark",
+   "title": "tpt in the Flexoki Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "flexoki-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-melange-dark",
+   "title": "tpt in the Melange Dark theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "melange-dark"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-moonfly",
+   "title": "tpt in the Moonfly theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "moonfly"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-nightfly",
+   "title": "tpt in the Nightfly theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "nightfly"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-cyberdream",
+   "title": "tpt in the Cyberdream theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "cyberdream"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-synthwave-84",
+   "title": "tpt in the Synthwave '84 theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "synthwave-84"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-ayu-mirage",
+   "title": "tpt in the Ayu Mirage theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "ayu-mirage"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-material-palenight",
+   "title": "tpt in the Material Palenight theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "material-palenight"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-poimandres",
+   "title": "tpt in the Poimandres theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "poimandres"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-tokyo-night-day",
+   "title": "tpt in the Tokyo Night Day theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "tokyo-night-day"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-everforest-light",
+   "title": "tpt in the Everforest Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "everforest-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-one-light",
+   "title": "tpt in the One Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "one-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-gruvbox-light",
+   "title": "tpt in the Gruvbox Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "gruvbox-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-github-light",
+   "title": "tpt in the GitHub Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "github-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-flexoki-light",
+   "title": "tpt in the Flexoki Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "flexoki-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-melange-light",
+   "title": "tpt in the Melange Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "melange-light"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-dayfox",
+   "title": "tpt in the Dayfox theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "dayfox"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  },
+  {
+   "name": "theme-ayu-light",
+   "title": "tpt in the Ayu Light theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "ayu-light"
    },
    "keys": [
     "j",
