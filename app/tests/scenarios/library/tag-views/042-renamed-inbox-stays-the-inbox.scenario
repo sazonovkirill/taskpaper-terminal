@@ -5,7 +5,7 @@ INBOX: @inbox
 END
 keys <Enter> <BS> <BS> <BS> <BS>
 type nbox
-keys <Esc> <C-g>
+keys <Esc> <C-k>
 see │▌ 󰚇 Inbox
 keys <Esc> gi
 see 󰋜 › Inbox

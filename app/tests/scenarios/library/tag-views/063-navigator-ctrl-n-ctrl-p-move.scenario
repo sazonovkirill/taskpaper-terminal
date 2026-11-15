@@ -10,7 +10,7 @@ Reading @bookmark
 Work:
 	- a
 END
-keys <C-g> <C-n> <C-n> <C-n> <C-n> <C-p>
+keys <C-k> <C-n> <C-n> <C-n> <C-n> <C-p>
 see │▌ Reading
 keys <C-n> <C-n> <Enter>
 see 󰋜 › Work

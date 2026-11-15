@@ -100,7 +100,7 @@ fn without_a_utf_8_locale_both_settings_draw_ascii() {
         assert_eq!(rows[11], "> NAVIGATE · FILE *", "{settings}: unsaved");
         // Tall enough for the Navigator to show every special view and a project.
         app.terminal.backend_mut().resize(90, 15);
-        app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+        app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
         let rows = screen(&mut app);
         assert!(!rows.join("").contains(markers), "{settings}: {rows:#?}");
         for entry in [

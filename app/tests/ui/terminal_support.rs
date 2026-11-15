@@ -209,9 +209,9 @@ fn every_overlay_opens_on_every_size() {
         "\x1c",
         "g,",
         "\n/",
-        "\x07",
-        "\x07j\x1c",
-        "\x07\x0e\x12",
+        "\x0b",
+        "\x0bj\x1c",
+        "\x0b\x0e\x12",
         "gt",
         "gtj\x1c",
         "gT",
@@ -232,10 +232,10 @@ fn every_overlay_opens_on_every_size() {
             for key in keys.chars() {
                 match key {
                     '\n' => app.press(KeyCode::Enter, NONE),
-                    '\x07' => app.press(KeyCode::Char('g'), KeyModifiers::CONTROL),
+                    '\x0b' => app.press(KeyCode::Char('k'), KeyModifiers::CONTROL),
                     '\x0e' => app.press(KeyCode::Char('n'), KeyModifiers::CONTROL),
                     '\x12' => app.press(KeyCode::Char('r'), KeyModifiers::CONTROL),
-                    '\x1c' => app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL),
+                    '\x1c' => app.press(KeyCode::Char('|'), KeyModifiers::CONTROL),
                     key => app.type_keys(&key.to_string()),
                 }
                 app.render();
@@ -259,7 +259,7 @@ fn the_navigator_over_and_with_wide_characters_keeps_them_whole() {
     );
     let mut app = Harness::with_text(&text, 61, 17);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         screen(&mut app)[3..15],
         [

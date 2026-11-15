@@ -6,7 +6,7 @@ Work:
 Home:
 	- Sink
 END
-keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+keys <C-k> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
 see │▌ Home
 keys <Enter>
 see 󰋜 › Home

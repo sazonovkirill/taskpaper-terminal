@@ -1,4 +1,4 @@
-//! The Navigator, a window that `Ctrl+G` opens over the panes (D-79): its entries, which one has the keys while it is open and which project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79),
+//! The Navigator, a window that `Ctrl+K` opens over the panes (D-79): its entries, which one has the keys while it is open and which project entries are folded ([navigation.md §6](../../../docs/specs/navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79),
 //! FR-UI-01).
 
 use std::{collections::HashSet, rc::Rc};
@@ -261,7 +261,7 @@ impl State {
         self.navigator.focus.is_some()
     }
 
-    /// `Ctrl+G`: closes the Navigator while it is open, and otherwise opens it on the entry of where
+    /// `Ctrl+K`: closes the Navigator while it is open, and otherwise opens it on the entry of where
     /// the focused pane is, else on its first entry (D-68, D-79).
     pub(super) fn toggle_navigator(&mut self) {
         if self.navigator_focused() {

@@ -1,4 +1,4 @@
-# Ctrl+K finds a task by typing part of its name and Enter shows it under its project, focused.
+# gs finds a task by typing part of its name and Enter shows it under its project, focused.
 file <<END
 Work:
 	- Write report
@@ -7,7 +7,7 @@ Home:
 		- Plant tulips
 		- Mow lawn
 END
-keys <C-k>
+keys g s
 see Go to Symbol
 type tulip
 see - Plant tulips  Home › Garden

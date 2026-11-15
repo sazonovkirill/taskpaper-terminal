@@ -32,9 +32,9 @@ Proj 14:
 Proj 15:
 	- t
 END
-keys <C-g>
+keys <C-k>
 type proj 14
-keys <Enter> <C-g>
+keys <Enter> <C-k>
 see │▌ Proj 14
 hide Today
 keys <Down> <Enter>

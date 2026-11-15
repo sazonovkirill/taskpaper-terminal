@@ -4,7 +4,7 @@ Work:
 	- Report
 	- Email
 END
-keys j x <C-g> <C-z> <C-x> <C-a> <A-1> <A-j> <Tab> <Del> <C-o>
+keys j x <C-k> <C-z> <C-x> <C-a> <A-1> <A-j> <Tab> <Del> <C-o>
 see Navigator
 keys <Esc>
 hide Navigator

@@ -5,7 +5,7 @@ Areas:
 		- Dune
 Other
 END
-keys <C-g>
+keys <C-k>
 type read
 keys <Enter>
 see › Areas › Reading list

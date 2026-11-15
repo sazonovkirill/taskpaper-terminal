@@ -8,12 +8,12 @@ see Settings
 keys /
 type overdue
 keys <Enter> <Space> <Esc>
-keys <C-g>
+keys <C-k>
 see Navigator
 hide Overdue
 keys <Esc>
 restart
-keys <C-g>
+keys <C-k>
 see Navigator
 hide Overdue
 keys <Esc> gO

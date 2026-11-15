@@ -25,8 +25,8 @@ Every block command, such as [done, dates, star or color](@/reference/tags.md), 
 
 | Key | Does |
 |---|---|
-| `Tab`, `>` | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
-| `Shift+Tab`, `<` | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
+| `>` | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
+| `<` | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
 | `K`, `Alt+k`, `Alt+↑` | **Move Up:** swap with the sibling above. At the top of its list, the block moves to the end of the parent's previous sibling. |
 | `J`, `Alt+j`, `Alt+↓` | **Move Down:** swap with the sibling below, or move to the start of the parent's next sibling. |
 

@@ -5,7 +5,7 @@ Work:
 Home:
 	- Fix sink
 END
-keys <C-g>
+keys <C-k>
 type zzz
 see Nothing matches
 keys <BS> <BS> <BS>

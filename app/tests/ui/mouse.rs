@@ -30,8 +30,8 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-fn ctrl_g(app: &mut Harness) {
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+fn ctrl_k(app: &mut Harness) {
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
 }
 
 fn alt_click(app: &mut Harness, x: u16, y: u16) {
@@ -235,14 +235,14 @@ fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
 #[test]
 fn a_click_on_a_navigator_entry_goes_there_and_on_its_fold_marker_folds_it() {
     let mut app = Harness::with_text(OUTLINE, 80, 17);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     // The window's inside starts at column 17, row 3: Today, Upcoming, Overdue, Colors, Logbook,
     // Starred, Flagged, a blank line, Projects, Work, Home, Garden.
     let rows = screen(&mut app);
     assert!(rows[14].contains("│    Garden "), "{rows:?}");
     app.click(25, 14);
     assert_eq!(screen(&mut app)[0], "  ⌂ › Home › Garden", "and closed");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.click(18, 13);
     let rows = screen(&mut app);
     assert!(
@@ -271,7 +271,7 @@ fn a_click_on_a_navigator_entry_goes_there_and_on_its_fold_marker_folds_it() {
 fn the_wheel_does_nothing_while_the_navigator_is_open() {
     let text = (1..=30).fold(String::new(), |text, n| text + &format!("- Task {n}\n"));
     let mut app = Harness::with_text(&text, 80, 14);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let before = screen(&mut app);
     wheel(&mut app, 25, 7, true);
     wheel(&mut app, 2, 3, true);
@@ -295,7 +295,7 @@ fn the_wheel_does_nothing_while_the_navigator_is_open() {
 fn the_wheel_leaves_the_shortcuts_panel_still_while_the_navigator_is_open() {
     let mut app = Harness::with_text(OUTLINE, 100, 12);
     press(&mut app, KeyCode::Char('?'));
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let before = screen(&mut app);
     wheel(&mut app, 90, 5, true);
     assert_eq!(
@@ -316,7 +316,7 @@ fn the_wheel_leaves_the_shortcuts_panel_still_while_the_navigator_is_open() {
 #[test]
 fn a_click_outside_the_navigator_closes_it_and_acts_there() {
     let mut app = Harness::with_text(OUTLINE, 80, 14);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.click(6, 3);
     let rows = screen(&mut app);
     assert!(
@@ -337,7 +337,7 @@ fn a_right_click_on_a_block_opens_its_menu_at_the_pointer() {
     assert!(rows.iter().any(|row| row.contains("Edit")));
     press(&mut app, KeyCode::Esc);
     assert_eq!(menu(&mut app), Vec::<String>::new());
-    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('|'), KeyModifiers::CONTROL);
     assert_eq!(
         corner(&menu(&mut app)),
         Some(6),
@@ -385,7 +385,7 @@ fn a_right_click_on_a_crumb_a_pane_header_or_a_navigator_entry_opens_its_menu() 
             .any(|row| row.contains("Open Location in New Pane"))
     );
     press(&mut app, KeyCode::Esc);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     // Work's entry, on the window's sixth row inside.
     right_click(&mut app, 25, 9);
     let rows = menu(&mut app);
@@ -472,7 +472,7 @@ fn the_wheel_scrolls_the_shortcuts_panel_under_the_pointer() {
 #[test]
 fn the_mouse_does_nothing_while_a_popup_takes_the_keys() {
     let mut app = pane();
-    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('|'), KeyModifiers::CONTROL);
     let before = screen(&mut app);
     app.click(8, 6);
     right_click(&mut app, 8, 6);

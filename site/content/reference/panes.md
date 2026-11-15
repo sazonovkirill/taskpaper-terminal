@@ -10,9 +10,9 @@ Only the focused pane shows its focus marker, and the others' breadcrumbs are di
 
 ## Opening panes
 
-- **Open in New Pane** (`Ctrl+W v` or `g|`) opens the focused block, zoomed in, in a new pane right of the focused one, and focuses it.
+- **Open in New Pane** (`Ctrl+\`, `Ctrl+W v` or `g|`) opens the focused block, zoomed in, in a new pane right of the focused one, and focuses it.
 - **Open Location in New Pane** (`Ctrl+W s`) opens the place the focused pane shows, its zoom or a special view, in a new pane, on the same block.
-- From the [Navigator](@/reference/navigator.md#the-navigator), Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the chosen entry in a new pane.
+- From the [Navigator](@/reference/navigator.md#the-navigator), Go to Symbol and Go to Project, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens the chosen entry in a new pane, and so does `Ctrl+\` in the Navigator.
 - `Alt`+click opens a block or a breadcrumb in a new pane.
 
 A new pane starts with the focused pane's show-completed setting and an empty history.
@@ -20,7 +20,7 @@ A new pane starts with the focused pane's show-completed setting and an empty hi
 ## Moving between panes
 
 - `Alt+1` … `Alt+9`, or `g1` … `g9`, focus pane 1 to 9.
-- `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W W` / `Ctrl+W w`, `gp` / `gn`, `Ctrl+Shift+←` / `Ctrl+Shift+→`, and `Ctrl+,` / `Ctrl+.` with the [kitty protocol](@/reference/modes.md#classic-and-kitty-keys) focus the pane to the left or right. They stop at either end.
+- `Shift+Tab` / `Tab`, `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W W` / `Ctrl+W w`, `gp` / `gn`, `Ctrl+Shift+←` / `Ctrl+Shift+→`, and `Ctrl+,` / `Ctrl+.` with the [kitty protocol](@/reference/modes.md#classic-and-kitty-keys) focus the pane to the left or right. They stop at either end.
 - Clicking a pane focuses it.
 
 `Ctrl+W H` and `Ctrl+W L` move the focused pane one place left or right, swapping it with its neighbor. The pane keeps the keys, so its number changes.

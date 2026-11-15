@@ -439,7 +439,7 @@ fn a_tab_inside_the_text_shows_as_a_space_in_the_finders_the_navigator_and_a_div
         outline_rows(&mut app)[2],
         "───────────── Next week ──────────────"
     );
-    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
+    app.type_keys("gs");
     assert_eq!(
         rows(&mut app)[5..8],
         [
@@ -449,7 +449,7 @@ fn a_tab_inside_the_text_shows_as_a_space_in_the_finders_the_navigator_and_a_div
         ]
     );
     press(&mut app, KeyCode::Esc, 1);
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.type_keys("work");
     assert_eq!(
         rows(&mut app)[6..8],

@@ -184,7 +184,7 @@ END
 keys gP
 type Proj 55
 see › Proj 55
-keys <Enter> . <C-g>
+keys <Enter> . <C-k>
 see ▌ Proj 55
 keys <Esc>
 quit

@@ -77,7 +77,7 @@ fn g_shift_f_lists_the_flagged_blocks_with_their_paths_and_back_returns() {
 #[test]
 fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
     let mut app = Harness::with_text(OUTLINE, 60, 13);
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         navigator(&mut app)[..8],
         [
@@ -107,7 +107,7 @@ fn the_navigator_lists_flagged_after_the_other_views_and_enter_shows_it() {
 #[test]
 fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_still_opens_it() {
     let mut app = Harness::with_config(OUTLINE, "sidebar_flagged = false\n", 70, 30);
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         navigator(&mut app)[..7],
         [
@@ -140,7 +140,7 @@ fn the_flagged_entry_leaves_the_navigator_with_its_setting_off_and_g_shift_f_sti
         std::fs::read_to_string(app.config_file()).expect("written"),
         "sidebar_flagged = true\n"
     );
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         navigator(&mut app)[..7],
         [

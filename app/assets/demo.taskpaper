@@ -49,9 +49,9 @@ Weekend errands:
 	Open Today with gt for what is due or started by today; gz or . on one of its blocks goes to it in the outline.
 	Press G for the last block and gg for the first: the block focus lands on flashes, and z flashes what an undo brings back. Turn this down with Animations in the settings.
 	In a truecolor theme such as Nord, complete a task with x and its text eases into the done style, zoom in with . and the outline fades in from the top, and themes crossfade as you move through them.
-	Jump to any block by name with Ctrl+K, or to a project with gP; Alt+Enter or Ctrl+V there opens it in a new pane.
-	Press Ctrl+G for the Navigator, a window of Today, your bookmarks and projects: type to filter it, ↑, ↓ and Enter go to one, and Ctrl+G or Esc closes it.
-	Move between the panes with Ctrl+Shift+← and Ctrl+Shift+→, or Ctrl+W ← and Ctrl+W →.
+	Jump to any block by name with / or gs, or to a project with gP; Alt+Enter or Ctrl+V there opens it in a new pane.
+	Press Ctrl+K for the Navigator, a window of Today, your bookmarks and projects: type to filter it, ↑, ↓ and Enter go to one, and Ctrl+K or Esc closes it.
+	Move between the panes with Tab and Shift+Tab, Ctrl+Shift+← and Ctrl+Shift+→, or Ctrl+W ← and Ctrl+W →.
 	Find any command by name with Ctrl+P or :, such as Count Blocks and Words for what is under the focused block, or Save As to keep this file somewhere of your own.
 	Press g, for the settings: theme, icons, word wrap, animations, autosave delay and backups, each kept in ~/.config/taskpaper-terminal/config.toml as you change it.
 	Icons need a Nerd Font: if they show as boxes, press g, and set Icons to none with l.

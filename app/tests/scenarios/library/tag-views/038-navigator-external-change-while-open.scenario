@@ -5,7 +5,7 @@ Alpha:
 Beta:
 	- b
 END
-keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+keys <C-k> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
 see │▌ Beta
 outside <<END
 Solo:

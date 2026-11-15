@@ -281,7 +281,7 @@ Area 39:
 	Sub 39.2:
 		- task 39.2
 END
-keys <C-k>
+keys g s
 type task 30.1
 see › task 30.1
 keys <Enter>

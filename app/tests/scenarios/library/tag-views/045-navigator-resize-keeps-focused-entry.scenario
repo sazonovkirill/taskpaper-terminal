@@ -5,7 +5,7 @@ Alpha:
 Omega:
 	- z
 END
-keys <C-g> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
+keys <C-k> <Down> <Down> <Down> <Down> <Down> <Down> <Down> <Down>
 see │▌ Omega
 resize 30 7
 see │▌ Omega

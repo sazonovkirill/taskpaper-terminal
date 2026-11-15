@@ -2,7 +2,7 @@
 file <<END
 - Call mom
 END
-keys <C-g>
+keys <C-k>
 type zzz
 keys <Enter>
 type q

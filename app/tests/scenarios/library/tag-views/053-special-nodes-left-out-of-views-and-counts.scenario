@@ -7,7 +7,7 @@ Work:
 		GhostProject:
 			- g
 END
-keys <C-g>
+keys <C-k>
 see 󰓎 Starred                                 1 │
 see 󰈻 Flagged                                   │
 hide GhostProject

@@ -264,8 +264,8 @@ fn parentheses_scroll_the_list_a_page_at_a_time_and_more_lines_say_what_is_hidde
         [
             "│ ↑ more                      (",
             "│  Open Settings             g,",
-            "│  Con… Ctrl+\\, Shift+F10, Menu",
-            "│  Open in New Pa… Ctrl+W v, g|",
+            "│  … Ctrl+|, M, Shift+F10, Menu",
+            "│  Open i… Ctrl+\\, Ctrl+W v, g|",
             "│  Close Pa… Ctrl+W c, Ctrl+W q",
             "│  Quit                  Ctrl+Q",
         ],
@@ -337,7 +337,7 @@ fn the_more_line_names_no_keys_while_the_navigator_or_a_popup_has_them() {
     let mut app = Harness::with_text(OUTLINE, 100, 12);
     app.type_keys("?");
     assert_eq!(more(&mut app).as_deref(), Some(")"));
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         more(&mut app).as_deref(),
         Some(""),
@@ -358,7 +358,7 @@ fn the_more_line_names_no_keys_while_the_navigator_or_a_popup_has_them() {
 fn the_panel_lists_the_keys_of_the_open_navigator_or_picker() {
     let mut app = Harness::with_text(OUTLINE, 100, 30);
     app.type_keys("?");
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     assert_eq!(
         right_of(&mut app, 68)[..14],
         [
@@ -369,11 +369,11 @@ fn the_panel_lists_the_keys_of_the_open_navigator_or_picker() {
             "│  Collapse Entry             ←",
             "│  Expand Entry               →",
             "│  Go to Entry            Enter",
-            "│  O… Alt+Enter, Ctrl+V, Ctrl+T",
+            "│  \\, Alt+Enter, Ctrl+V, Ctrl+T",
             "│  Erase Filter Char… Backspace",
             "│  Return to Outline        Esc",
-            "│  Con… Ctrl+\\, Shift+F10, Menu",
-            "│  Open Navigator     Ctrl+G, |",
+            "│  l+|, Ctrl+R, Shift+F10, Menu",
+            "│  Open Navigator     Ctrl+K, |",
             "│  Quit                  Ctrl+Q",
             "│",
         ]

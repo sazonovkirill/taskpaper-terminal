@@ -6,7 +6,7 @@ file <<END
 Errands:
 	- Post office @star
 END
-keys <C-g>
+keys <C-k>
 see Navigator
 see Today
 hide Starred

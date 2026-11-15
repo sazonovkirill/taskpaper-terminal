@@ -284,7 +284,7 @@ Area 40:
 	Hidden gem:
 		- treasure
 END
-keys _ <C-g>
+keys _ <C-k>
 type gem
 see Hidden gem
 keys <Enter>

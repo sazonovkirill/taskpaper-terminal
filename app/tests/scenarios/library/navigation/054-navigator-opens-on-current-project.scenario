@@ -9,7 +9,7 @@ Gamma:
 END
 keys G .
 see › Gamma
-keys <C-g> <Up> <Enter>
+keys <C-k> <Up> <Enter>
 see › Beta
 see - b1
 quit

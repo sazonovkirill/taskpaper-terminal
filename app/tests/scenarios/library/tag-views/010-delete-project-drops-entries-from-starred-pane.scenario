@@ -6,7 +6,7 @@ Work:
 		- Venue @star
 		- Catering @star
 END
-keys <C-g>
+keys <C-k>
 type starred
 keys <C-t>
 see │▌ - Report

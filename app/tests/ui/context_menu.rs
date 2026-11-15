@@ -23,9 +23,9 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-/// Presses `Ctrl+\`, which opens the context menu.
+/// Presses `Ctrl+|`, as the kitty protocol reports `Ctrl+Shift+\`, which opens the context menu.
 fn menu_key(app: &mut Harness) {
-    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('|'), KeyModifiers::CONTROL);
 }
 
 /// Whether a context menu is on screen.
@@ -42,7 +42,7 @@ fn saved(app: &mut Harness) -> String {
 
 // FR-KEY-06, ui.md §5, keybindings.md §2
 #[test]
-fn ctrl_backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
+fn ctrl_shift_backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it() {
     let mut app = Harness::with_text(TEXT, 70, 16);
     app.type_keys("j");
     menu_key(&mut app);
@@ -51,16 +51,16 @@ fn ctrl_backslash_on_a_task_lists_its_commands_grouped_with_their_keys_under_it(
         rows[3..9],
         [
             "▌   - Book the hotel",
-            "      ┌Commands:───────────────────────────────────────┐",
-            "    - │  › Edit                                 Enter  │",
-            "  Othe│  ✎ Edit Node                                e  │",
-            "      │  ≡ Open Attachments                      \\, &  │",
-            "      │  ❞ Add Comment                              c  │",
+            "      ┌Commands:────────────────────────────────────────────┐",
+            "    - │  › Edit                                      Enter  │",
+            "  Othe│  ✎ Edit Node                                     e  │",
+            "      │  ≡ Open Attachments                           \\, &  │",
+            "      │  ❞ Add Comment                                   c  │",
         ],
         "anchored at the task's text, below it"
     );
     assert_eq!(
-        rows[14], "      └────────────────────────────────────────────────┘",
+        rows[14], "      └─────────────────────────────────────────────────────┘",
         "no taller than the room below the task"
     );
     let buffer = app.render().buffer().clone();
@@ -153,7 +153,7 @@ fn on_the_selection_its_commands_act_on_every_selected_block() {
 fn on_a_navigator_entry_it_offers_going_there() {
     let mut app = Harness::with_text(TEXT, 90, 17);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     for _ in 0..7 {
         press(&mut app, KeyCode::Down);
     }
@@ -165,12 +165,12 @@ fn on_a_navigator_entry_it_offers_going_there() {
             "      Near the statio│  ☼ Today                                     │",
             "    - Pack           │  » Upcoming                                  │",
             "  Other              │  ! Overdue                                   │",
-            "                     │  ┌Commands:─────────────────────────────────────────┐",
-            "                     │  │  › Go to Entry                            Enter  │",
-            "                     │  │  › Open in New Pane   Alt+Enter, Ctrl+V, Ctrl+T  │",
-            "                     │  │──────────────────────────────────────────────────│",
-            "                     │  │  › Return to Outline                        Esc  │",
-            "                     │  └──────────────────────────────────────────────────┘",
+            "                     │  ┌Commands:─────────────────────────────────────────────────┐",
+            "                     │  │  › Go to Entry                                    Enter  │",
+            "                     │  │  › Open in New Pane   Ctrl+\\, Alt+Enter, Ctrl+V, Ctrl+T  │",
+            "                     │  │──────────────────────────────────────────────────────────│",
+            "                     │  │  › Return to Outline                                Esc  │",
+            "                     │  └──────────────────────────────────────────────────────────┘",
         ],
         "over the window, above the focused entry on its last row"
     );
@@ -191,13 +191,13 @@ fn on_a_navigator_entry_it_offers_going_there() {
     );
 }
 
-// FR-KEY-06, keybindings.md §4 and §6, D-86, D-145: `Ctrl+\` opens it in the Navigator too, whose
-// filter takes `\`.
+// FR-KEY-06, keybindings.md §4 and §6, D-86, D-151: `Ctrl+Shift+\` opens it in the Navigator
+// too, whose filter takes `\`.
 #[test]
-fn ctrl_backslash_opens_it_on_a_navigator_entry_where_backslash_is_typed() {
+fn ctrl_shift_backslash_opens_it_on_a_navigator_entry_where_backslash_is_typed() {
     let mut app = Harness::with_text(TEXT, 90, 17);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Char('\\'));
     assert!(!open(&mut app), "\\ is typed into the filter");
     press(&mut app, KeyCode::Backspace);
@@ -216,7 +216,7 @@ fn ctrl_backslash_opens_it_on_a_navigator_entry_where_backslash_is_typed() {
 fn in_the_today_view_it_leaves_out_what_the_view_does_not_take() {
     let mut app = Harness::with_text("- Call Ann @star\n", 90, 30);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     press(&mut app, KeyCode::Enter);
     menu_key(&mut app);
     let rows = screen(&mut app).join("\n");
@@ -238,7 +238,7 @@ fn the_shortcuts_panel_lists_it() {
     assert!(rows[at + 1].ends_with("  Keymap                g?, F1"));
     assert!(rows[at + 2].ends_with("  Open Settings             g,"));
     assert!(
-        rows[at + 3].ends_with("  Con… Ctrl+\\, Shift+F10, Menu"),
+        rows[at + 3].ends_with("  … Ctrl+|, M, Shift+F10, Menu"),
         "{}",
         rows[at + 3]
     );

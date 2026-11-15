@@ -5,7 +5,7 @@ Sprint:
 	- Build
 	- Test
 END
-keys j j <Tab> j <S-Tab>
+keys j j > j <lt>
 see ▌ - Test
 keys z z
 see ▌   - Build

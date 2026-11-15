@@ -5,13 +5,13 @@ Khaki pants:
 Jolly:
 	- Plan
 END
-keys <C-g>
+keys <C-k>
 type kh
 see └kh
 see │▌ Khaki pants
 keys <Enter>
 see 󰋜 › Khaki pants
-keys <C-g>
+keys <C-k>
 type jol
 see │▌ Jolly
 keys <Enter>

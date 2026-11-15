@@ -29,7 +29,7 @@ Every command has at least one key that works with classic reporting. A few comm
 | `Ctrl+M` | Move To | `gm` |
 | `Ctrl+I` | Forward | `L` |
 | `Ctrl+,` / `Ctrl+.` | Focus Pane Left / Right | `Ctrl+W ←` / `Ctrl+W →` |
-| `Menu` | Context Menu | `Ctrl+\`, `Shift+F10` |
+| `Ctrl+Shift+\` (shown as `Ctrl+\|`), `Menu` | Context Menu | `M` (`Ctrl+R` in the Navigator), `Shift+F10` |
 
 ### Alt on macOS
 
@@ -50,7 +50,7 @@ Some terminals and desktops keep certain keys for themselves. Each such key has 
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | kitty, WezTerm | `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l` |
 | `Alt` with arrows | Windows Terminal | `H` / `L`, `K` / `J` |
 | `Alt+1` … `Alt+9` | GNOME Terminal and Ghostty on Linux | `g1` … `g9` |
-| `Shift+F10` | GNOME Terminal | `Ctrl+\` |
+| `Shift+F10` | GNOME Terminal | `M`, or `Ctrl+R` in the Navigator |
 | `Ctrl+B` while editing | tmux | press `Ctrl+B` twice |
 
 ## Creating blocks

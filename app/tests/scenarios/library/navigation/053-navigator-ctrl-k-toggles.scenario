@@ -1,11 +1,11 @@
-# Pressing Ctrl+G again closes the Navigator, and keys go back to the outline.
+# Pressing Ctrl+K again closes the Navigator, and keys go back to the outline.
 file <<END
 Work:
 	- Write report
 END
-keys <C-g>
+keys <C-k>
 see Navigator
-keys <C-g>
+keys <C-k>
 keys j x
 quit
 saved <<END

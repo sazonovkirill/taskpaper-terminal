@@ -47,7 +47,7 @@ fn g_shift_s_lists_every_starred_block_with_its_path_under_the_starred_header() 
 /// Overdue, Colors and Logbook.
 fn sixth_entry(app: &mut Harness) -> String {
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     for _ in 0..5 {
         app.press(KeyCode::Down, KeyModifiers::NONE);
     }

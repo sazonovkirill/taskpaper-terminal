@@ -8,7 +8,7 @@ Plan:
 	- Old task @bookmark @done
 		- Leftover
 END
-keys <C-g>
+keys <C-k>
 see Bookmarks
 see Big task                                  1 │
 see Old task                                    │

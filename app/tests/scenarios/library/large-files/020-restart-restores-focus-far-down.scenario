@@ -401,7 +401,7 @@ file <<END
 - row 398
 - row 399
 END
-keys <C-k>
+keys g s
 type row 350
 see › row 350
 keys <Enter>

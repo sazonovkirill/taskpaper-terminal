@@ -15,7 +15,7 @@ Work:
 Personal:
 	- Gym
 END
-keys <C-g> <Down> <Down> <Left>
+keys <C-k> <Down> <Down> <Left>
 see ▸Work
 hide Launch                                  1
 see Personal

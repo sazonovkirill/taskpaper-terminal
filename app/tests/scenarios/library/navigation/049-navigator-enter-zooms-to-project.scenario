@@ -12,7 +12,7 @@ Work:
 Home:
 	- Fix sink
 END
-keys <C-g> <Down> <Down> <Down> <Enter>
+keys <C-k> <Down> <Down> <Down> <Enter>
 see › Home
 see - Fix sink
 hide Navigator

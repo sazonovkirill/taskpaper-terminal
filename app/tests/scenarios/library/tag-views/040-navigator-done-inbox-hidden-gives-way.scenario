@@ -8,7 +8,7 @@ END
 keys gc gi
 see - new
 hide - old
-keys <C-g>
+keys <C-k>
 see │▌ 󰚇 New                                     1 │
 hide Projects
 quit

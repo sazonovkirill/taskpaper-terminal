@@ -9,7 +9,7 @@ INBOX:
 Later: @inbox
 	- second
 END
-keys <C-g>
+keys <C-k>
 see │▌ 󰚇 Capture                                 2 │
 see   INBOX                                     1 │
 see   Later                                     1 │

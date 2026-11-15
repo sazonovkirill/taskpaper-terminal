@@ -13,7 +13,7 @@ INBOX:
 Reading @bookmark
 	- Dune
 END
-keys <C-g>
+keys <C-k>
 see ┌Navigator
 see │▌ 󰖙 Today
 see │  Bookmarks
@@ -21,6 +21,6 @@ hide Starred
 keys <Esc> gS
 see 󰓎 Starred
 see - Call mom 󰓎  INBOX
-keys <C-g> <Down>
+keys <C-k> <Down>
 see │▌ Reading
 quit

@@ -5,7 +5,7 @@ Work:
 INBOX: @inbox
 	- Call mom
 END
-keys <C-g>
+keys <C-k>
 type inbox
 see INBOX
 hide Projects

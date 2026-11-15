@@ -3,7 +3,7 @@ file <<END
 Errands:
 	- Post office
 END
-keys <C-\>
+keys M
 see Commands:
 type pane
 see Open in New Pane

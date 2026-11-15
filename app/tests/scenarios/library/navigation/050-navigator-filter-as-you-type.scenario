@@ -7,7 +7,7 @@ Home:
 Hobbies:
 	- Guitar
 END
-keys <C-g>
+keys <C-k>
 type hob
 see Hobbies
 see └hob

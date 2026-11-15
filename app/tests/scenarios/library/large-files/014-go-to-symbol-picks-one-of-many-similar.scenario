@@ -284,7 +284,7 @@ Area 40:
 	Hidden gem:
 		- treasure
 END
-keys <C-k>
+keys g s
 type task 37.2
 see › task 37.2
 keys <Enter>

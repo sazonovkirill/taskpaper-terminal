@@ -99,7 +99,7 @@ fn go_to_command_lists_go_to_upcoming_with_its_key_and_gives_it() {
 /// The pane's header after choosing the Navigator's second entry in `app`, past Today.
 fn second_entry(app: &mut Harness) -> String {
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.press(KeyCode::Down, KeyModifiers::NONE);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     outline_line(app.render().buffer(), 0)
@@ -111,7 +111,7 @@ fn second_entry(app: &mut Harness) -> String {
 fn the_navigator_lists_upcoming_after_today_unless_its_setting_is_off() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let buffer = app.render().buffer().clone();
     let entry = (0..buffer.area.height)
         .map(|y| line(&buffer, y))

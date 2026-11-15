@@ -6,7 +6,7 @@ description = "Jump anywhere in the file, and move lines across it."
 
 ## The Navigator
 
-Press <kbd>Ctrl+G</kbd> or <kbd>|</kbd> to open the **Navigator**, the list of places to go:
+Press <kbd>Ctrl+K</kbd> or <kbd>|</kbd> to open the **Navigator**, the list of places to go:
 
 - **INBOX**, for things you haven't sorted yet. The sample's `INBOX` project is tagged `@inbox`, which makes it the inbox; **Select Inbox Project** in Go to Command makes any project the inbox.
 - The special views: **Today**, **Upcoming**, **Overdue**, **Colors**, **Logbook**, **Starred** and **Flagged**.
@@ -25,7 +25,7 @@ Press <kbd>g</kbd> <kbd>h</kbd>, move to "Website redesign" under "Work" and pre
 
 ## Go to Symbol
 
-To find any line at all, press <kbd>Ctrl+K</kbd> (or <kbd>/</kbd>) for **Go to Symbol** and type a few letters, such as `trm`: the match is loose. <kbd>Enter</kbd> takes you to the line.
+To find any line at all, press <kbd>/</kbd> (or <kbd>g</kbd> <kbd>s</kbd>) for **Go to Symbol** and type a few letters, such as `trm`: the match is loose. <kbd>Enter</kbd> takes you to the line.
 
 <kbd>g</kbd> <kbd>P</kbd> does the same over projects alone.
 

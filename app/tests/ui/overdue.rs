@@ -144,7 +144,7 @@ fn go_to_command_lists_go_to_overdue_with_its_key_and_gives_it() {
 fn navigator(text: &str, settings: &str) -> (Harness, Vec<String>) {
     let mut app = Harness::with_config(text, settings, 60, 18);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let buffer = app.render().buffer().clone();
     let rows = (0..buffer.area.height).map(|y| line(&buffer, y)).collect();
     (app, rows)

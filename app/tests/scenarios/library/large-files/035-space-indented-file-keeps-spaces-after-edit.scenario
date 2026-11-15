@@ -43,7 +43,7 @@ Spaces:
     - s39
         deep note
 END
-keys <C-k>
+keys g s
 type s19
 see › s19
 keys <Enter> <Enter>

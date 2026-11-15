@@ -83,7 +83,7 @@ List:
 	- r79
 END
 keys j j <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down> <S-Down>
-keys <Tab>
+keys >
 saved <<END
 List:
 	- r0

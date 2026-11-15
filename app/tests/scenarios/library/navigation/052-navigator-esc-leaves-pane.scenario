@@ -5,7 +5,7 @@ Work:
 Home:
 	- Fix sink
 END
-keys <C-g> <Down> <Down> <Esc>
+keys <C-k> <Down> <Down> <Esc>
 keys x
 quit
 saved <<END

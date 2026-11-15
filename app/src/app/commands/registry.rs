@@ -287,8 +287,8 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["esc"],
     ),
-    entry!(Command::Indent, Mode::Navigate, &["tab", ">"]),
-    entry!(Command::Outdent, Mode::Navigate, &["shift+tab", "<"]),
+    entry!(Command::Indent, Mode::Navigate, &[">"]),
+    entry!(Command::Outdent, Mode::Navigate, &["<"]),
     entry!(Command::MoveUp, Mode::Navigate, &["K", "alt+k", "alt+up"]),
     entry!(
         Command::MoveDown,
@@ -408,25 +408,25 @@ pub const REGISTRY: &[Entry] = &[
     ),
     entry!(Command::SetAnimations(Animations::Off), Mode::Navigate, &[]),
     entry!(Command::StartWeather, Mode::Navigate, &[]),
-    entry!(Command::GoToSymbol, Mode::Navigate, &["ctrl+k", "g s", "/"]),
+    entry!(Command::GoToSymbol, Mode::Navigate, &["g s", "/"]),
     entry!(Command::GoToProject, Mode::Navigate, &["g P"]),
     entry!(Command::ToggleShortcuts, Mode::Navigate, &["?"]),
     entry!(Command::ScrollShortcutsDown, Mode::Navigate, &[")"]),
     entry!(Command::ScrollShortcutsUp, Mode::Navigate, &["("]),
     entry!(Command::ShowKeymap, Mode::Navigate, &["g ?", "f1"]),
-    entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+g", "|"]),
+    entry!(Command::ToggleNavigator, Mode::Navigate, &["ctrl+k", "|"]),
     entry!(Command::GoToCommand, Mode::Navigate, &["ctrl+p", ":"]),
     entry!(Command::Count, Mode::Navigate, &[]),
     entry!(Command::SaveAs, Mode::Navigate, &[]),
     entry!(
         Command::ContextMenu,
         Mode::Navigate,
-        &["ctrl+\\", "shift+f10", "menu"],
+        &["ctrl+|", "M", "shift+f10", "menu"],
     ),
     entry!(
         Command::Pane(PaneChange::Open),
         Mode::Navigate,
-        &["ctrl+w v", "g |"],
+        &["ctrl+\\", "ctrl+w v", "g |"],
     ),
     entry!(
         Command::Pane(PaneChange::OpenLocation),
@@ -482,6 +482,7 @@ pub const REGISTRY: &[Entry] = &[
         Command::Pane(PaneChange::FocusLeft),
         Mode::Navigate,
         &[
+            "shift+tab",
             "ctrl+shift+left",
             "ctrl+,",
             "ctrl+w left",
@@ -494,6 +495,7 @@ pub const REGISTRY: &[Entry] = &[
         Command::Pane(PaneChange::FocusRight),
         Mode::Navigate,
         &[
+            "tab",
             "ctrl+shift+right",
             "ctrl+.",
             "ctrl+w right",
@@ -571,12 +573,15 @@ pub const NAVIGATOR: &[(Command, &[&str])] = &[
     (Command::Navigator(NavigatorInput::Choose), &["enter"]),
     (
         Command::Pane(PaneChange::Open),
-        &["alt+enter", "ctrl+v", "ctrl+t"],
+        &["ctrl+\\", "alt+enter", "ctrl+v", "ctrl+t"],
     ),
     (Command::Navigator(NavigatorInput::Erase), &["backspace"]),
     (Command::Navigator(NavigatorInput::Leave), &["esc"]),
-    (Command::ContextMenu, &["ctrl+\\", "shift+f10", "menu"]),
-    (Command::ToggleNavigator, &["ctrl+g", "|"]),
+    (
+        Command::ContextMenu,
+        &["ctrl+|", "ctrl+r", "shift+f10", "menu"],
+    ),
+    (Command::ToggleNavigator, &["ctrl+k", "|"]),
     (Command::Quit, &["ctrl+q"]),
 ];
 
@@ -918,7 +923,7 @@ mod tests {
         let (_, zoom) = &shortcuts(Mode::Navigate)[2];
         assert_eq!(zoom[2].keys, ["ctrl+'", "g h"], "Go Home");
         let (_, view) = &shortcuts(Mode::Navigate)[7];
-        assert_eq!(view[2].keys, ["ctrl+g", "|"], "Open Navigator");
+        assert_eq!(view[2].keys, ["ctrl+k", "|"], "Open Navigator");
         assert_eq!(view[6].keys, ["g ?", "f1"], "Keymap");
         assert_eq!(view[11].keys, ["ctrl+q"]);
     }
@@ -1017,14 +1022,20 @@ mod tests {
         let context_menu = REGISTRY
             .iter()
             .find(|entry| entry.command == Command::ContextMenu)
-            .map(|entry| entry.keys);
+            .map(|entry| {
+                entry
+                    .keys
+                    .iter()
+                    .map(|&keys| if keys == "M" { "ctrl+r" } else { keys })
+                    .collect::<Vec<_>>()
+            });
         assert_eq!(
             NAVIGATOR
                 .iter()
                 .find(|(command, _)| *command == Command::ContextMenu)
-                .map(|&(_, keys)| keys),
+                .map(|&(_, keys)| keys.to_vec()),
             context_menu,
-            "the context menu opens with the same keys everywhere (D-145)"
+            "the context menu opens with the same keys everywhere, but for `Ctrl+R` in place of `M`, which the filter takes (D-151)"
         );
     }
 

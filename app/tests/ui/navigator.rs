@@ -1,4 +1,4 @@
-//! Step 4.6, D-79: the Navigator, a window that `Ctrl+G` opens over the panes, and its
+//! Step 4.6, D-79: the Navigator, a window that `Ctrl+K` opens over the panes, and its
 //! keys.
 
 use std::fmt::Write as _;
@@ -72,8 +72,8 @@ fn press(app: &mut Harness, code: KeyCode) {
     app.press(code, KeyModifiers::NONE);
 }
 
-fn ctrl_g(app: &mut Harness) {
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+fn ctrl_k(app: &mut Harness) {
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
 }
 
 /// The window's lines as it opens before any key, `▌` marking the focused or current one, each
@@ -118,7 +118,7 @@ fn listed(focused: Option<usize>) -> Vec<String> {
 
 // FR-UI-01, ui.md §1, navigation §6, D-79
 #[test]
-fn the_pane_takes_the_screen_and_ctrl_g_opens_the_window_over_it() {
+fn the_pane_takes_the_screen_and_ctrl_k_opens_the_window_over_it() {
     let mut app = app(80);
     assert_eq!(window(&mut app), None, "closed at the start");
     assert_eq!(
@@ -130,7 +130,7 @@ fn the_pane_takes_the_screen_and_ctrl_g_opens_the_window_over_it() {
             &format!("    - Launch plan {BOOKMARK}")
         ]
     );
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(0))));
     let buffer = app.render().buffer().clone();
     assert_eq!(
@@ -154,10 +154,10 @@ fn the_pane_takes_the_screen_and_ctrl_g_opens_the_window_over_it() {
 
 // FR-UI-01, D-79
 #[test]
-fn ctrl_g_and_esc_close_the_window_and_the_pane_has_the_keys() {
+fn ctrl_k_and_esc_close_the_window_and_the_pane_has_the_keys() {
     let mut app = app(80);
-    for close in [KeyCode::Esc, KeyCode::Char('g')] {
-        ctrl_g(&mut app);
+    for close in [KeyCode::Esc, KeyCode::Char('k')] {
+        ctrl_k(&mut app);
         let modifiers = match close {
             KeyCode::Esc => KeyModifiers::NONE,
             _ => KeyModifiers::CONTROL,
@@ -173,7 +173,7 @@ fn ctrl_g_and_esc_close_the_window_and_the_pane_has_the_keys() {
     );
 }
 
-// D-132: `|` toggles the window like `Ctrl+G`, so the open window's filter never takes it.
+// D-132: `|` toggles the window like `Ctrl+K`, so the open window's filter never takes it.
 #[test]
 fn a_bar_opens_and_closes_the_window() {
     let mut app = app(80);
@@ -188,12 +188,12 @@ fn a_bar_opens_and_closes_the_window() {
 fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
     let mut app = app(80);
     app.type_keys(".");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(12))), "Work");
     press(&mut app, KeyCode::Esc);
     app.type_keys("j..");
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Reports › Draft");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(
         window(&mut app),
         Some(listed(Some(13))),
@@ -219,7 +219,7 @@ fn the_window_opens_on_the_entry_of_the_panes_zoom_which_stays_marked() {
 #[test]
 fn the_arrows_and_ctrl_n_and_ctrl_p_move_in_the_window_skipping_headings() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     press(&mut app, KeyCode::Down);
     assert_eq!(window(&mut app), Some(listed(Some(1))));
     press(&mut app, KeyCode::Down);
@@ -251,7 +251,7 @@ fn the_arrows_and_ctrl_n_and_ctrl_p_move_in_the_window_skipping_headings() {
 #[test]
 fn the_keys_that_focus_a_pane_and_the_navigators_old_keys_do_nothing() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.press(KeyCode::Char('1'), KeyModifiers::ALT);
     app.press(KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     app.press(KeyCode::Char('w'), KeyModifiers::CONTROL);
@@ -268,14 +268,14 @@ fn the_keys_that_focus_a_pane_and_the_navigators_old_keys_do_nothing() {
 #[test]
 fn enter_zooms_the_pane_to_the_entry_and_closes_the_window() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     for _ in 0..7 {
         press(&mut app, KeyCode::Down);
     }
     press(&mut app, KeyCode::Enter);
     assert_eq!(window(&mut app), None);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Work › Launch plan");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(9))), "on its entry");
     press(&mut app, KeyCode::Down);
     press(&mut app, KeyCode::Down);
@@ -297,10 +297,10 @@ fn enter_zooms_the_pane_to_the_entry_and_closes_the_window() {
 #[test]
 fn enter_on_today_shows_the_today_view_in_the_pane() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     press(&mut app, KeyCode::Enter);
     assert_eq!(pane(&mut app)[0], format!("  {SUN} Today, Oct 5, 2026"));
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app), Some(listed(Some(0))), "on its entry");
 }
 
@@ -308,7 +308,7 @@ fn enter_on_today_shows_the_today_view_in_the_pane() {
 #[test]
 fn the_left_and_right_arrows_fold_project_entries() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     for _ in 0..8 {
         press(&mut app, KeyCode::Down);
     }
@@ -330,7 +330,7 @@ fn the_left_and_right_arrows_fold_project_entries() {
 #[test]
 fn ctrl_q_quits_from_the_window() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.press(KeyCode::Char('q'), KeyModifiers::CONTROL);
     assert!(app.tui.should_quit());
 }
@@ -339,7 +339,7 @@ fn ctrl_q_quits_from_the_window() {
 #[test]
 fn text_pasted_into_the_window_is_dropped() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.send(Input::Terminal(Event::Paste("- Eggs".to_owned())));
     press(&mut app, KeyCode::Esc);
     assert_eq!(pane(&mut app)[3], format!("    - Launch plan {BOOKMARK}"));
@@ -349,7 +349,7 @@ fn text_pasted_into_the_window_is_dropped() {
 #[test]
 fn a_narrow_screen_draws_the_window_as_wide_as_the_pane() {
     let mut app = app(30);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let buffer = app.render().buffer().clone();
     assert_eq!(corner(&buffer), Some((0, 2)));
     assert_eq!(columns(&buffer, 2, 0, 30).chars().last(), Some('┐'));
@@ -368,7 +368,7 @@ fn the_window_scrolls_to_keep_its_focused_entry_visible() {
         .join("\n");
     let mut app = Harness::with_text(&projects, 80, 10);
     app.render();
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(
         window(&mut app).expect("open"),
         [
@@ -393,14 +393,14 @@ fn the_window_scrolls_to_keep_its_focused_entry_visible() {
 fn a_projects_count_of_open_tasks_follows_completing_them() {
     let mut app = app(80);
     app.type_keys("jx");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let mut listed = listed(Some(0));
     listed[4] = format!("{:44}1", format!("  {BOOK} Logbook"));
     listed[12] = format!("{:44}1", " ▾Work");
     assert_eq!(window(&mut app), Some(listed.clone()), "Launch plan done");
     press(&mut app, KeyCode::Esc);
     app.type_keys("jjx");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     listed[4] = format!("{:44}2", format!("  {BOOK} Logbook"));
     listed[12] = " ▾Work".to_owned();
     listed[13] = "    Reports".to_owned();
@@ -433,13 +433,13 @@ fn views(projects: usize) -> Vec<String> {
 #[test]
 fn the_project_tagged_inbox_is_listed_above_today_under_its_own_name() {
     let mut app = Harness::with_text(INBOXED, 80, 16);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let mut expected = vec![format!("{:44}1", "▌ ⊔ Capture")];
     expected.extend(views(1));
     expected.push("  Work".to_owned());
     assert_eq!(window(&mut app).expect("open"), expected);
     let mut app = Harness::with_text("Work:\nINBOX:\n\t- Call the bank\n", 80, 16);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     let mut expected = views(2);
     expected[0] = format!("▌ {SUN} Today");
     expected.extend(["  Work".to_owned(), format!("{:44}1", "  INBOX")]);
@@ -465,14 +465,14 @@ fn select_inbox_project_tags_the_chosen_project_and_reset_takes_the_tag_away() {
     press(&mut app, KeyCode::Enter);
     let status = line(app.render().buffer(), 15);
     assert!(status.ends_with("· Inbox: Work"), "{status}");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app).expect("open")[0], "▌ ⊔ Work");
     press(&mut app, KeyCode::Esc);
     app.type_keys(":reset inbox");
     press(&mut app, KeyCode::Enter);
     let status = line(app.render().buffer(), 15);
     assert!(status.ends_with("· No inbox project now"), "{status}");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app).expect("open")[0], format!("▌ {SUN} Today"));
 }
 
@@ -482,7 +482,7 @@ fn the_window_always_lists_today_and_an_old_setting_to_leave_it_out_is_reported(
     let mut app = Harness::with_config(INBOXED, "sidebar_today = false\n", 100, 16);
     let status = line(app.render().buffer(), 15);
     assert!(status.contains("sidebar_today"), "{status}");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(window(&mut app).expect("open")[1], format!("  {SUN} Today"));
 }
 
@@ -505,7 +505,7 @@ fn g_i_zooms_to_the_inbox_and_says_so_when_there_is_none() {
 #[test]
 fn typing_filters_the_window_shown_in_its_bottom_border_and_enter_goes_to_the_match() {
     let mut app = app(80);
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     app.type_keys("rep");
     assert_eq!(
         window(&mut app),
@@ -529,7 +529,7 @@ fn typing_filters_the_window_shown_in_its_bottom_border_and_enter_goes_to_the_ma
     press(&mut app, KeyCode::Enter);
     assert_eq!(window(&mut app), None);
     assert_eq!(pane(&mut app)[0], "  ⌂ › Home");
-    ctrl_g(&mut app);
+    ctrl_k(&mut app);
     assert_eq!(
         window(&mut app).map(|lines| lines.len()),
         Some(15),

@@ -211,7 +211,7 @@ Area 29:
 	Sub 29.2:
 		- task 29.2
 END
-keys _ <C-k>
+keys _ g s
 type task 22.1
 see › task 22.1
 keys <Enter>

@@ -8,7 +8,7 @@ END
 keys gS gc x
 hide Book hotel
 hide Compare prices
-keys <C-g>
+keys <C-k>
 see │▌ 󰓎 Starred                                 1 │
 keys <Esc>
 quit

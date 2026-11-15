@@ -44,12 +44,12 @@ enum Open {
 fn every_dialog_dims_the_screen_behind_it() {
     let dialogs = [
         ("Go to Command", Open::Control('p')),
-        ("Go to Symbol", Open::Control('k')),
+        ("Go to Symbol", Open::Keys("gs")),
         ("Go to Project", Open::Keys("gP")),
         ("Move to", Open::Keys("jgm")),
         ("theme chooser", Open::Control('t')),
         ("settings", Open::Keys("g,")),
-        ("context menu", Open::Control('\\')),
+        ("context menu", Open::Keys("M")),
         ("edit node", Open::Keys("e")),
         ("color picker", Open::Keys("mc")),
         ("type picker", Open::Keys("my")),

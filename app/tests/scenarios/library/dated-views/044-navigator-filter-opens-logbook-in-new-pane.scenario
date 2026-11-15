@@ -2,7 +2,7 @@
 file <<END
 - Shipped @done({today})
 END
-keys <C-g>
+keys <C-k>
 type log
 keys <C-t>
 see │  󱓳 Logbook

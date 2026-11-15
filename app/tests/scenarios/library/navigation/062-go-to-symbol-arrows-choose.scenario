@@ -6,7 +6,7 @@ Alpha:
 Beta:
 	- b1
 END
-keys <C-k> <Down> <Enter>
+keys g s <Down> <Enter>
 keys x
 quit
 saved <<END

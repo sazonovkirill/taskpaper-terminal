@@ -7,7 +7,7 @@ Big:
 What?:
 	- c
 END
-keys <C-g>
+keys <C-k>
 type g p
 see │▌ Big Plan
 hide │  What?

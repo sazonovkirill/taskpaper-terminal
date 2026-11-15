@@ -259,11 +259,11 @@ const SCENARIOS: &[Scenario] = &[
         },
     },
     Scenario {
-        name: "Ctrl+G, Esc (Navigator)",
+        name: "Ctrl+K, Esc (Navigator)",
         run: |app| {
             // A change since the Navigator last opened, as there usually is.
             app.keys("x");
-            let open = app.key(KeyCode::Char('g'), KeyModifiers::CONTROL);
+            let open = app.key(KeyCode::Char('k'), KeyModifiers::CONTROL);
             let close = app.key(KeyCode::Esc, KeyModifiers::NONE);
             open.max(close)
         },
@@ -271,7 +271,7 @@ const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "type in the Navigator",
         run: |app| {
-            app.key(KeyCode::Char('g'), KeyModifiers::CONTROL);
+            app.key(KeyCode::Char('k'), KeyModifiers::CONTROL);
             let typed = app.keys("a");
             let erased = app.key(KeyCode::Backspace, KeyModifiers::NONE);
             app.key(KeyCode::Esc, KeyModifiers::NONE);

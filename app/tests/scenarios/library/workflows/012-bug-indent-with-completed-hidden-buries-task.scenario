@@ -8,7 +8,7 @@ Errands:
 END
 keys gc
 hide Pharmacy
-keys G <Tab>
+keys G >
 see ▌     - Hardware store
 quit
 saved <<END

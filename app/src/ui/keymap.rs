@@ -883,11 +883,17 @@ fn save_as_message(key: Key) -> Option<Message> {
 /// The key `key` is, as both key reportings send it (D-42): the kitty protocol sends `Alt+Shift+Z`
 /// and `Ctrl+Shift+Z` as `z` with `Shift`, where other reportings send `Z`, and both become `Z`;
 /// legacy reporting sends `Ctrl+\` as the byte `0x1c`, which reads as `Ctrl+4`, and it becomes
-/// `Ctrl+\` again (D-145).
+/// `Ctrl+\` again (D-145); the kitty protocol sends `Ctrl+Shift+\` as `\` with `Ctrl+Shift`, and
+/// it becomes `Ctrl+|`, the shifted key other reportings send (D-151).
 fn normalized(key: KeyEvent) -> Key {
     match key.code {
         KeyCode::Char('4') if key.modifiers == KeyModifiers::CONTROL => {
             (key.modifiers, KeyCode::Char('\\'))
+        }
+        KeyCode::Char('\\')
+            if key.modifiers == KeyModifiers::CONTROL.union(KeyModifiers::SHIFT) =>
+        {
+            (KeyModifiers::CONTROL, KeyCode::Char('|'))
         }
         KeyCode::Char(c) => (
             key.modifiers.difference(KeyModifiers::SHIFT),
@@ -2104,18 +2110,12 @@ mod tests {
         }
     }
 
-    // FR-OPS-02, FR-OPS-03
+    // FR-OPS-03
     #[test]
-    fn structure_keys_indent_outdent_and_move() {
+    fn structure_keys_move() {
         let alt = KeyModifiers::ALT;
         let up = Some(&Message::MoveUp);
         let down = Some(&Message::MoveDown);
-        check(KeyCode::Tab, KeyModifiers::NONE, Some(&Message::Indent));
-        check(
-            KeyCode::BackTab,
-            KeyModifiers::SHIFT,
-            Some(&Message::Outdent),
-        );
         check(KeyCode::Char('k'), alt, up);
         check(KeyCode::Up, alt, up);
         check(KeyCode::Char('j'), alt, down);
@@ -2348,6 +2348,7 @@ mod tests {
                 "ctrl+enter",
                 "ctrl+i",
                 "ctrl+m",
+                "ctrl+|",
                 "menu"
             ]
         );
@@ -3413,7 +3414,6 @@ mod tests {
         check(KeyCode::Char('.'), none, Some(&Message::ZoomIn));
         check(KeyCode::Char('o'), ctrl, Some(&Message::Back));
         check(KeyCode::Char('i'), ctrl, Some(&Message::Forward));
-        check(KeyCode::Tab, none, Some(&Message::Indent));
         check(KeyCode::Char('t'), ctrl, Some(&Message::OpenTypePicker));
         assert_eq!(Keymap::default().bindings(Command::ChooseTheme, true), "");
         let w = key(KeyCode::Char('w'), ctrl);
@@ -3674,15 +3674,16 @@ mod tests {
         }
     }
 
-    // FR-UI-01, D-42, D-79: `Ctrl+G` is the same key with and without the kitty protocol, and
-    // the Navigator's old keys are gone.
+    // FR-UI-01, D-42, D-79, D-151: `Ctrl+K` is the same key with and without the kitty
+    // protocol, and the Navigator's old keys, `Ctrl+G` included, are gone.
     #[test]
-    fn ctrl_g_opens_the_navigator() {
+    fn ctrl_k_opens_the_navigator() {
         check(
-            KeyCode::Char('g'),
+            KeyCode::Char('k'),
             KeyModifiers::CONTROL,
             Some(&Message::ToggleNavigator),
         );
+        check(KeyCode::Char('g'), KeyModifiers::CONTROL, None);
         check(KeyCode::Char('0'), KeyModifiers::ALT, None);
         assert_eq!(messages("g0", CONTEXT), [None, None]);
     }
@@ -3736,7 +3737,8 @@ mod tests {
             (KeyCode::Backspace, none, navigator(NavigatorInput::Erase)),
             (KeyCode::Esc, none, navigator(NavigatorInput::Leave)),
             (KeyCode::Char('q'), ctrl, Some(Message::Quit)),
-            (KeyCode::Char('g'), ctrl, Some(Message::ToggleNavigator)),
+            (KeyCode::Char('k'), ctrl, Some(Message::ToggleNavigator)),
+            (KeyCode::Char('g'), ctrl, None),
             (KeyCode::Char('b'), ctrl, None),
             (
                 KeyCode::Char('j'),
@@ -4336,14 +4338,20 @@ mod tests {
         assert_eq!(label("fx"), None, "only a number makes a function key");
     }
 
-    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-139, D-145: in the Navigator too, where
-    // `\` is typed into the filter; `Ctrl+R` redoes, as in vim, and legacy reporting's `Ctrl+4` is
-    // `Ctrl+\`.
+    // FR-KEY-06, keybindings.md §1, §2 and §4, D-42, D-139, D-151: in the Navigator too, where
+    // `\` and `M` are typed into the filter and `Ctrl+R` stands in for `M`, which redoes outside
+    // it, as in vim. The kitty protocol sends `Ctrl+Shift+\` as `\` with `Ctrl+Shift`, which the
+    // keymap reads as `Ctrl+|`, as other reportings may send it.
     #[test]
-    fn ctrl_backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_navigator_too() {
+    fn ctrl_shift_backslash_shift_f10_and_the_menu_key_open_the_context_menu_in_the_navigator_too()
+    {
         let open = Some(&Message::OpenContextMenu);
-        check(KeyCode::Char('\\'), KeyModifiers::CONTROL, open);
-        check(KeyCode::Char('4'), KeyModifiers::CONTROL, open);
+        let ctrl_shift = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
+        check(KeyCode::Char('\\'), ctrl_shift, open);
+        check(KeyCode::Char('|'), ctrl_shift, open);
+        check(KeyCode::Char('|'), KeyModifiers::CONTROL, open);
+        check(KeyCode::Char('M'), KeyModifiers::NONE, open);
+        check(KeyCode::Char('m'), KeyModifiers::SHIFT, open);
         check(
             KeyCode::Char('\\'),
             KeyModifiers::NONE,
@@ -4363,8 +4371,9 @@ mod tests {
             ..*CONTEXT
         };
         for (at, (code, modifiers)) in [
-            (KeyCode::Char('\\'), KeyModifiers::CONTROL),
-            (KeyCode::Char('4'), KeyModifiers::CONTROL),
+            (KeyCode::Char('\\'), ctrl_shift),
+            (KeyCode::Char('|'), KeyModifiers::CONTROL),
+            (KeyCode::Char('r'), KeyModifiers::CONTROL),
             (KeyCode::F(10), KeyModifiers::SHIFT),
             (KeyCode::Menu, KeyModifiers::NONE),
         ]
@@ -4431,11 +4440,11 @@ mod tests {
         let bindings = |command, navigator| keymap.bindings(command, navigator);
         assert_eq!(
             bindings(Command::ContextMenu, false),
-            "Ctrl+\\, Shift+F10, Menu"
+            "Ctrl+|, M, Shift+F10, Menu"
         );
         assert_eq!(
             bindings(Command::ContextMenu, true),
-            "Ctrl+\\, Shift+F10, Menu"
+            "Ctrl+|, Ctrl+R, Shift+F10, Menu"
         );
         assert_eq!(bindings(Command::Count, false), "");
         assert_eq!(
@@ -4452,10 +4461,10 @@ mod tests {
             "↓, Ctrl+N"
         );
         let open = Command::Pane(PaneChange::Open);
-        assert_eq!(bindings(open, false), "Ctrl+W v, g|");
+        assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v, g|");
         assert_eq!(
             bindings(open, true),
-            "Alt+Enter, Ctrl+V, Ctrl+T",
+            "Ctrl+\\, Alt+Enter, Ctrl+V, Ctrl+T",
             "the Navigator's own"
         );
         assert_eq!(
@@ -4465,14 +4474,14 @@ mod tests {
         );
     }
 
-    // FR-NAV-05, keybindings.md §2 and §4
+    // FR-NAV-05, keybindings.md §2 and §4, D-151: `Ctrl+K` opens the Navigator now.
     #[test]
-    fn ctrl_k_g_s_and_slash_open_go_to_symbol_which_takes_the_keys_of_pickers() {
+    fn g_s_and_slash_open_go_to_symbol_which_takes_the_keys_of_pickers() {
         let mut keymap = Keymap::default();
         let ctrl_k = key(KeyCode::Char('k'), KeyModifiers::CONTROL);
         assert_eq!(
             keymap.message_for(&ctrl_k, ms(0), CONTEXT),
-            Some(Message::OpenGoToSymbol(Symbols::All))
+            Some(Message::ToggleNavigator)
         );
         let char = |c| key(KeyCode::Char(c), KeyModifiers::NONE);
         assert_eq!(keymap.message_for(&char('g'), ms(0), CONTEXT), None);
@@ -4540,10 +4549,10 @@ mod tests {
             .collect()
     }
 
-    // FR-UI-03, keybindings.md §2, D-145: `g |` opens a pane beside `Ctrl+W v`, and `Ctrl+\`, the
-    // context menu now, does not.
+    // FR-UI-03, keybindings.md §1 and §2, D-145, D-151: `Ctrl+\`, `g |` and `Ctrl+W v` open a
+    // pane; legacy reporting sends `Ctrl+\` as `Ctrl+4`.
     #[test]
-    fn g_bar_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
+    fn ctrl_backslash_g_bar_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
         let ctrl = KeyModifiers::CONTROL;
         let none = KeyModifiers::NONE;
         let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
@@ -4554,9 +4563,17 @@ mod tests {
             ),
             [None, pane(PaneChange::Open)]
         );
+        for code in [KeyCode::Char('\\'), KeyCode::Char('4')] {
+            assert_eq!(actions(&[(code, ctrl)], CONTEXT), [pane(PaneChange::Open)]);
+        }
+        let navigator = &Context {
+            navigator: true,
+            ..*CONTEXT
+        };
         assert_eq!(
-            actions(&[(KeyCode::Char('\\'), ctrl)], CONTEXT),
-            [Some(KeyAction::Send(Message::OpenContextMenu))]
+            actions(&[(KeyCode::Char('\\'), ctrl)], navigator),
+            [pane(PaneChange::Open)],
+            "the Navigator opens its entry in a new pane"
         );
         for (c, expected) in [
             ('v', pane(PaneChange::Open)),
@@ -4588,6 +4605,31 @@ mod tests {
             ],
             "edit mode keeps Ctrl+W"
         );
+    }
+
+    // FR-UI-03, FR-OPS-02, keybindings.md §2 and §3, D-151: in navigate mode `Tab` and `Shift+Tab`
+    // move to the pane on the right and left and `>`/`<` indent and outdent; edit mode's `Tab`
+    // and `Shift+Tab` indent and outdent, and the kitty protocol's `Ctrl+I` still goes forward.
+    #[test]
+    fn tab_and_shift_tab_move_between_panes_in_navigate_mode_and_indent_in_edit_mode() {
+        let none = KeyModifiers::NONE;
+        let shift = KeyModifiers::SHIFT;
+        let right = Message::Pane(PaneChange::FocusRight);
+        let left = Message::Pane(PaneChange::FocusLeft);
+        check(KeyCode::Tab, none, Some(&right));
+        check(KeyCode::BackTab, shift, Some(&left));
+        check(KeyCode::Char('>'), none, Some(&Message::Indent));
+        check(KeyCode::Char('<'), none, Some(&Message::Outdent));
+        check(
+            KeyCode::Char('i'),
+            KeyModifiers::CONTROL,
+            Some(&Message::Forward),
+        );
+        check_editing(KeyCode::Tab, none, Some(&Message::Indent));
+        check_editing(KeyCode::BackTab, shift, Some(&Message::Outdent));
+        let keymap = Keymap::default();
+        assert_eq!(keymap.bindings(Command::Indent, true), ">");
+        assert_eq!(keymap.bindings(Command::Outdent, true), "<");
     }
 
     // FR-UI-03, keybindings.md §2, D-42: `Alt+1` … `Alt+9` have the classic variants `g1` …
@@ -4628,11 +4670,11 @@ mod tests {
         for (change, keys) in [
             (
                 PaneChange::FocusLeft,
-                "Ctrl+Shift+←, Ctrl+,, Ctrl+W ←, Ctrl+W h, Ctrl+W W, gp",
+                "Shift+Tab, Ctrl+Shift+←, Ctrl+,, Ctrl+W ←, Ctrl+W h, Ctrl+W W, gp",
             ),
             (
                 PaneChange::FocusRight,
-                "Ctrl+Shift+→, Ctrl+., Ctrl+W →, Ctrl+W l, Ctrl+W w, gn",
+                "Tab, Ctrl+Shift+→, Ctrl+., Ctrl+W →, Ctrl+W l, Ctrl+W w, gn",
             ),
         ] {
             assert_eq!(keymap.bindings(Command::Pane(change), true), keys);

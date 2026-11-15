@@ -5,7 +5,7 @@ INBOX: @inbox
 		- a
 	- b
 END
-keys <C-g>
+keys <C-k>
 see Bookmarks
 see Sorted                                    1 │
 hide Projects

@@ -6,7 +6,7 @@ END
 file <<END
 - Soon @due({today+1})
 END
-keys <C-g>
+keys <C-k>
 see Navigator
 see Overdue
 hide Upcoming

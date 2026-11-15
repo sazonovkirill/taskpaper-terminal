@@ -3,7 +3,7 @@ file <<END
 Work:
 	- Report
 END
-keys x <C-g>
+keys x <C-k>
 see Navigator
 quit
 saved <<END

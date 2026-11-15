@@ -62,7 +62,7 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
         [
             "┌Go to Command─────────────────────────────────────────────┐",
             "│› symbol                                                  │",
-            "│ › Go to Symbol  Ctrl+K, gs, /                            │",
+            "│ › Go to Symbol  gs, /                                    │",
         ]
     );
 }

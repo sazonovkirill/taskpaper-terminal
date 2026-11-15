@@ -4,7 +4,7 @@ Shop:
 	- Milk @flag
 	- Eggs
 END
-keys <C-g>
+keys <C-k>
 type flag
 keys <C-t>
 see │  󰈻 Flagged

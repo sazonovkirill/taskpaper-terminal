@@ -9,7 +9,7 @@ Errands:
 Home:
 	- Laundry
 END
-keys <C-g>
+keys <C-k>
 see Home
 type Home
 keys <Enter> a

@@ -402,7 +402,7 @@ Many:
 	- same
 		- child 199
 END
-keys <C-k>
+keys g s
 type child 149
 see › child 149
 keys <Enter> gu .

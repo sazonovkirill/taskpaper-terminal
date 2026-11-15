@@ -5,7 +5,7 @@ Capture: @inbox @red @star
 Work:
 	- Report
 END
-keys <C-g>
+keys <C-k>
 see 󰚇 Capture                                 1 │
 see Projects
 hide   Capture

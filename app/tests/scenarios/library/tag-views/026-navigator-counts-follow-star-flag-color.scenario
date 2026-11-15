@@ -9,9 +9,9 @@ Chores:
 	- Dishes @star @flag @red
 	- Laundry
 END
-keys <C-g>
+keys <C-k>
 see 󰓎 Starred                                 1 │
-keys <Esc> j j s ! mc 1 <C-g>
+keys <Esc> j j s ! mc 1 <C-k>
 see 󰓎 Starred                                 2 │
 see 󰈻 Flagged                                 2 │
 see 󰸌 Colors                                  2 │

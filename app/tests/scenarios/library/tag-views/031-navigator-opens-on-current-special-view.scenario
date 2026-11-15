@@ -3,9 +3,9 @@ file <<END
 Work:
 	- Report @red @flag
 END
-keys gC <C-g>
+keys gC <C-k>
 see │▌ 󰸌 Colors
-keys <Esc> gF <C-g>
+keys <Esc> gF <C-k>
 see │▌ 󰈻 Flagged
 keys <Esc>
 hide Navigator

@@ -141,7 +141,7 @@ fn go_to_command_lists_go_to_colors_with_its_key_and_gives_it() {
 fn the_navigator_entry_counts_the_open_tasks_it_lists() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let buffer = app.render().buffer().clone();
     let entry = (0..buffer.area.height)
         .map(|y| crate::support::line(&buffer, y))

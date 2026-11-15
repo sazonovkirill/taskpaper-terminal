@@ -7,7 +7,7 @@ Home:
 END
 keys gt b
 status Bookmarked
-keys <C-g>
+keys <C-k>
 see Bookmarks
 type launch
 keys <Enter>

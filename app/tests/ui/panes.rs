@@ -306,7 +306,7 @@ fn ctrl_w_c_closes_the_focused_pane_focusing_its_neighbor_but_not_the_last() {
 fn the_context_menu_closes_a_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
     app.type_keys("g|");
-    ctrl(&mut app, '\\');
+    ctrl(&mut app, '|');
     app.type_keys("close");
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(screen(&mut app)[0], "  ⌂");
@@ -402,7 +402,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_highlighted_symbol_in_a_new_pane() {
         (KeyCode::Char('t'), KeyModifiers::CONTROL),
     ] {
         let mut app = Harness::with_text(OUTLINE, 80, 10);
-        ctrl(&mut app, 'k');
+        app.type_keys("gs");
         app.type_keys("water");
         app.press(key.0, key.1);
         let screen = screen(&mut app);
@@ -427,7 +427,7 @@ fn alt_enter_ctrl_v_and_ctrl_t_open_the_focused_navigator_entry_in_a_new_pane() 
     ] {
         let mut app = Harness::with_text(OUTLINE, 100, 10);
         app.render();
-        ctrl(&mut app, 'g');
+        ctrl(&mut app, 'k');
         for _ in 0..8 {
             app.press(KeyCode::Down, KeyModifiers::NONE);
         }
@@ -542,7 +542,7 @@ fn reopening_focuses_the_today_entry_that_was_focused() {
     };
     let mut app = Harness::with_text(text, 80, 10);
     app.render();
-    ctrl(&mut app, 'g');
+    ctrl(&mut app, 'k');
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.type_keys("j");
     let expected = focused(&mut app);

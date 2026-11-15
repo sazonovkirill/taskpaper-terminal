@@ -1,0 +1,17 @@
+# Ctrl+\ opens the focused block in a new pane, and Shift+Tab and Tab move the keys between the two panes, so x completes the block of the focused pane.
+file <<END
+Errands:
+	- Post office
+	- Buy milk
+END
+keys <C-\>
+see │  󰋜 › Errands
+keys <S-Tab> j j x
+see ✔ Buy milk
+keys <Tab> x
+quit
+saved <<END
+Errands:
+	- Post office @done({today})
+	- Buy milk @done({today})
+END

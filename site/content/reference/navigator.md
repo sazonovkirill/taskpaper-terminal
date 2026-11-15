@@ -6,7 +6,7 @@ description = "The Navigator window of places to go, the inbox, the Go to Symbol
 
 ## The Navigator
 
-`Ctrl+G` or `|` opens the **Navigator**: a window over the panes listing the places to go, top to bottom:
+`Ctrl+K` or `|` opens the **Navigator**: a window over the panes listing the places to go, top to bottom:
 
 1. The **inbox**, when there is one, then **Today** and the other [special views](@/reference/views.md): Upcoming, Overdue, Colors, Logbook, Starred and Flagged, each unless its setting leaves it out.
 2. **Bookmarks:** every block you [bookmarked](@/reference/tags.md#star-flag-and-bookmark), in document order.
@@ -18,8 +18,8 @@ The Navigator opens on the entry for where the focused pane is: its view, its zo
 
 - `↑`/`↓` or `Ctrl+P`/`Ctrl+N` move, and `←`/`→` fold and unfold project entries. Its folds are its own, kept while it is closed, and not saved.
 - `Enter`, or a click, zooms the focused pane to the entry and closes the window.
-- `Alt+Enter`, `Ctrl+V`, `Ctrl+T` or `Alt`+click opens the entry in a [new pane](@/reference/panes.md).
-- `Esc`, `Ctrl+G` or `|` closes it and leaves the pane as it was, so `|` cannot be typed into its filter. A click outside it closes it too.
+- `Ctrl+\`, `Alt+Enter`, `Ctrl+V`, `Ctrl+T` or `Alt`+click opens the entry in a [new pane](@/reference/panes.md).
+- `Esc`, `Ctrl+K` or `|` closes it and leaves the pane as it was, so `|` cannot be typed into its filter. A click outside it closes it too.
 
 **Typing filters it.** Only the entries whose text holds what you typed, ignoring case, stay, with the projects around each matching project so the tree still reads. The filter looks through folds, and shows in the window's bottom border. `Backspace` erases. Closing the window drops the filter.
 
@@ -50,7 +50,7 @@ The same keys drive the other pickers: [Move to…](@/reference/structure.md#mov
 
 ### Go to Symbol
 
-**Go to Symbol** (`Ctrl+K`, `gs` or `/`) lists every block, each with its path. Bookmarks come first, then projects and sections, then the rest, and better matches come first within each group. Choosing a block zooms the focused pane to its parent and focuses the block.
+**Go to Symbol** (`gs` or `/`) lists every block, each with its path. Bookmarks come first, then projects and sections, then the rest, and better matches come first within each group. Choosing a block zooms the focused pane to its parent and focuses the block.
 
 ### Go to Project
 
@@ -66,7 +66,7 @@ In both, a block can open in a [new pane](@/reference/panes.md) instead:
 
 ## Context menu
 
-`Ctrl+\` or `Shift+F10` (with the kitty protocol also the `Menu` key) opens the **context menu**, in the Navigator too: every command for the focused block, or for the selection, grouped and each with its keys. A right-click opens it at the pointer, on whatever is under it. Type to filter it, `↑`/`↓` move, `Enter` runs and `Esc` closes. Commands that don't apply are left out.
+`M` or `Shift+F10` (with the kitty protocol also `Ctrl+Shift+\` and the `Menu` key) opens the **context menu**, in the Navigator too, where letters go into the filter, so `Ctrl+R` stands in for `M`: every command for the focused block, or for the selection, grouped and each with its keys. A right-click opens it at the pointer, on whatever is under it. Type to filter it, `↑`/`↓` move, `Enter` runs and `Esc` closes. Commands that don't apply are left out.
 
 - **On a block:** Edit, Edit Node, Open Attachments, New Block Below, Above and as Last Child, Copy, Cut, Paste Below and Above, Duplicate and Delete; then Indent, Outdent, Move Up, Move Down, Group and Move to…; status (Complete or Uncomplete, Toggle Star, Toggle Flag, Bookmark or Remove Bookmark); dates; colors; Convert Type, with Make Section on a text block and Remove Section on a section; Zoom In, Toggle Fold for a block with children, Count Blocks and Words, and Open Link for a block with a link; then Open in New Pane, Open Location in New Pane and, while there are other panes, Close Pane.
 - **On the selection:** the same, without what acts on one block alone, labeled for all of them: Uncomplete only when all are done, Clear Due Date when any has a due date.

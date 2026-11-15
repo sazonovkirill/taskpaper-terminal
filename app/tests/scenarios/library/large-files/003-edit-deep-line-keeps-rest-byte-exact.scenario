@@ -661,7 +661,7 @@ Area 19: @tag(a\(b\))
 
 		- child 19.7 @due(2026-01-08)
 END
-keys <C-k>
+keys g s
 type needle
 keys <Enter>
 see ▌   - needle

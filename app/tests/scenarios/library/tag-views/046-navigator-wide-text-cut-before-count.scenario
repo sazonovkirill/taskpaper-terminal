@@ -5,7 +5,7 @@ file <<END
 	- タスク
 	- 二つ目
 END
-keys <C-g>
+keys <C-k>
 see │  日本語のプロジェクト名前がとても長いです  2 │
 keys <Esc>
 quit

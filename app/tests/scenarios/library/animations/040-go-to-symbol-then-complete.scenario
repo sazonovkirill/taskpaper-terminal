@@ -10,7 +10,7 @@ Home:
 	- Laundry
 	- Dishes
 END
-keys <C-k>
+keys g s
 type Dishes
 keys <Enter> x
 see ✔ Dishes

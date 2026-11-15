@@ -3,7 +3,7 @@ file <<END
 - Call mom
 - Pay bill
 END
-keys <C-g>
+keys <C-k>
 type zzz
 keys <C-t>
 type x

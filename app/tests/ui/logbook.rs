@@ -95,7 +95,7 @@ fn the_list_and_its_headings_change_at_local_midnight() {
 fn the_navigator_lists_logbook_unless_its_setting_is_off() {
     let mut app = Harness::with_text(OUTLINE, 80, 16);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let buffer = app.render().buffer().clone();
     let rows: Vec<String> = (0..buffer.area.height)
         .map(|y| crate::support::line(&buffer, y))
@@ -120,7 +120,7 @@ fn the_navigator_lists_logbook_unless_its_setting_is_off() {
     );
     let mut app = Harness::with_config(OUTLINE, "sidebar_logbook = false\n", 80, 16);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     let buffer = app.render().buffer().clone();
     assert!(
         !(0..buffer.area.height).any(|y| crate::support::line(&buffer, y).contains("Logbook")),

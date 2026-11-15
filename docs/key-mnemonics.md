@@ -50,7 +50,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 | `gt` | **t**oday view (`t` alone dates the block today; after `g` it goes there) |
 | `gT` `gU` `gO` `gC` `gL` `gS` `gF` | capital = a special view: **T**oday, **U**pcoming, **O**verdue, **C**olors, **L**ogbook, **S**tarred, **F**lagged |
 | `gi` | **i**nbox, the project tagged `@inbox` (`i` alone adds a last child; after `g` it goes there) |
-| `gs` | **s**ymbol (= `Ctrl+K`) |
+| `gs` | **s**ymbol (= `/`) |
 | `gP` | **P**roject: Go to Symbol over projects only, a list of places, so a capital |
 | `gm` | **m**ove block to… |
 | `g\|` | new pane: the bar is the split it makes (= `Ctrl+W v`) |
@@ -78,7 +78,7 @@ The key says **where**: `o`/`O` **o**pen a line below/above · `i`/`I` **i**nsid
 
 ## 7. Modifier keys
 
-- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+G` **g**o: the Navigator, `Ctrl+K` go to a block and `Ctrl+P` command palette (D-72), `Ctrl+T` convert the **t**ype (as in edit mode; Choose Theme is in the palette), `Ctrl+O`/`Ctrl+I` back/forward (vim's jump list; `Ctrl+I` with the kitty protocol), `Ctrl+R` redo (vim), `Ctrl+↑/↓` jump between siblings (`gk`/`gj` too).
+- **Ctrl = standard app shortcuts.** `Ctrl+C/X/V` copy/cut/paste, `Ctrl+Z/Y` undo/redo, `Ctrl+A` all, `Ctrl+Q` quit, `Ctrl+K` the Navigator, as the quick switchers of other apps (D-151), `Ctrl+P` command palette (D-72), `Ctrl+T` convert the **t**ype (as in edit mode; Choose Theme is in the palette), `Ctrl+O`/`Ctrl+I` back/forward (vim's jump list; `Ctrl+I` with the kitty protocol), `Ctrl+R` redo (vim), `Ctrl+↑/↓` jump between siblings (`gk`/`gj` too).
 - **Alt = carry the block, or a second route.** `Alt+k/j` (`Alt+↑/↓`) move the block up/down, `Alt+Shift+h/l` narrow/widen the pane, `Alt+←/→` back/forward (as in a browser), `Alt+z` wrap (as in VS Code), `Alt+1…9` panes. Every Alt key also has a route without Alt (a `g` key, a letter, `Ctrl+W`, or the command palette), because macOS needs a terminal setting for Alt.
 
 ## 8. Panes: `Ctrl+W` then a vim letter
@@ -95,18 +95,18 @@ Every kitty-only key has a classic twin that works in any terminal. Learn the tw
 |---|---|
 | `Ctrl+Enter` done | `x` |
 | `Ctrl+'` home | `gh` |
-| Menu key | `Ctrl+\`, `Shift+F10` |
+| `Ctrl+Shift+\`, Menu key | `M` (`Ctrl+R` in the Navigator), `Shift+F10` |
 | `Ctrl+I` forward | `L` |
 
 ## 10. Odds and ends
 
 - `'` folds, `"` folds the subtree.
-- `Ctrl+\` is the "right-click": context menu, in the Navigator too (`Ctrl+\` reaches the app from any terminal).
+- `Ctrl+\` opens the block in a new pane (as `Ctrl+W v` and `g|`, whose bar is the split), and `Ctrl+Shift+\`, `Ctrl+|`, is the "right-click": the context menu, also `M` for **m**enu (`Ctrl+R`, **r**ight-click, in the Navigator, whose filter takes letters).
 - `\` (or `&`) opens the attachments panel, the note and comments of the block, in its pane at half width; pressed again in the panel it takes the whole pane, then closes.
 - `?` shortcuts panel; `(`/`)` page it.
 - `Enter` edits; `Esc` clears the selection.
-- `Tab`/`Shift+Tab` indent/outdent, in both modes; `>`/`<` too in navigate mode.
-- The **Navigator** (`Ctrl+G` or `|`, a side bar) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+\`, `Shift+F10` or the Menu key opens the context menu, `Esc`, `Ctrl+G` or `|` closes, `Ctrl+Q` quits.
+- `Tab`/`Shift+Tab` go to the next/previous pane in navigate mode, as in a browser's tabs, and indent/outdent in edit mode, as in a text editor; navigate mode indents with `>`/`<` (D-151).
+- The **Navigator** (`Ctrl+K` or `|`, a side bar) is a place finder: letters type into its filter, so its keys are arrows and `Ctrl` keys, as in fzf. `↑`/`↓` or `Ctrl+N`/`Ctrl+P` move, `←`/`→` fold, `Enter` goes, `Ctrl+\`, `Alt+Enter`, `Ctrl+V` or `Ctrl+T` opens in a new pane, `Backspace` erases, `Ctrl+Shift+\`, `Ctrl+R`, `Shift+F10` or the Menu key opens the context menu, `Esc`, `Ctrl+K` or `|` closes, `Ctrl+Q` quits.
 - **Edit mode** uses normal text-editor keys, plus `/` command menu, `Ctrl+T` cycle **t**ype, `Ctrl+B` **b**old, `Ctrl+G` inline code (or `` Alt+` ``; `Ctrl+A`/`Ctrl+E` go to the ends of the text as in readline), `↑`/`↓` edit the neighbor block.
 
 ## Where the logic breaks

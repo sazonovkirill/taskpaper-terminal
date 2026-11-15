@@ -8,7 +8,7 @@ Garden:
 		Compost:
 			- Turn pile
 END
-keys <C-g>
+keys <C-k>
 see ▾Garden                                    3 │
 see    Tulips                                  1 │
 see    Compost                                 1 │

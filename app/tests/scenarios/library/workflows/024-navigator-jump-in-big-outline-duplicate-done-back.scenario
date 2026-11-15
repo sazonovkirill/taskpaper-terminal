@@ -301,7 +301,7 @@ Project 30:
 	- Task 30.8
 	Note for project 30
 END
-keys <C-g>
+keys <C-k>
 see Navigator
 type 17
 keys <Enter>
@@ -311,7 +311,7 @@ keys j D
 see ▌   - Task 17.2
 keys x
 see ✔ Task 17.2
-keys <C-g>
+keys <C-k>
 see Project 17                                8
 keys <Esc> H
 see ▌ Project 17:

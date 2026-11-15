@@ -1,4 +1,4 @@
-# \ opens the attachments panel of the focused block, Ctrl+\ its context menu, and g| opens the block zoomed in a new pane.
+# \ opens the attachments panel of the focused block, M its context menu, and g| opens the block zoomed in a new pane.
 file <<END
 Trip:
 	- Book hotel
@@ -7,7 +7,7 @@ END
 keys j \
 see No note
 see No comments
-keys <Esc> <C-\>
+keys <Esc> M
 see Commands:
 keys <Esc> g|
 see │  󰋜 › Trip › Book hotel

@@ -1,4 +1,4 @@
-# Ctrl+G opens the Navigator listing the inbox, Today, bookmarks and projects, each with its open-task count.
+# Ctrl+K opens the Navigator listing the inbox, Today, bookmarks and projects, each with its open-task count.
 file <<END
 INBOX: @inbox
 	- Call mom
@@ -11,7 +11,7 @@ Reading @bookmark
 	- Dune
 	- Emma
 END
-keys <C-g>
+keys <C-k>
 see Navigator
 see 󰚇 INBOX                                   1 │
 see 󰖙 Today                                   1 │

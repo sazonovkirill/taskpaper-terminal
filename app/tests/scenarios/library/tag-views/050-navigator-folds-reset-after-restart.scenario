@@ -4,13 +4,13 @@ Work:
 	Launch:
 		- Venue
 END
-keys . <C-g> <Left>
+keys . <C-k> <Left>
 see ▸Work
-keys <Esc> <C-g>
+keys <Esc> <C-k>
 see ▸Work
 hide Launch                                  1
 restart
-keys <C-g>
+keys <C-k>
 see ▾Work
 see    Launch                                  1 │
 quit

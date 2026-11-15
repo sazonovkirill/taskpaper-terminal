@@ -7,7 +7,7 @@ Launch:
 END
 keys <C-w> s gt
 see - Write post  Launch
-keys g1 G k <Tab>
+keys g1 G k >
 see - Write post  Work › Launch
 quit
 saved <<END

@@ -83,7 +83,7 @@ Errands:
 
 // FR-DONE-02, FR-OPS-02, FR-OPS-03
 #[test]
-fn with_done_blocks_hidden_tab_and_alt_j_k_pass_over_them() {
+fn with_done_blocks_hidden_indent_and_alt_j_k_pass_over_them() {
     let mut app = Harness::with_text(ERRANDS, 30, 10);
     app.type_keys("gcG");
     app.press(KeyCode::Char('k'), KeyModifiers::ALT);
@@ -94,7 +94,7 @@ fn with_done_blocks_hidden_tab_and_alt_j_k_pass_over_them() {
     );
     assert_eq!(focused_rows(&mut app), ["  - Hardware store"]);
     app.press(KeyCode::Char('j'), KeyModifiers::ALT);
-    app.press(KeyCode::Tab, KeyModifiers::NONE);
+    app.type_keys(">");
     assert_eq!(
         shown(&mut app),
         ["Errands:", "  - Post office", "    - Hardware store"],

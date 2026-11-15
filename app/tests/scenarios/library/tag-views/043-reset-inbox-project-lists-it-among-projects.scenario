@@ -10,7 +10,7 @@ keys gi :
 type reset inbox project
 keys <Enter>
 status No inbox project now
-keys <C-g>
+keys <C-k>
 see Projects
 see │▌ INBOX                                     1 │
 hide 󰚇

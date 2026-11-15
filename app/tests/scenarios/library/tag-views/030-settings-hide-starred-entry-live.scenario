@@ -8,7 +8,7 @@ keys g,
 type /show starred
 keys <Enter> <Enter>
 see off
-keys <Esc> <Esc> <C-g>
+keys <Esc> <Esc> <C-k>
 see 󰈻 Flagged
 hide Starred
 keys <Esc> gS

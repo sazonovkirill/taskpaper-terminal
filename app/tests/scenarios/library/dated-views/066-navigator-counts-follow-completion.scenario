@@ -3,7 +3,7 @@ file <<END
 - Aa @due({today-2})
 - Bb @due({today-1})
 END
-keys <C-g>
+keys <C-k>
 see 󰨱 Overdue                                 2 │
-keys <Esc> gO x <C-g>
+keys <Esc> gO x <C-k>
 see 󰨱 Overdue                                 1 │

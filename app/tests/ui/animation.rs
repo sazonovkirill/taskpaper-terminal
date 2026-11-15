@@ -552,7 +552,7 @@ fn focus_landing_on_a_block_another_pane_highlights_tints_it_no_more_than_either
     wait(&mut landed, 100);
     let faded = background(&mut landed, 4);
     let mut app = start();
-    app.press(KeyCode::Tab, KeyModifiers::NONE);
+    app.type_keys(">");
     let indented = app.render().buffer().clone();
     assert!(
         line(&indented, 4).starts_with("      - c "),

@@ -4,7 +4,7 @@ Work:
 	- Pay rent @due({today})
 	- Later
 END
-keys <C-g>
+keys <C-k>
 type tod
 keys <Enter>
 see Today

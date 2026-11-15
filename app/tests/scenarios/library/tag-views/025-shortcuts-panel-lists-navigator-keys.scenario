@@ -6,6 +6,6 @@ Work:
 END
 keys ?
 see New Block Below
-keys <C-g>
+keys <C-k>
 see Navigator
 hide New Block Below

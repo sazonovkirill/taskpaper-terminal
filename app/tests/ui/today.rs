@@ -30,7 +30,7 @@ fn today_header(day: &str) -> String {
 fn today(text: &str) -> Harness {
     let mut app = Harness::with_text(text, 80, 10);
     app.render();
-    app.press(KeyCode::Char('g'), KeyModifiers::CONTROL);
+    app.press(KeyCode::Char('k'), KeyModifiers::CONTROL);
     app.press(KeyCode::Enter, KeyModifiers::NONE);
     app
 }
