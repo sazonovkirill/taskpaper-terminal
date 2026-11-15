@@ -51,16 +51,16 @@ fn ctrl_shift_backslash_on_a_task_lists_its_commands_grouped_with_their_keys_und
         rows[3..9],
         [
             "▌   - Book the hotel",
-            "      ┌Commands:────────────────────────────────────────────┐",
-            "    - │  › Edit                                      Enter  │",
-            "  Othe│  ✎ Edit Node                                     e  │",
-            "      │  ≡ Open Attachments                           \\, &  │",
-            "      │  ❞ Add Comment                                   c  │",
+            "      ┌Commands:────────────────────────────────────────┐",
+            "    - │  › Edit                                  Enter  │",
+            "  Othe│  ✎ Edit Node                                 e  │",
+            "      │  ≡ Open Attachments                       \\, &  │",
+            "      │  ❞ Add Comment                               c  │",
         ],
         "anchored at the task's text, below it"
     );
     assert_eq!(
-        rows[14], "      └─────────────────────────────────────────────────────┘",
+        rows[14], "      └─────────────────────────────────────────────────┘",
         "no taller than the room below the task"
     );
     let buffer = app.render().buffer().clone();

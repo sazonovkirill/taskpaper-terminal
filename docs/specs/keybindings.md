@@ -13,7 +13,6 @@ Covers FR-KEY, FR-MODE-01 and N-PORT-03. Navigate mode is vi-inspired with arrow
   | `Ctrl+Enter` | Toggle done | `x` |
   | `Ctrl+'` | Go home | `gh` (legacy sends a plain `'`, which toggles the fold) |
   | `Ctrl+M` | Move to… | `gm` (legacy sends `Enter`, which edits; D-131) |
-  | `Ctrl+I` | Forward | `L` (legacy sends `Tab`, which focuses the pane on the right; D-139, D-151) |
   | `Ctrl+,` / `Ctrl+.` | Focus the pane left / right | `Ctrl+W ←` / `Ctrl+W →` (legacy sends a plain `,` or `.`, which zoom out and in, or nothing; D-147) |
   | `Ctrl+Shift+\` (written `ctrl+\|`), Menu key | Context menu | `M` (`Ctrl+R` in the Navigator), `Shift+F10` (legacy sends `Ctrl+Shift+\` as `Ctrl+\`, which opens a new pane; D-151) |
 - **`Ctrl+\`** reaches the app with both reportings (D-145): legacy reporting sends it as the byte `0x1c`, which crossterm reports as `Ctrl+4`, and the keymap reads `Ctrl+4` as `Ctrl+\`, so `Ctrl+4` under the kitty protocol does the same. The kitty protocol sends `Ctrl+Shift+\` as `\` with `Ctrl+Shift`, and the keymap reads it as `Ctrl+|`, the shifted key, which the config file writes `ctrl+|` and the panels show as `Ctrl+|` (D-151).
@@ -58,7 +57,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Command | Keys |
 |---|---|
 | Zoom into focused block | `.`, `gz` (`Alt+l` and `Alt+→` are gone, D-132) |
-| Zoom out | `,`, `gu` (`>` indents since D-139; `Alt+h` and `Alt+←` are gone, D-132) |
+| Zoom out | `,`, `gu` (`>` goes forward since D-152; `Alt+h` and `Alt+←` are gone, D-132) |
 | Go home | `Ctrl+'` (kitty keyboard protocol only, §1), `gh` |
 | Go to Today: show the Today view, as choosing it in the Navigator does (D-64, D-95) | `gt`, `gT` |
 | Go to Upcoming / Overdue / Colors / Logbook: show that special view, as choosing it in the Navigator does (D-80, D-95) | `gU` / `gO` / `gC` / `gL` |
@@ -67,7 +66,7 @@ Fold state lives in memory only and is not saved (D-26); a file opens fully expa
 | Go to Inbox: zoom to the inbox project, the project tagged `@inbox` ([navigation.md §6](navigation.md#6-navigator-fr-ui-01-d-7-d-11-d-28-d-79)), as choosing its entry does; with none, a status notice says so (D-78, D-141) | `gi` |
 | Select Inbox Project: choose the project to tag `@inbox` in a finder (D-141) | command palette |
 | Reset Inbox Project: remove `@inbox` from every project (D-141) | command palette |
-| Back / forward | `H` / `L`, `Alt+←` / `Alt+→` (were `Alt+Shift+←` / `Alt+Shift+→`, D-132), `Ctrl+O` / `Ctrl+I` (vim's jump list; `Ctrl+I` kitty keyboard protocol only, §1; D-139) |
+| Back / forward | `<` / `>` (D-152), `H` / `L`, `Alt+←` / `Alt+→` (were `Alt+Shift+←` / `Alt+Shift+→`, D-132; `Ctrl+O` / `Ctrl+I` from D-139 until D-152) |
 
 ### Editing and creating (FR-MODE)
 
@@ -95,7 +94,7 @@ The creation keys act at once (D-136): `o`, `O`, `i`, `I`, `a` and `A` add a blo
 
 | Command | Keys |
 |---|---|
-| Indent / outdent | `>` / `<` (as in vim, D-139; `Tab` / `Shift+Tab` until D-151, which now focus panes) |
+| Indent / outdent | none in navigate mode (D-152): edit mode's `Tab` / `Shift+Tab` (§3), or the context menu and Go to Command for a selection (`>` / `<` from D-139, `Tab` / `Shift+Tab` until D-151) |
 | Move up / down | `K` / `J` (D-139), `Alt+k` / `Alt+j`, `Alt+↑` / `Alt+↓`; in the Today view they reorder its entries (D-57) |
 | Group | command palette, context menu (was `gG`, D-139) |
 | Move to… | `Ctrl+M` (kitty keyboard protocol only, §1, D-131), `gm` (was `m`) |
@@ -134,7 +133,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 
 | Command | Keys |
 |---|---|
-| Show/hide completed in this pane (FR-DONE-02) | `gc` (`Ctrl+O` goes back since D-139) |
+| Show/hide completed in this pane (FR-DONE-02) | `gc` (`Ctrl+O` went back from D-139 until D-152) |
 | Toggle word wrap (FR-UI-05) | `Alt+z`, `gw` |
 | Open Navigator: the window of places to go, on the entry of where the pane is, else the first (FR-UI-01, D-68, D-79); one control key in both key reportings (D-42) | `Ctrl+K` (was `Ctrl+G` until D-151), `\|` (D-132) |
 | Shortcuts panel (FR-KEY-04) | `?` |
@@ -145,7 +144,7 @@ The `t` prefix of earlier drafts is gone because `t` now sets the start date. Co
 | Go to Command (FR-NAV-06) | `Ctrl+P`, `:` (was `Ctrl+K`, D-72) |
 | Settings window (FR-SET-02); also Open Settings in the command palette | `g,` |
 | Context menu for the focused element (FR-KEY-06) | `Ctrl+Shift+\` (kitty protocol only, §1), `M`, `Shift+F10`, the Menu key (once `M`, then `\` until D-145 and `Ctrl+\` until D-151, when `M` came back) |
-| Open focused block in a new pane (FR-UI-03) | `Ctrl+\` (again, D-151), `Ctrl+W v`, `g\|` (D-145) |
+| Open focused block in a new pane (FR-UI-03) | `Ctrl+\` (again, D-151), `Ctrl+W v` (`g\|` from D-145 until D-152) |
 | Open this pane's location in a new pane | `Ctrl+W s` |
 | Focus pane N | `Alt+1` … `Alt+9`, `g1` … `g9` (the non-`Alt` route of §1) |
 | Focus the pane left / right (D-71, D-118, D-147, D-151) | `Shift+Tab` / `Tab` (they stop at the first and last pane), `Ctrl+Shift+←` / `Ctrl+Shift+→`, `Ctrl+,` / `Ctrl+.` (kitty keyboard protocol only, §1), `Ctrl+W ←` / `Ctrl+W →`, `Ctrl+W h` / `Ctrl+W l`, `Ctrl+W W` / `Ctrl+W w` (as in vim), `gp` / `gn` (`gl` and `gr` are gone, D-139) |

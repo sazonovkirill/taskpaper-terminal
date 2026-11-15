@@ -25,12 +25,12 @@ Every block command, such as [done, dates, star or color](@/reference/tags.md), 
 
 | Key | Does |
 |---|---|
-| `>` | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
-| `<` | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
+| `Tab` while editing | **Indent:** the block becomes the last child of the sibling above it, which expands. Nothing happens on a first sibling. |
+| `Shift+Tab` while editing | **Outdent:** the block becomes the next sibling of its parent. The siblings after it stay where they are. Nothing happens at the top level of the pane. |
 | `K`, `Alt+k`, `Alt+↑` | **Move Up:** swap with the sibling above. At the top of its list, the block moves to the end of the parent's previous sibling. |
 | `J`, `Alt+j`, `Alt+↓` | **Move Down:** swap with the sibling below, or move to the start of the parent's next sibling. |
 
-Selected blocks move together and keep their order. A selected block inside another selected block moves with it, not on its own. A block that cannot move stays, and so do the blocks that would have to pass it. No move takes a block out of the pane's zoom, and the zoom's title row never moves.
+Navigate mode has no indent key: indent the selection, or a block without editing it, from the context menu (`M`) or Go to Command. Selected blocks move together and keep their order. A selected block inside another selected block moves with it, not on its own. A block that cannot move stays, and so do the blocks that would have to pass it. No move takes a block out of the pane's zoom, and the zoom's title row never moves.
 
 The moves go by what the pane shows. While the pane [hides completed blocks](@/reference/tags.md#showing-completed-blocks), a hidden done block is passed over and stays where it is. No move or indent puts a block under an empty line, which would then need placeholder text: the block looks past empty lines for a place, or stays.
 

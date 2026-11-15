@@ -5,7 +5,7 @@ A:
 		- a1x
 	- a2
 END
-keys j <S-Down> <lt>
+keys j <S-Down> Moutdent <Enter>
 quit
 saved <<END
 A:

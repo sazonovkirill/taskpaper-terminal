@@ -61,7 +61,8 @@ fn an_outline_thousands_of_levels_deep_opens_shows_edits_and_saves() {
             app.render();
             // Copies the whole chain and pastes it below its last block, as the report did.
             keys(&mut app, "ggyGp");
-            press(&mut app, KeyCode::Char('>'));
+            keys(&mut app, "Mindent");
+            press(&mut app, KeyCode::Enter);
             assert_eq!(saved(&mut app), chain(true));
             keys(&mut app, "gs");
             let screen = app.render().buffer().clone();
@@ -79,8 +80,10 @@ fn an_outline_thousands_of_levels_deep_opens_shows_edits_and_saves() {
             press(&mut app, KeyCode::Esc);
             keys(&mut app, "gg.gh_+--==\"\"");
             keys(&mut app, "G");
-            press(&mut app, KeyCode::Char('<'));
-            press(&mut app, KeyCode::Char('>'));
+            keys(&mut app, "Moutdent");
+            press(&mut app, KeyCode::Enter);
+            keys(&mut app, "Mindent");
+            press(&mut app, KeyCode::Enter);
             press(&mut app, KeyCode::Enter);
             keys(&mut app, "!");
             press(&mut app, KeyCode::Esc);

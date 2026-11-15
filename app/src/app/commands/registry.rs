@@ -113,12 +113,8 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["g i"]
     ),
-    entry!(Command::Back, Mode::Navigate, &["H", "alt+left", "ctrl+o"]),
-    entry!(
-        Command::Forward,
-        Mode::Navigate,
-        &["L", "alt+right", "ctrl+i"]
-    ),
+    entry!(Command::Back, Mode::Navigate, &["<", "H", "alt+left"]),
+    entry!(Command::Forward, Mode::Navigate, &[">", "L", "alt+right"]),
     entry!(Command::Edit, Mode::Navigate, &["enter"]),
     entry!(Command::New(NewBlock::Below, None), Mode::Navigate, &["o"]),
     entry!(
@@ -287,8 +283,8 @@ pub const REGISTRY: &[Entry] = &[
         Mode::Navigate,
         &["esc"],
     ),
-    entry!(Command::Indent, Mode::Navigate, &[">"]),
-    entry!(Command::Outdent, Mode::Navigate, &["<"]),
+    entry!(Command::Indent, Mode::Navigate, &[]),
+    entry!(Command::Outdent, Mode::Navigate, &[]),
     entry!(Command::MoveUp, Mode::Navigate, &["K", "alt+k", "alt+up"]),
     entry!(
         Command::MoveDown,
@@ -426,7 +422,7 @@ pub const REGISTRY: &[Entry] = &[
     entry!(
         Command::Pane(PaneChange::Open),
         Mode::Navigate,
-        &["ctrl+\\", "ctrl+w v", "g |"],
+        &["ctrl+\\", "ctrl+w v"],
     ),
     entry!(
         Command::Pane(PaneChange::OpenLocation),
@@ -716,8 +712,6 @@ const SHORTCUTS: &[(Mode, Group, &[Command])] = &[
         Mode::Navigate,
         Group::Structure,
         &[
-            Command::Indent,
-            Command::Outdent,
             Command::MoveUp,
             Command::MoveDown,
             Command::Cut,
@@ -908,7 +902,7 @@ mod tests {
                 ("Zoom and History", 13),
                 ("Editing and Creating", 4),
                 ("Selection", 3),
-                ("Structure", 9),
+                ("Structure", 7),
                 ("Block Metadata", 9),
                 ("View and Panels", 12),
             ]

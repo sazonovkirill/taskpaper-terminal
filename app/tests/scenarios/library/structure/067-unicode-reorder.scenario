@@ -5,7 +5,7 @@ Voyage 🌍:
 	- 日本語のタスク
 	- Ünïcödé
 END
-keys j <A-j> j > G dd z
+keys j <A-j> j <Enter> <Tab> <Esc> G dd z
 see ▌     - Ünïcödé
 quit
 saved <<END

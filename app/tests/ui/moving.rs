@@ -66,10 +66,12 @@ fn alt_j_and_alt_k_reorder_a_list_and_cross_into_the_neighboring_parent() {
 
 // FR-OPS-02, FR-OPS-08
 #[test]
-fn greater_than_indents_less_than_outdents_and_z_undoes() {
+fn tab_indents_shift_tab_outdents_while_editing_and_z_undoes() {
     let mut app = Harness::open("groceries.taskpaper", 50, 12);
     app.type_keys("jjjj");
-    app.type_keys(">");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.press(KeyCode::Tab, KeyModifiers::NONE);
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(
         outline_rows(&mut app)[2..6],
         [
@@ -84,8 +86,10 @@ fn greater_than_indents_less_than_outdents_and_z_undoes() {
         saved(&mut app),
         GROCERIES.replace("\tDairy:\n\t\t- Cheese", "\t\tDairy:\n\t\t\t- Cheese")
     );
-    app.type_keys("<");
-    app.type_keys("<");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.press(KeyCode::BackTab, KeyModifiers::SHIFT);
+    app.press(KeyCode::BackTab, KeyModifiers::SHIFT);
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(
         outline_rows(&mut app)[4..7],
         ["Dairy:", "  - Cheese", "Notes about the week."]
@@ -121,7 +125,9 @@ fn tab_while_typing_a_new_block_indents_it_and_keeps_editing() {
 fn indenting_a_text_line_after_a_text_line_leaves_them_apart() {
     let mut app = Harness::with_text("Ideas:\n\tFirst note\nSecond note\n", 200, 6);
     app.type_keys("jj");
-    app.type_keys(">");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
+    app.press(KeyCode::Tab, KeyModifiers::NONE);
+    app.press(KeyCode::Esc, KeyModifiers::NONE);
     assert_eq!(focused_rows(&mut app), ["  Second note"]);
     assert_eq!(
         outline_rows(&mut app)[1..3],

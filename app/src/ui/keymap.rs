@@ -2165,14 +2165,10 @@ mod tests {
         );
     }
 
-    // FR-DONE-02, D-139: `Ctrl+O` goes back, as in vim, and `gc` alone shows completed blocks.
+    // FR-DONE-02, D-139, D-152: `<` goes back, and `gc` alone shows completed blocks.
     #[test]
     fn g_c_shows_or_hides_completed_blocks() {
-        check(
-            KeyCode::Char('o'),
-            KeyModifiers::CONTROL,
-            Some(&Message::Back),
-        );
+        check(KeyCode::Char('<'), KeyModifiers::NONE, Some(&Message::Back));
         assert_eq!(
             messages("gc", CONTEXT),
             [None, Some(Message::ToggleShowDone)]
@@ -2346,7 +2342,6 @@ mod tests {
                 "ctrl+,",
                 "ctrl+.",
                 "ctrl+enter",
-                "ctrl+i",
                 "ctrl+m",
                 "ctrl+|",
                 "menu"
@@ -3400,8 +3395,8 @@ mod tests {
         for modifiers in [none, shift] {
             check(KeyCode::Char('J'), modifiers, Some(&Message::MoveDown));
             check(KeyCode::Char('K'), modifiers, Some(&Message::MoveUp));
-            check(KeyCode::Char('>'), modifiers, Some(&Message::Indent));
-            check(KeyCode::Char('<'), modifiers, Some(&Message::Outdent));
+            check(KeyCode::Char('>'), modifiers, Some(&Message::Forward));
+            check(KeyCode::Char('<'), modifiers, Some(&Message::Back));
         }
         check(KeyCode::Char('j'), shift, Some(&Message::MoveDown));
         check(KeyCode::Char('k'), shift, Some(&Message::MoveUp));
@@ -3412,8 +3407,8 @@ mod tests {
         );
         check(KeyCode::Char(','), none, Some(&Message::ZoomOut));
         check(KeyCode::Char('.'), none, Some(&Message::ZoomIn));
-        check(KeyCode::Char('o'), ctrl, Some(&Message::Back));
-        check(KeyCode::Char('i'), ctrl, Some(&Message::Forward));
+        check(KeyCode::Char('o'), ctrl, None);
+        check(KeyCode::Char('i'), ctrl, None);
         check(KeyCode::Char('t'), ctrl, Some(&Message::OpenTypePicker));
         assert_eq!(Keymap::default().bindings(Command::ChooseTheme, true), "");
         let w = key(KeyCode::Char('w'), ctrl);
@@ -4461,7 +4456,7 @@ mod tests {
             "↓, Ctrl+N"
         );
         let open = Command::Pane(PaneChange::Open);
-        assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v, g|");
+        assert_eq!(bindings(open, false), "Ctrl+\\, Ctrl+W v");
         assert_eq!(
             bindings(open, true),
             "Ctrl+\\, Alt+Enter, Ctrl+V, Ctrl+T",
@@ -4549,10 +4544,10 @@ mod tests {
             .collect()
     }
 
-    // FR-UI-03, keybindings.md §1 and §2, D-145, D-151: `Ctrl+\`, `g |` and `Ctrl+W v` open a
-    // pane; legacy reporting sends `Ctrl+\` as `Ctrl+4`.
+    // FR-UI-03, keybindings.md §1 and §2, D-145, D-151, D-152: `Ctrl+\` and `Ctrl+W v` open a
+    // pane, and `g |` no longer does; legacy reporting sends `Ctrl+\` as `Ctrl+4`.
     #[test]
-    fn ctrl_backslash_g_bar_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
+    fn ctrl_backslash_and_the_ctrl_w_sequences_open_focus_and_close_panes() {
         let ctrl = KeyModifiers::CONTROL;
         let none = KeyModifiers::NONE;
         let pane = |change| Some(KeyAction::Send(Message::Pane(change)));
@@ -4561,7 +4556,7 @@ mod tests {
                 &[(KeyCode::Char('g'), none), (KeyCode::Char('|'), none)],
                 CONTEXT
             ),
-            [None, pane(PaneChange::Open)]
+            [None, None]
         );
         for code in [KeyCode::Char('\\'), KeyCode::Char('4')] {
             assert_eq!(actions(&[(code, ctrl)], CONTEXT), [pane(PaneChange::Open)]);
@@ -4607,9 +4602,9 @@ mod tests {
         );
     }
 
-    // FR-UI-03, FR-OPS-02, keybindings.md §2 and §3, D-151: in navigate mode `Tab` and `Shift+Tab`
-    // move to the pane on the right and left and `>`/`<` indent and outdent; edit mode's `Tab`
-    // and `Shift+Tab` indent and outdent, and the kitty protocol's `Ctrl+I` still goes forward.
+    // FR-UI-03, FR-OPS-02, FR-NAV-04, keybindings.md §2 and §3, D-151, D-152: in navigate mode
+    // `Tab` and `Shift+Tab` move to the pane on the right and left and `>`/`<` go forward and
+    // back, so only edit mode's `Tab` and `Shift+Tab` indent and outdent.
     #[test]
     fn tab_and_shift_tab_move_between_panes_in_navigate_mode_and_indent_in_edit_mode() {
         let none = KeyModifiers::NONE;
@@ -4618,18 +4613,15 @@ mod tests {
         let left = Message::Pane(PaneChange::FocusLeft);
         check(KeyCode::Tab, none, Some(&right));
         check(KeyCode::BackTab, shift, Some(&left));
-        check(KeyCode::Char('>'), none, Some(&Message::Indent));
-        check(KeyCode::Char('<'), none, Some(&Message::Outdent));
-        check(
-            KeyCode::Char('i'),
-            KeyModifiers::CONTROL,
-            Some(&Message::Forward),
-        );
+        check(KeyCode::Char('>'), none, Some(&Message::Forward));
+        check(KeyCode::Char('<'), none, Some(&Message::Back));
         check_editing(KeyCode::Tab, none, Some(&Message::Indent));
         check_editing(KeyCode::BackTab, shift, Some(&Message::Outdent));
         let keymap = Keymap::default();
-        assert_eq!(keymap.bindings(Command::Indent, true), ">");
-        assert_eq!(keymap.bindings(Command::Outdent, true), "<");
+        assert_eq!(keymap.bindings(Command::Indent, true), "");
+        assert_eq!(keymap.bindings(Command::Outdent, true), "");
+        assert_eq!(keymap.bindings(Command::Back, true), "<, H, Alt+←");
+        assert_eq!(keymap.bindings(Command::Forward, true), ">, L, Alt+→");
     }
 
     // FR-UI-03, keybindings.md §2, D-42: `Alt+1` … `Alt+9` have the classic variants `g1` …

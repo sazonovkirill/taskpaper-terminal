@@ -8,7 +8,7 @@ To see two places at once, split the screen into **panes**, side by side.
 
 ## Open a pane
 
-Go to "Trip to Lisbon" and press <kbd>Ctrl+\\</kbd>. <kbd>Ctrl+W</kbd> <kbd>v</kbd> (<kbd>Ctrl+W</kbd>, then <kbd>v</kbd>) and <kbd>g</kbd> <kbd>|</kbd> do the same. A second pane opens on the right, zoomed into the trip. The left pane still shows the whole outline. Each pane's header ends in its number, `1` and `2`.
+Go to "Trip to Lisbon" and press <kbd>Ctrl+\\</kbd>. <kbd>Ctrl+W</kbd> <kbd>v</kbd> (<kbd>Ctrl+W</kbd>, then <kbd>v</kbd>) does the same. A second pane opens on the right, zoomed into the trip. The left pane still shows the whole outline. Each pane's header ends in its number, `1` and `2`.
 
 {{ shot(src="tutorial/panes", alt="Two panes side by side: the whole outline on the left, numbered 1, and Trip to Lisbon zoomed in on the right, numbered 2", caption="The whole outline on the left, the trip on the right.") }}
 

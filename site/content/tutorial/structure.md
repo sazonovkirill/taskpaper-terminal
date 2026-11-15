@@ -8,7 +8,7 @@ description = "Indent, move, fold and add projects."
 
 Under "Home", "Buy a new washer" is really part of "Fix the dripping kitchen tap".
 
-Move to "Buy a new washer" and press <kbd>></kbd>. It becomes a subtask of the tap. <kbd><</kbd> moves a line back out, as in vim. While you edit a line, <kbd>Tab</kbd> and <kbd>Shift+Tab</kbd> do the same.
+Move to "Buy a new washer", press <kbd>Enter</kbd> to edit it, then <kbd>Tab</kbd>. It becomes a subtask of the tap. <kbd>Shift+Tab</kbd> moves a line back out. <kbd>Esc</kbd> stops editing.
 
 A line always takes everything inside it along.
 

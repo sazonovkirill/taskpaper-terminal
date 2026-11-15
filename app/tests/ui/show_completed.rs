@@ -94,7 +94,8 @@ fn with_done_blocks_hidden_indent_and_alt_j_k_pass_over_them() {
     );
     assert_eq!(focused_rows(&mut app), ["  - Hardware store"]);
     app.press(KeyCode::Char('j'), KeyModifiers::ALT);
-    app.type_keys(">");
+    app.type_keys("Mindent");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         shown(&mut app),
         ["Errands:", "  - Post office", "    - Hardware store"],

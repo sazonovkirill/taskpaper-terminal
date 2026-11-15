@@ -361,7 +361,7 @@ fn a_read_only_file_refuses_the_note_editor_and_the_comment_input_at_once() {
 #[test]
 fn backslash_opens_the_panel_over_half_its_pane_then_the_whole_pane_then_closes() {
     let mut app = Harness::with_text("- Milk\n\t- Oat\n- Bread\n", 80, 10);
-    app.type_keys("g|");
+    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
     let before = screen(&mut app);
     app.type_keys("\\");
     let half = screen(&mut app);

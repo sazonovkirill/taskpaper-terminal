@@ -10,7 +10,7 @@ Other:
 END
 keys j j '
 see - B ▸
-keys j >
+keys j <Enter> <Tab> <Esc>
 see       Note on B
 see ▌     - C
 quit

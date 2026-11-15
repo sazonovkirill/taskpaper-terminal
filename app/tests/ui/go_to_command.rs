@@ -43,7 +43,7 @@ fn ctrl_p_lists_the_commands_by_name_each_with_its_bindings() {
             "│ ≈ Animations: Full                                       │",
             "│ ≈ Animations: Off                                        │",
             "│ ≈ Animations: Reduced                                    │",
-            "│ › Back  H, Alt+←, Ctrl+O                                 │",
+            "│ › Back  <, H, Alt+←                                      │",
         ]
     );
     let buffer = app.render().buffer().clone();

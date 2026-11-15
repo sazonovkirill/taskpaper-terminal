@@ -1,4 +1,4 @@
-# < on a middle task makes it the project's next sibling while the tasks after it stay in the project.
+# Shift+Tab while editing a middle task makes it the project's next sibling while the tasks after it stay in the project.
 file <<END
 Trip:
 	- Passport
@@ -7,7 +7,7 @@ Trip:
 Home:
 	- Water plants
 END
-keys j j <lt>
+keys j j <Enter> <S-Tab> <Esc>
 see ▌ - Tickets
 quit
 saved <<END

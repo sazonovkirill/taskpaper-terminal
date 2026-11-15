@@ -6,7 +6,7 @@ A:
 B:
     - three
 END
-keys j j >
+keys j j <Enter> <Tab> <Esc>
 quit
 saved <<END
 A:

@@ -895,6 +895,16 @@
    "menu_only": false,
    "keys": [
     {
+     "label": "<",
+     "presses": [
+      [
+       "<"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
+    {
      "label": "H",
      "presses": [
       [
@@ -914,17 +924,6 @@
      ],
      "kitty": false,
      "alt": true
-    },
-    {
-     "label": "Ctrl+O",
-     "presses": [
-      [
-       "Ctrl",
-       "O"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
     }
    ]
   },
@@ -938,6 +937,16 @@
    "panel": true,
    "menu_only": false,
    "keys": [
+    {
+     "label": ">",
+     "presses": [
+      [
+       ">"
+      ]
+     ],
+     "kitty": false,
+     "alt": false
+    },
     {
      "label": "L",
      "presses": [
@@ -958,17 +967,6 @@
      ],
      "kitty": false,
      "alt": true
-    },
-    {
-     "label": "Ctrl+I",
-     "presses": [
-      [
-       "Ctrl",
-       "I"
-      ]
-     ],
-     "kitty": true,
-     "alt": false
     }
    ]
   },
@@ -1574,44 +1572,22 @@
    "name": "Indent",
    "config": "indent",
    "mode": "navigate",
-   "group": "Structure",
+   "group": "Selection",
    "topic": "structure",
-   "panel": true,
+   "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": ">",
-     "presses": [
-      [
-       ">"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-outdent",
    "name": "Outdent",
    "config": "outdent",
    "mode": "navigate",
-   "group": "Structure",
+   "group": "Selection",
    "topic": "structure",
-   "panel": true,
+   "panel": false,
    "menu_only": false,
-   "keys": [
-    {
-     "label": "<",
-     "presses": [
-      [
-       "<"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    }
-   ]
+   "keys": []
   },
   {
    "id": "navigate-move-up",
@@ -3118,19 +3094,6 @@
       ],
       [
        "v"
-      ]
-     ],
-     "kitty": false,
-     "alt": false
-    },
-    {
-     "label": "g|",
-     "presses": [
-      [
-       "g"
-      ],
-      [
-       "|"
       ]
      ],
      "kitty": false,
@@ -7011,6 +6974,16 @@
       "panel": true,
       "keys": [
        {
+        "label": "<",
+        "presses": [
+         [
+          "<"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
+       {
         "label": "H",
         "presses": [
          [
@@ -7030,17 +7003,6 @@
         ],
         "kitty": false,
         "alt": true
-       },
-       {
-        "label": "Ctrl+O",
-        "presses": [
-         [
-          "Ctrl",
-          "O"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
        }
       ],
       "typed": []
@@ -7049,6 +7011,16 @@
       "label": "Forward",
       "panel": true,
       "keys": [
+       {
+        "label": ">",
+        "presses": [
+         [
+          ">"
+         ]
+        ],
+        "kitty": false,
+        "alt": false
+       },
        {
         "label": "L",
         "presses": [
@@ -7069,17 +7041,6 @@
         ],
         "kitty": false,
         "alt": true
-       },
-       {
-        "label": "Ctrl+I",
-        "presses": [
-         [
-          "Ctrl",
-          "I"
-         ]
-        ],
-        "kitty": true,
-        "alt": false
        }
       ],
       "typed": []
@@ -7346,40 +7307,6 @@
     "title": "Structure",
     "sub": "navigate mode",
     "rows": [
-     {
-      "label": "Indent",
-      "panel": true,
-      "keys": [
-       {
-        "label": ">",
-        "presses": [
-         [
-          ">"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
-     {
-      "label": "Outdent",
-      "panel": true,
-      "keys": [
-       {
-        "label": "<",
-        "presses": [
-         [
-          "<"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
-       }
-      ],
-      "typed": []
-     },
      {
       "label": "Move Up",
       "panel": true,
@@ -8503,19 +8430,6 @@
         ],
         "kitty": false,
         "alt": false
-       },
-       {
-        "label": "g|",
-        "presses": [
-         [
-          "g"
-         ],
-         [
-          "|"
-         ]
-        ],
-        "kitty": false,
-        "alt": false
        }
       ],
       "typed": []
@@ -9548,6 +9462,8 @@
    "New Note at Start",
    "Select Inbox Project",
    "Reset Inbox Project",
+   "Indent",
+   "Outdent",
    "Group",
    "Clear Start Date",
    "Clear Due Date",

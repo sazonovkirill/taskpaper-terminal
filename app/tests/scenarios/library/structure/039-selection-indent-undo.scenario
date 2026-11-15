@@ -6,7 +6,7 @@ Plan:
 	- C
 	- D
 END
-keys j j <S-Down> >
+keys j j <S-Down> Mindent <Enter>
 see ▌     - C
 keys z
 see ▌   - C

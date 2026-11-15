@@ -19,7 +19,7 @@ see ▌ Kitchen:
 see     - New tap
 keys .
 see 󰋜 › Kitchen
-keys j j >
+keys j j <Enter> <Tab> <Esc>
 see ▌     - New tap
 keys ,
 see ▌ Kitchen:

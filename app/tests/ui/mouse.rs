@@ -216,7 +216,7 @@ fn alt_click_opens_a_block_or_a_crumb_in_a_new_pane() {
 #[test]
 fn a_click_on_a_pane_header_or_into_another_pane_focuses_that_pane() {
     let mut app = Harness::with_text(OUTLINE, 80, 12);
-    app.type_keys("g|");
+    app.press(KeyCode::Char('\\'), KeyModifiers::CONTROL);
     let dimmed = |app: &mut Harness, x| {
         app.render().buffer()[(x, 0)]
             .modifier

@@ -1,0 +1,19 @@
+# < walks back through the places the user zoomed to and > walks forward again, as H and L do.
+file <<END
+Trip:
+	Hotels:
+		- Kyoto ryokan
+	- Flights
+Groceries
+END
+keys . j .
+see › Trip › Hotels
+keys <lt>
+see › Trip
+see - Flights
+hide › Hotels
+keys <lt>
+see Groceries
+keys > >
+see › Trip › Hotels
+quit

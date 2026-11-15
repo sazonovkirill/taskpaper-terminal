@@ -6,6 +6,6 @@ Groceries:
 END
 see ▌ Groceries:
 see     - Eggs
-keys j j >
+keys j j <Enter> <Tab> <Esc>
 see ▌     - Eggs
 quit

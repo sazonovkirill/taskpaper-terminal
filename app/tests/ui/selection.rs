@@ -212,19 +212,22 @@ fn structure_keys_move_and_delete_the_whole_selection() {
         outline_rows(&mut app)[1..4],
         ["  - Bank", "  - Pharmacy", "  - Post office"]
     );
-    app.type_keys(">");
+    app.type_keys("Mindent");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         outline_rows(&mut app)[1..3],
         ["  - Bank", "  - Pharmacy"],
         "the first of the list cannot indent, so neither does the one after it"
     );
     app.press(KeyCode::Char('j'), KeyModifiers::ALT);
-    app.type_keys(">");
+    app.type_keys("Mindent");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         outline_rows(&mut app)[1..4],
         ["  - Post office", "    - Bank", "    - Pharmacy"]
     );
-    app.type_keys("<");
+    app.type_keys("Moutdent");
+    app.press(KeyCode::Enter, KeyModifiers::NONE);
     app.type_keys("dd");
     assert_eq!(
         saved(&mut app),
