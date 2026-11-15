@@ -228,7 +228,7 @@ fn entry_line<'a>(entry: &'a NavigatorEntry, icons: IconSet, theme: &Theme) -> L
 }
 
 /// The section headings: bold and dimmed, in no color of their own.
-fn heading_style() -> Style {
+pub(super) fn heading_style() -> Style {
     Style::new().bold().dim()
 }
 

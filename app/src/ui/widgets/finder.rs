@@ -13,8 +13,8 @@ use super::super::{
     layout,
     theme::{Icon, IconSet, Theme},
 };
-use super::drawable;
-use crate::app::FinderView;
+use super::{drawable, navigator::heading_style};
+use crate::app::{Candidate, FinderView};
 
 /// The largest the overlay gets.
 const SIZE: (u16, u16) = (80, 20);
@@ -26,10 +26,13 @@ const PROMPT: &str = "› ";
 /// other menus of commands: the query with the caret after it,
 /// then each matching entry's icon and its text, both in the style its value gives if any, and, dimmed
 /// after it, its detail, the highlighted one reversed and kept in view, or a dimmed line saying
-/// nothing matches; and a note in its bottom border, if it has one.
+/// nothing matches; and a note in its bottom border, if it has one. With headings, each run of
+/// entries of one tier comes under the heading of its tier, as the Navigator draws its headings
+/// (D-153).
 pub struct FinderPopup<'a, T> {
     title: &'a str,
     note: Option<&'a str>,
+    headings: &'a [&'a str],
     view: &'a FinderView<'a, T>,
     icons: IconSet,
     icon: &'a dyn Fn(&T) -> (Icon, Style),
@@ -63,6 +66,7 @@ impl<'a, T> FinderPopup<'a, T> {
         Self {
             title,
             note: None,
+            headings: &[],
             view,
             icons,
             icon,
@@ -84,11 +88,34 @@ impl<'a, T> FinderPopup<'a, T> {
         Self { note, ..self }
     }
 
+    /// The finder with `headings`, the heading of each tier by its number, over its entries.
+    #[must_use]
+    pub fn headings(self, headings: &'a [&'a str]) -> Self {
+        Self { headings, ..self }
+    }
+
+    /// The lines under the query: each entry, by its position, after the heading of its tier
+    /// where a run of that tier starts.
+    fn lines(&self) -> Vec<Listed<'a, T>> {
+        let mut lines = Vec::with_capacity(self.view.entries.len());
+        let mut tier = None;
+        for (index, entry) in self.view.entries.iter().enumerate() {
+            if tier != Some(entry.tier)
+                && let Some(heading) = self.headings.get(usize::from(entry.tier))
+            {
+                lines.push(Listed::Heading(heading));
+            }
+            tier = Some(entry.tier);
+            lines.push(Listed::Entry(index, entry));
+        }
+        lines
+    }
+
     /// Where the overlay goes in `area`: centered, as wide as it can be up to 80 columns and as
-    /// tall as its entries, with the query and border, up to 20 rows.
+    /// tall as its entries and headings, with the query and border, up to 20 rows.
     #[must_use]
     pub fn area(&self, area: Rect) -> Rect {
-        let entries = u16::try_from(self.view.entries.len().max(1)).unwrap_or(u16::MAX);
+        let entries = u16::try_from(self.lines().len().max(1)).unwrap_or(u16::MAX);
         let height = entries.saturating_add(3).min(SIZE.1);
         area.centered(Constraint::Length(SIZE.0), Constraint::Length(height))
     }
@@ -106,6 +133,14 @@ impl<'a, T> FinderPopup<'a, T> {
             area.y.saturating_add(1),
         )
     }
+}
+
+/// A line under a finder's query.
+enum Listed<'a, T> {
+    /// The heading of the entries below it.
+    Heading(&'a str),
+    /// An entry, by its position among the entries.
+    Entry(usize, &'a Candidate<T>),
 }
 
 impl<T> Widget for FinderPopup<'_, T> {
@@ -133,15 +168,22 @@ impl<T> Widget for FinderPopup<'_, T> {
             }
             return;
         }
-        let selected = self.view.selected;
-        let offset = layout::scroll_offset(
-            0,
-            selected..selected + 1,
-            rows.len(),
-            self.view.entries.len(),
-        );
-        let entries = self.view.entries.iter().enumerate().skip(offset);
-        for ((index, entry), row) in entries.zip(rows) {
+        let lines = self.lines();
+        let selected = lines
+            .iter()
+            .position(
+                |line| matches!(line, Listed::Entry(index, _) if *index == self.view.selected),
+            )
+            .unwrap_or_default();
+        let offset = layout::scroll_offset(0, selected..selected + 1, rows.len(), lines.len());
+        for (line, row) in lines.into_iter().skip(offset).zip(rows) {
+            let (index, entry) = match line {
+                Listed::Heading(heading) => {
+                    Line::styled(format!(" {heading}"), heading_style()).render(row, buf);
+                    continue;
+                }
+                Listed::Entry(index, entry) => (index, entry),
+            };
             let (icon, style) = (self.icon)(&entry.value);
             let text_style = self
                 .text_style
@@ -322,6 +364,92 @@ mod tests {
         assert_eq!(buf[(3, 2)].fg, Color::Reset, "not the space before it");
         assert_eq!(buf[(4, 3)].fg, Color::Indexed(102));
         assert!(buf[(4, 3)].modifier.contains(Modifier::REVERSED));
+    }
+
+    /// The rows inside the frame of `finder` drawn over `area`, trimmed.
+    fn drawn(finder: FinderPopup<'_, u8>, area: Rect) -> Vec<String> {
+        let mut buf = Buffer::empty(area);
+        finder.render(area, &mut buf);
+        (1..area.height - 1)
+            .map(|y| {
+                (1..area.width - 1)
+                    .map(|x| buf[(x, y)].symbol())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    // D-153
+    #[test]
+    fn headings_stand_over_each_run_of_a_tier_and_count_in_its_height() {
+        let tiered = |text, tier| Candidate {
+            tier,
+            ..candidate(text)
+        };
+        let candidates = [
+            tiered("A", 0),
+            tiered("B", 0),
+            tiered("C", 1),
+            tiered("D", 5),
+        ];
+        let view = FinderView {
+            query: "",
+            entries: Entries::new(&candidates, &[0, 1, 2, 3]),
+            selected: 0,
+        };
+        let finder = || {
+            FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME)
+                .headings(&["Dark", "Light"])
+        };
+        assert_eq!(
+            finder().area(Rect::new(0, 0, 100, 30)).height,
+            9,
+            "4 entries, 2 headings, the query and the frame"
+        );
+        assert_eq!(
+            drawn(finder(), Rect::new(0, 0, 12, 9)),
+            ["›", " Dark", " › A", " › B", " Light", " › C", " › D",],
+            "a tier without a heading has none"
+        );
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 9));
+        finder().render(buf.area, &mut buf);
+        assert_eq!(buf[(2, 2)].modifier, Modifier::BOLD | Modifier::DIM);
+        assert!(buf[(1, 3)].modifier.contains(Modifier::REVERSED));
+        let plain = FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME);
+        assert_eq!(plain.area(Rect::new(0, 0, 100, 30)).height, 7);
+    }
+
+    // D-153
+    #[test]
+    fn the_highlighted_entry_scrolls_into_view_with_its_heading_above_it() {
+        let candidates: Vec<Candidate<u8>> = (0..12)
+            .map(|n| Candidate {
+                tier: u8::from(n >= 8),
+                ..candidate(&n.to_string())
+            })
+            .collect();
+        let ranked: Vec<usize> = (0..candidates.len()).collect();
+        let view = |selected| FinderView {
+            query: "",
+            entries: Entries::new(&candidates, &ranked),
+            selected,
+        };
+        let area = Rect::new(0, 0, 12, 8);
+        let rows = |selected| {
+            let view = view(selected);
+            drawn(
+                FinderPopup::new("Find", &view, IconSet::Unicode, &ICON, &THEME)
+                    .headings(&["Dark", "Light"]),
+                area,
+            )
+        };
+        assert_eq!(rows(0)[1..3], [" Dark", " › 0"]);
+        assert_eq!(rows(11)[5], " › 11", "the last entry at the bottom");
+        let first_light = rows(8);
+        let at = first_light.iter().position(|row| row == " › 8").unwrap();
+        assert_eq!(first_light[at - 1], " Light");
     }
 
     #[test]

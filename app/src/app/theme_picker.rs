@@ -16,16 +16,17 @@ impl State {
         self.themes.as_ref().map(Finder::view)
     }
 
-    /// Opens the theme picker over `names`, in their order, the one at `current` highlighted.
-    pub(super) fn open_theme_picker(&mut self, names: Vec<String>, current: usize) {
+    /// Opens the theme picker over `names`, in their order within their sections, the one at
+    /// `current` highlighted.
+    pub(super) fn open_theme_picker(&mut self, names: Vec<(String, u8)>, current: usize) {
         let candidates = names
             .into_iter()
             .enumerate()
-            .map(|(value, text)| Candidate {
+            .map(|(value, (text, section))| Candidate {
                 value,
                 text: text.into(),
                 detail: "".into(),
-                tier: 0,
+                tier: section,
             })
             .collect();
         let mut finder = Finder::new(candidates);
@@ -55,7 +56,9 @@ mod tests {
 
     fn opened(current: usize) -> State {
         let mut state = State::new(format::parse("- a\n"), None);
-        let names = ["Dark", "Light", "Nord"].map(str::to_owned).to_vec();
+        let names = [("Dark", 0), ("Nord", 0), ("Light", 1)]
+            .map(|(name, section)| (name.to_owned(), section))
+            .to_vec();
         assert_eq!(
             state.update(Message::OpenThemePicker { names, current }),
             []
@@ -86,7 +89,7 @@ mod tests {
         let state = opened(2);
         assert_eq!(
             listed(&state),
-            (vec!["Dark".into(), "Light".into(), "Nord".into()], 2)
+            (vec!["Dark".into(), "Nord".into(), "Light".into()], 2)
         );
         assert_eq!(
             listed(&opened(9)).1,
@@ -103,11 +106,27 @@ mod tests {
             assert_eq!(key(&mut state, MenuInput::Type(c)), []);
         }
         assert_eq!(listed(&state), (vec!["Nord".into()], 0));
-        assert_eq!(key(&mut state, MenuInput::Choose), [Effect::SetTheme(2)]);
+        assert_eq!(key(&mut state, MenuInput::Choose), [Effect::SetTheme(1)]);
         assert_eq!(state.theme_picker(), None);
         let mut state = opened(0);
         assert_eq!(key(&mut state, MenuInput::Next), []);
         assert_eq!(key(&mut state, MenuInput::Choose), [Effect::SetTheme(1)]);
+    }
+
+    // D-153
+    #[test]
+    fn a_filter_keeps_the_sections_in_order() {
+        let mut state = State::new(format::parse("- a\n"), None);
+        let names = vec![("Moonfly".to_owned(), 0), ("Moon".to_owned(), 1)];
+        state.update(Message::OpenThemePicker { names, current: 0 });
+        for c in "moon".chars() {
+            key(&mut state, MenuInput::Type(c));
+        }
+        assert_eq!(
+            listed(&state).0,
+            ["Moonfly", "Moon"],
+            "a better match in a later section stays below"
+        );
     }
 
     // FR-UI-06

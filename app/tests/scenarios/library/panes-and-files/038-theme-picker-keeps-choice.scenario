@@ -7,9 +7,9 @@ keys :
 type choose theme
 keys <Enter>
 see Terminal Dark
-see Solarized Light
+see Dark Themes
 type nord
 keys <Enter>
-hide Solarized Light
+hide Dark Themes
 keys g,
 see Nord

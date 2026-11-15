@@ -5,6 +5,6 @@ mod colors;
 mod icons;
 mod terminal_colors;
 
-pub use colors::{BuiltIn, ColorSupport, Theme};
+pub use colors::{BuiltIn, ColorSupport, Theme, ThemeGroup};
 pub use icons::{Icon, IconSet, IconSetting, utf8_locale};
 pub use terminal_colors::TerminalColors;

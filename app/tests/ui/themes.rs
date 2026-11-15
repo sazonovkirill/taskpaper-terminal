@@ -44,9 +44,9 @@ fn screen(buffer: &Buffer) -> Vec<String> {
         .collect()
 }
 
-// FR-UI-06, FR-UI-08, ui.md §3
+// FR-UI-06, FR-UI-08, ui.md §3, D-153
 #[test]
-fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
+fn choose_theme_lists_the_themes_under_dark_and_light_with_the_one_in_use_highlighted() {
     let mut app =
         Harness::with_config(OUTLINE, SETTINGS, 60, 24).with_colors(ColorSupport::TrueColor);
     assert_eq!(
@@ -56,36 +56,60 @@ fn choose_theme_lists_the_themes_with_the_one_in_use_highlighted() {
     );
     choose_theme(&mut app);
     let buffer = app.render().buffer().clone();
-    let rows: Vec<String> = screen(&buffer)[4..21]
+    let rows: Vec<String> = screen(&buffer)[3..23]
         .iter()
         .map(|row| row.trim_end().to_owned())
         .collect();
     let names = [
         "Terminal Dark",
         "Catppuccin Mocha",
-        "Catppuccin Latte",
+        "Catppuccin Macchiato",
         "Tokyo Night",
         "Dracula",
         "Nord",
         "Gruvbox Dark",
         "Rosé Pine",
-        "Rosé Pine Dawn",
         "Kanagawa Wave",
+        "Kanagawa Dragon",
         "Everforest Dark",
         "One Dark",
-        "Solarized Light",
-        "Star Trek TNG",
+        "Solarized Dark",
+        "Monokai",
+        "GitHub Dark",
+        "Flexoki Dark",
     ];
     let mut expected = vec![
         "┌Theme─────────────────────────────────────────────────────┐".to_owned(),
         format!("│›{:57}│", ""),
+        format!("│ {:57}│", "Dark Themes"),
     ];
     expected.extend(names.map(|name| format!("│ ● {name:<55}│")));
     expected.push("└──────────────────────────────────────────────────────────┘".to_owned());
     assert_eq!(rows, expected);
     assert!(
+        buffer[(3, 5)].modifier.contains(Modifier::BOLD),
+        "the heading is bold, as the Navigator's are"
+    );
+    assert!(
         buffer[(3, 6)].modifier.contains(Modifier::REVERSED),
         "Terminal Dark is highlighted"
+    );
+
+    app.type_keys("ayu");
+    let rows: Vec<String> = screen(app.render().buffer())
+        .iter()
+        .map(|row| row.trim().to_owned())
+        .filter(|row| row.starts_with('│'))
+        .collect();
+    assert_eq!(
+        rows[1..5],
+        [
+            format!("│ {:57}│", "Dark Themes"),
+            format!("│ ● {:55}│", "Ayu Mirage"),
+            format!("│ {:57}│", "Light Themes"),
+            format!("│ ● {:55}│", "Ayu Light"),
+        ],
+        "a filter keeps each theme under its heading"
     );
 }
 
@@ -257,9 +281,9 @@ fn without_truecolor_the_theme_pickers_say_why_themes_show_as_terminal_dark() {
         let mut app = Harness::with_config(OUTLINE, SETTINGS, 60, 24).with_colors(colors);
         choose_theme(&mut app);
         let buffer = app.render().buffer().clone();
-        assert_eq!(screen(&buffer)[20], bottom(note), "{colors:?}");
+        assert_eq!(screen(&buffer)[22], bottom(note), "{colors:?}");
         assert!(
-            buffer[(1, 20)].modifier.contains(Modifier::DIM) || note.is_empty(),
+            buffer[(1, 22)].modifier.contains(Modifier::DIM) || note.is_empty(),
             "{colors:?}: the note is dimmed"
         );
         press(&mut app, KeyCode::Esc);

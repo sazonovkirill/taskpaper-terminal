@@ -284,6 +284,30 @@ enum Source {
     Palette([u32; 5], [u32; 6]),
 }
 
+/// Which section of the theme pickers a built-in theme is listed in, by how light its background
+/// is (D-153).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThemeGroup {
+    /// A dark background, and Terminal Dark.
+    Dark,
+    /// A light background.
+    Light,
+}
+
+impl ThemeGroup {
+    /// The headings of the sections, in the order the pickers list them: dark themes first.
+    pub const HEADINGS: [&str; 2] = ["Dark Themes", "Light Themes"];
+
+    /// The section's position in [`ThemeGroup::HEADINGS`].
+    #[must_use]
+    pub fn position(self) -> u8 {
+        match self {
+            Self::Dark => 0,
+            Self::Light => 1,
+        }
+    }
+}
+
 /// One of the built-in themes, available without any settings file (FR-UI-08).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BuiltIn(usize);
@@ -292,30 +316,38 @@ pub struct BuiltIn(usize);
     clippy::unreadable_literal,
     reason = "colors are written as the palettes write them, `#rrggbb`"
 )]
-/// Each built-in theme's name in `config.toml`, its name on screen and its colors: the
-/// terminal theme, then the thirteen truecolor ones of
-/// [reference/themes.md](../../../../docs/reference/themes.md) in its order.
-const THEMES: [(&str, &str, Source); 14] = [
-    ("terminal-dark", "Terminal Dark", Source::Terminal),
+/// Each built-in theme's name in `config.toml`, its name on screen, its section and its colors:
+/// the terminal theme, then the truecolor ones of
+/// [reference/themes.md](../../../../docs/reference/themes.md) in its order, dark ones first.
+const THEMES: [(&str, &str, ThemeGroup, Source); 37] = [
+    (
+        "terminal-dark",
+        "Terminal Dark",
+        ThemeGroup::Dark,
+        Source::Terminal,
+    ),
     (
         "catppuccin-mocha",
         "Catppuccin Mocha",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x1e1e2e, 0x313244, 0xcdd6f4, 0x6c7086, 0xb4befe],
             [0xf38ba8, 0xfab387, 0xf9e2af, 0xa6e3a1, 0x89b4fa, 0xcba6f7],
         ),
     ),
     (
-        "catppuccin-latte",
-        "Catppuccin Latte",
+        "catppuccin-macchiato",
+        "Catppuccin Macchiato",
+        ThemeGroup::Dark,
         Source::Palette(
-            [0xeff1f5, 0xccd0da, 0x4c4f69, 0x9ca0b0, 0x7287fd],
-            [0xd20f39, 0xfe640b, 0xdf8e1d, 0x40a02b, 0x1e66f5, 0x8839ef],
+            [0x24273a, 0x363a4f, 0xcad3f5, 0x6e738d, 0xb7bdf8],
+            [0xed8796, 0xf5a97f, 0xeed49f, 0xa6da95, 0x8aadf4, 0xc6a0f6],
         ),
     ),
     (
         "tokyo-night",
         "Tokyo Night",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x1a1b26, 0x292e42, 0xc0caf5, 0x565f89, 0x7dcfff],
             [0xf7768e, 0xff9e64, 0xe0af68, 0x9ece6a, 0x7aa2f7, 0xbb9af7],
@@ -324,6 +356,7 @@ const THEMES: [(&str, &str, Source); 14] = [
     (
         "dracula",
         "Dracula",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x282a36, 0x44475a, 0xf8f8f2, 0x6272a4, 0xff79c6],
             [0xff5555, 0xffb86c, 0xf1fa8c, 0x50fa7b, 0x8be9fd, 0xbd93f9],
@@ -332,6 +365,7 @@ const THEMES: [(&str, &str, Source); 14] = [
     (
         "nord",
         "Nord",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x2e3440, 0x434c5e, 0xd8dee9, 0x4c566a, 0x88c0d0],
             [0xbf616a, 0xd08770, 0xebcb8b, 0xa3be8c, 0x81a1c1, 0xb48ead],
@@ -340,6 +374,7 @@ const THEMES: [(&str, &str, Source); 14] = [
     (
         "gruvbox-dark",
         "Gruvbox Dark",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x282828, 0x3c3836, 0xebdbb2, 0x928374, 0x8ec07c],
             [0xfb4934, 0xfe8019, 0xfabd2f, 0xb8bb26, 0x83a598, 0xd3869b],
@@ -348,30 +383,34 @@ const THEMES: [(&str, &str, Source); 14] = [
     (
         "rose-pine",
         "Rosé Pine",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x191724, 0x26233a, 0xe0def4, 0x6e6a86, 0xc4a7e7],
             [0xeb6f92, 0xebbcba, 0xf6c177, 0x9ccfd8, 0x31748f, 0xc4a7e7],
         ),
     ),
     (
-        "rose-pine-dawn",
-        "Rosé Pine Dawn",
-        Source::Palette(
-            [0xfaf4ed, 0xf2e9e1, 0x575279, 0x9893a5, 0x907aa9],
-            [0xb4637a, 0xd7827e, 0xea9d34, 0x56949f, 0x286983, 0x907aa9],
-        ),
-    ),
-    (
         "kanagawa-wave",
         "Kanagawa Wave",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x1f1f28, 0x2a2a37, 0xdcd7ba, 0x727169, 0x7fb4ca],
             [0xff5d62, 0xffa066, 0xe6c384, 0x98bb6c, 0x7e9cd8, 0x957fb8],
         ),
     ),
     (
+        "kanagawa-dragon",
+        "Kanagawa Dragon",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x181616, 0x393836, 0xc5c9c5, 0x737c73, 0x8ba4b0],
+            [0xc4746e, 0xb6927b, 0xc4b28a, 0x87a987, 0x8ba4b0, 0x8992a7],
+        ),
+    ),
+    (
         "everforest-dark",
         "Everforest Dark",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x2d353b, 0x3d484d, 0xd3c6aa, 0x859289, 0x83c092],
             [0xe67e80, 0xe69875, 0xdbbc7f, 0xa7c080, 0x7fbbb3, 0xd699b6],
@@ -380,25 +419,235 @@ const THEMES: [(&str, &str, Source); 14] = [
     (
         "one-dark",
         "One Dark",
+        ThemeGroup::Dark,
         Source::Palette(
             [0x282c34, 0x3e4451, 0xabb2bf, 0x5c6370, 0x56b6c2],
             [0xe06c75, 0xd19a66, 0xe5c07b, 0x98c379, 0x61afef, 0xc678dd],
         ),
     ),
     (
+        "solarized-dark",
+        "Solarized Dark",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x002b36, 0x073642, 0x839496, 0x586e75, 0x2aa198],
+            [0xdc322f, 0xcb4b16, 0xb58900, 0x859900, 0x268bd2, 0x6c71c4],
+        ),
+    ),
+    (
+        "monokai",
+        "Monokai",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x272822, 0x3c3d37, 0xf8f8f2, 0x75715e, 0x66d9ef],
+            [0xf92672, 0xfd971f, 0xe6db74, 0xa6e22e, 0x66d9ef, 0xae81ff],
+        ),
+    ),
+    (
+        "github-dark",
+        "GitHub Dark",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x0d1117, 0x161b22, 0xe6edf3, 0x6e7681, 0x58a6ff],
+            [0xff7b72, 0xdb6d28, 0xd29922, 0x3fb950, 0x58a6ff, 0xa371f7],
+        ),
+    ),
+    (
+        "flexoki-dark",
+        "Flexoki Dark",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x100f0f, 0x1c1b1a, 0xcecdc3, 0x6f6e69, 0x4385be],
+            [0xd14d41, 0xda702c, 0xd0a215, 0x879a39, 0x4385be, 0x8b7ec8],
+        ),
+    ),
+    (
+        "melange-dark",
+        "Melange Dark",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x292522, 0x34302c, 0xece1d7, 0x867462, 0xa3a9ce],
+            [0xd47766, 0xe49b5d, 0xebc06d, 0x85b695, 0xa3a9ce, 0xcf9bc2],
+        ),
+    ),
+    (
+        "moonfly",
+        "Moonfly",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x080808, 0x1c1c1c, 0xc6c6c6, 0x626262, 0x80a0ff],
+            [0xff5d5d, 0xde935f, 0xe3c78a, 0x8cc85f, 0x80a0ff, 0xae81ff],
+        ),
+    ),
+    (
+        "nightfly",
+        "Nightfly",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x011627, 0x092236, 0xc3ccdc, 0x7c8f8f, 0x82aaff],
+            [0xfc514e, 0xf78c6c, 0xe3d18a, 0xa1cd5e, 0x82aaff, 0xae81ff],
+        ),
+    ),
+    (
+        "cyberdream",
+        "Cyberdream",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x16181a, 0x1e2124, 0xffffff, 0x7b8496, 0x5ea1ff],
+            [0xff6e5e, 0xffbd5e, 0xf1ff5e, 0x5eff6c, 0x5ea1ff, 0xbd5eff],
+        ),
+    ),
+    (
+        "synthwave-84",
+        "Synthwave '84",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x262335, 0x34294f, 0xffffff, 0x848bbd, 0x36f9f6],
+            [0xfe4450, 0xf97e72, 0xfede5d, 0x72f1b8, 0x36f9f6, 0xb893ce],
+        ),
+    ),
+    (
+        "ayu-mirage",
+        "Ayu Mirage",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x242936, 0x1a1f29, 0xcccac2, 0x6e7c8f, 0xffcc66],
+            [0xf28779, 0xffa659, 0xffcd66, 0xd5ff80, 0x73d0ff, 0xdfbfff],
+        ),
+    ),
+    (
+        "material-palenight",
+        "Material Palenight",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x292d3e, 0x343b51, 0xa6accd, 0x676e95, 0xc792ea],
+            [0xff5370, 0xf78c6c, 0xffcb6b, 0xc3e88d, 0x82aaff, 0xbb80b3],
+        ),
+    ),
+    (
+        "poimandres",
+        "Poimandres",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x1b1e28, 0x303340, 0xa6accd, 0x767c9d, 0x5de4c7],
+            [0xd0679d, 0xfcc5e9, 0xfffac2, 0x5fb3a1, 0x89ddff, 0xf087bd],
+        ),
+    ),
+    (
+        "star-trek-tng",
+        "Star Trek TNG",
+        ThemeGroup::Dark,
+        Source::Palette(
+            [0x000000, 0x1a121a, 0xffcc99, 0x664466, 0xcc99cc],
+            [0xcc6666, 0xffcc66, 0xffff99, 0x99cc99, 0x99ccff, 0x9999cc],
+        ),
+    ),
+    (
+        "catppuccin-latte",
+        "Catppuccin Latte",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xeff1f5, 0xccd0da, 0x4c4f69, 0x9ca0b0, 0x7287fd],
+            [0xd20f39, 0xfe640b, 0xdf8e1d, 0x40a02b, 0x1e66f5, 0x8839ef],
+        ),
+    ),
+    (
+        "tokyo-night-day",
+        "Tokyo Night Day",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xe1e2e7, 0xc4c8da, 0x3760bf, 0x848cb5, 0x007197],
+            [0xf52a65, 0xb15c00, 0x8c6c3e, 0x587539, 0x2e7de9, 0x9854f1],
+        ),
+    ),
+    (
+        "rose-pine-dawn",
+        "Rosé Pine Dawn",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xfaf4ed, 0xf2e9e1, 0x575279, 0x9893a5, 0x907aa9],
+            [0xb4637a, 0xd7827e, 0xea9d34, 0x56949f, 0x286983, 0x907aa9],
+        ),
+    ),
+    (
+        "everforest-light",
+        "Everforest Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xfdf6e3, 0xefebd4, 0x5c6a72, 0x939f91, 0x35a77c],
+            [0xf85552, 0xf57d26, 0xdfa000, 0x8da101, 0x3a94c5, 0xdf69ba],
+        ),
+    ),
+    (
+        "one-light",
+        "One Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xfafafa, 0xe5e5e6, 0x383a42, 0xa0a1a7, 0x0184bc],
+            [0xe45649, 0x986801, 0xc18401, 0x50a14f, 0x4078f2, 0xa626a4],
+        ),
+    ),
+    (
         "solarized-light",
         "Solarized Light",
+        ThemeGroup::Light,
         Source::Palette(
             [0xfdf6e3, 0xeee8d5, 0x657b83, 0x93a1a1, 0x2aa198],
             [0xdc322f, 0xcb4b16, 0xb58900, 0x859900, 0x268bd2, 0x6c71c4],
         ),
     ),
     (
-        "star-trek-tng",
-        "Star Trek TNG",
+        "gruvbox-light",
+        "Gruvbox Light",
+        ThemeGroup::Light,
         Source::Palette(
-            [0x000000, 0x1a121a, 0xffcc99, 0x664466, 0xcc99cc],
-            [0xcc6666, 0xffcc66, 0xffff99, 0x99cc99, 0x99ccff, 0x9999cc],
+            [0xfbf1c7, 0xebdbb2, 0x3c3836, 0x928374, 0x427b58],
+            [0x9d0006, 0xaf3a03, 0xb57614, 0x79740e, 0x076678, 0x8f3f71],
+        ),
+    ),
+    (
+        "github-light",
+        "GitHub Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xffffff, 0xf6f8fa, 0x1f2328, 0x6e7781, 0x0969da],
+            [0xcf222e, 0xbc4c00, 0x9a6700, 0x1a7f37, 0x0969da, 0x8250df],
+        ),
+    ),
+    (
+        "flexoki-light",
+        "Flexoki Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xfffcf0, 0xf2f0e5, 0x100f0f, 0x878580, 0x205ea6],
+            [0xaf3029, 0xbc5215, 0x8e6b01, 0x66800b, 0x205ea6, 0x5e409d],
+        ),
+    ),
+    (
+        "melange-light",
+        "Melange Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xf1f1f1, 0xe9e1db, 0x54433a, 0x7d6658, 0x465aa4],
+            [0xbf0021, 0xbc5c00, 0xa06d00, 0x3a684a, 0x465aa4, 0x904180],
+        ),
+    ),
+    (
+        "dayfox",
+        "Dayfox",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xf6f2ee, 0xe4dcd4, 0x3d2b5a, 0x837a72, 0x2848a9],
+            [0xa5222f, 0x955f61, 0xac5402, 0x396847, 0x2848a9, 0x6e33ce],
+        ),
+    ),
+    (
+        "ayu-light",
+        "Ayu Light",
+        ThemeGroup::Light,
+        Source::Palette(
+            [0xfcfcfc, 0xf0f1f3, 0x5c6166, 0xadaeb1, 0xf29718],
+            [0xf07171, 0xfa8532, 0xeba400, 0x86b300, 0x22a4e6, 0xa37acc],
         ),
     ),
 ];
@@ -442,13 +691,19 @@ impl BuiltIn {
         self.entry().1
     }
 
+    /// The section of the theme pickers it is listed in.
+    #[must_use]
+    pub fn group(self) -> ThemeGroup {
+        self.entry().2
+    }
+
     /// The colors the theme is drawn in with `support`: none without colors, and Terminal Dark
     /// when it is a truecolor theme and the terminal lacks truecolor, so that every theme is
     /// usable in 16 colors (N-UX-03, D-63). With truecolor, Terminal Dark is drawn in the RGB
     /// colors of `terminal`, the colors the terminal reported, when it reported them (D-128).
     #[must_use]
     pub fn colors(self, support: ColorSupport, terminal: Option<&TerminalColors>) -> Theme {
-        match (self.entry().2, support) {
+        match (self.entry().3, support) {
             (_, ColorSupport::None) => Theme::PLAIN,
             (Source::Terminal, ColorSupport::TrueColor) => terminal
                 .map_or_else(Theme::terminal, |terminal| {
@@ -462,7 +717,7 @@ impl BuiltIn {
     }
 
     /// The theme's row of [`THEMES`].
-    fn entry(self) -> (&'static str, &'static str, Source) {
+    fn entry(self) -> (&'static str, &'static str, ThemeGroup, Source) {
         THEMES
             .get(self.0)
             .copied()
@@ -545,27 +800,50 @@ mod tests {
         assert_eq!(ColorSupport::default(), ColorSupport::Ansi);
     }
 
-    // FR-UI-08
+    // FR-UI-08, D-153
     #[test]
-    fn the_thirteen_themes_and_the_terminal_one_are_built_in() {
+    fn the_thirty_six_themes_and_the_terminal_one_are_built_in() {
         let names: Vec<&str> = BuiltIn::all().map(BuiltIn::name).collect();
         assert_eq!(
             names,
             [
                 "Terminal Dark",
                 "Catppuccin Mocha",
-                "Catppuccin Latte",
+                "Catppuccin Macchiato",
                 "Tokyo Night",
                 "Dracula",
                 "Nord",
                 "Gruvbox Dark",
                 "Rosé Pine",
-                "Rosé Pine Dawn",
                 "Kanagawa Wave",
+                "Kanagawa Dragon",
                 "Everforest Dark",
                 "One Dark",
-                "Solarized Light",
+                "Solarized Dark",
+                "Monokai",
+                "GitHub Dark",
+                "Flexoki Dark",
+                "Melange Dark",
+                "Moonfly",
+                "Nightfly",
+                "Cyberdream",
+                "Synthwave '84",
+                "Ayu Mirage",
+                "Material Palenight",
+                "Poimandres",
                 "Star Trek TNG",
+                "Catppuccin Latte",
+                "Tokyo Night Day",
+                "Rosé Pine Dawn",
+                "Everforest Light",
+                "One Light",
+                "Solarized Light",
+                "Gruvbox Light",
+                "GitHub Light",
+                "Flexoki Light",
+                "Melange Light",
+                "Dayfox",
+                "Ayu Light",
             ]
         );
         for (position, theme) in BuiltIn::all().enumerate() {
@@ -576,13 +854,79 @@ mod tests {
                 .name()
                 .to_lowercase()
                 .replace(' ', "-")
-                .replace('é', "e");
+                .replace('é', "e")
+                .replace('\'', "");
             assert_eq!(theme.id(), id);
         }
-        assert_eq!(BuiltIn::nth(14), None);
+        assert_eq!(BuiltIn::nth(37), None);
         assert_eq!(BuiltIn::named("Nord"), None, "names in the file are ids");
         assert_eq!(BuiltIn::named("terminal-light"), None, "removed (D-63)");
         assert_eq!(BuiltIn::DEFAULT, named("terminal-dark"));
+    }
+
+    /// The relative luminance of `color`, from 0 for black to 1 for white (WCAG 2.2).
+    fn luminance(color: Color) -> f64 {
+        let Color::Rgb(r, g, b) = color else { panic!() };
+        let linear = |channel: u8| {
+            let value = f64::from(channel) / 255.0;
+            if value <= 0.040_45 {
+                value / 12.92
+            } else {
+                ((value + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+    }
+
+    // D-153
+    #[test]
+    fn themes_are_listed_dark_ones_first_each_in_the_section_its_background_says() {
+        assert_eq!(ThemeGroup::HEADINGS, ["Dark Themes", "Light Themes"]);
+        assert_eq!(ThemeGroup::Dark.position(), 0);
+        assert_eq!(ThemeGroup::Light.position(), 1);
+        assert_eq!(named("terminal-dark").group(), ThemeGroup::Dark);
+        let groups: Vec<ThemeGroup> = BuiltIn::all().map(BuiltIn::group).collect();
+        let first_light = groups
+            .iter()
+            .position(|&group| group == ThemeGroup::Light)
+            .unwrap();
+        assert_eq!(first_light, 25, "Terminal Dark and 24 dark themes");
+        assert!(
+            groups[first_light..]
+                .iter()
+                .all(|&group| group == ThemeGroup::Light),
+            "every light theme comes after every dark one"
+        );
+        for theme in BuiltIn::all().skip(1) {
+            let colors = theme.colors(ColorSupport::TrueColor, None);
+            let (id, light) = (theme.id(), luminance(colors.background) > 0.5);
+            let group = if light {
+                ThemeGroup::Light
+            } else {
+                ThemeGroup::Dark
+            };
+            assert_eq!(theme.group(), group, "{id}");
+        }
+    }
+
+    // FR-UI-08: the text of every truecolor theme reads on its background and its band, by at
+    // least 4:1 on the background and WCAG's 3:1 for large text on the band rather than 4.5:1, as Solarized and Tokyo Night Day are
+    // low-contrast by design.
+    #[test]
+    fn every_truecolor_theme_has_readable_text() {
+        let contrast = |a: Color, b: Color| {
+            let (a, b) = (luminance(a), luminance(b));
+            (a.max(b) + 0.05) / (a.min(b) + 0.05)
+        };
+        for theme in BuiltIn::all().skip(1) {
+            let colors = theme.colors(ColorSupport::TrueColor, None);
+            let id = theme.id();
+            assert!(contrast(colors.text, colors.background) >= 4.0, "{id}");
+            assert!(
+                contrast(colors.band_text, colors.current_line) >= 3.0,
+                "{id}"
+            );
+        }
     }
 
     // N-UX-03, D-63

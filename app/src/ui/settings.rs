@@ -138,14 +138,24 @@ fn navigator_setting(view: OptionalView) -> (&'static str, &'static str) {
     }
 }
 
+/// `theme` as the theme pickers list it: its name, in its section (D-153).
+pub(super) fn theme_choice(theme: BuiltIn) -> (String, u8) {
+    (theme.name().to_owned(), theme.group().position())
+}
+
 /// A count of milliseconds or copies as the window shows it, at most `u32::MAX`.
 fn count(value: impl TryInto<u32>) -> u32 {
     value.try_into().unwrap_or(u32::MAX)
 }
 
-/// A setting whose `choices` are named as the settings file names them.
+/// A setting whose `choices` are named as the settings file names them, in one section.
 fn choices<T>(choices: &[(T, &str)]) -> SettingKind {
-    SettingKind::Choice(choices.iter().map(|(_, name)| (*name).to_owned()).collect())
+    SettingKind::Choice(
+        choices
+            .iter()
+            .map(|(_, name)| ((*name).to_owned(), 0))
+            .collect(),
+    )
 }
 
 /// `value` among `choices`.
@@ -310,11 +320,7 @@ impl Tui {
             self.colors
                 .themes_note()
                 .unwrap_or("The colors of the whole app"),
-            SettingKind::Choice(
-                BuiltIn::all()
-                    .map(|theme| theme.name().to_owned())
-                    .collect(),
-            ),
+            SettingKind::Choice(BuiltIn::all().map(theme_choice).collect()),
             SettingValue::Choice(self.theme.position()),
             SettingValue::Choice(BuiltIn::DEFAULT.position()),
         )

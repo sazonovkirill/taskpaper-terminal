@@ -36,8 +36,9 @@ pub struct Setting {
 pub enum SettingKind {
     /// On or off.
     Switch,
-    /// One of these choices, by name.
-    Choice(Vec<String>),
+    /// One of these choices, by name, each with the section its picker lists it in: every choice
+    /// of a lower section is listed above every choice of a higher one (D-153).
+    Choice(Vec<(String, u8)>),
     /// A whole number, at least `least`, counted in `unit`.
     Number {
         /// The least it may be.
@@ -425,11 +426,11 @@ impl Window {
                 let candidates = names
                     .iter()
                     .enumerate()
-                    .map(|(value, name)| Candidate {
+                    .map(|(value, (name, section))| Candidate {
                         value,
                         text: name.as_str().into(),
                         detail: "".into(),
-                        tier: 0,
+                        tier: *section,
                     })
                     .collect();
                 let mut finder = Finder::new(candidates);
@@ -546,9 +547,10 @@ fn shown_value(setting: &Setting) -> String {
     match (&setting.kind, &setting.value) {
         (_, SettingValue::Switch(true)) => "on".to_owned(),
         (_, SettingValue::Switch(false)) => "off".to_owned(),
-        (SettingKind::Choice(names), SettingValue::Choice(chosen)) => {
-            names.get(*chosen).cloned().unwrap_or_default()
-        }
+        (SettingKind::Choice(names), SettingValue::Choice(chosen)) => names
+            .get(*chosen)
+            .map(|(name, _)| name.clone())
+            .unwrap_or_default(),
         (SettingKind::Number { unit, .. }, SettingValue::Number(number)) if !unit.is_empty() => {
             format!("{number} {unit}")
         }
@@ -636,7 +638,11 @@ mod tests {
             setting(
                 "Looks",
                 "Theme",
-                SettingKind::Choice(vec!["Dark".into(), "Light".into(), "Nord".into()]),
+                SettingKind::Choice(vec![
+                    ("Dark".into(), 0),
+                    ("Light".into(), 1),
+                    ("Nord".into(), 1),
+                ]),
                 SettingValue::Choice(0),
             ),
             setting(
@@ -895,6 +901,15 @@ mod tests {
         assert_eq!(
             (name, picker.selected, picker.entries.len()),
             ("Theme", 0, 3)
+        );
+        assert_eq!(
+            picker
+                .entries
+                .iter()
+                .map(|entry| entry.tier)
+                .collect::<Vec<_>>(),
+            [0, 1, 1],
+            "each choice in its section (D-153)"
         );
         assert_eq!(state.settings_preview(), Some((0, SettingValue::Choice(0))));
         assert_eq!(key(&mut state, SettingsInput::Pick(MenuInput::Next)), []);
@@ -1205,7 +1220,7 @@ mod tests {
                 "a",
             ),
             (
-                SettingKind::Choice(vec!["a".into()]),
+                SettingKind::Choice(vec![("a".into(), 0)]),
                 SettingValue::Choice(3),
                 "",
             ),

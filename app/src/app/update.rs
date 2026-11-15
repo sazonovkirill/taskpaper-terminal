@@ -255,8 +255,10 @@ pub enum Message {
     /// Open the theme picker over the frontend's themes, by name, the one at `current`
     /// highlighted (FR-UI-06).
     OpenThemePicker {
-        /// The themes' names, in the frontend's order.
-        names: Vec<String>,
+        /// The themes' names, in the frontend's order, each with the section it is listed in:
+        /// every theme of a lower section is listed above every theme of a higher one, typed
+        /// filter or not (D-153).
+        names: Vec<(String, u8)>,
         /// The position in `names` of the theme in use.
         current: usize,
     },

@@ -44,7 +44,7 @@ use keymap::{Context, KeyAction, Keymap, Overlay, PromptKey, ScrollBy};
 use layout::Scroll;
 pub use mouse::acts_on;
 pub use theme::ColorSupport;
-use theme::{BuiltIn, Icon, IconSet, IconSetting, TerminalColors, Theme};
+use theme::{BuiltIn, Icon, IconSet, IconSetting, TerminalColors, Theme, ThemeGroup};
 use weather::{Season, Weather};
 use widgets::{
     AttachmentsPanel, ConflictPrompt, DatePromptPanel, FinderPopup, KeptLines, Keyboard,
@@ -580,9 +580,7 @@ impl Tui {
                 self.send(Message::Settings(SettingsInput::Open(settings)), now);
             }
             KeyAction::ChooseTheme => {
-                let names = BuiltIn::all()
-                    .map(|theme| theme.name().to_owned())
-                    .collect();
+                let names = BuiltIn::all().map(settings::theme_choice).collect();
                 let current = self.theme.position();
                 self.send(Message::OpenThemePicker { names, current }, now);
             }
@@ -1237,6 +1235,7 @@ impl Tui {
             draw_finder(
                 frame,
                 FinderPopup::new("Theme", &view, icons, &icon, theme)
+                    .headings(&ThemeGroup::HEADINGS)
                     .note(self.colors.themes_note()),
                 area,
             );
@@ -1264,6 +1263,11 @@ impl Tui {
             draw_finder(
                 frame,
                 FinderPopup::new(name, picker, self.icons, &icon, theme)
+                    .headings(if self.previewed_theme().is_some() {
+                        &ThemeGroup::HEADINGS
+                    } else {
+                        &[]
+                    })
                     .note(self.previewed_theme().and(self.colors.themes_note())),
                 area,
             );

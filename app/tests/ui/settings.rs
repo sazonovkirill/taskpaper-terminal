@@ -227,9 +227,14 @@ fn a_short_window_scrolls_to_the_highlighted_setting_which_is_reversed() {
 fn the_theme_picker_previews_the_highlighted_theme_and_enter_keeps_and_writes_it() {
     let mut app = opened(SETTINGS).with_colors(ColorSupport::TrueColor);
     press(&mut app, KeyCode::Enter);
+    let picker = app.render().to_string();
     assert!(
-        app.render().to_string().contains("┌Theme"),
+        picker.contains("┌Theme"),
         "the value picker opens over the window"
+    );
+    assert!(
+        picker.contains("│ Dark Themes"),
+        "under the same headings as Choose Theme (D-153)"
     );
     app.type_keys("nord");
     assert_eq!(
@@ -265,10 +270,7 @@ fn l_and_h_cycle_a_choice_and_r_resets_it_each_written_at_once() {
     press(&mut app, KeyCode::Char('h'));
     press(&mut app, KeyCode::Char('h'));
     app.settle();
-    assert_eq!(
-        config(&app),
-        format!("{SETTINGS}theme = \"star-trek-tng\"\n")
-    );
+    assert_eq!(config(&app), format!("{SETTINGS}theme = \"ayu-light\"\n"));
     press(&mut app, KeyCode::Char('r'));
     app.settle();
     assert_eq!(
@@ -299,6 +301,13 @@ fn icons_switch_at_once_behind_the_window() {
     );
     assert_eq!(config(&app), "# Mine\nicons = \"nerd\" # boxes otherwise\n");
     assert!(window(&mut app)[3].starts_with("│               │   \u{f0832} Icons"));
+    press(&mut app, KeyCode::Enter);
+    let picker = app.render().to_string();
+    assert!(picker.contains("┌Icons"), "{picker}");
+    assert!(
+        !picker.contains("Themes"),
+        "only the theme picker has headings"
+    );
 }
 
 // FR-UI-05, FR-SET-03, FR-SET-04
