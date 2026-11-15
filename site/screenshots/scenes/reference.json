@@ -222,5 +222,23 @@
     "j"
    ]
   }
+,
+  {
+   "name": "theme-star-trek-tng",
+   "title": "tpt in the Star Trek TNG theme",
+   "cols": 80,
+   "rows": 22,
+   "config": {
+    "theme": "star-trek-tng"
+   },
+   "keys": [
+    "j",
+    "j",
+    "j",
+    "j",
+    "j",
+    "j"
+   ]
+  }
  ]
 }

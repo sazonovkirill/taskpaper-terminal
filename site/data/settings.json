@@ -20,7 +20,8 @@
     "kanagawa-wave",
     "everforest-dark",
     "one-dark",
-    "solarized-light"
+    "solarized-light",
+    "star-trek-tng"
    ],
    "least": null,
    "unit": null,
@@ -352,6 +353,11 @@
   {
    "id": "solarized-light",
    "name": "Solarized Light",
+   "truecolor": true
+  },
+  {
+   "id": "star-trek-tng",
+   "name": "Star Trek TNG",
    "truecolor": true
   }
  ],
