@@ -117,7 +117,7 @@ Each block type, how it is stored and how it looks. Every line of the file is on
 | ID | Requirement | Priority | Workflowy |
 |---|---|---|---|
 | FR-OPS-01 | Select several blocks by extending the selection (`Shift`+movement) or toggling blocks one by one. | Must | Multi-select |
-| FR-OPS-02 | Indent and outdent the selection with its subtrees. | Must | Tab / Shift+Tab |
+| FR-OPS-02 | Indent and outdent the selection with its subtrees. | Must | `>` / `<` in navigate mode, Tab / Shift+Tab in edit mode (D-151) |
 | FR-OPS-03 | Move the selection up and down among siblings, crossing into the adjacent parent at the edges. | Must | Move up/down |
 | FR-OPS-04 | Group the selection under a new parent block. | Must | — (TaskPaper) |
 | FR-OPS-05 | Move the selection to another block chosen in a fuzzy picker. | Must | Move to |
